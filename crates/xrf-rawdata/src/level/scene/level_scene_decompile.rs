@@ -156,17 +156,25 @@ impl LevelSceneDecompile {
     std::fs::read(path).is_ok_and(|held| held == bytes)
   }
 
-  /// What a write to `level_path` would replace, of the scene's main file, its part directory and its sidecar: what a
-  /// front-end asks about before writing over an earlier decompile or an authored scene.
-  pub fn get_existing_paths(level_path: &Path) -> Vec<PathBuf> {
-    [
-      level_path.to_path_buf(),
-      EditableLevelScene::get_parts_directory(level_path),
-      LevelSceneProvenance::sidecar_path(level_path),
-    ]
-    .into_iter()
-    .filter(|path| path.exists())
-    .collect()
+  /// What a write to `level_path` writes of the scene: its main file, its sidecar and each of its parts.
+  pub fn get_written_scene_paths(&self, level_path: &Path) -> Vec<PathBuf> {
+    [level_path.to_path_buf(), LevelSceneProvenance::sidecar_path(level_path)]
+      .into_iter()
+      .chain(self.scene.get_part_paths(level_path))
+      .collect()
+  }
+
+  /// What a write writes of the level's own objects under `objects_root`: each object and its sidecar.
+  pub fn get_written_object_paths(&self, objects_root: &Path) -> Vec<PathBuf> {
+    self
+      .objects
+      .iter()
+      .flat_map(|object| {
+        let path: PathBuf = object.get_path(objects_root);
+
+        [ObjectProvenance::sidecar_path(&path), path]
+      })
+      .collect()
   }
 
   /// Writes the scene's sidecar (`<level_path>.xrf.json`), then each object under `objects_root` after its own sidecar,

@@ -8,7 +8,7 @@ use std::time::Duration;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
-use xrf_utils::{HostDestination, HostRelativePath};
+use xrf_utils::{HostDestination, HostRelativePath, OutputFiles};
 
 use crate::unpack::{ArchiveExtractOptions, TreeEntry, TreeWriteSummary};
 
@@ -16,21 +16,34 @@ use crate::unpack::{ArchiveExtractOptions, TreeEntry, TreeWriteSummary};
 pub(crate) struct TreeWriter;
 
 impl TreeWriter {
-  /// Creates every directory the entries need, then writes each file's payload through `write`.
+  /// Refuses, unless `options` force it, a destination already holding a file an entry writes; then creates every
+  /// directory the entries need, then writes each file's payload through `write`.
   ///
   /// # Errors
   ///
-  /// Returns whatever creating a directory or file, or `write`, answers with.
+  /// Returns an already-exists error naming the files found unforced, and whatever creating a directory or file, or
+  /// `write`, answers with.
   pub(crate) fn write<T, F>(
     destination: &HostDestination,
     entries: &[TreeEntry<T>],
-    job: &JobHandle,
+    options: &ArchiveExtractOptions,
     write: F,
   ) -> XrfResult<TreeWriteSummary>
   where
     T: Sync,
     F: Fn(&T, &mut File) -> XrfResult<u64> + Sync,
   {
+    let job: &JobHandle = &options.job;
+    let files: Vec<String> = entries
+      .iter()
+      .filter(|entry| !entry.is_directory)
+      .map(|entry| entry.relative.as_path().to_string_lossy().into_owned())
+      .collect();
+
+    OutputFiles::new(destination.get_root())
+      .with_files(files.iter().map(String::as_str))
+      .assert_free(options.is_forced)?;
+
     let prepared: HashMap<PathBuf, PathBuf> = {
       let preparing: JobScope = job.enter(ArchiveExtractOptions::PHASE_PREPARE, None);
 

@@ -13,7 +13,7 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_job::{JobHandle, JobScope};
 use xrf_level::{BuildAimapFile, BuildPrjFile, BuildPrjGlow, BuildPrjParams, BuildPrjPortal};
 use xrf_math::{Aabb, Vector3d};
-use xrf_utils::format_path;
+use xrf_utils::{OutputFiles, format_path};
 
 use crate::level::build::level_build_breakables::{LevelBuildBreakableExport, LevelBuildBreakables};
 use crate::level::build::level_build_climbables::{LevelBuildClimbableExport, LevelBuildClimbables};
@@ -33,6 +33,7 @@ use crate::level::build::level_build_tables::{LevelBuildTableRecords, LevelBuild
 use crate::level::build::level_build_textures::LevelBuildTextures;
 use crate::level::level_ai_map_conversion::LevelAiMapConversion;
 use crate::level::level_entity_conversion::LevelEntityConversion;
+use crate::level::level_exported_file::LevelExportedFile;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_scene_exporter::LevelSceneExporter;
 use crate::level::scene::level_scene_decompile::{LevelSceneObjectFile, LevelSceneTextureFile};
@@ -356,26 +357,32 @@ impl LevelBuildExporter {
 
   /// The scene `request.source` built into the level directory `request.destination`, as the Level Editor's Build
   /// writes it: the level compiler's files first where the request names the game materials ([`Self::export`]), since
-  /// the entities they cut out open the spawn list, then the game files ([`LevelSceneExporter::export`]); written only
-  /// where no file it writes exists or the request is forced, and none where the directory holds a stale file of the
-  /// build's own ([`LevelSceneExporter::write_to_directory`]).
+  /// the entities they cut out open the spawn list, then the game files ([`LevelSceneExporter::export`]). Unforced, a
+  /// directory holding a file the build owns ([`LevelBuildRequest::get_outputs`]) is refused before the scene is read;
+  /// forced, the build's own files it does not write this time are removed after it writes.
   ///
   /// # Errors
   ///
-  /// Returns an error when the scene or the game materials do not read, the request names game materials but has no
-  /// objects root ([`LevelBuildRequest::get_objects_roots`]), the export fails, a file exists and the request is not forced, the job is cancelled before writing,
-  /// or a file does not write.
+  /// Returns an error when the request is not forced and the directory holds a file the build owns, the scene or the
+  /// game materials do not read, the scene places objects and the request names no game materials (their ladders and
+  /// breakables open the spawn list), it names game materials but has no objects root
+  /// ([`LevelBuildRequest::get_objects_roots`]), the export fails, the job is cancelled before writing, or a file does
+  /// not write or a stale one is not removed.
   pub fn build_to_directory<T: ByteOrder>(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
     let (source, destination) = (&request.source, &request.destination);
+    let outputs: OutputFiles = request.get_outputs();
+
+    outputs.assert_free(request.is_forced)?;
+
     let stages: JobScope = job.enter(Self::PROGRESS_STAGES, Some(3));
 
     job.set_detail(Some(String::from("Reading the scene")));
 
     let scene: EditableLevelScene = EditableLevelScene::read_from_path::<T, _>(source)?;
-    let mut names: Vec<String> = LevelSceneExporter::FILE_NAMES
-      .iter()
-      .map(|name| (*name).to_owned())
-      .collect();
+
+    if request.game_materials.is_none() {
+      Self::assert_no_objects(&scene)?;
+    }
 
     stages.advance();
     job.check_cancelled()?;
@@ -410,8 +417,6 @@ impl LevelBuildExporter {
           std::mem::take(&mut export.refused),
         );
 
-        names.extend(LevelBuildExport::list_file_names(destination));
-
         (export.into_files::<T>()?, Some(census), entities, refused)
       }
       None => (BTreeMap::new(), None, Vec::new(), Vec::new()),
@@ -427,19 +432,12 @@ impl LevelBuildExporter {
         .map(|(name, bytes)| (name.to_owned(), bytes)),
     );
 
-    if !request.is_forced
-      && let Some(existing) = files.keys().find(|name| destination.join(name).exists())
-    {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} already exists; overwrite to replace the files the build writes",
-        format_path(&destination.join(existing))
-      )));
-    }
-
     job.check_cancelled()?;
     job.set_detail(Some(format_path(destination).to_string()));
 
-    let written = LevelSceneExporter::write_to_directory(&files, &names, destination)?;
+    let written: Vec<LevelExportedFile> = LevelSceneExporter::write_to_directory(&files, destination)?;
+    let removed: Vec<PathBuf> =
+      outputs.remove_stale(&files.keys().map(|name| destination.join(name)).collect::<Vec<_>>())?;
 
     stages.advance();
 
@@ -447,8 +445,28 @@ impl LevelBuildExporter {
       source: format_path(source).to_string(),
       destination: format_path(destination).to_string(),
       files: written,
+      removed: removed
+        .iter()
+        .map(|path| format_path(path.strip_prefix(destination).unwrap_or(path)).to_string())
+        .collect(),
       geometry: census,
       refused,
     })
+  }
+
+  /// Refuses a scene placing objects, for a build with no game materials: the ladders and breakables the Build cuts out
+  /// of their geometry by game material open the spawn list, which a build without them would write without.
+  fn assert_no_objects(scene: &EditableLevelScene) -> XrfResult {
+    let placed: EditableObjectPart<EditableSceneObject> = LevelSceneExporter::get_part(scene, scene.level.get_guid()?)?;
+
+    if placed.objects.is_empty() {
+      return Ok(());
+    }
+
+    Err(XrfError::new_invalid_error(format!(
+      "The scene places {} objects, whose ladders and breakables the spawn list needs; name the game materials to \
+       build it",
+      placed.objects.len()
+    )))
   }
 }

@@ -103,10 +103,10 @@ export enum ELevelsCommand {
 export const levelsCommands = {
   /**
    * Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
-   * the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and the
-   * compile within its running step. The compile works on the directory the build wrote, whatever level `compile`
-   * names, overwrites what it writes as the build does where the build is forced, and traces on D3D12 with the DXC the
-   * app bundles where it traces on the GPU ([`LevelBuildRun::new`]).
+   * the steps, as `level compile` does, one job reporting both ([`LevelBuildRun::run`]). A cancel stops the build between
+   * its steps and the compile within its running step. The compile works on the directory the build wrote, whatever
+   * level `compile` names, is forced as the build is, and traces on D3D12 with the DXC the app bundles where it traces on
+   * the GPU ([`LevelBuildRun::new`]).
    */
   buildLevel: (
     request: LevelBuildRequest,

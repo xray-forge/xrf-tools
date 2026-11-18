@@ -58,11 +58,18 @@ export const spawnCommands = {
   /** The spawn `tool` holds in the asking window, the newest it opened, described without its large chunks. */
   restoreFile: (tool: string) =>
     __TAURI_INVOKE<SessionRestore<SpawnSessionDescriptor>>(ESpawnCommand.RESTORE_FILE, { tool }),
-  /** Write the spawn `session_id` holds to `path` as a packed file, on the pool. */
-  saveFile: (path: string, sessionId: SessionId) => __TAURI_INVOKE<null>(ESpawnCommand.SAVE_FILE, { path, sessionId }),
-  /** Write the spawn `session_id` holds into the directory `path` as unpacked chunks, on the pool. */
-  saveUnpackedDirectory: (path: string, sessionId: SessionId) =>
-    __TAURI_INVOKE<null>(ESpawnCommand.SAVE_UNPACKED_DIRECTORY, { path, sessionId }),
+  /**
+   * Write the spawn `session_id` holds to `path` as a packed file, on the pool; refused where `path` is there, its name
+   * in any case, unless `is_forced`.
+   */
+  saveFile: (path: string, sessionId: SessionId, isForced: boolean) =>
+    __TAURI_INVOKE<null>(ESpawnCommand.SAVE_FILE, { path, sessionId, isForced }),
+  /**
+   * Write the spawn `session_id` holds into the directory `path` as unpacked chunks, on the pool; refused where `path`
+   * is there, its name in any case, unless `is_forced`.
+   */
+  saveUnpackedDirectory: (path: string, sessionId: SessionId, isForced: boolean) =>
+    __TAURI_INVOKE<null>(ESpawnCommand.SAVE_UNPACKED_DIRECTORY, { path, sessionId, isForced }),
   /** Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing. */
   unpackFile: (request: SpawnConvertRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>(ESpawnCommand.UNPACK_FILE, { request, jobId, progress }),
@@ -77,10 +84,10 @@ export interface ISpawnCommandSignatures {
   [ESpawnCommand.PACK_FILE]: IIpcCommandSignature<typeof spawnCommands.packFile, ["request", "jobId", "progress"]>;
   [ESpawnCommand.READ_CHUNK]: IIpcCommandSignature<typeof spawnCommands.readChunk, ["sessionId", "chunk"]>;
   [ESpawnCommand.RESTORE_FILE]: IIpcCommandSignature<typeof spawnCommands.restoreFile, ["tool"]>;
-  [ESpawnCommand.SAVE_FILE]: IIpcCommandSignature<typeof spawnCommands.saveFile, ["path", "sessionId"]>;
+  [ESpawnCommand.SAVE_FILE]: IIpcCommandSignature<typeof spawnCommands.saveFile, ["path", "sessionId", "isForced"]>;
   [ESpawnCommand.SAVE_UNPACKED_DIRECTORY]: IIpcCommandSignature<
     typeof spawnCommands.saveUnpackedDirectory,
-    ["path", "sessionId"]
+    ["path", "sessionId", "isForced"]
   >;
   [ESpawnCommand.UNPACK_FILE]: IIpcCommandSignature<typeof spawnCommands.unpackFile, ["request", "jobId", "progress"]>;
 }

@@ -31,7 +31,12 @@ import {
   LIGHT_QUALITY_OPTIONS,
   RAY_BACKEND_OPTIONS,
 } from "@/tools/level-compiler/lib/compile-options";
-import { getCompileProblem, ICompileChoice, toCompileRequest } from "@/tools/level-compiler/lib/compile-request";
+import {
+  getCompileProblem,
+  ICompileChoice,
+  ICompileProblem,
+  toCompileRequest,
+} from "@/tools/level-compiler/lib/compile-request";
 import { LevelCompilerService } from "@/tools/level-compiler/services/level-compiler.service";
 
 import { LevelBuildResultView } from "./components/LevelBuildResultView";
@@ -115,6 +120,7 @@ export function LevelCompilerTool(): ReactElement {
   const compile: ICompileChoice = useMemo(
     () => ({
       steps,
+      gameMaterials: gameMaterials.value,
       gamedata: gamedata.value,
       textures: textures.value,
       rayBackend,
@@ -122,9 +128,13 @@ export function LevelCompilerTool(): ReactElement {
       aiCovers,
       lightQuality,
     }),
-    [aiCovers, gamedata.value, lightQuality, rayBackend, rayGpu, steps, textures.value]
+    [aiCovers, gameMaterials.value, gamedata.value, lightQuality, rayBackend, rayGpu, steps, textures.value]
   );
-  const compileProblem: Nullable<string> = getCompileProblem(compile);
+  const compileProblem: Nullable<ICompileProblem> = getCompileProblem(compile);
+
+  function describeProblem(field: Nullable<ELevelCompilerField>, otherwise: string): string {
+    return compileProblem !== null && compileProblem.field === field ? compileProblem.message : otherwise;
+  }
 
   const request: Nullable<ILevelCompilerRequest> = useMemo(() => {
     if (!scenePath || !levelPath) {
@@ -169,7 +179,7 @@ export function LevelCompilerTool(): ReactElement {
       title={"Build a level"}
       description={
         "Writes a Level Editor scene's game files and, given its objects and game materials, its build.prj, then " +
-        "compiles it with the steps chosen."
+        "compiles it with the steps chosen. A run the compile would refuse is refused before anything is written."
       }
       submitLabel={steps.size > 0 ? "Build and compile" : "Build"}
       renderResult={(result) => (
@@ -208,7 +218,11 @@ export function LevelCompilerTool(): ReactElement {
       <PathFormRow
         isDisabled={isRunning}
         label={"Game materials"}
-        description={"gamemtl.xr; without it only the game files are written, no build.prj"}
+        description={describeProblem(
+          ELevelCompilerField.GAME_MATERIALS,
+          "gamemtl.xr, which build.prj and a placed object's ladders and breakables are made from; without it only " +
+            "the game files of a scene placing no objects are written"
+        )}
         field={gameMaterials}
       />
 
@@ -232,7 +246,10 @@ export function LevelCompilerTool(): ReactElement {
 
       <CheckboxFormRow
         label={"Overwrite"}
-        description={"Replace the files the build writes where the directory holds them"}
+        description={
+          "Replace what the build and the compile write where the directory holds it, and remove what of their own " +
+          "an earlier run wrote that this one does not"
+        }
         isChecked={isForced}
         isDisabled={isRunning}
         onChange={setIsForced}
@@ -281,10 +298,14 @@ export function LevelCompilerTool(): ReactElement {
       <PathFormRow
         isDisabled={isRunning}
         label={"Game data"}
-        description={
-          compileProblem ??
-          "Where the compilers read gamemtl.xr, shaders_xrlc.xr and the textures from, after the textures root above"
-        }
+        description={describeProblem(
+          ELevelCompilerField.GAMEDATA,
+          // The steps chosen have no row of their own to say what they lack.
+          describeProblem(
+            null,
+            "Where the compilers read gamemtl.xr, shaders_xrlc.xr and the textures from, after the textures root above"
+          )
+        )}
         field={gamedata}
       />
     </JobPickerForm>

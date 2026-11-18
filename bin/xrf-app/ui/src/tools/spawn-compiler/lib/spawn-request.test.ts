@@ -56,7 +56,7 @@ describe("getSpawnBuildProblem", () => {
     }
   });
 
-  it("leaves writing over the game's own all.spawn to the build, which sees whether it is there", () => {
+  it("leaves writing over a spawn already there to the build, which sees whether it is", () => {
     expect(getSpawnBuildProblem(choice({ name: "all" }))).toBeNull();
     expect(toSpawnBuildRequest(choice({ name: "all", isForced: true }))?.isForced).toBe(true);
   });

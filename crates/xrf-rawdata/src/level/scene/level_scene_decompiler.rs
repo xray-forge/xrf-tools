@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use byteorder::ByteOrder;
 use xrf_editable_level::{EditableLevelGuid, EditableLevelPart};
@@ -172,8 +172,11 @@ impl LevelSceneDecompiler {
   ///
   /// # Errors
   ///
-  /// Returns an error when the request does not resolve, a file it would write exists and it is not forced, the
-  /// decompile fails ([`Self::decompile`]) or is cancelled, or a file does not write.
+  /// Returns an error when the request does not resolve; before the level is read, when it is not forced and the scene
+  /// or an object of the level's own is there ([`LevelDecompileRequest::get_scene_outputs`],
+  /// [`LevelDecompileRequest::get_object_outputs`]); when the decompile fails ([`Self::decompile`]) or is cancelled;
+  /// when it is not forced and a library copy or a texture it writes is there, which only the decompile names; or when
+  /// a file does not write or a stale one is not removed.
   pub fn decompile_to_path<T: ByteOrder>(
     request: &LevelDecompileRequest,
     tool: &str,
@@ -183,15 +186,10 @@ impl LevelSceneDecompiler {
     let options: LevelDecompileOptions = request.get_options(tool, tool_version)?;
     let (source, destination) = (&request.source, &request.destination);
     let (objects, textures) = (request.get_objects_root(), request.get_textures_root());
+    let (scene_outputs, object_outputs) = (request.get_scene_outputs()?, request.get_object_outputs()?);
 
-    if !request.is_forced
-      && let Some(existing) = LevelSceneDecompile::get_existing_paths(destination).first()
-    {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} already exists; overwrite to replace the scene",
-        format_path(existing)
-      )));
-    }
+    scene_outputs.assert_free(request.is_forced)?;
+    object_outputs.assert_free(request.is_forced)?;
 
     let decompiled: LevelSceneDecompile = Self::decompile_with::<T>(source, &options, job)?;
 
@@ -210,11 +208,16 @@ impl LevelSceneDecompiler {
 
     job.check_cancelled()?;
 
+    let mut removed: Vec<PathBuf> = Vec::new();
+
     {
       let _writing: JobScope = job.enter(Self::PROGRESS_WRITE, None);
 
       job.set_detail(Some(format_path(destination).to_string()));
+      // The parts an earlier scene had and this one has not go first: the editor would read them as this scene's.
+      removed.extend(scene_outputs.remove_stale(&decompiled.get_written_scene_paths(destination))?);
       decompiled.write_to_path::<T>(destination, &objects, &textures)?;
+      removed.extend(object_outputs.remove_stale(&decompiled.get_written_object_paths(&objects))?);
     }
 
     Ok(LevelDecompileReport {
@@ -252,6 +255,7 @@ impl LevelSceneDecompiler {
       objects_root: format_path(&objects).to_string(),
       textures_root: format_path(&textures).to_string(),
       textures: decompiled.textures.len(),
+      removed: removed.iter().map(|path| format_path(path).to_string()).collect(),
       geometry: decompiled.provenance.geometry.map(|geometry| LevelDecompileGeometry {
         objects: geometry.objects.len(),
         census: geometry.census,

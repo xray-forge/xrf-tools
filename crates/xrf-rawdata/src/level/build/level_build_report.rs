@@ -14,6 +14,8 @@ pub struct LevelBuildReport {
   pub destination: String,
   /// Each file written, its size and what it replaced.
   pub files: Vec<LevelExportedFile>,
+  /// The files of the build's own an earlier build wrote and this one does not, removed, by path in the directory.
+  pub removed: Vec<String>,
   /// What `build.prj` took from the scene, where the build wrote one.
   pub geometry: Option<LevelBuildCensus>,
   /// The parts the build made nothing of, and why, as it reports them and goes on.

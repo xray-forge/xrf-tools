@@ -6,6 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_level::{BuildCformFile, BuildPrjFile, LevelCformFile, LevelFile, LevelGeomFile, LevelLightsFile};
 use xrf_shaders::ShaderCompilerFile;
+use xrf_utils::OutputFiles;
 
 use crate::compile::compiler_output::CompilerOutput;
 use crate::compile::level_compile_request::LevelCompileRequest;
@@ -25,6 +26,25 @@ use crate::ray::ray_tracing::RayTracing;
 pub(crate) struct GeometryStep;
 
 impl GeometryStep {
+  /// The files the step always writes in the level's directory.
+  pub(crate) const OUTPUTS: [&'static str; 6] = [
+    LevelFile::FILE_NAME,
+    LevelGeomFile::FILE_NAME,
+    LevelGeomFile::DETAIL_FILE_NAME,
+    LevelCformFile::FILE_NAME,
+    BuildCformFile::FILE_NAME,
+    LevelLightsFile::FILE_NAME,
+  ];
+
+  /// The prefix of every lightmap page's file, as many as the compile bakes.
+  pub(crate) const LIGHTMAP_FAMILY: &'static str = "lmap#";
+
+  /// The textures an implicitly lit texture's maps are written as below the level's directory, each a `.dds`: its
+  /// base with the hemisphere in alpha, then its lightmap.
+  pub(crate) fn get_implicit_textures(name: &str) -> [String; 2] {
+    [String::from(name), format!("{name}_lm")]
+  }
+
   /// Compiles the request's level and writes what xrLC writes, its light baked with its rays traced by `light` where
   /// the light step runs with it, else neutral; with the report, how the light was baked.
   ///
@@ -79,22 +99,37 @@ impl GeometryStep {
     })?;
 
     let side: u32 = compiled.lightmaps.side;
+    let mut pages: Vec<PathBuf> = Vec::with_capacity(compiled.lightmaps.pages.len() * 2);
 
-    for (page, pair) in compiled.lightmaps.pages.iter().enumerate() {
-      for (name, texels) in LightmapFaces::get_textures(page as u32)
+    for (page, pair) in (0..).zip(&compiled.lightmaps.pages) {
+      for (name, texels) in LightmapFaces::get_textures(page)
         .iter()
         .zip([&pair.first, &pair.second])
       {
-        Self::write_texture(&level.join(format!("{name}.dds")), texels, side, side)?;
+        let path: PathBuf = level.join(format!("{name}.dds"));
+
+        Self::write_texture(&path, texels, side, side)?;
+        pages.push(path);
       }
     }
 
-    for map in &compiled.implicit_maps {
-      let path: PathBuf = CompilerTextures::get_path(level, &map.name, "dds");
-      let lightmap: PathBuf = CompilerTextures::get_path(level, &format!("{}_lm", map.name), "dds");
+    // A compile baking fewer pages than an earlier one leaves that one's last pages behind, which the game would load.
+    OutputFiles::new(level)
+      .with_family(Self::LIGHTMAP_FAMILY)
+      .remove_stale(&pages)?;
 
-      Self::write_texture(&path, &map.base, map.width, map.height)?;
-      Self::write_texture(&lightmap, &map.lightmap, map.width, map.height)?;
+    for map in &compiled.implicit_maps {
+      for (name, texels) in Self::get_implicit_textures(&map.name)
+        .iter()
+        .zip([&map.base, &map.lightmap])
+      {
+        Self::write_texture(
+          &CompilerTextures::get_path(level, name, "dds"),
+          texels,
+          map.width,
+          map.height,
+        )?;
+      }
     }
 
     Ok(GeometryStepRun {

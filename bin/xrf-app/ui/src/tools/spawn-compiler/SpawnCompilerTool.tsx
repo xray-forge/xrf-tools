@@ -229,8 +229,8 @@ export function SpawnCompilerTool(): ReactElement {
       />
 
       <CheckboxFormRow
-        label={"Overwrite all.spawn"}
-        description={"Write over the game's own all.spawn where the spawn directory holds it"}
+        label={"Overwrite"}
+        description={"Write over the spawn where the spawn directory already holds it, in any case of its name"}
         isChecked={isForced}
         isDisabled={isRunning}
         onChange={setIsForced}

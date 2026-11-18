@@ -91,7 +91,11 @@ impl GenericCommand for BuildCommand {
       )
       .arg(
         Arg::new("force")
-          .help("Overwrite the files the build writes where the directory already holds them")
+          .help(
+            "Overwrite the files the build writes where the directory already holds them, and remove those of its own \
+             an earlier build wrote that this one does not; without it, a directory holding one is refused before the \
+             scene is read",
+          )
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),
@@ -132,10 +136,18 @@ impl GenericCommand for BuildCommand {
 }
 
 impl BuildCommand {
-  /// What the build wrote, each file with what it replaced, and each part it refused.
+  /// What the build wrote, each file with what it replaced, what of its own it removed, and each part it refused.
   fn print(output: &OutputOptions, report: &LevelBuildReport) {
     for refusal in &report.refused {
       xrf_output::warning!(output, "{}: {}", refusal.object, refusal.reason);
+    }
+
+    if !report.removed.is_empty() {
+      xrf_output::info!(
+        output,
+        "Removed what an earlier build wrote and this one does not: {}",
+        report.removed.join(", ")
+      );
     }
 
     xrf_output::success!(

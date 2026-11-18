@@ -26,7 +26,8 @@ export const SPAWN_COMPILER_HELP: IToolHelp = {
       "of the game graph reaches from its own.",
     "Stopping the job stops it between reading the levels, building the spawn and writing it; a spawn already " +
       "being written is finished.",
-    "The game's own `all.spawn` is written over only when overwriting is ticked.",
+    "A spawn the directory already holds, the game's own `all.spawn` or any other, in any case of its name, is " +
+      "written over only when overwriting is ticked; otherwise the build is refused before it reads a level.",
   ],
   limitations: ["Builds a whole spawn; patching one level inside an existing spawn is not offered."],
   relatedTools: [EToolId.LEVEL_COMPILER, EToolId.SPAWN_EDITOR],

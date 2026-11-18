@@ -59,6 +59,8 @@ export type LevelBuildReport = {
   destination: string;
   /** Each file written, its size and what it replaced. */
   files: Array<LevelExportedFile>;
+  /** The files of the build's own an earlier build wrote and this one does not, removed, by path in the directory. */
+  removed: Array<string>;
   /** What `build.prj` took from the scene, where the build wrote one. */
   geometry: LevelBuildCensus | null;
   /** The parts the build made nothing of, and why, as it reports them and goes on. */
@@ -86,7 +88,10 @@ export type LevelBuildRequest = {
   textures: string | null;
   /** How large the impostor atlas may grow. */
   impostorLimit: LevelBuildImpostorLimit;
-  /** Whether files the build writes are overwritten where the directory holds them rather than refused. */
+  /**
+   * Whether the build replaces what it writes where the directory holds it, and removes the files of its own an
+   * earlier build wrote that this one does not; unforced, it refuses before reading the scene.
+   */
   isForced: boolean;
 };
 
@@ -119,6 +124,8 @@ export type LevelDecompileReport = {
   /** The game textures root the objects' textures were written under, and how many. */
   texturesRoot: string;
   textures: number;
+  /** The parts and objects of the level's own an earlier decompile wrote and this forced one does not, removed. */
+  removed: Array<string>;
   /** The static geometry, counted, where the level held `level.geom`; the sidecar lists each object. */
   geometry: LevelDecompileGeometry | null;
 };
@@ -156,7 +163,11 @@ export type LevelDecompileRequest = {
   compilerShaders: string | null;
   /** Object library roots whose surfaces break ties between compiler shaders, such as an SDK's `rawdata/objects`. */
   libraries: Array<string>;
-  /** Whether an existing scene, its objects and textures are overwritten rather than refused. */
+  /**
+   * Whether an existing scene, its objects and textures are overwritten rather than refused, and the parts and objects
+   * of the level's own an earlier decompile wrote that this one does not are removed; unforced, the scene and the
+   * level's objects already there are refused before the level is read.
+   */
   isForced: boolean;
 };
 

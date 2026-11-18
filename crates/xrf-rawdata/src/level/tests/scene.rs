@@ -330,11 +330,10 @@ fn writes_an_export_saying_what_each_file_replaced() -> XrfResult {
   exported.insert("level.game", b"other".to_vec());
   std::fs::remove_file(directory.join("level.fog_vol"))?;
 
-  let previous: Vec<(String, LevelExportedPrevious)> =
-    LevelSceneExporter::write_to_directory(&exported, &LevelSceneExporter::FILE_NAMES, &directory)?
-      .into_iter()
-      .map(|file| (file.name, file.previous))
-      .collect();
+  let previous: Vec<(String, LevelExportedPrevious)> = LevelSceneExporter::write_to_directory(&exported, &directory)?
+    .into_iter()
+    .map(|file| (file.name, file.previous))
+    .collect();
 
   assert_eq!(
     previous,
@@ -345,25 +344,6 @@ fn writes_an_export_saying_what_each_file_replaced() -> XrfResult {
     ]
   );
   assert_eq!(std::fs::read(directory.join("level.game"))?, b"other");
-
-  Ok(())
-}
-
-#[test]
-fn refuses_to_write_an_export_beside_a_file_it_does_not_build() -> XrfResult {
-  let directory: PathBuf = level_directory("stale", 10.0)?;
-  let exported: BTreeMap<&str, Vec<u8>> = BTreeMap::from([("level.game", b"other".to_vec())]);
-  let before: Vec<u8> = std::fs::read(directory.join("level.game"))?;
-  let error: String = LevelSceneExporter::write_to_directory(&exported, &LevelSceneExporter::FILE_NAMES, &directory)
-    .unwrap_err()
-    .to_string();
-
-  assert!(error.contains("level.env_mod"), "{error}");
-  assert_eq!(
-    std::fs::read(directory.join("level.game"))?,
-    before,
-    "a refusal writes nothing"
-  );
 
   Ok(())
 }
@@ -448,6 +428,57 @@ fn writes_a_scene_for_a_front_end_and_nothing_once_cancelled() -> XrfResult {
       .iter()
       .any(|progress| progress.detail.as_deref() == Some("Ways and spawn points")),
     "the last step is reported by name"
+  );
+
+  Ok(())
+}
+
+/// The level's own objects, under `levels\<name>\` named `<name>_`, are the decompile's: one an earlier decompile left
+/// refuses the run unforced before the level is read, and a forced run removes it as one it no longer writes.
+#[test]
+fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_written() -> XrfResult {
+  let level: PathBuf = level_directory("own_objects", 10.0)?;
+  let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "own_objects_out"))?;
+  let stale: PathBuf = output.join("objects/levels/test_level/Test_Level_Sector_9.object");
+  let kept: PathBuf = output.join("objects/levels/test_level/authored.object");
+  let request: LevelDecompileRequest = LevelDecompileRequest {
+    source: level,
+    destination: output.join("levels").join("test_level.level"),
+    ..LevelDecompileRequest::default()
+  };
+
+  std::fs::create_dir_all(output.join("levels"))?;
+  std::fs::create_dir_all(output.join("objects/levels/test_level"))?;
+  std::fs::write(&stale, b"earlier")?;
+  std::fs::write(&kept, b"authored")?;
+
+  let error: String =
+    LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &JobHandle::inert())
+      .expect_err("an object of the level's own is there")
+      .to_string();
+
+  assert!(error.contains("Test_Level_Sector_9.object"), "{error}");
+  assert!(!request.destination.exists(), "a refusal writes nothing");
+
+  let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
+    &LevelDecompileRequest {
+      is_forced: true,
+      ..request
+    },
+    "test",
+    "1.0.0",
+    &JobHandle::inert(),
+  )?;
+
+  assert!(!stale.exists(), "the object no longer written is removed");
+  assert!(kept.is_file(), "an object not named as the level's own is left");
+  assert!(
+    report
+      .removed
+      .iter()
+      .any(|path| path.ends_with("Test_Level_Sector_9.object")),
+    "{:?}",
+    report.removed
   );
 
   Ok(())

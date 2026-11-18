@@ -25,6 +25,8 @@ pub struct LevelDecompileReport {
   /// The game textures root the objects' textures were written under, and how many.
   pub textures_root: String,
   pub textures: usize,
+  /// The parts and objects of the level's own an earlier decompile wrote and this forced one does not, removed.
+  pub removed: Vec<String>,
   /// The static geometry, counted, where the level held `level.geom`; the sidecar lists each object.
   pub geometry: Option<LevelDecompileGeometry>,
 }

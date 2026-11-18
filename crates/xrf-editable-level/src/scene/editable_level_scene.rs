@@ -83,15 +83,15 @@ impl EditableLevelScene {
   /// editor would read it as part of the scene, a tool the scene no longer has or a numbered file past its last.
   /// Returns an error too when a file cannot be written as its own writer says.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, level_path: &P) -> XrfResult {
-    let directory: PathBuf = Self::get_parts_directory(level_path.as_ref());
-
     self.check_writable(level_path.as_ref())?;
     self.level.write_to_path(level_path)?;
 
-    for tool in &self.tools {
-      for (index, part) in tool.parts.iter().enumerate() {
-        part.write_to_path::<T, _>(&directory.join(tool.get_file_name(index)))?;
-      }
+    for (path, part) in self
+      .get_part_paths(level_path.as_ref())
+      .iter()
+      .zip(self.tools.iter().flat_map(|tool| &tool.parts))
+    {
+      part.write_to_path::<T, _>(path)?;
     }
 
     Ok(())
@@ -107,9 +107,10 @@ impl EditableLevelScene {
   pub fn check_writable(&self, level_path: &Path) -> XrfResult {
     let directory: PathBuf = Self::get_parts_directory(level_path);
     let written: HashSet<String> = self
-      .tools
+      .get_part_paths(level_path)
       .iter()
-      .flat_map(|tool| (0..tool.parts.len()).map(|index| tool.get_file_name(index)))
+      .filter_map(|path| path.file_name())
+      .map(|name| name.to_string_lossy().into_owned())
       .collect();
 
     match Self::list_part_file_names(&directory)?
@@ -122,6 +123,17 @@ impl EditableLevelScene {
       ))),
       None => Ok(()),
     }
+  }
+
+  /// The part files a write of the scene at `level_path` writes, in the directory beside it, in the scene's order.
+  pub fn get_part_paths(&self, level_path: &Path) -> Vec<PathBuf> {
+    let directory: PathBuf = Self::get_parts_directory(level_path);
+
+    self
+      .tools
+      .iter()
+      .flat_map(|tool| (0..tool.parts.len()).map(|index| directory.join(tool.get_file_name(index))))
+      .collect()
   }
 
   pub fn get_tool(&self, name: &str) -> Option<&EditableSceneTool> {

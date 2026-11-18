@@ -55,7 +55,10 @@ describe("SpawnEditorActions", () => {
 
     await userEvent.click(getByRole("button", { name: "Save spawn file" }));
 
-    expect(listMockInvokeCalls(ESpawnCommand.SAVE_FILE)).toEqual([{ path: SAVE_PATH, sessionId: service.sessionId }]);
+    // The save dialog asked about a file already there, so the save is forced.
+    expect(listMockInvokeCalls(ESpawnCommand.SAVE_FILE)).toEqual([
+      { path: SAVE_PATH, sessionId: service.sessionId, isForced: true },
+    ]);
   });
 
   it("writes nothing when the save dialog is dismissed", async () => {
@@ -87,7 +90,7 @@ describe("SpawnEditorActions", () => {
     await userEvent.click(getByRole("button", { name: "Export" }));
 
     expect(listMockInvokeCalls(ESpawnCommand.SAVE_UNPACKED_DIRECTORY)).toEqual([
-      { path: EXPORT_PATH, sessionId: service.sessionId },
+      { path: EXPORT_PATH, sessionId: service.sessionId, isForced: true },
     ]);
   });
 

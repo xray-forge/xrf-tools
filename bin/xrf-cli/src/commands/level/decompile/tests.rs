@@ -93,7 +93,7 @@ fn refuses_to_replace_a_scene_without_force() -> XrfResult {
   let error: String = get_error(decompile(&root.join("level"), &destination, &[]));
 
   assert!(
-    error.contains("already exists"),
+    error.contains("already holds") && error.contains("test_level.level"),
     "Expect the refusal to name the existing scene: {error}"
   );
   assert_eq!(fs::read(&destination)?, b"authored");
@@ -103,23 +103,30 @@ fn refuses_to_replace_a_scene_without_force() -> XrfResult {
 }
 
 #[test]
-fn refuses_with_force_a_scene_whose_parts_it_would_not_all_replace() -> XrfResult {
-  // An authored scene's part the decompile does not write would stay and be read as part of the decompiled scene, so
-  // even --force writes nothing, the sidecar included.
-  let root: PathBuf = level_root("authored")?;
+fn refuses_a_scene_directory_unforced_and_removes_the_parts_it_no_longer_writes_forced() -> XrfResult {
+  // A part the decompile does not write would be read as part of the decompiled scene, so the scene's part directory is
+  // the decompile's own: refused unforced, cleaned of what it does not write forced.
+  let root: PathBuf = level_root("stale_part")?;
   let destination: PathBuf = root.join("scenes").join("test_level.level");
+  let stale: PathBuf = root.join("scenes/test_level/scene_object.part");
 
   fs::create_dir_all(root.join("scenes/test_level"))?;
-  fs::write(root.join("scenes/test_level/scene_object.part"), b"[guid]")?;
+  fs::write(&stale, b"[guid]")?;
 
-  let error: String = get_error(decompile(&root.join("level"), &destination, &["--force"]));
+  let error: String = get_error(decompile(&root.join("level"), &destination, &[]));
 
   assert!(
     error.contains("scene_object.part"),
     "Expect the refusal to name the part: {error}"
   );
-  assert!(!destination.exists());
+  assert!(!destination.exists(), "a refusal writes nothing");
   assert!(!root.join("scenes/test_level.level.xrf.json").exists());
+
+  decompile(&root.join("level"), &destination, &["--force"]).expect("the forced decompile writes");
+
+  assert!(destination.is_file());
+  assert!(!stale.exists(), "the part the scene does not write is removed");
+  assert!(root.join("scenes/test_level/spawn.part").is_file());
 
   Ok(())
 }

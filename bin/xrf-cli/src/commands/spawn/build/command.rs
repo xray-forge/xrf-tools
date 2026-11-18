@@ -84,7 +84,7 @@ impl GenericCommand for BuildCommand {
       )
       .arg(
         Arg::new("force")
-          .help("Overwrite all.spawn, the game's own spawn, where the spawn's directory already holds it")
+          .help("Overwrite the spawn where its directory already holds it, the name compared without case")
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),

@@ -43,6 +43,16 @@ impl GenericCommand for UnpackCommand {
           .help("Report what would be unpacked without writing anything")
           .long("dry-run")
           .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("force")
+          .help(
+            "Overwrite files already in the folder, names compared without case; without it, one there is refused \
+             before any is written",
+          )
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
       );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
@@ -101,7 +111,8 @@ impl GenericCommand for UnpackCommand {
         &destination,
         ArchiveExtractOptions::default()
           .with_job(CliJob::for_output(&output))
-          .with_link_policy(LinkPolicyArgument::of(matches)),
+          .with_link_policy(LinkPolicyArgument::of(matches))
+          .with_forced(matches.get_flag("force")),
       )?;
 
       xrf_output::success!(

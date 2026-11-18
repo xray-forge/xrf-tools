@@ -22,13 +22,15 @@ async function mockOpenedService(): Promise<SpawnEditorService> {
 describe("SpawnEditorService writes", () => {
   beforeEach(() => mockIpcCommands({}));
 
-  it("saves the open spawn to the path asked for", async () => {
+  it("saves the open spawn to the path asked for, forced as asked", async () => {
     const service = await mockOpenedService();
 
-    await service.saveFile("C:\\out\\all.spawn");
+    await service.saveFile("C:\\out\\all.spawn", true);
+    await service.saveFile("C:\\out\\new.spawn", false);
 
     expect(listMockInvokeCalls(ESpawnCommand.SAVE_FILE)).toEqual([
-      { path: "C:\\out\\all.spawn", sessionId: service.sessionId },
+      { path: "C:\\out\\all.spawn", sessionId: service.sessionId, isForced: true },
+      { path: "C:\\out\\new.spawn", sessionId: service.sessionId, isForced: false },
     ]);
     expect(service.operation.value).toBe("save");
   });
@@ -36,10 +38,10 @@ describe("SpawnEditorService writes", () => {
   it("exports the open spawn into the directory asked for", async () => {
     const service = await mockOpenedService();
 
-    await service.saveUnpackedDirectory("C:\\out\\unpacked");
+    await service.saveUnpackedDirectory("C:\\out\\unpacked", true);
 
     expect(listMockInvokeCalls(ESpawnCommand.SAVE_UNPACKED_DIRECTORY)).toEqual([
-      { path: "C:\\out\\unpacked", sessionId: service.sessionId },
+      { path: "C:\\out\\unpacked", sessionId: service.sessionId, isForced: true },
     ]);
     expect(service.operation.value).toBe("export");
   });
@@ -47,8 +49,8 @@ describe("SpawnEditorService writes", () => {
   it("writes nothing while no spawn is open", async () => {
     const { service } = mockInjectedService(SpawnEditorService);
 
-    await service.saveFile("C:\\out\\all.spawn");
-    await service.saveUnpackedDirectory("C:\\out\\unpacked");
+    await service.saveFile("C:\\out\\all.spawn", true);
+    await service.saveUnpackedDirectory("C:\\out\\unpacked", true);
 
     expect(listMockInvokeCalls(ESpawnCommand.SAVE_FILE)).toHaveLength(0);
     expect(listMockInvokeCalls(ESpawnCommand.SAVE_UNPACKED_DIRECTORY)).toHaveLength(0);
@@ -61,7 +63,7 @@ describe("SpawnEditorService writes", () => {
 
     mockIpcCommands({ [ESpawnCommand.SAVE_FILE]: () => answer.promise });
 
-    const saving = flowResult(service.saveFile("C:\\out\\all.spawn"));
+    const saving = flowResult(service.saveFile("C:\\out\\all.spawn", true));
 
     expect(service.isBusy).toBe(true);
 
@@ -74,7 +76,7 @@ describe("SpawnEditorService writes", () => {
   it("dismisses the last write's outcome on request", async () => {
     const service = await mockOpenedService();
 
-    await service.saveFile("C:\\out\\all.spawn");
+    await service.saveFile("C:\\out\\all.spawn", true);
     service.clearOperation();
 
     expect(service.operation.value).toBeNull();
@@ -91,7 +93,7 @@ describe("SpawnEditorService writes", () => {
       }),
     });
     await service.loadAlifeSpawn();
-    await service.saveFile("C:\\out\\all.spawn");
+    await service.saveFile("C:\\out\\all.spawn", true);
     service.selectRow("Alife object", 1, mockAlifeObject());
 
     await service.close();
@@ -115,7 +117,7 @@ describe("SpawnEditorService writes", () => {
       },
     });
     await service.loadAlifeSpawn();
-    await service.saveFile("C:\\out\\all.spawn");
+    await service.saveFile("C:\\out\\all.spawn", true);
     service.selectRow("Alife object", 1, mockAlifeObject());
 
     await service.close();

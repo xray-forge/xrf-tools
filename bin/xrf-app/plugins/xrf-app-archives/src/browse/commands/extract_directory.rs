@@ -42,11 +42,19 @@ pub(crate) async fn archives_extract_directory(
   let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
   // An empty prefix means the whole tree, so this is a full unpack in everything but name.
+  // todo: the extraction writes over files already in the directory picked, as no dialog asks first; ask, and force
+  // only on that answer.
   registry
     .run(
       &execution,
       start,
-      move |job| subject.extract_directory(&prefix, &destination, ArchiveExtractOptions::default().with_job(job)),
+      move |job| {
+        subject.extract_directory(
+          &prefix,
+          &destination,
+          ArchiveExtractOptions::default().with_job(job).with_forced(true),
+        )
+      },
       |result| result.outcome,
     )
     .await

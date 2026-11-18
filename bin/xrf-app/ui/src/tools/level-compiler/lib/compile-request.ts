@@ -9,9 +9,13 @@ import {
 } from "@xrf/ipc/types/xrf-level-compiler";
 import { Nullable } from "@xrf/types";
 
+import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
+
 /** What the form names for the compile after the build. */
 export interface ICompileChoice {
   steps: ReadonlySet<LevelCompileStep>;
+  /** The game materials the build writes `build.prj` from, which every step reads. */
+  gameMaterials: Nullable<string>;
   /** The game data holding `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: Nullable<string>;
   /**
@@ -74,24 +78,41 @@ export function toggleCompileStep(
   return next;
 }
 
+/** Why the compile the form names cannot run, and the field that answers it. */
+export interface ICompileProblem {
+  /** The path field to fill; null for the steps chosen. */
+  field: Nullable<ELevelCompilerField>;
+  message: string;
+}
+
 /**
- * Whether the compile the form names cannot run: a step is chosen but the game data is not named, or the light is
- * chosen without the geometry it is baked with.
+ * Whether the compile the form names cannot run: a step is chosen but the game materials the build writes `build.prj`
+ * from or the game data is not named, or the light is chosen without the geometry it is baked with.
  *
  * @param choice - What the form names.
  * @returns Why it cannot run, or null where it can or no step is chosen.
  */
-export function getCompileProblem(choice: ICompileChoice): Nullable<string> {
+export function getCompileProblem(choice: ICompileChoice): Nullable<ICompileProblem> {
   if (choice.steps.size === 0) {
     return null;
   }
 
   if (choice.steps.has(ELevelCompileStep.LIGHT) && !choice.steps.has(ELevelCompileStep.GEOMETRY)) {
-    return "The light is baked with the geometry; tick the geometry to light the level";
+    return { field: null, message: "The light is baked with the geometry; tick the geometry to light the level" };
+  }
+
+  if (!choice.gameMaterials) {
+    return {
+      field: ELevelCompilerField.GAME_MATERIALS,
+      message: "Name the game materials: the compile reads the build.prj the build writes from them",
+    };
   }
 
   if (!choice.gamedata) {
-    return "Name the game data the compilers read their libraries and textures from";
+    return {
+      field: ELevelCompilerField.GAMEDATA,
+      message: "Name the game data the compilers read their libraries and textures from",
+    };
   }
 
   return null;

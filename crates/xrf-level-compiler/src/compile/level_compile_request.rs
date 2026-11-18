@@ -24,7 +24,8 @@ pub struct LevelCompileRequest {
   /// The textures roots (`$game_textures$`) searched before the game data's own `textures`, such as one a decompile
   /// wrote impostor strips into ([`Self::get_textures_roots`]).
   pub textures: Vec<PathBuf>,
-  /// Whether a step overwrites a file it writes where the level's directory holds it, rather than refusing.
+  /// Whether the compile replaces what its steps write where the level's directory holds it, and removes the lightmap
+  /// pages an earlier compile wrote past its own; unforced, it refuses before any step runs.
   pub is_forced: bool,
   /// What traces the rays: the light step's lightmap and implicit map shadow rays, the details step's shadow rays and
   /// the AI step's corner rays.

@@ -54,6 +54,16 @@ impl GenericCommand for UnpackDescriptionCommand {
           .help("Fail on a sheet that cannot be read or a sprite outside its sheet instead of skipping it")
           .long("strict")
           .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("force")
+          .help(
+            "Overwrite sprites already in the destination, names compared without case; without it, one there is \
+             refused before any sprite is cut",
+          )
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
       );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
@@ -95,6 +105,7 @@ impl GenericCommand for UnpackDescriptionCommand {
       files,
       is_strict: matches.get_flag("strict"),
       link_policy: LinkPolicyArgument::of(matches),
+      is_forced: matches.get_flag("force"),
     };
 
     let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)?;

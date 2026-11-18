@@ -23,7 +23,10 @@ export const LEVEL_DECOMPILER_HELP: IToolHelp = {
     "Decompiling the same level twice gives the same scene, down to its GUID.",
   ],
   limitations: [
-    "An existing scene, its objects and textures are refused unless overwriting is chosen.",
+    "An existing scene, its part directory and the level's own objects (under `levels\\<name>\\`) are refused before " +
+      "the level is read unless overwriting is chosen; a library copy or texture already there, which only the " +
+      "decompile names, is refused after it. Overwriting also removes the parts and objects of the level's own an " +
+      "earlier decompile wrote and this one does not, and the result counts them.",
     "Placed objects are not recovered from the merged geometry: each sector comes back as one shell.",
     "Detail models no library object draws are left out, since the level keeps their place in the atlas, not their " +
       "texture.",

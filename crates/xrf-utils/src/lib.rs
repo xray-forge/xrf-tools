@@ -2,6 +2,7 @@
 
 mod binary;
 mod host_path;
+mod output;
 mod staging;
 mod text;
 mod units;
@@ -14,6 +15,7 @@ pub use crate::host_path::{
   HostDestination, HostFileName, HostLinkPolicy, HostRelativePath, format_path, format_path_or, format_portable_path,
   resolve_absolute_path,
 };
+pub use crate::output::OutputFiles;
 pub use crate::staging::StagedFile;
 #[cfg(feature = "staging-faults")]
 pub use crate::staging::StagingFaults;

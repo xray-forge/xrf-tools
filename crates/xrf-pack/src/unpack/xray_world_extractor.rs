@@ -71,7 +71,7 @@ impl XrayWorldExtractor {
       )));
     }
 
-    let summary: TreeWriteSummary = TreeWriter::write(&destination, &selected, &options.job, |entry, target| {
+    let summary: TreeWriteSummary = TreeWriter::write(&destination, &selected, &options, |entry, target| {
       let bytes: Vec<u8> = search.read_asset(&entry.asset)?;
 
       target.write_all(&bytes)?;

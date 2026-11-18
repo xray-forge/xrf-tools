@@ -190,7 +190,7 @@ impl ArchiveUnpacker {
     entries: &[TreeEntry<&ArchiveFileDescriptor>],
     options: &ArchiveExtractOptions,
   ) -> XrfResult<TreeWriteSummary> {
-    TreeWriter::write(destination, entries, &options.job, |descriptor, target| {
+    TreeWriter::write(destination, entries, options, |descriptor, target| {
       volumes.write_contents(target, descriptor)?;
 
       Ok(u64::from(descriptor.size_real))

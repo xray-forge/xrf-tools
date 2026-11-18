@@ -30,7 +30,8 @@ interface ILevelBuildResultViewProps extends BaseComponentProps {
 }
 
 /**
- * What a build wrote: each file with its size and what it replaced, the build project counted, and every part refused.
+ * What a build wrote: each file with its size and what it replaced, the files of its own it removed, the build project
+ * counted, and every part refused.
  */
 export function LevelBuildResultView({
   "data-testid": dataTestId = "level-build-result",
@@ -55,6 +56,7 @@ export function LevelBuildResultView({
       { label: "files", value: report.files.length },
       { label: "new", value: count(report.files, ELevelExportedPrevious.NEW) },
       { label: "replaced", value: count(report.files, ELevelExportedPrevious.CHANGED) },
+      { label: "removed", value: report.removed.length },
       { label: "faces", value: formatCount(report.geometry?.faces ?? 0) },
       { label: "lights", value: formatCount(report.geometry?.staticLights ?? 0) },
       { label: "refused", value: report.refused.length },
@@ -69,10 +71,13 @@ export function LevelBuildResultView({
   const isCompileStopped: boolean = result.outcome === EJobOutcome.CANCELLED;
 
   const files: Array<string> = useMemo(
-    () =>
-      (report?.files ?? []).map(
+    () => [
+      ...(report?.files ?? []).map(
         (file: LevelExportedFile) => `${file.name} (${formatBytes(file.size)}, ${PREVIOUS_LABELS[file.previous]})`
       ),
+      // What an earlier build wrote and this forced one does not, which it took away.
+      ...(report?.removed ?? []).map((name: string) => `${name} (removed)`),
+    ],
     [report]
   );
 

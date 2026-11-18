@@ -17,4 +17,6 @@ pub struct DescriptionSpriteOptions {
   pub is_strict: bool,
   /// What to do with a link already below `output_path`.
   pub link_policy: HostLinkPolicy,
+  /// Whether unpacking writes over a sprite already under `output_path`; unforced, it refuses before cutting any.
+  pub is_forced: bool,
 }

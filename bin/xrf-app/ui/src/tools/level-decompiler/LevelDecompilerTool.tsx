@@ -161,7 +161,10 @@ export function LevelDecompilerTool(): ReactElement {
 
       <CheckboxFormRow
         label={"Overwrite"}
-        description={"Replace an existing scene, its objects and textures"}
+        description={
+          "Replace an existing scene, its objects and textures, and remove the parts and objects of the level's own " +
+          "an earlier decompile wrote and this one does not"
+        }
         isChecked={isForced}
         isDisabled={isRunning}
         onChange={setIsForced}

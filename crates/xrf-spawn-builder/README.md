@@ -8,7 +8,7 @@ of `xrf-level-compiler`, since it works on every level of a game at once.
 It takes a `SpawnRootRequest` (the root holding `configs/game_levels.ltx`, the directory holding the levels, `levels/`
 under the root by default, the levels to build, every listed one whose directory holds the three files when none are
 named, the directory the spawn is written into, `spawns/` under the root by default, the spawn's name, the
-`SpawnRootOptions` and whether it may write over the game's own `all.spawn`) and a job it reports its three stages to
+`SpawnRootOptions` and whether it may write over a spawn already there, in any case of its name) and a job it reports its three stages to
 and stops between, reads the levels the game lists (`SpawnGameLevels`), each level's files and graph
 (`SpawnLevelFiles`, in parallel; the result is the same), builds the spawn and writes it as `<name>.spawn`, giving a
 `SpawnRootOutcome`. `SpawnRootGamedata::list_levels` gives the levels the list names, each marked by whether its

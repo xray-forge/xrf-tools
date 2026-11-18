@@ -113,7 +113,11 @@ impl GenericCommand for DecompileCommand {
       )
       .arg(
         Arg::new("force")
-          .help("Overwrite an existing .level, its parts, its sidecar and its objects")
+          .help(
+            "Overwrite an existing .level, its parts, its sidecar, its objects and textures, and remove the parts and \
+             objects of the level's own an earlier decompile wrote that this one does not; without it, the scene or \
+             the level's objects already there are refused before the level is read",
+          )
           .short('f')
           .long("force")
           .action(ArgAction::SetTrue),
@@ -161,8 +165,17 @@ impl GenericCommand for DecompileCommand {
 }
 
 impl DecompileCommand {
-  /// What the decompile wrote, a line per kind of it, warnings where it inferred or left something out.
+  /// What the decompile wrote, a line per kind of it, what of its own it removed, warnings where it inferred or left
+  /// something out.
   fn print(output: &OutputOptions, report: &LevelDecompileReport) {
+    if !report.removed.is_empty() {
+      xrf_output::info!(
+        output,
+        "Removed what an earlier decompile wrote and this one does not: {}",
+        report.removed.join(", ")
+      );
+    }
+
     if let Some(surfaces) = report.geometry.as_ref().and_then(|geometry| geometry.surfaces.as_ref()) {
       xrf_output::info!(
         output,

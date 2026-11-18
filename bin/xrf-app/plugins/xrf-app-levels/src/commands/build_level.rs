@@ -6,11 +6,9 @@ use uuid::Uuid;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
-use xrf_chunk::XRayByteOrder;
-use xrf_error::{XrfError, XrfResult};
-use xrf_job::{JobHandle, JobOutcome, JobProgress};
-use xrf_level_compiler::{LevelCompileRequest, LevelCompiler};
-use xrf_rawdata::{LevelBuildExporter, LevelBuildRequest};
+use xrf_job::JobProgress;
+use xrf_level_compiler::LevelCompileRequest;
+use xrf_rawdata::LevelBuildRequest;
 use xrf_utils::format_path;
 
 use crate::ipc::levels::LEVELS_JOB_BUILD;
@@ -19,10 +17,10 @@ use crate::rawdata::level_build_run::LevelBuildRun;
 use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
 
 /// Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
-/// the steps, as `level compile` does, one job reporting both. A cancel stops the build between its steps and the
-/// compile within its running step. The compile works on the directory the build wrote, whatever level `compile`
-/// names, overwrites what it writes as the build does where the build is forced, and traces on D3D12 with the DXC the
-/// app bundles where it traces on the GPU ([`LevelBuildRun::new`]).
+/// the steps, as `level compile` does, one job reporting both ([`LevelBuildRun::run`]). A cancel stops the build between
+/// its steps and the compile within its running step. The compile works on the directory the build wrote, whatever
+/// level `compile` names, is forced as the build is, and traces on D3D12 with the DXC the app bundles where it traces on
+/// the GPU ([`LevelBuildRun::new`]).
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_level")]
 pub(crate) async fn levels_build_level(
@@ -34,63 +32,20 @@ pub(crate) async fn levels_build_level(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<LevelBuildResult> {
-  let LevelBuildRun {
-    build: request,
-    compile,
-  } = LevelBuildRun::new(request, compile, libraries.dxc.clone());
+  let run: LevelBuildRun = LevelBuildRun::new(request, compile, libraries.dxc.clone());
   let start: JobStart = JobStart::new(job_id, LEVELS_JOB_BUILD)
-    .with_request(&request)
+    .with_request(&run.build)
     .with_kind_exclusion()
-    .with_resources(vec![JobResource::tree(&request.destination)])
+    .with_resources(vec![JobResource::tree(&run.build.destination)])
     .with_progress(progress);
 
   log::info!(
     "Building level: {} -> {}",
-    format_path(&request.source),
-    format_path(&request.destination)
+    format_path(&run.build.source),
+    format_path(&run.build.destination)
   );
 
   registry
-    .run(
-      &execution,
-      start,
-      move |job| build_and_compile(&request, compile.as_ref(), &job),
-      |result| result.outcome,
-    )
+    .run(&execution, start, move |job| run.run(&job), |result| result.outcome)
     .await
-}
-
-/// What the build wrote and the compile after it ran, on the job's thread; cancelled where the job was cancelled before
-/// either finished, the build's report kept where it was the compile that stopped.
-fn build_and_compile(
-  request: &LevelBuildRequest,
-  compile: Option<&LevelCompileRequest>,
-  job: &JobHandle,
-) -> XrfResult<LevelBuildResult> {
-  let cancelled = |report| LevelBuildResult {
-    outcome: JobOutcome::Cancelled,
-    report,
-    compile: None,
-  };
-  let report = match LevelBuildExporter::build_to_directory::<XRayByteOrder>(request, job) {
-    Ok(report) => report,
-    Err(_) if job.is_cancelled() => return Ok(cancelled(None)),
-    Err(error) => return Err(error),
-  };
-  let compiled = match compile.map(|compile| LevelCompiler::compile(compile, job)).transpose() {
-    Ok(compiled) => compiled,
-    Err(_) if job.is_cancelled() => return Ok(cancelled(Some(report))),
-    Err(error) => {
-      return Err(XrfError::new_invalid_error(format!(
-        "The level was built into {}, then its compile stopped: {error}",
-        report.destination
-      )));
-    }
-  };
-
-  Ok(LevelBuildResult {
-    outcome: JobOutcome::Completed,
-    report: Some(report),
-    compile: compiled,
-  })
 }

@@ -21,6 +21,10 @@ impl LevelBreakableConversion {
   const PREFIX: &'static str = "brkbl#";
   const EXTENSION: &'static str = ".ogf";
 
+  /// Every part's path in the level's directory begins so, [`Self::DIRECTORY`] then [`Self::PREFIX`]: the files the
+  /// Build owns there, a build of fewer parts leaving the rest for the game to load.
+  pub(crate) const FAMILY: &'static str = "meshes/brkbl#";
+
   /// Whether a file of the parts' directory, by its name, is a part the Build exported.
   pub fn is_part_file(name: &str) -> bool {
     name.starts_with(Self::PREFIX) && name.ends_with(Self::EXTENSION)

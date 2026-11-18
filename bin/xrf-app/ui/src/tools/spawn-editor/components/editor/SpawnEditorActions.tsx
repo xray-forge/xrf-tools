@@ -27,7 +27,8 @@ export function SpawnEditorActions({
   const isBusy: boolean = spawnEditorService.isBusy;
 
   const onSave = useCallback(async () => {
-    // The save dialog asks about overwriting an existing file itself, so there is no second prompt here.
+    // The save dialog asks about overwriting an existing file itself, so its answer is the force and there is no second
+    // prompt here.
     const path: Nullable<string> = await askToSave({
       title: "Save spawn file",
       start: spawnEditorService.path,
@@ -35,7 +36,7 @@ export function SpawnEditorActions({
     });
 
     if (path) {
-      await spawnEditorService.saveFile(path);
+      await spawnEditorService.saveFile(path, true);
     }
   }, [spawnEditorService]);
 
@@ -52,8 +53,9 @@ export function SpawnEditorActions({
 
     setExportPath(null);
 
+    // The confirmation said what is replaced, so it is the force.
     if (path) {
-      void spawnEditorService.saveUnpackedDirectory(path);
+      void spawnEditorService.saveUnpackedDirectory(path, true);
     }
   }, [exportPath, spawnEditorService]);
 

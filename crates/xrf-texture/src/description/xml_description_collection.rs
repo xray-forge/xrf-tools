@@ -247,6 +247,7 @@ mod tests {
       files: Vec::new(),
       is_strict: true,
       link_policy: Default::default(),
+      is_forced: false,
     };
 
     let result = XmlDescriptionCollection::get_description(&options, &path);
@@ -280,6 +281,7 @@ mod tests {
       files: Vec::new(),
       is_strict: true,
       link_policy: Default::default(),
+      is_forced: false,
     };
 
     let collection: XmlDescriptionCollection =
@@ -320,6 +322,7 @@ mod select_files_tests {
       files: files.iter().map(|it| String::from(*it)).collect(),
       is_strict: false,
       link_policy: Default::default(),
+      is_forced: false,
     }
   }
 

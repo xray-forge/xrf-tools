@@ -22,23 +22,28 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
       "`spawns` directory beside it and the game data the compile read; tick the levels there and build.",
   ],
   nuances: [
-    "Without the game materials only the game files are written, as for a scene of no geometry.",
+    "Without the game materials only the game files are written, and only for a scene that places no objects: the " +
+      "ladders and breakables made from a placed object's faces open `level.spawn`. A compile needs them too, since " +
+      "it reads the `build.prj` they make.",
     "`build.prj` carries the scene's own build options, as the Level Editor writes them. For a quick look at a level, " +
       "choose the draft light quality: it lights at 3 lightmap texels a metre with one sample, under a sky and sun " +
       "regenerated at quality 1.",
     "The impostor atlas grows to 4096 a side by default, as Anomaly's largest levels ship it; the SDK atlas limit " +
       "keeps SDK 0.7's 2048 and refuses a level of more than 128 impostors.",
-    "Files the build writes that the directory already holds are replaced only when overwriting is chosen, and a file " +
-      "of the build's own it would not write again is refused, since the SDK's Build would move it aside.",
-    "Before any step starts, the compile checks each step's inputs and a texture description (`.thm`) for every " +
-      "texture `build.prj` names, each from the textures root first and the game data's `textures` after it. " +
-      "Stopping the job stops the running step and keeps what was already written.",
+    "Before anything is written, the run is refused where the directory holds a file the build or the compile " +
+      "writes, names compared without case, unless overwriting is chosen; overwriting also removes what of their " +
+      "own an earlier run wrote and this one does not, such as breakable parts and lightmap pages, which the game " +
+      "would still load. The result lists what was removed.",
+    "Before anything is written, the run is also refused where the compile would refuse it: a step's input the build " +
+      "does not write, or the compiler shader library, is missing. The texture descriptions (`.thm`) of the " +
+      "textures `build.prj` names can only be checked once it is written, so a missing one stops the compile after " +
+      "the build, naming the files the build wrote. Stopping the job stops the running step and keeps what was " +
+      "already written.",
     "The light is baked in the same pass as the geometry, so ticking the geometry ticks the light, and the light is " +
       "offered only with the geometry. Geometry compiled without its light gets flat neutral light: enough to walk " +
       "the level, not to judge its look.",
     "The light, the details and the AI map's covers trace their rays on the GPU chosen in the renderer settings where " +
-      "it supports ray tracing, or on the CPU, the reference, when chosen or where no GPU can. Existing " +
-      "`level.details` and `level.ai` are replaced only when overwriting is chosen.",
+      "it supports ray tracing, or on the CPU, the reference, when chosen or where no GPU can.",
   ],
   limitations: [
     "The objects roots are typed rather than picked.",

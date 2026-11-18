@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker};
+use xrf_utils::OutputFiles;
 
 use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
@@ -52,6 +53,16 @@ impl GenericCommand for ExtractCommand {
           .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("force")
+          .help(
+            "Overwrite the output file, or files already in the output directory, names compared without case; \
+             without it, one there is refused before any is written",
+          )
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
       );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
@@ -66,10 +77,13 @@ impl GenericCommand for ExtractCommand {
       .get_one("dest")
       .expect("Expected an extraction destination to be provided");
     let output: OutputOptions = context.get_output().clone();
+    let is_forced: bool = matches.get_flag("force");
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
 
     if let Some(file) = matches.get_one::<String>("file") {
+      OutputFiles::of_path(destination).assert_free(is_forced)?;
+
       let result: ArchiveExtractResult = ArchiveUnpacker::extract_file(&project, file, destination)?;
 
       xrf_output::success!(
@@ -92,7 +106,8 @@ impl GenericCommand for ExtractCommand {
         destination,
         ArchiveExtractOptions::default()
           .with_job(CliJob::for_output(&output))
-          .with_link_policy(LinkPolicyArgument::of(matches)),
+          .with_link_policy(LinkPolicyArgument::of(matches))
+          .with_forced(is_forced),
       )?;
 
       xrf_output::success!(

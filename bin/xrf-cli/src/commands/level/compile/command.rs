@@ -73,8 +73,10 @@ impl GenericCommand for CompileCommand {
       .arg(
         Arg::new("force")
           .help(
-            "Overwrite level.details and level.ai where the level directory already holds them. A replaced level.ai \
-             keeps its identity while its graph is unchanged, so the level's spawn still loads",
+            "Overwrite what the steps write where the level directory already holds it (the geometry's files and \
+             lightmap pages, level.details, level.ai), and remove the lightmap pages of an earlier compile past this \
+             one's; without it, a directory holding one is refused before any step runs. A replaced level.ai keeps its \
+             identity while its graph is unchanged, so the level's spawn still loads",
           )
           .short('f')
           .long("force")

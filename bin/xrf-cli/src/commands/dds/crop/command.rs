@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsMipmaps, ImageFormat};
 use xrf_output::OutputOptions;
 use xrf_texture::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
-use xrf_utils::format_path;
+use xrf_utils::{OutputFiles, format_path};
 
 use super::report::DdsCropReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
@@ -78,6 +78,13 @@ impl GenericCommand for CropCommand {
           .requires("fit-width")
           .value_parser(value_parser!(u32)),
       )
+      .arg(
+        Arg::new("force")
+          .help("Overwrite the dds file where it already exists; without it, one there is refused before reading")
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
+      )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -94,6 +101,8 @@ impl GenericCommand for CropCommand {
     let height: u32 = *matches.get_one::<u32>("height").expect("Expected valid height");
 
     let output: OutputOptions = context.get_output().clone();
+
+    OutputFiles::of_path(output_path).assert_free(matches.get_flag("force"))?;
 
     let options: CropTextureOptions = CropTextureOptions {
       source: source.clone(),

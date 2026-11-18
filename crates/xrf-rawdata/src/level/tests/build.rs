@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 
+use crate::LevelBuildRequest;
 use crate::level::build::level_build_breakables::LevelBuildBreakables;
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
@@ -19,7 +20,6 @@ use crate::level::level_occluder_conversion::LevelOccluderConversion;
 use crate::level::level_visual_geometry::LevelVisualGeometry;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
-use crate::{LevelBuildExport, LevelBuildRequest};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
@@ -488,17 +488,30 @@ fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult 
   Ok(())
 }
 
-/// A rebuild finds the parts an earlier build wrote under the paths it writes them to, so that it replaces them rather
-/// than refusing them as files of no build.
+/// A build of the geometry owns every breakable part an earlier build wrote, under the path it writes them to, so an
+/// unforced rebuild refuses them and a forced one replaces or removes them; a build of the game files alone owns none.
 #[test]
-fn lists_a_written_breakable_part_by_the_path_the_build_writes_it_to() -> XrfResult {
-  let directory: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "listed_part"))?;
+fn owns_a_written_breakable_part_where_it_builds_the_geometry() -> XrfResult {
+  let directory: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "owned_part"))?;
   let (_, path) = LevelBreakableConversion::get_part_names(0);
+  let request = |game_materials: Option<PathBuf>| LevelBuildRequest {
+    destination: directory.clone(),
+    game_materials,
+    ..LevelBuildRequest::default()
+  };
 
   std::fs::create_dir_all(directory.join(LevelBreakableConversion::DIRECTORY))?;
   std::fs::write(directory.join(&path), b"part")?;
 
-  assert!(LevelBuildExport::list_file_names(&directory).contains(&path));
+  assert_eq!(
+    request(Some(PathBuf::from("gamemtl.xr")))
+      .get_outputs()
+      .find_existing()?,
+    [directory
+      .join(LevelBreakableConversion::DIRECTORY)
+      .join(path.trim_start_matches("meshes/"))]
+  );
+  assert!(request(None).get_outputs().find_existing()?.is_empty());
 
   Ok(())
 }

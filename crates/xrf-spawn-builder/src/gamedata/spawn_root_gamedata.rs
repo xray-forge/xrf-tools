@@ -5,7 +5,7 @@ use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobScope};
-use xrf_utils::narrow_format_size;
+use xrf_utils::{OutputFiles, narrow_format_size};
 
 use crate::gamedata::spawn_game_level::SpawnGameLevel;
 use crate::gamedata::spawn_game_levels::SpawnGameLevels;
@@ -23,8 +23,6 @@ use crate::root::spawn_root_level::SpawnRootLevel;
 pub struct SpawnRootGamedata;
 
 impl SpawnRootGamedata {
-  /// The game's own spawn, which a build writes over only when forced.
-  pub(crate) const GAME_SPAWN: &'static str = "all";
   /// What a job reports a build under: its stages (the levels read, the spawn built, the spawn written), each named as
   /// its detail.
   pub const PROGRESS_STAGES: &'static str = "stages";
@@ -35,8 +33,8 @@ impl SpawnRootGamedata {
   ///
   /// Returns an error when the spawn's name is no plain file name, the request names an empty list of levels, the
   /// level list does not read, names no level to build or not one asked for, a level's files do not read, the build
-  /// refuses ([`SpawnRootBuilder::build`]), the game's own spawn is there and the request is not forced, the job is
-  /// cancelled before writing, or the spawn cannot be written.
+  /// refuses ([`SpawnRootBuilder::build`]), the spawn is there in any case of its name and the request is not forced,
+  /// the job is cancelled before writing, or the spawn cannot be written.
   pub fn build(request: &SpawnRootRequest, job: &JobHandle) -> XrfResult<SpawnRootOutcome> {
     if request.name.is_empty() || Path::new(&request.name).file_name() != Some(OsStr::new(&request.name)) {
       return Err(XrfError::new_invalid_error(format!(
@@ -47,12 +45,7 @@ impl SpawnRootGamedata {
 
     let destination: PathBuf = request.get_spawn_path();
 
-    if request.name == Self::GAME_SPAWN && destination.exists() && !request.is_forced {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} is the game's own spawn; force the build to write over it",
-        destination.display()
-      )));
-    }
+    OutputFiles::of_path(&destination).assert_free(request.is_forced)?;
 
     let stages: JobScope = job.enter(Self::PROGRESS_STAGES, Some(3));
 

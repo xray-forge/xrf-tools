@@ -95,6 +95,8 @@ impl GenericCommand for PackDescriptionCommand {
       files,
       is_strict: matches.get_flag("strict"),
       link_policy: LinkPolicyArgument::of(matches),
+      // Only unpacking reads it.
+      is_forced: false,
     };
 
     let result: DescriptionSpriteResult = DescriptionSpritePacker::pack_xml_descriptions(&options)?;

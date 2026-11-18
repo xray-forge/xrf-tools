@@ -145,6 +145,42 @@ fn refuses_the_geometry_step_without_the_compiler_shader_library() -> XrfResult 
 }
 
 #[test]
+fn counts_every_file_a_step_writes_and_every_earlier_page_as_the_compiles() -> XrfResult {
+  let level: PathBuf = level("outputs", &["Level.Geom", "LMAP#3_2.dds", "build.prj", "level.details"])?;
+  let found = |steps: &[LevelCompileStep], implicit: &[String]| -> XrfResult<Vec<String>> {
+    Ok(
+      LevelCompiler::get_outputs(&request(&level, steps), steps, implicit)
+        .find_existing()?
+        .iter()
+        .filter_map(|path| path.file_name())
+        .map(|name| name.to_string_lossy().into_owned())
+        .collect(),
+    )
+  };
+
+  std::fs::create_dir_all(level.join("terrain"))?;
+  std::fs::write(level.join("terrain").join("terrain_Lm.dds"), b"")?;
+
+  // The geometry writes over its own files and every page an earlier compile left, in any case; an input is not one.
+  assert_eq!(
+    found(&[LevelCompileStep::Geometry], &[])?,
+    ["Level.Geom", "LMAP#3_2.dds"]
+  );
+  // The light step writes an implicitly lit texture's maps below the level.
+  assert_eq!(
+    found(
+      &[LevelCompileStep::Geometry, LevelCompileStep::Light],
+      &[String::from("terrain\\terrain")]
+    )?,
+    ["Level.Geom", "terrain_Lm.dds", "LMAP#3_2.dds"]
+  );
+  assert_eq!(found(&[LevelCompileStep::Ai], &[])?, Vec::<String>::new());
+  assert_eq!(found(&[LevelCompileStep::Details], &[])?, ["level.details"]);
+
+  Ok(())
+}
+
+#[test]
 fn needs_no_ray_model_for_an_ai_map_with_no_covers() -> XrfResult {
   let level: PathBuf = level("ai_no_covers", &["build.aimap"])?;
   let refuse = |covers: AiMapCovers| {

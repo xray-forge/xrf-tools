@@ -1,8 +1,12 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use xrf_utils::OutputFiles;
 
+use crate::level::build::level_build_export::LevelBuildExport;
 use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
+use crate::level::level_breakable_conversion::LevelBreakableConversion;
+use crate::level::level_scene_exporter::LevelSceneExporter;
 
 /// A scene's build into a level directory, as a front-end asks for it: the game files always, and the level compiler's
 /// files (`build.prj`, the occluders, `level.ltx`, details, AI map, impostors, breakables) where the game material
@@ -24,13 +28,28 @@ pub struct LevelBuildRequest {
   pub textures: Option<PathBuf>,
   /// How large the impostor atlas may grow.
   pub impostor_limit: LevelBuildImpostorLimit,
-  /// Whether files the build writes are overwritten where the directory holds them rather than refused.
+  /// Whether the build replaces what it writes where the directory holds it, and removes the files of its own an
+  /// earlier build wrote that this one does not; unforced, it refuses before reading the scene.
   pub is_forced: bool,
 }
 
 impl LevelBuildRequest {
   /// The directory a rawdata tree keeps objects in, beside the `levels` directory holding its scenes.
   pub const OBJECTS_DIRECTORY: &'static str = "objects";
+
+  /// The files the build owns in its destination: the game files always ([`LevelSceneExporter::FILE_NAMES`]), and
+  /// where the game materials are named the level compiler's ([`LevelBuildExport::FILE_NAMES`]) and every breakable
+  /// part under `meshes`.
+  pub fn get_outputs(&self) -> OutputFiles {
+    let outputs: OutputFiles = OutputFiles::new(&self.destination).with_files(LevelSceneExporter::FILE_NAMES);
+
+    match self.game_materials {
+      Some(_) => outputs
+        .with_files(LevelBuildExport::FILE_NAMES)
+        .with_family(LevelBreakableConversion::FAMILY),
+      None => outputs,
+    }
+  }
 
   /// The objects roots the scene's objects are read from: the ones named, else `<rawdata>/objects` beside the scene's
   /// `levels` directory where it exists, as the SDK's `fs.ltx` puts `$maps$` and `$objects$` side by side and a

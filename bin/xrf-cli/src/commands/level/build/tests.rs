@@ -144,7 +144,7 @@ fn refuses_to_replace_a_levels_files_without_force() -> XrfResult {
   let error: String = get_error(run("build", &root.join("scenes/test_level.level"), &level, &[]));
 
   assert!(
-    error.contains("already exists"),
+    error.contains("already holds") && error.contains(LevelEnvModFile::FILE_NAME),
     "Expect the refusal to name the existing file: {error}"
   );
   assert!(!level.join("level.game").exists(), "a refusal writes nothing");
@@ -157,26 +157,30 @@ fn refuses_to_replace_a_levels_files_without_force() -> XrfResult {
 }
 
 #[test]
-fn refuses_a_level_holding_a_file_the_scene_does_not_build() -> XrfResult {
+fn refuses_a_file_of_its_own_unforced_and_removes_it_forced_where_the_scene_no_longer_builds_it() -> XrfResult {
   let root: PathBuf = scene_root("stale")?;
   let built: PathBuf = root.join("built");
+  let scene: PathBuf = root.join("scenes/test_level.level");
 
   fs::create_dir_all(&built)?;
-  fs::write(built.join(LevelPsStaticFile::FILE_NAME), b"particles")?;
+  // Named in another case than the build writes, which the game reads as the same file.
+  fs::write(built.join("Level.PS_Static"), b"particles")?;
 
-  let error: String = get_error(run(
-    "build",
-    &root.join("scenes/test_level.level"),
-    &built,
-    &["--force"],
-  ));
+  let error: String = get_error(run("build", &scene, &built, &[]));
 
   assert!(
-    error.contains("level.ps_static"),
+    error.contains("Level.PS_Static"),
     "Expect the refusal to name the file: {error}"
   );
   assert!(!built.join("level.game").exists(), "a refusal writes nothing");
-  assert_eq!(fs::read(built.join(LevelPsStaticFile::FILE_NAME))?, b"particles");
+
+  run("build", &scene, &built, &["--force"]).expect("the forced build writes");
+
+  assert!(built.join("level.game").is_file());
+  assert!(
+    !built.join("Level.PS_Static").exists() && !built.join(LevelPsStaticFile::FILE_NAME).exists(),
+    "a file of the build's own it no longer writes is removed"
+  );
 
   Ok(())
 }

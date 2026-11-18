@@ -48,7 +48,13 @@ pub(crate) async fn archives_unpack_directory(
       move |job| {
         let project: ArchiveProject = ArchiveProject::new(&source)?;
 
-        ArchiveUnpacker::unpack_opt(&project, &destination, ArchiveExtractOptions::default().with_job(job))
+        // todo: the unpack writes over files already in the directory picked, as no dialog asks first; ask, and force
+        // only on that answer.
+        ArchiveUnpacker::unpack_opt(
+          &project,
+          &destination,
+          ArchiveExtractOptions::default().with_job(job).with_forced(true),
+        )
       },
       |result| result.outcome,
     )

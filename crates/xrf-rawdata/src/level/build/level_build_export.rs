@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::Serialize;
@@ -11,7 +10,6 @@ use xrf_spawn::AlifeObject;
 use crate::level::build::level_build_breakables::LevelBuildBreakablePart;
 use crate::level::build::level_build_details::LevelBuildDetails;
 use crate::level::build::level_build_impostors::LevelBuildImpostorAtlas;
-use crate::level::level_breakable_conversion::LevelBreakableConversion;
 use crate::level::level_map_conversion::LevelMapConversion;
 use crate::level::level_tree_impostor::LevelTreeImpostorAtlas;
 use crate::provenance::level_scene_provenance::LevelSceneRefusal;
@@ -94,25 +92,6 @@ impl LevelBuildExport {
     LevelTreeImpostorAtlas::COLOR_FILE_NAME,
     LevelTreeImpostorAtlas::NORMAL_FILE_NAME,
   ];
-
-  /// Every file a build may write into `directory` or leave stale there: [`Self::FILE_NAMES`], and each breakable part
-  /// already in its `meshes` directory, which a build of fewer parts would leave for the game to load.
-  pub fn list_file_names(directory: &Path) -> Vec<String> {
-    let mut names: Vec<String> = Self::FILE_NAMES.iter().map(|name| (*name).to_owned()).collect();
-
-    if let Ok(entries) = std::fs::read_dir(directory.join(LevelBreakableConversion::DIRECTORY)) {
-      let mut parts: Vec<String> = entries
-        .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
-        .filter(|name| LevelBreakableConversion::is_part_file(name))
-        .map(|name| format!("{}/{name}", LevelBreakableConversion::DIRECTORY))
-        .collect();
-
-      parts.sort_unstable();
-      names.extend(parts);
-    }
-
-    names
-  }
 
   /// Each file by its path in the level's directory, written in `T`'s byte order: `build.prj` and `level.ltx` always,
   /// `level.hom` and `level.som` where their occluders are, `build.details` and its atlas where the details are,

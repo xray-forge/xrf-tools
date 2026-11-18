@@ -42,7 +42,7 @@ describe("SpawnEditorService notifications", () => {
     mockIpcCommands({ [ESpawnCommand.OPEN_FILE]: mockSessionResponse(mockSpawnSession()) });
     await service.open("source.spawn");
 
-    await service.saveFile("C:\\out\\all.spawn");
+    await service.saveFile("C:\\out\\all.spawn", true);
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.SUCCESS);
@@ -63,7 +63,7 @@ describe("SpawnEditorService notifications", () => {
       },
     });
 
-    await service.saveFile("C:\\out\\all.spawn");
+    await service.saveFile("C:\\out\\all.spawn", true);
 
     // The failure is now carried by the operation rather than dropped, so the toolbar can report it.
     expect(service.operation.isLoading).toBe(false);
@@ -78,7 +78,7 @@ describe("SpawnEditorService notifications", () => {
     mockIpcCommands({ [ESpawnCommand.OPEN_FILE]: mockSessionResponse(mockSpawnSession()) });
     await service.open("source.spawn");
 
-    await service.saveUnpackedDirectory("C:\\out\\unpacked");
+    await service.saveUnpackedDirectory("C:\\out\\unpacked", true);
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.SUCCESS);
@@ -97,7 +97,7 @@ describe("SpawnEditorService notifications", () => {
       },
     });
 
-    await service.saveUnpackedDirectory("C:\\out\\unpacked");
+    await service.saveUnpackedDirectory("C:\\out\\unpacked", true);
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.ERROR);

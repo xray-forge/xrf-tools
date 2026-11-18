@@ -3,10 +3,11 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use xrf_editable_level::EditableLevelFile;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{OutputFiles, format_path};
 
 use crate::level::level_surface_inference::{LevelSurfaceInference, LevelSurfaces};
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
+use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 
 /// A level's decompile into a scene on disk, as a front-end asks for it: the paths, and the options it may leave to
 /// their defaults, which [`Self::get_options`] and [`Self::get_objects_root`] resolve as the SDK lays a level and its
@@ -33,7 +34,9 @@ pub struct LevelDecompileRequest {
   pub compiler_shaders: Option<PathBuf>,
   /// Object library roots whose surfaces break ties between compiler shaders, such as an SDK's `rawdata/objects`.
   pub libraries: Vec<PathBuf>,
-  /// Whether an existing scene, its objects and textures are overwritten rather than refused.
+  /// Whether an existing scene, its objects and textures are overwritten rather than refused, and the parts and objects
+  /// of the level's own an earlier decompile wrote that this one does not are removed; unforced, the scene and the
+  /// level's objects already there are refused before the level is read.
   pub is_forced: bool,
 }
 
@@ -70,6 +73,40 @@ impl LevelDecompileRequest {
       compiler_shaders: library(&self.compiler_shaders, LevelSurfaceInference::COMPILER_SHADERS_FILE)?,
       libraries: self.libraries.clone(),
     })
+  }
+
+  /// What the decompile owns beside the scene: its main file, its sidecar, and every file in its part directory.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the destination names no `.level` file.
+  pub fn get_scene_outputs(&self) -> XrfResult<OutputFiles> {
+    let name: String = self.get_level_name()?;
+    let directory: &Path = self.destination.parent().unwrap_or_else(|| Path::new(""));
+    let mut outputs: OutputFiles = OutputFiles::new(directory).with_family(&format!("{name}/"));
+
+    for path in [
+      self.destination.clone(),
+      LevelSceneProvenance::sidecar_path(&self.destination),
+    ] {
+      if let Some(file_name) = path.file_name() {
+        outputs = outputs.with_file(&file_name.to_string_lossy());
+      }
+    }
+
+    Ok(outputs)
+  }
+
+  /// What the decompile owns under the objects root: the level's own objects and their sidecars, every one under
+  /// `levels\<name>\` named `<name>_`, as the conversions name them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the destination names no `.level` file.
+  pub fn get_object_outputs(&self) -> XrfResult<OutputFiles> {
+    let name: String = self.get_level_name()?;
+
+    Ok(OutputFiles::new(&self.get_objects_root()).with_family(&format!("levels/{name}/{name}_")))
   }
 
   /// The objects root the scene's objects go under: the one named, else `<rawdata>/objects` beside the scene, as the

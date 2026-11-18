@@ -144,24 +144,29 @@ fn refuses_levels_it_cannot_take_before_reading_any() -> XrfResult {
 }
 
 #[test]
-fn refuses_to_write_over_the_games_own_spawn_unless_forced() -> XrfResult {
+fn refuses_to_write_over_a_spawn_in_any_case_of_its_name_unless_forced() -> XrfResult {
   let (gamedata, levels) = gamedata("game-spawn")?;
   let destination: PathBuf = gamedata.join("spawns");
 
   fs::create_dir_all(&destination)?;
-  fs::write(destination.join("all.spawn"), b"shipped")?;
+  fs::write(destination.join("All.spawn"), b"shipped")?;
+  fs::write(destination.join("test.spawn"), b"earlier")?;
 
-  let mut request: SpawnRootRequest = SpawnRootRequest {
-    levels_root: Some(levels),
-    ..request(&gamedata, Some(&["labx8"]), "all")
-  };
+  for name in ["all", "ALL", "test"] {
+    let mut request: SpawnRootRequest = SpawnRootRequest {
+      levels_root: Some(levels.clone()),
+      ..request(&gamedata, Some(&["labx8"]), name)
+    };
 
-  assert_refused(&request, "is the game's own spawn; force the build to write over it");
+    assert_refused(&request, "force it to replace them");
 
-  // Forced, it goes on to read the levels, whose files here are empty.
-  request.is_forced = true;
-  assert_refused(&request, "Level labx8:");
-  assert_eq!(fs::read(destination.join("all.spawn"))?, b"shipped");
+    // Forced, it goes on to read the levels, whose files here are empty.
+    request.is_forced = true;
+    assert_refused(&request, "Level labx8:");
+  }
+
+  assert_eq!(fs::read(destination.join("All.spawn"))?, b"shipped");
+  assert_eq!(fs::read(destination.join("test.spawn"))?, b"earlier");
 
   Ok(())
 }

@@ -142,8 +142,15 @@ export class SpawnEditorService {
     }
   }
 
+  /**
+   * Writes the open spawn to `path`.
+   *
+   * @param path - Where to write it.
+   * @param isForced - Whether a file already at `path` is written over, which the backend refuses otherwise; true once
+   *   the person was asked, as the native save dialog asks.
+   */
   @LatestFlow("operation")
-  public *saveFile(path: string): TFlow {
+  public *saveFile(path: string, isForced: boolean): TFlow {
     const sessionId: Nullable<SessionId> = this.sessionId;
 
     if (!sessionId) {
@@ -153,14 +160,21 @@ export class SpawnEditorService {
     yield* this.operation.run({
       name: "Save spawn file",
       subject: path,
-      command: () => spawnCommands.saveFile(path, sessionId).then(() => "save"),
+      command: () => spawnCommands.saveFile(path, sessionId, isForced).then(() => "save"),
       failure: "Could not save spawn file",
       success: () => ({ details: path, title: "Saved spawn file" }),
     });
   }
 
+  /**
+   * Exports the open spawn into the directory `path`, a file per chunk.
+   *
+   * @param path - The directory to write into.
+   * @param isForced - Whether a directory already at `path` is written into, which the backend refuses otherwise; true
+   *   once the person confirmed it.
+   */
   @LatestFlow("operation")
-  public *saveUnpackedDirectory(path: string): TFlow {
+  public *saveUnpackedDirectory(path: string, isForced: boolean): TFlow {
     const sessionId: Nullable<SessionId> = this.sessionId;
 
     if (!sessionId) {
@@ -170,7 +184,7 @@ export class SpawnEditorService {
     yield* this.operation.run({
       name: "Export spawn file",
       subject: path,
-      command: () => spawnCommands.saveUnpackedDirectory(path, sessionId).then(() => "export"),
+      command: () => spawnCommands.saveUnpackedDirectory(path, sessionId, isForced).then(() => "export"),
       failure: "Could not export spawn file",
       success: () => ({ details: path, title: "Exported spawn file" }),
     });

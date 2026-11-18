@@ -144,35 +144,17 @@ impl LevelSceneExporter {
     Ok(files)
   }
 
-  /// Writes an export's files into a level directory, each staged, saying of each what it replaced.
-  ///
-  /// The editor's Build moves every file it may write aside as a `.~` backup first (`EFS_Utils::MarkFile`,
-  /// `xray-16/src/xrCore/FileSystem_borland.cpp:65`), so a file the scene no longer builds does not stay to be read by the
-  /// game. This writer deletes and moves nothing, so it refuses such a directory instead. Whether files already there
-  /// may be replaced is the caller's to ask before calling.
+  /// Writes an export's files into a level directory, each staged, saying of each what it replaced. Whether files
+  /// already there may be replaced, and which of the build's own it no longer writes go, is the caller's
+  /// ([`LevelBuildRequest::get_outputs`](crate::LevelBuildRequest::get_outputs)).
   ///
   /// # Errors
   ///
-  /// Returns an error, writing nothing, when the directory holds a file of `names`, every file this build may write
-  /// ([`Self::FILE_NAMES`], and [`LevelBuildExport::list_file_names`](crate::LevelBuildExport::list_file_names) for a
-  /// build of the geometry, its breakable parts already there included), that `files` lacks; returns an error when a
-  /// file there cannot be read or one cannot be written.
+  /// Returns an error when a file there cannot be read or one cannot be written.
   pub fn write_to_directory<K: Borrow<str> + Ord>(
     files: &BTreeMap<K, Vec<u8>>,
-    names: &[impl AsRef<str>],
     directory: &Path,
   ) -> XrfResult<Vec<LevelExportedFile>> {
-    if let Some(stale) = names
-      .iter()
-      .map(AsRef::as_ref)
-      .find(|name| !files.contains_key(*name) && directory.join(name).exists())
-    {
-      return Err(XrfError::new_invalid_error(format!(
-        "{} holds {stale}, which the scene does not build and the game would still read; move it away first",
-        format_path(directory)
-      )));
-    }
-
     let mut written: Vec<LevelExportedFile> = Vec::with_capacity(files.len());
 
     for (name, bytes) in files {

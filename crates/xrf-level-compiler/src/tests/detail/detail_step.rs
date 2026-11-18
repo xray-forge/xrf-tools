@@ -227,7 +227,7 @@ fn refuses_to_overwrite_the_details_unless_forced() -> XrfResult {
     .unwrap_err()
     .to_string();
 
-  assert!(error.contains("force the compile"), "{error}");
+  assert!(error.contains("force it to replace them"), "{error}");
   assert_eq!(std::fs::read(&output)?, b"kept");
 
   LevelCompiler::compile(&fixture.request(true), &JobHandle::inert())?;

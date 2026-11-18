@@ -17,7 +17,7 @@ export interface ISpawnBuildChoice {
   name: string;
   /** Whether a restrictor cutting an AI map apart refuses the build rather than being reported. */
   isSeparatorStrict: boolean;
-  /** Whether the game's own `all.spawn` may be written over. */
+  /** Whether a spawn of the name already in the directory may be written over. */
   isForced: boolean;
 }
 
@@ -52,7 +52,7 @@ export function toggleSpawnLevel(
 
 /**
  * Whether the build the form names cannot run: no level ticked, a start level not among them, or a name that is no
- * plain file name. Writing over the game's own `all.spawn` is left to the build, which alone sees whether it is there.
+ * plain file name. Writing over a spawn already there is left to the build, which alone sees whether it is.
  *
  * @param choice - What the form names.
  * @returns Why it cannot run, or null where it can.

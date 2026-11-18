@@ -7,11 +7,14 @@ import {
   LevelCompileStep,
 } from "@xrf/ipc/types/xrf-level-compiler";
 
+import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
+
 import { getCompileProblem, ICompileChoice, toCompileRequest, toggleCompileStep } from "./compile-request";
 
 function choice(steps: Array<LevelCompileStep>, patch: Partial<ICompileChoice> = {}): ICompileChoice {
   return {
     steps: new Set(steps),
+    gameMaterials: "C:\\Games\\CoP\\gamedata\\gamemtl.xr",
     gamedata: "C:\\Games\\CoP\\gamedata",
     textures: "C:\\Games\\CoP\\gamedata\\textures",
     rayBackend: ERayBackend.AUTO,
@@ -53,10 +56,20 @@ describe("toCompileRequest", () => {
   });
 
   it("names what a chosen step lacks before it can run", () => {
-    expect(getCompileProblem(choice([ELevelCompileStep.LIGHT]))).toContain("geometry");
+    expect(getCompileProblem(choice([ELevelCompileStep.LIGHT]))).toEqual({
+      field: null,
+      message: expect.stringContaining("geometry"),
+    });
     expect(toCompileRequest(choice([ELevelCompileStep.LIGHT, ELevelCompileStep.DETAILS]))).toBeNull();
-    expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { gamedata: null }))).toContain("game data");
+    expect(getCompileProblem(choice([ELevelCompileStep.DETAILS], { gamedata: null }))?.field).toBe(
+      ELevelCompilerField.GAMEDATA
+    );
     expect(toCompileRequest(choice([ELevelCompileStep.DETAILS], { gamedata: null }))).toBeNull();
+    expect(getCompileProblem(choice([ELevelCompileStep.AI], { gameMaterials: null }))?.field).toBe(
+      ELevelCompilerField.GAME_MATERIALS
+    );
+    expect(toCompileRequest(choice([ELevelCompileStep.AI], { gameMaterials: null }))).toBeNull();
+    expect(getCompileProblem(choice([], { gameMaterials: null }))).toBeNull();
   });
 
   it("names no textures root where none is chosen, leaving the game data's to the backend", () => {

@@ -79,7 +79,10 @@ export type LevelCompileRequest = {
    * wrote impostor strips into ([`Self::get_textures_roots`]).
    */
   textures: Array<string>;
-  /** Whether a step overwrites a file it writes where the level's directory holds it, rather than refusing. */
+  /**
+   * Whether the compile replaces what its steps write where the level's directory holds it, and removes the lightmap
+   * pages an earlier compile wrote past its own; unforced, it refuses before any step runs.
+   */
   isForced: boolean;
   /**
    * What traces the rays: the light step's lightmap and implicit map shadow rays, the details step's shadow rays and

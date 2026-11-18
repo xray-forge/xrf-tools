@@ -100,7 +100,7 @@ fn refuses_to_overwrite_the_map_unless_forced_and_keeps_its_identity() -> XrfRes
     .unwrap_err()
     .to_string();
 
-  assert!(error.contains("force the compile"), "{error}");
+  assert!(error.contains("force it to replace them"), "{error}");
 
   let report: LevelCompileReport =
     LevelCompiler::compile(&request(&fixture, AiMapCovers::Full, true), &JobHandle::inert())?;
