@@ -1,5 +1,5 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkLayout, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::narrow_format_size;
@@ -55,6 +55,9 @@ pub struct EditableDetailObjectTool {
   pub density: f32,
   /// The scene objects the base texture was laid over, by name.
   pub snap_objects: Vec<String>,
+  /// How the stream laid its chunks out, and any chunk the tool does not save, such as a converter's own, kept as
+  /// stored.
+  pub layout: ChunkLayout,
 }
 
 impl EditableDetailObjectTool {
@@ -106,10 +109,103 @@ impl EditableDetailObjectTool {
   /// # Errors
   ///
   /// Returns an error when a chunk the editor asserts on is missing, the version is another, a chunk does not hold
-  /// exactly what it counts, or an object does not read.
+  /// exactly what it is read as, the objects are not numbered from 0 as the editor opens them, the slots do not fill
+  /// the header's grid, or an object does not read. A chunk the tool does not save, such as a converter's own, is kept
+  /// in [`Self::layout`] and comes back on write.
   pub fn read_from_bytes<T: ByteOrder>(data: Vec<u8>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(data)?.read_children()?;
-    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32::<T>()?;
+    let mut version: Option<u32> = None;
+    let mut header: Option<EditableDetailHeader> = None;
+    let mut slots: Option<Vec<[u32; Self::SLOT_WORDS]>> = None;
+    let mut bbox: Option<Aabb> = None;
+    let mut color_indices: Option<Vec<EditableDetailColorIndex>> = None;
+    let mut flags: Option<u32> = None;
+    let mut objects: Option<Vec<EditableDetailObject>> = None;
+    let mut base_texture: Option<String> = None;
+    let mut density: Option<f32> = None;
+    let mut snap_objects: Option<Vec<String>> = None;
+    let layout: ChunkLayout = ChunkLayout::read(&mut ChunkReader::from_vec(data)?, |chunk| {
+      match chunk.id {
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u32_payload::<T>()?),
+        Self::HEADER_CHUNK_ID if header.is_none() => {
+          header = Some(chunk.read_whole_payload(
+            "Expect the detail header chunk to hold exactly its six values",
+            |chunk| {
+              Ok(EditableDetailHeader {
+                version: chunk.read_u32::<T>()?,
+                object_count: chunk.read_u32::<T>()?,
+                offset_x: chunk.read_i32::<T>()?,
+                offset_z: chunk.read_i32::<T>()?,
+                size_x: chunk.read_u32::<T>()?,
+                size_z: chunk.read_u32::<T>()?,
+              })
+            },
+          )?);
+        }
+        Self::SLOTS_CHUNK_ID if slots.is_none() => {
+          slots = Some(chunk.read_whole_payload(
+            "Expect the detail slots chunk to hold exactly the slots it counts",
+            |chunk| {
+              let count: u32 = chunk.read_u32::<T>()?;
+              let mut slots: Vec<[u32; Self::SLOT_WORDS]> =
+                chunk.new_bounded_vec(count.into(), (Self::SLOT_WORDS * 4) as u64, "detail slots")?;
+
+              for _ in 0..count {
+                let mut slot: [u32; Self::SLOT_WORDS] = [0; Self::SLOT_WORDS];
+
+                for word in &mut slot {
+                  *word = chunk.read_u32::<T>()?;
+                }
+
+                slots.push(slot);
+              }
+
+              Ok(slots)
+            },
+          )?);
+        }
+        Self::BBOX_CHUNK_ID if bbox.is_none() => {
+          bbox = Some(
+            chunk.read_whole_payload("Expect the detail box chunk to hold exactly its box", |chunk| {
+              Ok(Aabb {
+                min: Self::read_vector::<T>(chunk)?,
+                max: Self::read_vector::<T>(chunk)?,
+              })
+            })?,
+          );
+        }
+        Self::COLOR_INDEX_CHUNK_ID if color_indices.is_none() => {
+          color_indices = Some(chunk.read_whole_payload(
+            "Expect the detail colour index chunk to hold exactly its indices",
+            |chunk| Self::read_color_indices::<T>(chunk),
+          )?);
+        }
+        Self::FLAGS_CHUNK_ID if flags.is_none() => flags = Some(chunk.read_u32_payload::<T>()?),
+        Self::OBJECTS_CHUNK_ID if objects.is_none() => {
+          objects = Some(chunk.read_numbered_children("detail object", EditableDetailObject::read::<T>)?);
+        }
+        Self::BASE_TEXTURE_CHUNK_ID if base_texture.is_none() => {
+          base_texture = Some(chunk.read_whole_payload(
+            "Expect the detail base texture chunk to hold exactly its name",
+            |chunk| chunk.read_w1251_string(),
+          )?);
+        }
+        Self::DENSITY_CHUNK_ID if density.is_none() => density = Some(chunk.read_f32_payload::<T>()?),
+        Self::SNAP_OBJECTS_CHUNK_ID if snap_objects.is_none() => {
+          snap_objects = Some(chunk.read_whole_payload(
+            "Expect the detail snap objects chunk to hold exactly its names",
+            |chunk| {
+              let count: u32 = chunk.read_u32::<T>()?;
+
+              (0..count).map(|_| chunk.read_w1251_string()).collect::<XrfResult<_>>()
+            },
+          )?);
+        }
+        _ => return Ok(false),
+      }
+
+      Ok(true)
+    })?;
+    let version: u32 = Self::require(version, "version")?;
 
     if version != Self::VERSION {
       return Err(XrfError::new_parsing_error(format!(
@@ -118,104 +214,45 @@ impl EditableDetailObjectTool {
       )));
     }
 
-    let mut header: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::HEADER_CHUNK_ID)?;
-    let header: EditableDetailHeader = EditableDetailHeader {
-      version: header.read_u32::<T>()?,
-      object_count: header.read_u32::<T>()?,
-      offset_x: header.read_i32::<T>()?,
-      offset_z: header.read_i32::<T>()?,
-      size_x: header.read_u32::<T>()?,
-      size_z: header.read_u32::<T>()?,
-    };
-    let mut slots_chunk: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::SLOTS_CHUNK_ID)?;
-    let count: u32 = slots_chunk.read_u32::<T>()?;
-    let mut slots: Vec<[u32; Self::SLOT_WORDS]> =
-      slots_chunk.new_bounded_vec(count.into(), (Self::SLOT_WORDS * 4) as u64, "detail slots")?;
+    let header: EditableDetailHeader = Self::require(header, "header")?;
+    let slots: Vec<[u32; Self::SLOT_WORDS]> = Self::require(slots, "slots")?;
 
-    for _ in 0..count {
-      let mut slot: [u32; Self::SLOT_WORDS] = [0; Self::SLOT_WORDS];
+    Self::check_grid(&header, slots.len())?;
 
-      for word in &mut slot {
-        *word = slots_chunk.read_u32::<T>()?;
-      }
-
-      slots.push(slot);
-    }
-
-    slots_chunk.assert_read("Expect the detail slots chunk to hold exactly the slots it counts")?;
-
-    let mut bbox: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::BBOX_CHUNK_ID)?;
-    let bbox: Aabb = Aabb {
-      min: Self::read_vector::<T>(&mut bbox)?,
-      max: Self::read_vector::<T>(&mut bbox)?,
-    };
-    let mut tool: Self = Self {
-      flags: Self::OBJECTS_DRAW,
+    Ok(Self {
+      flags: flags.unwrap_or(Self::OBJECTS_DRAW),
       header,
-      objects: Vec::new(),
-      color_indices: Vec::new(),
+      objects: objects.unwrap_or_default(),
+      color_indices: Self::require(color_indices, "colour index")?,
       slots,
-      bbox,
-      base_texture: None,
-      density: 0.0,
-      snap_objects: Vec::new(),
-    };
-    let mut has_color_indices: bool = false;
+      bbox: Self::require(bbox, "box")?,
+      base_texture,
+      density: density.unwrap_or_default(),
+      snap_objects: snap_objects.unwrap_or_default(),
+      layout,
+    })
+  }
 
-    for mut chunk in chunks {
-      match chunk.id {
-        Self::FLAGS_CHUNK_ID => tool.flags = chunk.read_u32::<T>()?,
-        Self::OBJECTS_CHUNK_ID => {
-          tool.objects = chunk
-            .read_children()?
-            .iter_mut()
-            .map(EditableDetailObject::read::<T>)
-            .collect::<XrfResult<_>>()?;
-        }
-        Self::COLOR_INDEX_CHUNK_ID => {
-          has_color_indices = true;
-          tool.color_indices = Self::read_color_indices::<T>(&mut chunk)?;
-        }
-        Self::BASE_TEXTURE_CHUNK_ID => tool.base_texture = Some(chunk.read_w1251_string()?),
-        Self::DENSITY_CHUNK_ID => tool.density = chunk.read_f32::<T>()?,
-        Self::SNAP_OBJECTS_CHUNK_ID => {
-          let count: u32 = chunk.read_u32::<T>()?;
-
-          tool.snap_objects = (0..count)
-            .map(|_| chunk.read_w1251_string())
-            .collect::<XrfResult<_>>()?;
-        }
-        _ => {}
-      }
-    }
-
-    if !has_color_indices {
-      return Err(XrfError::new_parsing_error(
-        "Detail object tool holds no colour index chunk, which the editor asserts on",
-      ));
-    }
-
-    Ok(tool)
+  /// A chunk `LoadStream` asserts on, `what` naming it.
+  fn require<V>(value: Option<V>, what: &str) -> XrfResult<V> {
+    value.ok_or_else(|| {
+      XrfError::new_parsing_error(format!(
+        "Detail object tool has no {what} chunk, which the editor asserts on"
+      ))
+    })
   }
 
   /// The tool's stream as `EDetailManager::SaveStream` writes it, at [`Self::VERSION`].
   ///
   /// # Errors
   ///
-  /// Returns an error when a count is past what its field holds, or a name does not encode.
+  /// Returns an error when the slots do not fill the header's grid, a count is past what its field holds, or a name
+  /// does not encode. The chunks go down in the order and with the kept chunks of [`Self::layout`].
   pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
-    let mut stream: ChunkWriter = ChunkWriter::new();
-    let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult {
-      let mut writer: ChunkWriter = ChunkWriter::new();
+    Self::check_grid(&self.header, self.slots.len())?;
 
-      write(&mut writer)?;
-      writer.flush_chunk_into::<T>(&mut stream.buffer, id)?;
-
-      Ok(())
-    };
+    let mut sequence: ChunkSequence = ChunkSequence::new();
+    let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult { sequence.push(id, write) };
 
     chunk(Self::VERSION_CHUNK_ID, &|writer| {
       Ok(writer.write_u32::<T>(Self::VERSION)?)
@@ -293,6 +330,10 @@ impl EditableDetailObjectTool {
       Ok(())
     })?;
 
+    let mut stream: ChunkWriter = ChunkWriter::new();
+
+    self.layout.write::<T>(&mut stream, sequence)?;
+
     Ok(stream.buffer)
   }
 
@@ -358,6 +399,20 @@ impl EditableDetailObjectTool {
         })
       })
       .collect()
+  }
+
+  /// Whether `slots` slots fill the header's grid, `size_x * size_z`, as the level's details index them.
+  fn check_grid(header: &EditableDetailHeader, slots: usize) -> XrfResult {
+    let grid: u64 = u64::from(header.size_x) * u64::from(header.size_z);
+
+    if slots as u64 == grid {
+      Ok(())
+    } else {
+      Err(XrfError::new_parsing_error(format!(
+        "Detail object tool holds {slots} slots for a grid of {} by {}, {grid} slots",
+        header.size_x, header.size_z
+      )))
+    }
   }
 
   fn read_vector<T: ByteOrder>(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Vector3d> {

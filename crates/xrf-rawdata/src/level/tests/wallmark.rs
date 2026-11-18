@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkLayout, ChunkWriter, XRayByteOrder};
 use xrf_editable_level::{EditableBinaryPart, EditableWallmark, EditableWallmarkSlot, EditableWallmarkTool};
 use xrf_error::XrfResult;
 use xrf_level::{LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWallmarksFile};
@@ -57,11 +57,18 @@ fn wall_marks_come_back_to_the_same_file_through_the_part() -> XrfResult {
   let tool: EditableWallmarkTool = LevelWallmarkConversion::decompile(&file)?;
   let part: Vec<u8> = tool.to_part::<XRayByteOrder>(GUID)?.write_to_bytes::<XRayByteOrder>()?;
   let read: EditableWallmarkTool = EditableWallmarkTool::read_from_part::<XRayByteOrder>(
-    &EditableBinaryPart::read_from_bytes::<XRayByteOrder>(part)?,
+    &EditableBinaryPart::read_from_bytes::<XRayByteOrder>(part, None)?,
   )?;
   let mark: &EditableWallmark = &read.slots[0].marks[1];
 
-  assert_eq!(read, tool);
+  assert_eq!(
+    EditableWallmarkTool {
+      layout: ChunkLayout::default(),
+      ..read.clone()
+    },
+    tool,
+    "the same tool, but for the layout its file records"
+  );
   assert_eq!(mark.flags, 0, "no decal GSC saved is selected");
   assert_eq!((mark.width, mark.height, mark.rotation), (1.0, 1.0, 0.0), "the brush's");
   assert_eq!(mark.bbox, EditableWallmark::get_bounds(&mark.vertices).unwrap().0);

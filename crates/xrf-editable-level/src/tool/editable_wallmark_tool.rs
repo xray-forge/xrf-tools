@@ -1,5 +1,5 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkLayout, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
@@ -33,6 +33,9 @@ pub struct EditableWallmarkTool {
   pub texture: String,
   /// The slots in their stored order, an empty one kept as stored; the editor drops it on load.
   pub slots: Vec<EditableWallmarkSlot>,
+  /// How the stream laid its chunks out, and any chunk the tool does not save, such as a converter's own, kept as
+  /// stored.
+  pub layout: ChunkLayout,
 }
 
 impl EditableWallmarkTool {
@@ -71,6 +74,7 @@ impl EditableWallmarkTool {
       shader: Self::DEFAULT_SHADER.to_owned(),
       texture: String::new(),
       slots,
+      layout: ChunkLayout::default(),
     }
   }
 
@@ -94,11 +98,42 @@ impl EditableWallmarkTool {
   ///
   /// # Errors
   ///
-  /// Returns an error when a chunk the editor asserts on is missing, the version is another, or a slot does not hold
-  /// exactly what it counts.
+  /// Returns an error when a chunk the editor asserts on is missing, the version is another, a chunk does not hold
+  /// exactly what it is read as, the slots are not numbered from 0 as the editor opens them, or a slot does not hold
+  /// exactly what it counts. A chunk the tool does not save, such as a converter's own, is kept in [`Self::layout`]
+  /// and comes back on write; the decal chunk the editor passes over is read past, as it is.
   pub fn read_from_bytes<T: ByteOrder>(data: Vec<u8>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(data)?.read_children()?;
-    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16::<T>()?;
+    let mut version: Option<u16> = None;
+    let mut flags: Option<u32> = None;
+    let mut params: Option<(f32, f32, f32, String, String)> = None;
+    let mut old_items: Option<Vec<u8>> = None;
+    let mut items: Option<Vec<u8>> = None;
+    let layout: ChunkLayout = ChunkLayout::read(&mut ChunkReader::from_vec(data)?, |chunk| {
+      match chunk.id {
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
+        Self::FLAGS_CHUNK_ID if flags.is_none() => flags = Some(chunk.read_u32_payload::<T>()?),
+        Self::PARAMS_CHUNK_ID if params.is_none() => {
+          params = Some(chunk.read_whole_payload(
+            "Expect the wall mark params chunk to hold exactly its brush",
+            |chunk| {
+              Ok((
+                chunk.read_f32::<T>()?,
+                chunk.read_f32::<T>()?,
+                chunk.read_f32::<T>()?,
+                chunk.read_w1251_string()?,
+                chunk.read_w1251_string()?,
+              ))
+            },
+          )?);
+        }
+        Self::OLD_ITEMS_CHUNK_ID if old_items.is_none() => old_items = Some(chunk.read_remaining()?),
+        Self::ITEMS_CHUNK_ID if items.is_none() => items = Some(chunk.read_remaining()?),
+        _ => return Ok(false),
+      }
+
+      Ok(true)
+    })?;
+    let version: u16 = Self::require(version, "version")?;
 
     if version != Self::VERSION && version != Self::OLD_VERSION {
       return Err(XrfError::new_parsing_error(format!(
@@ -108,30 +143,18 @@ impl EditableWallmarkTool {
       )));
     }
 
-    let flags: u32 = ChunkReader::find_required_by_id(&chunks, Self::FLAGS_CHUNK_ID)?.read_u32::<T>()?;
-    let mut params: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::PARAMS_CHUNK_ID)?;
-    let [mark_width, mark_height, mark_rotation] = [
-      params.read_f32::<T>()?,
-      params.read_f32::<T>()?,
-      params.read_f32::<T>()?,
-    ];
-    let stored_shader: String = params.read_w1251_string()?;
-    let texture: String = params.read_w1251_string()?;
+    let (mark_width, mark_height, mark_rotation, stored_shader, texture) = Self::require(params, "params")?;
     // The older decal chunk wins wherever it stands, whatever the version, as `LoadStream` opens it first.
-    let old_items: Option<usize> = chunks.iter().position(|chunk| chunk.id == Self::OLD_ITEMS_CHUNK_ID);
-    let items: Option<usize> = old_items.or_else(|| chunks.iter().position(|chunk| chunk.id == Self::ITEMS_CHUNK_ID));
-    let slots: Vec<EditableWallmarkSlot> = match items.and_then(|index| chunks.into_iter().nth(index)) {
-      Some(mut items) => items
-        .read_children()?
-        .into_iter()
-        .map(|mut slot| Self::read_slot::<T>(&mut slot, old_items.is_none()))
-        .collect::<XrfResult<Vec<EditableWallmarkSlot>>>()?,
+    let is_current: bool = old_items.is_none();
+    // A tool of no decal stores its decal chunk empty, as the editor writes it.
+    let slots: Vec<EditableWallmarkSlot> = match old_items.or(items).filter(|bytes| !bytes.is_empty()) {
+      Some(bytes) => ChunkReader::from_vec(bytes)?
+        .read_numbered_children("wall mark slot", |slot| Self::read_slot::<T>(slot, is_current))?,
       None => Vec::new(),
     };
 
     Ok(Self {
-      flags,
+      flags: Self::require(flags, "flags")?,
       mark_width,
       mark_height,
       mark_rotation,
@@ -142,6 +165,16 @@ impl EditableWallmarkTool {
       },
       texture,
       slots,
+      layout,
+    })
+  }
+
+  /// A chunk `LoadStream` asserts on, `what` naming it.
+  fn require<V>(value: Option<V>, what: &str) -> XrfResult<V> {
+    value.ok_or_else(|| {
+      XrfError::new_parsing_error(format!(
+        "Wall mark tool has no {what} chunk, which the editor asserts on"
+      ))
     })
   }
 
@@ -149,43 +182,48 @@ impl EditableWallmarkTool {
   ///
   /// # Errors
   ///
-  /// Returns an error when a count is past what its `u32` holds.
+  /// Returns an error when a count is past what its `u32` holds. The chunks go down in the order and with the kept
+  /// chunks of [`Self::layout`].
   pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
-    let mut stream: ChunkWriter = ChunkWriter::new();
-    let mut version: ChunkWriter = ChunkWriter::new();
-    let mut flags: ChunkWriter = ChunkWriter::new();
-    let mut params: ChunkWriter = ChunkWriter::new();
-    let mut items: ChunkWriter = ChunkWriter::new();
+    let mut sequence: ChunkSequence = ChunkSequence::new();
 
-    version.write_u16::<T>(Self::VERSION)?;
-    flags.write_u32::<T>(self.flags)?;
-    params.write_f32::<T>(self.mark_width)?;
-    params.write_f32::<T>(self.mark_height)?;
-    params.write_f32::<T>(self.mark_rotation)?;
-    params.write_w1251_string(&self.shader)?;
-    params.write_w1251_string(&self.texture)?;
+    sequence.push(Self::VERSION_CHUNK_ID, |writer| {
+      Ok(writer.write_u16::<T>(Self::VERSION)?)
+    })?;
+    sequence.push(Self::FLAGS_CHUNK_ID, |writer| Ok(writer.write_u32::<T>(self.flags)?))?;
+    sequence.push(Self::PARAMS_CHUNK_ID, |writer| {
+      writer.write_f32::<T>(self.mark_width)?;
+      writer.write_f32::<T>(self.mark_height)?;
+      writer.write_f32::<T>(self.mark_rotation)?;
+      writer.write_w1251_string(&self.shader)?;
+      writer.write_w1251_string(&self.texture)?;
 
-    for (index, slot) in self.slots.iter().enumerate() {
-      let mut writer: ChunkWriter = ChunkWriter::new();
+      Ok(())
+    })?;
+    sequence.push(Self::ITEMS_CHUNK_ID, |items| {
+      for (index, slot) in self.slots.iter().enumerate() {
+        let mut writer: ChunkWriter = ChunkWriter::new();
 
-      writer.write_u32::<T>(narrow_format_size(slot.marks.len(), "wall marks")?)?;
+        writer.write_u32::<T>(narrow_format_size(slot.marks.len(), "wall marks")?)?;
 
-      if !slot.marks.is_empty() {
-        writer.write_w1251_string(&slot.shader)?;
-        writer.write_w1251_string(&slot.texture)?;
+        if !slot.marks.is_empty() {
+          writer.write_w1251_string(&slot.shader)?;
+          writer.write_w1251_string(&slot.texture)?;
 
-        for mark in &slot.marks {
-          mark.write::<T>(&mut writer)?;
+          for mark in &slot.marks {
+            mark.write::<T>(&mut writer)?;
+          }
         }
+
+        writer.flush_chunk_into::<T>(&mut items.buffer, narrow_format_size(index, "wall mark slots")?)?;
       }
 
-      writer.flush_chunk_into::<T>(&mut items.buffer, narrow_format_size(index, "wall mark slots")?)?;
-    }
+      Ok(())
+    })?;
 
-    version.flush_chunk_into::<T>(&mut stream.buffer, Self::VERSION_CHUNK_ID)?;
-    flags.flush_chunk_into::<T>(&mut stream.buffer, Self::FLAGS_CHUNK_ID)?;
-    params.flush_chunk_into::<T>(&mut stream.buffer, Self::PARAMS_CHUNK_ID)?;
-    items.flush_chunk_into::<T>(&mut stream.buffer, Self::ITEMS_CHUNK_ID)?;
+    let mut stream: ChunkWriter = ChunkWriter::new();
+
+    self.layout.write::<T>(&mut stream, sequence)?;
 
     Ok(stream.buffer)
   }

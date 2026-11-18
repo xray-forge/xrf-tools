@@ -25,6 +25,9 @@ impl EditableGroupTool {
   /// What a member's section name holds between its group's and its index.
   const MEMBER_INFIX: &'static str = "_ingroup_";
 
+  /// The group's field counting its members, which the editor loads `0..count` of (`EScene::ReadObjectsLTX`).
+  pub const MEMBER_COUNT_KEY: &'static str = "ingroup_count";
+
   /// Every group the tool's parts hold, `[object_N]`, as what every object saves first, in the order the files hold
   /// them.
   ///
@@ -43,13 +46,16 @@ impl EditableGroupTool {
     Ok(groups)
   }
 
-  /// Every member of class `T` of every group the tool's parts hold, in the order the files hold them, each with the
-  /// name of the group holding it.
+  /// Every member of class `T` of every group the tool's parts hold, each group's in the order the editor loads them,
+  /// `0..ingroup_count` by number, and the groups in the order the files hold them; each with the name of the group
+  /// holding it.
   ///
   /// # Errors
   ///
-  /// Returns an error when the tool holds a binary part, a part's objects do not read, a group holding a member of class
-  /// `T` has no name, a member's class is not a number, or a member of class `T` does not read.
+  /// Returns an error when the tool holds a binary part, a part's objects do not read, a group has no member count, a
+  /// counted member has no section, a member section stands past the count (the editor would leave it out), a group
+  /// holding a member of class `T` has no name, a member's class is not a number, or a member of class `T` does not
+  /// read.
   pub fn read_grouped_members<T: EditableToolObject>(
     tool: &EditableSceneTool,
   ) -> XrfResult<Vec<EditableGroupMember<T>>> {
@@ -57,24 +63,7 @@ impl EditableGroupTool {
 
     for part in Self::get_text_parts(tool)? {
       for group in part.get_objects()? {
-        let prefix: String = format!("{}{}", group.section.name, Self::MEMBER_INFIX);
-
-        for section in &group.children {
-          let Some(index) = section
-            .name
-            .strip_prefix(&prefix)
-            .filter(|digits| digits.bytes().all(|byte| byte.is_ascii_digit()))
-            .and_then(|digits| digits.parse::<usize>().ok())
-          else {
-            continue;
-          };
-
-          let member: EditablePartObject<'_> = EditablePartObject {
-            index,
-            section,
-            children: Self::get_member_children(&group.children, &section.name),
-          };
-
+        for member in Self::get_members(&group)? {
           if member.get_class_id()? == T::CLASS_ID {
             members.push(EditableGroupMember {
               group: group.get_name()?.to_owned(),
@@ -86,6 +75,55 @@ impl EditableGroupTool {
     }
 
     Ok(members)
+  }
+
+  /// `group`'s members, `[<group>_ingroup_<i>]` for `i` in `0..ingroup_count`, as `EScene::ReadObjectsLTX` loads them.
+  fn get_members<'a>(group: &EditablePartObject<'a>) -> XrfResult<Vec<EditablePartObject<'a>>> {
+    let count: usize = group.section.get_parsed(Self::MEMBER_COUNT_KEY)?;
+    let prefix: String = format!("{}{}", group.section.name, Self::MEMBER_INFIX);
+
+    if let Some(stale) = group
+      .children
+      .iter()
+      .find(|section| Self::get_member_index(&prefix, &section.name).is_some_and(|index| index >= count))
+    {
+      return Err(XrfError::new_parsing_error(format!(
+        "Group [{}] counts {count} members but holds [{}] past them, which the editor leaves out",
+        group.section.name, stale.name
+      )));
+    }
+
+    // Every counted member needs a section of its own, so a count past them is refused before it sizes anything.
+    if count > group.children.len() {
+      return Err(XrfError::new_parsing_error(format!(
+        "Group [{}] counts {count} members but holds only {} sections after it",
+        group.section.name,
+        group.children.len()
+      )));
+    }
+
+    (0..count)
+      .map(|index| {
+        let name: String = format!("{prefix}{index}");
+        let section = group
+          .children
+          .iter()
+          .find(|section| section.name == name)
+          .copied()
+          .ok_or_else(|| {
+            XrfError::new_parsing_error(format!(
+              "Group [{}] counts {count} members but has no [{name}]",
+              group.section.name
+            ))
+          })?;
+
+        Ok(EditablePartObject {
+          index,
+          section,
+          children: Self::get_member_children(&group.children, &section.name),
+        })
+      })
+      .collect()
   }
 
   /// The tool's parts, every one text as groups are saved.
@@ -101,6 +139,15 @@ impl EditableGroupTool {
         ))),
       })
       .collect()
+  }
+
+  /// The index of a member section, `<prefix><digits>`; none for any other section, such as a member's own
+  /// `<prefix><digits>_spawndata`.
+  fn get_member_index(prefix: &str, name: &str) -> Option<usize> {
+    name
+      .strip_prefix(prefix)
+      .filter(|digits| !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
+      .and_then(|digits| digits.parse().ok())
   }
 
   /// The sections named after a member, `<member>_<suffix>`.

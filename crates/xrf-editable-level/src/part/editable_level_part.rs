@@ -35,7 +35,7 @@ impl EditableLevelPart {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a part [`Self::read_from_bytes`] reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P, class_id: Option<u32>) -> XrfResult<Self> {
     let bytes: Vec<u8> = std::fs::read(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level part was not read: {}, error: {error}",
@@ -43,20 +43,20 @@ impl EditableLevelPart {
       ))
     })?;
 
-    Self::read_from_bytes::<T>(bytes)
+    Self::read_from_bytes::<T>(bytes, class_id)
   }
 
   /// Reads a part as `EScene::LoadLevelPartLTX` tells the two kinds apart: a file opening with `[` is text, any other
-  /// is chunks.
+  /// is chunks, whose data chunk is `class_id`'s where it holds one ([`EditableBinaryPart::read_from_bytes`]).
   ///
   /// # Errors
   ///
   /// Returns an error when the bytes are not the part their first byte says they are.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
+  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>, class_id: Option<u32>) -> XrfResult<Self> {
     if bytes.first() == Some(&b'[') {
       Ok(Self::Text(EditableTextPart::read_from_bytes(&bytes)?))
     } else {
-      Ok(Self::Binary(EditableBinaryPart::read_from_bytes::<T>(bytes)?))
+      Ok(Self::Binary(EditableBinaryPart::read_from_bytes::<T>(bytes, class_id)?))
     }
   }
 

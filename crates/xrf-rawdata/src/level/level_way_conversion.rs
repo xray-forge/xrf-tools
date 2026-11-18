@@ -18,7 +18,8 @@ impl LevelWayConversion {
   ///
   /// # Errors
   ///
-  /// Returns an error naming a path whose link names a point it does not hold.
+  /// Returns an error naming a path whose link names a point it does not hold or its own point, which the editor never
+  /// exports.
   pub fn decompile(
     ways: &[LevelGameWay],
     context: &mut LevelDecompileContext,
@@ -40,26 +41,29 @@ impl LevelWayConversion {
 
         for link in &way.links {
           let (from, to) = (usize::from(link.from), usize::from(link.to));
-
-          if from >= points.len() || to >= points.len() {
-            return Err(XrfError::new_invalid_error(format!(
-              "Patrol path '{}' links point {from} to {to} of {}",
+          let point: &mut EditableWayPoint = points.get_mut(from).ok_or_else(|| {
+            XrfError::new_invalid_error(format!(
+              "Patrol path '{}' links from point {from} of {}",
               way.name,
-              points.len()
-            )));
-          }
+              way.points.len()
+            ))
+          })?;
 
-          points[from].links.push(EditableWayLink {
+          point.links.push(EditableWayLink {
             to,
             probability: link.probability,
           });
         }
 
-        Ok(EditableWayObject {
+        let object: EditableWayObject = EditableWayObject {
           object: EditableCustomObject::new(way.name.clone(), EditableObjectTransform::default()),
           points,
           kind: way.kind.unwrap_or(EditableWayObject::PATROL_PATH),
-        })
+        };
+
+        object.check_links()?;
+
+        Ok(object)
       })
       .collect::<XrfResult<Vec<EditableWayObject>>>()?;
 
@@ -71,12 +75,15 @@ impl LevelWayConversion {
   ///
   /// # Errors
   ///
-  /// Returns an error when a way's point is past what the file's `u16` indices name.
+  /// Returns an error when a way's link leads to its own point or past the way's points
+  /// ([`EditableWayObject::check_links`]), or a way's point is past what the file's `u16` indices name.
   pub fn export(part: &EditableObjectPart<EditableWayObject>) -> XrfResult<Vec<LevelGameWay>> {
     part
       .objects
       .iter()
       .map(|way| {
+        way.check_links()?;
+
         let mut links: Vec<LevelGameWayLink> = Vec::new();
 
         let index = |index: usize| {

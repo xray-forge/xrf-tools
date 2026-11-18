@@ -73,8 +73,8 @@ async function renderPanels(
           problems: [
             {
               file: "spawn.part",
-              kind: ESceneProblemKind.FOREIGN_GUID,
-              message: "Part carries another scene's GUID",
+              kind: ESceneProblemKind.WRONG_VERSION,
+              message: "Part holds tool version 1",
               tool: ESceneToolKind.SPAWN,
             },
           ],

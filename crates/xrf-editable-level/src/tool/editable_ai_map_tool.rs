@@ -1,5 +1,5 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkLayout, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::narrow_format_size;
@@ -50,6 +50,9 @@ pub struct EditableAiMapTool {
   pub smooth_height: f32,
   /// The scene objects the nodes were generated over, by name.
   pub snap_objects: Vec<String>,
+  /// How the stream laid its chunks out, and any chunk the tool does not save, such as a converter's own, kept as
+  /// stored.
+  pub layout: ChunkLayout,
 }
 
 impl EditableAiMapTool {
@@ -87,6 +90,7 @@ impl EditableAiMapTool {
       brush_size: Self::DEFAULT_BRUSH_SIZE,
       smooth_height: Self::DEFAULT_SMOOTH_HEIGHT,
       snap_objects: Vec::new(),
+      layout: ChunkLayout::default(),
     }
   }
 
@@ -116,10 +120,85 @@ impl EditableAiMapTool {
   /// # Errors
   ///
   /// Returns an error when a chunk the editor asserts on is missing, the version is another, or a chunk does not hold
-  /// exactly what it counts.
+  /// exactly what it is read as. A chunk the tool does not save, such as a converter's own, is kept in
+  /// [`Self::layout`] and comes back on write.
   pub fn read_from_bytes<T: ByteOrder>(data: Vec<u8>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(data)?.read_children()?;
-    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16::<T>()?;
+    let mut version: Option<u16> = None;
+    let mut flags: Option<u32> = None;
+    let mut bounds: Option<Aabb> = None;
+    let mut params: Option<EditableAiMapParams> = None;
+    let mut nodes: Option<Vec<EditableAiMapNode>> = None;
+    let mut internal: Option<(f32, u32)> = None;
+    let mut smooth_height: Option<f32> = None;
+    let mut snap_objects: Option<Vec<String>> = None;
+    let layout: ChunkLayout = ChunkLayout::read(&mut ChunkReader::from_vec(data)?, |chunk| {
+      match chunk.id {
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
+        Self::FLAGS_CHUNK_ID if flags.is_none() => flags = Some(chunk.read_u32_payload::<T>()?),
+        Self::BOX_CHUNK_ID if bounds.is_none() => {
+          bounds = Some(
+            chunk.read_whole_payload("Expect the AI map box chunk to hold exactly its box", |chunk| {
+              Ok(Aabb {
+                min: Self::read_vector::<T>(chunk)?,
+                max: Self::read_vector::<T>(chunk)?,
+              })
+            })?,
+          );
+        }
+        Self::PARAMS_CHUNK_ID if params.is_none() => {
+          params = Some(chunk.read_whole_payload(
+            "Expect the AI map params chunk to hold exactly its four values",
+            |chunk| {
+              Ok(EditableAiMapParams {
+                patch_size: chunk.read_f32::<T>()?,
+                test_height: chunk.read_f32::<T>()?,
+                can_up: chunk.read_f32::<T>()?,
+                can_down: chunk.read_f32::<T>()?,
+              })
+            },
+          )?);
+        }
+        Self::NODES_CHUNK_ID if nodes.is_none() => {
+          nodes = Some(chunk.read_whole_payload(
+            "Expect the AI map nodes chunk to hold exactly the nodes it counts",
+            |chunk| {
+              let count: u32 = chunk.read_u32::<T>()?;
+              let mut nodes: Vec<EditableAiMapNode> =
+                chunk.new_bounded_vec(count.into(), EditableAiMapNode::SERIALIZED_SIZE, "AI map nodes")?;
+
+              for _ in 0..count {
+                nodes.push(EditableAiMapNode::read::<T>(chunk)?);
+              }
+
+              Ok(nodes)
+            },
+          )?);
+        }
+        Self::INTERNAL_DATA_CHUNK_ID if internal.is_none() => {
+          internal = Some(chunk.read_whole_payload(
+            "Expect the AI map internal data chunk to hold exactly two values",
+            |chunk| Ok((chunk.read_f32::<T>()?, chunk.read_u32::<T>()?)),
+          )?);
+        }
+        Self::INTERNAL_DATA2_CHUNK_ID if smooth_height.is_none() => {
+          smooth_height = Some(chunk.read_f32_payload::<T>()?);
+        }
+        Self::SNAP_OBJECTS_CHUNK_ID if snap_objects.is_none() => {
+          snap_objects = Some(chunk.read_whole_payload(
+            "Expect the AI map snap objects chunk to hold exactly its names",
+            |chunk| {
+              let count: u32 = chunk.read_u32::<T>()?;
+
+              (0..count).map(|_| chunk.read_w1251_string()).collect::<XrfResult<_>>()
+            },
+          )?);
+        }
+        _ => return Ok(false),
+      }
+
+      Ok(true)
+    })?;
+    let version: u16 = Self::require(version, "version")?;
 
     if version != Self::VERSION {
       return Err(XrfError::new_parsing_error(format!(
@@ -128,75 +207,43 @@ impl EditableAiMapTool {
       )));
     }
 
-    let flags: u32 = ChunkReader::find_required_by_id(&chunks, Self::FLAGS_CHUNK_ID)?.read_u32::<T>()?;
-    let mut bounds: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::BOX_CHUNK_ID)?;
-    let bounds: Aabb = Aabb {
-      min: Self::read_vector::<T>(&mut bounds)?,
-      max: Self::read_vector::<T>(&mut bounds)?,
-    };
-    let mut params: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::PARAMS_CHUNK_ID)?;
-    let params: EditableAiMapParams = EditableAiMapParams {
-      patch_size: params.read_f32::<T>()?,
-      test_height: params.read_f32::<T>()?,
-      can_up: params.read_f32::<T>()?,
-      can_down: params.read_f32::<T>()?,
-    };
-    let mut nodes_chunk: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::NODES_CHUNK_ID)?;
-    let count: u32 = nodes_chunk.read_u32::<T>()?;
-    let mut nodes: Vec<EditableAiMapNode> =
-      nodes_chunk.new_bounded_vec(count.into(), EditableAiMapNode::SERIALIZED_SIZE, "AI map nodes")?;
-
-    for _ in 0..count {
-      nodes.push(EditableAiMapNode::read::<T>(&mut nodes_chunk)?);
-    }
-
-    nodes_chunk.assert_read("Expect the AI map nodes chunk to hold exactly the nodes it counts")?;
-
     let mut tool: Self = Self {
-      flags,
-      ..Self::new(bounds, params, nodes)
+      flags: Self::require(flags, "flags")?,
+      layout,
+      ..Self::new(
+        Self::require(bounds, "box")?,
+        Self::require(params, "params")?,
+        Self::require(nodes, "nodes")?,
+      )
     };
 
-    for mut chunk in chunks {
-      match chunk.id {
-        Self::INTERNAL_DATA_CHUNK_ID => {
-          tool.vis_radius = chunk.read_f32::<T>()?;
-          tool.brush_size = chunk.read_u32::<T>()?;
-        }
-        Self::INTERNAL_DATA2_CHUNK_ID => tool.smooth_height = chunk.read_f32::<T>()?,
-        Self::SNAP_OBJECTS_CHUNK_ID => {
-          let count: u32 = chunk.read_u32::<T>()?;
-
-          tool.snap_objects = (0..count)
-            .map(|_| chunk.read_w1251_string())
-            .collect::<XrfResult<_>>()?;
-        }
-        _ => {}
-      }
+    if let Some((vis_radius, brush_size)) = internal {
+      (tool.vis_radius, tool.brush_size) = (vis_radius, brush_size);
     }
+
+    tool.smooth_height = smooth_height.unwrap_or(tool.smooth_height);
+    tool.snap_objects = snap_objects.unwrap_or_default();
 
     Ok(tool)
   }
 
-  /// The tool's stream as `ESceneAIMapTool::SaveStream` writes it, at [`Self::VERSION`].
+  /// A chunk `LoadStream` asserts on, `what` naming it.
+  fn require<V>(value: Option<V>, what: &str) -> XrfResult<V> {
+    value.ok_or_else(|| {
+      XrfError::new_parsing_error(format!("AI map tool has no {what} chunk, which the editor asserts on"))
+    })
+  }
+
+  /// The tool's stream as `ESceneAIMapTool::SaveStream` writes it, at [`Self::VERSION`], in the order and with the kept
+  /// chunks of [`Self::layout`].
   ///
   /// # Errors
   ///
   /// Returns an error when a count is past what its `u32` holds, a link past its three bytes, or a name does not
   /// encode.
   pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
-    let mut stream: ChunkWriter = ChunkWriter::new();
-    let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult {
-      let mut writer: ChunkWriter = ChunkWriter::new();
-
-      write(&mut writer)?;
-      writer.flush_chunk_into::<T>(&mut stream.buffer, id)?;
-
-      Ok(())
-    };
+    let mut sequence: ChunkSequence = ChunkSequence::new();
+    let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult { sequence.push(id, write) };
 
     chunk(Self::VERSION_CHUNK_ID, &|writer| {
       Ok(writer.write_u16::<T>(Self::VERSION)?)
@@ -249,6 +296,10 @@ impl EditableAiMapTool {
 
       Ok(())
     })?;
+
+    let mut stream: ChunkWriter = ChunkWriter::new();
+
+    self.layout.write::<T>(&mut stream, sequence)?;
 
     Ok(stream.buffer)
   }

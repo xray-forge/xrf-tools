@@ -100,12 +100,41 @@ fn refuses_a_way_the_editor_does_not_load() -> XrfResult {
     (("name", ""), "an empty name"),
     (("link_wp_   2_   0", "3.000000, 1.000000"), "a link to a missing point"),
     (("link_wp_   0_   0", "1.000000"), "a link of one float"),
+    (("link_wp_   2_   0", "2.000000, 1.000000"), "a link to its own point"),
+    (
+      ("link_wp_10000_   0", "1.000000, 1.000000"),
+      "a point number past four digits",
+    ),
+    (("link_wp_   2_   x", "1.000000, 1.000000"), "no link number"),
   ] {
     assert!(
       read_ways(&way_part_text(&GUID, &[field])?).is_err(),
       "a way of {reason} was read"
     );
   }
+
+  Ok(())
+}
+
+#[test]
+fn checks_that_every_link_leads_to_another_point_of_the_way() -> XrfResult {
+  let mut way: EditableWayObject = read_ways(&way_part_text(&GUID, &[])?)?.objects.remove(0);
+
+  way.check_links()?;
+
+  for to in [0, 3] {
+    let mut linked: EditableWayObject = way.clone();
+
+    linked.points[0].links.push(EditableWayLink { to, probability: 1.0 });
+
+    assert!(linked.check_links().is_err(), "a link to point {to} is refused");
+  }
+
+  way.points[2].links.push(EditableWayLink {
+    to: 1,
+    probability: 1.0,
+  });
+  way.check_links()?;
 
   Ok(())
 }

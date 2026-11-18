@@ -408,9 +408,9 @@ export type LevelSceneInference = `${ELevelSceneInference}`;
 
 /** What the decompile read but left out of the scene, with why. */
 export type LevelSceneRefusal = {
-  /** The compiled file holding it, such as `level.spawn`. */
+  /** The compiled file holding it, such as `level.spawn`, or an object library's file that could not be used. */
   file: string;
-  /** Its name there, such as an entity's. */
+  /** Its name there, such as an entity's, or the library file's name. */
   object: string;
   reason: string;
 };

@@ -191,9 +191,7 @@ impl EditableObjectFile {
         }
         Self::LODS_CHUNK_ID if lods.is_none() => lods = Some(chunk.read_w1251_string_payload()?),
         Self::MESHES_CHUNK_ID if meshes.is_none() => {
-          meshes = Some(EditableChunks::read_numbered(chunk, "mesh", |chunk| {
-            EditableMesh::read::<T, D>(chunk)
-          })?);
+          meshes = Some(chunk.read_numbered_children("mesh", |chunk| EditableMesh::read::<T, D>(chunk))?);
         }
         Self::SURFACES_CHUNK_ID if surfaces.is_none() => {
           surfaces = Some(EditableChunks::read_whole(chunk, "surfaces", |chunk| {
@@ -203,9 +201,7 @@ impl EditableObjectFile {
           })?);
         }
         Self::BONES_CHUNK_ID if bones.is_none() => {
-          bones = Some(EditableChunks::read_numbered(chunk, "bone", |chunk| {
-            EditableBone::read::<T, D>(chunk)
-          })?);
+          bones = Some(chunk.read_numbered_children("bone", |chunk| EditableBone::read::<T, D>(chunk))?);
         }
         Self::EMBEDDED_MOTIONS_CHUNK_ID if embedded_motions.is_none() => {
           embedded_motions = Some(chunk.read_remaining()?);

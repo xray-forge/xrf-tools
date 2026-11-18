@@ -26,7 +26,10 @@ fn group_part(group: usize, classes: &[i32]) -> XrfResult<EditableLevelPart> {
 
     section.set("clsid", "0");
     EditableCustomObject::new(format!("group_{index}"), EditableObjectTransform::default()).write_to_section(section);
-    section.set("ingroup_count", classes.len().to_string());
+    section.set(
+      EditableGroupTool::MEMBER_COUNT_KEY,
+      if index == group { classes.len() } else { 0 }.to_string(),
+    );
   }
 
   for (member, class) in classes.iter().enumerate() {
@@ -78,6 +81,55 @@ fn reads_each_groups_members_of_a_class_in_place_across_its_files() -> XrfResult
     [("member_0", 0.0), ("member_1", 1.0), ("member_0", 0.0)],
     "the members of the class, at their own places, the second group's in the second file"
   );
+
+  Ok(())
+}
+
+/// The SDK saves sections sorted as strings, `ingroup_0, ingroup_1, ingroup_10, ingroup_11, ingroup_2`; the editor loads
+/// them by number.
+#[test]
+fn reads_a_groups_members_in_the_editors_numeric_order() -> XrfResult {
+  let tool: EditableSceneTool = EditableSceneTool {
+    name: String::from(EditableGroupTool::TOOL_NAME),
+    parts: vec![group_part(0, &[EditableSceneObject::CLASS_ID; 12])?],
+  };
+  let members: Vec<EditableGroupMember<EditableSceneObject>> = EditableGroupTool::read_grouped_members(&tool)?;
+
+  assert_eq!(
+    members
+      .iter()
+      .map(|member| member.object.object.name.clone())
+      .collect::<Vec<_>>(),
+    (0..12).map(|index| format!("member_{index}")).collect::<Vec<_>>()
+  );
+
+  Ok(())
+}
+
+/// A member section the count leaves out, or a counted member with no section, is refused with a reason rather than
+/// read or dropped.
+#[test]
+fn refuses_a_member_past_the_count_and_a_counted_member_missing() -> XrfResult {
+  for count in ["1", "3"] {
+    let EditableLevelPart::Text(mut part) = group_part(0, &[EditableSceneObject::CLASS_ID; 2])? else {
+      unreachable!("the fixture is a text part");
+    };
+
+    part
+      .ini
+      .section_mut("object_0")
+      .set(EditableGroupTool::MEMBER_COUNT_KEY, count);
+
+    let tool: EditableSceneTool = EditableSceneTool {
+      name: String::from(EditableGroupTool::TOOL_NAME),
+      parts: vec![EditableLevelPart::Text(part)],
+    };
+
+    assert!(
+      EditableGroupTool::read_grouped_members::<EditableSceneObject>(&tool).is_err(),
+      "a count of {count} for two member sections is refused"
+    );
+  }
 
   Ok(())
 }

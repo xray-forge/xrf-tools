@@ -47,16 +47,57 @@ impl EditableWayObject {
 
   const LINK_PREFIX: &'static str = "link_wp_";
 
+  /// The most digits `%4d` reads of a number; a key holding more fails the editor's `R_ASSERT4(res == 2, …)`.
+  const LINK_KEY_DIGITS: usize = 4;
+
   /// A link's key, `link_wp_%4d_%4d`: the padding sorts the keys in the order of their numbers.
   fn get_link_key(point: usize, link: usize) -> String {
     format!("{}{point:4}_{link:4}", Self::LINK_PREFIX)
   }
 
-  /// A link key's point and link numbers, as `sscanf("link_wp_%4d_%4d")` reads them.
+  /// A link key's point and link numbers, as `sscanf("link_wp_%4d_%4d")` reads them: each at most four digits after
+  /// the padding.
   fn parse_link_key(key: &str) -> Option<(usize, usize)> {
     let (point, link) = key.strip_prefix(Self::LINK_PREFIX)?.split_once('_')?;
+    let number = |field: &str| -> Option<usize> {
+      let digits: &str = field.trim_start();
 
-    Some((point.trim().parse().ok()?, link.trim().parse().ok()?))
+      (!digits.is_empty() && digits.len() <= Self::LINK_KEY_DIGITS && digits.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| digits.parse().ok())
+        .flatten()
+    };
+
+    Some((number(point)?, number(link)?))
+  }
+
+  /// Whether every link leads to another point of the way: `CWayPoint::CreateLink` drops a link to its own point, and a
+  /// link past the points names none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error naming the way, the point and the link.
+  pub fn check_links(&self) -> XrfResult {
+    for (index, point) in self.points.iter().enumerate() {
+      for link in &point.links {
+        if link.to == index {
+          return Err(XrfError::new_invalid_error(format!(
+            "Way '{}' point {index} links to itself, a link the editor drops",
+            self.object.name
+          )));
+        }
+
+        if link.to >= self.points.len() {
+          return Err(XrfError::new_invalid_error(format!(
+            "Way '{}' point {index} links to point {} of {}",
+            self.object.name,
+            link.to,
+            self.points.len()
+          )));
+        }
+      }
+    }
+
+    Ok(())
   }
 }
 
@@ -66,7 +107,8 @@ impl EditableToolObject for EditableWayObject {
   const TOOL_NAME: &'static str = "way";
 
   /// As `CWayObject::LoadLTX` reads it: another version or an empty name refused, the points, then each link in the
-  /// order its key sorts, appended to its point.
+  /// order its key sorts, appended to its point; a key the editor's `sscanf` cannot read, or a link
+  /// [`Self::check_links`] refuses, is refused.
   fn read_from_object(object: &EditablePartObject<'_>) -> XrfResult<Self> {
     let section: &IniSection = object.section;
     let version: u32 = section.get_parsed::<u32>("version")?;
@@ -108,24 +150,29 @@ impl EditableToolObject for EditableWayObject {
       let target: Vector2d = EditableLevelValue::read_vector2(section, key)?;
       let to: usize = usize::try_from(target.x.floor() as i64).map_err(|_| link_error())?;
 
-      if point >= points.len() || to >= points.len() {
-        return Err(link_error());
-      }
-
-      points[point].links.push(EditableWayLink {
-        to,
-        probability: target.y,
-      });
+      points
+        .get_mut(point)
+        .ok_or_else(link_error)?
+        .links
+        .push(EditableWayLink {
+          to,
+          probability: target.y,
+        });
     }
 
-    Ok(Self {
+    let way: Self = Self {
       object: custom,
       points,
       kind: EditableLevelValue::read_u32(section, "type")?,
-    })
+    };
+
+    way.check_links()?;
+
+    Ok(way)
   }
 
-  /// As `CWayObject::SaveLTX` writes it, at [`Self::VERSION`].
+  /// As `CWayObject::SaveLTX` writes it, at [`Self::VERSION`]; the links as they are, which every reader and the
+  /// level's export check with [`Self::check_links`].
   fn write_to_ini(&self, ini: &mut IniFile, section: &str) {
     let section: &mut IniSection = ini.section_mut(section);
 

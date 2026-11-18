@@ -100,5 +100,16 @@ fn refuses_a_link_to_a_point_the_path_does_not_hold() {
       .unwrap_err()
       .to_string();
 
-  assert!(error.contains("Patrol path 'walk' links point 0 to 2 of 2"), "{error}");
+  assert!(error.contains("Way 'walk' point 0 links to point 2 of 2"), "{error}");
+}
+
+/// The editor drops a link from a point to itself, so it never exports one; a file holding one is not its export.
+#[test]
+fn refuses_a_link_from_a_point_to_itself() {
+  let error: String =
+    LevelWayConversion::decompile(&[way("walk", 2, &[(1, 1, 1.0)])], &mut LevelDecompileContext::new(GUID))
+      .unwrap_err()
+      .to_string();
+
+  assert!(error.contains("point 1 links to itself"), "{error}");
 }

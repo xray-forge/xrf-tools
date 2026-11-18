@@ -3,13 +3,16 @@ use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryCh
 use xrf_error::{XrfError, XrfResult};
 
 use crate::level::editable_level_guid::EditableLevelGuid;
+use crate::tool::editable_ai_map_tool::EditableAiMapTool;
+use crate::tool::editable_detail_object_tool::EditableDetailObjectTool;
+use crate::tool::editable_wallmark_tool::EditableWallmarkTool;
 
 /// A tool's part saved as chunks rather than text (`EScene::SaveLTX` for a tool that cannot use an INI file): the AI
 /// map, the detail objects and the wall marks. The file is the scene's GUID under [`Self::GUID_CHUNK_ID`] and the
 /// tool's own stream under [`Self::DATA_CHUNK_ID`] plus its class id, as `EScene::LoadLevelPart` finds them.
 ///
-/// The tool's stream is kept as its bytes, read by the tool's own type where one exists (`EditableWallmarkTool`) and
-/// otherwise where that tool is converted.
+/// The tool's stream is kept as its bytes, read by the tool's own type (`EditableAiMapTool`,
+/// `EditableDetailObjectTool`, `EditableWallmarkTool`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableBinaryPart {
   pub guid: EditableLevelGuid,
@@ -31,16 +34,35 @@ impl EditableBinaryPart {
   /// Bytes the GUID chunk holds.
   pub const GUID_SIZE: u64 = 16;
 
-  /// Reads a binary part: the GUID chunk, and the first chunk past [`Self::DATA_CHUNK_ID`] as the tool's stream.
+  /// The class a tool saves its binary part as, by the tool's name, which names its files; none for a tool saving text.
+  pub fn get_tool_class_id(tool: &str) -> Option<u32> {
+    match tool {
+      EditableAiMapTool::TOOL_NAME => Some(EditableAiMapTool::CLASS_ID),
+      EditableDetailObjectTool::TOOL_NAME => Some(EditableDetailObjectTool::CLASS_ID),
+      EditableWallmarkTool::TOOL_NAME => Some(EditableWallmarkTool::CLASS_ID),
+      _ => None,
+    }
+  }
+
+  /// Reads a binary part: the GUID chunk, and the tool's stream from the data chunk of `class_id`, as
+  /// `EScene::LoadLevelPart` opens `CHUNK_TOOLS_DATA` plus the class of the tool the file is named after. With no class,
+  /// or none of it held, the first data chunk is the stream, so a part saved for another tool still reads and its
+  /// class tells it apart; any other data chunk is kept in the layout.
   ///
   /// # Errors
   ///
   /// Returns an error when the bytes are not chunks, the GUID chunk is missing or not 16 bytes, or no data chunk is
   /// present, which the editor reports as a corrupted part.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
+  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>, class_id: Option<u32>) -> XrfResult<Self> {
+    let wanted: Option<u32> = class_id.and_then(|class_id| Self::DATA_CHUNK_ID.checked_add(class_id));
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(bytes)?;
+    let is_wanted_held: bool = wanted.is_some_and(|wanted| {
+      reader
+        .get_children_cloned()
+        .is_ok_and(|chunks| chunks.iter().any(|chunk| chunk.id == wanted))
+    });
     let mut guid: Option<EditableLevelGuid> = None;
-    let mut class_id: Option<u32> = None;
+    let mut found_class: Option<u32> = None;
     let mut data: Option<Vec<u8>> = None;
     let layout: ChunkLayout = ChunkLayout::read(&mut reader, |chunk| {
       match chunk.id {
@@ -55,8 +77,8 @@ impl EditableBinaryPart {
 
           guid = Some(EditableLevelGuid::read::<T>(chunk)?);
         }
-        id if id >= Self::DATA_CHUNK_ID && data.is_none() => {
-          class_id = Some(id - Self::DATA_CHUNK_ID);
+        id if id >= Self::DATA_CHUNK_ID && data.is_none() && (!is_wanted_held || Some(id) == wanted) => {
+          found_class = Some(id - Self::DATA_CHUNK_ID);
           data = Some(chunk.read_remaining()?);
         }
         _ => return Ok(false),
@@ -65,7 +87,7 @@ impl EditableBinaryPart {
       Ok(true)
     })?;
     let guid: EditableLevelGuid = guid.ok_or_else(|| XrfError::new_parsing_error("Level part has no GUID chunk"))?;
-    let (Some(class_id), Some(data)) = (class_id, data) else {
+    let (Some(class_id), Some(data)) = (found_class, data) else {
       return Err(XrfError::new_parsing_error("Level part has no tool data chunk"));
     };
 

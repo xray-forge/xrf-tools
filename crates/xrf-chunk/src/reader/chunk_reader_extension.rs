@@ -207,13 +207,47 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(buf)
   }
 
-  /// Reads one value and proves it was the whole payload.
-  fn read_whole_payload<V>(&mut self, message: &str, read: impl FnOnce(&mut Self) -> XrfResult<V>) -> XrfResult<V> {
+  /// Reads one value and proves it was the whole payload, so no byte of the chunk is dropped on the way back.
+  ///
+  /// # Errors
+  ///
+  /// Returns `read`'s error, or `message` when bytes are left after it.
+  pub fn read_whole_payload<V>(&mut self, message: &str, read: impl FnOnce(&mut Self) -> XrfResult<V>) -> XrfResult<V> {
     let value: V = read(self)?;
 
     self.assert_read(message)?;
 
     Ok(value)
+  }
+
+  /// Reads the children numbered from zero, refusing any other numbering: the SDK opens such a list as `open_chunk(i)`
+  /// for `i` from 0 up to the first number missing, so a gap would hide what follows it from the editor while a reader
+  /// of every child kept it. `what` names the children in the error.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the children are not well-formed chunks, one stands out of its number's place, or `read`
+  /// returns one.
+  pub fn read_numbered_children<I>(
+    &mut self,
+    what: &str,
+    mut read: impl FnMut(&mut Self) -> XrfResult<I>,
+  ) -> XrfResult<Vec<I>> {
+    let children: Vec<Self> = self.read_children()?;
+    let mut items: Vec<I> = Vec::with_capacity(children.len());
+
+    for (index, mut child) in children.into_iter().enumerate() {
+      if u64::from(child.id) != index as u64 {
+        return Err(XrfError::new_parsing_error(format!(
+          "Unexpected {what} chunk {} at position {index}, the editor numbers them from 0 without gaps",
+          child.id
+        )));
+      }
+
+      items.push(read(&mut child)?);
+    }
+
+    Ok(items)
   }
 }
 

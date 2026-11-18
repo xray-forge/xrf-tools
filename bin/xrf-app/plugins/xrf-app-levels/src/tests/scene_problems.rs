@@ -1,5 +1,5 @@
 //! What the Level Editor would skip or refuse of a scene's parts, each kept as a problem on its tool while the scene
-//! opens and the rest of it reads.
+//! opens and the rest of it reads; a part saved for another scene refuses the open.
 
 use std::sync::Arc;
 
@@ -20,7 +20,7 @@ use crate::scene::{
   SceneProblemKind, SceneSource, SceneToolKind, SelectedScene, SelectedSceneDescription, SelectedScenes,
 };
 use crate::tests::fixtures::{
-  SCENE_GUID, new_scenes, open_scene, scene_custom_object, scene_part, write_scene, write_scene_part,
+  SCENE_GUID, new_scenes, open_scene, read_scene, scene_custom_object, scene_part, write_scene, write_scene_part,
 };
 
 /// A text part of the test scenes as `edit` leaves its file.
@@ -83,11 +83,14 @@ fn open(assets: &AssetMountState, source: &SceneSource) -> Arc<SessionSnapshot<S
   open_scene(&scenes, assets, source)
 }
 
+/// A part saved for another scene is a stale copy the editor skips; opening the scene without that tool's objects would
+/// show a different scene, so the open refuses, as the build does.
 #[test]
-fn keeps_each_part_the_editor_would_skip_as_a_problem_on_its_tool_and_opens_the_rest() {
-  let source: SceneSource = write_scene("scene_problems/open");
+fn refuses_a_scene_holding_a_part_saved_for_another_scene() {
+  let source: SceneSource = write_scene("scene_problems/stale");
   let stale: EditableLevelGuid = EditableLevelGuid { g0: 1, g1: 2 };
 
+  write_scene_part(&source, "ai_map.part", ai_map_part());
   write_scene_part(
     &source,
     "glow.part",
@@ -96,6 +99,18 @@ fn keeps_each_part_the_editor_would_skip_as_a_problem_on_its_tool_and_opens_the_
       .and_then(|part| part.write_to_bytes())
       .unwrap(),
   );
+
+  let error: String = read_scene(&AssetMountState::new(), &source)
+    .err()
+    .expect("a stale part refuses the scene");
+
+  assert!(error.contains("glow.part") && error.contains("GUID 1:2"), "{error}");
+}
+
+#[test]
+fn keeps_each_part_the_editor_would_skip_as_a_problem_on_its_tool_and_opens_the_rest() {
+  let source: SceneSource = write_scene("scene_problems/open");
+
   write_scene_part(
     &source,
     "light.part",
@@ -114,18 +129,17 @@ fn keeps_each_part_the_editor_would_skip_as_a_problem_on_its_tool_and_opens_the_
   let opened: Arc<SessionSnapshot<SelectedScene>> = open(&AssetMountState::new(), &source);
   let problems: &[SceneProblem] = &opened.problems;
 
-  assert_eq!(find_problem(problems, "glow").kind, SceneProblemKind::ForeignGuid);
   assert_eq!(find_problem(problems, "light").kind, SceneProblemKind::WrongVersion);
   assert_eq!(find_problem(problems, "sector").kind, SceneProblemKind::ForeignClass);
   assert_eq!(find_problem(problems, "wallmark").kind, SceneProblemKind::ForeignClass);
   assert_eq!(find_problem(problems, "ps").kind, SceneProblemKind::Unreadable);
   assert_eq!(find_problem(problems, "ps").file.as_deref(), Some("ps.part"));
-  assert_eq!(problems.len(), 5, "{problems:?}");
+  assert_eq!(problems.len(), 4, "{problems:?}");
   let described: SelectedSceneDescription = opened.describe();
 
   assert_eq!(
     described.tools.len(),
-    6,
+    5,
     "every tool with a part file is listed, those skipped among them"
   );
   assert_eq!(
@@ -142,10 +156,10 @@ fn keeps_each_part_the_editor_would_skip_as_a_problem_on_its_tool_and_opens_the_
     described
       .tools
       .iter()
-      .find(|tool| tool.name == "glow")
+      .find(|tool| tool.name == "light")
       .and_then(|tool| tool.files[0].guid.as_deref()),
-    Some("1:2"),
-    "a stale part's file names the scene it was saved for"
+    Some(SelectedScene::format_guid(&SCENE_GUID).as_str()),
+    "a part's file names the scene it was saved for"
   );
 }
 

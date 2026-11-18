@@ -7,7 +7,12 @@ use xrf_utils::{HostFileName, format_path};
 
 use crate::level::editable_level_file::EditableLevelFile;
 use crate::level::editable_level_guid::EditableLevelGuid;
+use crate::part::editable_binary_part::EditableBinaryPart;
 use crate::part::editable_level_part::EditableLevelPart;
+use crate::scene::editable_scene_part_directory::EditableScenePartDirectory;
+use crate::scene::editable_scene_part_file::EditableScenePartFile;
+use crate::scene::editable_scene_part_source::EditableScenePartSource;
+use crate::scene::editable_scene_read::EditableSceneRead;
 use crate::scene::editable_scene_tool::EditableSceneTool;
 
 /// A whole scene as the Level Editor opens it: the `.level` and, in the directory beside it named after it, each
@@ -25,54 +30,127 @@ impl EditableLevelScene {
     level_path.with_extension("")
   }
 
-  /// Reads a scene: the `.level`, then for every `<tool>.part` in the parts directory that file and the numbered ones
-  /// after it, as long as they follow without a gap, the way `EScene::LoadLevelPartLTX` reads them. Any other file in
-  /// the directory, such as a `.~part` copy of an earlier save, is not part of the scene.
+  /// Reads a scene from the host: the `.level`, then its part directory as [`Self::read_from_source`] reads it.
   ///
   /// # Errors
   ///
-  /// Returns an error when the `.level` or a part cannot be read, or a part carries a GUID other than the scene's,
-  /// which the editor skips as a stale version of the part.
+  /// Returns an error when the `.level` does not read, as [`Self::read_from_source`] does, or when a tool's walk stops
+  /// at a part that does not read.
   pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(level_path: &P) -> XrfResult<Self> {
-    let level: EditableLevelFile = EditableLevelFile::read_from_path(level_path)?;
-    let guid: EditableLevelGuid = level.get_guid()?;
-    let directory: PathBuf = Self::get_parts_directory(level_path.as_ref());
-    let mut tools: Vec<EditableSceneTool> = Vec::new();
+    let directory: EditableScenePartDirectory = EditableScenePartDirectory {
+      directory: Self::get_parts_directory(level_path.as_ref()),
+    };
+    let read: EditableSceneRead =
+      Self::read_from_source::<T>(EditableLevelFile::read_from_path(level_path)?, &directory)?;
 
-    for name in Self::list_tool_names(&directory)? {
+    if let Some(file) = read.get_problems().next() {
+      return Err(XrfError::new_parsing_error(format!(
+        "Level part {} does not read: {}",
+        format_path(&directory.directory.join(&file.name)),
+        file.problem.as_deref().unwrap_or_default()
+      )));
+    }
+
+    Ok(read.scene)
+  }
+
+  /// Reads a scene's parts from `source` as `EScene::LoadLevelPartLTX` finds them: for every `<tool>.part` the
+  /// directory holds, that file and the numbered ones after it as long as they follow without a gap, the tools by name.
+  /// A binary part's data is its tool's class ([`EditableBinaryPart::get_tool_class_id`]). Any other file, such as a
+  /// `.~part` copy of an earlier save, is not part of the scene. A file that is not read, does not read as a part or
+  /// carries no GUID stops its tool's walk there, so each tool's parts stay in their files' places; the read keeps it
+  /// beside the scene with why.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `level` carries no GUID, the directory cannot be listed, or a part carries a GUID other than
+  /// the scene's: a stale part the editor would skip, which refuses the scene here rather than open it without the
+  /// tool's objects.
+  pub fn read_from_source<T: ByteOrder>(
+    level: EditableLevelFile,
+    source: &impl EditableScenePartSource,
+  ) -> XrfResult<EditableSceneRead> {
+    let guid: EditableLevelGuid = level.get_guid()?;
+    let listed: HashSet<String> = source
+      .list_files()?
+      .into_iter()
+      .filter(|name| EditableLevelPart::is_part_file_name(name))
+      .collect();
+    let suffix: String = format!(".{}", EditableLevelPart::EXTENSION);
+    let mut names: Vec<&str> = listed.iter().filter_map(|name| name.strip_suffix(&suffix)).collect();
+    let mut tools: Vec<EditableSceneTool> = Vec::new();
+    let mut files: Vec<EditableScenePartFile> = Vec::new();
+
+    names.sort_unstable();
+
+    for name in names {
       let mut tool: EditableSceneTool = EditableSceneTool {
-        name,
+        name: name.to_owned(),
         parts: Vec::new(),
       };
+      let class_id: Option<u32> = EditableBinaryPart::get_tool_class_id(name);
 
-      loop {
-        let path: PathBuf = directory.join(tool.get_file_name(tool.parts.len()));
+      for index in 0.. {
+        let file_name: String = tool.get_file_name(index);
 
-        if !path.is_file() {
+        if !listed.contains(&file_name) {
           break;
         }
 
-        let part: EditableLevelPart = EditableLevelPart::read_from_path::<T, _>(&path)?;
-        let part_guid: EditableLevelGuid = part.get_guid()?;
+        let mut file: EditableScenePartFile = EditableScenePartFile {
+          tool: tool.name.clone(),
+          index,
+          name: file_name,
+          size: 0,
+          guid: None,
+          problem: None,
+        };
+        let (part, found) = match Self::read_part::<T>(source, &mut file, class_id) {
+          Ok(read) => read,
+          Err(error) => {
+            file.problem = Some(error.to_string());
+            files.push(file);
+            break;
+          }
+        };
 
-        if part_guid != guid {
+        if found != guid {
           return Err(XrfError::new_parsing_error(format!(
             "Level part {} carries GUID {}:{}, not its scene's {}:{}",
-            format_path(&path),
-            part_guid.g0,
-            part_guid.g1,
-            guid.g0,
-            guid.g1
+            file.name, found.g0, found.g1, guid.g0, guid.g1
           )));
         }
 
+        file.guid = Some(found);
+        files.push(file);
         tool.parts.push(part);
       }
 
-      tools.push(tool);
+      if !tool.parts.is_empty() {
+        tools.push(tool);
+      }
     }
 
-    Ok(Self { level, tools })
+    Ok(EditableSceneRead {
+      scene: Self { level, tools },
+      files,
+    })
+  }
+
+  /// Reads `file` from `source` as a part, its data chunk `class_id`'s, recording its size, and the GUID it carries.
+  fn read_part<T: ByteOrder>(
+    source: &impl EditableScenePartSource,
+    file: &mut EditableScenePartFile,
+    class_id: Option<u32>,
+  ) -> XrfResult<(EditableLevelPart, EditableLevelGuid)> {
+    let bytes: Vec<u8> = source.read_file(&file.name)?;
+
+    file.size = bytes.len() as u64;
+
+    let part: EditableLevelPart = EditableLevelPart::read_from_bytes::<T>(bytes, class_id)?;
+    let guid: EditableLevelGuid = part.get_guid()?;
+
+    Ok((part, guid))
   }
 
   /// Writes the `.level` and every tool's parts into the directory beside it, leaving any other file there as it is.
@@ -161,36 +239,15 @@ impl EditableLevelScene {
     self.tools.iter().find(|tool| tool.name == name)
   }
 
-  /// The names of the tools with a `<name>.part` in the directory, sorted.
-  fn list_tool_names(directory: &Path) -> XrfResult<Vec<String>> {
-    let suffix: String = format!(".{}", EditableLevelPart::EXTENSION);
-
-    Ok(
-      Self::list_part_file_names(directory)?
-        .into_iter()
-        .filter_map(|file_name| file_name.strip_suffix(&suffix).map(str::to_owned))
-        .collect(),
-    )
-  }
-
   /// The files in the directory the editor reads as parts, sorted; none when the directory does not exist.
   fn list_part_file_names(directory: &Path) -> XrfResult<Vec<String>> {
-    if !directory.is_dir() {
-      return Ok(Vec::new());
+    let mut names: Vec<String> = EditableScenePartDirectory {
+      directory: directory.to_path_buf(),
     }
-
-    let mut names: Vec<String> = Vec::new();
-
-    for entry in std::fs::read_dir(directory)? {
-      let entry = entry?;
-
-      if entry.file_type()?.is_file()
-        && let Some(file_name) = entry.file_name().to_str()
-        && EditableLevelPart::is_part_file_name(file_name)
-      {
-        names.push(file_name.to_owned());
-      }
-    }
+    .list_files()?
+    .into_iter()
+    .filter(|name| EditableLevelPart::is_part_file_name(name))
+    .collect();
 
     names.sort();
 

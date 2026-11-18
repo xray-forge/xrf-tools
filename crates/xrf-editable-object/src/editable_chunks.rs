@@ -38,30 +38,6 @@ impl EditableChunks {
     Ok(())
   }
 
-  /// Reads a run of children numbered from zero, refusing any other numbering: the SDK reads such a list only up to
-  /// the first number missing, so a gap would hide what follows it from the editor while this reader kept it.
-  pub(crate) fn read_numbered<D: ChunkDataSource, I>(
-    reader: &mut ChunkReader<D>,
-    what: &str,
-    mut read: impl FnMut(&mut ChunkReader<D>) -> XrfResult<I>,
-  ) -> XrfResult<Vec<I>> {
-    let children: Vec<ChunkReader<D>> = reader.read_children()?;
-    let mut items: Vec<I> = Vec::with_capacity(children.len());
-
-    for (index, mut child) in children.into_iter().enumerate() {
-      if u64::from(child.id) != index as u64 {
-        return Err(XrfError::new_parsing_error(format!(
-          "Unexpected {what} chunk {} at position {index}, the editor numbers them from 0 without gaps",
-          child.id
-        )));
-      }
-
-      items.push(read(&mut child)?);
-    }
-
-    Ok(items)
-  }
-
   /// Reads a chunk folded into a field and proves the field was all of it, so no byte is dropped on the way back.
   pub(crate) fn read_whole<D: ChunkDataSource, V>(
     chunk: &mut ChunkReader<D>,

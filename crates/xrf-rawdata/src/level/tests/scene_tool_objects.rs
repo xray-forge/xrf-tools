@@ -34,6 +34,7 @@ fn group_tool(name: &str, members: &[EditableSceneObject]) -> EditableSceneTool 
 
   group.set("clsid", EditableGroupTool::CLASS_ID.to_string());
   group.set("name", name);
+  group.set(EditableGroupTool::MEMBER_COUNT_KEY, members.len().to_string());
 
   for (index, member) in members.iter().enumerate() {
     let section: String = format!("object_0_ingroup_{index}");

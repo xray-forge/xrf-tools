@@ -40,10 +40,16 @@ fn main() -> xrf_error::XrfResult {
 | `EditableBinaryPart` | `<name>\<tool>.part`, saved as chunks | GUID chunk `0x7000`, the tool's stream in chunk `0x8000`, and its class |
 | `EditableLevelScene` | The `.level` and its part directory   | The main file and each tool's parts                                     |
 
-A scene is found as the editor finds it:
+A scene is found as the editor finds it, by one reader, `EditableLevelScene::read_from_source`, over any
+`EditableScenePartSource` that lists and reads the part directory; `read_from_path` gives it the host directory, and
+the app its mounted search:
 
-- A part file starting with `[` is text; any other is chunks.
-- A tool's numbered files (`group.part1`, `group.part2`) follow its first until one is missing.
+- A part file starting with `[` is text; any other is chunks, whose data chunk is the class of the tool the file is
+  named after (`EditableBinaryPart::get_tool_class_id`) where it holds one.
+- A tool's numbered files (`group.part1`, `group.part2`) follow its first until one is missing. A file that does not
+  read stops its tool there, so each part stands at its file's place; `EditableSceneRead::files` says which and why.
+- A part carrying another scene's GUID refuses the scene: the editor skips it, so the scene would open without that
+  tool's objects.
 - Files with other names, such as the editor's `.~part` backups, are not part of the scene.
 
 ### Text files
@@ -64,7 +70,10 @@ Typed values are for use; the kept text is what writes back. Not every saved num
 ### Binary parts
 
 The AI map, detail objects and wall marks are saved as chunks. A binary part keeps the tool's stream as bytes, and its
-chunk order and any chunk the editor never writes in a `ChunkLayout`.
+chunk order and any chunk the editor never writes in a `ChunkLayout`. Each typed tool does the same with its stream's
+chunks: every chunk it reads must be read whole, and one the tool does not save (xray-re's `0x7777` in all three) is
+kept in the tool's `layout` and written back. Detail objects and wall mark slots are numbered from 0 as the editor
+opens them, and the detail slots must fill the header's grid, on read and on write.
 
 A tool's stream reads typed where its tool is typed. `EditableWallmarkTool` (`ESceneWallmarkTool`) holds the wall mark
 brush and its decals in slots, read as `LoadStream` reads versions 3 and 4 and written as `SaveStream` writes version
@@ -74,8 +83,8 @@ does). An empty slot stays as stored; the editor drops it on load.
 `EditableDetailObjectTool` (`EDetailManager`) holds the detail objects, each an `EditableDetailObject` (`EDetail`: the
 library object it plants by reference, its scale range, density factor and flags), the base texture's colour indices,
 and the slot grid as stored (`DetailSlot`, four words a slot), with the grid's header, box, base texture, density and
-snap objects; `get_slot_object`, `with_slot_object` and `get_unlit_slot` read and write a slot's corners and light as
-the editor does. The SDK's four `detail_object.part` files read and write back byte for byte.
+snap objects; `xrf-level`'s `LevelDetailsSlot` reads a slot's corners and light. The SDK's four `detail_object.part`
+files read and write back byte for byte.
 
 `EditableAiMapTool` (`ESceneAIMapTool`) holds the AI map: the generator's settings (`EditableAiMapParams`, `SAIParams`),
 the box node heights are packed across, and each `EditableAiMapNode` (`SAINode`: four three-byte links, the packed
@@ -98,6 +107,9 @@ Groups (`group.part`, `group.part1` and on) hold each group as an `[object_N]` o
 `EditableGroupTool::read_groups` reads each group as an `EditableCustomObject`, and `read_grouped_members` every member
 of one class as that class's type, each an `EditableGroupMember` naming the group holding it. A member keeps its own
 transform in the level, and the editor loads it into its class's list before the objects of that tool's own part.
+Members are `[object_N_ingroup_i]` for `i` in `0..ingroup_count`, by number as `EScene::ReadObjectsLTX` loads them,
+not in the file's string order (`ingroup_10` sorts before `ingroup_2`); a member section past the count, or a counted
+member missing, is refused.
 
 | Type                             | Editor              | Holds                                                                                  |
 | -------------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
@@ -126,7 +138,9 @@ Editor quirks kept:
 - A sound environment writes its own `version` (18) over the shape's (2); `CEditShape::LoadLTX` reads the shape's fields
   under whichever it finds.
 - A way's links are keyed `link_wp_%4d_%4d`; the padding sorts them in their numbers' order, which is the order the
-  editor appends them in.
+  editor appends them in. A number past four digits, which the editor's `sscanf` asserts on, is refused, and
+  `EditableWayObject::check_links` refuses a link to its own point (which `CWayPoint::CreateLink` drops) or past the
+  way's points.
 - An entity's `[object_N_spawndata]` keeps its section (`name`) and flags (`fl`) apart, and its packet's numbered fields
   as stored; `xrf-rawdata` reads them as the entity's class.
 - `EditableShapeObject::get_scaled_elements` is `ApplyScale`, which the build gives an entity's attached shape. A unit
@@ -171,7 +185,9 @@ Reads refuse what the editor refuses or skips:
 - a `.level` of a version other than 5;
 - a scene or text part with no GUID;
 - a binary part with no GUID chunk, a GUID chunk not 16 bytes long, or no tool data chunk;
-- a part whose GUID is not its scene's.
+- a part whose GUID is not its scene's, which refuses the whole scene;
+- a group member past `ingroup_count` or missing under it, a way's link to its own point, a binary tool's chunk not
+  read whole, numbered children with a gap, or detail slots that do not fill the grid.
 
 `EditableTextPart::get_objects` refuses an object `[main]` counts but no section holds.
 
@@ -179,8 +195,10 @@ Writes refuse:
 
 - what [xrf-ini](../xrf-ini/README.md) refuses, and text that would not read back as itself;
 - a scene whose part directory holds a part file it would not write (a removed tool, or a numbered file past its last),
-  since the editor would read it as part of the scene. Nothing is written in that case; `check_writable` runs that
-  check alone, for a caller writing something else first.
+  since the editor would read it as part of the scene, names compared without case. Nothing is written in that case;
+  `check_writable` runs that check alone, for a caller writing something else first;
+- a scene tool whose name is not one file name, or two whose names differ only in case;
+- detail slots that do not fill the grid.
 
 ## Checks
 

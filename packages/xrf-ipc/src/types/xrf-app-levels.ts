@@ -1582,12 +1582,13 @@ export type SceneProblem = {
   message: string;
 };
 
-/** Why the Level Editor would skip or refuse one of a scene's parts, as it does rather than refusing the scene. */
+/**
+ * Why the Level Editor would skip or refuse one of a scene's parts, as it does rather than refusing the scene. A part
+ * carrying another scene's GUID is none of these: it refuses the scene.
+ */
 export enum ESceneProblemKind {
   /** The file does not read as a part, or what its tool keeps in it does not read as that tool's. */
   UNREADABLE = "unreadable",
-  /** The part carries another scene's GUID: a stale copy of the tool's part, which the editor skips. */
-  FOREIGN_GUID = "foreignGuid",
   /** The part's `[main]` holds a tool version other than the one its tool reads. */
   WRONG_VERSION = "wrongVersion",
   /** The part is saved as another tool's class, or holds an object of another class than its tool's. */

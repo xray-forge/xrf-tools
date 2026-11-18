@@ -1,5 +1,5 @@
 use byteorder::WriteBytesExt;
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkLayout, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, AiNodePosition, Sphere, Vector3d};
 
@@ -61,17 +61,39 @@ fn a_wall_mark_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
   let bytes: Vec<u8> = tool()
     .to_part::<XRayByteOrder>(GUID)?
     .write_to_bytes::<XRayByteOrder>()?;
-  let EditableLevelPart::Binary(part) = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone())? else {
+  let EditableLevelPart::Binary(part) =
+    EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone(), Some(EditableWallmarkTool::CLASS_ID))?
+  else {
     panic!("a wall mark part is chunks");
   };
   let read: EditableWallmarkTool = EditableWallmarkTool::read_from_part::<XRayByteOrder>(&part)?;
 
   assert_eq!(part.guid, GUID);
-  assert_eq!(read, tool(), "an empty slot kept as stored");
+  assert_eq!(
+    EditableWallmarkTool {
+      layout: ChunkLayout::default(),
+      ..read.clone()
+    },
+    tool(),
+    "an empty slot kept as stored"
+  );
   assert_eq!(
     read.to_part::<XRayByteOrder>(GUID)?.write_to_bytes::<XRayByteOrder>()?,
     bytes
   );
+
+  Ok(())
+}
+
+/// GSC's multiplayer scenes keep a wall mark tool of no decal, its decal chunk empty.
+#[test]
+fn a_wall_mark_tool_of_no_decal_reads_back_the_same() -> XrfResult {
+  let empty: EditableWallmarkTool = EditableWallmarkTool::new(Vec::new());
+  let bytes: Vec<u8> = empty.write_to_bytes::<XRayByteOrder>()?;
+  let read: EditableWallmarkTool = EditableWallmarkTool::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+
+  assert!(read.slots.is_empty());
+  assert_eq!(read.write_to_bytes::<XRayByteOrder>()?, bytes);
 
   Ok(())
 }
@@ -86,7 +108,10 @@ fn a_wall_mark_tool_becomes_the_scene_tool_of_its_part() -> XrfResult {
     [EditableLevelPart::Binary(tool().to_part::<XRayByteOrder>(GUID)?)]
   );
   assert_eq!(
-    EditableWallmarkTool::read_from_scene_tool::<XRayByteOrder>(&scene_tool)?,
+    EditableWallmarkTool {
+      layout: ChunkLayout::default(),
+      ..EditableWallmarkTool::read_from_scene_tool::<XRayByteOrder>(&scene_tool)?
+    },
     tool()
   );
 
@@ -205,6 +230,7 @@ fn detail_tool() -> EditableDetailObjectTool {
     base_texture: Some(String::from("terrain\\terrain_mp_darkvalley_det")),
     density: 0.3,
     snap_objects: vec![String::from("mp_darkvalley_sector_0")],
+    layout: ChunkLayout::default(),
   }
 }
 
@@ -215,13 +241,17 @@ fn a_detail_object_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
     panic!("a detail part is chunks");
   };
   let bytes: Vec<u8> = part.write_to_bytes::<XRayByteOrder>()?;
-  let EditableLevelPart::Binary(read) = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone())? else {
+  let EditableLevelPart::Binary(read) = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone(), None)?
+  else {
     panic!("a detail part reads as chunks");
   };
 
   assert_eq!(scene_tool.get_file_name(0), "detail_object.part");
   assert_eq!(
-    EditableDetailObjectTool::read_from_part::<XRayByteOrder>(&read)?,
+    EditableDetailObjectTool {
+      layout: ChunkLayout::default(),
+      ..EditableDetailObjectTool::read_from_part::<XRayByteOrder>(&read)?
+    },
     detail_tool()
   );
   assert_eq!(read.write_to_bytes::<XRayByteOrder>()?, bytes);
@@ -277,13 +307,17 @@ fn an_ai_map_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
     panic!("an AI map part is chunks");
   };
   let bytes: Vec<u8> = part.write_to_bytes::<XRayByteOrder>()?;
-  let EditableLevelPart::Binary(read) = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone())? else {
+  let EditableLevelPart::Binary(read) = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes.clone(), None)?
+  else {
     panic!("an AI map part reads as chunks");
   };
 
   assert_eq!(scene_tool.get_file_name(0), "ai_map.part");
   assert_eq!(
-    EditableAiMapTool::read_from_part::<XRayByteOrder>(&read)?,
+    EditableAiMapTool {
+      layout: ChunkLayout::default(),
+      ..EditableAiMapTool::read_from_part::<XRayByteOrder>(&read)?
+    },
     ai_map_tool()
   );
   assert_eq!(read.write_to_bytes::<XRayByteOrder>()?, bytes);
@@ -300,6 +334,62 @@ fn an_ai_map_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
 }
 
 /// A node stands on its cell, the patch size from the world origin, at its height spread across the box.
+/// `stream` with one more chunk, `id`, after its own.
+fn with_chunk(mut stream: Vec<u8>, id: u32) -> XrfResult<Vec<u8>> {
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  writer.write_u8(0)?;
+  writer.flush_chunk_into::<XRayByteOrder>(&mut stream, id)?;
+
+  Ok(stream)
+}
+
+/// A chunk the tool does not save, as a converter such as xray-re adds (`0x7777`), comes back on a typed write rather
+/// than being lost.
+#[test]
+fn each_binary_tool_keeps_a_chunk_it_does_not_save() -> XrfResult {
+  let wallmarks: Vec<u8> = with_chunk(tool().write_to_bytes::<XRayByteOrder>()?, 0x7777)?;
+  let details: Vec<u8> = with_chunk(detail_tool().write_to_bytes::<XRayByteOrder>()?, 0x7777)?;
+  let ai_map: Vec<u8> = with_chunk(ai_map_tool().write_to_bytes::<XRayByteOrder>()?, 0x7777)?;
+
+  assert_eq!(
+    EditableWallmarkTool::read_from_bytes::<XRayByteOrder>(wallmarks.clone())?.write_to_bytes::<XRayByteOrder>()?,
+    wallmarks
+  );
+  assert_eq!(
+    EditableDetailObjectTool::read_from_bytes::<XRayByteOrder>(details.clone())?.write_to_bytes::<XRayByteOrder>()?,
+    details
+  );
+  assert_eq!(
+    EditableAiMapTool::read_from_bytes::<XRayByteOrder>(ai_map.clone())?.write_to_bytes::<XRayByteOrder>()?,
+    ai_map
+  );
+
+  Ok(())
+}
+
+/// The level's details index the slots by the header's grid, so slots that do not fill it are refused both ways.
+#[test]
+fn refuses_detail_slots_that_do_not_fill_the_grid() -> XrfResult {
+  let mut wider: EditableDetailObjectTool = detail_tool();
+
+  wider.header.size_x = 3;
+
+  assert!(wider.write_to_bytes::<XRayByteOrder>().is_err(), "a write is refused");
+
+  let mut stream: Vec<u8> = detail_tool().write_to_bytes::<XRayByteOrder>()?;
+
+  // The version and flags chunks, 12 bytes each, precede the header, whose payload's fifth word is `size_x`.
+  stream[48..52].copy_from_slice(&3u32.to_le_bytes());
+
+  assert!(
+    EditableDetailObjectTool::read_from_bytes::<XRayByteOrder>(stream).is_err(),
+    "a read is refused"
+  );
+
+  Ok(())
+}
+
 #[test]
 fn unpacks_a_nodes_position_as_the_editor_does() {
   let tool: EditableAiMapTool = ai_map_tool();

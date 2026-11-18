@@ -105,9 +105,6 @@ export function describeSceneProblemKind(kind: SceneProblemKind): string {
     case ESceneProblemKind.UNREADABLE:
       return "Unreadable";
 
-    case ESceneProblemKind.FOREIGN_GUID:
-      return "Another scene's part";
-
     case ESceneProblemKind.WRONG_VERSION:
       return "Wrong tool version";
 

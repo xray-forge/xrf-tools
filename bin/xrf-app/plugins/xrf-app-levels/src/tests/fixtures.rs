@@ -6,6 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
@@ -305,18 +306,12 @@ pub(super) fn new_scenes(assets: &AssetMountState) -> SelectedScenes {
   SelectedScenes::new("scene", &SessionScopes::default()).with_derivation(assets, OpenedScene::derive)
 }
 
-/// Opens the scene `source` names as one more handle of `scenes`, as `levels|open_scene` does, its library objects
-/// looked for in the `objects` directory beside its `levels` and its game data in `gamedata` beside its `rawdata` where
-/// that directory exists.
-pub(super) fn open_scene(
-  scenes: &SelectedScenes,
-  assets: &AssetMountState,
-  source: &SceneSource,
-) -> Arc<SessionSnapshot<SelectedScene>> {
+/// Reads the scene `source` names as an open does, without opening it: what [`open_scene`] commits, or why it refuses.
+pub(super) fn read_scene(assets: &AssetMountState, source: &SceneSource) -> TauriResult<SessionDerived<SelectedScene>> {
   let roots: XrayRoots = source.get_roots().expect("the scene lies in a directory");
   let search: XraySearch = assets.search(&roots).expect("the scene's directory mounts");
-  let revision: XrayRevision = search.get_vfs().get_revision();
-  let opened: SessionDerived<SelectedScene> = OpenedScene {
+
+  OpenedScene {
     source: source.clone(),
     objects_roots: source.get_objects_roots(None),
     game: SceneGameData {
@@ -326,7 +321,23 @@ pub(super) fn open_scene(
     },
   }
   .read(search)
-  .expect("the scene opens");
+}
+
+/// Opens the scene `source` names as one more handle of `scenes`, as `levels|open_scene` does, its library objects
+/// looked for in the `objects` directory beside its `levels` and its game data in `gamedata` beside its `rawdata` where
+/// that directory exists.
+pub(super) fn open_scene(
+  scenes: &SelectedScenes,
+  assets: &AssetMountState,
+  source: &SceneSource,
+) -> Arc<SessionSnapshot<SelectedScene>> {
+  let roots: XrayRoots = source.get_roots().expect("the scene lies in a directory");
+  let revision: XrayRevision = assets
+    .search(&roots)
+    .expect("the scene's directory mounts")
+    .get_vfs()
+    .get_revision();
+  let opened: SessionDerived<SelectedScene> = read_scene(assets, source).expect("the scene opens");
 
   scenes
     .begin_fixture_open(SessionId::generate())

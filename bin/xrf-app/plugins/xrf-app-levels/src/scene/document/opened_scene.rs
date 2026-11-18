@@ -5,9 +5,10 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
-  EditableLevelFile, EditableLevelGuid, EditableLevelPart, EditableLevelScene, EditableSceneTool,
+  EditableLevelFile, EditableLevelGuid, EditableLevelPart, EditableLevelScene, EditableScenePartFile,
+  EditableScenePartSource, EditableSceneRead, EditableSceneTool,
 };
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayRoots, XraySearch};
 
 use crate::scene::{
@@ -24,11 +25,10 @@ pub(crate) struct OpenedScene {
   pub game: SceneGameData,
 }
 
-/// The part files beside a scene, by file name, and what each is read through and checked against.
+/// The part files beside a scene, by file name, and the search they are read through.
 struct ScenePartFiles<'a> {
   search: &'a XraySearch,
   files: BTreeMap<String, XrayAsset>,
-  guid: EditableLevelGuid,
 }
 
 /// One tool's part files as read: the parts the editor would load, the files as listed, and why any was left out.
@@ -46,9 +46,9 @@ impl OpenedScene {
   ///
   /// # Errors
   ///
-  /// Returns an error when its source names no `.level`, the `.level` is not found or does not read as a scene's, or
-  /// its part directory cannot be listed. A part file that does not read, or one the editor would skip, is kept as a
-  /// problem on its tool.
+  /// Returns an error when its source names no `.level`, the `.level` is not found or does not read as a scene's, its
+  /// part directory cannot be listed, or a part carries another scene's GUID ([`EditableLevelScene::read_from_source`]).
+  /// A part file that does not read, or one the editor would not load as its tool's, is kept as a problem on its tool.
   pub(crate) fn read(self, search: XraySearch) -> TauriResult<SessionDerived<SelectedScene>> {
     profiling::scope!("scene open");
 
@@ -72,17 +72,26 @@ impl OpenedScene {
       search: &search,
       files: ScenePartFiles::list(&search, &name)
         .map_err(|error| format!("Failed to list the parts of scene '{}': {error}", source.path))?,
-      guid,
     };
+    let EditableSceneRead {
+      scene: mut read_scene,
+      files: read_files,
+    } = EditableLevelScene::read_from_source::<XRayByteOrder>(level, &files)
+      .map_err(|error| format!("Failed to read scene '{}': {error}", source.path))?;
     let mut scene: EditableLevelScene = EditableLevelScene {
-      level,
+      level: read_scene.level,
       tools: Vec::new(),
     };
     let mut tools: Vec<SceneToolDescription> = Vec::new();
     let mut problems: Vec<SceneProblem> = Vec::new();
 
-    for tool in files.list_tool_names() {
-      let mut read: SceneToolRead = files.read_tool(tool);
+    for tool_name in Self::list_tool_names(&read_files) {
+      let tool: Option<EditableSceneTool> = read_scene
+        .tools
+        .iter()
+        .position(|tool| tool.name == tool_name)
+        .map(|index| read_scene.tools.remove(index));
+      let mut read: SceneToolRead = SceneToolRead::new(tool_name, tool, &read_files);
 
       if !read.tool.parts.is_empty() {
         scene.tools.push(read.tool);
@@ -125,6 +134,41 @@ impl OpenedScene {
     }
     .read(assets.search(&current.roots)?)
   }
+
+  /// The tools a read reached a file of, in the editor's order, those it does not save after them by name.
+  fn list_tool_names(files: &[EditableScenePartFile]) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+
+    for file in files {
+      if !names.contains(&file.tool) {
+        names.push(file.tool.clone());
+      }
+    }
+
+    // Stable over the read's own order, which is by name.
+    names.sort_by_key(|name| {
+      let kind: Option<SceneToolKind> = SceneToolKind::of(name);
+
+      (kind.is_none(), kind)
+    });
+
+    names
+  }
+}
+
+impl EditableScenePartSource for ScenePartFiles<'_> {
+  fn list_files(&self) -> XrfResult<Vec<String>> {
+    Ok(self.files.keys().cloned().collect())
+  }
+
+  fn read_file(&self, name: &str) -> XrfResult<Vec<u8>> {
+    let asset: &XrayAsset = self
+      .files
+      .get(name)
+      .ok_or_else(|| XrfError::new_not_found_error(format!("Part file '{name}' is not listed")))?;
+
+    self.search.read_asset(asset)
+  }
 }
 
 impl ScenePartFiles<'_> {
@@ -140,115 +184,62 @@ impl ScenePartFiles<'_> {
         .collect(),
     )
   }
+}
 
-  /// The tools with a first part file, `<tool>.part`, in the editor's order, those it does not save after them by
-  /// name.
-  fn list_tool_names(&self) -> Vec<String> {
-    let suffix: String = format!(".{}", EditableLevelPart::EXTENSION);
-    let mut names: Vec<String> = self
-      .files
-      .keys()
-      .filter_map(|file| file.strip_suffix(&suffix).map(str::to_owned))
-      .collect();
-
-    // Stable over the files' own order, which is by name.
-    names.sort_by_key(|name| {
-      let kind: Option<SceneToolKind> = SceneToolKind::of(name);
-
-      (kind.is_none(), kind)
-    });
-
-    names
-  }
-
-  /// The tool's files as `EScene::LoadLevelPartLTX` reads them: its first, then each numbered one after it until one is
-  /// missing, every one that reads, carries the scene's GUID and is the tool's to load kept as a part.
-  fn read_tool(&self, name: String) -> SceneToolRead {
+impl SceneToolRead {
+  /// The tool's files as the scene read reached them, and its parts as read: each file described, one the read stopped
+  /// at a problem, and the parts kept up to the first the editor would not load as the tool's (another class, another
+  /// version), since the parts after it would no longer stand in their files' places.
+  fn new(name: String, tool: Option<EditableSceneTool>, files: &[EditableScenePartFile]) -> Self {
     let tool_kind: Option<SceneToolKind> = SceneToolKind::of(&name);
-    let mut read: SceneToolRead = SceneToolRead {
-      tool: EditableSceneTool {
-        name: name.clone(),
-        parts: Vec::new(),
-      },
-      description: SceneToolDescription {
-        name,
-        kind: tool_kind,
-        format: tool_kind.map(SceneToolKind::get_format),
-        size: 0,
-        files: Vec::new(),
-      },
-      problems: Vec::new(),
+    let mut tool: EditableSceneTool = tool.unwrap_or_else(|| EditableSceneTool {
+      name: name.clone(),
+      parts: Vec::new(),
+    });
+    let mut description: SceneToolDescription = SceneToolDescription {
+      name,
+      kind: tool_kind,
+      format: tool_kind
+        .map(SceneToolKind::get_format)
+        .or_else(|| tool.parts.first().map(SceneToolFormat::from)),
+      size: 0,
+      files: Vec::new(),
     };
+    let mut problems: Vec<SceneProblem> = Vec::new();
 
-    for index in 0.. {
-      let file: String = read.tool.get_file_name(index);
-      let Some(asset) = self.files.get(&file) else {
-        break;
-      };
-      let problem = |kind: SceneProblemKind, message: String| SceneProblem {
-        kind,
-        tool: read.tool.name.clone(),
-        file: Some(file.clone()),
-        message,
-      };
-      let bytes: Vec<u8> = match self.search.read_asset(asset) {
-        Ok(bytes) => bytes,
-        Err(error) => {
-          read.problems.push(problem(
-            SceneProblemKind::Unreadable,
-            format!("Part was not read: {error}"),
-          ));
-          read.description.files.push(ScenePartFileDescription {
-            name: file,
-            size: 0,
-            guid: None,
-          });
-
-          continue;
-        }
-      };
-      let size: u64 = bytes.len() as u64;
-      let part: XrfResult<EditableLevelPart> = EditableLevelPart::read_from_bytes::<XRayByteOrder>(bytes);
-      let part_guid: Option<EditableLevelGuid> = part.as_ref().ok().and_then(|part| part.get_guid().ok());
-      let part_format: Option<SceneToolFormat> = part.as_ref().ok().map(SceneToolFormat::from);
-      let accepted: Result<EditableLevelPart, SceneProblem> = part
-        .map_err(|error| problem(SceneProblemKind::Unreadable, format!("Part does not read: {error}")))
-        .and_then(|part| match part_guid {
-          Some(found) if found == self.guid => Ok(part),
-          Some(found) => Err(problem(
-            SceneProblemKind::ForeignGuid,
-            format!(
-              "Part carries GUID {}, not its scene's {}",
-              SelectedScene::format_guid(&found),
-              SelectedScene::format_guid(&self.guid)
-            ),
-          )),
-          None => Err(problem(
-            SceneProblemKind::Unreadable,
-            String::from("Part carries no GUID"),
-          )),
-        })
-        .and_then(
-          |part| match tool_kind.and_then(|tool_kind| tool_kind.check(&file, &part)) {
-            Some(problem) => Err(problem),
-            None => Ok(part),
-          },
-        );
-
-      read.description.size += size;
-      read.description.format = read.description.format.or(part_format);
-      read.description.files.push(ScenePartFileDescription {
-        name: file,
-        size,
-        guid: part_guid.as_ref().map(SelectedScene::format_guid),
+    for file in files.iter().filter(|file| file.tool == tool.name) {
+      description.size += file.size;
+      description.files.push(ScenePartFileDescription {
+        name: file.name.clone(),
+        size: file.size,
+        guid: file.guid.as_ref().map(SelectedScene::format_guid),
       });
 
-      match accepted {
-        Ok(part) => read.tool.parts.push(part),
-        Err(problem) => read.problems.push(problem),
+      if let Some(problem) = &file.problem {
+        problems.push(SceneProblem {
+          kind: SceneProblemKind::Unreadable,
+          tool: tool.name.clone(),
+          file: Some(file.name.clone()),
+          message: format!("Part does not read: {problem}"),
+        });
       }
     }
 
-    read
+    if let Some(tool_kind) = tool_kind
+      && let Some((index, problem)) = tool
+        .parts
+        .iter()
+        .enumerate()
+        .find_map(|(index, part)| Some((index, tool_kind.check(&tool.get_file_name(index), part)?)))
+    {
+      problems.push(problem);
+      tool.parts.truncate(index);
+    }
+
+    Self {
+      tool,
+      description,
+      problems,
+    }
   }
 }

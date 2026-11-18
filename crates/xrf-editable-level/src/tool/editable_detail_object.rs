@@ -49,10 +49,11 @@ impl EditableDetailObject {
   ///
   /// # Errors
   ///
-  /// Returns an error when a chunk the editor asserts on is missing or the version is another.
+  /// Returns an error when a chunk the editor asserts on is missing, the version is another, a chunk does not hold
+  /// exactly what it is read as, or the object holds a chunk `EDetail::Save` does not write.
   pub(crate) fn read<T: ByteOrder>(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = reader.read_children()?;
-    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32::<T>()?;
+    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32_payload::<T>()?;
 
     if version != Self::VERSION {
       return Err(XrfError::new_parsing_error(format!(
@@ -61,17 +62,27 @@ impl EditableDetailObject {
       )));
     }
 
-    let reference: String = ChunkReader::find_required_by_id(&chunks, Self::REFERENCE_CHUNK_ID)?.read_w1251_string()?;
-    let mut scale: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::find_required_by_id(&chunks, Self::SCALE_LIMITS_CHUNK_ID)?;
-    let (min_scale, max_scale) = (scale.read_f32::<T>()?, scale.read_f32::<T>()?);
+    let reference: String = ChunkReader::find_required_by_id(&chunks, Self::REFERENCE_CHUNK_ID)?.read_whole_payload(
+      "Expect the detail object reference chunk to hold exactly its name",
+      |chunk| chunk.read_w1251_string(),
+    )?;
+    let (min_scale, max_scale) = ChunkReader::find_required_by_id(&chunks, Self::SCALE_LIMITS_CHUNK_ID)?
+      .read_whole_payload(
+        "Expect the detail object scale chunk to hold exactly its two limits",
+        |chunk| Ok((chunk.read_f32::<T>()?, chunk.read_f32::<T>()?)),
+      )?;
     let mut object: Self = Self::new(reference, min_scale, max_scale, 0);
 
     for mut chunk in chunks {
       match chunk.id {
-        Self::DENSITY_FACTOR_CHUNK_ID => object.density_factor = chunk.read_f32::<T>()?,
-        Self::FLAGS_CHUNK_ID => object.flags = chunk.read_u32::<T>()?,
-        _ => {}
+        Self::VERSION_CHUNK_ID | Self::REFERENCE_CHUNK_ID | Self::SCALE_LIMITS_CHUNK_ID => {}
+        Self::DENSITY_FACTOR_CHUNK_ID => object.density_factor = chunk.read_f32_payload::<T>()?,
+        Self::FLAGS_CHUNK_ID => object.flags = chunk.read_u32_payload::<T>()?,
+        id => {
+          return Err(XrfError::new_parsing_error(format!(
+            "Detail object holds chunk {id:#06x}, which the editor does not save"
+          )));
+        }
       }
     }
 

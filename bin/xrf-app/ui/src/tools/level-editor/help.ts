@@ -50,8 +50,9 @@ export const LEVEL_EDITOR_HELP: IToolHelp = {
       "draw neither a model nor a helper - says which in the viewport.",
     "A spawn point's icon says what is known without the game's configs: the actor's start, a respawn point, or any " +
       "other entity. A sound source's spheres are not drawn: a scene keeps the distances its sound's file last gave.",
-    "A part the SDK's editor would skip - one of another scene's GUID, of another tool version or class, or one that " +
-      "does not read - is listed in Problems and marked on its tool in the Outliner; the rest of the scene opens.",
+    "A part the SDK's editor would skip - one of another tool version or class, or one that does not read - is " +
+      "listed in Problems and marked on its tool in the Outliner; the rest of the scene opens. A part saved for " +
+      "another scene, carrying its GUID, refuses the open: the editor would skip it and open a different scene.",
     "The AI map, detail objects and wall marks are counted, not read into the page.",
     "A group's members are listed under their own tools, each naming its group.",
     "The scene is read again when its files change on disk, and drawn again when its `.level` or part files do.",

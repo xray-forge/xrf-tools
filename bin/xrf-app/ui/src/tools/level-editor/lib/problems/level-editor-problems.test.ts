@@ -58,8 +58,8 @@ describe("listLevelEditorProblems", () => {
         scene: [
           {
             file: "spawn_001.part",
-            kind: ESceneProblemKind.FOREIGN_GUID,
-            message: "Part carries another scene's GUID",
+            kind: ESceneProblemKind.WRONG_VERSION,
+            message: "Part holds tool version 1",
             tool: ESceneToolKind.SPAWN,
           },
           {
@@ -79,8 +79,8 @@ describe("listLevelEditorProblems", () => {
     ).toEqual([
       {
         location: { line: null, path: "spawn_001.part" },
-        message: "Part carries another scene's GUID",
-        rule: "Another scene's part",
+        message: "Part holds tool version 1",
+        rule: "Wrong tool version",
         subject: "Spawn points · spawn_001.part",
       },
       {
@@ -285,7 +285,6 @@ describe("describeSceneProblemKind", () => {
   it("names every kind", () => {
     expect(Object.values(ESceneProblemKind).map(describeSceneProblemKind)).toEqual([
       "Unreadable",
-      "Another scene's part",
       "Wrong tool version",
       "Another tool's class",
     ]);

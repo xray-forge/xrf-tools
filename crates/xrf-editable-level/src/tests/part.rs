@@ -71,13 +71,41 @@ fn a_binary_part_comes_back_in_the_order_its_file_stored_it() -> XrfResult {
     chunk(0x0042, b"x"),
     chunk(0x7000, &guid_bytes(&GUID)?),
   ])?;
-  let part: EditableBinaryPart = EditableBinaryPart::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let part: EditableBinaryPart = EditableBinaryPart::read_from_bytes::<XRayByteOrder>(bytes.clone(), None)?;
 
   assert_eq!(part.guid, GUID);
   assert_eq!(part.class_id, 13);
   assert_eq!(part.data, b"nodes");
   assert_eq!(part.layout.kept, vec![chunk(0x0042, b"x")]);
   assert_eq!(part.write_to_bytes::<XRayByteOrder>()?, bytes);
+
+  Ok(())
+}
+
+/// The editor opens the data chunk of the class of the tool the file is named after; another class's chunk is kept.
+#[test]
+fn reads_the_data_chunk_of_the_tools_class_where_the_part_holds_two() -> XrfResult {
+  let bytes: Vec<u8> = binary_part_bytes(&[
+    chunk(0x7000, &guid_bytes(&GUID)?),
+    chunk(0x8000 + 12, b"details"),
+    chunk(0x8000 + 13, b"nodes"),
+  ])?;
+  let part: EditableBinaryPart = EditableBinaryPart::read_from_bytes::<XRayByteOrder>(
+    bytes.clone(),
+    EditableBinaryPart::get_tool_class_id("ai_map"),
+  )?;
+
+  assert_eq!((part.class_id, part.data.as_slice()), (13, b"nodes".as_slice()));
+  assert_eq!(part.layout.kept, vec![chunk(0x8000 + 12, b"details")]);
+  assert_eq!(part.write_to_bytes::<XRayByteOrder>()?, bytes);
+
+  let other: EditableBinaryPart =
+    EditableBinaryPart::read_from_bytes::<XRayByteOrder>(bytes, EditableBinaryPart::get_tool_class_id("wallmark"))?;
+
+  assert_eq!(
+    other.class_id, 12,
+    "without its own class, the first data chunk tells what it is"
+  );
 
   Ok(())
 }
@@ -92,7 +120,7 @@ fn refuses_a_binary_part_the_editor_would_skip() -> XrfResult {
     (vec![chunk(0x7000, &guid[..8]), chunk(0x8000, b"")], "a short GUID"),
   ] {
     assert!(
-      EditableBinaryPart::read_from_bytes::<XRayByteOrder>(binary_part_bytes(&chunks)?).is_err(),
+      EditableBinaryPart::read_from_bytes::<XRayByteOrder>(binary_part_bytes(&chunks)?, None).is_err(),
       "a part with {reason} was read"
     );
   }
@@ -103,11 +131,11 @@ fn refuses_a_binary_part_the_editor_would_skip() -> XrfResult {
 #[test]
 fn tells_text_and_binary_parts_apart_by_their_first_byte() -> XrfResult {
   let text: EditableLevelPart =
-    EditableLevelPart::read_from_bytes::<XRayByteOrder>(spawn_part_text(&GUID, 2)?.into_bytes())?;
-  let binary: EditableLevelPart = EditableLevelPart::read_from_bytes::<XRayByteOrder>(binary_part_bytes(&[
-    chunk(0x7000, &guid_bytes(&GUID)?),
-    chunk(0x8000 + 4, b""),
-  ])?)?;
+    EditableLevelPart::read_from_bytes::<XRayByteOrder>(spawn_part_text(&GUID, 2)?.into_bytes(), None)?;
+  let binary: EditableLevelPart = EditableLevelPart::read_from_bytes::<XRayByteOrder>(
+    binary_part_bytes(&[chunk(0x7000, &guid_bytes(&GUID)?), chunk(0x8000 + 4, b"")])?,
+    None,
+  )?;
 
   assert!(matches!(text, EditableLevelPart::Text(_)));
   assert!(matches!(binary, EditableLevelPart::Binary(_)));

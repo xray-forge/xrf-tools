@@ -1,3 +1,4 @@
+use xrf_chunk::ChunkLayout;
 use xrf_editable_level::{EditableDetailHeader, EditableDetailObject, EditableDetailObjectTool};
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{DetailModel, LevelDetailsFile, LevelDetailsLight, LevelDetailsSlot};
@@ -121,6 +122,7 @@ impl LevelDetailConversion {
         base_texture: None,
         density: Self::DEFAULT_DENSITY,
         snap_objects: Vec::new(),
+        layout: ChunkLayout::default(),
       }),
       textures,
       refused,
