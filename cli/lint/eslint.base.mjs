@@ -38,6 +38,33 @@ export function createImportCycleLayer({ files, ignores = [], project }) {
 }
 
 /**
+ * Layer failing on an import that crosses one of `zones`, the import resolved through the member's `tsconfig`, so a path
+ * alias and a relative path landing in the same module are held to the same boundary.
+ *
+ * @param {object} options - What the boundaries cover.
+ * @param {Array<string>} options.files - Globs it lints.
+ * @param {string} options.project - The `tsconfig` declaring the aliases.
+ * @param {string} options.basePath - The directory the zones' paths start at.
+ * @param {Array<{ target: string, from: string, except?: Array<string>, message: string }>} options.zones - Each says
+ *   that modules under `target` may not import from under `from`, but for its `except` paths, which are relative to
+ *   `from`.
+ * @returns {import("eslint").Linter.Config} The layer.
+ */
+export function createRestrictedPathsLayer({ files, project, basePath, zones }) {
+  return {
+    files,
+    plugins: { "import-x": importXPlugin },
+    settings: {
+      ...importXConfigs.typescript.settings,
+      "import-x/resolver-next": [createTypeScriptImportResolver({ project })],
+    },
+    rules: {
+      "import-x/no-restricted-paths": ["error", { basePath, zones }],
+    },
+  };
+}
+
+/**
  * Flat configuration every TypeScript member of the workspace is linted with.
  *
  * @param {string} rootDir - The member's directory, which typescript-eslint cannot infer once the root lints two.

@@ -161,15 +161,6 @@ export class LevelEditorSceneService {
     }
   }
 
-  /**
-   * Abandons pending work and releases the scene at once, for a surface leaving while its tool stays.
-   */
-  @BoundAction()
-  public clear(): void {
-    this.scene.release();
-    this.detachParts();
-  }
-
   @BoundAction()
   private forgetOpening(opening: number): void {
     if (opening === this.openings) {

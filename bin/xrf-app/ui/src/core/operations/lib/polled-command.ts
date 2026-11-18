@@ -7,6 +7,11 @@ export interface IPolledCommandOptions<T> {
   read: () => Promise<Nullable<T>>;
   /** How long to wait between reads. */
   interval: number;
+  /**
+   * Whether two readings are the same, so the later notifies no watcher; `Object.is` by default, which a native read
+   * answering a new value every time never meets, so a structural one suits a reading that rarely changes.
+   */
+  equals?: (previous: T, next: T) => boolean;
 }
 
 /**
@@ -128,8 +133,16 @@ export class PolledCommand<T> {
   @BoundAction()
   private accept(next: Nullable<T>): void {
     // A reading equal to the last one notifies nothing.
-    if (!Object.is(next, this.reading)) {
+    if (!this.isSame(this.reading, next)) {
       this.reading = next;
     }
+  }
+
+  private isSame(previous: Nullable<T>, next: Nullable<T>): boolean {
+    if (previous === null || next === null || !this.options.equals) {
+      return Object.is(previous, next);
+    }
+
+    return this.options.equals(previous, next);
   }
 }

@@ -455,11 +455,12 @@ export class NativeViewportTarget {
       this.cancel();
       this.send({ kind: EWorldInputEvent.RELEASE_ALL });
     },
-    // The secondary button's release asks for a menu, unless it dragged the camera.
+    // The secondary button's release asks for a menu, unless it dragged the camera: the press just let go travelled, or,
+    // let go first of a chord, the press still held has.
     contextmenu: (event: Event): void => {
       event.preventDefault();
 
-      if (!this.isMenuWithheld) {
+      if (!this.isMenuWithheld && !this.press?.isTravelled) {
         this.send({ kind: EWorldInputEvent.CONTEXT_MENU });
       }
 

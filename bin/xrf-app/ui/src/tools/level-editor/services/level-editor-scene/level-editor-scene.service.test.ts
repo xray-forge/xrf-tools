@@ -211,19 +211,4 @@ describe("LevelEditorSceneService", () => {
     expect(service.scene.value?.name).toBe("labx8");
     expect(countCalls(ELevelsCommand.OPEN_SCENE)).toBe(0);
   });
-
-  it("lets the scene go at once when cleared", async () => {
-    const { service } = mockInjectedService(LevelEditorSceneService);
-
-    armScene();
-
-    await service.open(REQUEST);
-    await flush();
-
-    service.clear();
-
-    expect(service.scene.value).toBeNull();
-    expect(service.objects.value).toBeNull();
-    expect(service.binaryTools.value).toBeNull();
-  });
 });

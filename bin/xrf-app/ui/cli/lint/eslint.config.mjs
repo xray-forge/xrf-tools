@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createEslintConfig, createImportCycleLayer } from "@xrf/toolchain/eslint";
+import { createEslintConfig, createImportCycleLayer, createRestrictedPathsLayer } from "@xrf/toolchain/eslint";
 import { createReactLayers, TESTING_LIBRARY_RESTRICTED_IMPORTS } from "@xrf/toolchain/eslint-react";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..", "..");
@@ -113,30 +113,24 @@ export default createEslintConfig(
     ignores: ["**/*.test.{ts,tsx}"],
     project: path.join(ROOT_DIR, "tsconfig.app.json"),
   }),
-  ...TOOL_SLUGS.flatMap((slug) =>
-    restrictImports({
-      files: [`src/tools/${slug}/**/*.{ts,tsx}`],
-      patterns: [
-        ...KIT_RESTRICTED_IMPORT_PATTERNS,
-        {
-          group: ["@/tools/*", "@/tools/*/**", `!@/tools/${slug}`, `!@/tools/${slug}/**`],
-          message:
-            "A tool must not depend on another tool. Move what both need to `core/`, or register it at the " +
-            "composition root.",
-        },
-      ],
-    })
-  ),
+  createRestrictedPathsLayer({
+    files: ["src/tools/**/*.{ts,tsx}"],
+    project: path.join(ROOT_DIR, "tsconfig.app.json"),
+    basePath: ROOT_DIR,
+    // Resolved, so a relative `../other-tool/...` import is held to the boundary as the `@/tools/...` alias is.
+    zones: TOOL_SLUGS.map((slug) => ({
+      target: `./src/tools/${slug}`,
+      from: "./src/tools",
+      except: [`./${slug}`],
+      message:
+        "A tool must not depend on another tool. Move what both need to `core/`, or register it at the composition " +
+        "root.",
+    })),
+  }),
   {
     // Chrome colour belongs to the theme in `@xrf/ui`, where it is contrast-tested against every surface it can land on.
     files: ["src/**/*.{ts,tsx}"],
-    ignores: [
-      "**/*.test.{ts,tsx}",
-      "src/core/brand/XrfMark.tsx",
-      "src/core/shell/title-bar/WindowControlButton.tsx",
-      "src/core/ui/media/media.styles.ts",
-      "src/core/ui/media/ImageViewport/ImageViewport.tsx",
-    ],
+    ignores: ["**/*.test.{ts,tsx}"],
     rules: {
       "no-restricted-syntax": [
         "error",

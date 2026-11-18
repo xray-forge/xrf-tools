@@ -196,6 +196,22 @@ describe("NativeViewportTarget", () => {
     target.dispose();
   });
 
+  it("asks for no menu as the secondary button leaves a chord that dragged", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+
+    element.dispatchEvent(pointer("pointerdown", { button: 2, buttons: 3, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { button: -1, buttons: 3, clientX: 40, clientY: 30 }));
+    // The secondary let go first, the main still held: the press goes on, and the menu its release asks for is the
+    // drag's.
+    element.dispatchEvent(pointer("contextmenu", { button: 2 }));
+
+    expect(inputs.map((input) => input.kind)).not.toContain(EWorldInputEvent.CONTEXT_MENU);
+
+    target.dispose();
+  });
+
   it("drags at once a pending click another button joins, and tells the world as its buttons change", () => {
     const { element } = mockTree();
     const { inputs, viewport } = mockViewport();
