@@ -1,7 +1,9 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
-use xrf_spawn::{AlifeBuiltFields, AlifeObject, AlifeObjectInherited, ArtefactSpawnPoint, LevelSpawnFile};
+use xrf_spawn::{
+  AlifeBuiltFields, AlifeObject, AlifeObjectInherited, ArtefactSpawnPoint, LevelSpawnFile, SpawnSectionClasses,
+};
 
 use crate::entity::spawn_ai_locations::SpawnAiLocations;
 use crate::entity::spawn_artefact_buffer::SpawnArtefactBuffer;
@@ -38,7 +40,7 @@ impl SpawnLevelEntities {
     random: &mut SpawnRandom,
   ) -> XrfResult<Self> {
     let level: &SpawnMergeLevel<'_> = &root.merge;
-    let mut entities: Self = Self::load(root.spawn)?;
+    let mut entities: Self = Self::load(root.spawn, root.classes)?;
 
     if entities.objects.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
@@ -73,7 +75,7 @@ impl SpawnLevelEntities {
   }
 
   /// `load_objects`: every packet but graph points, which go apart, and objects a single player game does not load.
-  fn load(list: &LevelSpawnFile) -> XrfResult<Self> {
+  fn load(list: &LevelSpawnFile, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     let mut entities: Self = Self {
       objects: Vec::new(),
       artefacts: Vec::new(),
@@ -81,7 +83,7 @@ impl SpawnLevelEntities {
     };
 
     for packet in &list.objects {
-      let object: AlifeObject = packet.read_alife_object::<XRayByteOrder>()?;
+      let object: AlifeObject = packet.read_alife_object_by::<XRayByteOrder>(classes)?;
 
       if matches!(object.inherited, AlifeObjectInherited::CseAlifeGraphPoint(_)) {
         entities.graph_points.push(object);

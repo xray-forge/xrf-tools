@@ -6,6 +6,7 @@ use xrf_math::Vector3d;
 
 use crate::constants::NET_ACTION_SPAWN;
 use crate::data::alife::alife_object::AlifeObject;
+use crate::data::meta::spawn_section_classes::SpawnSectionClasses;
 
 /// One object a level spawns, as `CSE_Abstract::Spawn_Write` frames it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -87,16 +88,26 @@ impl LevelSpawnObject {
     Ok(writer.buffer)
   }
 
-  /// The object typed as its section's class, read from its spawn packet alone
-  /// ([`AlifeObject::read_spawn_packet`]).
+  /// The object typed as its section's class by the table of sections, read from its spawn packet alone
+  /// ([`Self::read_alife_object_by`]).
   ///
   /// # Errors
   ///
   /// Returns an error when the packet is not of a known class, or holds bytes past what its class reads.
   pub fn read_alife_object<T: ByteOrder>(&self) -> XrfResult<AlifeObject> {
+    self.read_alife_object_by::<T>(&SpawnSectionClasses::default())
+  }
+
+  /// The object typed as the class `classes` gives its section, read from its spawn packet alone
+  /// ([`AlifeObject::read_spawn_packet_by`]).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the packet is not of a known class, or holds bytes past what its class reads.
+  pub fn read_alife_object_by<T: ByteOrder>(&self, classes: &SpawnSectionClasses) -> XrfResult<AlifeObject> {
     let bytes: Vec<u8> = self.encode_packet::<T>()?;
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
-    let object: AlifeObject = AlifeObject::read_spawn_packet::<T, _>(&mut reader)?;
+    let object: AlifeObject = AlifeObject::read_spawn_packet_by::<T, _>(&mut reader, classes)?;
 
     if !reader.is_ended() {
       return Err(XrfError::new_parsing_error(format!(

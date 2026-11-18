@@ -3,7 +3,7 @@ use std::path::Path;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelAiFile, LevelGameFile};
-use xrf_spawn::{GraphCrossTableCell, LevelSpawnFile};
+use xrf_spawn::{GraphCrossTableCell, LevelSpawnFile, SpawnSectionClasses};
 
 use crate::gamedata::spawn_game_level::SpawnGameLevel;
 use crate::graph::spawn_graph_points::SpawnGraphPoints;
@@ -37,18 +37,21 @@ impl SpawnLevelFiles {
     .all(|file| directory.join(file).is_file())
   }
 
-  /// Reads the level `name` from its directory and builds its graph; a level without `level.game` has no patrols.
+  /// Reads the level `name` from its directory and builds its graph, each packet read as the class `classes` gives its
+  /// section; a level without `level.game` has no patrols.
   ///
   /// # Errors
   ///
   /// Returns an error naming the level when a file does not read, or its graph cannot be built (a graph point no path
   /// on the AI map reaches from a neighbour among them).
-  pub fn read(directory: &Path, name: &str) -> XrfResult<Self> {
-    Self::read_unnamed(directory).map_err(|error| XrfError::new_invalid_error(format!("Level {name}: {error}")))
+  pub fn read(directory: &Path, name: &str, classes: &SpawnSectionClasses) -> XrfResult<Self> {
+    Self::read_unnamed(directory, classes)
+      .map_err(|error| XrfError::new_invalid_error(format!("Level {name}: {error}")))
   }
 
-  /// The level as the build takes it, by its entry in the game's level list.
-  pub fn get_input(&self, level: &SpawnGameLevel) -> SpawnRootLevel<'_> {
+  /// The level as the build takes it, by its entry in the game's level list, its sections' classes as `classes` gives
+  /// them.
+  pub fn get_input<'a>(&'a self, level: &SpawnGameLevel, classes: &'a SpawnSectionClasses) -> SpawnRootLevel<'a> {
     SpawnRootLevel {
       merge: SpawnMergeLevel {
         section: level.section.clone(),
@@ -62,12 +65,13 @@ impl SpawnLevelFiles {
         cells: &self.cells,
       },
       spawn: &self.spawn,
+      classes,
       game: self.game.as_ref(),
       removed: &self.points.removed,
     }
   }
 
-  fn read_unnamed(directory: &Path) -> XrfResult<Self> {
+  fn read_unnamed(directory: &Path, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     let (file, nodes) =
       LevelAiFile::read_with_nodes_from_path::<XRayByteOrder, _>(&directory.join(LevelAiFile::FILE_NAME))?;
     let spawn: LevelSpawnFile =
@@ -78,7 +82,7 @@ impl SpawnLevelFiles {
       .then(|| LevelGameFile::read_from_path::<XRayByteOrder, _>(&game_path))
       .transpose()?;
     let map: SpawnAiMap = SpawnAiMap::new(file.header, &nodes)?;
-    let points: SpawnGraphPoints = SpawnGraphPoints::read(&spawn, &map)?;
+    let points: SpawnGraphPoints = SpawnGraphPoints::read(&spawn, &map, classes)?;
     let nodes_of_points: Vec<u32> = points.points.iter().map(|point| point.node).collect();
     let cells: Vec<GraphCrossTableCell> = SpawnCrossTable::build(&map, &nodes_of_points)?;
     let graph: SpawnLevelGameGraph = SpawnLevelGameGraph::build(&map, &points.points, &cells)?;

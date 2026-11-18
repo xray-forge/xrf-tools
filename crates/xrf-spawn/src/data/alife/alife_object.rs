@@ -19,6 +19,7 @@ use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::alife::zeroed_update_fields::ZeroedUpdateFields;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::meta::cls_id::ClsId;
+use crate::data::meta::spawn_section_classes::SpawnSectionClasses;
 
 /// An object of a spawn set (`all.spawn`): its spawn packet, the spawn packet header's fields then the class's spawn
 /// fields, and its update packet, the class's update fields, each in a chunk of its own behind a `u16` length.
@@ -86,18 +87,22 @@ impl AlifeObject {
 
     self.write_spawn_packet::<T, _>(&mut spawn)?;
 
-    Self::read_spawn_packet::<T, _>(&mut ChunkReader::from_bytes(&spawn.buffer)?)
+    Self::read_spawn_packet_as::<T, _>(&mut ChunkReader::from_bytes(&spawn.buffer)?, |_, _| {
+      Ok(self.clsid.clone())
+    })
   }
 
-  /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read
-  /// with the section's class in the game whose scripts its spawn version names: a Clear Sky script class's payload
-  /// under a Call of Pripyat header among them, and the reverse.
-  fn assert_class_matches_section(&self) -> XrfResult {
+  /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read with
+  /// that class in the game whose scripts its spawn version names: a Clear Sky script class's payload under a Call of
+  /// Pripyat header among them, and the reverse. A section the table of sections does not know, as a mod's, is held
+  /// to the class it was read as.
+  fn assert_class_matches_payload(&self) -> XrfResult {
     let dialect: ScriptDialect = SpawnLayout::from(&self.header).script_dialect();
-    let clsid: ClsId = ClsId::from_dialect_section(&self.header.section, dialect)?;
+    let clsid: ClsId =
+      ClsId::from_dialect_section(&self.header.section, dialect).unwrap_or_else(|_| self.clsid.clone());
     let class: AlifeClass = AlifeClass::from_dialect_cls_id(&clsid, dialect);
 
-    if clsid != self.clsid || class != self.inherited.get_class() {
+    if class != self.inherited.get_class() || AlifeClass::from_dialect_cls_id(&self.clsid, dialect) != class {
       return Err(XrfError::new_invalid_error(format!(
         "ALife object '{}' of section '{}' ({clsid:?}, {class}) carries {:?} and a {} payload",
         self.header.name,
@@ -110,15 +115,37 @@ impl AlifeObject {
     Ok(())
   }
 
-  /// Read an object from its spawn packet alone, as `level.spawn` holds it and the Level Editor saves it, bytes or
-  /// fields: the update fields as xrAI's freshly read server entity holds them when it writes a root spawn
-  /// (`AlifeObjectInherited::set_spawned_update`), the members the engine leaves uninitialised zero.
+  /// Read an object from its spawn packet alone, as `level.spawn` holds it and the Level Editor saves it, its class
+  /// by the table of sections ([`Self::read_spawn_packet_by`]).
   ///
   /// # Errors
   ///
   /// Returns an error when the packet is not a spawn packet of a known class, or its state does not read whole.
   pub fn read_spawn_packet<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    let mut object: Self = Self::read_packets::<T, _, _>(reader, &mut ChunkFieldReplay::new(&mut ZeroedUpdateFields))?;
+    Self::read_spawn_packet_by::<T, _>(reader, &SpawnSectionClasses::default())
+  }
+
+  /// Read an object from its spawn packet alone, its class as `classes` gives its section, bytes or fields: the update
+  /// fields as xrAI's freshly read server entity holds them when it writes a root spawn
+  /// (`AlifeObjectInherited::set_spawned_update`), the members the engine leaves uninitialised zero.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the packet is not a spawn packet of a known class, or its state does not read whole.
+  pub fn read_spawn_packet_by<T: ByteOrder, R: ChunkFieldReader>(
+    reader: &mut R,
+    classes: &SpawnSectionClasses,
+  ) -> XrfResult<Self> {
+    Self::read_spawn_packet_as::<T, _>(reader, |section, dialect| classes.get_cls_id(section, dialect))
+  }
+
+  /// The spawn packet alone, its class as `cls_id` answers for its section and dialect.
+  fn read_spawn_packet_as<T: ByteOrder, R: ChunkFieldReader>(
+    reader: &mut R,
+    cls_id: impl FnOnce(&str, ScriptDialect) -> XrfResult<ClsId>,
+  ) -> XrfResult<Self> {
+    let mut object: Self =
+      Self::read_packets::<T, _, _>(reader, &mut ChunkFieldReplay::new(&mut ZeroedUpdateFields), cls_id)?;
 
     object.inherited.set_spawned_update(&object.header);
 
@@ -134,15 +161,17 @@ impl AlifeObject {
     self.write_packets::<T, _, _>(writer, &mut ChunkWriter::new())
   }
 
-  /// The spawn packet from `spawn`, its class's update fields from `update`.
+  /// The spawn packet from `spawn`, its class's update fields from `update`, the class as `cls_id` answers for its
+  /// section and dialect.
   fn read_packets<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
+    cls_id: impl FnOnce(&str, ScriptDialect) -> XrfResult<ClsId>,
   ) -> XrfResult<Self> {
     let header: SpawnPacketHeader = spawn.read_xr::<T, _>()?;
     let layout: SpawnLayout = SpawnLayout::from(&header);
     let dialect: ScriptDialect = layout.script_dialect();
-    let clsid: ClsId = ClsId::from_dialect_section(&header.section, dialect)?;
+    let clsid: ClsId = cls_id(&header.section, dialect)?;
     let class: AlifeClass = AlifeClass::from_dialect_cls_id(&clsid, dialect);
 
     assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
@@ -164,7 +193,7 @@ impl AlifeObject {
     spawn: &mut S,
     update: &mut U,
   ) -> XrfResult {
-    self.assert_class_matches_section()?;
+    self.assert_class_matches_payload()?;
     spawn.write_xr::<T, _>(&self.header)?;
     SpawnPacketHeader::write_state::<T, _>(spawn, |spawn| {
       self
@@ -202,7 +231,8 @@ impl ChunkReadWrite for AlifeObject {
       "Expect only net_update actions in ALife object update data",
     )?;
 
-    let object: Self = Self::read_packets::<T, _, _>(&mut spawn_reader, &mut update_reader)?;
+    let object: Self =
+      Self::read_packets::<T, _, _>(&mut spawn_reader, &mut update_reader, ClsId::from_dialect_section)?;
 
     spawn_reader.assert_read("Expect ALife object spawn data to be read")?;
     update_reader.assert_read("Expect ALife object update data to hold only its class's update fields")?;

@@ -5,6 +5,7 @@ use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobScope};
+use xrf_spawn::SpawnSectionClasses;
 use xrf_utils::{OutputFiles, narrow_format_size};
 
 use crate::gamedata::spawn_game_level::SpawnGameLevel;
@@ -18,7 +19,8 @@ use crate::root::spawn_root_builder::SpawnRootBuilder;
 use crate::root::spawn_root_level::SpawnRootLevel;
 
 /// The root spawn build over a gamedata root, as `xrAI -s` runs over `$game_levels$` and writes `$game_spawn$`: the
-/// levels the game lists read, each level's graph built (in parallel; the result is the same), the spawn built and
+/// levels the game lists read, each object as the class its section has in the game's configs
+/// ([`SpawnSectionClasses`]), each level's graph built (in parallel; the result is the same), the spawn built and
 /// written.
 pub struct SpawnRootGamedata;
 
@@ -32,7 +34,8 @@ impl SpawnRootGamedata {
   /// # Errors
   ///
   /// Returns an error when the spawn's name is no plain file name, the request names an empty list of levels, the
-  /// level list does not read, names no level to build or not one asked for, a level's files do not read, the build
+  /// level list does not read, names no level to build or not one asked for, the configs are there but do not read, a
+  /// level's files do not read or hold an object of a section neither they nor the table give a class, the build
   /// refuses ([`SpawnRootBuilder::build`]), the spawn is there in any case of its name and the request is not forced,
   /// the job is cancelled before writing, or the spawn cannot be written.
   pub fn build(request: &SpawnRootRequest, job: &JobHandle) -> XrfResult<SpawnRootOutcome> {
@@ -54,14 +57,15 @@ impl SpawnRootGamedata {
     let levels_root: PathBuf = request.get_levels_root();
     let listed: SpawnGameLevels = SpawnGameLevels::read_from_path(&request.gamedata.join(SpawnGameLevels::PATH))?;
     let selected: Vec<&SpawnGameLevel> = Self::select(&listed, request, &levels_root)?;
+    let classes: SpawnSectionClasses = SpawnSectionClasses::read_from_gamedata(&request.gamedata)?;
     let files: Vec<SpawnLevelFiles> = selected
       .par_iter()
-      .map(|level| SpawnLevelFiles::read(&levels_root.join(&level.name), &level.name))
+      .map(|level| SpawnLevelFiles::read(&levels_root.join(&level.name), &level.name, &classes))
       .collect::<XrfResult<_>>()?;
     let inputs: Vec<SpawnRootLevel<'_>> = files
       .iter()
       .zip(&selected)
-      .map(|(files, level)| files.get_input(level))
+      .map(|(files, level)| files.get_input(level, &classes))
       .collect();
 
     stages.advance();

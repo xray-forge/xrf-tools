@@ -5,6 +5,7 @@ use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
 use xrf_math::{Aabb, Vector3d};
 use xrf_spawn::{
   AlifeGraphPoint, GraphCrossTableCell, LevelSpawnFile, LevelSpawnObject, SpawnPacket, SpawnPacketHeader,
+  SpawnSectionClasses,
 };
 
 use crate::{SpawnAiMap, SpawnCrossTable, SpawnGraphPointRemoval, SpawnGraphPoints};
@@ -201,6 +202,7 @@ fn places_graph_points_and_leaves_out_what_xrai_removes() -> XrfResult {
       Vector3d::new(0.0, 0.0, 4.0),
     ])?,
     &map()?,
+    &SpawnSectionClasses::default(),
   )?;
 
   assert_eq!(

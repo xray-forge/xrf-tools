@@ -1,7 +1,7 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
-use xrf_spawn::{AlifeGraphPoint, AlifeObject, AlifeObjectInherited, LevelSpawnFile};
+use xrf_spawn::{AlifeGraphPoint, AlifeObject, AlifeObjectInherited, LevelSpawnFile, SpawnSectionClasses};
 
 use crate::graph::spawn_graph_point::SpawnGraphPoint;
 use crate::graph::spawn_graph_point_removal::SpawnGraphPointRemoval;
@@ -20,16 +20,17 @@ impl SpawnGraphPoints {
   /// `EPS_L`, the squared distance under which two graph points are one.
   const TOO_CLOSE_SQUARED: f32 = 0.001;
 
-  /// The graph points of a level's spawn list, each placed on the node of its cell nearest at or under it.
+  /// The graph points of a level's spawn list, each placed on the node of its cell nearest at or under it, each packet
+  /// read as the class `classes` gives its section.
   ///
   /// # Errors
   ///
   /// Returns an error when a packet of the list does not read as its class.
-  pub fn read(spawn: &LevelSpawnFile, map: &SpawnAiMap) -> XrfResult<Self> {
+  pub fn read(spawn: &LevelSpawnFile, map: &SpawnAiMap, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     let mut graph_points: Self = Self::default();
 
     for packet in &spawn.objects {
-      let object: AlifeObject = packet.read_alife_object::<XRayByteOrder>()?;
+      let object: AlifeObject = packet.read_alife_object_by::<XRayByteOrder>(classes)?;
 
       if let AlifeObjectInherited::CseAlifeGraphPoint(point) = &object.inherited {
         graph_points.add(&object.header.name, object.header.position, point, map);

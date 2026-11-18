@@ -1,8 +1,11 @@
 use uuid::{Uuid, uuid};
 use xrf_error::XrfResult;
 use xrf_level::{LevelGameFile, LevelGameWay, LevelGameWayLink, LevelGameWayPoint};
+use xrf_ltx::Ltx;
 use xrf_math::Vector3d;
-use xrf_spawn::{AlifeObject, AlifeObjectInherited, GraphCrossTableCell, LevelSpawnFile, SpawnFile};
+use xrf_spawn::{
+  AlifeObject, AlifeObjectInherited, GraphCrossTableCell, LevelSpawnFile, SpawnFile, SpawnSectionClasses,
+};
 
 use crate::gamedata::spawn_game_levels::SpawnGameLevels;
 use crate::tests::fixtures::{
@@ -17,6 +20,7 @@ use crate::{
 struct Level {
   map: SpawnAiMap,
   list: LevelSpawnFile,
+  classes: SpawnSectionClasses,
   game: LevelGameFile,
   points: SpawnGraphPoints,
   graph: SpawnLevelGameGraph,
@@ -25,8 +29,18 @@ struct Level {
 
 impl Level {
   fn new(map: SpawnAiMap, objects: &[AlifeObject], ways: Vec<LevelGameWay>) -> XrfResult<Self> {
+    Self::with_classes(map, objects, ways, SpawnSectionClasses::default())
+  }
+
+  /// The level, its sections read as `classes` gives them.
+  fn with_classes(
+    map: SpawnAiMap,
+    objects: &[AlifeObject],
+    ways: Vec<LevelGameWay>,
+    classes: SpawnSectionClasses,
+  ) -> XrfResult<Self> {
     let list: LevelSpawnFile = spawn_file(objects)?;
-    let points: SpawnGraphPoints = SpawnGraphPoints::read(&list, &map)?;
+    let points: SpawnGraphPoints = SpawnGraphPoints::read(&list, &map, &classes)?;
     let nodes: Vec<u32> = points.points.iter().map(|point| point.node).collect();
     let cells: Vec<GraphCrossTableCell> = SpawnCrossTable::build(&map, &nodes)?;
     let graph: SpawnLevelGameGraph = SpawnLevelGameGraph::build(&map, &points.points, &cells)?;
@@ -34,6 +48,7 @@ impl Level {
     Ok(Self {
       map,
       list,
+      classes,
       game: LevelGameFile {
         rpoints: Vec::new(),
         ways,
@@ -58,6 +73,7 @@ impl Level {
         cells: &self.cells,
       },
       spawn: &self.list,
+      classes: &self.classes,
       game: Some(&self.game),
       removed: &self.points.removed,
     }
@@ -436,6 +452,49 @@ fn refuses_a_shared_story_id_and_a_level_of_no_entity() -> XrfResult {
   Ok(())
 }
 
+/// An entity of a mod's section, which the table does not know, builds as the class the game's configs give its
+/// section, through its parent.
+#[test]
+fn builds_an_entity_of_a_mod_section_by_its_configs() -> XrfResult {
+  let (_, b) = levels()?;
+  let mut zone: AlifeObject = zone_object("a_mod_zone", 1.0, 0.0, 1.0, 1)?;
+
+  zone.header.section = String::from("zone_field_radioactive_mod");
+
+  let objects: [AlifeObject; 4] = [
+    graph_point_object("a_start", 0.0, 0.0, "", "")?,
+    graph_point_object("a_end", 3.0, 0.0, "b", "b_start")?,
+    zone,
+    changer_object("a_to_b", 2.0, 0.0, "b", "b_start")?,
+  ];
+  let configs: Ltx = Ltx::read_from_str(
+    "[zone_field_radioactive]\nclass = ZS_RADIO\n\n[zone_field_radioactive_mod]:zone_field_radioactive\n",
+  )?
+  .into_inherited()?;
+  let grid = || grid(4, 1, &[], uuid!("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+  let error: String = Level::new(grid()?, &objects, Vec::new())
+    .err()
+    .map(|error| error.to_string())
+    .unwrap_or_default();
+
+  assert!(
+    error.contains("'zone_field_radioactive_mod'"),
+    "Unexpected error: {error}"
+  );
+
+  let a: Level = Level::with_classes(
+    grid()?,
+    &objects,
+    Vec::new(),
+    SpawnSectionClasses::from_configs(&configs),
+  )?;
+  let spawn: SpawnFile = build(&a, &b, None)?;
+
+  assert_eq!(find(&spawn, "a_mod_zone").header.section, "zone_field_radioactive_mod");
+
+  Ok(())
+}
+
 #[test]
 fn refuses_a_level_whose_graph_points_are_all_left_out() -> XrfResult {
   let (_, b) = levels()?;
@@ -461,8 +520,7 @@ fn refuses_a_level_whose_graph_points_are_all_left_out() -> XrfResult {
 /// The engine lowercases a section's name as it reads it, so a mod listing `Level01` over a `[Level01]` names the level.
 #[test]
 fn reads_a_level_listed_and_declared_in_capitals() -> XrfResult {
-  let ltx =
-    xrf_ltx::Ltx::read_from_str("[levels]\nLevel01\n\n[Level01]\nname = Mod_Level\noffset = 0, 0, 0\nid = 1\n")?;
+  let ltx = Ltx::read_from_str("[levels]\nLevel01\n\n[Level01]\nname = Mod_Level\noffset = 0, 0, 0\nid = 1\n")?;
   let levels: SpawnGameLevels = SpawnGameLevels::from_ltx(&ltx)?;
 
   assert!(levels.skipped.is_empty(), "{:?}", levels.skipped);
@@ -473,7 +531,7 @@ fn reads_a_level_listed_and_declared_in_capitals() -> XrfResult {
 
 #[test]
 fn reads_the_levels_the_game_lists() -> XrfResult {
-  let ltx = xrf_ltx::Ltx::read_from_str(
+  let ltx = Ltx::read_from_str(
     "[levels]
 level108
 level150
@@ -506,7 +564,7 @@ id = 150
   assert_eq!(levels.find("labx8")?.caption, "labx8");
 
   // Passed over as xrAI passes them, and refused only when asked for.
-  let odd = xrf_ltx::Ltx::read_from_str(
+  let odd = Ltx::read_from_str(
     "[levels]
 level1
 level2

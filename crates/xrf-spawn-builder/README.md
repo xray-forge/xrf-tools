@@ -9,16 +9,18 @@ It takes a `SpawnRootRequest` (the root holding `configs/game_levels.ltx`, the d
 under the root by default, the levels to build, every listed one whose directory holds the three files when none are
 named, the directory the spawn is written into, `spawns/` under the root by default, the spawn's name, the
 `SpawnRootOptions` and whether it may write over a spawn already there, in any case of its name) and a job it reports its three stages to
-and stops between, reads the levels the game lists (`SpawnGameLevels`), each level's files and graph
-(`SpawnLevelFiles`, in parallel; the result is the same), builds the spawn and writes it as `<name>.spawn`, giving a
+and stops between, reads the levels the game lists (`SpawnGameLevels`), the class of each section from the root's
+`configs/system.ltx` (`SpawnSectionClasses`, the built-in table of vanilla sections where the root has none, and for a
+section the configs do not give a class the tools read), each level's files and graph (`SpawnLevelFiles`, in parallel;
+the result is the same), builds the spawn and writes it as `<name>.spawn`, giving a
 `SpawnRootOutcome`. `SpawnRootGamedata::list_levels` gives the levels the list names, each marked by whether its
 directory is complete (`SpawnListedLevel`). `xrf-cli spawn build` and the app's spawn compiler (`spawn|build_spawn`)
 call it.
 
 ## The build
 
-`SpawnRootBuilder::build` takes each level as a `SpawnRootLevel` (what its graph merges from, its `level.spawn` and,
-where it has one, its `level.game`) and its `SpawnRootOptions` (the start level, and whether a restrictor cutting the AI
+`SpawnRootBuilder::build` takes each level as a `SpawnRootLevel` (what its graph merges from, its `level.spawn` with the
+classes its sections are read as and, where it has one, its `level.game`) and its `SpawnRootOptions` (the start level, and whether a restrictor cutting the AI
 map refuses the build), and gives the root spawn (`SpawnRootBuild`: the `SpawnFile` and a `Report`). What xrAI asserts
 is refused, naming the level and the entity: a level of no entity, no actor or two, two entities of a story id, a level
 changer leading to no level built or to a graph point its level lacks, two patrols of a name, an unknown start level.
