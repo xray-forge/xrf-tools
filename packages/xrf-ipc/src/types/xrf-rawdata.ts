@@ -205,7 +205,7 @@ export type LevelExportedFile = {
 };
 
 /**
- * What a file [`LevelSceneExporter::write_to_directory`](crate::LevelSceneExporter::write_to_directory) wrote
+ * What a file [`LevelSceneExporter::write_to_directory`](crate::parts::LevelSceneExporter::write_to_directory) wrote
  * replaced.
  */
 export enum ELevelExportedPrevious {
@@ -251,7 +251,7 @@ export type LevelGeometryCensus = {
   impostors: number;
   /** Tree models given their impostor strips back, cut from the level's atlas; a library tree's named for it. */
   treeImpostors?: number;
-  /** Static triangles dropped as copies of wall marks ([`LevelDecalIndex`]), counted in the static triangles read. */
+  /** Static triangles dropped as copies of wall marks ([`LevelDecalIndex`](crate::parts::LevelDecalIndex)), counted in the static triangles read. */
   decalTriangles: number;
   /**
    * Static and collision-only triangles dropped as needles, so thin that xrLC measures no area in them and stops, the

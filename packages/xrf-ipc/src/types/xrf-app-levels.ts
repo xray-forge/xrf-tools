@@ -356,6 +356,9 @@ export const LEVEL_WEATHER_PART = "weather" as const;
 /** What a change event calls a scene's binary tools' counts when they go stale. */
 export const SCENE_BINARY_TOOLS_PART = "sceneBinaryTools" as const;
 
+/** What a change event calls the scene objects a scene draws when it goes stale. */
+export const SCENE_DRAWN_OBJECTS_PART = "sceneDrawnObjects" as const;
+
 /** What a change event calls what the page needs of a drawn scene beside its picture when it goes stale. */
 export const SCENE_DRAW_PART = "sceneDraw" as const;
 

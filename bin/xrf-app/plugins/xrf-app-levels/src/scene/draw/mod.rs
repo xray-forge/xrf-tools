@@ -5,6 +5,7 @@ mod scene_draw_problem;
 mod scene_draw_problem_kind;
 mod scene_drawn_object;
 mod scene_drawn_objects;
+mod scene_drawn_objects_part;
 
 pub(crate) use scene_draw::SceneDraw;
 pub(crate) use scene_draw_description::SceneDrawDescription;
@@ -13,3 +14,4 @@ pub(crate) use scene_draw_problem::SceneDrawProblem;
 pub(crate) use scene_draw_problem_kind::SceneDrawProblemKind;
 pub(crate) use scene_drawn_object::SceneDrawnObject;
 pub(crate) use scene_drawn_objects::SceneDrawnObjects;
+pub(crate) use scene_drawn_objects_part::SceneDrawnObjectsPart;

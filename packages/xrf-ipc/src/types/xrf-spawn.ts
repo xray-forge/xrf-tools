@@ -1029,7 +1029,10 @@ export enum EClearSkyShootingWin {
  */
 export type ClearSkyShootingWin = { type: "Flag"; value: number } | { type: "Count"; value: number };
 
-/** todo: Add script to parse system ltx and read all the data from ltx/txt file instead. */
+/**
+ * The class a spawned object is created as, named by the configs' `class` key; `SpawnSectionClasses` says which a
+ * section is.
+ */
 export enum EClsId {
   AI_CROW = "AiCrow",
   AI_GRAPH = "AiGraph",

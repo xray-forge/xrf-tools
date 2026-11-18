@@ -331,6 +331,28 @@ fn refuses_a_matrix_no_object_stands_at() {
 }
 
 #[test]
+fn refuses_a_matrix_scaled_along_axes_other_than_its_own() {
+  let turned: Matrix4x4 = EditableObjectTransform {
+    position: Vector3d::ZERO,
+    rotation: Vector3d::new(0.0, 0.5, 0.0),
+    scale: Vector3d::ONE,
+  }
+  .to_matrix();
+  // Turned first, then scaled along the world's axes: the axes no longer meet square.
+  let sheared: Matrix4x4 = Matrix4x4::from_scale(&Vector3d::new(2.0, 1.0, 1.0)).multiply(&turned);
+  let error: String = EditableObjectTransform::from_matrix(&sheared)
+    .expect_err("a sheared matrix is refused")
+    .to_string();
+
+  assert!(error.contains("shears"), "{error}");
+  assert!(
+    EditableObjectTransform::from_matrix(&turned.multiply(&Matrix4x4::from_scale(&Vector3d::new(2.0, 1.0, 1.0))))
+      .is_ok(),
+    "scaled along its own axes, then turned, as the editor composes"
+  );
+}
+
+#[test]
 fn rounds_a_value_as_its_saved_text_reads_back() {
   let transform: EditableObjectTransform = EditableObjectTransform {
     position: Vector3d::new(1.000_000_4, -0.000_000_1, 0.0),

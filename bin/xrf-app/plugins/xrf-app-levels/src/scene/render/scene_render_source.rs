@@ -20,9 +20,9 @@ use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::report::LevelReport;
 use crate::scene::{
-  SceneDrawnObject, SceneDrawnObjects, SceneHelpersPart, SceneObjectCompiler, SceneObjectModels, SceneOccluderLook,
-  SceneRenderId, SceneSpawnModels, SceneSpawnModelsPart, SceneSpawnVisualsPart, SceneSurfaceKind, SceneSurfaceKinds,
-  SelectedScene,
+  SceneDrawnObject, SceneDrawnObjects, SceneDrawnObjectsPart, SceneHelpersPart, SceneObjectCompiler, SceneObjectModels,
+  SceneOccluderLook, SceneRenderId, SceneSpawnModels, SceneSpawnModelsPart, SceneSpawnVisualsPart, SceneSurfaceKind,
+  SceneSurfaceKinds, SelectedScene,
 };
 use crate::visuals::SpawnVisual;
 
@@ -39,8 +39,6 @@ pub struct SceneRenderSource {
   /// Where each texture reference resolved once asked for, in the scene's game data and the shared scope; nothing
   /// resolves for a scene with no game data, whose surfaces draw the renderer's placeholder.
   textures: TextureResolver,
-  /// The scene objects drawn, read the first time the renderer asks for its spawn.
-  drawn: OnceLock<SceneDrawnObjects>,
   /// Which kind each surface is, by the game data's compiler shaders, read the first time a model is.
   kinds: OnceLock<SceneSurfaceKinds>,
 }
@@ -59,7 +57,6 @@ impl SceneRenderSource {
       scene,
       assets,
       textures,
-      drawn: OnceLock::new(),
       kinds: OnceLock::new(),
     }
   }
@@ -74,23 +71,13 @@ impl SceneRenderSource {
     &self.scene
   }
 
-  /// The scene objects drawn, read once.
+  /// The scene objects drawn, the session's one read of them, which the page's frame comes from too.
   ///
   /// # Errors
   ///
-  /// Returns an error when the scene's objects roots cannot be searched the first time.
-  fn get_drawn(&self) -> XrfResult<&SceneDrawnObjects> {
-    if let Some(drawn) = self.drawn.get() {
-      return Ok(drawn);
-    }
-
-    let objects: XraySearch = self.search_objects()?;
-
-    Ok(
-      self
-        .drawn
-        .get_or_init(|| SceneDrawnObjects::read(&self.scene, &objects)),
-    )
+  /// Returns an error when the scene's objects roots cannot be searched.
+  fn get_drawn(&self) -> XrfResult<Arc<SceneDrawnObjects>> {
+    Ok(SceneDrawnObjectsPart::get(&self.scene, &self.search_objects()?))
   }
 
   /// A search over the scene's objects roots, which its library objects are read through.
@@ -218,7 +205,7 @@ impl WorldLevelSource for SceneRenderSource {
   /// placed. Which kinds a library object holds is known only once it is read, so one holding none of a kind answers no
   /// model for that visual.
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
-    let drawn: &SceneDrawnObjects = self.get_drawn()?;
+    let drawn: Arc<SceneDrawnObjects> = self.get_drawn()?;
     let models: Arc<SceneSpawnModels> = self.get_spawn_models()?;
     let mut visuals: Vec<String> = Vec::new();
     let mut indices: HashMap<String, u32> = HashMap::new();
@@ -270,7 +257,7 @@ impl WorldLevelSource for SceneRenderSource {
   /// asks for compiled to a model of its own, a spawn point's visual read once through the visuals the scene keeps; one
   /// that does not read or compile is left out and reported by its library object's reference alone.
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
-    let drawn: &SceneDrawnObjects = self.get_drawn()?;
+    let drawn: Arc<SceneDrawnObjects> = self.get_drawn()?;
     let objects: XraySearch = self.search_objects()?;
     let game: XraySearch = self.search_game()?;
     let spawn_models: Arc<SceneSpawnModels> = SceneSpawnModelsPart::get(&self.scene, &game);

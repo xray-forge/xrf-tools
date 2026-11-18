@@ -24,6 +24,10 @@ impl Default for EditableObjectTransform {
 }
 
 impl EditableObjectTransform {
+  /// The largest cosine between two of a matrix's axes it still takes as square to each other: well above the noise of
+  /// a single-precision rotation (about `1e-6`), well below the shear an uneven scale composed with a turn leaves.
+  const SHEAR_TOLERANCE: f32 = 1e-4;
+
   /// The world transform, `CCustomObject::OnUpdateTransform`: scaled first, then turned by `setXYZi` of the negated
   /// angles (heading `y`, pitch `x`, bank `z`), then moved, composed with `Fmatrix::mul` in the editor's order.
   pub fn to_matrix(self) -> Matrix4x4 {
@@ -39,7 +43,9 @@ impl EditableObjectTransform {
   ///
   /// # Errors
   ///
-  /// Returns an error when the matrix is not affine (its fourth column is not `0, 0, 0, 1`) or collapses an axis.
+  /// Returns an error when the matrix is not affine (its fourth column is not `0, 0, 0, 1`), collapses an axis, or
+  /// shears its axes away from square, as a scale along axes other than the object's own does: a scene object scales
+  /// along its own axes before it turns, so no transform composes into such a matrix.
   pub fn from_matrix(matrix: &Matrix4x4) -> XrfResult<Self> {
     if matrix.get_fourth_column() != Matrix4x4::AFFINE_COLUMN {
       return Err(XrfError::new_invalid_error(format!(
@@ -72,6 +78,21 @@ impl EditableObjectTransform {
       z_axis: &affine.z_axis / scale.z,
       translation: Vector3d::ZERO,
     };
+    let cosines: Vector3d = Vector3d::new(
+      rotation.y_axis.dot(&rotation.z_axis),
+      rotation.z_axis.dot(&rotation.x_axis),
+      rotation.x_axis.dot(&rotation.y_axis),
+    );
+
+    if cosines
+      .to_array()
+      .iter()
+      .any(|cosine| cosine.abs() > Self::SHEAR_TOLERANCE)
+    {
+      return Err(XrfError::new_invalid_error(format!(
+        "Transform shears its axes, cosines {cosines:?} between them; no scene object stands at it"
+      )));
+    }
 
     Ok(Self {
       position: affine.translation,

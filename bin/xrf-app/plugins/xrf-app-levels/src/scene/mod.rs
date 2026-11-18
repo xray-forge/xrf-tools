@@ -28,7 +28,7 @@ pub use document::SelectedScenes;
 pub(crate) use document::{OpenedScene, SceneGameData, SceneOpenRequest, SceneSource, SceneToolKind, SelectedScene};
 pub(crate) use draw::{
   SceneDraw, SceneDrawDescription, SceneDrawPart, SceneDrawProblem, SceneDrawProblemKind, SceneDrawnObject,
-  SceneDrawnObjects,
+  SceneDrawnObjects, SceneDrawnObjectsPart,
 };
 pub(crate) use helpers::{
   SCENE_HELPER_TOOLS, SceneHelpedObject, SceneHelperLook, SceneHelperToolCount, SceneHelperToolEntry, SceneHelpers,

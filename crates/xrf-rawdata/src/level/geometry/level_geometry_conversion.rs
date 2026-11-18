@@ -312,7 +312,7 @@ impl LevelGeometryConversion {
       LevelTreeConversion::decompile(name, trees, surfaces, collision, impostors.as_ref(), context)?;
 
     if let Some(library) = sources.library {
-      decompile.trees = LevelTreeNaming::name(library, &mut trees)?;
+      decompile.trees = LevelTreeNaming::name(library, &mut trees);
       decompile.census.library_tree_models = decompile.trees.len();
     }
 

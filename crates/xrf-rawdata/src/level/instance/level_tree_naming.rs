@@ -15,12 +15,9 @@ pub(crate) struct LevelTreeNaming;
 
 impl LevelTreeNaming {
   /// Each model of `trees` one of `library`'s trees stands for whole: the model left out, its impostor strips named for
-  /// the library tree, and each placement of it placing the library tree instead, composed with the fit.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when a placement composed with a fit is no transform the editor saves.
-  pub(crate) fn name(library: &LevelInstanceLibrary, trees: &mut LevelTreeDecompile) -> XrfResult<Vec<LevelTreeMatch>> {
+  /// the library tree, and each placement of it placing the library tree instead, composed with the fit. A model one of
+  /// whose placements composes into no transform the editor saves stays as it was decompiled.
+  pub(crate) fn name(library: &LevelInstanceLibrary, trees: &mut LevelTreeDecompile) -> Vec<LevelTreeMatch> {
     let mut matches: Vec<LevelTreeMatch> = Vec::new();
     let mut kept: Vec<LevelDecompiledObject> = Vec::with_capacity(trees.models.len());
 
@@ -48,10 +45,27 @@ impl LevelTreeNaming {
       };
       let tree = &library.trees[found.object];
       let fit = found.fit.to_matrix();
+      // A placement scaled unevenly and the library tree turned within it compose into a shear no scene object holds;
+      // the model then stays, as it was decompiled, rather than placing the library tree elsewhere.
+      let Ok(placed) = trees
+        .placements
+        .iter()
+        .enumerate()
+        .filter(|(_, placement)| placement.reference == model.reference)
+        .map(|(index, placement)| {
+          EditableObjectTransform::from_matrix_as_saved(&placement.transform.to_matrix().multiply(&fit))
+            .map(|transform| (index, transform))
+        })
+        .collect::<XrfResult<Vec<(usize, EditableObjectTransform)>>>()
+      else {
+        kept.push(model);
+        continue;
+      };
 
-      for placement in trees.placements.iter_mut().filter(|it| it.reference == model.reference) {
-        placement.transform =
-          EditableObjectTransform::from_matrix_as_saved(&placement.transform.to_matrix().multiply(&fit))?;
+      for (index, transform) in placed {
+        let placement = &mut trees.placements[index];
+
+        placement.transform = transform;
         placement.reference.clone_from(&tree.reference);
 
         if let Some(mesh) = tree.meshes.first() {
@@ -71,7 +85,7 @@ impl LevelTreeNaming {
 
     trees.models = kept;
 
-    Ok(matches)
+    matches
   }
 
   /// Gives the strips cut for `model` to the library tree of `reference` that stands for it. The Build loads a
