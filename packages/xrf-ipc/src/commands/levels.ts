@@ -102,11 +102,11 @@ export enum ELevelsCommand {
 /** Commands */
 export const levelsCommands = {
   /**
-   * Build a Level Editor scene into a level directory, as `level build` does, then compile it where `compile` names
-   * the steps, as `level compile` does, one job reporting both ([`LevelBuildRun::run`]). A cancel stops the build between
-   * its steps and the compile within its running step. The compile works on the directory the build wrote, whatever
-   * level `compile` names, is forced as the build is, and traces on D3D12 with the DXC the app bundles where it traces on
-   * the GPU ([`LevelBuildRun::new`]).
+   * Build a Level Editor scene into a level directory, as `level build` does, then compile it when `compile` is given,
+   * as `level compile` does, in one job.
+   *
+   * A cancel stops the build between steps and the compile within its running step. The compile always works on the
+   * directory the build wrote and is forced when the build is ([`LevelBuildRun::new`]).
    */
   buildLevel: (
     request: LevelBuildRequest,
@@ -125,9 +125,10 @@ export const levelsCommands = {
   /** Close the scenes `session_ids` name, each once, unbinding it from its scope. */
   closeScene: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(ELevelsCommand.CLOSE_SCENE, { sessionIds }),
   /**
-   * Plays the music of the level a viewport shows as asked: by the game's schedule, one track by hand, or the track
-   * playing from a point; answers whether it could, which it cannot for a viewport showing no level, a track the level
-   * does not have, or a seek between tracks.
+   * Control the music of the level a viewport shows: the game's schedule, one chosen track, or a seek within the playing
+   * track.
+   *
+   * Answers false for a viewport showing no level, a track the level lacks, or a seek across tracks.
    */
   commandMusic: (viewport: RenderViewportId, command: WorldMusicCommand) =>
     __TAURI_INVOKE<boolean>(ELevelsCommand.COMMAND_MUSIC, { viewport, command }),
@@ -143,7 +144,7 @@ export const levelsCommands = {
    */
   decompileLevel: (request: LevelDecompileRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LevelDecompileResult>(ELevelsCommand.DECOMPILE_LEVEL, { request, jobId, progress }),
-  /** Delete a recording of the recordings folder for good. */
+  /** Permanently delete a video from the recordings folder. */
   deleteRecording: (path: string) => __TAURI_INVOKE<null>(ELevelsCommand.DELETE_RECORDING, { path }),
   /**
    * Delete a screenshot of the screenshots folder for good, with what stands beside it: a screenshot's report, a level
@@ -168,40 +169,44 @@ export const levelsCommands = {
    */
   describeObjects: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelObjectsDescription>>(ELevelsCommand.DESCRIBE_OBJECTS, { sessionId }),
-  /** Whether a viewport can be recorded here: Media Foundation loads; why not where not. */
+  /** Whether viewports can be recorded here, that is whether Media Foundation loads, and why not otherwise. */
   describeRecording: () => __TAURI_INVOKE<RecordingAvailability>(ELevelsCommand.DESCRIBE_RECORDING),
   /**
-   * Describe the open scene's AI map, detail objects and wall marks by their counts, none of their payload; read again
-   * where a commit let them go.
+   * Describe the open scene's AI map, detail objects and wall marks by their counts alone.
+   *
+   * Call again after a commit that invalidates them.
    */
   describeSceneBinaryTools: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<SceneBinaryToolsDescription>>(ELevelsCommand.DESCRIBE_SCENE_BINARY_TOOLS, {
       sessionId,
     }),
   /**
-   * Describe what the page needs of the open scene's picture beside it: the extent of the scene objects drawn, to frame
-   * a camera on, and each scene object not drawn, its library object missing or unreadable; read again where a commit
-   * let the library objects go. What the renderer could not compile or texture is the viewport's to answer.
+   * Describe the open scene's drawing: the extent of the drawn objects, to frame a camera on, and each object not drawn
+   * because its library object is missing or unreadable.
+   *
+   * Call again after a commit that invalidates the library objects. Compile and texture failures are reported by the
+   * viewport, not here.
    */
   describeSceneDraw: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<SceneDrawDescription>>(ELevelsCommand.DESCRIBE_SCENE_DRAW, { sessionId }),
   /**
-   * Describe the open scene's helpers beside their picture: where they reach, to frame a camera on a scene drawing them
-   * alone, how many each helped tool draws, and which spawn points stand as their models; read again where a commit let
-   * them go.
+   * Describe the open scene's helpers: their extent, to frame a camera on a scene drawing only them, how many each
+   * helped tool draws, and which spawn points draw as their models.
+   *
+   * Call again after a commit that invalidates them.
    */
   describeSceneHelpers: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<SceneHelpersDescription>>(ELevelsCommand.DESCRIBE_SCENE_HELPERS, { sessionId }),
   /**
-   * Describe the open scene's object tools' objects, typed, each scene object's library object looked for in the objects
-   * roots the scene was opened with; read again where a commit let them go.
+   * Describe the objects of the open scene's object tools, resolving each library object in the scene's objects roots.
+   *
+   * Call again after a commit that invalidates them.
    */
   describeSceneObjects: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<SceneObjectsDescription>>(ELevelsCommand.DESCRIBE_SCENE_OBJECTS, { sessionId }),
   /**
-   * What the level a viewport shows plays and why: each sound, where it stands and how loud it is heard, the music, the
-   * ambient's channels, and every sound that could not play; none for a viewport showing no level. The world says what
-   * it schedules, the audio how each is heard, asked on a blocking thread since it answers from its own.
+   * Describe what the level a viewport shows plays: each sound with its position and heard loudness, the music, the
+   * ambient channels, and every sound that could not play; none for a viewport showing no level.
    */
   describeSound: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<WorldSoundReport | null>(ELevelsCommand.DESCRIBE_SOUND, { viewport }),
@@ -246,8 +251,8 @@ export const levelsCommands = {
   /** Every compiled level the mounted roots hold, loose or archived alike, listed on the pool from a fresh search. */
   listLevels: (roots: XrayRoots) => __TAURI_INVOKE<Array<LevelEntry>>(ELevelsCommand.LIST_LEVELS, { roots }),
   /**
-   * Locate one of the open scene's objects for a camera to frame: the sphere about a drawn object's placed box or about
-   * a helped object's helper, in renderer space; none for an object that draws nothing.
+   * Locate one of the open scene's objects for a camera to frame, as a sphere in renderer space about its placed box or
+   * its helper; none for an object that draws nothing.
    */
   locateSceneObject: (sessionId: SessionId, object: SceneObjectId) =>
     __TAURI_INVOKE<SessionSnapshot<Sphere | null>>(ELevelsCommand.LOCATE_SCENE_OBJECT, { sessionId, object }),
@@ -255,8 +260,8 @@ export const levelsCommands = {
   openLevel: (sessionId: SessionId, request: LevelOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>(ELevelsCommand.OPEN_LEVEL, { sessionId, request }),
   /**
-   * Open a Level Editor scene from its `.level`, listing its tools' part files and what the editor would skip or refuse
-   * of them, without reading their objects, and keeping the game data it is drawn with.
+   * Open a Level Editor scene from its `.level`, listing its tools' part files and what the editor would skip or refuse,
+   * without reading their objects.
    */
   openScene: (sessionId: SessionId, request: SceneOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedSceneDescription>>(ELevelsCommand.OPEN_SCENE, { sessionId, request }),
@@ -275,16 +280,16 @@ export const levelsCommands = {
   restoreLevel: (tool: string) =>
     __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>(ELevelsCommand.RESTORE_LEVEL, { tool }),
   /**
-   * Restore the scene `tool` holds in the asking window, the newest it opened, without reading the scene again: as a
-   * page attaches to it, or reads it again after a commit derived it anew. Its parts are read by their own queries.
+   * Restore the newest scene `tool` opened in the asking window without reading it again, for a page attaching to it or
+   * refreshing after a commit. Its parts have their own queries.
    */
   restoreScene: (tool: string) =>
     __TAURI_INVOKE<SessionRestore<SelectedSceneDescription>>(ELevelsCommand.RESTORE_SCENE, { tool }),
   /**
-   * Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
-   * the level viewer's bursts named as asked, the sound its camera hears at the burst's times beside them, and the frames
-   * with that sound as one video, where asked; answers once the last is written. A burst with sound of a viewport whose
-   * level plays none is refused before anything is drawn or written.
+   * Draw a burst of consecutive frames in a viewport and write each with its G-buffer marks into a new bursts folder,
+   * plus the camera's sound and a video when asked; answers once the last is written.
+   *
+   * A burst with sound is refused up front when the viewport's level plays none.
    */
   saveBurst: (request: BurstCaptureRequest) => __TAURI_INVOKE<BurstOutcome>(ELevelsCommand.SAVE_BURST, { request }),
   /**
@@ -302,24 +307,27 @@ export const levelsCommands = {
   showLevel: (viewport: RenderViewportId, sessionId: SessionId | null) =>
     __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_LEVEL, { viewport, sessionId }),
   /**
-   * Draw the open scene in a viewport, each scene object a model compiled from its `.object` as the renderer asks, its
-   * textures read from the scene's game data; no session draws none. Answers the scene drawn, which the viewport's load
-   * reports name, or none. The source is made on the pool, after the ticket that keeps a scene asked for later from being
-   * replaced by this one.
+   * Draw the open scene in a viewport, or nothing without a session; answers the drawn scene's id, which the viewport's
+   * load reports carry, or none.
+   *
+   * Each object's model is compiled from its `.object` on demand, with textures from the scene's game data. A later show
+   * on the same viewport wins over this one.
    */
   showScene: (viewport: RenderViewportId, sessionId: SessionId | null) =>
     __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_SCENE, { viewport, sessionId }),
   /**
-   * Record a viewport with what its camera hears into a new video of the level viewer's recordings named as asked, at
-   * the size it is drawn at now, its camera heard whatever window takes the focus until it stops; `progress` is told
-   * where it stands a few times a second, and why where it ends by itself. The recording goes with the asking window: it
-   * stops and finishes when that window's page loads again or the window closes. Answers the file.
+   * Record a viewport and what its camera hears into a new video in the recordings folder, at its current drawn size;
+   * answers the file.
+   *
+   * Until it stops, the recorded camera is heard whichever window has focus. `progress` gets a few updates a second,
+   * and the reason when the recording ends by itself. The recording stops and finishes when the asking window's page
+   * reloads or the window closes.
    */
   startRecording: (viewport: RenderViewportId, name: string, progress: Channel<RecordingProgress>) =>
     __TAURI_INVOKE<string>(ELevelsCommand.START_RECORDING, { viewport, name, progress }),
   /**
-   * Stop the recording, running or ended by itself, and finish its video; the camera heard follows the focus again.
-   * Answers what was written.
+   * Stop the recording, running or self-ended, and finish its video; answers what was written. The heard camera follows
+   * focus again.
    */
   stopRecording: () => __TAURI_INVOKE<RecordingOutcome>(ELevelsCommand.STOP_RECORDING),
   /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */

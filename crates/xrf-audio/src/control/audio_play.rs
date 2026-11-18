@@ -13,9 +13,9 @@ pub struct AudioPlay {
   pub rate: f32,
   /// Linear gains of the left and right outputs, both 1 for a sound heard as it was recorded.
   pub pan: [f32; 2],
-  /// The frame of the mixer's clock ([`crate::AudioMixerMeter::get_frames`]) the source's first frame plays at: one
-  /// still ahead when the mixer takes the voice up is waited for in silence, to the frame, and one passed already is
-  /// played from as far on as it would be. None plays it from the block the mixer takes it up in.
+  /// The frame of the mixer's clock ([`crate::AudioMixerMeter::get_frames`]) the source's first frame plays at. A
+  /// frame still ahead is waited for in silence, to the frame; one already passed starts that far into the source.
+  /// None starts at the block the mixer takes the voice up in.
   pub at: Option<u64>,
 }
 

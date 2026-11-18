@@ -236,8 +236,8 @@ impl AudioEngine {
     self.send(MixerCommand::SetMasterGain(gain))
   }
 
-  /// Where the voice is. A voice whose slot has been freed has ended, whatever its last report said: asked first, since
-  /// only this side gives a slot to its next voice, so while the voice holds it no other voice's report can be read.
+  /// Where the voice is. A voice whose slot was freed has ended, whatever its last report said; the slot is checked
+  /// first, since only this side reuses it, so no other voice's report can be read while the voice holds it.
   pub fn get_playback(&self, voice: AudioVoiceId) -> AudioVoicePlayback {
     if !self.slots.is_current(voice) {
       return AudioVoicePlayback {
@@ -270,8 +270,8 @@ impl AudioEngine {
   ///
   /// # Errors
   ///
-  /// Refuses when the audio thread has not taken its commands, or holds `Self::TAPS_MOST` taps this side has not had
-  /// back: each one the mixer lets go of comes back through a ring of that many, which must never be full.
+  /// Refuses when the audio thread has not taken its commands, or `Self::TAPS_MOST` taps are still out, since the
+  /// ring that hands them back must never be full.
   pub fn open_tap(&mut self, length: Duration) -> Result<AudioTap, AudioRefusal> {
     self.collect();
 

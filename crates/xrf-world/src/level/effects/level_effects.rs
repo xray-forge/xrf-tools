@@ -120,8 +120,7 @@ impl LevelEffects {
     self.ambient.play_now();
   }
 
-  /// Starts the ambient effects afresh, as at the level's first frame: what plays leaves the scene with its particles,
-  /// and the next effect and the numbers it is drawn by start over, so what a burst plays depends on its own frames
+  /// Starts the ambient effects afresh, as at the level's first frame, so what a burst plays depends on its own frames
   /// alone. The placed particles and the campfires go on as they were.
   pub(crate) fn restart_ambient(&mut self, updates: &mut Vec<RenderSceneUpdate>) {
     self.ambient.restart(updates, &mut self.emitters);
@@ -140,13 +139,10 @@ impl LevelEffects {
     self.finished.extend(finished.into_iter().map(|(handle, _)| handle));
   }
 
-  /// Moves the effects on and posts what the scene plays: takes the read particles, plays the weather's ambient effects,
-  /// switches the campfires and moves the object motions, then plays what each placement plays, as the driving viewport
-  /// gives the frame. What steps or waits (the ambient effects and their wind, the camera's indoor estimate, the
-  /// campfires) moves by `clocks.engine`, which never jumps; the object motions, a function of time, by `clocks.level`.
-  /// `light_campfires` and `light_motions` are the campfires and motions the level's lights follow. The wind blows and
-  /// the camera's indoor estimate runs every frame; while particles are not drawn, or the ambient effects are switched
-  /// off, the ambient effects play as though indoors: none starts, what plays stops, and the wind calms.
+  /// Moves the ambient effects, campfires and object motions on a frame and posts what the scene plays.
+  ///
+  /// `light_campfires` and `light_motions` are those the level's lights follow. While particles are not drawn or the
+  /// ambient effects are off, they play as though indoors: none starts, what plays stops, and the wind calms.
   pub(crate) fn advance(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
