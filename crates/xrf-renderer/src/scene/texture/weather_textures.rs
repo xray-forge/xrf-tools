@@ -1,5 +1,6 @@
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_texture_upload::WeatherTextureUpload;
 
 /// The weather textures as one source reads them: a scene's, whose scope tells its files apart from another
 /// installation's of the same reference.
@@ -24,9 +25,9 @@ impl<'a> WeatherTextures<'a> {
     self.cache.is_up(self.scope, reference)
   }
 
-  /// A texture's size, a face's for a cube, once up.
-  pub(crate) fn get_size(&self, reference: &str) -> Option<(u32, u32)> {
-    self.cache.get_size(self.scope, reference)
+  /// A texture's upload, once up.
+  pub(crate) fn get_upload(&self, reference: &str) -> Option<WeatherTextureUpload> {
+    self.cache.get_upload(self.scope, reference)
   }
 
   /// What samples a texture: its own once up, its kind's placeholder before, or for none.

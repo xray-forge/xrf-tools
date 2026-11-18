@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use xrf_dlss::Dlss;
 use xrf_renderer_core::{GraphOwner, GraphPassTime, GraphTaggedTime};
 
+use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailability;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -26,8 +27,6 @@ use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
-
-use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
 
 impl RenderThread {
   /// One frame: the world advanced to the frames' clock, the shaders reloaded where they changed, the scenes fed what

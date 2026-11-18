@@ -6,6 +6,7 @@ use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::lighting::weather::render_sky::RenderSky;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_texture_upload::WeatherTextureUpload;
 use crate::scene::texture::weather_textures::WeatherTextures;
 use crate::thread::queue::loader_receiver::LoaderReceiver;
 use crate::thread::queue::render_workers::RenderWorkers;
@@ -22,11 +23,11 @@ const PLACEHOLDER_SKY: [u8; 4] = [128, 130, 140, 255];
 /// What a texture load came to, by its source's scope and its reference, sent from a loader thread.
 type SkyTextureLoad = (String, String, Result<Option<DecodedTexture>, String>);
 
-/// One weather texture: its view and its size once up, whether its load settled, and the source it was read from.
+/// One weather texture: its view once up, whether its load settled, and the source it was read from.
 struct SkyTextureEntry {
   kind: WeatherTextureKind,
   source: Arc<dyn RenderAssetSource>,
-  view: Option<(wgpu::TextureView, (u32, u32))>,
+  view: Option<(wgpu::TextureView, WeatherTextureUpload)>,
   /// Whether it is up, or given up on for good.
   is_settled: bool,
   /// The frame it was last asked for.
@@ -44,6 +45,8 @@ pub(crate) struct WeatherTextureCache {
   placeholder_flat: wgpu::TextureView,
   placeholder_volume: wgpu::TextureView,
   frame: u64,
+  /// Textures uploaded so far, numbering each upload.
+  uploads: u64,
   workers: RenderWorkers,
 }
 
@@ -71,6 +74,7 @@ impl WeatherTextureCache {
         wgpu::TextureViewDimension::D2Array,
       ),
       frame: 0,
+      uploads: 0,
       workers: workers.clone(),
     }
   }
@@ -202,12 +206,12 @@ impl WeatherTextureCache {
       })
   }
 
-  /// A texture of a scope's size, a face's for a cube, once up.
-  pub(crate) fn get_size(&self, scope: &str, reference: &str) -> Option<(u32, u32)> {
+  /// A texture of a scope's upload, once up.
+  pub(crate) fn get_upload(&self, scope: &str, reference: &str) -> Option<WeatherTextureUpload> {
     self
       .get_entry(scope, reference)
       .and_then(|entry| entry.view.as_ref())
-      .map(|(_, size)| *size)
+      .map(|(_, upload)| *upload)
   }
 
   /// Takes what the loaders finished and uploads it, and lets go of what nobody asked for in a while.
@@ -230,9 +234,13 @@ impl WeatherTextureCache {
           log::warn!("Weather texture '{reference}' is larger than the device holds");
         }
         Ok(Some(texture)) if Self::is_kind(&texture, entry.kind) => {
+          self.uploads += 1;
           entry.view = Some((
             texture.upload(device, queue, &reference),
-            (texture.width, texture.height),
+            WeatherTextureUpload {
+              size: (texture.width, texture.height),
+              number: self.uploads,
+            },
           ));
         }
         Ok(Some(_)) => log::warn!("Weather texture '{reference}' is not the kind it is drawn as"),

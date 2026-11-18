@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
+use super::RenderThread;
 use crate::camera::camera_view::CameraView;
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_job::CaptureJob;
@@ -48,8 +49,6 @@ use crate::viewport::pick::pick_unprojection::PickUnprojection;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::viewport::viewport_parts::ViewportParts;
 use crate::window::window_frame::WindowFrame;
-
-use super::RenderThread;
 
 /// A viewport a window draws this frame, by its whole rectangle, and the scene it shows, none where it shows none.
 struct DrawnView {

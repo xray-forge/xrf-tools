@@ -1,11 +1,11 @@
 //! How the lights' shadow faces share the atlas under pressure, and in what order those wanting a draw are taken.
 
+use std::cmp::Ordering;
+
 use glam::Vec3;
 use xrf_math::Vector3d;
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::{LightDescription, LightKind};
-
-use std::cmp::Ordering;
 
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::pass::view::view_binding::ViewBinding;

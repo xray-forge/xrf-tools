@@ -1,8 +1,6 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::lighting::luminance::luminance;
-
 use crate::contract::feature::image::display::render_display_transform::RenderDisplayTransform;
 use crate::contract::feature::image::display::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::feature::image::render_exposure_settings::RenderExposureSettings;
@@ -22,6 +20,7 @@ use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::lamp::light_specular::get_light_specular;
+use crate::lighting::luminance::luminance;
 use crate::lighting::srgb::{anchored_light, authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::lighting::unit::daylight::Daylight;
 use crate::lighting::unit::light_unit::PHYSICAL_LIGHT_UNIT;

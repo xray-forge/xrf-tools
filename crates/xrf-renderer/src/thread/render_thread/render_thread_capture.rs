@@ -7,6 +7,7 @@ use xrf_renderer_core::{
   GraphTextureDescriptor, UniformBinding,
 };
 
+use super::RenderThread;
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::capture::capture_job::CaptureJob;
@@ -36,8 +37,6 @@ use crate::viewport::render_viewport::RenderViewport;
 use crate::window::display_target::DisplayTarget;
 use crate::window::window_frame::WindowFrame;
 use crate::window::window_viewport::WindowViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   /// The captures this frame copies out of their window's image once it is composed, before it is presented, and the

@@ -4,8 +4,6 @@ use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray, StorageValue};
 
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
-use crate::frame::jitter_guard::JitterGuard;
-
 use crate::feature::effects::over_scene::add_over_scene;
 use crate::feature::effects::rain::cover::rain_cover_shape::RainCoverShape;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
@@ -22,6 +20,7 @@ use crate::feature::image::image_chain::ImageChain;
 use crate::feature::view::overhead_windows::OverheadWindows;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_restart::ViewRestart;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::weather::render_rain::RenderRain;
 use crate::lighting::weather::render_rainfall::RenderRainfall;

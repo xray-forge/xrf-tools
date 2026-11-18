@@ -31,7 +31,31 @@ describe("followListening", () => {
     window.dispatchEvent(new Event("focus"));
 
     expect(second.listen).toHaveBeenCalledTimes(2);
+    stopFirst();
+  });
+
+  it("hands the active pane on to the latest still attached as it goes", () => {
+    const [first, second, third] = [mockViewport(), mockViewport(), mockViewport()];
+    const stopFirst = followListening(first, document.createElement("div"));
+    const stopSecond = followListening(second, document.createElement("div"));
+    const stopThird = followListening(third, document.createElement("div"));
 
     stopFirst();
+
+    expect(third.listen).toHaveBeenCalledTimes(1);
+    expect(second.listen).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new Event("focus"));
+
+    expect(third.listen).toHaveBeenCalledTimes(2);
+
+    stopThird();
+
+    expect(second.listen).toHaveBeenCalledTimes(1);
+
+    stopSecond();
+    window.dispatchEvent(new Event("focus"));
+
+    expect(second.listen).toHaveBeenCalledTimes(1);
   });
 });

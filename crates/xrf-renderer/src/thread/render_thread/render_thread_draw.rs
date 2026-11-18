@@ -2,13 +2,13 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use wgpu::util::StagingBelt;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
   ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphDeclaration, GraphOwner, GraphReport,
 };
 
-use wgpu::util::StagingBelt;
-
+use super::RenderThread;
 use crate::capture::record::record_shot::RecordShot;
 use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::contract::viewport::render_rect::RenderRect;
@@ -43,8 +43,6 @@ use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_frame::WindowFrame;
 use crate::window::window_passes::WindowPasses;
 use crate::window::window_viewport::WindowViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was

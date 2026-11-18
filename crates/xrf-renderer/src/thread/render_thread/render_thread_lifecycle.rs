@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use xrf_error::XrfResult;
 
+use super::RenderThread;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_libraries::GpuLibraries;
 use crate::context::library_versions::locate_dlss_runtime;
@@ -13,8 +14,6 @@ use crate::thread::gpu_state::GpuState;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::render_viewport::RenderViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   /// Detaches viewports whose page stopped listening.

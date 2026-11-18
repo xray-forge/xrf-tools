@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
 
+use super::RenderThread;
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_event::CaptureEvent;
@@ -27,8 +28,6 @@ use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::capture::pending_screenshot::PendingScreenshot;
 use crate::viewport::pick::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   pub(super) fn handle(&mut self, command: RenderCommand) {

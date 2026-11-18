@@ -28,11 +28,15 @@ impl AiMapLevel {
   /// Nodes a cell's word can name the first of.
   const MAX_NODES: usize = 1 << 24;
 
-  /// The map's buffers, none for a map whose grid or nodes are past what the words hold.
+  /// The map's buffers, none for a map whose grid or nodes are past what the words hold or a storage binding of the
+  /// device holds.
   pub(crate) fn new(device: &wgpu::Device, map: &RenderLevelAiMap) -> Option<Self> {
     let cell_count: u64 = u64::from(map.row_length) * u64::from(map.column_length);
+    let limits: wgpu::Limits = device.limits();
+    let bound: u64 = limits.max_buffer_size.min(limits.max_storage_buffer_binding_size);
+    let is_bound: bool = cell_count * 4 <= bound && map.nodes.len() as u64 * 8 <= bound;
 
-    if cell_count == 0 || cell_count > Self::MAX_CELLS || map.nodes.len() >= Self::MAX_NODES {
+    if cell_count == 0 || cell_count > Self::MAX_CELLS || map.nodes.len() >= Self::MAX_NODES || !is_bound {
       log::warn!(
         "Native viewport AI map of {} nodes over {cell_count} cells is not shown",
         map.nodes.len()

@@ -1,10 +1,10 @@
 use std::time::{Duration, Instant};
 
+use wgpu::util::StagingBelt;
 use xrf_error::XrfError;
 use xrf_renderer_core::{ExecutedGraph, ExecutedGroup};
 
-use wgpu::util::StagingBelt;
-
+use super::RenderThread;
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::readback::frame_capture::FrameCapture;
@@ -17,8 +17,6 @@ use crate::thread::views::readied_view::ReadiedView;
 use crate::thread::views::scene_recorder::SceneRecorder;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::window_frame::WindowFrame;
-
-use super::RenderThread;
 
 impl RenderThread {
   /// What the frame failure log knows a frame its graph could not draw by, and the uploads such a frame could not
