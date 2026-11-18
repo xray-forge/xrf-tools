@@ -139,6 +139,12 @@ impl AudioTransport {
     match self.place {
       TransportPlace::Playing { voice, .. } => {
         self.end_voice(engine, voice)?;
+        // Held at the asked frame first, so a restart the engine refuses leaves the transport paused there rather
+        // than following the stopped voice to its end.
+        self.place = TransportPlace::Held {
+          frame,
+          playback: AudioTransportPlayback::Paused,
+        };
         self.start(engine, frame)
       }
       TransportPlace::Held { .. } => {

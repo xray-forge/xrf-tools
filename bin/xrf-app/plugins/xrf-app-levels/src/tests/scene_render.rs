@@ -38,7 +38,8 @@ use crate::scene::{
 };
 use crate::tests::fixtures::{
   COLLISION_COMPILER_SHADER, compiler_library, new_scenes, open_scene, scene_custom_object, scene_library_object,
-  scene_part, scene_parted_object, write_scene, write_scene_library_object, write_scene_object_file, write_scene_part,
+  scene_part, scene_parted_object, silent_server, write_scene, write_scene_library_object, write_scene_object_file,
+  write_scene_part,
 };
 
 /// The library object two scene objects place.
@@ -663,6 +664,8 @@ fn refuses_to_show_a_session_that_holds_no_scene() {
     .manage(SessionScopes::default())
     .manage(AssetMountState::new())
     .manage(ExecutionState::new(ExecutionRequest::Auto).expect("the pool starts"))
+    // What the audio plugin manages before the domains' plugins set up.
+    .manage(silent_server())
     .plugin(RenderPlugin::init())
     .plugin(LevelsPlugin::init())
     .build(mock_context(noop_assets()))

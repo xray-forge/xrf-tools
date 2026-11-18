@@ -10,7 +10,7 @@ use crate::render::{LevelAudio, LevelRenderSource};
 
 /// The source each level session is drawn from, while anything draws it: every viewport showing a snapshot shares
 /// one, and a commit moving the session moves its scene onto the next. A clone holds the same sources.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ShownLevels {
   sources: Arc<Mutex<HashMap<SessionId, Weak<LevelRenderSource>>>>,
   /// Where every source plays its scene's sound.
@@ -19,7 +19,7 @@ pub struct ShownLevels {
 
 impl ShownLevels {
   /// Shown levels heard through `audio`.
-  pub fn new(audio: Option<AudioServer>) -> Self {
+  pub fn new(audio: AudioServer) -> Self {
     Self {
       sources: Arc::default(),
       audio: LevelAudio::new(audio),

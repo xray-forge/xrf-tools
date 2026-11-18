@@ -82,14 +82,15 @@ impl OutputStream {
     std::iter::from_fn(|| self.errors.pop().ok()).collect()
   }
 
-  /// Stops the stream and takes the mixer back from its callback, or `None` if the device never let it go.
-  pub(crate) fn close(self) -> Option<AudioMixer> {
+  /// Stops the stream and takes the mixer back from its callback. A device slow to let it go answers with the ring the
+  /// callback hands it back through, to look in again later.
+  pub(crate) fn close(self) -> Result<AudioMixer, Consumer<AudioMixer>> {
     let Self {
       stream, mut returned, ..
     } = self;
 
     drop(stream);
-    Self::await_mixer(&mut returned)
+    Self::await_mixer(&mut returned).ok_or(returned)
   }
 
   fn await_mixer(returned: &mut Consumer<AudioMixer>) -> Option<AudioMixer> {

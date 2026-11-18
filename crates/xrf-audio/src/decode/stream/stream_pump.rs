@@ -19,6 +19,9 @@ pub struct StreamPump {
   /// Decoded samples not yet in the ring, from `offset` on.
   pending: Vec<f32>,
   offset: usize,
+  /// Whether a frame was decoded since the stream opened or last started over, so a looped sound that decodes to
+  /// nothing ends rather than starting over forever: its header can claim a length its packets do not hold.
+  has_decoded: bool,
 }
 
 /// The sound a pump opens on its first fill, and the frame it seeks to.
@@ -36,6 +39,8 @@ impl StreamPump {
       shared,
       pending: Vec::new(),
       offset: 0,
+      // The pass from the start frame to the end may hold nothing, as when it starts at the end.
+      has_decoded: true,
     }
   }
 
@@ -65,12 +70,21 @@ impl StreamPump {
         self.offset = 0;
 
         match decoder.decode_next(&mut self.pending) {
-          Ok(true) => {}
+          Ok(true) => self.has_decoded |= !self.pending.is_empty(),
           Ok(false) if self.shared.is_looped() && decoder.get_frames_count() > 0 => {
+            if !self.has_decoded {
+              self.shared.fail(String::from(
+                "The sound holds no audio its decoder reads, so it cannot loop",
+              ));
+              return StreamPumpState::Done;
+            }
+
             if let Err(error) = decoder.seek(0) {
               self.shared.fail(error.to_string());
               return StreamPumpState::Done;
             }
+
+            self.has_decoded = false;
           }
           Ok(false) => {
             self.shared.end();

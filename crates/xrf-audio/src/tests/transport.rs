@@ -116,6 +116,24 @@ fn seeks_while_playing_and_while_held() {
   assert_eq!(state(&mut transport, &engine).playback, AudioTransportPlayback::Playing);
 }
 
+/// The voice a seek stops still fades out in its slot, so an engine of one voice refuses the restart; the transport
+/// then holds paused at the asked frame rather than ending.
+#[test]
+fn holds_where_a_seek_asked_when_the_engine_refuses_the_restart() {
+  let AudioEngineParts { mut engine, mixer } = engine(1);
+  let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+  let mut transport: AudioTransport = transport(20_000);
+
+  transport.play(&mut engine).expect("the transport plays");
+  assert!(first_heard(&mut render).is_some());
+  assert!(transport.seek(&mut engine, Duration::from_millis(300)).is_err());
+
+  let held: AudioTransportState = state(&mut transport, &engine);
+
+  assert_eq!(held.playback, AudioTransportPlayback::Paused);
+  assert_eq!(held.position, Duration::from_millis(300));
+}
+
 #[test]
 fn ends_at_the_sound_s_end_and_plays_again_from_the_start() {
   let AudioEngineParts { mut engine, mixer } = engine(2);

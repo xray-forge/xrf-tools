@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use cpal::traits::HostTrait;
 use cpal::{Device, ErrorKind, Host};
+use rtrb::Consumer;
 
 use crate::mixer::audio_mixer::AudioMixer;
 use crate::output::device::audio_devices::AudioDevices;
@@ -22,6 +23,8 @@ pub(crate) struct OutputThread {
   /// The mixer while no stream plays it.
   mixer: Option<AudioMixer>,
   stream: Option<OutputStream>,
+  /// Where a closed stream's callback hands the mixer back, while the device has not let it go yet.
+  held: Option<Consumer<AudioMixer>>,
   choice: AudioOutputChoice,
   requests: Receiver<OutputRequest>,
   status: Arc<Mutex<AudioOutputStatus>>,
@@ -66,6 +69,7 @@ impl OutputThread {
     Self {
       mixer: Some(mixer),
       stream: None,
+      held: None,
       choice,
       requests,
       status,
@@ -96,6 +100,7 @@ impl OutputThread {
         Err(RecvTimeoutError::Timeout) => {}
       }
 
+      self.take_back_mixer();
       self.check_stream();
 
       if self.stream.is_none() && Instant::now() >= self.retry_at {
@@ -221,12 +226,32 @@ impl OutputThread {
   }
 
   fn close_stream(&mut self) {
-    if let Some(stream) = self.stream.take() {
-      self.mixer = stream.close();
+    let Some(stream) = self.stream.take() else {
+      return;
+    };
 
-      if self.mixer.is_none() {
-        log::error!("The audio device kept the mixer after its stream closed; audio stays silent");
+    match stream.close() {
+      Ok(mixer) => self.mixer = Some(mixer),
+      Err(returned) => {
+        self.held = Some(returned);
+        self.fail(String::from(
+          "The audio device has not handed the mixer back since its stream closed",
+        ));
       }
+    }
+  }
+
+  /// Takes the mixer back from a closed stream's callback that let it go late, so audio plays again.
+  fn take_back_mixer(&mut self) {
+    let Some(returned) = &mut self.held else {
+      return;
+    };
+
+    if let Ok(mixer) = returned.pop() {
+      log::info!("The audio device handed the mixer back late");
+      self.mixer = Some(mixer);
+      self.held = None;
+      self.retry_at = Instant::now();
     }
   }
 

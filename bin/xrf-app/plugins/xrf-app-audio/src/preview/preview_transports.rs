@@ -18,6 +18,9 @@ use xrf_audio::{
 pub struct PreviewTransports {
   server: AudioServer,
   previews: PreviewTable,
+  /// How many times each window's previews were closed, by its label: a preview opened across a close belongs to a
+  /// page that is gone.
+  closings: Arc<Mutex<HashMap<String, u64>>>,
 }
 
 /// The previews by id, shared with the server's event sink.
@@ -61,6 +64,7 @@ impl PreviewTransports {
     Self {
       server,
       previews: Arc::clone(&events.previews),
+      closings: Arc::default(),
     }
   }
 
@@ -68,14 +72,26 @@ impl PreviewTransports {
   ///
   /// # Errors
   ///
-  /// Returns an error when the bytes are not a sound the application plays.
+  /// Returns an error when the bytes are not a sound the application plays, or the window's page loaded again or went
+  /// while the preview opened.
   pub fn open(&self, bytes: Arc<[u8]>, window: &str) -> TauriResult<AudioTransportId> {
+    let closings: u64 = self.get_closings(window);
     let id: AudioTransportId = self
       .server
       .open_transport(Arc::clone(&bytes), AudioBus::Previews)
       .map_err(|error| format!("Cannot preview the sound: {error}"))?;
+    let mut previews: MutexGuard<'_, HashMap<AudioTransportId, PreviewEntry>> = lock(&self.previews);
 
-    lock(&self.previews).insert(
+    // Checked under the table's lock: a close that came first has counted itself, and one that comes later finds the
+    // entry.
+    if self.get_closings(window) != closings {
+      drop(previews);
+      self.server.close_transport(id);
+
+      return Err(String::from("The page loaded again while the preview opened"));
+    }
+
+    previews.insert(
       id,
       PreviewEntry {
         window: window.to_owned(),
@@ -169,6 +185,9 @@ impl PreviewTransports {
   /// Stops and forgets the previews the window labelled `window` opened, as its page loads again or the window goes:
   /// the page that could close them is gone, and another window's previews play on.
   pub fn close_window(&self, window: &str) {
+    // Counted before the table is searched, so a preview opening meanwhile either is found or sees the count move.
+    *self.lock_closings().entry(window.to_owned()).or_default() += 1;
+
     let closed: Vec<AudioTransportId> = lock(&self.previews)
       .extract_if(|_, entry| entry.window == window)
       .map(|(id, _)| id)
@@ -194,6 +213,16 @@ impl PreviewTransports {
       .server
       .steer_transport(id, command)
       .map_err(|error| error.to_string())
+  }
+
+  /// How many times the previews of the window labelled `window` were closed.
+  fn get_closings(&self, window: &str) -> u64 {
+    self.lock_closings().get(window).copied().unwrap_or(0)
+  }
+
+  // A count changes whole, so one a panic left behind is still whole.
+  fn lock_closings(&self) -> MutexGuard<'_, HashMap<String, u64>> {
+    self.closings.lock().unwrap_or_else(PoisonError::into_inner)
   }
 
   fn new_missing(id: AudioTransportId) -> String {

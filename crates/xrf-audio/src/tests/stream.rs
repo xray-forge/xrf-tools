@@ -126,6 +126,33 @@ fn loops_a_stream_until_told_otherwise() {
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
 }
 
+/// A sound whose pages claim frames its packets do not render would start over forever, a thread spinning at full
+/// speed; one pass that decodes nothing ends it, naming why.
+#[test]
+fn ends_a_looped_stream_of_a_sound_that_decodes_to_nothing() {
+  let empty: Arc<[u8]> = VorbisNoiseFixture::refused(1, 20).into();
+  let AudioEngineParts { mut engine, mixer } = engine(1);
+  let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+  let reader: StreamReader = stream(empty, 0, true);
+  let control: StreamControl = reader.get_control();
+  let voice: AudioVoiceId = play(&mut engine, reader);
+  let deadline: Instant = Instant::now() + Duration::from_secs(2);
+
+  while engine.get_playback(voice).state != AudioVoiceState::Ended && Instant::now() < deadline {
+    render.render(256);
+    std::thread::sleep(Duration::from_millis(1));
+  }
+
+  assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
+  assert!(
+    control
+      .get_failure()
+      .is_some_and(|reason| reason.contains("holds no audio")),
+    "{:?}",
+    control.get_failure()
+  );
+}
+
 #[test]
 fn reports_the_frame_a_stream_plays() {
   let AudioEngineParts { mut engine, mixer } = engine(1);

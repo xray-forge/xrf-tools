@@ -6,6 +6,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_render::{Renderer, WorldState};
+use xrf_audio::AudioServer;
 use xrf_renderer::{RenderFrameReport, RenderViewportId};
 
 use crate::render::ShownLevels;
@@ -40,11 +41,7 @@ pub(crate) async fn levels_start_recording(
 
   MediaProbe::MEDIA_FOUNDATION.load()?;
 
-  let server = shown
-    .get_audio()
-    .server
-    .clone()
-    .ok_or("The audio did not start, so a recording would have no sound")?;
+  let server: AudioServer = shown.get_audio().server.clone();
   let frame: RenderFrameReport = renderer
     .describe_frame(viewport)
     .await?

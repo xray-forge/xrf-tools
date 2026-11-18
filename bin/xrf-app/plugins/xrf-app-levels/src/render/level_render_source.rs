@@ -340,7 +340,6 @@ impl WorldLevelSource for LevelRenderSource {
     let inbox: AudioSceneInbox = self
       .audio
       .server
-      .as_ref()?
       .open_scene(Arc::clone(&assets), Some(Arc::clone(&geometry)))
       .inspect_err(|error| log::warn!("The level's sound cannot play: {error}"))
       .ok()?;

@@ -95,6 +95,34 @@ impl VorbisNoiseFixture {
     writer.into_inner()
   }
 
+  /// A sound whose pages count the frames of `packets_count` short packets, each audio packet one the codec refuses (its
+  /// first bit marks it as no audio packet), as a damaged file can be: frames claimed, none rendered.
+  pub fn refused(channels: u16, packets_count: usize) -> Vec<u8> {
+    let mut writer: PacketWriter<'_, Vec<u8>> = PacketWriter::new(Vec::new());
+    let half_block: u64 = Self::get_block_size(false) / 2;
+
+    Self::write(
+      &mut writer,
+      Self::identification(channels),
+      PacketWriteEndInfo::EndPage,
+      0,
+    );
+    Self::write(&mut writer, Self::comment(), PacketWriteEndInfo::NormalPacket, 0);
+    Self::write(&mut writer, Self::setup(), PacketWriteEndInfo::EndPage, 0);
+
+    for index in 0..packets_count {
+      let end: PacketWriteEndInfo = if index + 1 == packets_count {
+        PacketWriteEndInfo::EndStream
+      } else {
+        PacketWriteEndInfo::EndPage
+      };
+
+      Self::write(&mut writer, vec![1], end, index as u64 * half_block);
+    }
+
+    writer.into_inner()
+  }
+
   fn get_block_size(is_long: bool) -> u64 {
     1 << if is_long {
       Self::LONG_BLOCK_EXPONENT

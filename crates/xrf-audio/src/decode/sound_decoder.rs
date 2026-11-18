@@ -94,7 +94,8 @@ impl SoundDecoder {
   /// Decodes the next packet of audio into `samples`, interleaved, replacing what it held. Answers `false` once the
   /// sound has no audio left, leaving `samples` empty.
   ///
-  /// A packet the codec refuses as corrupt is skipped, as players do; any other failure ends the decode.
+  /// A packet the codec refuses as corrupt is skipped, as players do; any other failure ends the decode. A sample that
+  /// is not a finite number becomes silence.
   ///
   /// # Errors
   ///
@@ -112,6 +113,11 @@ impl SoundDecoder {
 
       samples.drain(..(skipped * channels).min(samples.len()));
       self.next_frame = self.next_frame.max(first_frame) + (samples.len() / channels) as u64;
+
+      // A float file can hold NaN or infinity, which the mix would carry to the device and into the reverb's state.
+      for sample in samples.iter_mut().filter(|sample| !sample.is_finite()) {
+        *sample = 0.0;
+      }
 
       if !samples.is_empty() {
         return Ok(true);

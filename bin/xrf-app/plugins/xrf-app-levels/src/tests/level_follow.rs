@@ -28,6 +28,7 @@ use crate::parts::{
   LevelTexturesPart, LevelWeatherPart,
 };
 use crate::render::{LevelAudio, LevelRenderParts, LevelRenderSource, LevelSceneFollower, ShownLevels};
+use crate::tests::fixtures::silent_server;
 
 /// Longer than a synthetic level takes to read on the test pool.
 const WAIT: Duration = Duration::from_secs(10);
@@ -227,7 +228,7 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
   let pool: Arc<ThreadPool> = test_pool();
   let levels: SelectedLevels = new_levels(&assets, Some(Arc::clone(&pool)));
   let world: WorldState = WorldState::new(RenderWorkers::new(Arc::clone(&pool)));
-  let shown: ShownLevels = ShownLevels::default();
+  let shown: ShownLevels = ShownLevels::new(silent_server());
   let log: ChangeLog = ChangeLog::default();
   let viewport: RenderViewportId = RenderViewportId(1);
 
@@ -292,7 +293,7 @@ fn a_commit_to_a_texture_of_a_shown_level_moves_its_scene_onto_the_next_snapshot
   let pool: Arc<ThreadPool> = test_pool();
   let levels: SelectedLevels = new_levels(&assets, Some(Arc::clone(&pool)));
   let world: WorldState = WorldState::new(RenderWorkers::new(Arc::clone(&pool)));
-  let shown: ShownLevels = ShownLevels::default();
+  let shown: ShownLevels = ShownLevels::new(silent_server());
   let log: ChangeLog = ChangeLog::default();
   let viewport: RenderViewportId = RenderViewportId(1);
 
@@ -344,7 +345,7 @@ fn a_shown_level_that_fails_to_read_again_stays_drawn_as_it_was() {
   let (assets, roots, search) = level_tree("failed");
   let levels: SelectedLevels = new_levels(&assets, None);
   let world: WorldState = WorldState::new(RenderWorkers::new(test_pool()));
-  let shown: ShownLevels = ShownLevels::default();
+  let shown: ShownLevels = ShownLevels::new(silent_server());
   let log: ChangeLog = ChangeLog::default();
   let viewport: RenderViewportId = RenderViewportId(1);
 
@@ -387,7 +388,7 @@ fn a_show_holding_a_snapshot_a_commit_moved_past_draws_the_source_the_commit_mov
   let pool: Arc<ThreadPool> = test_pool();
   let levels: SelectedLevels = new_levels(&assets, Some(Arc::clone(&pool)));
   let world: WorldState = WorldState::new(RenderWorkers::new(Arc::clone(&pool)));
-  let shown: ShownLevels = ShownLevels::default();
+  let shown: ShownLevels = ShownLevels::new(silent_server());
   let viewport: RenderViewportId = RenderViewportId(1);
 
   assets.add_subscriber(LevelSceneFollower {
@@ -432,7 +433,7 @@ fn a_show_holding_a_snapshot_a_commit_moved_past_draws_the_source_the_commit_mov
 fn every_show_of_one_snapshot_shares_one_source() {
   let (assets, roots, _) = level_tree("shared_source");
   let levels: SelectedLevels = new_levels(&assets, Some(test_pool()));
-  let shown: ShownLevels = ShownLevels::default();
+  let shown: ShownLevels = ShownLevels::new(silent_server());
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&levels, &assets, &roots);
   let first: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);
   let second: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);
@@ -511,7 +512,7 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
   let source: LevelRenderSource = LevelRenderSource::new(
     Arc::clone(&opened),
     AssetMountState::clone(&assets),
-    LevelAudio::default(),
+    LevelAudio::new(silent_server()),
   );
 
   // Each read finds nothing of what it looks for in the synthetic level, which it records as it would a file.

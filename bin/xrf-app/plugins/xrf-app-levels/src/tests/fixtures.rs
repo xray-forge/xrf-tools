@@ -1,6 +1,6 @@
 //! What several test modules build the same way: a level of shader entries, a search over a fixture tree, an empty
-//! environment catalog, a spawned object, and a Level Editor scene written into a rawdata tree with its library
-//! objects, and opened.
+//! environment catalog, a spawned object, a Level Editor scene written into a rawdata tree with its library objects,
+//! and opened, and an audio server with no device.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,6 +9,7 @@ use std::sync::Arc;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, SessionSnapshot};
+use xrf_audio::{AudioEngineParts, AudioEngineSettings, AudioEvent, AudioServer};
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableBuildParams, EditableCustomObject, EditableLevelCamera, EditableLevelFile, EditableLevelGuid,
@@ -36,6 +37,13 @@ pub(super) const SCENE_GUID: EditableLevelGuid = EditableLevelGuid {
 
 /// The name of every test scene, which names its part directory.
 pub(super) const SCENE_NAME: &str = "labx8";
+
+/// An audio server playing to no device, as the application's audio plugin starts it on a machine without one.
+pub(super) fn silent_server() -> AudioServer {
+  let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
+
+  AudioServer::start_on(engine, None, |_: AudioEvent| {}).expect("the audio control starts")
+}
 
 /// A level whose shader table holds exactly these raw entries.
 pub(super) fn new_level(entries: &[&str]) -> LevelFile {

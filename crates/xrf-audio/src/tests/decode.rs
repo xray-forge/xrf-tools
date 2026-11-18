@@ -45,6 +45,35 @@ fn seeks_to_the_exact_frame_asked_for() {
   assert_eq!(get_frame(packet[0]), 3);
 }
 
+/// A float WAV can hold any 32 bits; one that is no number would reach the device and the reverb as it is.
+#[test]
+fn decodes_a_sample_that_is_no_number_as_silence() {
+  let samples: [f32; 4] = [0.5, f32::NAN, f32::INFINITY, -0.25];
+  let mut bytes: Vec<u8> = Vec::new();
+
+  bytes.extend_from_slice(b"RIFF");
+  bytes.extend_from_slice(&(36 + 16u32).to_le_bytes());
+  bytes.extend_from_slice(b"WAVEfmt ");
+  bytes.extend_from_slice(&16u32.to_le_bytes());
+  // IEEE float, one channel, 32 bits a sample.
+  bytes.extend_from_slice(&3u16.to_le_bytes());
+  bytes.extend_from_slice(&1u16.to_le_bytes());
+  bytes.extend_from_slice(&RATE.to_le_bytes());
+  bytes.extend_from_slice(&(RATE * 4).to_le_bytes());
+  bytes.extend_from_slice(&4u16.to_le_bytes());
+  bytes.extend_from_slice(&32u16.to_le_bytes());
+  bytes.extend_from_slice(b"data");
+  bytes.extend_from_slice(&16u32.to_le_bytes());
+
+  for sample in samples {
+    bytes.extend_from_slice(&sample.to_le_bytes());
+  }
+
+  let sound: DecodedSound = DecodedSound::decode(bytes.into()).expect("the sound decodes");
+
+  assert_eq!(sound.get_samples(), &[0.5, 0.0, 0.0, -0.25]);
+}
+
 #[test]
 fn decodes_an_ogg_sound_to_the_length_the_engine_counts() -> XrfResult {
   let bytes: Arc<[u8]> = VorbisNoiseFixture::sound(2, 300).into();

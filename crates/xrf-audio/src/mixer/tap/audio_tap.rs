@@ -42,9 +42,19 @@ impl AudioTap {
   ///
   /// Returns why the stream ended once every block before the end is read.
   pub fn read(&mut self) -> Result<Option<AudioTapBlock>, AudioTapEnd> {
+    if let Ok(block) = self.blocks.pop() {
+      return Ok(Some(block));
+    }
+
+    let Some(end) = self.shared.get_end() else {
+      return Ok(None);
+    };
+
+    // The mixer may have pushed a last block between the empty pop and the end being set; the end is set after every
+    // push before it, so one more pop finds that block.
     match self.blocks.pop() {
       Ok(block) => Ok(Some(block)),
-      Err(_) => self.shared.get_end().map_or(Ok(None), Err),
+      Err(_) => Err(end),
     }
   }
 

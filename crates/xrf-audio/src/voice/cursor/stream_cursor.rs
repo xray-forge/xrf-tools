@@ -55,7 +55,7 @@ impl StreamCursor {
   pub(crate) fn render(&mut self, out: &mut [f32], step: f64) -> bool {
     let channels: usize = self.get_channels().get_count();
 
-    if !self.fill() {
+    if !self.fill() || !self.catch_up() {
       return !self.is_played_out();
     }
 
@@ -82,7 +82,7 @@ impl StreamCursor {
   /// decoder thread has not produced yet hold it where it is. Answers `false` once the stream has drained and played
   /// out.
   pub(crate) fn skip(&mut self, frames: usize, step: f64) -> bool {
-    if !self.fill() {
+    if !self.fill() || !self.catch_up() {
       return !self.is_played_out();
     }
 
@@ -108,6 +108,12 @@ impl StreamCursor {
     }
 
     true
+  }
+
+  /// Takes the frames a step that ran out of them still owes, answering whether they were there: a block after a stall
+  /// then reads between `current` and `next`, never past them.
+  fn catch_up(&mut self) -> bool {
+    self.step(0.0)
   }
 
   /// Fills the window's frames from `current` on, answering whether it is full.

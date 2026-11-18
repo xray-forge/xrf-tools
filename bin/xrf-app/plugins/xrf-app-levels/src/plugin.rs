@@ -44,12 +44,8 @@ impl LevelsPlugin {
             application.state::<ExecutionState>().get_pool(),
             OpenedScene::derive,
           );
-        // A shown level is heard through the audio plugin's server, set up before the domains; without it, silent.
-        let shown: ShownLevels = ShownLevels::new(
-          application
-            .try_state::<AudioServer>()
-            .map(|server| server.inner().clone()),
-        );
+        // A shown level is heard through the audio plugin's server, set up before the domains.
+        let shown: ShownLevels = ShownLevels::new(application.state::<AudioServer>().inner().clone());
 
         // A shown level's scene follows its session.
         assets.add_subscriber(LevelSceneFollower {
