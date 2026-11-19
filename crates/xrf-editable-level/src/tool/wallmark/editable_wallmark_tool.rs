@@ -7,16 +7,9 @@ use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::part::editable_binary_part::EditableBinaryPart;
 use crate::part::editable_level_part::EditableLevelPart;
 use crate::scene::editable_scene_tool::EditableSceneTool;
-use crate::tool::editable_wallmark::EditableWallmark;
-
-/// Every decal of one shader and texture, `ESceneWallmarkTool::wm_slot`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct EditableWallmarkSlot {
-  /// The blender the decals draw through, a definition inside `shaders.xr`.
-  pub shader: String,
-  pub texture: String,
-  pub marks: Vec<EditableWallmark>,
-}
+use crate::tool::wallmark::editable_wallmark::EditableWallmark;
+use crate::tool::wallmark::editable_wallmark_items::EditableWallmarkItems;
+use crate::tool::wallmark::editable_wallmark_slot::EditableWallmarkSlot;
 
 /// The wall mark tool's part, `wallmark.part`: its brush settings and its decals in slots, as
 /// `ESceneWallmarkTool::SaveStream` writes them. The editor exports the decals into `level.wallmarks`, and hands their
@@ -143,11 +136,15 @@ impl EditableWallmarkTool {
 
     let (mark_width, mark_height, mark_rotation, stored_shader, texture) = Self::require(params, "params")?;
     // The older decal chunk wins wherever it stands, whatever the version, as `LoadStream` opens it first.
-    let is_current: bool = old_items.is_none();
+    let source: EditableWallmarkItems = if old_items.is_some() {
+      EditableWallmarkItems::Old
+    } else {
+      EditableWallmarkItems::Current
+    };
     // A tool of no decal stores its decal chunk empty, as the editor writes it.
     let slots: Vec<EditableWallmarkSlot> = match old_items.or(items).filter(|bytes| !bytes.is_empty()) {
       Some(bytes) => ChunkReader::from_vec(bytes)?
-        .read_numbered_children("wall mark slot", |slot| Self::read_slot::<T>(slot, is_current))?,
+        .read_numbered_children("wall mark slot", |slot| Self::read_slot::<T>(slot, source))?,
       None => Vec::new(),
     };
 
@@ -272,7 +269,7 @@ impl EditableWallmarkTool {
 
   fn read_slot<T: ByteOrder>(
     reader: &mut ChunkReader<InMemoryChunkDataSource>,
-    recorded: bool,
+    items: EditableWallmarkItems,
   ) -> XrfResult<EditableWallmarkSlot> {
     let count: u32 = reader.read_u32::<T>()?;
     let mut slot: EditableWallmarkSlot = EditableWallmarkSlot {
@@ -287,7 +284,7 @@ impl EditableWallmarkTool {
       slot.marks = reader.new_bounded_vec(count.into(), EditableWallmark::OLD_FIXED_SIZE, "wall marks")?;
 
       for _ in 0..count {
-        slot.marks.push(EditableWallmark::read::<T, _>(reader, recorded)?);
+        slot.marks.push(EditableWallmark::read::<T, _>(reader, items)?);
       }
     }
 

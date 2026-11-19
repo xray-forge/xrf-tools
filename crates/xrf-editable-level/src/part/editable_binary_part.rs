@@ -3,9 +3,9 @@ use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryCh
 use xrf_error::{XrfError, XrfResult};
 
 use crate::level::editable_level_guid::EditableLevelGuid;
-use crate::tool::editable_ai_map_tool::EditableAiMapTool;
-use crate::tool::editable_detail_object_tool::EditableDetailObjectTool;
-use crate::tool::editable_wallmark_tool::EditableWallmarkTool;
+use crate::tool::ai_map::editable_ai_map_tool::EditableAiMapTool;
+use crate::tool::detail_object::editable_detail_object_tool::EditableDetailObjectTool;
+use crate::tool::wallmark::editable_wallmark_tool::EditableWallmarkTool;
 
 /// A tool's part saved as chunks rather than text (`EScene::SaveLTX`): the AI map, detail objects and wall marks. The
 /// file is the scene's GUID under [`Self::GUID_CHUNK_ID`] and the tool's stream under [`Self::DATA_CHUNK_ID`] plus its

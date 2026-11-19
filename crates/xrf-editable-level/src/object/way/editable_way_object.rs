@@ -1,32 +1,13 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ini::{IniFile, IniSection};
-use xrf_math::{Vector2d, Vector3d};
+use xrf_math::Vector2d;
 
 use crate::level::editable_level_value::EditableLevelValue;
 use crate::object::editable_custom_object::EditableCustomObject;
 use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::way::editable_way_link::EditableWayLink;
+use crate::object::way::editable_way_point::EditableWayPoint;
 use crate::part::editable_part_object::EditablePartObject;
-
-/// A link from one way point to another of its way, `SWPLink`.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct EditableWayLink {
-  /// The point it leads to, by its place in the way's points.
-  pub to: usize,
-  pub probability: f32,
-}
-
-/// One point of a way, `CWayPoint`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct EditableWayPoint {
-  /// Unique within its way, `wp00` upwards for a point the editor adds.
-  pub name: String,
-  pub position: Vector3d,
-  /// Thirty-two flags the scripts give meaning to.
-  pub flags: u32,
-  pub selected: bool,
-  /// Its links in the order the editor keeps them.
-  pub links: Vec<EditableWayLink>,
-}
 
 /// A patrol path, `CWayObject`: an object of `way.part`, its points and links. The build exports every way into
 /// `level.game`'s patrol path table under the object's name.

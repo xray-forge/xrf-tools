@@ -8,29 +8,9 @@ use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::part::editable_binary_part::EditableBinaryPart;
 use crate::part::editable_level_part::EditableLevelPart;
 use crate::scene::editable_scene_tool::EditableSceneTool;
-use crate::tool::editable_detail_object::EditableDetailObject;
-
-/// The detail grid's header, `DetailHeader` (`Layers/xrRender/DetailFormat.h`), as the tool stores it: 24 bytes cast
-/// onto the struct.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct EditableDetailHeader {
-  /// `DETAIL_VERSION` once the tool has exported, else what the tool last held.
-  pub version: u32,
-  pub object_count: u32,
-  /// The slot the level's origin falls in, and the grid's size in slots.
-  pub offset_x: i32,
-  pub offset_z: i32,
-  pub size_x: u32,
-  pub size_z: u32,
-}
-
-/// The base texture's colours the tool plants each object on, `m_ColorIndices`: a colour and the objects it plants, by
-/// reference.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EditableDetailColorIndex {
-  pub color: u32,
-  pub objects: Vec<String>,
-}
+use crate::tool::detail_object::editable_detail_color_index::EditableDetailColorIndex;
+use crate::tool::detail_object::editable_detail_header::EditableDetailHeader;
+use crate::tool::detail_object::editable_detail_object::EditableDetailObject;
 
 /// The detail object tool's part, `detail_object.part`: its library of detail objects and the slot grid planting them,
 /// as `EDetailManager::SaveStream` writes them. The Build exports it into `build.details` (`EDetailManager::Export`),

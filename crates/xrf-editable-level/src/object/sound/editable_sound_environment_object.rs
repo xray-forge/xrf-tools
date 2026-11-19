@@ -3,8 +3,9 @@ use xrf_ini::{IniFile, IniSection};
 use xrf_math::{Aabb, Matrix4x4};
 
 use crate::object::editable_custom_object::EditableCustomObject;
-use crate::object::editable_shape::{EditableShape, EditableShapeElement};
 use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::shape::editable_shape::EditableShape;
+use crate::object::shape::editable_shape_element::EditableShapeElement;
 use crate::part::editable_part_object::EditablePartObject;
 
 /// A volume of reverb, `ESoundEnvironment`: an object of `sound_env.part`, a shape whose first box separates an inner

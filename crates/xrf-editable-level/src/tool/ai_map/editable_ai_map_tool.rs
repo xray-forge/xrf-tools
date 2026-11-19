@@ -8,30 +8,8 @@ use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::part::editable_binary_part::EditableBinaryPart;
 use crate::part::editable_level_part::EditableLevelPart;
 use crate::scene::editable_scene_tool::EditableSceneTool;
-use crate::tool::editable_ai_map_node::EditableAiMapNode;
-
-/// The settings the AI map was generated with, `SAIParams` (`ESceneAIMapTools_Export.h`).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct EditableAiMapParams {
-  /// The side of one node's square cell, in metres.
-  pub patch_size: f32,
-  /// The height of the tester the editor walks over the scene, and how far up and down a neighbour may lie.
-  pub test_height: f32,
-  pub can_up: f32,
-  pub can_down: f32,
-}
-
-impl Default for EditableAiMapParams {
-  /// `SAIParams`' defaults.
-  fn default() -> Self {
-    Self {
-      patch_size: 0.7,
-      test_height: 1.0,
-      can_up: 1.5,
-      can_down: 4.0,
-    }
-  }
-}
+use crate::tool::ai_map::editable_ai_map_node::EditableAiMapNode;
+use crate::tool::ai_map::editable_ai_map_params::EditableAiMapParams;
 
 /// The AI map tool's part, `ai_map.part`: its nodes and the settings they were generated with, as
 /// `ESceneAIMapTool::SaveStream` writes them. The Build exports the nodes into `build.aimap`, which xrAI turns into

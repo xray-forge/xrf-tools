@@ -3,17 +3,7 @@ use xrf_ini::IniSection;
 use xrf_math::{Aabb, Affine3d, Matrix4x4, Vector3d};
 
 use crate::level::editable_level_value::EditableLevelValue;
-
-/// One element of a shape, `CShapeData::shape_def`, in the object's own space.
-#[derive(Clone, Debug, PartialEq)]
-pub enum EditableShapeElement {
-  Sphere {
-    center: Vector3d,
-    radius: f32,
-  },
-  /// The matrix the unit box (`-0.5` to `0.5` on each axis) is placed by.
-  Box(Affine3d),
-}
+use crate::object::shape::editable_shape_element::EditableShapeElement;
 
 /// The volume a shape object encloses, `CEditShape`: spheres and boxes, saved after the object's own fields
 /// (`CEditShape::SaveLTX`). Sound environments, restrictors and level bounds are shapes.

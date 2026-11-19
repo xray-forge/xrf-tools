@@ -5,7 +5,8 @@ pub enum EditableVMapKind {
   Uv,
   /// One bone weight per entry; the map's name is the bone's weight map.
   Weight,
-  /// A kind the SDK does not name, kept so it writes back as stored.
+  /// A kind the SDK does not name, kept so it writes back as stored. Never 0 or 1 when read; one built
+  /// with either writes as [`Self::Uv`] or [`Self::Weight`].
   Unknown(u8),
 }
 

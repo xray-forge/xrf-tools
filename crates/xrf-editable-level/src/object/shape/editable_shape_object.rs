@@ -3,8 +3,9 @@ use xrf_ini::{IniFile, IniSection};
 use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::object::editable_custom_object::EditableCustomObject;
-use crate::object::editable_shape::{EditableShape, EditableShapeElement};
 use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::shape::editable_shape::EditableShape;
+use crate::object::shape::editable_shape_element::EditableShapeElement;
 use crate::part::editable_part_object::EditablePartObject;
 
 /// A shape object, `CEditShape` as the shape tool places it: an object of `shape.part`, and what a spawn point holds

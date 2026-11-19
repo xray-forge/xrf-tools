@@ -4,14 +4,8 @@ use xrf_ini::{IniFile, IniSection};
 use crate::level::editable_level_value::EditableLevelValue;
 use crate::object::editable_custom_object::EditableCustomObject;
 use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::sector::editable_sector_item::EditableSectorItem;
 use crate::part::editable_part_object::EditablePartObject;
-
-/// One mesh a sector holds, `CSectorItem`: a scene object by name, and one of its object's meshes by name.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EditableSectorItem {
-  pub object: String,
-  pub mesh: String,
-}
 
 /// A sector, `CSector`: an object of `sector.part`, the meshes the renderer culls together, joined to other sectors by
 /// portals.

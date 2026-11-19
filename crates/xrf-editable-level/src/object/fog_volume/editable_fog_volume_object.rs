@@ -3,18 +3,10 @@ use xrf_ini::{IniFile, IniSection};
 
 use crate::level::editable_level_value::EditableLevelValue;
 use crate::object::editable_custom_object::EditableCustomObject;
-use crate::object::editable_shape::EditableShape;
 use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::fog_volume::editable_fog_volume_kind::EditableFogVolumeKind;
+use crate::object::shape::editable_shape::EditableShape;
 use crate::part::editable_part_object::EditablePartObject;
-
-/// What a fog volume does in its group, `EFogVolume::m_volumeType`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum EditableFogVolumeKind {
-  /// `fvEmitter`, the group's fog body, simulated as its profile, a config under `$game_config$`, sets.
-  Emitter { profile: String },
-  /// `fvOcclusion`, a body the group's fog flows around.
-  Occlusion,
-}
 
 /// A body of volumetric fog, `EFogVolume`, in `fog_volume.part`: a shape whose transform alone places the unit box the
 /// renderer simulates in. The build exports each group, one emitter and its occlusion volumes, into `level.fog_vol`.

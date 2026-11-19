@@ -7,19 +7,8 @@ use xrf_math::{Vector2d, Vector3d};
 use crate::level::editable_level_value::EditableLevelValue;
 use crate::object::editable_custom_object::EditableCustomObject;
 use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::light::editable_light_fuzzy::EditableLightFuzzy;
 use crate::part::editable_part_object::EditablePartObject;
-
-/// The points a fuzzy point light spreads over, `CLight::SFuzzyData`: the build makes a static light of each, sharing
-/// the light's energy (`SceneBuilder::BuildPointLight`).
-#[derive(Clone, Debug, PartialEq)]
-pub struct EditableLightFuzzy {
-  /// `EShapeType`: 0 a sphere, 1 a box, the volume new points are spread through.
-  pub shape: u8,
-  pub sphere_radius: f32,
-  pub box_dimensions: Vector3d,
-  /// The points, in the light's own space.
-  pub points: Vec<Vector3d>,
-}
 
 /// A light the scene places, `CLight`, in `light.part` or a group. The build hands it to the level compiler as static,
 /// dynamic or both (`SceneBuilder::BuildLight`).

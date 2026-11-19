@@ -4,7 +4,8 @@ use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_utils::narrow_format_size;
 
-use crate::tool::editable_wallmark_vertex::EditableWallmarkVertex;
+use crate::tool::wallmark::editable_wallmark_items::EditableWallmarkItems;
+use crate::tool::wallmark::editable_wallmark_vertex::EditableWallmarkVertex;
 
 /// One decal the wall mark tool placed, `ESceneWallmarkTool::wallmark`: a lit triangle fan cut out of the geometry it
 /// was shot at.
@@ -52,20 +53,21 @@ impl EditableWallmark {
     ))
   }
 
-  /// One decal of a slot, as `LoadStream` reads it; `recorded` is whether the size and turn are stored, which they are
-  /// from version 4.
-  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, recorded: bool) -> XrfResult<Self> {
+  /// One decal of a slot, as `LoadStream` reads it from `items`, which decides whether its size and turn are stored.
+  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource>(
+    reader: &mut ChunkReader<D>,
+    items: EditableWallmarkItems,
+  ) -> XrfResult<Self> {
     let flags: u8 = reader.read_u8()?;
     let bbox: Aabb = reader.read_xr::<T, _>()?;
     let bounds: Sphere = reader.read_xr::<T, _>()?;
-    let [width, height, rotation] = if recorded {
-      [
+    let [width, height, rotation] = match items {
+      EditableWallmarkItems::Current => [
         reader.read_f32::<T>()?,
         reader.read_f32::<T>()?,
         reader.read_f32::<T>()?,
-      ]
-    } else {
-      [1.0; 3]
+      ],
+      EditableWallmarkItems::Old => [1.0; 3],
     };
     let count: u32 = reader.read_u32::<T>()?;
     let mut vertices: Vec<EditableWallmarkVertex> = reader.new_bounded_vec(
