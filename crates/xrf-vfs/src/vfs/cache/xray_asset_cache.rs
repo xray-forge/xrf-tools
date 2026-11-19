@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use xrf_error::XrfResult;
 
@@ -255,10 +255,10 @@ impl XrayAssetCache {
   }
 
   fn read_entries(&self) -> RwLockReadGuard<'_, XrayCacheEntries> {
-    self.entries.read().expect("asset cache lock is never poisoned")
+    self.entries.read().unwrap_or_else(PoisonError::into_inner)
   }
 
   fn write_entries(&self) -> RwLockWriteGuard<'_, XrayCacheEntries> {
-    self.entries.write().expect("asset cache lock is never poisoned")
+    self.entries.write().unwrap_or_else(PoisonError::into_inner)
   }
 }

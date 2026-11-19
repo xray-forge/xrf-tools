@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
@@ -398,7 +398,7 @@ impl LtxProject {
       self
         .resolved
         .lock()
-        .expect("resolved config cache to not be poisoned")
+        .unwrap_or_else(PoisonError::into_inner)
         .entry(logical_path.clone())
         .or_default(),
     )
@@ -457,7 +457,7 @@ impl LtxProject {
     self
       .resolved
       .lock()
-      .expect("resolved config cache to not be poisoned")
+      .unwrap_or_else(PoisonError::into_inner)
       .remove(logical_path)
       .is_some()
   }

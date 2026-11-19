@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 
 use crate::vfs::cache::XrayCacheKey;
@@ -47,6 +47,6 @@ impl XrayCacheFlights {
   }
 
   fn lock(&self) -> MutexGuard<'_, HashMap<XrayCacheKey, Arc<XrayCacheFlight>>> {
-    self.in_progress.lock().expect("cache flights lock is never poisoned")
+    self.in_progress.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{PoisonError, RwLock};
 
 use crate::param::bind_group_key::BindGroupKey;
 use crate::param::pass_binding::PassBinding;
@@ -56,7 +56,7 @@ impl BindGroupCache {
     self
       .groups
       .read()
-      .expect("bind group cache lock")
+      .unwrap_or_else(PoisonError::into_inner)
       .values()
       .map(Vec::len)
       .sum()
@@ -64,14 +64,19 @@ impl BindGroupCache {
 
   /// The layout of `P`'s bind group, made once; a pipeline built for `P` takes this one, so its bind groups match.
   pub fn get_layout<P: PassParameters>(&self, device: &wgpu::Device) -> wgpu::BindGroupLayout {
-    if let Some(layout) = self.layouts.read().expect("bind group cache lock").get(P::LAYOUT_KEY) {
+    if let Some(layout) = self
+      .layouts
+      .read()
+      .unwrap_or_else(PoisonError::into_inner)
+      .get(P::LAYOUT_KEY)
+    {
       return layout.clone();
     }
 
     self
       .layouts
       .write()
-      .expect("bind group cache lock")
+      .unwrap_or_else(PoisonError::into_inner)
       .entry(P::LAYOUT_KEY)
       .or_insert_with(|| P::create_layout(device))
       .clone()
@@ -90,7 +95,7 @@ impl BindGroupCache {
     let frame: u64 = self.frame.load(Ordering::Relaxed);
 
     if let Some(cached) = Self::find(
-      self.groups.read().expect("bind group cache lock").get(&hash),
+      self.groups.read().unwrap_or_else(PoisonError::into_inner).get(&hash),
       &layout,
       &bindings,
     ) {
@@ -99,7 +104,7 @@ impl BindGroupCache {
       return cached.group.clone();
     }
 
-    let mut groups = self.groups.write().expect("bind group cache lock");
+    let mut groups = self.groups.write().unwrap_or_else(PoisonError::into_inner);
     let bucket: &mut Vec<CachedGroup> = groups.entry(hash).or_default();
 
     // Another recorder may have made it between the locks.
@@ -156,7 +161,7 @@ impl BindGroupCache {
 
   /// Drops every bind group but keeps the layouts, for a renderer drawing no frames.
   pub(crate) fn clear_groups(&self) {
-    self.groups.write().expect("bind group cache lock").clear();
+    self.groups.write().unwrap_or_else(PoisonError::into_inner).clear();
   }
 
   /// Drops the bind groups the current frame did not bind, keeping the layouts.
@@ -168,11 +173,15 @@ impl BindGroupCache {
 
   /// Keeps the groups whose last frame `is_kept` passes, dropping emptied buckets.
   fn retain(&self, is_kept: impl Fn(u64) -> bool) {
-    self.groups.write().expect("bind group cache lock").retain(|_, bucket| {
-      bucket.retain_mut(|cached| is_kept(*cached.last_frame.get_mut()));
+    self
+      .groups
+      .write()
+      .unwrap_or_else(PoisonError::into_inner)
+      .retain(|_, bucket| {
+        bucket.retain_mut(|cached| is_kept(*cached.last_frame.get_mut()));
 
-      !bucket.is_empty()
-    });
+        !bucket.is_empty()
+      });
   }
 
   /// Starts a frame: drops the bind groups the frames before it left unused for too long.
