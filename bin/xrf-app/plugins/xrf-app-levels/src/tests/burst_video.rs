@@ -4,6 +4,7 @@
 )]
 
 use std::fs;
+use std::os::windows::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
@@ -304,6 +305,41 @@ fn writes_frames_handed_over_seconds_ahead_of_their_sound() {
   // The file's timescale rounds frame times by well under a millisecond.
   assert!((video.end - 5 * TICKS).abs() <= TICKS / 1000, "{video:?}");
   assert!((audio.end - 5 * TICKS).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
+}
+
+// A failed burst removes its folder right after dropping its video, so the drop must leave the file closed.
+#[test]
+fn closes_the_file_of_a_writer_dropped_unfinished() {
+  let file: PathBuf = folder("dropped").join("burst.mp4");
+  let (width, height): (u32, u32) = (640, 360);
+  let step: Duration = Duration::from_secs_f64(1.0 / 60.0);
+  let mut writer: RecordWriter = RecordWriter::start(
+    file.clone(),
+    RecordFormat {
+      width,
+      height,
+      frame: step,
+      sound: None,
+    },
+  )
+  .expect("the writer to start");
+
+  for index in 0..30u32 {
+    writer
+      .write(RecordSample::Frame {
+        bgra: vec![(index * 8) as u8; width as usize * height as usize * 4],
+        time: step * index,
+        duration: step,
+      })
+      .expect("the frame to be written");
+  }
+
+  drop(writer);
+
+  // Opened sharing nothing, which fails while any handle to the file is still open.
+  let opened = fs::OpenOptions::new().read(true).share_mode(0).open(&file);
+
+  assert!(opened.is_ok(), "the dropped writer still holds its file: {opened:?}");
 }
 
 #[test]

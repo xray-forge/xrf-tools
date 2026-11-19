@@ -8,7 +8,11 @@ use xrf_renderer::{BurstEvent, BurstMarks, RenderBurst, RenderCapture};
 use xrf_test_utils::GeneratedResources;
 
 use crate::viewer::LevelViewerFolder;
+#[cfg(windows)]
+use crate::viewer::burst::BurstVideo;
 use crate::viewer::burst::{BurstOutcome, BurstWriter};
+#[cfg(windows)]
+use crate::viewer::recording::writer::MediaProbe;
 
 const REFERENCE: RenderBurst = RenderBurst {
   at: 600.0,
@@ -159,6 +163,53 @@ fn removes_the_folder_of_a_burst_that_fails_after_writing_frames() {
     .is_err()
   );
   assert!(!folder.exists(), "the failed burst's folder is removed");
+}
+
+// The video's file goes with the folder, not left to a writer still finishing it.
+#[cfg(windows)]
+#[test]
+fn removes_the_folder_of_a_burst_that_fails_while_writing_its_video() {
+  let folder: PathBuf = folder("failed-video");
+  let burst: RenderBurst = RenderBurst {
+    samples: None,
+    frames: 2,
+    ..REFERENCE
+  };
+  let video: BurstVideo =
+    BurstVideo::new(&burst, &MediaProbe::MEDIA_FOUNDATION, &folder).expect("Media Foundation to load");
+  let (events, receiver) = channel();
+
+  events
+    .send(BurstEvent::Shot {
+      index: 0,
+      sample: None,
+      time: 600.0,
+      picture: RenderCapture {
+        width: 128,
+        height: 72,
+        pixels: vec![96; 128 * 72 * 4],
+        frame: 0,
+      },
+      marks: BurstMarks {
+        width: 2,
+        height: 1,
+        marks: vec![0; 2],
+      },
+    })
+    .expect("the writer to listen");
+  events
+    .send(BurstEvent::Stopped {
+      error: XrfError::new_invalid_error("gone"),
+    })
+    .expect("the writer to listen");
+
+  assert!(
+    BurstWriter::new(folder.clone(), &burst)
+      .with_video(video)
+      .receive(&receiver)
+      .is_err()
+  );
+  assert!(!folder.exists(), "the failed burst's folder is removed with its video");
 }
 
 #[test]

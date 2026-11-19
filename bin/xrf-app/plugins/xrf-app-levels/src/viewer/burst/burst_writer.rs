@@ -112,7 +112,7 @@ impl BurstWriter {
     match written.and(pictures) {
       Ok(()) => Ok(self.outcome),
       Err(error) => {
-        // The video's file is closed as it is dropped, which a folder holding it open could not be removed past.
+        // Dropping the video waits for its writer to close the file, which would otherwise hold the folder.
         drop(self.video.take());
         drop(self.sound.take());
 

@@ -10,9 +10,10 @@ use crate::viewer::recording::writer::{
 
 /// Writes a recording as fragmented MP4 on its own thread, which holds Media Foundation and the Sink Writer for the
 /// recording's life. Samples queue a few deep, so a writer faster than the encoders waits. Dropped unfinished, it
-/// finishes the file with what it was handed.
+/// finishes the file with what it was handed and waits for its thread, so the file is closed once the drop returns.
 pub(crate) struct RecordWriter {
-  samples: SyncSender<RecordSample>,
+  /// The queue's sending end, dropped to tell the thread no more samples come.
+  samples: Option<SyncSender<RecordSample>>,
   thread: Option<JoinHandle<TauriResult<RecordSummary>>>,
   /// Why the writer's thread stopped early, kept once a write finds it gone, for `finish` to return.
   failure: Option<String>,
@@ -39,7 +40,7 @@ impl RecordWriter {
       .spawn(move || Self::write_all(&written, format, &received, &opened))
       .map_err(|error| format!("The recording cannot start: {error}"))?;
     let mut writer: Self = Self {
-      samples,
+      samples: Some(samples),
       thread: Some(thread),
       failure: None,
     };
@@ -64,7 +65,12 @@ impl RecordWriter {
   ///
   /// Returns why the writer stopped, if it did.
   pub(crate) fn write(&mut self, sample: RecordSample) -> TauriResult {
-    self.samples.send(sample).map_err(|_| self.take_error())
+    let sent: bool = self
+      .samples
+      .as_ref()
+      .is_some_and(|samples| samples.send(sample).is_ok());
+
+    if sent { Ok(()) } else { Err(self.take_error()) }
   }
 
   /// Write everything handed over, close the file, and answer what was written.
@@ -72,18 +78,17 @@ impl RecordWriter {
   /// # Errors
   ///
   /// Returns why the writer stopped, if it did, or why the file could not be finished.
-  pub(crate) fn finish(self) -> TauriResult<RecordSummary> {
-    let Self {
-      samples,
-      thread,
-      failure,
-    } = self;
+  pub(crate) fn finish(mut self) -> TauriResult<RecordSummary> {
+    self.close()
+  }
 
-    drop(samples);
+  /// Close the queue and wait for the thread to finish the file.
+  fn close(&mut self) -> TauriResult<RecordSummary> {
+    self.samples = None;
 
-    match failure {
+    match self.failure.take() {
       Some(failure) => Err(failure),
-      None => Self::join(thread),
+      None => Self::join(self.thread.take()),
     }
   }
 
@@ -133,5 +138,13 @@ impl RecordWriter {
     drop(session);
 
     written
+  }
+}
+
+impl Drop for RecordWriter {
+  fn drop(&mut self) {
+    if self.thread.is_some() {
+      let _ = self.close();
+    }
   }
 }
