@@ -236,7 +236,7 @@ mod tests {
   }
 
   #[test]
-  fn dxt1_comes_back_opaque_and_its_alpha_bearing_twin_is_refused() -> XrfResult {
+  fn dxt1_comes_back_opaque_and_its_alpha_bearing_twin_cut_out() -> XrfResult {
     // `tfDXT1` says the alpha means nothing, and BC1 here writes none, so the two agree and the build is faithful.
     let opaque: BuildTextureResult = BuildTextureProcessor::build(&options(
       "dxt1",

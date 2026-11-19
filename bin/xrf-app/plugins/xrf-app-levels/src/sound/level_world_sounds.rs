@@ -81,15 +81,10 @@ impl LevelWorldSounds {
     )
   }
 
-  /// `SMusicTrack::Load`: `from_hour, to_hour, volume, pause_from_s, pause_to_s`, each unreadable value left at its
-  /// default; a pause with equal ends widens by one second.
+  /// `SMusicTrack::Load`: `from_hour, to_hour, volume, pause_from_s, pause_to_s` as [`Self::scan_track`] reads them;
+  /// a pause with equal ends widens by one second.
   fn read_track(track: &str, parameters: &str, files: &LevelSoundFiles<'_>) -> WorldMusicTrack {
-    let values: Vec<&str> = parameters.split(',').map(str::trim).collect();
-    let integer = |index: usize| values.get(index).and_then(|value| value.parse::<i64>().ok());
-    let from_hour: i64 = integer(0).unwrap_or(0);
-    let to_hour: i64 = integer(1).unwrap_or(0);
-    let volume: f32 = values.get(2).and_then(|value| value.parse::<f32>().ok()).unwrap_or(1.0);
-    let mut pause: [i64; 2] = [integer(3).unwrap_or(0), integer(4).unwrap_or(0)];
+    let ([from_hour, to_hour], volume, mut pause) = Self::scan_track(parameters);
 
     if pause[0] == pause[1] {
       pause[1] += 1;
@@ -107,5 +102,104 @@ impl LevelWorldSounds {
       volume,
       pause: [to_millis(pause[0], 1000), to_millis(pause[1], 1000)],
     }
+  }
+
+  /// A track's hours, volume and pause seconds as `sscanf(params, "%d,%d,%f,%d,%d", ...)` stores them: in turn until a
+  /// value or the comma after it does not scan, each the longest number its conversion takes (`12abc` is 12), every
+  /// later one keeping its default of 0, or 1 for the volume. Only spaces before a number are skipped, so `1 ,2` stops
+  /// at the space.
+  pub(crate) fn scan_track(parameters: &str) -> ([i64; 2], f32, [i64; 2]) {
+    let mut hours: [i64; 2] = [0, 0];
+    let mut volume: f32 = 1.0;
+    let mut pause: [i64; 2] = [0, 0];
+
+    // Where a value stops the scan, it and those after it keep what they hold.
+    let _ = Self::scan_values(parameters, &mut hours, &mut volume, &mut pause);
+
+    (hours, volume, pause)
+  }
+
+  /// Stores each value of `parameters` in turn, none once one does not scan.
+  fn scan_values(parameters: &str, hours: &mut [i64; 2], volume: &mut f32, pause: &mut [i64; 2]) -> Option<()> {
+    let mut rest: &str;
+
+    (hours[0], rest) = Self::scan_integer(parameters)?;
+    (hours[1], rest) = Self::scan_integer(rest.strip_prefix(',')?)?;
+    (*volume, rest) = Self::scan_float(rest.strip_prefix(',')?)?;
+    (pause[0], rest) = Self::scan_integer(rest.strip_prefix(',')?)?;
+    (pause[1], _) = Self::scan_integer(rest.strip_prefix(',')?)?;
+
+    Some(())
+  }
+
+  /// `%d`: spaces skipped, a sign, then digits, at least one; a number past `i64` saturates.
+  fn scan_integer(text: &str) -> Option<(i64, &str)> {
+    let text: &str = text.trim_start();
+    let signed: usize = usize::from(text.starts_with(['+', '-']));
+    let digits: usize = text[signed..].bytes().take_while(u8::is_ascii_digit).count();
+
+    if digits == 0 {
+      return None;
+    }
+
+    let (number, rest) = text.split_at(signed + digits);
+    let value: i64 = number
+      .parse::<i64>()
+      .unwrap_or(if number.starts_with('-') { i64::MIN } else { i64::MAX });
+
+    Some((value, rest))
+  }
+
+  /// `%f`: spaces skipped, a sign, digits with at most one point and at least one digit, then an exponent where digits
+  /// follow its `e`; or `inf`, `infinity` or `nan` in any case.
+  fn scan_float(text: &str) -> Option<(f32, &str)> {
+    let text: &str = text.trim_start();
+    let bytes: &[u8] = text.as_bytes();
+    let mut end: usize = usize::from(text.starts_with(['+', '-']));
+
+    for word in ["infinity", "inf", "nan"] {
+      if text
+        .get(end..end + word.len())
+        .is_some_and(|it| it.eq_ignore_ascii_case(word))
+      {
+        let (number, rest) = text.split_at(end + word.len());
+
+        return number.parse::<f32>().ok().map(|value| (value, rest));
+      }
+    }
+
+    let integer: usize = bytes[end..].iter().take_while(|it| it.is_ascii_digit()).count();
+
+    end += integer;
+
+    let fraction: usize = if bytes.get(end) == Some(&b'.') {
+      bytes[end + 1..].iter().take_while(|it| it.is_ascii_digit()).count()
+    } else {
+      0
+    };
+
+    if bytes.get(end) == Some(&b'.') {
+      end += 1 + fraction;
+    }
+
+    if integer + fraction == 0 {
+      return None;
+    }
+
+    if matches!(bytes.get(end), Some(b'e' | b'E')) {
+      let sign: usize = usize::from(matches!(bytes.get(end + 1), Some(b'+' | b'-')));
+      let exponent: usize = bytes[end + 1 + sign..]
+        .iter()
+        .take_while(|it| it.is_ascii_digit())
+        .count();
+
+      if exponent > 0 {
+        end += 1 + sign + exponent;
+      }
+    }
+
+    let (number, rest) = text.split_at(end);
+
+    number.parse::<f32>().ok().map(|value| (value, rest))
   }
 }

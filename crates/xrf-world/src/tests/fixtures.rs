@@ -8,8 +8,8 @@ use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
-  RenderSpawnModels,
+  RenderAssetSource, RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource,
+  RenderLevelSpawn, RenderSpawnModels,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
@@ -52,6 +52,8 @@ pub(crate) struct TestLevelSource {
   pub reads: Arc<TestLevelReads>,
   /// How long reading its helpers takes, standing for a slow worker on a loaded machine.
   pub helpers_delay: Duration,
+  /// How long reading its AI map takes, likewise.
+  pub ai_map_delay: Duration,
 }
 
 impl Default for TestLevelSource {
@@ -65,6 +67,7 @@ impl Default for TestLevelSource {
       sound_sink: Mutex::new(None),
       reads: Arc::default(),
       helpers_delay: Duration::ZERO,
+      ai_map_delay: Duration::ZERO,
     }
   }
 }
@@ -132,6 +135,13 @@ impl WorldLevelSource for TestLevelSource {
     std::thread::sleep(self.helpers_delay);
 
     Ok(RenderLevelHelpers::default())
+  }
+
+  /// No AI map, answered after `ai_map_delay`.
+  fn read_ai_map(&self) -> XrfResult<Option<RenderLevelAiMap>> {
+    std::thread::sleep(self.ai_map_delay);
+
+    Ok(None)
   }
 
   fn read_spawn_models(&self, _: &[String]) -> XrfResult<RenderSpawnModels> {

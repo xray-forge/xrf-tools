@@ -19,6 +19,7 @@ mod level_source;
 mod level_start;
 mod level_viewer_folder;
 mod map_export;
+mod music_tracks;
 mod new_game;
 mod particles;
 #[cfg(windows)]

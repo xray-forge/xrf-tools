@@ -93,12 +93,17 @@ fn is_helpers_posted(updates: &[RenderSceneUpdate]) -> bool {
     .any(|update| matches!(update, RenderSceneUpdate::SetPart(RenderLevelPart::Helpers(_))))
 }
 
+fn is_ai_map_posted(updates: &[RenderSceneUpdate]) -> bool {
+  updates
+    .iter()
+    .any(|update| matches!(update, RenderSceneUpdate::SetPart(RenderLevelPart::AiMap(_))))
+}
 fn show(reads: &Arc<TestLevelReads>) -> (World, RenderViewportId, RenderSceneId) {
   show_from(reads, source(reads))
 }
 
-// The helpers are waited for apart: the scene's progress does not wait on them, so a slow worker would otherwise post
-// them into whatever frame a test reads next.
+// The helpers and the AI map are waited for apart: the scene's progress does not wait on them, so a slow worker would
+// otherwise post them into whatever frame a test reads next.
 fn show_from(
   reads: &Arc<TestLevelReads>,
   source: Arc<dyn WorldLevelSource>,
@@ -111,13 +116,16 @@ fn show_from(
   let scene: RenderSceneId = world.show_level(viewport, Some(source)).expect("the level shown");
   let (_, mut posted) = advance_until_read(&mut world, reads, [1, 1, 1, 1, 1]);
 
-  if !is_helpers_posted(&posted) {
-    posted.extend(advance_until_posted(&mut world, is_helpers_posted));
+  for is_posted in [is_helpers_posted, is_ai_map_posted] {
+    if !is_posted(&posted) {
+      posted.extend(advance_until_posted(&mut world, is_posted));
+    }
   }
 
   assert_eq!(reads.count(), [1, 1, 1, 1, 1]);
   assert!(is_grass_posted(&posted), "the grass is posted once read");
   assert!(is_helpers_posted(&posted), "the helpers are posted once read");
+  assert!(is_ai_map_posted(&posted), "the AI map is posted once read");
 
   (world, viewport, scene)
 }
@@ -173,6 +181,32 @@ fn a_reload_naming_nothing_posts_nothing_however_late_the_helpers_came() {
   assert!(
     frames[&scene].updates.is_empty(),
     "the first show's helpers were drained before the reload"
+  );
+}
+
+#[test]
+fn a_reload_naming_nothing_posts_nothing_however_late_the_ai_map_came() {
+  let reads: Arc<TestLevelReads> = Arc::default();
+  let slow: Arc<dyn WorldLevelSource> = Arc::new(TestLevelSource {
+    key: Some(String::from("zaton")),
+    reads: Arc::clone(&reads),
+    ai_map_delay: QUIET / 2,
+    ..TestLevelSource::default()
+  });
+  let (mut world, _, scene) = show_from(&reads, slow);
+
+  assert_eq!(
+    world.reload_scene("zaton", source(&reads), LevelParts::NONE),
+    Some(scene)
+  );
+
+  std::thread::sleep(QUIET);
+
+  let frames: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(Instant::now(), HashMap::new());
+
+  assert!(
+    frames[&scene].updates.is_empty(),
+    "the first show's AI map was drained before the reload"
   );
 }
 
