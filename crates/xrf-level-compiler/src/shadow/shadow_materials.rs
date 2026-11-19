@@ -201,6 +201,7 @@ impl ShadowMaterials {
   }
 
   /// The textures alpha faces dim light through, in the order faces first name them.
+  #[cfg(any(feature = "gpu", test))]
   pub(crate) fn get_textures(&self) -> &[ShadowTexture] {
     &self.textures
   }
