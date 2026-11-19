@@ -1,6 +1,6 @@
 use clap::{ArgMatches, Command};
 
-use crate::core::command::{CommandContext, CommandResult};
+use crate::core::command::{CommandContext, CommandInput, CommandResult};
 
 /// One CLI operation.
 pub(crate) trait GenericCommand: Sync {
@@ -15,12 +15,18 @@ pub(crate) trait GenericCommand: Sync {
   /// Operation token within this command's registered domain.
   fn operation(&self) -> &'static str;
 
-  /// Declares the command's about text and arguments on `command`, which already carries its name.
+  // todo: Drop this default once every command states its input, so no command can leave the choice unmade.
+  /// What the command reads, declared as its positional argument before [`Self::declare`] adds the rest.
+  fn input(&self) -> CommandInput {
+    CommandInput::None
+  }
+
+  /// Declares the command's about text and named arguments on `command`, which already carries its name and input.
   fn declare(&self, command: Command) -> Command;
 
   /// The command as the parser takes it, named for its operation.
   fn init(&self) -> Command {
-    self.declare(Command::new(self.operation()))
+    self.declare(self.input().declare(Command::new(self.operation())))
   }
 
   /// Runs the command.

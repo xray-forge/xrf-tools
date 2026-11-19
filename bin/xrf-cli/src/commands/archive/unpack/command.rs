@@ -8,7 +8,7 @@ use xrf_utils::format_path;
 
 use super::report::ArchiveUnpackDryReport;
 use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -19,35 +19,37 @@ impl GenericCommand for UnpackCommand {
     "unpack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    let command: Command = InputArgument::declare(
-      command.about("Unpack an archive into separate files"),
-      "Path to an archive volume or a directory containing volumes",
-    )
-    .arg(
-      Arg::new("dest")
-        .help("Folder to unpack into")
-        .short('d')
-        .long("dest")
-        .default_value("unpacked")
-        .value_parser(value_parser!(PathBuf)),
-    )
-    .arg(
-      Arg::new("dry-run")
-        .help("Report what would be unpacked without writing anything")
-        .long("dry-run")
-        .action(ArgAction::SetTrue),
-    )
-    .arg(
-      Arg::new("force")
-        .help(
-          "Overwrite files already in the folder, names compared without case; without it, one there is refused \
+    let command: Command = command
+      .about("Unpack an archive into separate files")
+      .arg(
+        Arg::new("dest")
+          .help("Folder to unpack into")
+          .short('d')
+          .long("dest")
+          .default_value("unpacked")
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("dry-run")
+          .help("Report what would be unpacked without writing anything")
+          .long("dry-run")
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("force")
+          .help(
+            "Overwrite files already in the folder, names compared without case; without it, one there is refused \
              before any is written",
-        )
-        .short('f')
-        .long("force")
-        .action(ArgAction::SetTrue),
-    );
+          )
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
+      );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
   }

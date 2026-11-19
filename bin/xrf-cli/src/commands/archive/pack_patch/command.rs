@@ -7,8 +7,7 @@ use xrf_pack::{ArchivePatchResult, ArchivePatcher};
 use crate::commands::archive::ArchiveVolumeArguments;
 use crate::commands::archive::pack_patch::archive_patch_request::ArchivePatchRequest;
 use crate::commands::archive::pack_patch::archive_patch_summary::ArchivePatchSummary;
-use crate::core::arguments::InputArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 /// Options a configuration file also carries, so naming both would leave the winner unstated.
 const SELECTION_ARGUMENTS: [&str; 4] = ["include", "ignore", "exclude-extension", ArchiveVolumeArguments::HEADER];
@@ -21,64 +20,66 @@ impl GenericCommand for PackPatchCommand {
     "pack-patch"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("What to patch: an installation, a directory of volumes, or a gamedata tree")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    let command: Command = InputArgument::declare(
-      command.about("Pack what a gamedata tree changes about an installation into overriding *.db archive volumes"),
-      "What to patch: an installation, a directory of volumes, or a gamedata tree",
-    )
-    .arg(
-      Arg::new("target")
-        .help("Tree the patch delivers; omit to use the loose gamedata of the input itself")
-        .long("target")
-        .required(false)
-        .value_parser(value_parser!(PathBuf)),
-    )
-    .arg(
-      Arg::new("dry-run")
-        .help("Report the difference and write no volumes")
-        .long("dry-run")
-        .required(false)
-        .action(ArgAction::SetTrue),
-    )
-    .arg(
-      Arg::new("config")
-        .help("Path to a patching configuration describing the comparison scope and header, as *.ltx or *.json")
-        .long("config")
-        .required(false)
-        .conflicts_with_all(SELECTION_ARGUMENTS)
-        .value_parser(value_parser!(PathBuf)),
-    )
-    .arg(
-      Arg::new("include")
-        .help("Logical prefix the comparison is restricted to, such as configs, repeatable")
-        .long("include")
-        .required(false)
-        .action(ArgAction::Append)
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("ignore")
-        .help("Logical prefix dropped from the comparison, repeatable")
-        .long("ignore")
-        .required(false)
-        .action(ArgAction::Append)
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("exclude-extension")
-        .help("Extension pattern that keeps a file out of the comparison, such as *.txt, repeatable")
-        .long("exclude-extension")
-        .required(false)
-        .action(ArgAction::Append)
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("verify-payload")
-        .help("Confirm every checksum match by comparing the payloads themselves")
-        .long("verify-payload")
-        .required(false)
-        .action(ArgAction::SetTrue),
-    );
+    let command: Command = command
+      .about("Pack what a gamedata tree changes about an installation into overriding *.db archive volumes")
+      .arg(
+        Arg::new("target")
+          .help("Tree the patch delivers; omit to use the loose gamedata of the input itself")
+          .long("target")
+          .required(false)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("dry-run")
+          .help("Report the difference and write no volumes")
+          .long("dry-run")
+          .required(false)
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("config")
+          .help("Path to a patching configuration describing the comparison scope and header, as *.ltx or *.json")
+          .long("config")
+          .required(false)
+          .conflicts_with_all(SELECTION_ARGUMENTS)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("include")
+          .help("Logical prefix the comparison is restricted to, such as configs, repeatable")
+          .long("include")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("ignore")
+          .help("Logical prefix dropped from the comparison, repeatable")
+          .long("ignore")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("exclude-extension")
+          .help("Extension pattern that keeps a file out of the comparison, such as *.txt, repeatable")
+          .long("exclude-extension")
+          .required(false)
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("verify-payload")
+          .help("Confirm every checksum match by comparing the payloads themselves")
+          .long("verify-payload")
+          .required(false)
+          .action(ArgAction::SetTrue),
+      );
 
     ArchiveVolumeArguments::declare(command, "patch")
   }

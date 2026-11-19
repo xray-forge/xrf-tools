@@ -8,7 +8,7 @@ use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtr
 use xrf_utils::OutputFiles;
 
 use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -19,45 +19,47 @@ impl GenericCommand for ExtractCommand {
     "extract"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    let command: Command = InputArgument::declare(
-      command.about("Extract one archive file or directory without unpacking the complete set"),
-      "Path to an archive volume or a directory containing volumes",
-    )
-    .arg(
-      Arg::new("file")
-        .help("Exact logical path of one archive file; --dest is the output file")
-        .long("file")
-        .required_unless_present("directory")
-        .conflicts_with("directory")
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("directory")
-        .help("Logical directory to extract; --dest receives that directory's contents")
-        .long("directory")
-        .required_unless_present("file")
-        .conflicts_with("file")
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("dest")
-        .help("Output file for --file, or output directory for --directory")
-        .short('d')
-        .long("dest")
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    )
-    .arg(
-      Arg::new("force")
-        .help(
-          "Overwrite the output file, or files already in the output directory, names compared without case; \
+    let command: Command = command
+      .about("Extract one archive file or directory without unpacking the complete set")
+      .arg(
+        Arg::new("file")
+          .help("Exact logical path of one archive file; --dest is the output file")
+          .long("file")
+          .required_unless_present("directory")
+          .conflicts_with("directory")
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("directory")
+          .help("Logical directory to extract; --dest receives that directory's contents")
+          .long("directory")
+          .required_unless_present("file")
+          .conflicts_with("file")
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("dest")
+          .help("Output file for --file, or output directory for --directory")
+          .short('d')
+          .long("dest")
+          .required(true)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("force")
+          .help(
+            "Overwrite the output file, or files already in the output directory, names compared without case; \
              without it, one there is refused before any is written",
-        )
-        .short('f')
-        .long("force")
-        .action(ArgAction::SetTrue),
-    );
+          )
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
+      );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
   }

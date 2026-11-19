@@ -8,7 +8,7 @@ use xrf_utils::format_path;
 
 use super::report::ArchiveInfoReport;
 use crate::core::arguments::InputArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct InfoCommand;
@@ -18,11 +18,12 @@ impl GenericCommand for InfoCommand {
     "info"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    InputArgument::declare(
-      command.about("Describe an X-Ray archive volume or volume set"),
-      "Path to an archive volume or a directory containing volumes",
-    )
+    command.about("Describe an X-Ray archive volume or volume set")
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {

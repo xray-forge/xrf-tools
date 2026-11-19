@@ -2,16 +2,15 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 
-/// The positional slot holding what a command reads, so its usage line leads with the object of the verb:
-/// `archive pack <path>`, never `archive pack --path <path>`. A command has this one positional at most; selectors,
-/// modes and second inputs stay named.
+/// The positional argument a [`CommandInput`](crate::core::command::CommandInput) declares, and its reader: a command
+/// states its input through `GenericCommand::input` and reads the path back here.
 pub(crate) struct InputArgument;
 
 impl InputArgument {
   pub(crate) const ID: &'static str = "input";
   const VALUE_NAME: &'static str = "path";
 
-  /// Declares the required input on `command`, `help` saying what the path names.
+  /// Declares the required path on `command`, `help` saying what it names.
   pub(crate) fn declare(command: Command, help: &'static str) -> Command {
     command.arg(
       Arg::new(Self::ID)

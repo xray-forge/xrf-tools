@@ -10,7 +10,7 @@ use super::archive_entry_selection::ArchiveEntrySelection;
 use super::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use super::report::ArchiveListReport;
 use crate::core::arguments::InputArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct ListCommand;
@@ -20,24 +20,26 @@ impl GenericCommand for ListCommand {
     "list"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    InputArgument::declare(
-      command.about("List the merged entries in an X-Ray archive volume or volume set"),
-      "Path to an archive volume or a directory containing volumes",
-    )
-    .arg(
-      Arg::new("files")
-        .help("List files only, excluding directory records")
-        .long("files")
-        .action(ArgAction::SetTrue),
-    )
-    .arg(
-      Arg::new("directories")
-        .help("List directory records only, excluding files")
-        .long("directories")
-        .action(ArgAction::SetTrue),
-    )
-    .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
+    command
+      .about("List the merged entries in an X-Ray archive volume or volume set")
+      .arg(
+        Arg::new("files")
+          .help("List files only, excluding directory records")
+          .long("files")
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("directories")
+          .help("List directory records only, excluding files")
+          .long("directories")
+          .action(ArgAction::SetTrue),
+      )
+      .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {

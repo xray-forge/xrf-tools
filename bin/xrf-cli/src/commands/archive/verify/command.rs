@@ -12,7 +12,7 @@ use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};
 use super::report::ArchiveVerifyReport;
 use crate::commands::archive::list::ArchiveEntrySelection;
 use crate::core::arguments::{InputArgument, JobsArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 use crate::core::terminal::SourceReachability;
 
@@ -38,11 +38,12 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    JobsArgument::declare(InputArgument::declare(
-      command.about("Read every archive payload and verify decompression and CRC checks"),
-      "Path to an archive volume or a directory containing volumes",
-    ))
+    JobsArgument::declare(command.about("Read every archive payload and verify decompression and CRC checks"))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
