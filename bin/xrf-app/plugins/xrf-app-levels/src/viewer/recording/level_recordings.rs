@@ -1,6 +1,5 @@
-use std::sync::{Arc, Mutex, TryLockError};
 #[cfg(windows)]
-use std::sync::{MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, TryLockError};
 
 use xrf_app_render::WorldState;
 #[cfg(windows)]
@@ -15,8 +14,6 @@ use crate::viewer::recording::ViewportRecorder;
 pub(crate) struct LevelRecordings {
   #[cfg(windows)]
   active: Arc<Mutex<Option<ViewportRecorder>>>,
-  #[cfg(not(windows))]
-  active: Arc<Mutex<Option<()>>>,
 }
 
 impl LevelRecordings {
@@ -27,6 +24,7 @@ impl LevelRecordings {
   }
 
   /// Whether a recording runs or is starting; never blocks, so the async runtime may call it.
+  #[cfg(windows)]
   pub(crate) fn is_recording(&self) -> bool {
     let active = match self.active.try_lock() {
       Ok(active) => active,
@@ -35,15 +33,12 @@ impl LevelRecordings {
       Err(TryLockError::WouldBlock) => return true,
     };
 
-    #[cfg(windows)]
-    {
-      active.as_ref().is_some_and(|recorder| !recorder.is_ended())
-    }
+    active.as_ref().is_some_and(|recorder| !recorder.is_ended())
+  }
 
-    #[cfg(not(windows))]
-    {
-      active.is_some()
-    }
+  #[cfg(not(windows))]
+  pub(crate) fn is_recording(&self) -> bool {
+    false
   }
 
   /// Stop and finish the recording `window` started, when its page reloads or the window goes. No page is left to
