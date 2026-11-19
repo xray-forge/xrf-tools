@@ -1,13 +1,14 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_job::JobHandle;
 use xrf_ltx::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult};
 use xrf_output::OutputOptions;
 
 use crate::commands::ltx::format::ltx_format_selection::LtxFormatSelection;
 use crate::commands::ltx::format::report::LtxFormatReport;
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandError, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 /// Names this many declined configs before reporting the remainder count.
@@ -21,33 +22,23 @@ impl GenericCommand for FormatCommand {
     "format"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::paths("Ltx files, or folders holding them")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    command
-      .about("Format LTX and INI files")
-      .arg(
-        Arg::new("path")
-          .help("Paths to ltx files or folders with ltx files")
-          .short('p')
-          .long("path")
-          .required(true)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("check")
-          .help("Run formatter in check mode")
-          .short('c')
-          .long("check")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
+    command.about("Format LTX and INI files").arg(
+      Arg::new("check")
+        .help("Run formatter in check mode")
+        .short('c')
+        .long("check")
+        .required(false)
+        .action(ArgAction::SetTrue),
+    )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = matches
-      .get_many::<PathBuf>("path")
-      .expect("Expected valid input paths to be provided")
-      .collect();
+    let paths: Vec<&PathBuf> = InputArgument::list_of(matches);
 
     let is_check: bool = matches.get_flag("check");
 

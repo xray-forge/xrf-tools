@@ -3,6 +3,7 @@ use xrf_dialog::{DialogProject, DialogProjectLayout, DialogTextLanguage};
 use xrf_error::XrfResult;
 
 use crate::core::arguments::XrayRootsArguments;
+use crate::core::command::CommandInput;
 
 /// What opening a dialog project takes, and the opening itself: its roots, and the language its lines are shown in.
 pub(crate) struct DialogProjectOpening;
@@ -10,18 +11,17 @@ pub(crate) struct DialogProjectOpening;
 impl DialogProjectOpening {
   const LANGUAGE: &'static str = "language";
 
-  /// Declares the roots every dialog command reads on `command`.
-  pub(crate) fn declare_roots(command: Command) -> Command {
-    XrayRootsArguments::declare(
-      command,
-      "Root holding dialog xml. Repeat to layer roots, highest priority first",
+  /// The roots every dialog command reads, as its input.
+  pub(crate) fn input() -> CommandInput {
+    CommandInput::roots(
+      "Root holding dialog xml. Give several to layer them, highest priority first",
       "Limit to one logical subtree, such as configs\\gameplay",
     )
   }
 
-  /// Declares the roots and `--language` on `command`, for a command showing phrase lines.
-  pub(crate) fn declare(command: Command) -> Command {
-    Self::declare_roots(command).arg(
+  /// Declares `--language` on `command`, for a command showing phrase lines.
+  pub(crate) fn declare_language(command: Command) -> Command {
+    command.arg(
       Arg::new(Self::LANGUAGE)
         .help("Language to show phrase lines in, such as rus or eng. Defaults to the first the tree holds")
         .long(Self::LANGUAGE)

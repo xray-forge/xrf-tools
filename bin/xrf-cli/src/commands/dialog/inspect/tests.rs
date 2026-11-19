@@ -10,7 +10,7 @@ use crate::core::command::CommandResult;
 #[test]
 fn explains_a_dialog_with_its_conditions_and_every_phrase() -> CommandResult {
   let root: PathBuf = create_tree("inspect_dialog")?;
-  let result: Value = run_for_result(&InspectCommand, &root, &["snag_cache_dialog"])?;
+  let result: Value = run_for_result(&InspectCommand, &root, &["--dialog", "snag_cache_dialog"])?;
   let dialog: &Value = &result["dialog"];
 
   assert_eq!(dialog["id"], "snag_cache_dialog");
@@ -39,7 +39,7 @@ fn explains_a_dialog_with_its_conditions_and_every_phrase() -> CommandResult {
 fn reads_the_first_declaration_and_names_the_others_or_the_one_file_asked_for() -> CommandResult {
   let root: PathBuf = create_tree("inspect_overlay")?;
 
-  let first: Value = run_for_result(&InspectCommand, &root, &["actor_break_dialog"])?;
+  let first: Value = run_for_result(&InspectCommand, &root, &["--dialog", "actor_break_dialog"])?;
 
   assert_eq!(first["dialog"]["logicalPath"], r"configs\gameplay\dialogs.xml");
   assert_eq!(
@@ -50,7 +50,12 @@ fn reads_the_first_declaration_and_names_the_others_or_the_one_file_asked_for() 
   let asked: Value = run_for_result(
     &InspectCommand,
     &root,
-    &["actor_break_dialog", "--file", r"configs\gameplay\DIALOGS_OVERLAY.xml"],
+    &[
+      "--dialog",
+      "actor_break_dialog",
+      "--file",
+      r"configs\gameplay\DIALOGS_OVERLAY.xml",
+    ],
   )?;
 
   assert_eq!(asked["dialog"]["logicalPath"], r"configs\gameplay\dialogs_overlay.xml");
@@ -66,13 +71,18 @@ fn reads_the_first_declaration_and_names_the_others_or_the_one_file_asked_for() 
 fn refuses_a_dialog_no_file_declares_or_a_file_that_does_not_declare_it() -> CommandResult {
   let root: PathBuf = create_tree("inspect_missing")?;
 
-  let missing: String = run_for_result(&InspectCommand, &root, &["nothing"])
+  let missing: String = run_for_result(&InspectCommand, &root, &["--dialog", "nothing"])
     .unwrap_err()
     .message();
   let elsewhere: String = run_for_result(
     &InspectCommand,
     &root,
-    &["snag_cache_dialog", "--file", r"configs\gameplay\dialogs_overlay.xml"],
+    &[
+      "--dialog",
+      "snag_cache_dialog",
+      "--file",
+      r"configs\gameplay\dialogs_overlay.xml",
+    ],
   )
   .unwrap_err()
   .message();

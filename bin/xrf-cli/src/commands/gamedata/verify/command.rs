@@ -38,7 +38,6 @@ impl GenericCommand for VerifyCommand {
           .short('i')
           .long("ignore")
           .action(ArgAction::Append)
-          .num_args(1..)
           .default_values(GamedataProjectReadOptions::DEFAULT_IGNORED)
           .value_parser(value_parser!(String)),
       )
@@ -48,7 +47,6 @@ impl GenericCommand for VerifyCommand {
           .long("checks")
           .action(ArgAction::Append)
           .value_delimiter(',')
-          .num_args(1..)
           .value_parser(value_parser!(GamedataVerificationType)),
       )
       .arg(
@@ -142,10 +140,13 @@ impl GenericCommand for VerifyCommand {
 
 #[cfg(test)]
 mod tests {
+  use std::path::PathBuf;
+
   use clap::ArgMatches;
   use xrf_gamedata::GamedataVerificationType;
 
   use super::VerifyCommand;
+  use crate::core::arguments::InputArgument;
   use crate::core::command::GenericCommand;
 
   fn checks(arguments: &[&str]) -> Vec<GamedataVerificationType> {
@@ -168,6 +169,22 @@ mod tests {
     assert_eq!(
       checks(&["verify", "root", "--checks", "ltx", "--checks", "animations"]),
       expected
+    );
+  }
+
+  /// A set-valued option takes one member per flag, so the input written after it stays the input rather than
+  /// becoming another member.
+  #[test]
+  fn keeps_the_input_written_after_a_set_valued_option() {
+    let matches: ArgMatches = VerifyCommand
+      .init()
+      .try_get_matches_from(["verify", "--ignore", ".git", "--checks", "ltx", "root"])
+      .unwrap();
+
+    assert_eq!(InputArgument::of(&matches), &PathBuf::from("root"));
+    assert_eq!(
+      matches.get_many::<String>("ignore").unwrap().collect::<Vec<_>>(),
+      vec![".git"]
     );
   }
 }

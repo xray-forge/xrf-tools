@@ -7,7 +7,7 @@ use crate::commands::gamedata::list::asset_lister::AssetLister;
 use crate::commands::gamedata::list::asset_listing::AssetListing;
 use crate::commands::gamedata::list::report::GamedataListReport;
 use crate::core::arguments::XrayRootsArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::{MountDescription, SourceReachability};
 
 /// Maximum entries printed per section before reporting the omitted count: the same as a set of sources' listings.
@@ -21,33 +21,36 @@ impl GenericCommand for ListCommand {
     "list"
   }
 
-  fn declare(&self, command: Command) -> Command {
-    XrayRootsArguments::declare(
-      command.about("List assets resolved by an installation or gamedata tree"),
-      "Path to a game installation or a gamedata tree. Repeat to layer roots, highest priority first",
+  fn input(&self) -> CommandInput {
+    CommandInput::roots(
+      "Path to a game installation or a gamedata tree. Give several to layer them, highest priority first",
       "Limit to one logical subtree, such as configs or textures\\wpn",
     )
-    .arg(
-      Arg::new("ignore")
-        .help("Logical prefixes the directory mounts omit, such as textures\\wip. Repeat to omit several")
-        .short('i')
-        .long("ignore")
-        .action(ArgAction::Append)
-        .num_args(1..)
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("loose")
-        .help("List only loose files, ignoring archived entries")
-        .long("loose")
-        .action(ArgAction::SetTrue),
-    )
-    .arg(
-      Arg::new("shadowed")
-        .help("Also report entries hidden by a higher-priority source, mount or volume")
-        .long("shadowed")
-        .action(ArgAction::SetTrue),
-    )
+  }
+
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("List assets resolved by an installation or gamedata tree")
+      .arg(
+        Arg::new("ignore")
+          .help("Logical prefixes the directory mounts omit, such as textures\\wip. Repeat to omit several")
+          .short('i')
+          .long("ignore")
+          .action(ArgAction::Append)
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("loose")
+          .help("List only loose files, ignoring archived entries")
+          .long("loose")
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("shadowed")
+          .help("Also report entries hidden by a higher-priority source, mount or volume")
+          .long("shadowed")
+          .action(ArgAction::SetTrue),
+      )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {

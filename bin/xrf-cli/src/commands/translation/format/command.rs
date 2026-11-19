@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_output::OutputOptions;
 use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, TranslationFormatter};
 use xrf_utils::LineEndings;
 
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandError, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -17,18 +18,13 @@ impl GenericCommand for FormatCommand {
     "format"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::paths("Json translation sources, or folders holding them")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Normalize JSON translation sources")
-      .arg(
-        Arg::new("path")
-          .help("Paths to json translation sources or folders holding them")
-          .short('p')
-          .long("path")
-          .required(true)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("check")
           .help("Run formatter in check mode")
@@ -50,11 +46,7 @@ impl GenericCommand for FormatCommand {
   /// A host walk rather than a mounted tree, because this rewrites its sources and there is nowhere to put a file
   /// inside an archive volume — the same reason `translation initialize` walks the host.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<PathBuf> = matches
-      .get_many::<PathBuf>("path")
-      .expect("Expected valid input paths to be provided")
-      .cloned()
-      .collect();
+    let paths: Vec<PathBuf> = InputArgument::list_of(matches).into_iter().cloned().collect();
 
     let is_check: bool = matches.get_flag("check");
 

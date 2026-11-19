@@ -9,7 +9,7 @@ use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::core::arguments::{LinkPolicyArgument, XrayRootsArguments};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -20,36 +20,40 @@ impl GenericCommand for BuildCommand {
     "build"
   }
 
-  fn declare(&self, command: Command) -> Command {
-    let command: Command = XrayRootsArguments::declare(
-      command.about("Build translation files into gamedata"),
-      "Root holding translation sources, or one source file. Repeat to layer roots, highest priority first",
+  fn input(&self) -> CommandInput {
+    CommandInput::roots(
+      "Root holding translation sources, or one source file. Give several to layer them, highest priority first",
       "Limit to one logical subtree, such as translations",
     )
-    .arg(
-      Arg::new("dest")
-        .help("Directory the built string tables are written to")
-        .short('d')
-        .long("dest")
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    )
-    .arg(
-      Arg::new("language")
-        .help("Language to build, or all of them")
-        .short('l')
-        .long("language")
-        .required(false)
-        .default_value("all")
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("sort")
-        .help("Preserve source order instead of sorting dynamic translation files")
-        .long("no-sort")
-        .required(false)
-        .action(ArgAction::SetFalse),
-    );
+  }
+
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Build translation files into gamedata")
+      .arg(
+        Arg::new("dest")
+          .help("Directory the built string tables are written to")
+          .short('d')
+          .long("dest")
+          .required(true)
+          .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("language")
+          .help("Language to build, or all of them")
+          .short('l')
+          .long("language")
+          .required(false)
+          .default_value("all")
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("sort")
+          .help("Preserve source order instead of sorting dynamic translation files")
+          .long("no-sort")
+          .required(false)
+          .action(ArgAction::SetFalse),
+      );
 
     LinkPolicyArgument::declare(command)
   }
@@ -123,7 +127,7 @@ mod tests {
   use crate::core::command::GenericCommand;
 
   fn parse_matches(extra: &[&str]) -> ArgMatches {
-    let mut arguments = vec!["build", "--path", "translations", "--dest", "output"];
+    let mut arguments = vec!["build", "translations", "--dest", "output"];
 
     arguments.extend_from_slice(extra);
 

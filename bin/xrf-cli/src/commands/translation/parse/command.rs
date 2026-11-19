@@ -6,7 +6,7 @@ use xrf_report::Status;
 use xrf_translation::{TranslationLanguage, TranslationParseOptions, TranslationParseResult, TranslationParser};
 
 use crate::core::arguments::{LinkPolicyArgument, XrayRootsArguments};
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandError, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -17,12 +17,15 @@ impl GenericCommand for ParseCommand {
     "parse"
   }
 
-  fn declare(&self, command: Command) -> Command {
-    let command: Command = XrayRootsArguments::declare(
-      command.about("Parse XML translations into JSON sources"),
-      "Root holding raw xml translations. Repeat to layer roots, highest priority first",
+  fn input(&self) -> CommandInput {
+    CommandInput::roots(
+      "Root holding raw xml translations. Give several to layer them, highest priority first",
       "Limit to one logical subtree, such as configs\\text\\eng",
     )
+  }
+
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command.about("Parse XML translations into JSON sources")
     .arg(
         Arg::new("language")
           .help("Language every entry read by this run is filed under. Raw xml carries no language, so it is declared rather than guessed")

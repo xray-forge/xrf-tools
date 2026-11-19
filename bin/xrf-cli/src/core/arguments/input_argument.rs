@@ -12,13 +12,12 @@ impl InputArgument {
 
   /// Declares the required path on `command`, `help` saying what it names.
   pub(crate) fn declare(command: Command, help: String) -> Command {
-    command.arg(
-      Arg::new(Self::ID)
-        .help(help)
-        .value_name(Self::VALUE_NAME)
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    )
+    command.arg(Self::create(help))
+  }
+
+  /// Declares one or more required paths on `command`, kept in the order given, `help` saying what they name.
+  pub(crate) fn declare_many(command: Command, help: String) -> Command {
+    command.arg(Self::create(help).num_args(1..))
   }
 
   /// The path the command was given.
@@ -26,5 +25,22 @@ impl InputArgument {
     matches
       .get_one::<PathBuf>(Self::ID)
       .expect("Expected the required input path")
+  }
+
+  /// The paths the command was given, in the order given.
+  pub(crate) fn list_of(matches: &ArgMatches) -> Vec<&PathBuf> {
+    matches
+      .get_many::<PathBuf>(Self::ID)
+      .expect("Expected at least one input path")
+      .collect()
+  }
+
+  /// The argument both declarations share.
+  fn create(help: String) -> Arg {
+    Arg::new(Self::ID)
+      .help(help)
+      .value_name(Self::VALUE_NAME)
+      .required(true)
+      .value_parser(value_parser!(PathBuf))
   }
 }

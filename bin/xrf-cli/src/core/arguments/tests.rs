@@ -197,23 +197,19 @@ fn refuses_a_missing_input_and_the_flag_it_replaced() {
 }
 
 fn parse_roots(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
-  XrayRootsArguments::declare(Command::new("list").no_binary_name(true), "a root", "a subtree")
-    .try_get_matches_from(arguments)
+  XrayRootsArguments::declare(
+    Command::new("list").no_binary_name(true),
+    String::from("a root"),
+    String::from("a subtree"),
+  )
+  .try_get_matches_from(arguments)
 }
 
+/// The roots keep the order they were given in, which is their layering: the first is searched first.
 #[test]
 fn layers_every_path_as_one_source_and_reads_the_prefix() {
-  let matches: ArgMatches = parse_roots(&[
-    "-p",
-    "mod",
-    "-p",
-    "game",
-    "--source",
-    "directory",
-    "--prefix",
-    "configs",
-  ])
-  .expect("the arguments parse");
+  let matches: ArgMatches =
+    parse_roots(&["mod", "game", "--source", "directory", "--prefix", "configs"]).expect("the arguments parse");
   let roots: XrayRoots = XrayRootsArguments::of(&matches).expect("the roots");
 
   assert_eq!(
@@ -232,7 +228,7 @@ fn layers_every_path_as_one_source_and_reads_the_prefix() {
 
 #[test]
 fn reads_the_containing_installation_unless_told_otherwise_and_refuses_other_modes() {
-  let matches: ArgMatches = parse_roots(&["-p", "game"]).expect("the arguments parse");
+  let matches: ArgMatches = parse_roots(&["game"]).expect("the arguments parse");
 
   assert_eq!(
     XrayRootsArguments::source_of(&matches).expect("the source"),
@@ -240,7 +236,7 @@ fn reads_the_containing_installation_unless_told_otherwise_and_refuses_other_mod
   );
   assert_eq!(XrayRootsArguments::prefix_of(&matches), None);
   assert_eq!(
-    parse_roots(&["-p", "game", "--source", "nowhere"])
+    parse_roots(&["game", "--source", "nowhere"])
       .expect_err("the mode is refused")
       .kind(),
     clap::error::ErrorKind::InvalidValue

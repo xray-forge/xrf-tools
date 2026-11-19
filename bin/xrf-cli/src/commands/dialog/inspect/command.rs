@@ -8,7 +8,7 @@ use xrf_output::OutputOptions;
 
 use super::report::DialogInspectReport;
 use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct InspectCommand;
@@ -18,13 +18,18 @@ impl GenericCommand for InspectCommand {
     "inspect"
   }
 
+  fn input(&self) -> CommandInput {
+    DialogProjectOpening::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    DialogProjectOpening::declare(
+    DialogProjectOpening::declare_language(
       command.about("Explain one dialog: its conditions and every phrase, with what each says, gives and runs"),
     )
     .arg(
       Arg::new("dialog")
         .help("Id of the dialog to explain")
+        .long("dialog")
         .required(true)
         .value_parser(value_parser!(String)),
     )

@@ -7,7 +7,7 @@ use super::bump_alignment_survey::BumpAlignmentSurvey;
 use super::report::{BumpAlignmentReport, BumpAlignmentSummary};
 use crate::commands::thm::bump_alignment::bump_alignment_set::BumpAlignmentOutcome;
 use crate::core::arguments::XrayRootsArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct BumpAlignmentCommand;
@@ -17,14 +17,17 @@ impl GenericCommand for BumpAlignmentCommand {
     "bump-alignment"
   }
 
-  fn declare(&self, command: Command) -> Command {
-    XrayRootsArguments::declare(
-      command.about(
-        "Report whether each texture's bump belongs to its diffuse, by how closely the bump's slopes follow the \
-         diffuse's edges",
-      ),
-      "Root holding the textures and their descriptors. Repeat to layer roots, highest priority first",
+  fn input(&self) -> CommandInput {
+    CommandInput::roots(
+      "Root holding the textures and their descriptors. Give several to layer them, highest priority first",
       "Limit to the descriptors of one logical subtree, such as textures\\wpn",
+    )
+  }
+
+  fn declare(&self, command: Command) -> Command {
+    command.about(
+      "Report whether each texture's bump belongs to its diffuse, by how closely the bump's slopes follow the \
+         diffuse's edges",
     )
   }
 

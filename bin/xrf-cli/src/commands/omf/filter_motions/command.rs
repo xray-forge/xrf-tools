@@ -36,17 +36,17 @@ impl GenericCommand for FilterMotionsCommand {
       )
       .arg(
         Arg::new("keep")
-          .help("Exact motion names to keep")
+          .help("Exact motion name to keep. Repeat to keep several")
           .short('k')
           .long("keep")
-          .num_args(1..)
+          .action(ArgAction::Append)
           .value_parser(value_parser!(String)),
       )
       .arg(
         Arg::new("keep-prefix")
-          .help("Keep motions whose name starts with provided prefix")
+          .help("Keep motions whose name starts with this prefix. Repeat to keep several")
           .long("keep-prefix")
-          .num_args(1..)
+          .action(ArgAction::Append)
           .value_parser(value_parser!(String)),
       )
       // Either filter alone selects, and both together keep what either matches.

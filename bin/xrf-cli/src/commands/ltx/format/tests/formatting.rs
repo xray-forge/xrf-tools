@@ -26,7 +26,6 @@ fn preserves_standalone_semicolon_comments() -> CommandResult {
   let command: FormatCommand = FormatCommand;
   let arguments: Vec<String> = vec![
     String::from("format"),
-    String::from("--path"),
     file.display().to_string(),
     String::from("--silent"),
   ];
@@ -51,7 +50,6 @@ fn formatting_standalone_comment_is_idempotent() -> CommandResult {
   let command: FormatCommand = FormatCommand;
   let arguments: Vec<String> = vec![
     String::from("format"),
-    String::from("--path"),
     file.display().to_string(),
     String::from("--silent"),
   ];
@@ -86,7 +84,6 @@ fn formats_the_loose_configs_of_an_installation() -> CommandResult {
   let command: FormatCommand = FormatCommand;
   let arguments: Vec<String> = vec![
     String::from("format"),
-    String::from("--path"),
     root.display().to_string(),
     String::from("--silent"),
   ];

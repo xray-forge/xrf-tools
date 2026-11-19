@@ -78,7 +78,6 @@ pub(crate) fn create_tree(name: &str) -> XrfResult<PathBuf> {
 pub(crate) fn run_for_result<T: GenericCommand>(command: &T, root: &Path, extra: &[&str]) -> CommandResult<Value> {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
-    String::from("--path"),
     root.display().to_string(),
     String::from("--source"),
     String::from("directory"),

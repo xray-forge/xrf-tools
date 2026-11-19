@@ -35,10 +35,10 @@ impl GenericCommand for PatchMotionRefsCommand {
       )
       .arg(
         Arg::new("refs")
-          .help("Motion refs to store in the ogf file")
+          .help("Motion ref to store in the ogf file. Repeat to store several, in order")
           .long("refs")
           .required(true)
-          .num_args(1..)
+          .action(ArgAction::Append)
           .value_parser(value_parser!(String)),
       )
       .arg(

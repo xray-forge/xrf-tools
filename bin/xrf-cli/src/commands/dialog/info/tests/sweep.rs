@@ -36,7 +36,6 @@ fn run_for_result(path: &Path, extra: &[&str]) -> CommandResult<Option<Value>> {
   let command: InfoCommand = InfoCommand;
   let mut arguments: Vec<String> = vec![
     String::from("info"),
-    String::from("--path"),
     path.display().to_string(),
     String::from("--silent"),
   ];
