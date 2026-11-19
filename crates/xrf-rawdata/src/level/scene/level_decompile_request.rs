@@ -32,7 +32,8 @@ pub struct LevelDecompileRequest {
   pub game_materials: Option<PathBuf>,
   /// The compiler shader library; the level's gamedata's `shaders_xrlc.xr` where it exists by default.
   pub compiler_shaders: Option<PathBuf>,
-  /// Object library roots whose surfaces break ties between compiler shaders, such as an SDK's `rawdata/objects`.
+  /// Object library roots, such as an SDK's `rawdata/objects`: the static geometry's placed objects, its trees and the
+  /// level's detail models are looked up among their objects, and their surfaces break ties between compiler shaders.
   pub libraries: Vec<PathBuf>,
   /// Whether existing files are overwritten and an earlier decompile's stale parts and objects removed. Unforced, an
   /// existing scene or level object is refused before the level is read.

@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::format_path;
 
 use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::object_inference::ObjectInference;
@@ -116,13 +117,16 @@ impl ObjectProvenance {
       Err(error) => {
         return Err(XrfError::new_read_error(format!(
           "{} was not read: {error}",
-          sidecar.display()
+          format_path(&sidecar)
         )));
       }
     };
 
     serde_json::from_str(&text).map(Some).map_err(|error| {
-      XrfError::new_parsing_error(format!("{} is not a provenance sidecar: {error}", sidecar.display()))
+      XrfError::new_parsing_error(format!(
+        "{} is not a provenance sidecar: {error}",
+        format_path(&sidecar)
+      ))
     })
   }
 }

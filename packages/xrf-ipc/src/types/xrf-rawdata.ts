@@ -157,7 +157,10 @@ export type LevelDecompileRequest = {
   gameMaterials: string | null;
   /** The compiler shader library; the level's gamedata's `shaders_xrlc.xr` where it exists by default. */
   compilerShaders: string | null;
-  /** Object library roots whose surfaces break ties between compiler shaders, such as an SDK's `rawdata/objects`. */
+  /**
+   * Object library roots, such as an SDK's `rawdata/objects`: the static geometry's placed objects, its trees and the
+   * level's detail models are looked up among their objects, and their surfaces break ties between compiler shaders.
+   */
   libraries: Array<string>;
   /**
    * Whether existing files are overwritten and an earlier decompile's stale parts and objects removed. Unforced, an

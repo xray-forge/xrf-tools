@@ -94,8 +94,9 @@ impl GenericCommand for DecompileCommand {
         Arg::new("library")
           .help(
             "Object library root, such as an SDK's rawdata/objects: its objects found placed in the static geometry and \
-             its trees found as tree models are placed by reference and copied beside the objects, and its surfaces' \
-             pairings of engine and compiler shaders break ties between compiler shaders that fit; repeatable",
+             its trees found as tree models are placed by reference and copied beside the objects, the level's detail \
+             models are looked up among its objects, and its surfaces' pairings of engine and compiler shaders break \
+             ties between compiler shaders that fit; repeatable",
           )
           .long("library")
           .action(ArgAction::Append)

@@ -1,8 +1,7 @@
+use clap::ArgMatches;
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
 use xrf_spawn::XRayByteOrder;
-
-use clap::ArgMatches;
 
 use crate::core::arguments::InputArgument;
 use crate::core::command::CommandInput;

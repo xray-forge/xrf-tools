@@ -21,8 +21,8 @@ pub struct LevelDecompileOptions {
   pub game_materials: Option<PathBuf>,
   /// The compiler shader library (`shaders_xrlc.xr`) the inferred compiler shaders are chosen from.
   pub compiler_shaders: Option<PathBuf>,
-  /// Object library roots whose surfaces' pairings of engine and compiler shaders break ties between
-  /// compiler shaders that fit.
+  /// Object library roots whose objects are found placed in the static geometry and among its trees and detail
+  /// models, and whose surfaces' pairings of engine and compiler shaders break ties between compiler shaders that fit.
   pub libraries: Vec<PathBuf>,
 }
 
