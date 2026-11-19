@@ -116,19 +116,10 @@ impl GenericCommand for InspectCommand {
 impl InspectCommand {
   /// The entry point whose resolution holds `section`.
   ///
-  /// Searched through the project's plain resolutions, which are cached and record nothing, so the one resolution that
-  /// pays for provenance is the one that answers. `--entry` skips the search.
-  ///
-  /// Every entry point that can hold the section is tried rather than stopping at the first, because a section name is
-  /// not unique across a tree and stopping would answer about a different section without ever saying so - a real case
-  /// in an Anomaly install, where `configs\plugins\actor_effects.ltx` declares a `[wpn_ak74]` of its own that has
-  /// nothing to do with the weapon. The first is still the answer; the others are named so a person can ask again with
-  /// `--entry`.
-  ///
-  /// Which entry points can hold it comes from the headers naming it or naming it as a parent, read without resolving
-  /// anything, so only the roots above those configs are resolved. Where an attachment could add the section, nothing
-  /// bounds that and every entry point is tried. The order is the project's either way, so the answer does not depend on
-  /// which search found it.
+  /// Searches the project's cached plain resolutions, so only the answering one pays for provenance; `--entry` skips
+  /// the search. Every candidate is tried, in the project's order, because a section name is not unique across a tree
+  /// (Anomaly's `configs\plugins\actor_effects.ltx` declares an unrelated `[wpn_ak74]`): the first answers, and the
+  /// others are named in a warning so a person can ask again with `--entry`.
   ///
   /// # Errors
   ///
@@ -205,6 +196,9 @@ impl InspectCommand {
   }
 
   /// The entry points whose resolution can hold `section`, or `None` when nothing bounds them and all must be tried.
+  ///
+  /// Read without resolving, from the headers naming the section or naming it as a parent; an attachment that could add
+  /// it leaves nothing bound.
   ///
   /// # Errors
   ///

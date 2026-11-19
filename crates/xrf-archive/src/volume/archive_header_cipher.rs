@@ -1,7 +1,8 @@
-/// The cipher Shadow of Chornobyl's volumes hide their entry name table under, `trivial_encryptor`
-/// (`xrCore/Crypto/trivial_encryptor.cpp`): each byte substituted through a shuffled 256-entry table and masked with a
-/// seeded random stream. `CLocatorAPI::LoadArchive` applies it to a volume carrying no `[header]` metadata, trying the
-/// worldwide key and then the Russian one; the payloads themselves are not enciphered.
+/// The cipher Shadow of Chornobyl's volumes hide their entry name table under, `trivial_encryptor`: each byte
+/// substituted through a shuffled 256-entry table and masked with a seeded random stream.
+///
+/// `CLocatorAPI::LoadArchive` applies it to a volume carrying no `[header]` metadata, trying the worldwide key and then
+/// the Russian one; the payloads are not enciphered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ArchiveHeaderCipher {
   Worldwide,
@@ -66,8 +67,7 @@ impl ArchiveHeaderCipher {
 
 #[cfg(test)]
 impl ArchiveHeaderCipher {
-  /// `trivial_encryptor::encode`, which the engine's packer used and nothing here writes: the substitution, then the
-  /// mask.
+  // `trivial_encryptor::encode`, which nothing here writes.
   pub(crate) fn encode(self, bytes: &[u8]) -> Vec<u8> {
     let alphabet: [u8; 256] = self.get_alphabet();
     let mut stream: Random32 = self.get_stream();

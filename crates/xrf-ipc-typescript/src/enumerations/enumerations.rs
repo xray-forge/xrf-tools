@@ -20,8 +20,8 @@ impl Enumerations {
   ///
   /// # Errors
   ///
-  /// When a mapped type has no Rust source, which means the two views can no longer be related at all, or its members
-  /// cannot be paired or collide ([`EnumerationMember::pair`], [`EnumerationMember::assert_distinct`]).
+  /// When a mapped type has no Rust source, or its members cannot be paired or collide ([`EnumerationMember::pair`],
+  /// [`EnumerationMember::assert_distinct`]).
   pub(crate) fn resolve(collected: &Types, types: &Types) -> XrfResult<Self> {
     let sources: BTreeMap<(&str, Location<'static>), &NamedDataType> = collected
       .into_sorted_iter()

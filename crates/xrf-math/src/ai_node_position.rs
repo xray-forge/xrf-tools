@@ -7,12 +7,12 @@ use crate::math_constants::EPS_L;
 use crate::shape::aabb::Aabb;
 use crate::vector_3d::Vector3d;
 
-/// Where an AI map node stands as the level editor packs it, `SNodePositionOld` (`xrLevel.h`): its cell along x and z,
-/// counted in patches from the world origin, and its height spread across a box's height. The AI map tool's part and
-/// the `build.aimap` it exports hold their nodes this way.
+/// Where an AI map node stands as the level editor packs it, `SNodePositionOld`: its cell along x and z in patches
+/// from the world origin, and its height across a box's height. The AI map tool's part and its `build.aimap` export
+/// store nodes this way.
 ///
-/// The packed height is one rule for every AI map file: `level.ai` packs its own height across its header's extent the
-/// same way ([`Self::unpack_height`], [`Self::pack_height`]).
+/// `level.ai` packs its height across its header's extent by the same rule ([`Self::pack_height`],
+/// [`Self::unpack_height`]).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,8 +53,7 @@ impl AiNodePosition {
   }
 
   /// A height packed across `extent` above `floor`: `iFloor(65535 * (y - floor) / extent + EPS_L)`, clamped to 16 bits,
-  /// as the editor's export and xrAI's save both compute it. The floor itself for an extent of none, where the engine
-  /// would divide by zero.
+  /// as the editor's export and xrAI's save compute it. An empty extent, where the engine divides by zero, packs 0.
   pub fn pack_height(y: f32, floor: f32, extent: f32) -> u16 {
     if extent <= 0.0 {
       return 0;
@@ -70,9 +69,8 @@ impl AiNodePosition {
     f32::from(packed) / Self::HEIGHT_STEPS * extent + floor
   }
 
-  /// The height a packed one names as the shipped game computes it, `CLevelGraph::vertex_position`: the 2009 build
-  /// turns the division by 65535 into a multiply by its reciprocal, which can land an ulp from
-  /// [`Self::unpack_height`], and which every shipped level point's height needs.
+  /// The height a packed one names as the shipped game computes it, `CLevelGraph::vertex_position`: a multiply by the
+  /// reciprocal of 65535, which can land an ulp from [`Self::unpack_height`]. Shipped level points' heights need it.
   pub fn unpack_height_as_built(packed: u16, floor: f32, extent: f32) -> f32 {
     f32::from(packed) * (1.0 / Self::HEIGHT_STEPS) * extent + floor
   }

@@ -100,8 +100,8 @@ impl ParticlesUsageVerifier<'_> {
     Ok(names)
   }
 
-  /// Every config's particle names, taken in the project's order: each unknown one is said as its config's findings are
-  /// taken in, so the narration and the findings are the ones one config at a time gives.
+  /// Every config's particle names, taken in the project's order, each unknown one narrated as its config's findings
+  /// are taken in.
   fn verify_configs(&self, particle_names: &HashSet<String>, result: &mut GamedataParticlesUsageVerificationResult) {
     let outcomes: Vec<(PathBuf, XrfResult<GamedataParticlesUsageVerificationResult>)> =
       self.project.visit_configs(&self.options.job, |ltx, reported| {

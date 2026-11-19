@@ -60,8 +60,8 @@ impl DlssInstance {
     }
   }
 
-  /// Starts a device on `adapter`, one of this instance's, and DLSS on it where NGX is hooked in and the adapter has
-  /// what it needs, the device answered while DLSS still starts.
+  /// Starts a device on `adapter`, one of this instance's, and DLSS on it where NGX is hooked in and the adapter
+  /// supports it; the device is answered while DLSS still starts.
   ///
   /// # Errors
   ///

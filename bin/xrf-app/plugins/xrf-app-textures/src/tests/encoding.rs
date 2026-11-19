@@ -20,7 +20,7 @@ fn comparison(files: Option<TextureFiles>, candidates: &[DdsEncodeCandidate]) ->
   comparison_of(&source_image(16), files, candidates)
 }
 
-/// A comparison of `image` over `candidates`, its cut-out BC1 encoded as a finished comparison's is.
+// The cut-out BC1 is encoded as a finished comparison's is.
 fn comparison_of(
   image: &RgbaImage,
   files: Option<TextureFiles>,
@@ -50,26 +50,25 @@ fn comparison_of(
 
 #[test]
 fn a_bc1_save_cuts_out_the_alpha_its_descriptor_says_means_something() {
-  // A fence: the left half clear, the right half opaque.
   let fence: RgbaImage = RgbaImage::from_fn(16, 16, |x, _| Rgba([90, 90, 90, if x < 8 { 0 } else { u8::MAX }]));
   let mut held: TextureComparison = comparison_of(&fence, None, &[DdsEncodeCandidate::Bc1]);
   let alpha = |file: &DdsFile, x: u32| file.decode_rgba(0).expect("decodes").get_pixel(x, 0).0[3];
 
-  // `tfADXT1`: the clear stays clear and the bars stay solid.
+  // `tfADXT1`.
   let cut_out: &DdsFile = held
     .require_for_save(TextureEncodingFormat::Bc1, true)
     .expect("cut out");
 
   assert_eq!((alpha(cut_out, 2), alpha(cut_out, 12)), (0, u8::MAX));
 
-  // `tfDXT1`: the alpha means nothing, so every texel is written opaque, as compared.
+  // `tfDXT1`: every texel is written opaque, as compared.
   let opaque: &DdsFile = held
     .require_for_save(TextureEncodingFormat::Bc1, false)
     .expect("opaque");
 
   assert_eq!(alpha(opaque, 2), u8::MAX);
 
-  // A comparison stopped before its cut-out has none to give, and says so rather than write opaque texels.
+  // A comparison stopped before its cut-out fails rather than write opaque texels.
   held.cut_out_bc1 = None;
 
   assert!(

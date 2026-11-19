@@ -1,5 +1,3 @@
-//! What `level decompile` writes, what it refuses, and that a refusal writes nothing.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -37,7 +35,6 @@ fn get_error(verdict: CommandResult) -> String {
   }
 }
 
-/// A test's root holding `level/`, a compiled level of one environment modifier, and `scenes/`, empty.
 fn level_root(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("level-decompile/{name}"))?;
   let mut writer: ChunkWriter = ChunkWriter::new();
@@ -104,8 +101,7 @@ fn refuses_to_replace_a_scene_without_force() -> XrfResult {
 
 #[test]
 fn refuses_a_scene_directory_unforced_and_removes_the_parts_it_no_longer_writes_forced() -> XrfResult {
-  // A part the decompile does not write would be read as part of the decompiled scene, so the scene's part directory is
-  // the decompile's own: refused unforced, cleaned of what it does not write forced.
+  // A stale part would be read as part of the decompiled scene, so the part directory is the decompile's own.
   let root: PathBuf = level_root("stale_part")?;
   let destination: PathBuf = root.join("scenes").join("test_level.level");
   let stale: PathBuf = root.join("scenes/test_level/scene_object.part");
@@ -131,7 +127,7 @@ fn refuses_a_scene_directory_unforced_and_removes_the_parts_it_no_longer_writes_
   Ok(())
 }
 
-/// With no `spawns/all.spawn` beside the levels, the entities come from the level's own lists and no root is recorded.
+// With no `spawns/all.spawn` beside the levels, the entities come from the level's own lists.
 #[test]
 fn reads_no_root_spawn_where_the_default_one_is_absent() -> XrfResult {
   let root: PathBuf = level_root("no_root")?;
@@ -147,7 +143,7 @@ fn reads_no_root_spawn_where_the_default_one_is_absent() -> XrfResult {
   Ok(())
 }
 
-/// A root spawn asked for by name must exist, so a mistyped name is not taken for a level of no root spawn.
+// A mistyped name must not be taken for a level of no root spawn.
 #[test]
 fn refuses_a_named_root_spawn_that_does_not_exist() -> XrfResult {
   let root: PathBuf = level_root("missing_root")?;

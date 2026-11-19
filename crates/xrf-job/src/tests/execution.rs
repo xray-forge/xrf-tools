@@ -1,10 +1,7 @@
 use std::num::NonZeroUsize;
 use std::str::FromStr;
 
-use crate::execution::ExecutionOrigin;
-use crate::execution::ExecutionPlan;
-use crate::execution::ExecutionRequest;
-use crate::execution::HostProcessors;
+use crate::execution::{ExecutionOrigin, ExecutionPlan, ExecutionRequest, HostProcessors};
 
 fn read(text: &str) -> ExecutionRequest {
   ExecutionRequest::from_str(text).expect("the request is readable")

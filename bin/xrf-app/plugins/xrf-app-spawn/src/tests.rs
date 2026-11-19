@@ -12,8 +12,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::{SpawnChunk, SpawnChunkKind, SpawnFiles, SpawnSession};
 
-/// A spawn of one level with no vertices or objects, its cross table naming the level and the graph. A spawn of no levels
-/// would export an empty cross table file, which does not import back.
+// One level, not none: a spawn of no levels exports an empty cross table file, which does not import back.
 pub(super) fn synthetic_spawn() -> SpawnFile {
   let level: Uuid = Uuid::from_u128(1);
 

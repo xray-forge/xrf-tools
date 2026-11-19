@@ -6,10 +6,11 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::pipeline::pipeline_cache::PipelineCache;
 
-/// Pipelines a pass makes one set a key on first use, such as a window's format, and the cache's generation they were
-/// made in: all made again once the cache is invalidated past it, every last made kept where the cache refuses one
-/// remake, which is not tried again before the cache changes; a key refused on first use is not made again either
-/// before then.
+/// Pipelines a pass makes one set a key on first use, such as a window's format, all made again once the cache is
+/// invalidated past the generation they were made in.
+///
+/// A refused remake keeps every set last made; neither it nor a key refused on first use is tried again before the
+/// cache changes.
 pub struct PipelineMap<K, T> {
   pipelines: HashMap<K, T>,
   /// Why each key refused on first use, kept until the cache changes.
@@ -31,8 +32,8 @@ impl<K: Copy + Eq + Hash, T> PipelineMap<K, T> {
   ///
   /// # Errors
   ///
-  /// Returns `make`'s refusal, nothing kept for `key`, and the same refusal, of the same kind and word for word, at
-  /// every ask after it until the cache changes, so a log that skips a repeated failure tells it once.
+  /// Returns `make`'s refusal, keeping nothing for `key`, and the same error word for word at every ask until the
+  /// cache changes, so a log that skips a repeated failure tells it once.
   pub fn prepare(&mut self, key: K, make: impl FnOnce(K) -> XrfResult<T>) -> XrfResult {
     if let Entry::Vacant(entry) = self.pipelines.entry(key)
       && !self.refused.contains_key(&key)

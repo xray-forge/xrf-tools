@@ -1,6 +1,4 @@
-//! An editable object compiled and packed as the renderer draws it.
-//!
-//! The compile itself is `xrf-rawdata`'s to pin, the packing `xrf-visual`'s.
+// The compile itself is `xrf-rawdata`'s to pin, the packing `xrf-visual`'s.
 
 use xrf_editable_object::EditableObjectFile;
 use xrf_math::{Aabb, Vector3d};

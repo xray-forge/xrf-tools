@@ -9,8 +9,8 @@ use crate::data::skeleton::ogf_joint_ik_data::OgfJointIkData;
 /// Physics and bind pose data of one bone, one record of `OGF_S_IKDATA`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OgfBoneIkData {
-  /// Per bone, and it selects whether the joint record carries a friction value. Stored as a `u32` whose low half the
-  /// engine reads; kept whole, so a record writes back as it was.
+  /// Per bone; selects whether the joint record carries a friction value. The engine reads its low half; kept whole so
+  /// a record writes back as it was.
   pub version: u32,
   pub game_material: String,
   pub shape: SkeletonBoneShape,

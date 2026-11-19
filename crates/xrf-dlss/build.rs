@@ -67,9 +67,8 @@ mod sdk {
     );
 
     match os.as_str() {
-      // The library built against the C runtime the target links: the DLL one unless it links it statically. Either
-      // reads NGX's paths from the registry, which a binary linking nothing else of advapi32 (the crate's own tests)
-      // would leave unresolved.
+      // The library built against the target's C runtime. It reads NGX's paths from the registry, which a binary
+      // linking nothing else of advapi32 (the crate's own tests) would leave unresolved.
       "windows" => {
         println!(
           "cargo:rustc-link-lib=static={}",

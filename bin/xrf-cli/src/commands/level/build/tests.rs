@@ -1,5 +1,3 @@
-//! What `level build` writes from a scene, what it refuses, and that a refusal writes nothing.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -40,8 +38,6 @@ fn get_error(verdict: CommandResult) -> String {
   }
 }
 
-/// A test's root holding `level/`, a compiled level of one environment modifier, and `scenes/test_level.level`, the
-/// scene decompiled from it.
 fn scene_root(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("level-build/{name}"))?;
   let mut writer: ChunkWriter = ChunkWriter::new();

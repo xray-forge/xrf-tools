@@ -417,13 +417,12 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     })
   }
 
-  /// A progressive visual's slide windows, the whole detail first, or `None` for a visual of one detail
-  /// (`LevelVisual::get_windows`).
+  /// A progressive visual's slide windows, the whole detail first, or `None` for a visual of one detail.
   ///
   /// # Errors
   ///
-  /// Returns an error where `LevelVisual::get_windows` does: windows that cannot be read, a table the level does not
-  /// hold, or a progressive visual without a window, whose whole index run lays every window end to end.
+  /// Returns an error where `LevelVisual::get_windows` does: unreadable windows, a table the level does not hold, or a
+  /// progressive visual without a window.
   fn get_windows(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<VisualIndexWindow>>> {
     Ok(visual.get_windows(self.source.get_file())?.map(|windows| {
       windows

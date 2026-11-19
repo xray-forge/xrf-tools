@@ -574,8 +574,7 @@ fn ignores_an_out_of_range_index_outside_the_drawn_range() {
 
 #[test]
 fn drops_a_coarse_level_addressing_a_missing_vertex() {
-  // A run naming a vertex the submesh lacks no longer vouches for its windows, so each is read on its own: the fine one
-  // draws, and the coarse one reaching the stray index is dropped.
+  // A run naming a missing vertex vouches for no window, so each is checked on its own.
   let child: OgfFile = OgfFile {
     geometry: Some(geometry(
       (0..6)

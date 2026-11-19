@@ -113,7 +113,6 @@ fn a_forced_unpack_replaces_the_old_folder_whole() -> XrfResult {
   Ok(())
 }
 
-/// A format whose export says nothing more deposits the conversion alone.
 #[test]
 fn reports_an_unpack_of_a_format_saying_nothing_more_as_the_conversion() -> CommandResult {
   let library: PathBuf = create_library("packed_file_unpack_report")?;

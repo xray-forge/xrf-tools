@@ -67,8 +67,8 @@ impl Matrix4x4 {
     [self.values[3], self.values[7], self.values[11], self.values[15]]
   }
 
-  /// `inner` applied first, then this, `Fmatrix::mul(self, inner)`, each element summed in the engine's order so that
-  /// a transform the editor composed comes out with the same bits, the signs of its zeros included.
+  /// `inner` applied first, then this, `Fmatrix::mul(self, inner)`, summed in the engine's order so an editor-composed
+  /// transform keeps its bits, the signs of its zeros included.
   pub fn multiply(&self, inner: &Self) -> Self {
     let outer: &[f32; Self::ELEMENTS] = &self.values;
     let inner: &[f32; Self::ELEMENTS] = &inner.values;
@@ -132,9 +132,8 @@ impl Matrix4x4 {
     }
   }
 
-  /// The inverse of the affine transform, its fourth column taken as [`Self::AFFINE_COLUMN`], solved in double precision
-  /// by cofactors so that a scaled or sheared placement inverts as well as a rigid one; `None` where its axes are
-  /// singular.
+  /// The inverse of the affine transform, its fourth column taken as [`Self::AFFINE_COLUMN`]. Solved by cofactors in
+  /// double precision, so scaled and sheared placements invert too; `None` where its axes are singular.
   pub fn invert_affine(&self) -> Option<Self> {
     let at = |row: usize, column: usize| f64::from(self.values[row * 4 + column]);
     // Cofactors of the upper 3x3, the transpose of which over the determinant is its inverse.

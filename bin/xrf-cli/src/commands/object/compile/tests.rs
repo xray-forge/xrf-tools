@@ -1,5 +1,3 @@
-//! What `object compile` refuses, that a refusal writes nothing, and that a detail model comes back through its sidecar.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -30,7 +28,6 @@ fn compile(source: &Path, destination: &Path, extra: &[&str]) -> CommandResult {
   run_command(&CompileCommand, &arguments)
 }
 
-/// An object of no geometry, dynamic where `flags` says so.
 fn empty_object(flags: u32) -> EditableObjectFile {
   EditableObjectFile {
     flags,

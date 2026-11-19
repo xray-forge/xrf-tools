@@ -62,8 +62,7 @@ impl<'a> SoundReferencesVerifier<'a> {
       .collect()
   }
 
-  /// Every config's references, taken in the project's order, so the findings and the narration are the ones one config
-  /// at a time gives.
+  /// Every config's references, taken in the project's order.
   fn verify_references_in_configs(
     &self,
     sound_names: &HashSet<String>,
@@ -133,8 +132,7 @@ impl<'a> SoundReferencesVerifier<'a> {
     }
   }
 
-  /// One XML document's references. Reported by the path a person can act on, which for an archived entry is its
-  /// logical path.
+  /// One XML document's references, reported by its physical path, or by its logical path for an archived entry.
   fn verify_references_in_xml_document(
     &self,
     sound_names: &HashSet<String>,

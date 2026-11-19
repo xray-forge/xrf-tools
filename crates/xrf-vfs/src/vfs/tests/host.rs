@@ -2,11 +2,10 @@
 //! failed source stays settled except when a person opens its roots afresh, and a retained file changed on disk is
 //! applied when its roots are looked at.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
+use std::{fs, thread};
 
 use xrf_test_utils::GeneratedResources;
 

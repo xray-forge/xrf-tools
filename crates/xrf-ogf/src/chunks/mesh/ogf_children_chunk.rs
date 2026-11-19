@@ -8,8 +8,8 @@ use crate::OgfFile;
 
 /// Child visuals carried whole, `OGF_CHILDREN`: numbered chunks from zero, each a visual of its own.
 ///
-/// Read as [`OgfFile`]s, which are inspection views: a narrow edit rewrites the bytes around a child instead (see the
-/// reference patchers). A new visual's children are written from their own bytes, [`Self::write_nested`].
+/// Read as [`OgfFile`] inspection views; a narrow edit rewrites the bytes around a child instead.
+/// [`Self::write_nested`] writes a new visual's children from their own bytes.
 #[derive(Debug)]
 pub struct OgfChildrenChunk {
   pub nested: Vec<OgfFile>,

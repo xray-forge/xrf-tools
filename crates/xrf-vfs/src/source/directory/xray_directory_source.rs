@@ -50,8 +50,7 @@ impl XrayDirectorySource {
   ///
   /// # Errors
   ///
-  /// Returns a not-found error when the source holds no such path: absent, not unreadable, which lets a caller fall back
-  /// rather than fail.
+  /// Returns a not-found error when the source holds no such path, so a caller can fall back rather than fail.
   fn require_file(&self, path: &str) -> XrfResult<PathBuf> {
     match self.index.find(path)? {
       Some(asset) => Ok(asset.absolute_path()),
@@ -186,9 +185,8 @@ mod tests {
 
   use xrf_test_utils::GeneratedResources;
 
-  use crate::XrayAssetSource;
-  use crate::XraySourceKind;
   use crate::source::XrayDirectorySource;
+  use crate::{XrayAssetSource, XraySourceKind};
 
   fn source(name: &str, files: &[&str]) -> XrayDirectorySource {
     let root: PathBuf =

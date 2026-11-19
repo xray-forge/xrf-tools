@@ -136,8 +136,8 @@ impl<T> Session<T> {
     )
   }
 
-  /// Publishes only the newest opening, at `revision`, the one the search it read was
-  /// taken at, keeping the inputs the value was derived from and the parts the opening read on its way.
+  /// Publishes only the newest opening, at the `revision` of the search it read, with the `inputs` its value was
+  /// derived from and the `parts` it read.
   pub(crate) fn commit_open_with(
     &self,
     id: SessionId,

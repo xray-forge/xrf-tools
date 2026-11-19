@@ -37,8 +37,8 @@ impl Renderer {
     }
   }
 
-  /// Keeps the GPU started, starting it where it is not, answering the number the hold is released by; none once every
-  /// number was handed. `RenderViewports` holds it for a window.
+  /// Starts the GPU and keeps it, answering the number that releases the hold; `None` once every number was handed.
+  /// `RenderViewports` holds it for a window.
   pub(crate) fn hold(&self) -> Option<RenderHoldId> {
     let last: u32 = self
       .last_hold
@@ -51,7 +51,7 @@ impl Renderer {
     Some(id)
   }
 
-  /// Lets a hold go; the GPU goes a few seconds after the last hold and viewport.
+  /// Releases a hold; the GPU stops a few seconds after the last hold and viewport go.
   pub(crate) fn release_hold(&self, id: RenderHoldId) {
     self.queue.send(RenderCommand::Release { id });
   }
@@ -208,9 +208,9 @@ impl Renderer {
     self.ask(|events| RenderCommand::CaptureBurst { id, burst, events })
   }
 
-  /// Records a viewport's frames as they are presented at `size`, a sixtieth of a second apart at most, answering each
-  /// frame as it comes back for the caller to read; a frame due while the caller holds every buffer is dropped and
-  /// counted. Dropping the answer stops it.
+  /// Records a viewport's presented frames at `size`, at most one per sixtieth of a second, answering each for the
+  /// caller to read. A frame due while the caller holds every buffer is dropped and counted; dropping the answer stops
+  /// the recording.
   pub fn record(&self, id: RenderViewportId, size: (u32, u32)) -> Receiver<RecordEvent> {
     self.ask(|events| RenderCommand::Record { id, size, events })
   }

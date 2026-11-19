@@ -22,8 +22,8 @@ use crate::path::is_inside_directory;
 pub struct ArchivePacker;
 
 impl ArchivePacker {
-  /// Entries whose text is compressed ahead of the writer at once: enough to keep every worker busy, few enough that
-  /// the compressed text held while the writer catches up stays small.
+  /// Entries compressed ahead of the writer at once: enough to keep every worker busy, few enough to hold little
+  /// compressed text while the writer catches up.
   const PREPARED_WINDOW: usize = 256;
 
   /// Pack the configured source into `<name>.db<N>` volumes and report what was written.
@@ -163,13 +163,11 @@ impl ArchivePacker {
     Ok(result)
   }
 
-  /// Reads and compresses a window's text on every worker, one answer per entry of it in order, `None` for the entries
+  /// Reads and compresses a window's text on every worker, one answer per entry in order, `None` for the entries
   /// stored as read, which are read as they are placed.
   ///
-  /// Compressing is the cost of a pack, and an entry compresses the same wherever it lands, so its text is prepared
-  /// ahead of the writer. Only the text: everything else is stored as read, and reading a window of textures ahead would
-  /// hold all of them at once for nothing. A worker's coder is built on its first text, since it is a large zeroed
-  /// table, and a window holding no text never reaches the pool at all.
+  /// Only text is prepared ahead: compressing is a pack's cost, while reading a window of textures ahead would hold
+  /// them all at once for nothing. A worker builds its coder, a large zeroed table, on its first text.
   fn prepare_text(
     config: &ArchivePackConfig,
     payloads: &ArchivePackPayloads<'_>,
@@ -224,8 +222,8 @@ impl ArchivePacker {
         let prepared: Vec<Option<XrfResult<ArchivePreparedEntry>>> = Self::prepare_text(config, payloads, window);
 
         for (entry, prepared) in window.iter().zip(prepared) {
-          // Between entries: a payload half-written into a volume would leave the descriptor table describing bytes
-          // that are not there, which is worse than a volume that simply ends early.
+          // Between entries: a half-written payload would leave the descriptor table describing bytes that are not
+          // there.
           if job.is_cancelled() {
             let mut abandoned: ArchivePackResult = writer.abandon();
 
@@ -234,7 +232,6 @@ impl ArchivePacker {
             return Ok(abandoned);
           }
 
-          // Placed in order, so naming the current entry is meaningful here in a way it is not for a parallel unpack.
           job.set_detail(Some(entry.name.clone()));
 
           let prepared: ArchivePreparedEntry = match prepared {

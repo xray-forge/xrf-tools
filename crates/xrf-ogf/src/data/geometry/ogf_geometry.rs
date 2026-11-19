@@ -80,7 +80,7 @@ impl OgfGeometry {
     let vertex_format: u32 = reader.read_u32::<T>()?;
     let vertex_count: u32 = reader.read_u32::<T>()?;
 
-    // Decoded where the payload lies: a visual's vertices are most of its bytes, and only the decoded form is kept.
+    // Decoded in place: vertices are most of a visual's bytes, and only the decoded form is kept.
     let data: Option<OgfVertexData> = reader.read_remaining_with(|vertices| {
       if model_type.is_some_and(OgfModelType::is_skinned_geometry) {
         Self::decode_skinned_vertices::<T>(vertices, vertex_format, vertex_count)
@@ -151,8 +151,8 @@ impl OgfGeometry {
     Ok(vertices.chunks_exact(vertex_size))
   }
 
-  /// Writes a skinned child's vertices and indices as the skeleton export writes them: the vertices chunk tagged with
-  /// the plain link count every vertex is laid out in, then the indices chunk, its count first.
+  /// Writes a skinned child's vertices and indices as the skeleton export does: the vertices chunk tagged with the
+  /// plain link count all its vertices share, then the indices chunk.
   ///
   /// # Errors
   ///
@@ -179,8 +179,8 @@ impl OgfGeometry {
     Self::write_indices::<T>(writer, indices)
   }
 
-  /// Writes a static visual's vertices and indices as the static export writes them: the vertices chunk tagged with
-  /// `format`'s flexible vertex format, then the indices chunk, its count first.
+  /// Writes a static visual's vertices and indices as the static export does: the vertices chunk tagged with
+  /// `format`'s flexible vertex format, then the indices chunk.
   ///
   /// # Errors
   ///

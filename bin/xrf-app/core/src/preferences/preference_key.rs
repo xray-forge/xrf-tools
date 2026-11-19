@@ -1,5 +1,5 @@
-/// The name one preference is written under. Each owner declares its own beside the value it keeps, spelled
-/// `<owner>.<value>` (`window.geometry`, `audio.settings`), so the store never needs a list of every plugin's.
+/// The name one preference is written under, spelled `<owner>.<value>` (`window.geometry`, `audio.settings`). Each
+/// owner declares its own beside the value, so the store needs no list of them.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PreferenceKey(&'static str);
 

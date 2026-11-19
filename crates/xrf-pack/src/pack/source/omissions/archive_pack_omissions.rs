@@ -1,7 +1,6 @@
 //! What the rules left out of one packing run, and how much of it is worth keeping.
 
-use crate::pack::source::ArchivePackSkipReason;
-use crate::pack::source::{ArchivePackExcludedDirectory, ArchivePackSkippedFile};
+use crate::pack::source::{ArchivePackExcludedDirectory, ArchivePackSkipReason, ArchivePackSkippedFile};
 
 /// Everything one walk rejected, counted always and named only for a run that is going to say them.
 #[derive(Debug, Default)]

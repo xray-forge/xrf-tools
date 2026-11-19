@@ -66,11 +66,10 @@ impl<'a> ArchiveVolumeWriter<'a> {
     Ok(writer)
   }
 
-  /// Place one prepared entry in a volume and write it there.
+  /// Place one prepared entry in a volume, the one holding its twin first, and write it there.
   ///
-  /// Decides as it places: offer the entry to the volume holding its twin, make room for it, write it. A stored payload
-  /// is the bytes that were read, never a copy of them: copying would double the largest entry's cost in memory and
-  /// memcpy the whole archive on the way past.
+  /// A stored payload is written from the bytes read, never a copy, which would double the largest entry's memory and
+  /// copy the whole archive on the way.
   pub(crate) fn write_entry(&mut self, entry: &'a ArchivePackEntry, prepared: ArchivePreparedEntry) -> XrfResult<()> {
     let (size_real, crc): (u32, u32) = (prepared.size_real, prepared.crc);
     let name: DescriptorName = DescriptorName::encode(&entry.name)?;

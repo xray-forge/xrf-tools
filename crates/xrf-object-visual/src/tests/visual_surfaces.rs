@@ -1,5 +1,3 @@
-//! How a packed model's submeshes are dressed, as the shader library answers each.
-
 use xrf_material::fixtures::FixtureTree;
 use xrf_material::{
   XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XrayTextureScope,
@@ -13,7 +11,6 @@ use xrf_visual::VisualSurfaces;
 use crate::ObjectVisual;
 use crate::tests::fixtures::{compile_source, object_of, quad, surface};
 
-/// A search over `tree` alone, mounted as the game's root.
 fn mount_search(tree: &FixtureTree) -> XraySearch {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("the tree mounts");

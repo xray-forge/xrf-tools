@@ -13,11 +13,10 @@ use crate::directories::AppDirectories;
 use crate::preferences::preference_key::PreferenceKey;
 use crate::preferences::preference_store::PreferenceStore;
 
-/// What the backend remembers between runs, as opposed to what the document keeps in its own local storage: kept in the
-/// application's own data, beside the executable for a portable install.
+/// What the backend remembers between runs, unlike the page's local storage; kept in the application's data, beside
+/// the executable for a portable install.
 ///
-/// Every opener shares one store: the store plugin hands back the instance already open for the file, so the window
-/// and each plugin open their own and never overwrite another's writes.
+/// Every opener shares one store instance per file, so the window and each plugin never overwrite another's writes.
 #[derive(Clone)]
 pub struct Preferences {
   store: Arc<dyn PreferenceStore>,

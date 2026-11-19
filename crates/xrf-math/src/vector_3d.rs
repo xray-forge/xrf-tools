@@ -85,9 +85,8 @@ impl Vector3d<f32> {
     }
   }
 
-  /// `exact_normalize` (`xrCore/_vector3d.h`): scaled by the inverse square root of its square length taken in double
-  /// precision; a vector too short for that by the inverse square root over its largest component, and a zero one
-  /// straight up.
+  /// The engine's `exact_normalize`, in double precision. A very short vector is first divided by its largest
+  /// component; a zero one comes out straight up.
   pub fn exact_normalize(&self) -> Self {
     let square: f64 = f64::from(self.length_squared());
 
@@ -143,16 +142,14 @@ impl Vector3d<f32> {
     [self.x, self.y, self.z]
   }
 
-  /// The unit direction a 16-bit compressed normal names, `pvDecompress` (`xrCore/_compressed_normal.cpp`).
+  /// The unit direction a 16-bit compressed normal names, `pvDecompress`, as a level AI node packs its plane normal.
   ///
-  /// The top three bits are the signs of x, y and z; the remaining thirteen are a point on the triangle
-  /// (0,0)-(0,126)-(126,0) folded into a rectangle, six bits of x above seven of y. A level AI node packs its plane
-  /// normal this way.
+  /// The top three bits are the signs of x, y and z; the other thirteen are a point on the triangle
+  /// (0,0)-(0,126)-(126,0) folded into a rectangle, six bits of x above seven of y.
   ///
-  /// As SDK 0.7's xrCore computes it, which every plane value's round trip through its xrAI confirms: the lookup
-  /// table's `1 / sqrt` taken on the x87 at extended precision before the engine lowers it, stored as a float; each
-  /// component that float times its bits, in single precision; and a sign bit forced on, not a negation, so the
-  /// folded edge's z of -1 stays negative under its sign bit.
+  /// Matches SDK 0.7's xrCore bit for bit, as every plane value's round trip through its xrAI confirms: the table's
+  /// `1 / sqrt` at extended precision stored as a float, each component that float times its bits in single precision,
+  /// and a sign bit forced on rather than negated, so the folded edge's z of -1 stays negative.
   pub fn from_compressed_normal(packed: u16) -> Self {
     let mut x: i32 = i32::from((packed & 0x1F80) >> 7);
     let mut y: i32 = i32::from(packed & 0x007F);
@@ -174,12 +171,11 @@ impl Vector3d<f32> {
     Self::new(component(x, 0x8000), component(y, 0x4000), component(z, 0x2000))
   }
 
-  /// The 16-bit compressed normal of this direction, `pvCompress` (`xrCore/_compressed_normal.cpp:43`): the signs in
-  /// the top three bits, then the direction projected onto the plane through the three axes' unit points, its x and y
-  /// floored to 126ths and folded into the rectangle [`Self::from_compressed_normal`] reads. Need not be unit length.
+  /// The 16-bit compressed normal of this direction, `pvCompress`, in the layout [`Self::from_compressed_normal`]
+  /// reads: x and y floored to 126ths of the direction's projection. Need not be unit length.
   ///
-  /// In single precision as SDK 0.7's xrCore computes it, its sum taken z first, `(z + y) + x`: the order decides
-  /// which side of a whole 126th a component lands on.
+  /// In single precision as SDK 0.7's xrCore computes it, the sum taken `(z + y) + x`: the order decides which side of
+  /// a whole 126th a component lands on.
   pub fn to_compressed_normal(self) -> u16 {
     let signs: u16 = (u16::from(self.x.is_sign_negative()) << 15)
       | (u16::from(self.y.is_sign_negative()) << 14)
@@ -413,8 +409,7 @@ mod tests {
     assert_eq!(folded.y, 0.0);
   }
 
-  /// On the fold's edge, x and y summing to 127, the unfolded z is -1: its sign bit forces it negative rather than
-  /// flipping it positive, as the engine's `set_negative` does.
+  // With x and y summing to 127 the unfolded z is -1, which the engine's `set_negative` keeps negative.
   #[test]
   fn keeps_the_folded_edge_negative_under_its_sign_bit() {
     let unsigned: Vector3d = Vector3d::from_compressed_normal(127);

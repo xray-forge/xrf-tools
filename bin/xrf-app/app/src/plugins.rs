@@ -18,8 +18,8 @@ use xrf_app_textures::plugin::TexturesPlugin;
 use xrf_app_translations::plugin::TranslationsPlugin;
 use xrf_app_visuals::plugin::VisualsPlugin;
 
-/// The plugins this application registers, set up in this order: the infrastructure plugins render and audio first,
-/// since a domain's setup takes the units they manage, then core's own plugins and every domain.
+/// The plugins this application registers, in setup order: render and audio first, whose units the domains' setups
+/// take, then core's own plugins and every domain.
 pub(crate) fn domain_plugins<R: Runtime>() -> Vec<TauriPlugin<R>> {
   vec![
     RenderPlugin::init(),

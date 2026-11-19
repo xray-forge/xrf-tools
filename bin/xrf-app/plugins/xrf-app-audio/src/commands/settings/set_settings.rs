@@ -5,7 +5,7 @@ use xrf_audio::AudioServer;
 use crate::focus::AudioFocus;
 use crate::settings::{AudioSettings, AudioSettingsStore};
 
-/// Play with `settings` from now on and keep them for the next run, answering them as kept, every volume in range.
+/// Apply `settings` and keep them for the next run; answers them as kept, every volume clamped to range.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "set_settings")]
 pub(crate) fn audio_set_settings(

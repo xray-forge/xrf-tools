@@ -74,8 +74,6 @@ fn records_a_resolved_reference_with_the_source_answering_it() {
   );
 }
 
-/// A head is read from a loose file's start and cut from an archived entry read whole, never longer than asked or than
-/// the file, and recorded with the source answering it as a whole read is.
 #[test]
 fn reads_and_records_a_head_from_a_loose_file_and_an_archive() {
   let (vfs, loose_id, archive_id) = loose_over_archive("head", &["textures/a.dds"], &["textures/b.dds"]);

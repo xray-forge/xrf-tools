@@ -1,10 +1,6 @@
-//! What a cached bind group is found by: a hash and a match read from a frame's bindings as they are.
-
 use crate::param::bind_group_key::BindGroupKey;
 use crate::param::pass_binding::PassBinding;
 
-/// The same resources bound again, a view array among them, hash alike and match the key made for them; another view in
-/// the array, or the same buffer bound as a range, does not match.
 #[test]
 fn finds_the_key_of_the_same_bindings_and_no_other() {
   let Some((device, _)) = crate::tests::test_device::create_device() else {

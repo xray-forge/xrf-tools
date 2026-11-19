@@ -1,5 +1,4 @@
-//! What `object verify` refuses, and how its differences become checks; what counts as a difference is `xrf-rawdata`'s
-//! to pin.
+// What counts as a difference is pinned in `xrf-rawdata`; these cover refusals and how differences become checks.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -32,7 +31,6 @@ fn verify(source: &Path, reference: &Path) -> CommandResult {
   )
 }
 
-/// An object of no geometry, dynamic where `flags` says so.
 fn empty_object(flags: u32) -> EditableObjectFile {
   EditableObjectFile {
     flags,
@@ -51,7 +49,7 @@ fn empty_object(flags: u32) -> EditableObjectFile {
   }
 }
 
-/// An OGF holding only the header of a rigid skeleton.
+// A rigid skeleton's header alone (model type 10, `MT_SKELETON_RIGID`).
 fn header_only() -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -72,7 +70,6 @@ fn header_only() -> XrfResult<Vec<u8>> {
   writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfHeaderChunk::CHUNK_ID)
 }
 
-/// `object` and a header-only reference, written to a fresh directory named `name`.
 fn write_pair(name: &str, object: &EditableObjectFile) -> XrfResult<(PathBuf, PathBuf)> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("object-verify/{name}"))?;
   let (source, reference) = (root.join("model.object"), root.join("model.ogf"));

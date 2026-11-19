@@ -1,5 +1,5 @@
-/// Whose game a scene plays: OpenXRay's (`xray-16/src/xrSound`) or Monolith's (`xray-monolith/src/xrSound`), which share
-/// out their voices differently. How a sound reaches the listener is the acoustics', the same for both.
+/// Whose voice allocation a scene follows: OpenXRay's (`xray-16/src/xrSound`) or Monolith's
+/// (`xray-monolith/src/xrSound`). The acoustics are the same for both.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum AudioSceneRules {
   #[default]

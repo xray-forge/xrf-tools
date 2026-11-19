@@ -1,5 +1,4 @@
-//! The vectors as `glam`'s and back, for the runtime crates computing with `glam` over what a format stored: the
-//! components carry across unchanged, in no other space than the one they are in.
+//! The vectors as `glam`'s and back, components unchanged and in the same space.
 
 use glam::{Vec2, Vec3};
 

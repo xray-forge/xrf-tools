@@ -9,12 +9,12 @@ use crate::focus::AudioFocus;
 use crate::preview::{PreviewEvents, PreviewTransports};
 use crate::settings::AudioSettingsStore;
 
-/// The `audio` plugin: the application's one `xrf_audio::AudioServer`, whose control thread owns the engine on the
-/// output device, its acoustics on the Steam Audio the application ships; the settings it plays with, kept between runs
-/// (`AudioSettingsStore`); the windows' focus and the background mute (`AudioFocus`); and the previews a domain opens
-/// for the page to play (`PreviewTransports`). It knows no domain: each plays its own sounds through these units. Its
-/// hooks close a window's previews as its page loads again or the window goes, follow each window's focus, and shut the
-/// server down as the application exits.
+/// The `audio` plugin: the application's one `xrf_audio::AudioServer` with its acoustics on the shipped Steam Audio,
+/// the kept settings (`AudioSettingsStore`), the background mute (`AudioFocus`) and the page's previews
+/// (`PreviewTransports`).
+///
+/// It knows no domain: each plays its own sounds through these units. A window's previews close as its page reloads or
+/// the window goes, and the server shuts down as the application exits.
 pub struct AudioPlugin;
 
 impl AudioPlugin {
@@ -25,7 +25,7 @@ impl AudioPlugin {
   /// Where `cargo make fetch-sdks` places it in the checkout, which a development build loads it from.
   const CHECKOUT_ACOUSTICS: &'static str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../.sdks/steam-audio");
 
-  /// The plugin, its state managed as it sets up.
+  /// Builds the plugin; its state is managed at setup.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     crate::ipc::audio::builder()
       .setup(|application, _| {
@@ -56,8 +56,8 @@ impl AudioPlugin {
       .build()
   }
 
-  /// The directory Steam Audio's library is loaded from: the packaged resources', or the checkout's where nothing was
-  /// packaged, as a development build runs.
+  /// The directory Steam Audio's library loads from: the packaged resources', else the checkout's for a development
+  /// build.
   fn locate_acoustics(resource_dir: Option<&Path>) -> PathBuf {
     resource_dir
       .map(|dir| dir.join(Self::PACKAGED_ACOUSTICS))

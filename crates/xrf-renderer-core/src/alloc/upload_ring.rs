@@ -93,7 +93,7 @@ impl UploadRing {
     self.staging.clear();
   }
 
-  /// Drops what a frame that never executed pushed, so the next frame's pushing starts empty rather than after it.
+  /// Drops what a frame that never executed pushed, so the next frame starts empty.
   pub fn discard(&mut self) {
     self.staging.clear();
   }

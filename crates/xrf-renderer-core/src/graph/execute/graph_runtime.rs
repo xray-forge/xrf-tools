@@ -35,20 +35,20 @@ impl GraphRuntime {
     }
   }
 
-  /// Lets go of what was kept for the frames drawn so far, for a renderer drawing none: the pooled transients, the bind
-  /// groups and the attachment views, each of which holds what the last frames drew into. Their patience counts frames,
-  /// so without frames they would keep it all; the next frame makes again what it needs.
+  /// Drops the pooled transients, bind groups and attachment views, for a renderer drawing no frames.
+  ///
+  /// Their patience counts frames, so without frames they would hold what the last frames drew into for good; the next
+  /// frame makes again what it needs.
   pub fn forget_frames(&mut self) {
     self.pool.clear();
     self.bind_groups.clear_groups();
     self.attachment_views.clear();
   }
 
-  /// Lets go at once of what the frame just executed did not use: the pooled transients, the bind groups and the
-  /// attachment views, and with them their hold on what they bind and view. Their patience counts frames, which suits
-  /// frames that vary what they draw; after a frame drawn at new sizes, what the sizes before keyed is not used again,
-  /// and a set of it a frame, as a dragged window's, can pass the GPU's memory and slow the frames that would age it
-  /// out to a few a second. What the frame used is kept, so the next frame draws as it would have.
+  /// Drops at once the pooled transients, bind groups and attachment views the frame just executed did not use.
+  ///
+  /// For a frame drawn at new sizes: what the old sizes keyed is not used again, and a set of it a frame, as while a
+  /// window is dragged, can exhaust GPU memory and slow frames to a few a second before patience ages it out.
   pub fn forget_unused(&mut self) {
     self.pool.forget_unused();
     self.bind_groups.forget_unused();

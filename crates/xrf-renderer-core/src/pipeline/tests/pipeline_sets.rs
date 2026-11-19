@@ -37,8 +37,6 @@ fn makes_a_set_again_once_a_generation_and_keeps_the_last_where_refused() {
   assert_eq!(*set, 4);
 }
 
-/// A refused first ask is told once and not made again before the cache changes, so a shader that does not build is not
-/// compiled again every frame; then made, and kept while the cache stands.
 #[test]
 fn asks_for_a_set_once_a_generation_until_one_is_made() {
   let cache: PipelineCache = PipelineCache::new();
@@ -64,7 +62,6 @@ fn asks_for_a_set_once_a_generation_until_one_is_made() {
   assert_eq!(set.get().copied(), Some(1), "a made set is kept while the cache stands");
 }
 
-/// A key refused on first use answers its refusal again without being made again before the cache changes.
 #[test]
 fn makes_a_refused_key_again_only_once_the_cache_changes() {
   let cache: PipelineCache = PipelineCache::new();

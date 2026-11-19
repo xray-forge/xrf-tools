@@ -278,7 +278,6 @@ mod tests {
     run_command(&GenerateCommand, &arguments)
   }
 
-  /// A reference directory generated once, plus the pages named, each with its content.
   fn create_reference(name: &str, extra: &[(&str, String)]) -> CommandResult<PathBuf> {
     let directory: PathBuf = GeneratedResources::create_dir(&format!("docs_generate/{name}"))?;
 

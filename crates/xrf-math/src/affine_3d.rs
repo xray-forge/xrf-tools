@@ -6,9 +6,8 @@ use xrf_error::XrfResult;
 use crate::quaternion::Quaternion;
 use crate::vector_3d::Vector3d;
 
-/// An `Fmatrix` stored without its fourth column, as `NET_Packet::w_matrix` writes one: the three axis rows `i`, `j`
-/// and `k`, then the translation `c`. Reading one back fixes the dropped column at `0, 0, 0, 1`, so what it holds is
-/// an affine transform.
+/// An `Fmatrix` without its fourth column, as `NET_Packet::w_matrix` writes it: axis rows `i`, `j` and `k`, then the
+/// translation `c`. Reading one back fixes the dropped column at `0, 0, 0, 1`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,8 +54,8 @@ impl Affine3d {
     }
   }
 
-  /// The rotation `Fmatrix::setXYZ` makes of angles, heading, pitch and bank of `y`, `x` and `z`: the one a scene
-  /// object's rotation names, and the one an exported part's angles were read back from (`getXYZ`).
+  /// The rotation `Fmatrix::setXYZ` makes: heading, pitch and bank of `y`, `x` and `z`, as a scene object's rotation
+  /// and an exported part's angles name it.
   pub fn from_xyz(angles: &Vector3d) -> Self {
     Self::from_heading_pitch_bank(angles.y, angles.x, angles.z)
   }
@@ -158,9 +157,8 @@ impl Affine3d {
     Vector3d::new(-angles.y, -angles.x, -angles.z)
   }
 
-  /// The rotation as a quaternion, `Fquaternion::set(const Fmatrix&)`: from the trace where it is positive, else from
-  /// the largest diagonal element whose root clears `TRACE_QZERO_TOLERANCE`, in the engine's order of trying them. A
-  /// matrix none clears leaves the identity.
+  /// The rotation as a quaternion, `Fquaternion::set(const Fmatrix&)`, trying the trace and diagonal elements in the
+  /// engine's order. A matrix where no root clears `TRACE_QZERO_TOLERANCE` gives the identity.
   pub fn get_rotation(&self) -> Quaternion {
     const TRACE_ZERO_TOLERANCE: f32 = 0.1;
 
@@ -299,7 +297,6 @@ mod tests {
 
   #[test]
   fn turns_by_heading_about_the_vertical_axis_as_set_hpb_does() {
-    // A quarter turn of heading takes `x` to `z` and `z` to `-x`, `y` untouched.
     let turned: Affine3d = Affine3d::from_heading_pitch_bank(std::f32::consts::FRAC_PI_2, 0.0, 0.0);
 
     assert!(is_near(&turned.x_axis, &Vector3d::new(0.0, 0.0, 1.0)));
@@ -324,7 +321,7 @@ mod tests {
     };
     let is_near = |found: [f32; 4], expected: [f32; 4]| found.iter().zip(expected).all(|(a, b)| (a - b).abs() <= 1e-5);
 
-    // A quarter heading keeps a positive trace; half turns leave the largest of y, z or x to divide by.
+    // A quarter heading keeps a positive trace; each half turn takes a different diagonal branch.
     assert!(is_near(
       rotation(FRAC_PI_2, 0.0, 0.0),
       [0.0, FRAC_1_SQRT_2, 0.0, FRAC_1_SQRT_2]

@@ -5,8 +5,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::{FsgameFile, XraySdkInstallation, XraySearch};
 
-/// The shape the CoP SDK 0.7's `editors\fs.ltx` has, trimmed to the aliases these tests reason about: rawdata and
-/// gamedata named by relative roots, and rawdata's own textures beside gamedata's.
+// The CoP SDK 0.7 `editors\fs.ltx`, trimmed to the aliases these tests use.
 const CONTENTS: &str = "\
 ;abbreviation          = recurs| notif| root|                add|        ext|         description
 $sdk_root$             = false| false| $fs_root$
@@ -20,7 +19,6 @@ $maps$                 = true|  true|  $server_data_root$|  levels\\|    *.level
 $import$               = true|  true|  import\\|            |            *.object;*.lwo| Files
 ";
 
-/// An SDK editors' directory holding `fs.ltx`, a rawdata object and texture, and a gamedata texture of the same name.
 fn editors(name: &str) -> PathBuf {
   let root: PathBuf = GeneratedResources::create_dir(&format!("xray_sdk_installation/{name}")).expect("editors root");
 
@@ -71,7 +69,6 @@ fn names_each_editor_alias_by_its_path_inside_rawdata() {
 
 #[test]
 fn searches_rawdata_apart_from_gamedata() {
-  // Both trees hold `textures\ed\`; a rawdata search answers with the TGA and never with the game's DDS.
   let root: PathBuf = editors("search");
   let search: XraySearch = XraySdkInstallation::read(&root)
     .and_then(|sdk| sdk.to_rawdata_search_plan())

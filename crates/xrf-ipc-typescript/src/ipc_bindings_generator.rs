@@ -18,15 +18,14 @@ impl IpcBindingsGenerator {
   /// Name of the module merging every plugin's signatures, beside the command modules.
   const SIGNATURES_MODULE: &'static str = "signatures.ts";
 
-  /// Writes the mirror of `surfaces` into `output`, replacing the `types/` and `commands/` it already held, each type
-  /// in the module `type_modules` gives its crate, every module addressing the others and the runtime as `imports`
-  /// says.
+  /// Writes the mirror of `surfaces` into `output`, replacing its `types/` and `commands/`. Each type goes in the
+  /// module `type_modules` gives its crate, and modules address each other and the runtime as `imports` says.
   ///
   /// # Errors
   ///
-  /// When the output cannot be written, or when a generated module no longer satisfies an invariant the mirrors rest
-  /// on — a type owned by two modules, a type module importing another, a foreign declaration with nowhere to live,
-  /// two surfaces or declarations of one name, or a builder configured otherwise than its wrappers are rendered for.
+  /// When the output cannot be written, or a generated module breaks an invariant: a type owned by two modules, a type
+  /// module importing another, a foreign declaration with nowhere to live, two surfaces or declarations of one name, or
+  /// a builder configured otherwise than its wrappers are rendered for.
   pub fn generate<R: Runtime>(
     output: &Path,
     surfaces: &[IpcCommandSurface<R>],

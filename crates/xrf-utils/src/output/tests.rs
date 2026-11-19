@@ -6,7 +6,6 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::OutputFiles;
 
-/// An empty directory of this case's own, holding `names`, each written empty.
 fn holding(case: &str, names: &[&str]) -> XrfResult<PathBuf> {
   let directory: PathBuf = GeneratedResources::create_dir(&format!("output/{case}"))?;
 
@@ -154,7 +153,7 @@ fn removes_only_its_own_files_it_did_not_write_this_time() -> XrfResult {
   Ok(())
 }
 
-/// A written path spelled from another base cannot be told apart from a stale file, so nothing is removed.
+// A written path spelled from another base cannot be told apart from a stale file.
 #[test]
 fn refuses_to_remove_against_a_written_path_outside_its_directory() -> XrfResult {
   let directory: PathBuf = holding("elsewhere", &["level", "lmap#1_1.dds"])?;

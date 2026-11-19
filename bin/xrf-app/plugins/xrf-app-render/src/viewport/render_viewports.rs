@@ -10,9 +10,9 @@ use crate::viewport::channel_event_sink::ChannelEventSink;
 use crate::viewport::viewport_windows::ViewportWindows;
 use crate::{Renderer, ViewportEvent, ViewportShows, WorldState};
 
-/// The native viewports drawn into the application's windows, attached to the renderer and the world together and let
-/// go of together, as their page asks, as it goes or its window closes, or as the application exits; and the holds a
-/// page takes on the renderer between its viewports, let go of the same ways.
+/// The native viewports drawn into the application's windows, attached to the renderer and the world together, and the
+/// holds a page takes on the renderer between its viewports. Both are let go as their page asks, as it reloads or its
+/// window closes, or as the application exits.
 pub struct RenderViewports {
   renderer: Renderer,
   world: WorldState,
@@ -90,8 +90,7 @@ impl RenderViewports {
     self.release(viewport);
   }
 
-  /// Keeps the renderer's GPU started for a window's page, so a viewport it attaches later draws at once, until the
-  /// page releases the hold or goes.
+  /// Keeps the renderer's GPU started for a window's page until the page releases the hold or goes.
   ///
   /// # Errors
   ///
@@ -114,7 +113,7 @@ impl RenderViewports {
     Ok(hold)
   }
 
-  /// Lets a hold the page of the window labelled `window` took go; a hold another window took, or none did, stays.
+  /// Releases `hold` if the window labelled `window` took it; otherwise logs and leaves it.
   pub fn release_hold(&self, window: &str, hold: RenderHoldId) {
     let mut windows: MutexGuard<'_, ViewportWindows> = self.lock_windows();
 
@@ -132,8 +131,8 @@ impl RenderViewports {
     self.renderer.release_hold(hold);
   }
 
-  /// Stops drawing every viewport in a window whose page is loading again or which is going, neither of which can let
-  /// them go itself, and lets its holds go; answers whether it held any viewport.
+  /// Detaches every viewport and releases every hold of a window whose page reloads or which goes, since that page can
+  /// no longer do so; answers whether it held any viewport.
   pub fn detach_window(&self, window: &str) -> bool {
     let (viewports, holds) = {
       let mut windows: MutexGuard<'_, ViewportWindows> = self.lock_windows();
@@ -215,8 +214,8 @@ impl RenderViewports {
     }
   }
 
-  /// Detaches every viewport, lets every hold go and stops the renderer as the application exits, so its GPU is let go
-  /// in order rather than with the process.
+  /// Detaches every viewport, releases every hold and stops the renderer as the application exits, so the GPU is
+  /// released in order rather than with the process.
   pub fn shut_down(&self) {
     // The stop below lets the holds go on the render thread; they need only be forgotten here.
     let (viewports, _) = self.lock_windows().take_all();

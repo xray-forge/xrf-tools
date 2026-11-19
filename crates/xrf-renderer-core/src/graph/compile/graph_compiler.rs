@@ -241,9 +241,10 @@ impl GraphCompiler {
     alive
   }
 
-  /// Refuses a pass drawing into a texture of several mips or layers without naming which (`named`: whether its mip and
-  /// its layer were): the graph knows the texture behind an import, never which part of it the imported view shows,
-  /// so an unnamed target would be drawn into the first mip and layer while a pass reading the view sees its own.
+  /// Refuses a target on a texture of several mips or layers that does not name which (`named`: mip, layer).
+  ///
+  /// The graph never knows which part an imported view shows, so an unnamed target would be drawn into the first mip
+  /// and layer while a pass reading the view sees its own.
   fn validate_target(
     pass: &GraphPass<'_>,
     descriptor: &GraphTextureDescriptor,
@@ -314,8 +315,8 @@ impl GraphCompiler {
     Ok(())
   }
 
-  /// Each surviving pass's position, or the last of the render pass it draws in: what a slot used by that pass is held
-  /// until, since the passes of one render pass touch their resources with no barrier between them.
+  /// Each surviving pass's position, or the last of its render pass: what its slots are held until, since the passes
+  /// of one render pass have no barrier between them.
   fn list_freed(render_passes: &[Option<usize>]) -> Vec<usize> {
     let mut freed: Vec<usize> = (0..render_passes.len()).collect();
 

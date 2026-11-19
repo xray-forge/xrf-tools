@@ -90,8 +90,8 @@ fn resolve_windows_attributes() -> WindowsAttributes {
   }
 }
 
-/// The libraries `.cargo/config.toml` delay-loads, so the app starts without Steam Audio or Media Foundation. Cargo
-/// drops that table's flags whenever `RUSTFLAGS` is set, so the app adds each one the flags it is built with lack.
+/// Adds whichever delay-loads of `.cargo/config.toml` the build flags lack, so the app starts without Steam Audio or
+/// Media Foundation: Cargo drops that table's flags whenever `RUSTFLAGS` is set.
 fn keep_delay_loads() {
   const DELAY_LOADS: [&str; 4] = ["phonon.dll", "mfplat.dll", "mfreadwrite.dll", "mf.dll"];
 

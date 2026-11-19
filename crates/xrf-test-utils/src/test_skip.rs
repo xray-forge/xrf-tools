@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
-/// A test returning early because the host lacks what it checks: a device, a capability, a privilege. It says so on
-/// stderr, which the test harness captures like any test output and shows with `--nocapture` or when the test fails.
+/// A test returning early because the host lacks what it checks: a device, a capability, a privilege. The note goes to
+/// stderr, which the harness shows with `--nocapture` or when the test fails.
 pub struct TestSkip;
 
 impl TestSkip {

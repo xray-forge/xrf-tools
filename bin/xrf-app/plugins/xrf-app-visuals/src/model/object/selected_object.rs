@@ -9,8 +9,8 @@ use xrf_vfs::XraySearch;
 
 use crate::model::object::selected_object_description::SelectedObjectDescription;
 
-/// An SDK `.object` opened in the viewer: compiled in memory as `xrf-cli object compile` would write it, so it is shown,
-/// posed and described as any model is, and described further for what only the object holds.
+/// An SDK `.object` opened in the viewer, compiled in memory as `xrf-cli object compile` writes it so it is shown as
+/// any model is, plus a description of what only the object holds.
 pub struct SelectedObject;
 
 impl SelectedObject {

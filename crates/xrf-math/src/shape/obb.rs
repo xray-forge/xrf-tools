@@ -5,8 +5,7 @@ use xrf_error::XrfResult;
 
 use crate::vector_3d::Vector3d;
 
-/// An oriented box, the engine's `Fobb` (`xrCore/_obb.h`): a rotation, the centre it is placed at, and half its size
-/// along each of its own axes, in the order the engine stores them.
+/// An oriented box, the engine's `Fobb`: a rotation, its centre, and half its size along each of its own axes.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

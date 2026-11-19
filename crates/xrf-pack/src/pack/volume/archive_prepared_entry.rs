@@ -8,8 +8,8 @@ use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 
 /// One entry read, measured and coded: everything about it that does not depend on where it lands.
 ///
-/// Preparing an entry reads nothing the volume writer holds, so entries can be prepared ahead of the writer and on
-/// every worker while it places them one at a time and in order; what lands in a volume is the same either way.
+/// Preparing reads nothing the volume writer holds, so entries are prepared ahead on every worker while the writer
+/// places them in order; the volumes come out the same either way.
 pub(crate) struct ArchivePreparedEntry {
   /// The bytes as read, which a stored payload is and an alias is compared against.
   pub(crate) contents: Vec<u8>,
@@ -22,10 +22,10 @@ pub(crate) struct ArchivePreparedEntry {
 }
 
 impl ArchivePreparedEntry {
-  /// Extensions the engine expects to find compressed; everything else is stored.
+  /// Extensions the engine expects compressed, as xrCompress's `testVFS` decides; everything else is stored.
   ///
-  /// `testVFS` in `xrCompress.cpp` inverts the intuitive rule: only text the engine parses is worth the
-  /// LZO round trip, because meshes, textures, and sounds are already compressed in their own formats.
+  /// Only text the engine parses is worth the LZO round trip: meshes, textures and sounds are compressed in their own
+  /// formats.
   const COMPRESSED_EXTENSIONS: &[XrayExtension] = &[XrayExtension::Xml, XrayExtension::Ltx, XrayExtension::Script];
 
   /// Compression must save more than this to be worth keeping, matching xrCompress.
@@ -88,9 +88,8 @@ impl ArchivePreparedEntry {
 
   /// The compressed payload where the engine expects one and compressing pays, with how the payload came to be.
   ///
-  /// Answers the outcome too, since the sizes alone cannot tell a stored payload from one that reverted or was empty.
-  /// Deciding only, never counting: what a decision is worth to the summary is
-  /// [`crate::pack::ArchivePackResult::record_outcome`], so the three that all end up stored say so in one place.
+  /// The sizes alone cannot tell a stored payload from one that reverted or was empty, hence the outcome. Counting
+  /// outcomes is [`crate::pack::ArchivePackResult::record_outcome`]'s.
   fn code(
     config: &ArchivePackConfig,
     entry: &ArchivePackEntry,

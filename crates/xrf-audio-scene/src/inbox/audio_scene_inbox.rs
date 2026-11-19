@@ -3,8 +3,8 @@ use rtrb::{Consumer, Producer, RingBuffer};
 use crate::audio_scene_frame::AudioSceneFrame;
 use crate::inbox::audio_scene_mailbox::AudioSceneMailbox;
 
-/// The host's end of a scene on the audio's control thread: frames go in through one ring and come back through another
-/// to be filled again, so a warm scene allocates nothing. Dropping it closes the scene, its voices fading out.
+/// The host's end of a scene on the audio's control thread: frames go in through one ring and come back through
+/// another to be refilled, so a warm scene allocates nothing. Dropping it closes the scene, its voices fading out.
 pub struct AudioSceneInbox {
   frames: Producer<Box<AudioSceneFrame>>,
   spent: Consumer<Box<AudioSceneFrame>>,
@@ -31,12 +31,11 @@ impl AudioSceneInbox {
     )
   }
 
-  /// Sends the scene's latest frame, answering it back where the control thread has not taken the ones before, to be
-  /// filled again next time.
+  /// Sends the scene's latest frame.
   ///
   /// # Errors
   ///
-  /// Returns the frame when the ring is full.
+  /// Returns the frame, to fill again next time, when the control thread has not taken the ones before.
   pub fn send(&mut self, frame: Box<AudioSceneFrame>) -> Result<(), Box<AudioSceneFrame>> {
     self.frames.push(frame).map_err(|rtrb::PushError::Full(frame)| frame)
   }

@@ -80,11 +80,9 @@ pub(crate) fn run() -> ExitCode {
   ExitCode::SUCCESS
 }
 
-/// The domain plugins over the state every one's setup builds on, managed before any of them: which build is running,
-/// the pool, the asset state every setup hands the sessions a commit moves along, the scopes every session's handles
-/// are released by, where the application writes and its caches, the windows viewports, close approvals and reveals
-/// address, and the jobs; and the store plugin the preferences open through, registered before any setup opens them. A
-/// window that goes releases every scope its pages held.
+/// The domain plugins over the shared state their setups build on: the build, pool, asset state, session scopes,
+/// directories and cache, window registries and jobs, all managed before any plugin, and the store plugin the
+/// preferences open through, registered first. A destroyed window releases every scope its pages held.
 fn assemble<R: Runtime>(
   builder: Builder<R>,
   build: BuildInfo,

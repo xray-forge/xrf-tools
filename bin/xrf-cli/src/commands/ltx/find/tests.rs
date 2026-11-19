@@ -1,9 +1,7 @@
 use crate::commands::ltx::find::command::FindCommand;
 use crate::core::command::command_testing::run_command_for_result;
 
-/// Whether `ltx find` refuses `arguments` as a query that can never match.
-///
-/// The path names nothing, so an accepted query fails on opening the project instead, with a different error.
+// The path names nothing, so an accepted query fails on opening the project instead, with a different error.
 fn is_refused(arguments: &[&str]) -> bool {
   let arguments: Vec<String> = ["find", "--silent", "--path", "absent-configs-root"]
     .iter()

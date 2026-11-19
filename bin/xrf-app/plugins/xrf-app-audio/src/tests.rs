@@ -7,7 +7,7 @@ use xrf_audio::{
 
 use crate::{AudioFocus, AudioSettings, AudioVolumes, PreviewEvents, PreviewTransports};
 
-/// Previews on a server that plays to nothing: no device opens in a test.
+// The server plays to nothing: no device opens in a test.
 fn transports() -> PreviewTransports {
   let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
   let events: PreviewEvents = PreviewEvents::default();
@@ -16,7 +16,7 @@ fn transports() -> PreviewTransports {
   PreviewTransports::new(server, &events)
 }
 
-/// A 16-bit mono PCM WAV of `frames` silent frames at 48 kHz.
+// A 16-bit mono PCM WAV at 48 kHz.
 fn silent_wav(frames: u32) -> Arc<[u8]> {
   let data_length: u32 = frames * 2;
   let mut bytes: Vec<u8> = Vec::new();
@@ -38,7 +38,7 @@ fn silent_wav(frames: u32) -> Arc<[u8]> {
   bytes.into()
 }
 
-/// Settings stored that do not read whole leave the store to its defaults rather than a half-read mix.
+// The store falls back to the defaults rather than a half-read mix.
 #[test]
 fn refuses_stored_settings_that_do_not_read_whole() {
   assert!(serde_json::from_str::<AudioSettings>(r#"{"volumes":{"music":0.5}}"#).is_err());
@@ -92,7 +92,6 @@ fn round_trips_settings_through_their_wire_shape() {
   );
 }
 
-// Settings kept before placed sound had a choice still read whole, as headphones, rather than falling to the defaults.
 #[test]
 fn reads_settings_kept_before_the_spatialization_choice() {
   let kept: &str = r#"{"output":{"kind":"systemDefault"},"volumes":{"master":0.5,"music":1,"ambience":1,"world":1,
@@ -140,7 +139,6 @@ fn refuses_to_preview_what_is_not_a_sound() {
   transports.shut_down();
 }
 
-/// A window's page that loads again or goes closes its own previews, and another window's play on.
 #[test]
 fn closes_only_the_previews_of_the_window_that_went() {
   let transports: PreviewTransports = transports();
@@ -156,8 +154,7 @@ fn closes_only_the_previews_of_the_window_that_went() {
   assert!(transports.describe(other).is_err());
 }
 
-/// The application goes to the background only once no window has the focus, whatever order windows report it in,
-/// and never before any window reported it.
+// Never in the background before any window reported its focus.
 #[test]
 fn goes_to_the_background_once_no_window_has_the_focus() {
   let focus: AudioFocus = AudioFocus::default();
@@ -175,7 +172,6 @@ fn goes_to_the_background_once_no_window_has_the_focus() {
   assert!(focus.set_window_focused("other", true));
 }
 
-/// The background silences the master only where the settings say so; the buses keep their volumes.
 #[test]
 fn silences_the_master_in_the_background_where_the_settings_say_so() {
   let settings: AudioSettings = AudioSettings {

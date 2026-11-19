@@ -1,6 +1,3 @@
-//! Pins what an open configs project answers: formatting commits its rewrites so what the app retains and the sessions
-//! reading them follow, a commit is read again, and a declaration search compares names as the project's dialect does.
-
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -160,8 +157,7 @@ fn a_declaration_search_compares_sections_as_the_dialect_does_and_caps_its_answe
     ..LtxDeclarationQuery::default()
   };
 
-  // The page never says how names compare: both dialects lowercase section names as the engine does, so both headers
-  // name one section under either.
+  // Both dialects lowercase section names as the engine does, so both headers name one section.
   let dltx: ConfigsDeclarationSearch = find(true, section("wpn_ak74"));
   let standard: ConfigsDeclarationSearch = find(false, section("wpn_ak74"));
 

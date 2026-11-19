@@ -32,10 +32,7 @@ export enum ESpawnCommand {
 
 /** Commands */
 export const spawnCommands = {
-  /**
-   * Build a root spawn from a game's levels and write it, as `spawn build` does, as a job a cancel stops before it
-   * writes.
-   */
+  /** Build and write a root spawn from a game's levels, as `spawn build` does, as a job cancellable until it writes. */
   buildSpawn: (request: SpawnRootRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnBuildResult>(ESpawnCommand.BUILD_SPAWN, { request, jobId, progress }),
   /** Close the spawns `session_ids` name, committed or opening; a closed one answers no read. */
@@ -59,14 +56,14 @@ export const spawnCommands = {
   restoreFile: (tool: string) =>
     __TAURI_INVOKE<SessionRestore<SpawnSessionDescriptor>>(ESpawnCommand.RESTORE_FILE, { tool }),
   /**
-   * Write the spawn `session_id` holds to `path` as a packed file, on the pool; refused where `path` is there, its name
-   * in any case, unless `is_forced`.
+   * Write the spawn `session_id` holds to `path` as a packed file; refused where `path` exists, in any letter case,
+   * unless `is_forced`.
    */
   saveFile: (path: string, sessionId: SessionId, isForced: boolean) =>
     __TAURI_INVOKE<null>(ESpawnCommand.SAVE_FILE, { path, sessionId, isForced }),
   /**
-   * Write the spawn `session_id` holds into the directory `path` as unpacked chunks, on the pool; refused where `path`
-   * is there, its name in any case, unless `is_forced`.
+   * Write the spawn `session_id` holds into the directory `path` as unpacked chunks; refused where `path` exists, in
+   * any letter case, unless `is_forced`.
    */
   saveUnpackedDirectory: (path: string, sessionId: SessionId, isForced: boolean) =>
     __TAURI_INVOKE<null>(ESpawnCommand.SAVE_UNPACKED_DIRECTORY, { path, sessionId, isForced }),

@@ -21,8 +21,8 @@ pub struct SelectedVisual {
 }
 
 impl SelectedVisual {
-  /// Reads the visual `source` names within `roots`, centred on it where it is a file, through a fresh search, and
-  /// resolves every reference it declares; an SDK `.object` is compiled first.
+  /// Reads the visual `source` names, through a fresh search of `roots` centred on it where it is a file, and resolves
+  /// every reference it declares; an SDK `.object` is compiled first.
   ///
   /// # Errors
   ///
@@ -30,8 +30,7 @@ impl SelectedVisual {
   pub fn read(assets: &AssetMountState, source: AssetSource, roots: XrayRoots) -> TauriResult<Self> {
     let roots: XrayRoots = roots.centred_on(source.physical_path());
     let search: XraySearch = assets.search_fresh(&roots)?;
-    // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs no
-    // second read of a file that may sit inside a volume. An SDK object is compiled to the model it exports as.
+    // One parse feeds the package and the posing skeleton, sparing a second read of a file that may sit in a volume.
     let (package, motions, object): (VisualPackage, Option<VisualMotions>, Option<SelectedObjectDescription>) =
       if SelectedObject::is_object(&source) {
         let (visual, object) = SelectedObject::read(&source, &search)?;

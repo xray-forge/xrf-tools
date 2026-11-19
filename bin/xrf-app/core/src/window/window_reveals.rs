@@ -19,9 +19,8 @@ impl WindowReveals {
   /// How long a window stays hidden waiting for its page's first screen.
   const TIMEOUT: Duration = Duration::from_secs(1);
 
-  /// Holds `window` hidden until its page reveals it, and reveals it anyway once `Self::TIMEOUT` has passed, so a page
-  /// slow to draw its first screen, as a development one loading its modules is, or one that never boots, shows what
-  /// it has meanwhile.
+  /// Holds `window` hidden until its page reveals it, or until `Self::TIMEOUT`, so a slow page (a development build
+  /// loading its modules) or one that never boots still shows.
   pub fn hold<R: Runtime>(&self, window: WebviewWindow<R>) {
     self.hold_for(window.label().to_owned(), Box::new(window), Self::TIMEOUT);
   }

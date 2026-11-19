@@ -74,11 +74,9 @@ impl GamedataProject {
 
     let plan: XraySearchPlan = XraySearchPlan::new().with_root_mode(SEARCH_STEP, &options.root, mode)?;
 
-    // Project identity is independent of the inspection filter: a mesh-only check must not be aborted because a caller
-    // omitted configs. Resolve through the unfiltered plan so archive-only installations remain valid too. The probe
-    // reads configs alone, so where nothing ignored reaches into them and no read is traced, the search the checks read
-    // answers it just as well, and its plain reads leave nothing in the account a report gives: mounting a tree is most
-    // of opening one, and Anomaly's took 165 ms a time.
+    // Identity resolves through the unfiltered plan, so a mesh-only check is not refused for omitting configs and an
+    // archive-only installation stays valid. Where nothing ignored reaches the configs and no read is traced, the
+    // checks' own search answers the probe instead, sparing a second mount (Anomaly's took 165 ms).
     let is_probing_the_search: bool = Self::is_keeping_configs(&options.ignored) && !options.is_tracing_reads;
     let (identity, search): (XraySearch, Option<XraySearch>) = if is_probing_the_search {
       let search: XraySearch = plan
@@ -113,8 +111,7 @@ impl GamedataProject {
     let search: XraySearch = match search {
       Some(search) => search,
       None => {
-        // Applied after the identity probe, so the account describes the sweep rather than the two reads opening it
-        // took.
+        // Traced after the identity probe, so the account describes the sweep alone.
         let vfs: XrayVfs = if options.is_tracing_reads {
           Self::new_verification_vfs().with_read_trace()
         } else {
@@ -149,7 +146,7 @@ impl GamedataProject {
   }
 
   /// Whether nothing `ignored` names reaches into the configs, neither a prefix inside them nor one holding them. A
-  /// prefix that is no logical path answers no: the ignoring plan refuses it, as it always has.
+  /// prefix that is no logical path answers no, leaving the ignoring plan to refuse it.
   fn is_keeping_configs(ignored: &[String]) -> bool {
     let Ok(configs) = XrayLogicalPath::new(Self::CONFIGS_DIRECTORY) else {
       return false;
@@ -163,8 +160,8 @@ impl GamedataProject {
     })
   }
 
-  /// The snapshot checks read through. Checks enumerate and read only what the caller left in scope; retaining motions
-  /// is what keeps a sweep from re-reading a shared animation bank once per referencing visual.
+  /// The snapshot checks read through; it retains motions and configs, so a sweep reads a shared animation bank once
+  /// rather than once per visual.
   fn new_verification_vfs() -> XrayVfs {
     XrayVfs::new().with_cache_policy(XrayCachePolicy::verification())
   }
@@ -247,12 +244,11 @@ impl GamedataProject {
 /// Configs as checks read them.
 impl GamedataProject {
   /// Every config a check reads values from, scheme files left out, each resolved and handed to `visit` on its own
-  /// worker: one answer per config in the project's order, the path it is reported by beside what `visit` made of it,
-  /// or why it would not resolve.
+  /// worker: one answer per config in the project's order, its reported path beside what `visit` made of it, or why
+  /// it would not resolve.
   ///
-  /// A check that reports findings and narration in that order merges the answers as they come, and says the same as
-  /// one config at a time would. Configs not reached before the run is cancelled are left out, and the check's own
-  /// cancellation check ends it.
+  /// Merged in that order, the answers report as one config at a time would. Configs not reached before the run is
+  /// cancelled are left out; the check still tests for cancellation itself.
   pub(crate) fn visit_configs<R, F>(&self, job: &JobHandle, visit: F) -> Vec<(PathBuf, XrfResult<R>)>
   where
     R: Send,
@@ -268,8 +264,7 @@ impl GamedataProject {
           return None;
         }
 
-        // Reported by the physical path where there is one: its entries are logical paths, which a person reading a
-        // finding cannot open.
+        // The physical path where there is one: a person reading a finding cannot open a logical path.
         let reported: PathBuf = self.ltx_project.path_of(path);
         let visited: XrfResult<R> = self
           .ltx_project

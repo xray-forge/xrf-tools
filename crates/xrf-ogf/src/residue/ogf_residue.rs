@@ -188,16 +188,14 @@ impl OgfResidue {
     })
   }
 
-  /// Clips a last chunk that declares more than the file holds to the bytes it does, where the engine never reads past
-  /// them:
+  /// Clips a last chunk that declares more than the file holds to the bytes it holds, where the engine never reads
+  /// past them:
   ///
-  /// - motion refs whose references end exactly where the file does: `CKinematicsAnimated::Load` finds the chunk and
-  ///   reads them off the visual's own reader, so the size it overstates is never used;
-  /// - LODs whose line ends within the file: `CKinematics::Load` opens the chunk, but its `r_string` stops at the line's
-  ///   end.
+  /// - motion refs ending exactly at the file's end, which `CKinematicsAnimated::Load` reads off the visual's own
+  ///   reader whatever the size says;
+  /// - LODs whose line ends within the file, where `CKinematics::Load`'s `r_string` stops.
   ///
-  /// Any other chunk cut short stays refused, found or opened: a payload that does not read whole is a truncated file,
-  /// not a size the engine ignores.
+  /// Any other chunk cut short stays refused as a truncated file.
   fn clip_overstated_last_chunk<T: ByteOrder, D: ChunkDataSource>(
     reader: &ChunkReader<D>,
     chunks: &mut Vec<ChunkReader<D>>,
@@ -243,8 +241,7 @@ impl OgfResidue {
     })
   }
 
-  /// Bytes after the last chunk whose header names an id no loader reads, which `find_chunk` skips by their declared
-  /// size, past the file's end, and so never reads.
+  /// Bytes after the last chunk headed by an id no loader reads, which `find_chunk` skips by a size past the file's end.
   fn skip_unread_trailing_chunk<T: ByteOrder>(position: u64, bytes: Vec<u8>) -> Option<Self> {
     let id: u32 = T::read_u32(bytes.get(..4)?);
 

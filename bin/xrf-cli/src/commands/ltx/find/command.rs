@@ -114,8 +114,7 @@ impl GenericCommand for FindCommand {
     let patches: usize = search.declarations.iter().filter(|it| it.is_patch).count();
     let is_dltx: bool = LtxDialectArgument::is_dltx(matches);
 
-    // The statements are reported either way, since they are written either way; what changes is that standard LTX
-    // refuses to resolve the configs that hold them, which a person reading the list would otherwise not learn here.
+    // Listed either way, since they are written; the list alone would not say standard LTX refuses their configs.
     if patches > 0 && !is_dltx {
       xrf_output::warning!(
         output,
@@ -125,8 +124,7 @@ impl GenericCommand for FindCommand {
 
     xrf_output::success!(output, "{}", Self::summarize(&search, patches));
 
-    // A textual match is where something is written, never what it resolves to, so a section query ends by naming
-    // the command that answers the second question.
+    // A textual match is where something is written, not what it resolves to: name the command that answers that.
     if let Some(section) = &query.section
       && !search.declarations.is_empty()
     {
@@ -142,8 +140,7 @@ impl GenericCommand for FindCommand {
 
     context.set_result(|| LtxFindReport::new(dialect, &search))?;
 
-    // A config that does not parse may hold what was asked for, so "not found" would be no answer: the run fails,
-    // its report naming what was not searched.
+    // A config that does not parse may hold what was asked for, so the run fails rather than answer "not found".
     if !search.unreadable.is_empty() {
       return Err(
         XrfError::new_verify_error(format!(
@@ -167,8 +164,7 @@ impl FindCommand {
 
   /// A `--section` query, refused when it is written as a header.
   ///
-  /// The parser keeps a header's brackets and operation prefix out of the name it records, so `[wpn_ak74]` or
-  /// `![wpn_ak74]` can never match anything, and answering "found 0" would read as nothing declaring the section.
+  /// Recorded names carry no brackets or operation prefix, so `[wpn_ak74]` never matches and "found 0" would mislead.
   fn parse_section(value: &str) -> Result<String, String> {
     let is_header = Self::SECTION_PREFIXES.iter().any(|prefix| {
       value
@@ -224,8 +220,7 @@ impl FindCommand {
 
     let kind: &str = if declaration.is_patch { "patch" } else { "declaration" };
 
-    // Said as list says it: an archived config reads like a loose one, and differs only in that nothing can edit it in
-    // place.
+    // Marked as `ltx list` marks it: an archived config differs only in that nothing can edit it in place.
     let archived: &str = if declaration.is_physical { "" } else { " [archived]" };
 
     if is_verbose {
@@ -241,7 +236,8 @@ impl FindCommand {
     }
   }
 
-  /// The counts, so a field written in hundreds of sections says what it amounts to without being read line by line.
+  /// The summary line of statements, configs, declarations and patches, so a field written in hundreds of sections
+  /// says what it amounts to without being read line by line.
   fn summarize(search: &LtxDeclarationSearch, patches: usize) -> String {
     let configs: HashSet<&str> = search
       .declarations

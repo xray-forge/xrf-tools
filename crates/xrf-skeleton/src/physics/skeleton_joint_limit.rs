@@ -4,9 +4,8 @@ use xrf_error::XrfResult;
 
 /// How far one axis of a joint turns and how it springs back, `SJointLimit`.
 ///
-/// The range is in radians, `limit.x` to `limit.y` in the engine. The editor stores it as authored; an OGF stores each
-/// limit negated and the two swapped, for the physics engine's opposite sense of rotation (`SJointIKData::Export`), so
-/// the same type holds either and the format that reads it says which.
+/// The range is in radians, `limit.x` to `limit.y` in the engine. The editor stores it as authored; an OGF stores
+/// each limit negated and the two swapped (`SJointIKData::Export`). The format that reads it says which it holds.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SkeletonJointLimit {
   pub min: f32,

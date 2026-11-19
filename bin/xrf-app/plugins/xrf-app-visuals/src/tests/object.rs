@@ -1,6 +1,4 @@
-//! Pins what an SDK object is described as beyond the model compiled from it.
-//!
-//! The compile itself is `xrf-rawdata`'s to pin.
+// The compile itself is `xrf-rawdata`'s to pin; these tests pin only the description around it.
 
 use xrf_app_core::assets::AssetSource;
 use xrf_chunk::ChunkLayout;
@@ -24,7 +22,7 @@ fn surface(name: &str, flags: u32) -> EditableSurface {
   }
 }
 
-/// A mesh of four points and three faces, two on `planks` and one on `nails`, in two smoothing groups.
+// Four points and three faces, two on `planks` and one on `nails`, in two smoothing groups.
 fn mesh() -> EditableMesh {
   EditableMesh {
     name: String::from("skin"),

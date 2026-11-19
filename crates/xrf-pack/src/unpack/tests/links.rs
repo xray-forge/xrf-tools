@@ -155,7 +155,6 @@ fn extract_file_still_writes_to_the_linked_path_it_is_given() {
   );
 }
 
-/// An ordinary tree that is already there keeps unpacking, forced, under the strict policy too.
 #[test]
 fn unpack_writes_into_a_destination_tree_that_already_exists() {
   let directory: PathBuf = create_temporary_directory("link-existing-tree");

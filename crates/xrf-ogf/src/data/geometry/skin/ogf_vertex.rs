@@ -89,10 +89,9 @@ impl OgfVertex {
     )
   }
 
-  /// Writes the vertex in the skin layout of its link count, as `CExportSkeleton::SSplit::Save` lays it out and
-  /// [`Self::read_from_slice`] reads it: one link as the four vectors, the texture coordinate and the bone as a `u32`;
-  /// more as the bones as `u16`s, the four vectors, the weights but the last (two links store the second bone's) and
-  /// the texture coordinate.
+  /// Writes the vertex in the skin layout of its link count, as `CExportSkeleton::SSplit::Save` does. One link: the
+  /// four vectors, the texture coordinate, the bone as a `u32`. More: the bones as `u16`s, the four vectors, the
+  /// weights but the last (two links store the second's), the texture coordinate.
   ///
   /// # Errors
   ///

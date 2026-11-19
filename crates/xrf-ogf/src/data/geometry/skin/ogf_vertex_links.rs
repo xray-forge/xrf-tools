@@ -3,10 +3,8 @@ use std::ops::{Deref, DerefMut};
 
 use crate::data::geometry::skin::ogf_vertex_link::OgfVertexLink;
 
-/// The bones one skinned vertex is linked to, held inline.
-///
-/// The engine's skin layouts, `vertBoned1W` to `vertBoned4W`, store one to four links, so the links never need a heap
-/// allocation of their own: a skinned visual holds one of these per vertex, and the corpus millions of vertices.
+/// The bones one skinned vertex is linked to, held inline: `vertBoned1W` to `vertBoned4W` store one to four, and the
+/// corpus holds millions of skinned vertices.
 #[derive(Clone, Copy, Default)]
 pub struct OgfVertexLinks {
   links: [OgfVertexLink; Self::CAPACITY],

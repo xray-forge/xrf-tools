@@ -56,8 +56,8 @@ impl<T> SessionSnapshot<T> {
     }
   }
 
-  /// The snapshot a derivation of this one read at `revision` publishes: its identity, the derived value, and no part
-  /// but those the derivation read on its way.
+  /// The snapshot a derivation of this one publishes at `revision`: same identity, the derived value, and only the
+  /// parts the derivation read.
   pub(crate) fn with_derived(&self, revision: XrayRevision, derived: SessionDerived<T>) -> Self {
     Self {
       session_id: self.session_id,

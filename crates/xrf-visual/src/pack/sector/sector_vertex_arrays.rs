@@ -88,8 +88,8 @@ impl SectorVertexArrays {
       )));
     }
 
-    // One array at a time, each sized once: a sector packs millions of vertices, and deciding every attribute and growing
-    // every array per vertex was a third of packing a terrain sector.
+    // One array at a time, each sized once: per-vertex attribute choice and growth cost a third of packing a terrain
+    // sector of millions of vertices.
     let count: usize = payload.len();
 
     self.positions.reserve(count * 3);

@@ -5,18 +5,16 @@ use xrf_audio::AudioServer;
 
 use crate::settings::AudioSettingsStore;
 
-/// Which windows have the focus, and so whether the application plays in the background: where the settings say so,
-/// it is silent once no window has the focus.
+/// Which windows have the focus, which decides the background mute the settings may ask for.
 #[derive(Default)]
 pub struct AudioFocus {
-  /// The focused windows' labels, or `None` before any window said: the application counts as focused until then, so
-  /// it never starts muted, and while any window has the focus, whatever order their events come in.
+  /// The focused windows' labels, or `None` before any window reported: the application counts as focused until then,
+  /// so it never starts muted, and while any window has the focus, in whatever order their events come.
   focused_windows: Mutex<Option<HashSet<String>>>,
 }
 
 impl AudioFocus {
-  /// Notes whether the window `label` has the focus, answering whether the application went to or came back from the
-  /// background.
+  /// Notes the focus of window `label`; returns whether the application entered or left the background.
   pub fn set_window_focused(&self, label: &str, is_focused: bool) -> bool {
     let mut windows: MutexGuard<'_, Option<HashSet<String>>> = self.lock();
     let was_in_background: bool = Self::is_background(windows.as_ref());
@@ -36,8 +34,9 @@ impl AudioFocus {
     Self::is_background(self.lock().as_ref())
   }
 
-  /// Plays at the stored volumes, silent in the background where the settings say so. The focus stays locked while
-  /// the gains go, so two windows' or a window's and the settings' changes never land out of order.
+  /// Sets the server's gains from the stored volumes and the background mute.
+  ///
+  /// The focus stays locked while the gains are sent, so concurrent focus and settings changes never land out of order.
   pub fn apply(&self, server: &AudioServer, store: &AudioSettingsStore) {
     let windows: MutexGuard<'_, Option<HashSet<String>>> = self.lock();
 

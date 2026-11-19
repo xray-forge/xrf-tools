@@ -73,9 +73,8 @@ impl GenericCommand for VerifyCommand {
     let mut findings: Vec<Finding> = Vec::new();
     let mut status: Status = Status::Passed;
 
-    // Opened once for the sweep and read by position on every worker, as an unpack reads them, rather than every volume
-    // opened again for each entry on one thread. Each payload is dropped as soon as it is judged, and the outcomes are
-    // judged in the set's order, so the findings are the ones a sweep one entry at a time would make.
+    // Opened once and read by position on every worker, as an unpack reads them. Each payload drops once judged, and
+    // outcomes are judged in the set's order, so the findings match a sweep one entry at a time.
     let outcomes: Vec<XrfResult> = match project.open_volumes() {
       Ok(volumes) => entries
         .par_iter()

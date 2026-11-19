@@ -116,12 +116,10 @@ impl FsgameFile {
 
   /// Resolves one alias, or returns `None` when its chain is undeclared or cyclic.
   ///
-  /// A chain ends at `$fs_root$`, the installation directory, or at a root column naming a directory instead of an
-  /// alias, which the engine's locator takes as that directory: an absolute one as it is, a relative one against the
-  /// directory holding this file, which is the working directory the locator opened it from and took `$fs_root$` from
-  /// (`xray-16` `LocatorAPI.cpp`, `setup_fs_path` and `_initialize`). The SDK's `fs.ltx` declares rawdata that way, as
-  /// `rawdata\`. An alias it never reaches is unresolved, as `$app_data_root$` is in an Enhanced Edition file whose
-  /// engine supplies it.
+  /// A chain ends at `$fs_root$`, the installation directory, or at a root column naming a directory rather than an
+  /// alias, as the SDK's `fs.ltx` declares rawdata (`rawdata\`). The engine's locator takes a relative one against the
+  /// directory holding this file, where it took `$fs_root$` from (`CLocatorAPI::_initialize`). An alias whose chain
+  /// reaches neither is unresolved, as `$app_data_root$` is in an Enhanced Edition file whose engine supplies it.
   pub fn resolve(&self, alias: &str) -> Option<PathBuf> {
     // Bounded by the declaration count, so a cycle terminates instead of recursing forever.
     let mut segments: Vec<&str> = Vec::new();
@@ -155,9 +153,9 @@ impl FsgameFile {
   }
 
   /// The directory a root column names when it spells a path rather than an alias: an absolute one as it is, a relative
-  /// one under this file's directory, its segments split on either separator so a Windows-authored file resolves on
-  /// any host. A path rooted without a drive, `\` alone among them, names the root of whatever drive the locator ran
-  /// on, which nothing here knows, and stays unresolved.
+  /// one under this file's directory, split on either separator so a Windows-authored file resolves on any host.
+  ///
+  /// A path rooted without a drive, such as `\`, names the root of the drive the locator ran on and stays unresolved.
   fn to_declared_root(&self, root: &str) -> Option<PathBuf> {
     if root.starts_with('$') {
       return None;

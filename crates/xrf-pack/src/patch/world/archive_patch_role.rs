@@ -1,13 +1,8 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 
-/// Which of the two worlds a comparison is talking about.
+/// Which of the two worlds a comparison is talking about, named alike by the mounts, refusals and transcript labels.
 ///
-/// A value rather than the `&'static str` this replaced. The words "base" and "target" were spelled at four
-/// unconnected sites — both mounts, every refusal, and the transcript's labels — so a rename meant finding all four
-/// and a typo at any one of them produced a diagnostic naming a side that does not exist.
-///
-/// Not to be confused with [`ArchivePatchSide`](crate::ArchivePatchSide), which is what one world reported about one
-/// entry. This is which world that was.
+/// Not [`ArchivePatchSide`](crate::ArchivePatchSide), which is what one world reported about one entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ArchivePatchRole {
   /// The release being patched: what a player already has installed.

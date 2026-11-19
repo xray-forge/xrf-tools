@@ -3,9 +3,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_skeleton::{SkeletonJointKind, SkeletonJointLimit};
 
-/// A bone's joint as an OGF stores it, `SJointIKData::Export`: each limit negated and its two ends swapped for the
-/// physics engine's sense of rotation, then the joint's springs, flags, break limits and, from version 1, its
-/// friction.
+/// A bone's joint as an OGF stores it, `SJointIKData::Export`: each limit negated and its ends swapped for the
+/// physics engine's sense of rotation, and from version 1 a friction.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OgfJointIkData {
   pub kind: SkeletonJointKind,
@@ -21,8 +20,8 @@ pub struct OgfJointIkData {
 }
 
 impl OgfJointIkData {
-  /// Reads the joint of a record stored at `version`: friction follows when its low half is above zero, since the
-  /// engine reads the version as a `u32` and narrows it to a `u16` before asking (`SkeletonCustom.cpp`, `Load`).
+  /// Reads the joint of a record stored at `version`. Friction follows when the version's low half is above zero, as
+  /// the engine narrows it to a `u16` before asking.
   pub fn read_versioned<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     version: u32,

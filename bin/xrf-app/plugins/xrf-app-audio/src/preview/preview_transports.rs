@@ -9,11 +9,10 @@ use xrf_audio::{
   SoundPeaks,
 };
 
-/// The previews open in the application: sounds a domain opened on the audio server for a window's page to play on
-/// the Previews bus, as a media element would, each until the page closes it, or its window loads again or goes.
+/// The open previews: sounds a domain opened for a window's page to play on the Previews bus, as a media element
+/// would, until the page closes them or its window reloads or goes.
 ///
-/// The server's control thread pushes each preview's changed state, its position included; it goes to the channel of
-/// the page watching it.
+/// The server's control thread pushes each changed state, position included, to the watching page's channel.
 #[derive(Clone)]
 pub struct PreviewTransports {
   server: AudioServer,
@@ -182,8 +181,8 @@ impl PreviewTransports {
     }
   }
 
-  /// Stops and forgets the previews the window labelled `window` opened, as its page loads again or the window goes:
-  /// the page that could close them is gone, and another window's previews play on.
+  /// Stops and forgets the previews the window labelled `window` opened, whose page reloaded or went; other windows'
+  /// previews play on.
   pub fn close_window(&self, window: &str) {
     // Counted before the table is searched, so a preview opening meanwhile either is found or sees the count move.
     *self.lock_closings().entry(window.to_owned()).or_default() += 1;

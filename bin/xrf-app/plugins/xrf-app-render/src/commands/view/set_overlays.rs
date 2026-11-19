@@ -3,8 +3,8 @@ use xrf_renderer::{RenderOverlay, RenderViewportId};
 
 use crate::Renderer;
 
-/// Set the helpers drawn over one viewport's frame: at once, or for a scene from the frame the viewport shows it, as a
-/// load report names it, so helpers sized to a model never stand over the one it replaces.
+/// Set the helpers drawn over one viewport's frame: at once, or from the first frame showing `scene` (as a load report
+/// numbers it), so helpers sized to a model never stand over the one it replaces.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "set_overlays")]
 pub(crate) fn render_set_overlays(

@@ -44,8 +44,8 @@ impl Aabb {
     }
   }
 
-  /// Grows to hold a point, `Fbox::modify`: a side moves only where the point lies strictly beyond it, as `std::min`
-  /// and `std::max` keep the first of two equal values, so a zero of the other sign leaves it as it was.
+  /// Grows to hold a point, `Fbox::modify`: a side moves only where the point lies strictly beyond it, so a zero of
+  /// the other sign leaves it as it was.
   pub fn include_point(&mut self, point: &Vector3d) {
     let [mut min, mut max, point] = [self.min, self.max, *point].map(Vector3d::to_array);
 
@@ -68,8 +68,8 @@ impl Aabb {
     *self = self.merge(other);
   }
 
-  /// The box holding this one and `other`, `Fbox::merge`: the lower of the two least corners and the higher of the two
-  /// greatest, each side by `std::min` and `std::max`, which keep this box's of two equal values.
+  /// The box holding this one and `other`, `Fbox::merge`. Where two sides are equal this box's stays, as the engine's
+  /// `std::min` and `std::max` keep it.
   pub fn merge(&self, other: &Self) -> Self {
     let lower = |own: f32, other: f32| if other < own { other } else { own };
     let higher = |own: f32, other: f32| if own < other { other } else { own };
@@ -191,7 +191,7 @@ mod tests {
     );
   }
 
-  /// An invalidated box, inverted as `Fbox::invalidate` leaves it, merges into another as nothing.
+  // The inverted box `Fbox::invalidate` leaves.
   #[test]
   fn merges_an_inverted_box_as_nothing() {
     let bounds: Aabb = Aabb {

@@ -44,8 +44,8 @@ impl ExecutionRequest {
 
   /// What the host offers this process, or one worker where it will not say.
   ///
-  /// Uncapped, and the processors the process may run on: Rayon's own default, on Windows, counts the whole machine even
-  /// for a process confined to part of it ([`HostProcessors`]).
+  /// Uncapped, counting only the processors the process may run on, which Rayon's default does not on Windows
+  /// ([`HostProcessors`]).
   fn available_parallelism() -> NonZeroUsize {
     HostProcessors::count()
   }

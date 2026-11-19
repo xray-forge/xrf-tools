@@ -10,8 +10,8 @@ use xrf_utils::{OutputFiles, error_to_string};
 
 use crate::{SpawnFiles, SpawnSession};
 
-/// Write the spawn `session_id` holds into the directory `path` as unpacked chunks, on the pool; refused where `path`
-/// is there, its name in any case, unless `is_forced`.
+/// Write the spawn `session_id` holds into the directory `path` as unpacked chunks; refused where `path` exists, in
+/// any letter case, unless `is_forced`.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_unpacked_directory")]
 pub(crate) async fn spawn_save_unpacked_directory(

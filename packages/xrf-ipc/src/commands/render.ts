@@ -105,8 +105,8 @@ export const renderCommands = {
   /** Stop drawing a viewport; the GPU goes a few seconds after the last one. */
   detachViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>(ERenderCommand.DETACH_VIEWPORT, { viewport }),
   /**
-   * Keep the renderer's GPU started for the calling window's page, starting it where it is not, so a viewport attached
-   * later draws at once: for a tool whose viewports come and go. Held until released, the page goes or the window closes.
+   * Start the renderer's GPU and keep it for the calling window's page, so a tool whose viewports come and go draws at
+   * once. Held until released, the page reloads or the window closes.
    */
   hold: () => __TAURI_INVOKE<RenderHoldId>(ERenderCommand.HOLD),
   /**
@@ -115,8 +115,8 @@ export const renderCommands = {
    */
   listBackends: () => __TAURI_INVOKE<Array<RenderBackendAvailability>>(ERenderCommand.LIST_BACKENDS),
   /**
-   * Hear the scene a viewport shows from its camera: the focused window's active pane. Every other scene falls silent
-   * and plays on.
+   * Hear the scene a viewport shows from its camera, the viewport being the focused window's active pane; every other
+   * scene plays on silent.
    */
   listenViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>(ERenderCommand.LISTEN_VIEWPORT, { viewport }),
   /**
@@ -152,8 +152,8 @@ export const renderCommands = {
   playWeatherEffect: (viewport: RenderViewportId, name: string | null) =>
     __TAURI_INVOKE<void>(ERenderCommand.PLAY_WEATHER_EFFECT, { viewport, name }),
   /**
-   * Let a hold the asking window's page took on the renderer go; the GPU goes a few seconds after the last hold and
-   * viewport. Another window's hold is left alone.
+   * Release a hold the calling window's page took; another window's hold is left alone. The GPU stops a few seconds
+   * after the last hold and viewport go.
    */
   releaseHold: (hold: RenderHoldId) => __TAURI_INVOKE<void>(ERenderCommand.RELEASE_HOLD, { hold }),
   /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
@@ -169,8 +169,8 @@ export const renderCommands = {
   setCamera: (viewport: RenderViewportId, camera: WorldCamera) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_CAMERA, { viewport, camera }),
   /**
-   * Set the helpers drawn over one viewport's frame: at once, or for a scene from the frame the viewport shows it, as a
-   * load report names it, so helpers sized to a model never stand over the one it replaces.
+   * Set the helpers drawn over one viewport's frame: at once, or from the first frame showing `scene` (as a load report
+   * numbers it), so helpers sized to a model never stand over the one it replaces.
    */
   setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>, scene: number | null) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_OVERLAYS, { viewport, overlays, scene }),

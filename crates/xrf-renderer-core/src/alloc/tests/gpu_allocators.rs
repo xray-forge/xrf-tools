@@ -139,7 +139,6 @@ fn grows_an_upload_ring_that_a_frame_outgrows() {
   assert!(ring.get_buffer().size() >= u64::from(ring.get_alignment()) * 7 + 4);
 }
 
-// A frame that never executes leaves nothing for the next to push after.
 #[test]
 fn drops_what_a_frame_that_never_executed_pushed() {
   let Some((device, _queue)) = create_device() else {

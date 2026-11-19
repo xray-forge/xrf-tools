@@ -8,19 +8,20 @@ use crate::param::pass_parameters::PassParameters;
 use crate::param::pass_resources::PassResources;
 
 /// The layouts of pass parameters, one per struct, and the bind groups made from them, kept across frames by the
-/// identity of what they bind: the same resources get the same bind group back, and one unused for longer than the
-/// cache's patience is dropped. Shared by the passes recording a frame, which find what they bind under a read lock,
-/// by a hash of the bindings as they are, so a group found takes nothing from them (a bindless array's every view).
+/// identity of what they bind; a group unused for longer than the cache's patience is dropped.
+///
+/// Passes recording a frame look groups up under a read lock by a hash of their bindings, so a group found clones
+/// nothing from them (such as a bindless array's every view).
 pub struct BindGroupCache {
   layouts: RwLock<HashMap<&'static str, wgpu::BindGroupLayout>>,
-  /// The groups by the hash of what they bind (`BindGroupKey::hash_of`), those sharing one together.
+  /// Groups by `BindGroupKey::hash_of`, those sharing a hash together.
   groups: RwLock<HashMap<u64, Vec<CachedGroup>>>,
   frame: AtomicU64,
   max_idle_frames: u64,
 }
 
-/// A cached bind group, what it binds, and the last frame that bound it, kept atomic so a found group is marked under
-/// the read lock.
+/// A cached bind group, its key, and the last frame that bound it, atomic so a found group is marked under the read
+/// lock.
 struct CachedGroup {
   key: BindGroupKey,
   group: wgpu::BindGroup,
@@ -145,7 +146,6 @@ impl BindGroupCache {
     group
   }
 
-  /// The group of a bucket that binds `bindings` by `layout`, if one does.
   fn find<'a>(
     bucket: Option<&'a Vec<CachedGroup>>,
     layout: &wgpu::BindGroupLayout,
@@ -154,19 +154,19 @@ impl BindGroupCache {
     bucket?.iter().find(|cached| cached.key.is_of(layout, bindings))
   }
 
-  /// Drops every bind group, and its hold on what it binds, keeping the layouts, for a renderer drawing no frames.
+  /// Drops every bind group but keeps the layouts, for a renderer drawing no frames.
   pub(crate) fn clear_groups(&self) {
     self.groups.write().expect("bind group cache lock").clear();
   }
 
-  /// Drops the bind groups the current frame did not bind, and their hold on what they bind, keeping the layouts.
+  /// Drops the bind groups the current frame did not bind, keeping the layouts.
   pub(crate) fn forget_unused(&self) {
     let frame: u64 = self.frame.load(Ordering::Relaxed);
 
     self.retain(|last_frame| last_frame == frame);
   }
 
-  /// Keeps the groups whose last frame `is_kept` passes, and the buckets still holding one.
+  /// Keeps the groups whose last frame `is_kept` passes, dropping emptied buckets.
   fn retain(&self, is_kept: impl Fn(u64) -> bool) {
     self.groups.write().expect("bind group cache lock").retain(|_, bucket| {
       bucket.retain_mut(|cached| is_kept(*cached.last_frame.get_mut()));

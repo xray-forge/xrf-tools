@@ -3,11 +3,9 @@ use std::thread;
 
 /// The processors this process may run on: what work sized to the machine is sized to.
 ///
-/// `std::thread::available_parallelism` answers the whole machine on Windows whatever the process's affinity, so a
-/// process confined to some processors (`start /affinity`, a job object, a tool measuring one part of the machine) would
-/// start a worker for every processor it cannot use, all of them taking turns on the ones it can. There the affinity
-/// mask is counted instead, wherever it is narrower than the system's. Elsewhere the standard library already follows
-/// the affinity (and, on Linux, the cgroup quota).
+/// On Windows `std::thread::available_parallelism` ignores the process's affinity, so a confined process (`start
+/// /affinity`, a job object) would start a worker per processor it cannot use; there the affinity mask is counted where
+/// it is narrower than the system's. Elsewhere the standard library already follows affinity and cgroup quotas.
 pub(crate) struct HostProcessors;
 
 impl HostProcessors {
@@ -25,9 +23,8 @@ impl HostProcessors {
 
   /// `machine` narrowed to the processors the `process` mask allows, where it allows fewer than the `system` mask has.
   ///
-  /// Equal masks are a process that is not confined, and leave `machine` as it is: on a host of more than one processor
-  /// group the masks describe a single group, and Windows answers both as zero for a process spanning several, so only a
-  /// narrower mask is evidence of a confinement.
+  /// Equal masks leave `machine` as it is: the masks describe a single processor group, and Windows answers both as
+  /// zero for a process spanning several, so only a narrower mask shows confinement.
   #[cfg(any(windows, test))]
   fn confine(machine: NonZeroUsize, process: usize, system: usize) -> NonZeroUsize {
     if process == system {
@@ -83,7 +80,7 @@ mod tests {
     );
   }
 
-  /// Windows answers both masks as zero for a process spanning processor groups, which is no confinement.
+  // Windows answers both masks as zero for a process spanning processor groups.
   #[test]
   fn reads_masks_that_say_nothing_as_no_confinement() {
     assert_eq!(HostProcessors::confine(count(128), 0, 0), count(128));

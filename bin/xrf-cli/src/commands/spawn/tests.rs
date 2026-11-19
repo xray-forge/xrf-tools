@@ -30,7 +30,6 @@ fn run<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandRe
   run_command(command, &arguments_of(command, path, extra))
 }
 
-/// Runs a command asked for its result, answering the result it deposited.
 fn run_for_result<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandResult<Value> {
   Ok(run_command_for_result(command, &arguments_of(command, path, extra))?.expect("a result was asked for"))
 }
@@ -88,8 +87,6 @@ fn repacks_a_level_spawn_list_byte_for_byte() -> XrfResult {
   Ok(())
 }
 
-/// A level's spawn list unpacks, reporting the objects it wrote typed and verbatim, and its folder verifies, re-unpacks
-/// into the same text and packs back into the bytes it came from.
 #[test]
 fn unpacks_a_level_spawn_list_and_packs_it_back_byte_for_byte() -> CommandResult {
   let path: PathBuf = GeneratedResources::create_dir("spawn/unpack_level")?.join("level.spawn");
@@ -113,8 +110,7 @@ fn unpacks_a_level_spawn_list_and_packs_it_back_byte_for_byte() -> CommandResult
 
   assert_eq!(report["typedObjects"], 1, "{report}");
   assert_eq!(report["verbatimObjects"][0]["objects"], 2, "{report}");
-  // Both objects' packets are filler, refused at the version their bytes spell, and their names are left out of the
-  // reason, so the two share one.
+  // Both packets are filler refused at the version their bytes spell; names stay out of the reason, so they share one.
   assert_eq!(
     report["verbatimObjects"][0]["reason"], "Assertion error: Unexpected version 0 of spawn packet, script flags 1799",
     "{report}"
@@ -145,7 +141,6 @@ fn unpacks_a_level_spawn_list_and_packs_it_back_byte_for_byte() -> CommandResult
   Ok(())
 }
 
-/// A root spawn's unpack says nothing past the conversion.
 #[test]
 fn reports_a_root_spawns_unpack_as_the_conversion_alone() -> CommandResult {
   let root: PathBuf = GeneratedResources::create_dir("spawn/unpack_root")?;
@@ -166,7 +161,6 @@ fn reports_a_root_spawns_unpack_as_the_conversion_alone() -> CommandResult {
   Ok(())
 }
 
-/// A folder that is neither kind's is judged by `verify`, and refused by `pack` naming what each kind's folder holds.
 #[test]
 fn judges_a_folder_of_neither_kind() -> XrfResult {
   let folder: PathBuf = GeneratedResources::create_dir("spawn/neither_folder")?;

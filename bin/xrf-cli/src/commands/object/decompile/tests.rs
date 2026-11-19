@@ -1,5 +1,3 @@
-//! What `object decompile` refuses, and that a refusal writes nothing.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -28,11 +26,10 @@ fn decompile(source: &Path, destination: &Path, extra: &[&str]) -> CommandResult
   run_command(&DecompileCommand, &arguments)
 }
 
-/// `MT_PARTICLE_EFFECT` and `MT_SKELETON_RIGID` as a header stores them.
+// `MT_PARTICLE_EFFECT` and `MT_SKELETON_RIGID` as a header stores them.
 const PARTICLE_EFFECT: u8 = 8;
 const SKELETON_RIGID: u8 = 10;
 
-/// An OGF holding only a header of `model_type`.
 fn header_only(model_type: u8) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 

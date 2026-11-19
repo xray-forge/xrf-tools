@@ -1,7 +1,7 @@
 use crate::device::render_gpu::RenderGpu;
 
-/// How a GPU's adapter is chosen, the same for the renderer's device and the ray query device: the hardware adapter a
-/// setting names where it can do the work, else the one the instance picks itself.
+/// How the renderer's device and the ray query device choose an adapter: the hardware adapter a setting names where it
+/// can do the work, else the one the instance picks itself.
 pub struct GpuAdapters;
 
 impl GpuAdapters {

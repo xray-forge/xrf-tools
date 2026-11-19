@@ -13,8 +13,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::build::SpawnBuild;
 
-/// A gamedata root listing `labx8` alone, whose built directory holds empty files, so a build reads its list and
-/// refuses the level's files.
+// Lists `labx8` alone and its built files are empty, so a build reads the list and refuses the level's files.
 fn request(case: &str) -> SpawnRootRequest {
   let root: PathBuf = GeneratedResources::create_dir(&format!("spawn/build/{case}")).expect("scratch directory");
   let (gamedata, levels) = (root.join("gamedata"), root.join("levels"));

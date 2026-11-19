@@ -92,8 +92,7 @@ impl ConfigsProject {
 
   /// Where the project writes what `query` names, read from documents without resolving anything.
   ///
-  /// Section names compare as this project's dialect resolves them, whatever `query` said: a page asking about
-  /// `WPN_AK74` in a DLTX tree means the section the engine loads under that name.
+  /// Section names compare as this project's dialect resolves them, overriding `query`.
   ///
   /// # Errors
   ///

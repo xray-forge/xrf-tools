@@ -1,11 +1,10 @@
 use serde::Serialize;
 use xrf_ltx_inspect::LtxDeclarationSearch;
 
-/// What a declaration search over the open project found, as much of it as one answer carries.
+/// What a declaration search over the open project found, cut to the first `MAXIMUM_DECLARATIONS` in project order.
 ///
-/// A common field or an empty value matches hundreds of thousands of statements on a modded install, so the answer
-/// holds the first `MAXIMUM_DECLARATIONS` in project order and says how many there were; narrowing the query is how a
-/// reader sees the rest.
+/// A common field or an empty value matches hundreds of thousands of statements on a modded install; a narrower query
+/// shows the rest.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

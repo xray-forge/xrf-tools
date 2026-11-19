@@ -21,8 +21,7 @@ impl EnumerationMember {
   ///
   /// # Errors
   ///
-  /// When `source` is no longer an enum, or no longer declares as many variants as `named` serializes — either of
-  /// which means the two views can no longer be paired at all.
+  /// When `source` is no longer an enum, or declares fewer or more variants than `named` serializes.
   pub(super) fn pair(named: &NamedDataType, source: &NamedDataType, spellings: Vec<&str>) -> XrfResult<Vec<Self>> {
     let Some(DataType::Enum(rust)) = source.ty.as_ref() else {
       return Err(XrfError::new_invalid_error(format!(

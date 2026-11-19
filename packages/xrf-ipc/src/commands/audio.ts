@@ -55,7 +55,7 @@ export const audioCommands = {
   /** Whether the preview starts over at its end. */
   setPreviewLooped: (transport: AudioTransportId, isLooped: boolean) =>
     __TAURI_INVOKE<null>(EAudioCommand.SET_PREVIEW_LOOPED, { transport, isLooped }),
-  /** Play with `settings` from now on and keep them for the next run, answering them as kept, every volume in range. */
+  /** Apply `settings` and keep them for the next run; answers them as kept, every volume clamped to range. */
   setSettings: (settings: AudioSettings) => __TAURI_INVOKE<AudioSettings>(EAudioCommand.SET_SETTINGS, { settings }),
   /** Put the preview back at its start, silent. */
   stopPreview: (transport: AudioTransportId) => __TAURI_INVOKE<null>(EAudioCommand.STOP_PREVIEW, { transport }),

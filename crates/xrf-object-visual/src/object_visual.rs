@@ -18,14 +18,12 @@ pub struct ObjectVisual {
 }
 
 impl ObjectVisual {
-  /// `object` compiled as `xrf-cli object compile` writes it, under `source`'s name and with `options` for the choices
-  /// the editor's export leaves open, and read back as the engine reads the file, so nothing the file would not keep
-  /// reaches the renderer.
+  /// `object` compiled as `xrf-cli object compile` writes it, then read back as the engine reads the file, so nothing
+  /// the file would not keep reaches the renderer. `options` covers the choices the editor's export leaves open.
   ///
   /// # Errors
   ///
-  /// Returns an error where the object does not compile (see `ObjectCompiler`), or its compiled file does not read
-  /// back.
+  /// Returns an error where the object does not compile, or its compiled file does not read back.
   pub fn compile(
     object: &EditableObjectFile,
     source: &ObjectCompileSource,
@@ -40,10 +38,8 @@ impl ObjectVisual {
     })
   }
 
-  /// The compiled file packed for the renderer. A rigid object compiles to static vertices (a position, a normal and one
-  /// uv set, `D3DFVF`), which `VisualPacker::pack` leaves unpacked as it packs skinned ones alone, so each of its parts
-  /// is packed as a mesh with its tangent frame derived from its uvs, and the model described as its file declares it;
-  /// a skeleton packs as any skinned model.
+  /// The compiled file packed for the renderer. `VisualPacker::pack` packs skinned vertices alone, so a rigid object's
+  /// static parts are packed here as meshes, tangents derived from their uvs, under the description its file declares.
   fn pack(file: &OgfFile) -> VisualPackage {
     let Some(meshes) = Self::list_static_meshes(file) else {
       return VisualPacker::pack(file);
@@ -64,8 +60,7 @@ impl ObjectVisual {
     package
   }
 
-  /// Each part of a file holding static vertices alone, in the order the file stores them, as a mesh in renderer space;
-  /// none for a file any part of which holds other vertices or none.
+  /// Each part as a renderer-space mesh in file order, or `None` where any part holds no static vertices.
   fn list_static_meshes(file: &OgfFile) -> Option<Vec<VisualMesh>> {
     let parts: Vec<&OgfFile> = match file.children.as_ref().map(|children| children.nested.as_slice()) {
       Some(nested) if !nested.is_empty() => nested.iter().collect(),
@@ -75,8 +70,8 @@ impl ObjectVisual {
     parts.into_iter().map(Self::read_static_mesh).collect()
   }
 
-  /// One part's static vertices and triangles as a mesh in renderer space, `z` mirrored and each triangle's winding
-  /// turned with it; a vertex lacking its normal or uvs leaves its attribute short, which packing refuses as malformed.
+  /// One part's static vertices and triangles as a renderer-space mesh, `z` mirrored and winding turned with it. A
+  /// vertex lacking its normal or uvs leaves that attribute short, which packing refuses as malformed.
   fn read_static_mesh(part: &OgfFile) -> Option<VisualMesh> {
     let geometry: &OgfGeometry = part.geometry.as_ref()?;
     let Some(OgfVertexData::Static(vertices)) = &geometry.vertices else {

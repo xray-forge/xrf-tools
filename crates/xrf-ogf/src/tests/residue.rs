@@ -69,8 +69,7 @@ fn refuses_a_truncated_chunk() -> XrfResult {
     Err(error) => error.to_string(),
   };
 
-  // The engine opens this LODs chunk over bytes that are not there, and with no line end in the file its `r_string`
-  // reads on past it, so tolerating it would accept a file the engine itself cannot load.
+  // With no line end in the file the engine's `r_string` reads past it, so this LODs chunk stays refused.
   assert!(
     error.contains("declares 4343 bytes, 30 remain before source end"),
     "Unexpected error: {error}"
@@ -81,7 +80,7 @@ fn refuses_a_truncated_chunk() -> XrfResult {
 
 #[test]
 fn refuses_trailing_bytes_headed_as_a_chunk_the_engine_reads() -> XrfResult {
-  // The guard that keeps the rule narrow: a user data chunk cut short is one the engine opens and reads past the file.
+  // Keeps the rule narrow: the engine reads a user data chunk cut short past the file's end.
   let strict: String = match OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::unexplained_residue()?) {
     Ok(_) => panic!("Expected trailing bytes the engine reads to be refused"),
     Err(error) => error.to_string(),

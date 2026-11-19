@@ -6,12 +6,12 @@ use xrf_utils::format_path;
 use crate::path::XrayLogicalPath;
 use crate::{FsgameFile, XrayMountMode, XraySearchPlan};
 
-/// An SDK installation: the editors' directory and the `fs.ltx` there, which lays out the game's tree and beside it the
-/// SDK's own authoring tree, rawdata, under `$server_data_root$`.
+/// An SDK installation: the editors' directory and its `fs.ltx`, which lays out the game's tree and the SDK's
+/// authoring tree, rawdata, under `$server_data_root$`.
 ///
-/// Rawdata is searched apart from gamedata: both hold `textures\`, `sounds\` and `levels\`, so one search over both
-/// would answer a rawdata path with a game file. [`Self::to_rawdata_search_plan`] mounts rawdata as a root of its own,
-/// and [`Self::get_rawdata_prefix`] turns an editor alias such as `$objects$` into the logical path it searches under.
+/// Rawdata is searched apart from gamedata, since both hold `textures\`, `sounds\` and `levels\`:
+/// [`Self::to_rawdata_search_plan`] mounts it as its own root, and [`Self::get_rawdata_prefix`] turns an editor alias
+/// such as `$objects$` into a logical path under it.
 #[derive(Clone, Debug)]
 pub struct XraySdkInstallation {
   file: FsgameFile,
@@ -60,8 +60,8 @@ impl XraySdkInstallation {
     self.file.resolve(Self::RAWDATA_ALIAS)
   }
 
-  /// The logical path an alias's directory has inside rawdata, `objects` for `$objects$` and the empty path for rawdata
-  /// itself, or `None` when the alias is undeclared, unresolved, or lies outside rawdata as `$game_data$` does.
+  /// The logical path of an alias's directory inside rawdata (`objects` for `$objects$`, empty for rawdata itself), or
+  /// `None` when the alias is undeclared, unresolved, or outside rawdata as `$game_data$` is.
   ///
   /// # Errors
   ///
@@ -96,8 +96,8 @@ impl XraySdkInstallation {
     XrayLogicalPath::normalize(&segments.join("\\")).map(Some)
   }
 
-  /// A search over rawdata alone, mounted as one loose root: a logical path in it is a path under rawdata,
-  /// `objects\editor\axis.object` for the object `$objects$` holds as `editor\axis.object`.
+  /// A search over rawdata alone, mounted as one loose root: `$objects$`'s `editor\axis.object` is found as
+  /// `objects\editor\axis.object`.
   ///
   /// # Errors
   ///

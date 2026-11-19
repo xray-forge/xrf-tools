@@ -12,8 +12,7 @@ use xrf_utils::format_path;
 
 use crate::build::{SpawnBuild, SpawnBuildResult};
 
-/// Build a root spawn from a game's levels and write it, as `spawn build` does, as a job a cancel stops before it
-/// writes.
+/// Build and write a root spawn from a game's levels, as `spawn build` does, as a job cancellable until it writes.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_spawn")]
 pub(crate) async fn spawn_build_spawn(

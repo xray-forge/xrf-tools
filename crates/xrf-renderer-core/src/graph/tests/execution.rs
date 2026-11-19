@@ -653,7 +653,6 @@ fn forgets_what_its_frames_kept_once_none_is_drawn() {
   assert_eq!(runtime.pool.get_texture_count(), 1);
   assert_eq!(runtime.attachment_views.get_view_count(), 1);
 
-  // A renderer held with no viewport draws no frame to age these out by, so it lets them go at once.
   runtime.forget_frames();
 
   assert_eq!(runtime.pool.get_texture_count(), 0);
@@ -661,8 +660,6 @@ fn forgets_what_its_frames_kept_once_none_is_drawn() {
   assert_eq!(runtime.bind_groups.get_bind_group_count(), 0);
 }
 
-/// Frames drawn at a new size each leave what the size before keyed unused: forgotten once each frame ran, the runtime
-/// holds the last size's transient and the view of its mip alone, rather than a size for every frame of their patience.
 #[test]
 fn forgets_what_frames_at_new_sizes_left_unused() {
   let Some((device, queue)) = create_device() else {

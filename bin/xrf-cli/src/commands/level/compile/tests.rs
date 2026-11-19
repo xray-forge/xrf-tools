@@ -1,5 +1,3 @@
-//! What `level compile` refuses before running any compiler.
-
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;

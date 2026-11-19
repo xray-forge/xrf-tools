@@ -7,8 +7,8 @@ use crate::vfs::cache::flight::{XrayCacheFlight, XrayCacheFlightClaim, XrayCache
 
 /// The loads a store has in progress, so concurrent requesters of one key produce one load instead of one each.
 ///
-/// This is coordination alone. Whether a key is worth coordinating, what a wait means for reported statistics, and what
-/// a released waiter does next are the store's questions, answered in [`XrayAssetCache`].
+/// Coordination alone: whether a key is worth coordinating, how a wait counts in statistics, and what a released
+/// waiter does next belong to [`XrayAssetCache`].
 ///
 /// [`XrayAssetCache`]: crate::vfs::cache::xray_asset_cache::XrayAssetCache
 #[derive(Debug, Default)]

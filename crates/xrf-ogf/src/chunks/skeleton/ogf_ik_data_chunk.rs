@@ -157,8 +157,6 @@ mod tests {
 
   #[test]
   fn keeps_a_version_whose_high_half_is_set_and_reads_friction_by_its_low_half() -> XrfResult {
-    // The engine reads the version as a `u32` and narrows it to a `u16`: `0x0001_0000` has a low half of 0, so no
-    // friction follows, and the whole value has to come back for the record to be the bytes it was.
     let mut zero_low: OgfBoneIkData = bone(0);
     let mut one_low: OgfBoneIkData = bone(1);
 

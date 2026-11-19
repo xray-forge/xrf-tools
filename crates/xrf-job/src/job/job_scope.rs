@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use crate::job::JobState;
-use crate::job::LevelState;
+use crate::job::{JobState, LevelState};
 
 /// A level of a job, entered until this is dropped.
 pub struct JobScope {

@@ -4,8 +4,8 @@ use xrf_renderer::RenderHoldId;
 
 use crate::RenderViewports;
 
-/// Let a hold the asking window's page took on the renderer go; the GPU goes a few seconds after the last hold and
-/// viewport. Another window's hold is left alone.
+/// Release a hold the calling window's page took; another window's hold is left alone. The GPU stops a few seconds
+/// after the last hold and viewport go.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "release_hold")]
 pub(crate) fn render_release_hold(window: InvokingWindow, viewports: State<'_, RenderViewports>, hold: RenderHoldId) {

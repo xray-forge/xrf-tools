@@ -32,8 +32,7 @@ fn shares_a_slot_between_transients_that_never_overlap() {
   assert_eq!(compiled.describe().pooled_count, 2);
 }
 
-// A transient last used by a draw and one first written by the next draw of the same render pass would share a slot
-// inside that render pass, read and written by storage at once; the slot frees only once the render pass ends.
+// Two draws of one render pass sharing a slot would read and write it as storage at once.
 #[test]
 fn frees_a_slot_only_once_the_render_pass_of_its_last_use_ends() {
   let mut graph: FrameGraph<'_> = FrameGraph::new();

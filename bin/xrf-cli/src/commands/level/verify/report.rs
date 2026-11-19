@@ -2,8 +2,8 @@ use serde::Serialize;
 use xrf_level::{LevelAiGraphCensus, LevelGeometryCensus};
 use xrf_report::Report;
 
-/// What `level verify` found and counted: its checks as every verify command reports them, beside its censuses; the AI
-/// map's none where the level ships no map or it could not be read.
+/// What `level verify` found: its checks beside its censuses, the AI map's none where the level ships no map or it
+/// could not be read.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct LevelVerifyReport<'a> {

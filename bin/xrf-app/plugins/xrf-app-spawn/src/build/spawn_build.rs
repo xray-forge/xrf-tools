@@ -8,12 +8,12 @@ use xrf_spawn_builder::{SpawnRootGamedata, SpawnRootRequest};
 use crate::build::SpawnBuildResult;
 use crate::ipc::spawn::SPAWN_JOB_BUILD;
 
-/// A root spawn built from a game's levels as a job, as `spawn build` builds it: one build at a time, holding the spawn
-/// file it writes, stopped between its stages and never once it writes.
+/// A root spawn build as a job, as `spawn build` runs it: one at a time, holding the spawn file it writes, cancellable
+/// between stages but not once it writes.
 pub(crate) struct SpawnBuild;
 
 impl SpawnBuild {
-  /// The job's place in the registry: its kind, run one at a time, and the spawn file it writes.
+  /// The job's registry entry: its kind, run one at a time, and the spawn file it holds.
   pub(crate) fn start(request: &SpawnRootRequest, job_id: Uuid, progress: Channel<JobProgress>) -> JobStart {
     JobStart::new(job_id, SPAWN_JOB_BUILD)
       .with_request(request)
@@ -22,12 +22,12 @@ impl SpawnBuild {
       .with_progress(progress)
   }
 
-  /// Builds and writes the spawn on the job's thread; cancelled, with nothing written, where the job was cancelled
-  /// before the build wrote, whatever stopped it.
+  /// Builds and writes the spawn on the job's thread; a build that fails after a cancel ends as cancelled, nothing
+  /// written.
   ///
   /// # Errors
   ///
-  /// Returns why the build refused ([`SpawnRootGamedata::build`]) where the job was not cancelled.
+  /// Returns the [`SpawnRootGamedata::build`] error where the job was not cancelled.
   pub(crate) fn build(request: &SpawnRootRequest, job: &JobHandle) -> XrfResult<SpawnBuildResult> {
     match SpawnRootGamedata::build(request, job) {
       Ok(spawn) => Ok(SpawnBuildResult {

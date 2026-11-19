@@ -3,9 +3,10 @@ use std::thread::JoinHandle;
 
 use crate::dlss::Dlss;
 
-/// DLSS starting on a device, as a task whose result is waited for. NGX takes about a second to start, so it starts on
-/// a thread of its own while the renderer builds everything else, and whoever asks first waits for what remains.
-/// Dropped, it waits for the start to end, so NGX never outlives the renderer that started it.
+/// DLSS starting on a device on a thread of its own, since NGX takes about a second to start; whoever asks first waits
+/// for what remains.
+///
+/// Dropping it waits for the start to end, so NGX never outlives the renderer that started it.
 pub struct DlssTask {
   /// What the start came to, once someone asked.
   started: OnceLock<Option<Dlss>>,
@@ -76,8 +77,7 @@ impl DlssTask {
 
 impl Drop for DlssTask {
   fn drop(&mut self) {
-    // Joined, not left running: a start ending after the renderer let its GPU go would leave NGX on a device no one
-    // holds.
+    // A start ending after the renderer let its GPU go would leave NGX on a device no one holds.
     let _ = self.get();
   }
 }

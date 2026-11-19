@@ -10,15 +10,12 @@ use specta_typescript::{Exporter, primitives};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ipc::IpcConstant;
 
-use crate::collected::CollectedConstants;
-use crate::collected::CommandTypescript;
+use crate::collected::{CollectedConstants, CommandTypescript};
 use crate::enumerations::Enumerations;
-use crate::input::MirrorImports;
-use crate::input::TypeModules;
+use crate::input::{MirrorImports, TypeModules};
 use crate::typescript::format::TypeScriptFormat;
 use crate::typescript::syntax::render_value;
-use crate::write::GeneratedOutput;
-use crate::write::TypeOwnership;
+use crate::write::{GeneratedOutput, TypeOwnership};
 
 /// Writes `types/`, one module per crate that declares an exported type or constant.
 pub(crate) struct TypeModuleWriter;
@@ -263,13 +260,10 @@ mod tests {
   use xrf_ipc::IpcConstant;
   use xrf_test_utils::GeneratedResources;
 
-  use crate::collected::CollectedConstants;
-  use crate::collected::CommandTypescript;
-  use crate::input::MirrorImports;
-  use crate::input::TypeModules;
+  use crate::collected::{CollectedConstants, CommandTypescript};
+  use crate::input::{MirrorImports, TypeModules};
   use crate::typescript::format::TypeScriptFormat;
-  use crate::write::TypeModuleWriter;
-  use crate::write::TypeOwnership;
+  use crate::write::{TypeModuleWriter, TypeOwnership};
 
   const IMPORTS: MirrorImports = MirrorImports::new("@/fixture");
 
@@ -287,7 +281,6 @@ mod tests {
     TypeModuleWriter::render_constant(constant, &data_type, "xrf-fixture", &ownership, &exporter, &types)
   }
 
-  /// Why `constant` was refused, or nothing where it rendered.
   fn refusal(constant: &IpcConstant) -> String {
     render(constant)
       .err()

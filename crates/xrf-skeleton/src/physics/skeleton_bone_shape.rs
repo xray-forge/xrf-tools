@@ -5,9 +5,8 @@ use xrf_math::{Cylinder, Obb, Sphere};
 
 use crate::SkeletonBoneShapeKind;
 
-/// A bone's collision shape, `SBoneShape`, as OGF visuals and editable objects both store it: which shape it is, how it
-/// takes part in physics, and all three shapes, of which `kind` selects one; the engine keeps the other two as last
-/// edited.
+/// A bone's collision shape, `SBoneShape`, as OGF visuals and editable objects store it. `kind` selects one of the
+/// three shapes; the engine keeps the other two as last edited.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SkeletonBoneShape {
   pub kind: SkeletonBoneShapeKind,

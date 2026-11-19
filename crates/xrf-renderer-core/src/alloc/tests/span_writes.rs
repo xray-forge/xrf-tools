@@ -27,8 +27,7 @@ fn applies_a_later_write_over_an_earlier_one() {
   assert_eq!(writes.take_runs(), [(0, vec![3, 3, 3, 3, 2, 2, 2, 2])]);
 }
 
-// A later write wins however the two start: one starting first over one that started later, as a span cleared and
-// another allocated over part of it in the same frame writes.
+// As when a span is cleared and another allocated over part of it in the same frame.
 #[test]
 fn applies_a_later_write_over_an_earlier_one_starting_after_it() {
   let mut writes: SpanWrites = SpanWrites::default();

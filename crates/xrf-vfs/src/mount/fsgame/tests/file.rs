@@ -148,8 +148,7 @@ fn resolves_a_root_column_naming_an_absolute_directory() {
 
 #[test]
 fn resolves_a_relative_root_column_under_the_files_directory() {
-  // The locator opens the file from its working directory and takes `$fs_root$` from there, so a relative root names a
-  // directory beside the file: the SDK's `fs.ltx` declares `$server_data_root$` as `rawdata\`.
+  // The SDK's `fs.ltx` declares `$server_data_root$` as `rawdata\`.
   let file: FsgameFile = FsgameFile::parse(
     root(),
     "$server_data_root$ = false | false | rawdata\\\n$objects$ = true | true | $server_data_root$ | objects\\\n\
@@ -173,7 +172,6 @@ fn resolves_a_relative_root_column_under_the_files_directory() {
 
 #[test]
 fn leaves_a_root_column_rooted_without_a_drive_unresolved() {
-  // `\` is the root of whichever drive the locator ran on, which a file read elsewhere cannot know.
   let file: FsgameFile = FsgameFile::parse(
     root(),
     "$server_root$ = false | true | \\\n$app_data_root$ = true | false | $server_root$ | _appdata_\\\n",

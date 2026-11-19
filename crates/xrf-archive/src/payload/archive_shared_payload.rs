@@ -8,15 +8,10 @@ use crate::volume::ArchiveFileDescriptor;
 /// The fields a reader locates and checks a payload by.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct PayloadLocation {
-  /// Which volume holds the bytes.
   volume: u32,
-  /// Byte offset of the payload inside its volume.
   offset: u32,
-  /// Payload bytes as stored in the volume.
   size_compressed: u32,
-  /// Payload bytes once unpacked.
   size_real: u32,
-  /// CRC32 of the unpacked payload.
   crc: u32,
 }
 

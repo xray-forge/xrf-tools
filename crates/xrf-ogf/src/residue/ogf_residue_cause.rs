@@ -12,10 +12,10 @@ pub enum OgfResidueCause {
   /// does, and the loader reads them off the visual's own reader whatever the size says.
   OverstatedMotionRefs { declared: u32 },
   /// A last LODs chunk declares more bytes than the file holds, but its line ends within the file, where the loader's
-  /// `r_string` stops reading, past one more byte it looks at for a further line end.
+  /// `r_string` stops after looking one byte further for a second line-end character.
   OverstatedLods { declared: u32 },
-  /// Bytes after the last chunk, headed by an id no loader asks for and a size past the file's end: `find_chunk` skips
-  /// them by that size and ends its search, so they are never read. Text appended to a visual reads so.
+  /// Bytes after the last chunk, headed by an id no loader asks for and a size past the file's end, which `find_chunk`
+  /// skips without reading. Text appended to a visual reads so.
   UnreadTrailingChunk { id: u32 },
 }
 

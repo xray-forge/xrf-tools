@@ -3,9 +3,9 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use crate::param::binding_key::BindingKey;
 use crate::param::pass_binding::PassBinding;
 
-/// What a cached bind group binds: its layout and, binding by binding, the resources by identity. A group is found by
-/// its hash and matched by `is_of`, both read from a frame's bindings as they are, so a lookup that finds it takes
-/// nothing from them; the key itself is made only for a group made anew.
+/// What a cached bind group binds: its layout and each binding's resources by identity.
+///
+/// A lookup reads a frame's bindings directly through `hash_of` and `is_of`; the key is made only for a new group.
 #[derive(Debug)]
 pub(crate) struct BindGroupKey {
   pub layout: wgpu::BindGroupLayout,

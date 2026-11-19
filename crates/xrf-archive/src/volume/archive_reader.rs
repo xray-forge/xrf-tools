@@ -177,9 +177,10 @@ impl ArchiveReader {
     Ok(buffer)
   }
 
-  /// The entries a stored name table lists. A compressed one in a volume with no metadata, other than an `.xdb`, is
-  /// Shadow of Chornobyl's and enciphered, as `CLocatorAPI::LoadArchive` assumes: deciphered with the worldwide key,
-  /// else the Russian one, the key that yields a table that decompresses and reads whole winning.
+  /// The entries a stored name table lists.
+  ///
+  /// A compressed one in a volume with no metadata, other than an `.xdb`, is taken as Shadow of Chornobyl's and
+  /// enciphered, as `CLocatorAPI::LoadArchive` assumes: the first key whose table decompresses and reads whole wins.
   fn read_name_table(
     &self,
     stored: &[u8],

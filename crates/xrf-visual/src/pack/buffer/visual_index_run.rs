@@ -3,9 +3,8 @@ use crate::pack::buffer::visual_index_window::VisualIndexWindow;
 
 /// A mesh's whole run of indices beside the vertices they name, checked against them once.
 ///
-/// Every window of a mesh lies within its run, so a run naming only vertices the mesh has vouches for each window, which
-/// is then checked for its bounds alone. A progressive mesh stores dozens of windows, each nearly the whole run, and
-/// reading each one's indices again was most of what packing a model cost.
+/// Every window lies within the run, so a sound run vouches for each window, which is then checked for bounds alone.
+/// A progressive mesh stores dozens of windows, each nearly the whole run, and re-reading each dominated packing.
 pub(crate) struct VisualIndexRun<'a> {
   indices: &'a [u16],
   vertex_count: u32,

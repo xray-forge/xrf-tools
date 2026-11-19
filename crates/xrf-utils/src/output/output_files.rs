@@ -155,15 +155,13 @@ impl OutputFiles {
     Ok(found)
   }
 
-  /// Removes the files of the run that are there but not among `written`, the paths it wrote this time, each compared
-  /// below the directory and without case: what a forced run leaves of an earlier one's larger output. Answers what it
-  /// removed.
+  /// Removes the run's files that are there but not among `written`, the paths it wrote this time, compared below the
+  /// directory without case: what an earlier, larger output leaves. Answers what it removed.
   ///
   /// # Errors
   ///
-  /// Returns an invalid error, removing nothing, when a written path is not below the directory as spelled here, since
-  /// it could not be told apart from a stale file; an IO error when a directory cannot be listed or a stale file cannot
-  /// be removed.
+  /// Returns an invalid error, removing nothing, when a written path is not below the directory as spelled here; an IO
+  /// error when a directory cannot be listed or a stale file cannot be removed.
   pub fn remove_stale(&self, written: &[PathBuf]) -> XrfResult<Vec<PathBuf>> {
     let written: Vec<String> = written
       .iter()

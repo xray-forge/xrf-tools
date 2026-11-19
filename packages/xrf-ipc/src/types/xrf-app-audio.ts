@@ -4,7 +4,7 @@ import { AudioOutputChoice, AudioSpatialization } from "#/types/xrf-audio";
 
 /**
  * How the application plays sound, kept by the backend between runs so it holds before any page loads; stored
- * settings that no longer read whole are left for the defaults.
+ * settings that no longer read fall back to the defaults.
  */
 export type AudioSettings = {
   /** The device sound plays on. */
@@ -13,8 +13,8 @@ export type AudioSettings = {
   /** Whether sound falls silent while no window of the application has the focus. */
   isMutedInBackground: boolean;
   /**
-   * Whether placed sounds are heard for headphones, through the HRTF, or panned for speakers; settings kept before
-   * there was a choice take headphones.
+   * Whether placed sounds go through the HRTF for headphones or are panned for speakers; older settings without it
+   * take headphones.
    */
   spatialization?: AudioSpatialization;
 };

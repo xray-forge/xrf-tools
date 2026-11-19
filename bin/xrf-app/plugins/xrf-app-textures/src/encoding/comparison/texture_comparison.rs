@@ -25,9 +25,8 @@ pub struct TextureComparison {
   /// The texture's two files on disk, or none for one served out of an archive, which has nowhere to be written.
   pub files: Option<TextureFiles>,
   pub attempts: Vec<DdsEncodeAttempt>,
-  /// BC1 again with its one bit of alpha cutting out the texels below half, what a descriptor flagged as having alpha
-  /// names `tfADXT1`; the comparison shows the opaque BC1, which it is block for block wherever nothing is cut out.
-  /// None where the comparison stopped before it.
+  /// BC1 with its one alpha bit cutting out texels below half, the `tfADXT1` a descriptor with alpha names; `None`
+  /// where the comparison stopped first. The comparison shows the opaque BC1, identical wherever nothing is cut out.
   pub cut_out_bc1: Option<DdsFile>,
 }
 
@@ -118,8 +117,8 @@ impl TextureComparison {
     })
   }
 
-  /// The encoded file a save writes for `format` beside a descriptor that says whether its alpha means anything: BC1 cut
-  /// out where it does, `tfADXT1`, else the candidate as compared.
+  /// The encoded file a save writes for `format`: the cut-out BC1 (`tfADXT1`) where the descriptor `has_alpha`, else
+  /// the candidate as compared.
   ///
   /// # Errors
   ///

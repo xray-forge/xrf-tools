@@ -371,8 +371,7 @@ impl XraySearch {
   }
 
   /// The first `count` bytes of the copy of an exact logical path this search finds, or the whole of a shorter one,
-  /// recorded as [`Self::read`] records a read: for a reader wanting only a header, which a loose file then gives without
-  /// reading the rest.
+  /// recorded as [`Self::read`] records a read. A loose file gives them without reading the rest.
   ///
   /// # Errors
   ///

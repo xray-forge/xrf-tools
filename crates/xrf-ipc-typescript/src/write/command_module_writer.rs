@@ -25,8 +25,7 @@ impl CommandModuleWriter {
   /// member, and the commands' signatures, importing the types the wrappers name from the modules declaring them.
   ///
   /// The command object is named after the plugin, so no call site has to alias one of a dozen identical names.
-  /// `invoke` is the counted wrapper rather than Tauri's own: it counts every call, which is why it is imported here
-  /// rather than left to every call site to remember, so a command added later is measured by existing.
+  /// `invoke` is the counted wrapper, not Tauri's own, imported here so every command, a later one too, is counted.
   ///
   /// # Errors
   ///
@@ -97,9 +96,8 @@ impl CommandModuleWriter {
 
   /// Writes the wrappers for one domain's raw commands.
   ///
-  /// Specta cannot collect a command returning `tauri::ipc::Response`, so these are generated from the registry
-  /// instead of written by hand. The registry carries each argument's TypeScript type for exactly this reason;
-  /// the return is always `ArrayBuffer`, which is what the raw response arrives as.
+  /// Specta cannot collect a command returning `tauri::ipc::Response`, so these come from the registry, which carries
+  /// each argument's TypeScript type for this reason. The return is always `ArrayBuffer`, as the raw response arrives.
   ///
   /// # Errors
   ///
@@ -165,9 +163,8 @@ impl CommandModuleWriter {
 
   /// Writes the wrappers for one domain's bulk routes.
   ///
-  /// A route is not a command and Specta never sees it, so these are generated from the registry instead of written
-  /// by hand; the registry carries each argument's TypeScript type for exactly this reason. A wrapper answers the call
-  /// as data, its route and arguments, so the page can fetch it or hand it to another thread to fetch.
+  /// Specta never sees a route, so these come from the registry, as raw commands do. A wrapper answers the call as
+  /// data, its route and arguments, so the page can fetch it or hand it to another thread to fetch.
   ///
   /// # Errors
   ///
@@ -415,7 +412,6 @@ mod tests {
     Ok(path)
   }
 
-  /// Why writing `name` through `write` was refused, or nothing where it was written.
   fn refusal(name: &str, write: impl FnOnce(&PathBuf, &TypeOwnership, &Enumerations) -> XrfResult) -> String {
     written(name, write)
       .err()

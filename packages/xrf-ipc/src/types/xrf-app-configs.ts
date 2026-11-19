@@ -20,11 +20,10 @@ export const CONFIGS_JOB_FORMAT = "configs.format" as const;
 export const CONFIGS_JOB_VERIFY = "configs.verify" as const;
 
 /**
- * What a declaration search over the open project found, as much of it as one answer carries.
+ * What a declaration search over the open project found, cut to the first `MAXIMUM_DECLARATIONS` in project order.
  *
- * A common field or an empty value matches hundreds of thousands of statements on a modded install, so the answer
- * holds the first `MAXIMUM_DECLARATIONS` in project order and says how many there were; narrowing the query is how a
- * reader sees the rest.
+ * A common field or an empty value matches hundreds of thousands of statements on a modded install; a narrower query
+ * shows the rest.
  */
 export type ConfigsDeclarationSearch = {
   /** The search, its declarations cut to the first ones in project order. */
@@ -42,13 +41,12 @@ export type ConfigsDocument = {
 };
 
 /**
- * Where a reader wants to know a section, a field or a value is written, across the open project.
+ * A search for where the open project writes a section, a field or a value.
  *
- * No way to say how names compare: that is the project's dialect's to decide, so the backend reads it from the project
- * rather than trusting a page to agree.
+ * It carries no name comparison: the backend takes that from the project's dialect.
  */
 export type ConfigsFindDeclarationsRequest = {
-  /** The open this search is addressed to; a search naming one closed is refused rather than answered. */
+  /** The open project searched; a closed one is refused. */
   sessionId: SessionId;
   /** Section name without brackets or operation prefix. */
   section: string | null;

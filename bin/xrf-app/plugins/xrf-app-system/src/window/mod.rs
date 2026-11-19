@@ -1,5 +1,5 @@
-//! The window as its page sees it: the moment the page has drawn its first screen, a close the page asked about
-//! first and agreed to, and what the page decided about leaving, which only the page knows.
+//! The window as its page drives it: shown once the page has drawn, closed once the page agrees, and the page's
+//! decision about leaving, which only the page knows.
 
 pub(crate) mod commands;
 mod request;

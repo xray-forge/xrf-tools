@@ -24,12 +24,12 @@ pub struct RayQueryDevice {
 }
 
 impl RayQueryDevice {
-  /// The features asked for: ray queries alone.
   pub const FEATURES: wgpu::Features = wgpu::Features::EXPERIMENTAL_RAY_QUERY;
 
-  /// Starts the adapter that traces rays as `ask` asks: on D3D12 where it names DXC's `dxcompiler.dll` and the adapter
-  /// traces there, else on Vulkan; the GPU it names where the backend has it tracing rays, else the high-performance
-  /// one. Its own limits are asked for, so a tool can bind buffers as large as the device allows.
+  /// Starts a device as `ask` asks: on D3D12 where it names DXC and the adapter traces there, else on Vulkan; on the
+  /// GPU it names where that GPU traces rays, else the high-performance one.
+  ///
+  /// The adapter's own limits are asked for, so a tool can bind buffers as large as the device allows.
   ///
   /// # Errors
   ///

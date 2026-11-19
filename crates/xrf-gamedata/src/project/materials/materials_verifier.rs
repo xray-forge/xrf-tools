@@ -183,8 +183,7 @@ impl MaterialsVerifier<'_> {
     }
   }
 
-  /// Every config's material names, taken in the project's order so the findings are the ones one config at a time
-  /// gives.
+  /// Every config's material names, taken in the project's order.
   fn verify_configs(&self, library: &GameMtlFile, result: &mut GamedataMaterialsVerificationResult) {
     let outcomes: Vec<(PathBuf, XrfResult<GamedataMaterialsVerificationResult>)> =
       self.project.visit_configs(&self.options.job, |ltx, reported| {

@@ -1,7 +1,3 @@
-//! What `spawn build` refuses before it builds anything: a gamedata root without its level list, a level the list does
-//! not name, a level directory missing its files, a destination that is no `.spawn` file, and a spawn already there
-//! without `--force`; and that `--levels-root` and `--dest` move where the levels are read and the spawn written.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -32,7 +28,6 @@ fn get_error(verdict: CommandResult) -> String {
   }
 }
 
-/// A gamedata root listing one level, `zaton`, whose directory is empty.
 fn gamedata(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("spawn-build/{name}"))?;
 
@@ -88,7 +83,7 @@ fn refuses_levels_it_cannot_build() -> XrfResult {
   Ok(())
 }
 
-/// `-d` names the file written, as it does on every other command, so a folder or another extension is refused.
+// `-d` names the file written, as on every other command, so a folder or another extension is refused.
 #[test]
 fn refuses_a_destination_that_is_no_spawn_file() -> XrfResult {
   let root: PathBuf = gamedata("not-a-spawn")?;
@@ -154,7 +149,6 @@ fn refuses_to_write_over_a_spawn_unless_forced() -> XrfResult {
   assert!(error.contains("test.spawn"), "Unexpected error: {error}");
   assert_eq!(fs::read(root.join("spawns/test.spawn"))?, [0u8; 4]);
 
-  // Forced, it goes on to the levels.
   let forced: String = get_error(run(&root, &["--dest", &named, "--force"]));
 
   assert!(

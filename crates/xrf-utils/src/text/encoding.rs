@@ -51,8 +51,7 @@ pub fn decode_bytes_to_string(bytes: &[u8], encoding: XRayEncoding) -> io::Resul
 }
 
 /// Decodes `bytes` in `encoding` as [`decode_bytes_to_string`] does, keeping the buffer as the string when its bytes
-/// already are that text: ASCII decodes to itself in every code page, so a large document is not copied to come out
-/// the same.
+/// already are that text, as ASCII is in every code page.
 fn decode_vec_to_string(bytes: Vec<u8>, encoding: XRayEncoding) -> io::Result<String> {
   let (cow, _, had_errors) = encoding.decode(&bytes);
 
@@ -60,7 +59,7 @@ fn decode_vec_to_string(bytes: Vec<u8>, encoding: XRayEncoding) -> io::Result<St
     return Err(new_decode_error(encoding, bytes.len()));
   }
 
-  // Borrowed and as long as the buffer is the buffer read as it stands; a byte order mark makes it shorter.
+  // A byte order mark makes a borrowed decode shorter than the buffer, so only an equal length is the buffer itself.
   let decoded: Option<String> = match cow {
     Cow::Borrowed(text) if text.len() == bytes.len() => None,
     cow => Some(cow.into_owned()),
@@ -114,8 +113,7 @@ pub fn encode_string_to_bytes(string: &str, encoding: XRayEncoding) -> io::Resul
 }
 
 /// Encodes `string` in `encoding` as [`encode_string_to_bytes`] does, handing back the string's own buffer when its
-/// bytes already are the encoding: ASCII encodes to itself in every code page, so a large document is not copied to
-/// come out the same.
+/// bytes already are the encoding, as ASCII is in every code page.
 fn encode_string_into_bytes(string: String, encoding: XRayEncoding) -> io::Result<Vec<u8>> {
   let (transformed, _, had_errors) = encoding.encode(&string);
 
@@ -157,9 +155,8 @@ pub fn decode_w1251_bytes_to_string(bytes: &[u8]) -> io::Result<String> {
 
 /// Decodes a string a binary format stores, a chunk's name or a fixed-length field, as Windows-1251 throughout.
 ///
-/// No byte order mark is looked for: such a string is never a document of its own, so `EF BB BF` at its start is
-/// «п»ї» and `FF FE` is «яю», and reading either as a mark would drop or reinterpret bytes a writer then cannot put
-/// back.
+/// No byte order mark is looked for: such a string is never a document, so `EF BB BF` is «п»ї» and `FF FE` is «яю»,
+/// and reading either as a mark would lose bytes a writer cannot put back.
 #[inline]
 pub fn decode_w1251_field_to_string(bytes: &[u8]) -> io::Result<String> {
   decode_bytes_to_string_without_bom_handling(bytes, WINDOWS_1251)
@@ -263,14 +260,12 @@ mod tests {
       );
     }
 
-    // A byte order mark announcing UTF-8 ahead of bytes that are not is refused by both.
     assert!(read_as_string_from_w1251_encoded(&mut &[0xef, 0xbb, 0xbf, 0xff][..]).is_err());
     assert!(decode_w1251_bytes_to_string(&[0xef, 0xbb, 0xbf, 0xff]).is_err());
   }
 
   #[test]
   fn a_field_opening_on_byte_order_mark_bytes_reads_as_its_letters() {
-    // `EF BB BF` and `FF FE` are «п»ї» and «яю» in Windows-1251, and a field holds nothing else.
     for bytes in [
       &[0xef, 0xbb, 0xbf, b'a'][..],
       &[0xff, 0xfe, b'a'][..],
@@ -289,7 +284,7 @@ mod tests {
 
   #[test]
   fn a_document_honours_a_byte_order_mark() {
-    // A text editor saving a whole LTX may leave one, and the document reader keeps reading such a file as before.
+    // A text editor saving a whole LTX may leave one.
     assert_eq!(
       decode_w1251_bytes_to_string(&[0xef, 0xbb, 0xbf, b'a']).expect("decodes"),
       "a"

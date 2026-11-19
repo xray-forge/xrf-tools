@@ -25,7 +25,6 @@ impl SpanWrites {
   pub fn take_runs(&mut self) -> Vec<(u64, Vec<u8>)> {
     let entries: Vec<(u64, Range<usize>)> = std::mem::take(&mut self.entries);
     let data: Vec<u8> = std::mem::take(&mut self.data);
-    // The runs' extents, from the writes' in offset order, each write joining the run it touches.
     let mut spans: Vec<(u64, u64)> = entries
       .iter()
       .map(|(offset, range)| (*offset, *offset + range.len() as u64))
@@ -47,8 +46,7 @@ impl SpanWrites {
       .map(|(start, end)| (*start, vec![0; (end - start) as usize]))
       .collect();
 
-    // Each write laid over its run in the order it was pushed, so a later one wins wherever two overlap, whichever
-    // starts first.
+    // In push order, so a later write wins wherever two overlap, whichever starts first.
     for (offset, range) in entries {
       let (start, run) = &mut runs[extents.partition_point(|(start, _)| *start <= offset) - 1];
       let at: usize = (offset - *start) as usize;

@@ -5,8 +5,8 @@ use xrf_app_core::TauriResult;
 
 use crate::Renderer;
 
-/// The longest step a frame's clock takes: a capture steps by a frame's time, and a step far past it would only move
-/// the scenes' clocks towards the end of what the platform's clock can stand for.
+/// The longest clock step: a capture steps by a frame's time, and far longer steps only run the scenes' clocks towards
+/// the platform clock's limit.
 const LONGEST_STEP: Duration = Duration::from_secs(3600);
 
 /// Draw every scene's frames `seconds` apart on its clock from the next on, however long each takes, so what moves
