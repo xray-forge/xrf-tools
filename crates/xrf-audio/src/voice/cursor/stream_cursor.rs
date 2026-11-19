@@ -44,7 +44,7 @@ impl StreamCursor {
   /// The source frame playing now, wrapped into the sound for a looping stream.
   pub(crate) fn get_frame(&self) -> u64 {
     let frames_count: u64 = self.reader.get_frames_count().max(1);
-    let played: u64 = self.taken.saturating_sub(self.filled.min(3) as u64);
+    let played: u64 = self.taken.saturating_sub(self.filled as u64);
 
     (self.reader.get_start_frame() + played) % frames_count
   }

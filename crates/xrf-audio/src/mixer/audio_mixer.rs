@@ -310,10 +310,11 @@ impl AudioMixer {
   /// Hands `tap` back to the control side, which frees it.
   fn retire_tap(tap: Option<Box<MixerTap>>, retired: &mut Producer<Box<MixerTap>>) {
     // The control side never has more taps out than the ring holds (`AudioEngine::TAPS_MOST`), so it is never full; were
-    // it, the tap would be lost rather than freed on this thread.
+    // it, a debug build stops on the sizing fault and a release one loses the tap rather than freeing it on this thread.
     if let Some(tap) = tap
       && let Err(rtrb::PushError::Full(tap)) = retired.push(tap)
     {
+      debug_assert!(false, "the retired taps' ring is full");
       std::mem::forget(tap);
     }
   }
@@ -362,8 +363,10 @@ impl AudioMixer {
     );
 
     // The ring holds one entry a slot and a slot is reused only after its voice came back through it, so it is never
-    // full here; were it full, the voice would be lost rather than freed on this thread.
+    // full here; were it full, a debug build stops on the sizing fault and a release one loses the voice rather than
+    // freeing it on this thread.
     if let Err(rtrb::PushError::Full(voice)) = retired.push(voice) {
+      debug_assert!(false, "the retired voices' ring is full");
       std::mem::forget(voice);
     }
   }

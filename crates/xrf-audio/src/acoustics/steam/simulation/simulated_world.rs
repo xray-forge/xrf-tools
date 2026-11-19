@@ -56,6 +56,9 @@ impl SimulatedWorld {
   const REVERB_RAYS: u32 = 4096;
   const REVERB_BOUNCES: u32 = 16;
 
+  /// Directions sampled for each diffuse reflection of the reverb's rays.
+  const REVERB_DIFFUSE_SAMPLES: u32 = 32;
+
   /// Steam Audio's scene of `mesh`, its reverb traced on `reverb_threads` threads.
   pub(crate) fn build(steam: &SteamAudio, mesh: &AudioSceneMesh, reverb_threads: u32) -> Result<Self, String> {
     if !mesh.is_valid() {
@@ -118,7 +121,7 @@ impl SimulatedWorld {
       context,
       &SimulationSettings::new(&settings).with_reflections(ParametricSettings {
         max_num_rays: Self::REVERB_RAYS,
-        num_diffuse_samples: 32,
+        num_diffuse_samples: Self::REVERB_DIFFUSE_SAMPLES,
         max_duration: MixerReverb::MAX_DURATION,
         max_num_sources: 1,
         num_threads: reverb_threads,

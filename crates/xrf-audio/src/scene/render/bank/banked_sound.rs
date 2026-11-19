@@ -36,6 +36,8 @@ impl BankedSound {
     match self {
       Self::Decoded(sound) => Arc::strong_count(sound) == 1,
       Self::Streamed { bytes, .. } => Arc::strong_count(bytes) == 1,
+      // Neither holds bytes, so letting it go frees nothing; kept, a sound being read is not asked for twice and a
+      // refused one is not read again.
       Self::Loading | Self::Refused(_) => false,
     }
   }
