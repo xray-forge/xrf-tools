@@ -129,10 +129,10 @@ fn encode_string_into_bytes(string: String, encoding: XRayEncoding) -> io::Resul
   Ok(encoded.unwrap_or_else(|| string.into_bytes()))
 }
 
-fn new_encode_error(encoding: XRayEncoding, length: usize) -> io::Error {
+fn new_encode_error(encoding: XRayEncoding, byte_length: usize) -> io::Error {
   io::Error::new(
     ErrorKind::InvalidData,
-    format!("Failed to encode string with {encoding:?} encoding, {length} characters"),
+    format!("Failed to encode string with {encoding:?} encoding, {byte_length} bytes"),
   )
 }
 
