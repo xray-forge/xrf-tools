@@ -9,7 +9,8 @@ use xrf_utils::{format_duration, format_path};
 use crate::commands::packed_file::{
   PackedFileArguments, PackedFileDestination, PackedFileFormat, PackedFileUnpackReport, PackedFileUnpacked,
 };
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
 /// Unpacks one file into a folder of text files.
@@ -26,9 +27,12 @@ impl<F: PackedFileFormat> GenericCommand for UnpackCommand<F> {
     "unpack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path(format!("Packed {}", F::FILE_NAME))
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command.about(format!("Unpack a {} into a folder of text files", F::FILE_NAME));
-    let command: Command = PackedFileArguments::declare_path(command, format!("Packed {}", F::FILE_NAME));
     let command: Command =
       PackedFileArguments::declare_dest(command, format!("Folder the unpacked {} is written to", F::NOUN));
 
@@ -36,7 +40,7 @@ impl<F: PackedFileFormat> GenericCommand for UnpackCommand<F> {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::path_of(matches);
+    let path: &PathBuf = InputArgument::of(matches);
     let dest: &PathBuf = PackedFileArguments::dest_of(matches);
     let output: OutputOptions = context.get_output().clone();
 

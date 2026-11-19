@@ -16,7 +16,6 @@ use crate::core::command::{CommandError, CommandResult, GenericCommand};
 fn arguments_of<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> Vec<String> {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
-    String::from("--path"),
     path.display().to_string(),
     String::from("--silent"),
   ];

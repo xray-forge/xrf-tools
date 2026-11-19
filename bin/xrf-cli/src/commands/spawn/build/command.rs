@@ -6,8 +6,8 @@ use xrf_output::OutputOptions;
 use xrf_spawn_builder::{SpawnRootGamedata, SpawnRootOptions, SpawnRootOutcome, SpawnRootRequest};
 use xrf_utils::format_path;
 
-use crate::core::arguments::JobsArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, JobsArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 /// Builds a root spawn from a gamedata root's levels, as SDK 0.7's `xrAI -s` does.
@@ -19,22 +19,19 @@ impl GenericCommand for BuildCommand {
     "build"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path(
+      "Gamedata root holding configs/game_levels.ltx, and by default the levels' directories under levels/ and \
+             the spawn written under spawns/",
+    )
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about(
         "Build a root spawn from a gamedata root's levels, as SDK 0.7's xrAI -s does: each level's level.ai, \
          level.spawn and level.game into one spawn with the game graph, its cross tables, the entities, artefact \
          points and patrols. The same levels give the same file",
-      )
-      .arg(
-        Arg::new("gamedata")
-          .help(
-            "Gamedata root holding configs/game_levels.ltx, and by default the levels' directories under levels/ and \
-             the spawn written under spawns/",
-          )
-          .long("gamedata")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("levels-root")
@@ -91,10 +88,7 @@ impl GenericCommand for BuildCommand {
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let (destination, name) = Self::split_destination(matches.get_one::<PathBuf>("dest"))?;
     let request: SpawnRootRequest = SpawnRootRequest {
-      gamedata: matches
-        .get_one::<PathBuf>("gamedata")
-        .expect("the gamedata root is required")
-        .clone(),
+      gamedata: InputArgument::of(matches).clone(),
       levels_root: matches.get_one::<PathBuf>("levels-root").cloned(),
       levels: matches
         .get_many::<String>("levels")

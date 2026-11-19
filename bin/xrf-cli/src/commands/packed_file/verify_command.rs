@@ -8,8 +8,9 @@ use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::{format_path, format_portable_path};
 
-use crate::commands::packed_file::{PackedFileArguments, PackedFileFormat, PackedFileVerifyReport};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::commands::packed_file::{PackedFileFormat, PackedFileVerifyReport};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 /// Reads one packed file, or its unpacked folder, and judges whether it reads.
@@ -30,14 +31,15 @@ impl<F: PackedFileFormat> GenericCommand for VerifyCommand<F> {
     "verify"
   }
 
-  fn declare(&self, command: Command) -> Command {
-    let command: Command = command.about(format!("Verify that a {} reads", F::FILE_NAME));
+  fn input(&self) -> CommandInput {
+    CommandInput::path(format!(
+      "Packed {}, or its unpacked folder with --unpacked",
+      F::FILE_NAME
+    ))
+  }
 
-    PackedFileArguments::declare_path(
-      command,
-      format!("Packed {}, or its unpacked folder with --unpacked", F::FILE_NAME),
-    )
-    .arg(
+  fn declare(&self, command: Command) -> Command {
+    command.about(format!("Verify that a {} reads", F::FILE_NAME)).arg(
       Arg::new(Self::UNPACKED)
         .help(format!("Read the path as an unpacked {} folder", F::NOUN))
         .short('u')
@@ -47,7 +49,7 @@ impl<F: PackedFileFormat> GenericCommand for VerifyCommand<F> {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::path_of(matches);
+    let path: &PathBuf = InputArgument::of(matches);
     let is_unpacked: bool = matches.get_flag(Self::UNPACKED);
     let output: OutputOptions = context.get_output().clone();
     let started_at: Instant = Instant::now();

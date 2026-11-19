@@ -9,8 +9,9 @@ use xrf_utils::format_path;
 
 use super::report::ParticleInspectReport;
 use crate::commands::particle::particle_names::ParticleNames;
-use crate::commands::particle::particles_file_arguments::ParticlesFileArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::commands::particle::particles_file_input::ParticlesFileInput;
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 const NAME_ARGUMENT: &str = "name";
 
@@ -25,21 +26,25 @@ impl GenericCommand for InspectCommand {
     "inspect"
   }
 
+  fn input(&self) -> CommandInput {
+    ParticlesFileInput::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    ParticlesFileArguments::declare(
-      command.about("Explain one effect or group: its sprite, frames and actions, or the effects it plays and spawns"),
-    )
-    .arg(
-      Arg::new(NAME_ARGUMENT)
-        .help("Name of the effect or group, in any case and with either slash, such as explosions\\campfire")
-        .required(true)
-        .value_parser(value_parser!(String)),
-    )
+    command
+      .about("Explain one effect or group: its sprite, frames and actions, or the effects it plays and spawns")
+      .arg(
+        Arg::new(NAME_ARGUMENT)
+          .help("Name of the effect or group, in any case and with either slash, such as explosions\\campfire")
+          .long(NAME_ARGUMENT)
+          .required(true)
+          .value_parser(value_parser!(String)),
+      )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let file: ParticlesFile = ParticlesFileArguments::open(matches)?;
+    let file: ParticlesFile = ParticlesFileInput::open(matches)?;
     let name: &String = matches
       .get_one::<String>(NAME_ARGUMENT)
       .expect("Expected the required name");
@@ -53,7 +58,7 @@ impl GenericCommand for InspectCommand {
       return Err(
         XrfError::new_not_found_error(format!(
           "No effect or group '{name}' in {}{}",
-          format_path(ParticlesFileArguments::path_of(matches)),
+          format_path(InputArgument::of(matches)),
           Self::describe_suggestions(&file, name)
         ))
         .into(),

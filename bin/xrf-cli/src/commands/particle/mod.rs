@@ -3,7 +3,7 @@ pub(crate) mod info;
 pub(crate) mod inspect;
 pub(crate) mod list;
 pub(crate) mod particle_names;
-pub(crate) mod particles_file_arguments;
+pub(crate) mod particles_file_input;
 
 #[cfg(test)]
 pub(crate) mod fixtures;

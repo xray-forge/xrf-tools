@@ -18,7 +18,7 @@ impl GenericCommand for InfoCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to dds file")
+    CommandInput::path("Path to dds file")
   }
 
   fn declare(&self, command: Command) -> Command {

@@ -21,7 +21,7 @@ impl GenericCommand for PackPatchCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("What to patch: an installation, a directory of volumes, or a gamedata tree")
+    CommandInput::path("What to patch: an installation, a directory of volumes, or a gamedata tree")
   }
 
   fn declare(&self, command: Command) -> Command {

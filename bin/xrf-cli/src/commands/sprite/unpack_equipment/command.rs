@@ -10,8 +10,8 @@ use xrf_texture::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
 use xrf_utils::format_path;
 
 use super::report::SpriteEquipmentUnpackReport;
-use crate::core::arguments::{LinkPolicyArgument, LtxDialectArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LinkPolicyArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -22,6 +22,10 @@ impl GenericCommand for UnpackEquipmentCommand {
     "unpack-equipment"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Equipment sprite dds file to read")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Unpack separate icon files out of an equipment sprite")
@@ -29,14 +33,6 @@ impl GenericCommand for UnpackEquipmentCommand {
         Arg::new("system-ltx")
           .help("Path to system ltx file or root folder with ltx files")
           .long("system-ltx")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("path")
-          .help("Equipment sprite dds file to read")
-          .short('p')
-          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -57,9 +53,7 @@ impl GenericCommand for UnpackEquipmentCommand {
       .get_one::<PathBuf>("system-ltx")
       .expect("Expected valid path to be provided for system-ltx");
 
-    let source: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid source path to be provided");
+    let source: &PathBuf = InputArgument::of(matches);
 
     let output: &PathBuf = matches
       .get_one::<PathBuf>("dest")

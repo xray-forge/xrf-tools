@@ -171,7 +171,7 @@ fn follows_links_on_a_command_without_the_flag() {
 }
 
 fn parse_input(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
-  InputArgument::declare(Command::new("info").no_binary_name(true), "a volume").try_get_matches_from(arguments)
+  InputArgument::declare(Command::new("info").no_binary_name(true), "a volume".into()).try_get_matches_from(arguments)
 }
 
 #[test]

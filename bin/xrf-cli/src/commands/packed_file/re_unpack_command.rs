@@ -9,7 +9,8 @@ use xrf_utils::{format_duration, format_path};
 use crate::commands::packed_file::{
   PackedFileArguments, PackedFileDestination, PackedFileFormat, PackedFileUnpackReport, PackedFileUnpacked,
 };
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
 /// Reads one unpacked folder and writes it unpacked again, which proves the text round trip.
@@ -26,12 +27,15 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
     "re-unpack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path(format!("Unpacked {} folder", F::NOUN))
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command.about(format!(
       "Read an unpacked {} folder and write it unpacked again",
       F::NOUN
     ));
-    let command: Command = PackedFileArguments::declare_path(command, format!("Unpacked {} folder", F::NOUN));
     let command: Command =
       PackedFileArguments::declare_dest(command, format!("Folder the re-unpacked {} is written to", F::NOUN));
 
@@ -39,7 +43,7 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::path_of(matches);
+    let path: &PathBuf = InputArgument::of(matches);
     let dest: &PathBuf = PackedFileArguments::dest_of(matches);
     let output: OutputOptions = context.get_output().clone();
 

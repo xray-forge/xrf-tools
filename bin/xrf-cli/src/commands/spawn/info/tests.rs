@@ -15,7 +15,6 @@ fn run(path: &Path) -> CommandResult<Option<Value>> {
     &InfoCommand,
     &[
       String::from(InfoCommand.operation()),
-      String::from("--path"),
       path.display().to_string(),
       String::from("--silent"),
       String::from("--json"),

@@ -20,7 +20,7 @@ impl GenericCommand for ExtractCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to an archive volume or a directory containing volumes")
+    CommandInput::path("Path to an archive volume or a directory containing volumes")
   }
 
   fn declare(&self, command: Command) -> Command {

@@ -32,7 +32,7 @@ impl GenericCommand for PackCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Directory to pack, normally a gamedata root")
+    CommandInput::path("Directory to pack, normally a gamedata root")
   }
 
   fn declare(&self, command: Command) -> Command {

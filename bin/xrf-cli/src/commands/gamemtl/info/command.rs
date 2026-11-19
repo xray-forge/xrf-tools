@@ -4,8 +4,9 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::GameMtlInfoReport;
-use crate::commands::gamemtl::gamemtl_file_arguments::GameMtlFileArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::commands::gamemtl::gamemtl_file_input::GameMtlFileInput;
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct InfoCommand;
@@ -15,8 +16,12 @@ impl GenericCommand for InfoCommand {
     "info"
   }
 
+  fn input(&self) -> CommandInput {
+    GameMtlFileInput::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    GameMtlFileArguments::declare(command.about("Print what a game material library holds"))
+    command.about("Print what a game material library holds")
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -25,10 +30,10 @@ impl GenericCommand for InfoCommand {
     xrf_output::info!(
       output,
       "Read game material library {}",
-      format_path(GameMtlFileArguments::path_of(matches))
+      format_path(InputArgument::of(matches))
     );
 
-    let file: GameMtlFile = GameMtlFileArguments::open(matches)?;
+    let file: GameMtlFile = GameMtlFileInput::open(matches)?;
 
     xrf_output::info!(output, "Game material library information:");
 

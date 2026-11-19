@@ -11,7 +11,6 @@ use crate::core::command::command_testing::run_command;
 fn run(root: &Path, extra: &[&str]) -> CommandResult {
   let mut arguments: Vec<String> = vec![
     String::from("build"),
-    String::from("--gamedata"),
     root.display().to_string(),
     String::from("--silent"),
   ];

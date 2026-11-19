@@ -18,7 +18,7 @@ impl GenericCommand for DecompileCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to the OGF or .dm to decompile")
+    CommandInput::path("Path to the OGF or .dm to decompile")
   }
 
   fn declare(&self, command: Command) -> Command {

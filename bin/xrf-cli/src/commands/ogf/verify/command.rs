@@ -23,7 +23,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to an ogf file or a directory to sweep")
+    CommandInput::path("Path to an ogf file or a directory to sweep")
   }
 
   fn declare(&self, command: Command) -> Command {

@@ -19,7 +19,7 @@ impl GenericCommand for CropCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to the dds file to read the region from")
+    CommandInput::path("Path to the dds file to read the region from")
   }
 
   fn declare(&self, command: Command) -> Command {

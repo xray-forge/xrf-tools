@@ -27,7 +27,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to the .object to compile")
+    CommandInput::path("Path to the .object to compile")
   }
 
   fn declare(&self, command: Command) -> Command {

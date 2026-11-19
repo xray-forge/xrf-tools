@@ -25,7 +25,7 @@ impl GenericCommand for ExportCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Root directory containing TypeScript declaration sources")
+    CommandInput::path("Root directory containing TypeScript declaration sources")
   }
 
   fn declare(&self, command: Command) -> Command {

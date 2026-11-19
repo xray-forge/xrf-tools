@@ -11,7 +11,7 @@ impl InputArgument {
   const VALUE_NAME: &'static str = "path";
 
   /// Declares the required path on `command`, `help` saying what it names.
-  pub(crate) fn declare(command: Command, help: &'static str) -> Command {
+  pub(crate) fn declare(command: Command, help: String) -> Command {
     command.arg(
       Arg::new(Self::ID)
         .help(help)

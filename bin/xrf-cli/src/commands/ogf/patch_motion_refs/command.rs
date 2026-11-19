@@ -19,7 +19,7 @@ impl GenericCommand for PatchMotionRefsCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to ogf file")
+    CommandInput::path("Path to ogf file")
   }
 
   fn declare(&self, command: Command) -> Command {

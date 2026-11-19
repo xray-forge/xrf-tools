@@ -9,8 +9,8 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::GamedataVerifyReport;
-use crate::core::arguments::{EngineTargetArgument, JobsArgument, LtxDialectArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{EngineTargetArgument, InputArgument, JobsArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 use crate::core::terminal::CliJob;
 
@@ -25,17 +25,13 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to the assembled gamedata root")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Verify an assembled gamedata tree")
-      .arg(
-        Arg::new("path")
-          .help("Path to the assembled gamedata root")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("ignore")
           .help("Root entries to skip, replacing the defaults. Repeat to skip several")
@@ -72,10 +68,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let root: PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected a gamedata root to be provided")
-      .clone();
+    let root: PathBuf = InputArgument::of(matches).clone();
 
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
@@ -171,12 +164,9 @@ mod tests {
     let expected: Vec<GamedataVerificationType> =
       vec![GamedataVerificationType::Ltx, GamedataVerificationType::Animations];
 
+    assert_eq!(checks(&["verify", "root", "--checks", "ltx,animations"]), expected);
     assert_eq!(
-      checks(&["verify", "-p", "root", "--checks", "ltx,animations"]),
-      expected
-    );
-    assert_eq!(
-      checks(&["verify", "-p", "root", "--checks", "ltx", "--checks", "animations"]),
+      checks(&["verify", "root", "--checks", "ltx", "--checks", "animations"]),
       expected
     );
   }

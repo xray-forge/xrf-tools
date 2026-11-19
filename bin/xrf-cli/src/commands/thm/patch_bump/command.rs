@@ -19,7 +19,7 @@ impl GenericCommand for PatchBumpCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to thm file")
+    CommandInput::path("Path to thm file")
   }
 
   fn declare(&self, command: Command) -> Command {

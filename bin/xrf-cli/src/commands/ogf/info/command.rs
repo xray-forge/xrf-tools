@@ -22,7 +22,7 @@ impl GenericCommand for InfoCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to the OGF file")
+    CommandInput::path("Path to the OGF file")
   }
 
   fn declare(&self, command: Command) -> Command {

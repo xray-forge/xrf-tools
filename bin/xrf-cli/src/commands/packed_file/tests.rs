@@ -14,7 +14,6 @@ use crate::core::command::{CommandResult, GenericCommand};
 fn run<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandResult {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
-    String::from("--path"),
     path.display().to_string(),
     String::from("--silent"),
   ];
@@ -122,7 +121,6 @@ fn reports_an_unpack_of_a_format_saying_nothing_more_as_the_conversion() -> Comm
     &command,
     &[
       String::from(command.operation()),
-      String::from("--path"),
       library.display().to_string(),
       String::from("--dest"),
       dest.display().to_string(),

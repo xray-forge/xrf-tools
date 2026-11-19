@@ -2,26 +2,13 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 
-/// The arguments every packed-file command reads: what it reads (`-p`), what it writes (`-d`), and whether it may
-/// replace that (`-f`).
+/// The named arguments a packed-file command writing a file takes: what it writes (`-d`) and whether it may replace
+/// that (`-f`). What it reads is its positional input.
 pub(crate) struct PackedFileArguments;
 
 impl PackedFileArguments {
-  const PATH: &'static str = "path";
   const DEST: &'static str = "dest";
   const FORCE: &'static str = "force";
-
-  /// Declares `--path`, described by `path_help`, on `command`.
-  pub(crate) fn declare_path(command: Command, path_help: String) -> Command {
-    command.arg(
-      Arg::new(Self::PATH)
-        .help(path_help)
-        .short('p')
-        .long(Self::PATH)
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    )
-  }
 
   /// Declares a required `--dest`, described by `dest_help`, on `command`.
   pub(crate) fn declare_dest(command: Command, dest_help: String) -> Command {
@@ -44,13 +31,6 @@ impl PackedFileArguments {
         .long(Self::FORCE)
         .action(ArgAction::SetTrue),
     )
-  }
-
-  /// What the command reads.
-  pub(crate) fn path_of(matches: &ArgMatches) -> &PathBuf {
-    matches
-      .get_one::<PathBuf>(Self::PATH)
-      .expect("Expected a path to be provided")
   }
 
   /// What the command writes.

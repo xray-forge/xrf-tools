@@ -95,7 +95,7 @@ fn finds_the_groups_playing_an_effect_or_spawning_it_as_a_child() -> CommandResu
 #[test]
 fn refuses_an_action_type_the_library_format_has_not() -> CommandResult {
   let library: PathBuf = create_library("find_unknown_action")?;
-  let arguments: Vec<String> = ["find", "--path", &library.display().to_string(), "--action", "Flicker"]
+  let arguments: Vec<String> = ["find", &library.display().to_string(), "--action", "Flicker"]
     .map(String::from)
     .to_vec();
 

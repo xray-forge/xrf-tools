@@ -19,7 +19,7 @@ impl GenericCommand for DuplicateMotionCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path to omf file")
+    CommandInput::path("Path to omf file")
   }
 
   fn declare(&self, command: Command) -> Command {

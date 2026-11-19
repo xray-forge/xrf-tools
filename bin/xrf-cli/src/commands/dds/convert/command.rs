@@ -20,7 +20,7 @@ impl GenericCommand for ConvertCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path of the dds file to read")
+    CommandInput::path("Path of the dds file to read")
   }
 
   fn declare(&self, command: Command) -> Command {

@@ -21,7 +21,7 @@ impl GenericCommand for MakeBumpCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Path of the height map the relief is read from, averaged across its colour channels")
+    CommandInput::path("Path of the height map the relief is read from, averaged across its colour channels")
   }
 
   fn declare(&self, command: Command) -> Command {

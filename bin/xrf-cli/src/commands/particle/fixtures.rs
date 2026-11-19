@@ -161,7 +161,6 @@ pub(crate) fn create_library(name: &str) -> XrfResult<PathBuf> {
 pub(crate) fn run_for_result<T: GenericCommand>(command: &T, library: &Path, extra: &[&str]) -> CommandResult<Value> {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
-    String::from("--path"),
     library.display().to_string(),
     String::from("--silent"),
     String::from("--json"),

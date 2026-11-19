@@ -27,7 +27,7 @@ impl GenericCommand for RepackCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::Path("Omf file to repack, or with --verify an omf file or a directory of them")
+    CommandInput::path("Omf file to repack, or with --verify an omf file or a directory of them")
   }
 
   fn declare(&self, command: Command) -> Command {

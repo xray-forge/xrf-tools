@@ -7,8 +7,8 @@ use super::particle_find_reason::ParticleFindReason;
 use super::report::ParticleFindReport;
 use crate::commands::particle::list::particle_list_entry::ParticleListEntry;
 use crate::commands::particle::particle_names::ParticleNames;
-use crate::commands::particle::particles_file_arguments::ParticlesFileArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::commands::particle::particles_file_input::ParticlesFileInput;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 const TEXTURE_ARGUMENT: &str = "texture";
 const SHADER_ARGUMENT: &str = "shader";
@@ -23,8 +23,12 @@ impl GenericCommand for FindCommand {
     "find"
   }
 
+  fn input(&self) -> CommandInput {
+    ParticlesFileInput::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    ParticlesFileArguments::declare(command.about("Find the effects drawing with a texture or shader or running an action, and the groups playing an effect"))
+    command.about("Find the effects drawing with a texture or shader or running an action, and the groups playing an effect")
       .arg(
         Arg::new(TEXTURE_ARGUMENT)
           .help("Texture to find the effects sampling, with or without its extension. Repeat to find several")
@@ -67,7 +71,7 @@ impl GenericCommand for FindCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let file: ParticlesFile = ParticlesFileArguments::open(matches)?;
+    let file: ParticlesFile = ParticlesFileInput::open(matches)?;
     let mut report: ParticleFindReport = ParticleFindReport {
       textures: Self::requested(matches, TEXTURE_ARGUMENT),
       shaders: Self::requested(matches, SHADER_ARGUMENT),

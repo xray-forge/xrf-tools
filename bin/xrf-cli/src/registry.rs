@@ -54,18 +54,7 @@ mod tests {
   // todo: Move these domains' inputs to `InputArgument` and their positional selectors to named flags, then drop
   // the list so the rule below holds for every command.
   /// Domains still reading their input through `-p/--path`.
-  const NAMED_INPUT_DOMAINS: [&str; 10] = [
-    "dialog",
-    "gamedata",
-    "gamemtl",
-    "level",
-    "ltx",
-    "particle",
-    "spawn",
-    "sprite",
-    "thm",
-    "translation",
-  ];
+  const NAMED_INPUT_DOMAINS: [&str; 6] = ["dialog", "gamedata", "level", "ltx", "thm", "translation"];
 
   /// What a command reads is its one positional, and nothing names it `-p/--path`.
   #[test]
