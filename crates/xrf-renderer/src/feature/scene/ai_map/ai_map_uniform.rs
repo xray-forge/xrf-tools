@@ -8,7 +8,7 @@ use xrf_renderer_core::ShaderStruct;
 pub(crate) struct AiMapUniform {
   /// The grid's lowest corner along x and z, a cell's side, and the height a packed height of 0 stands at.
   pub origin: Vec4,
-  /// The cells along z and along x, the field shown (`AiMapField`), and the nodes held.
+  /// The cells along z and along x, and the field shown (`AiMapField`); the last is unused.
   pub cells: UVec4,
   /// How far above the floor a packed height of 65535 stands.
   pub height: f32,

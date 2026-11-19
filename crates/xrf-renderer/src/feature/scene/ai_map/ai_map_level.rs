@@ -83,7 +83,7 @@ impl AiMapLevel {
   pub(crate) fn get_uniform(&self, field: AiMapField) -> AiMapUniform {
     AiMapUniform {
       origin: self.origin,
-      cells: UVec4::new(self.row_length, self.column_length, field as u32, self.node_count),
+      cells: UVec4::new(self.row_length, self.column_length, field as u32, 0),
       height: self.height,
       _pad: [0.0; 3],
     }
