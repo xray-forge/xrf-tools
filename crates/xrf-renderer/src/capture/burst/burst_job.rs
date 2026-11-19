@@ -17,7 +17,9 @@ enum BurstStage {
 
 /// A burst drawn in a viewport through its own view, at times of its own that every scene and the world follow while
 /// it draws: the frames' clock goes back to its own time once the last frame is drawn.
-pub(crate) struct BurstJob {
+///
+/// Public for [`Self::MOST_SAMPLES`], which a writer summing a reference's samples sizes its counts by.
+pub struct BurstJob {
   burst: RenderBurst,
   stage: BurstStage,
   /// The frames copied out and on their way back.
@@ -29,7 +31,7 @@ pub(crate) struct BurstJob {
 impl BurstJob {
   /// Frames a burst reads back at most, and samples a reference draws each at.
   pub(crate) const MOST_FRAMES: u32 = 480;
-  pub(crate) const MOST_SAMPLES: u32 = 256;
+  pub const MOST_SAMPLES: u32 = 256;
   /// Latest scene second a burst frame may be drawn at: a year, past any open level and well within the platform clock.
   pub(crate) const LATEST_SECONDS: f64 = 365.0 * 24.0 * 3600.0;
 

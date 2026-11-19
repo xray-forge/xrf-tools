@@ -24,12 +24,64 @@ impl VerifyCommand {
   const CHECK: &'static str = "archive.payloads";
   /// A payload that read, but not as its descriptor says: judged content.
   const RULE_PAYLOAD: &'static str = "archive.payload";
-  /// A payload the volume could not hand over at all, which stops the sweep with what it judged so far.
+  /// A payload the volume could not hand over at all, which stops the sweep with what it judged so far, or a set
+  /// whose volumes would not open, which stops it before any entry.
   const RULE_READ: &'static str = "archive.read";
 
   /// What reading one entry found.
   fn finding(rule: &'static str, name: &str, error: &XrfError) -> Finding {
     Finding::new(RuleId::of_static(rule), Some(String::from(name)), error.to_string())
+  }
+
+  /// Reads every entry back, judging the outcomes in the set's order.
+  pub(super) fn judge(
+    project: &ArchiveProject,
+    entries: &[&ArchiveFileDescriptor],
+    output: &OutputOptions,
+  ) -> (Status, Vec<Finding>) {
+    // Opened once and read by position on every worker, as an unpack reads them. Each payload drops once judged, and
+    // outcomes are judged in the set's order, so the findings match a sweep one entry at a time.
+    let outcomes: Vec<XrfResult> = match project.open_volumes() {
+      Ok(volumes) => entries
+        .par_iter()
+        .map(|entry| volumes.read_bytes(entry).map(drop))
+        .collect(),
+      // A set that will not open has verified nothing, however few entries it names.
+      Err(error) => {
+        return (
+          Status::Error,
+          vec![Finding::new(
+            RuleId::of_static(Self::RULE_READ),
+            None,
+            error.to_string(),
+          )],
+        );
+      }
+    };
+
+    let mut findings: Vec<Finding> = Vec::new();
+
+    for (entry, outcome) in entries.iter().zip(outcomes) {
+      match outcome {
+        Ok(_) => xrf_output::verbose!(output, "Verified {}", entry.name),
+        // The sweep cannot finish, but what it already judged is still true and still worth reporting: the check
+        // ends in an error carrying it, rather than a pass over the entries it never reached.
+        Err(error @ XrfError::Io { .. }) => {
+          findings.push(Self::finding(Self::RULE_READ, &entry.name, &error));
+
+          return (Status::Error, findings);
+        }
+        Err(error) => findings.push(Self::finding(Self::RULE_PAYLOAD, &entry.name, &error)),
+      }
+    }
+
+    let status: Status = if findings.is_empty() {
+      Status::Passed
+    } else {
+      Status::Failed
+    };
+
+    (status, findings)
   }
 }
 
@@ -61,38 +113,7 @@ impl GenericCommand for VerifyCommand {
       XrayArchiveSource::describe_overrides_of(&project);
 
     let checked: usize = entries.len();
-    let mut findings: Vec<Finding> = Vec::new();
-    let mut status: Status = Status::Passed;
-
-    // Opened once and read by position on every worker, as an unpack reads them. Each payload drops once judged, and
-    // outcomes are judged in the set's order, so the findings match a sweep one entry at a time.
-    let outcomes: Vec<XrfResult> = match project.open_volumes() {
-      Ok(volumes) => entries
-        .par_iter()
-        .map(|entry| volumes.read_bytes(entry).map(drop))
-        .collect(),
-      // A set that will not open again is its first entry's failure to read, which ends the sweep there.
-      Err(error) => vec![Err(error)],
-    };
-
-    for (entry, outcome) in entries.iter().zip(outcomes) {
-      match outcome {
-        Ok(_) => xrf_output::verbose!(output, "Verified {}", entry.name),
-        // The sweep cannot finish, but what it already judged is still true and still worth reporting: the check
-        // ends in an error carrying it, rather than a pass over the entries it never reached.
-        Err(error @ XrfError::Io { .. }) => {
-          findings.push(Self::finding(Self::RULE_READ, &entry.name, &error));
-          status = Status::Error;
-
-          break;
-        }
-        Err(error) => findings.push(Self::finding(Self::RULE_PAYLOAD, &entry.name, &error)),
-      }
-    }
-
-    if status == Status::Passed && !findings.is_empty() {
-      status = Status::Failed;
-    }
+    let (status, findings): (Status, Vec<Finding>) = Self::judge(&project, &entries, &output);
 
     let report: Report = Report::new(vec![CheckReport::new(
       CheckId::of_static(Self::CHECK),

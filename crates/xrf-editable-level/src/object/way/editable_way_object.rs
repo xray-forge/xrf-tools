@@ -116,7 +116,7 @@ impl EditableToolObject for EditableWayObject {
       })
       .collect::<XrfResult<Vec<EditableWayPoint>>>()?;
     let mut keys: Vec<&str> = section
-      .fields
+      .fields()
       .iter()
       .map(|field| field.key.as_str())
       .filter(|key| key.starts_with(Self::LINK_PREFIX))

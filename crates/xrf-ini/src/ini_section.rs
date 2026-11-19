@@ -4,11 +4,12 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::ini_field::IniField;
 
-/// One `[name]` section and its fields, in the order they were read or added.
+/// One `[name]` section and its fields, in the order they were read or added, each key once.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct IniSection {
   pub name: String,
-  pub fields: Vec<IniField>,
+  /// Changed only through [`Self::set`] and [`Self::remove`], which keep each key once.
+  pub(crate) fields: Vec<IniField>,
 }
 
 impl IniSection {
@@ -17,6 +18,10 @@ impl IniSection {
       name: name.into(),
       fields: Vec::new(),
     }
+  }
+
+  pub fn fields(&self) -> &[IniField] {
+    &self.fields
   }
 
   pub fn get(&self, key: &str) -> Option<&str> {

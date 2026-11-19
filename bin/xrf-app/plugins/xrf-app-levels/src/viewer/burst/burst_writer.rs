@@ -6,9 +6,12 @@ use std::time::Duration;
 use image::RgbaImage;
 use rayon::prelude::*;
 use xrf_app_core::TauriResult;
-use xrf_renderer::{BurstEvent, BurstMarks, RenderBurst, RenderCapture};
+use xrf_renderer::{BurstEvent, BurstJob, BurstMarks, RenderBurst, RenderCapture};
 
 use crate::viewer::burst::{BurstFiles, BurstOutcome, BurstSound, BurstVideo};
+
+// A mark's count of a reference's samples is a `u16`, which every sample holding the mark must not overflow.
+const _: () = assert!(BurstJob::MOST_SAMPLES >> u16::BITS == 0);
 
 /// A frame's samples summed as they come back: the scene's seconds it was drawn at, its colour's sums at its size and
 /// how many samples of its marks held each of `BurstWriter::MARKS`, at theirs.

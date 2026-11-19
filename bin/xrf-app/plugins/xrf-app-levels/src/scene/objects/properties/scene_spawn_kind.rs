@@ -82,7 +82,7 @@ impl From<&EditableSpawnPointKind> for SceneSpawnKind {
         section: section.clone(),
         flags: *flags,
         data: data
-          .fields
+          .fields()
           .iter()
           .map(|field| SceneSpawnField {
             key: field.key.clone(),

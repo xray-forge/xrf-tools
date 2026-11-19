@@ -25,6 +25,7 @@ pub use crate::camera::camera_frame::CameraFrame;
 pub use crate::camera::camera_view::CameraView;
 pub use crate::camera::engine_space::EngineSpace;
 pub use crate::capture::burst::burst_event::BurstEvent;
+pub use crate::capture::burst::burst_job::BurstJob;
 pub use crate::capture::burst::burst_marks::BurstMarks;
 pub use crate::capture::capture_event::CaptureEvent;
 pub use crate::capture::capture_shot::CaptureShot;

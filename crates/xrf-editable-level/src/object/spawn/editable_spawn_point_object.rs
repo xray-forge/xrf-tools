@@ -206,7 +206,7 @@ impl EditableToolObject for EditableSpawnPointObject {
     {
       let spawn_data: &mut IniSection = ini.section_mut(&format!("{section}_spawndata"));
 
-      for field in &data.fields {
+      for field in data.fields() {
         spawn_data.set(field.key.clone(), field.value.clone());
       }
 

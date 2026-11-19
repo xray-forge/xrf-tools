@@ -47,11 +47,11 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
   fn read_tool_data(part: &EditableTextPart) -> IniFile {
     let mut tool: IniFile = IniFile::default();
 
-    for section in &part.ini.sections {
+    for section in part.ini.sections() {
       match section.name.as_str() {
         EditableLevelGuid::SECTION | EditablePartModification::SECTION => {}
         EditablePartHeader::SECTION => {
-          for field in section.fields.iter().filter(|field| {
+          for field in section.fields().iter().filter(|field| {
             ![
               T::TOOL_VERSION_KEY,
               EditablePartHeader::OBJECTS_COUNT_KEY,
@@ -65,7 +65,9 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
           }
         }
         name if name.starts_with(EditablePartObject::SECTION_PREFIX) => {}
-        _ => tool.sections.push(section.clone()),
+        _ => {
+          tool.insert_section(section.clone());
+        }
       }
     }
 
@@ -140,10 +142,10 @@ impl<T: EditableToolObject> EditableObjectPart<T> {
       .modification
       .write_to_section(ini.section_mut(EditablePartModification::SECTION));
 
-    for section in &self.tool_data.sections {
+    for section in self.tool_data.sections() {
       let written: &mut IniSection = ini.section_mut(&section.name);
 
-      for field in &section.fields {
+      for field in section.fields() {
         written.set(field.key.clone(), field.value.clone());
       }
     }

@@ -68,12 +68,12 @@ fn writes_build_parameters_and_options_in_the_editors_layout() -> XrfResult {
 fn layout(level: &EditableLevelFile) -> Vec<(String, Vec<String>)> {
   level
     .ini
-    .sections
+    .sections()
     .iter()
     .map(|section| {
       (
         section.name.clone(),
-        section.fields.iter().map(|field| field.key.clone()).collect(),
+        section.fields().iter().map(|field| field.key.clone()).collect(),
       )
     })
     .collect()

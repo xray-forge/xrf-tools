@@ -12,6 +12,7 @@ use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots
 
 use crate::format::ConfigsFormat;
 use crate::project::{ConfigsDeclarationSearch, ConfigsProjects, OpenedConfigsProject};
+use crate::request::ConfigsFindDeclarationsRequest;
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
 const GAME_LTX: &str = "configs\\game.ltx";
@@ -183,4 +184,22 @@ fn a_declaration_search_compares_sections_as_the_dialect_does_and_caps_its_answe
     capped.search.declarations[0].path, "configs\\mod_system_a.ltx",
     "the first ones in project order"
   );
+}
+
+#[test]
+fn a_declarations_search_takes_an_empty_criterion_as_not_given() {
+  let request = |section: &str, field: &str, value: &str| ConfigsFindDeclarationsRequest {
+    session_id: SessionId::generate(),
+    section: Some(String::from(section)),
+    field: Some(String::from(field)),
+    value: Some(String::from(value)),
+  };
+
+  assert!(request("", "", "").get_query().is_none(), "nothing is left to look for");
+
+  let query: LtxDeclarationQuery = request("wpn_ak74", "", "").get_query().expect("a section to look for");
+
+  assert_eq!(query.section.as_deref(), Some("wpn_ak74"));
+  assert_eq!(query.field, None);
+  assert_eq!(query.value, None);
 }

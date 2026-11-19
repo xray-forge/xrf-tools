@@ -106,7 +106,7 @@ impl EditableLightObject {
     tool_data
       .section(Self::CONTROLS_SECTION)
       .into_iter()
-      .flat_map(|section| &section.fields)
+      .flat_map(IniSection::fields)
       .map(|field| {
         let index: u32 = field.value.trim().parse::<u32>().map_err(|error| {
           XrfError::new_parsing_error(format!(

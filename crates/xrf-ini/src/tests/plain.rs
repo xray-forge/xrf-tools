@@ -83,6 +83,25 @@ fn removes_a_field() -> XrfResult {
 }
 
 #[test]
+fn inserting_a_section_replaces_the_one_of_its_name_in_place() -> XrfResult {
+  let mut file: IniFile = IniFile::read_from_str("[a]\nx = 1\n[b]\ny = 2\n")?;
+  let mut section: IniSection = IniSection::new("a");
+
+  section.set("z", "3");
+  section.set("z", "4");
+
+  let replaced: Option<IniSection> = file.insert_section(section);
+
+  assert_eq!(replaced.and_then(|it| it.get("x").map(String::from)), Some("1".into()));
+  assert_eq!(file.insert_section(IniSection::new("c")), None);
+  assert_eq!(file.sections().len(), 3);
+  assert_eq!(file.section_required("a")?.fields(), [IniField::new("z", "4")]);
+  assert_eq!(file.write_to_string()?, "[a]\nz = 4\n[b]\ny = 2\n[c]\n");
+
+  Ok(())
+}
+
+#[test]
 fn refuses_text_that_is_not_one_file_of_sections() {
   for (text, reason) in [
     ("x = 1\n", "a field before any section"),

@@ -27,6 +27,9 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
+`sections()` and `fields()` read a file and a section in order. They change only through `section_mut`,
+`insert_section`, `set` and `remove`, which never add a second section of one name or a second field of one key.
+
 ## Formats
 
 | Setting                  | `IniFormat::PLAIN` | `IniFormat::XRAY_SAVE_AS`         |
@@ -46,7 +49,7 @@ saves its scenes and text parts this way. A file `save_as` wrote reads as the en
 
 - A value may be a double-quoted string spanning lines, as a spawn object's custom data is.
 - A key set twice in a section keeps its last value, which other tools' scenes need (bardak's converter writes a glow's
-  `flags` twice). Each dropped value is listed in `IniFile::overridden` and left out of a write.
+  `flags` twice). Each dropped value is listed in `IniFile::overridden()` and left out of a write.
 
 A file edited by hand can hold things `save_as` never writes. There `xrf-ini` keeps the file as it is rather than
 reading it the engine's way:

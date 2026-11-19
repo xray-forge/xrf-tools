@@ -41,7 +41,7 @@ export type ConfigsDocument = {
 };
 
 /**
- * A search for where the open project writes a section, a field or a value.
+ * A search for where the open project writes a section, a field or a value; an empty one is taken as not given.
  *
  * It carries no name comparison: the backend takes that from the project's dialect.
  */

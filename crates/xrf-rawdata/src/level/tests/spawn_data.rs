@@ -203,7 +203,7 @@ fn refuses_the_visual_of_a_packet_that_does_not_read() -> XrfResult {
   let mut data: IniSection = write_entity(&breakable("dynamics\\box\\box_wood_01"))?;
 
   data.set(
-    LevelSpawnDataFields::format_key(data.fields.len() + 1),
+    LevelSpawnDataFields::format_key(data.fields().len() + 1),
     LevelSpawnDataFields::format_value(&ChunkField::U8(0)),
   );
 

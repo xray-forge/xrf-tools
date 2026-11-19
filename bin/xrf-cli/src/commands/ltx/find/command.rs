@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
@@ -16,6 +16,7 @@ use crate::commands::ltx::ltx_installation::LtxInstallation;
 use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
 use crate::core::arguments::{InputArgument, LtxDialectArgument};
 use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
+use crate::core::terminal::ShellArgument;
 
 const SECTION_ARGUMENT: &str = "section";
 const FIELD_ARGUMENT: &str = "field";
@@ -122,12 +123,7 @@ impl GenericCommand for FindCommand {
     if let Some(section) = &query.section
       && !search.declarations.is_empty()
     {
-      xrf_output::info!(
-        output,
-        "Resolved values: ltx inspect {}{} --section {section}",
-        format_path(path),
-        if is_dltx { " --dltx" } else { "" }
-      );
+      xrf_output::info!(output, "{}", Self::resolution_hint(path, section, is_dltx));
     }
 
     let dialect: &str = project.get_dialect().get_name();
@@ -228,6 +224,17 @@ impl FindCommand {
         declaration.path, declaration.line
       )
     }
+  }
+
+  /// The `ltx inspect` line answering what `section` resolves to, its path quoted so the line pastes back as one.
+  pub(super) fn resolution_hint(path: &Path, section: &str, is_dltx: bool) -> String {
+    let path: String = format_path(path).to_string();
+
+    format!(
+      "Resolved values: ltx inspect {}{} --section {section}",
+      ShellArgument::quote(&path),
+      if is_dltx { " --dltx" } else { "" }
+    )
   }
 
   /// The summary line of statements, configs, declarations and patches, so a field written in hundreds of sections

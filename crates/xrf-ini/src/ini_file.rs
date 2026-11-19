@@ -10,18 +10,27 @@ use crate::ini_override::IniOverride;
 use crate::ini_repeated_key::IniRepeatedKey;
 use crate::ini_section::IniSection;
 
-/// An INI file: sections and their fields, in the order they were read or added.
+/// An INI file: sections and their fields, in the order they were read or added, each section name once.
 ///
 /// Every method without a format reads or writes [`IniFormat::PLAIN`]; the `_as` methods take the format to use, such
 /// as [`IniFormat::XRAY_SAVE_AS`] for a file the engine or the SDK saved.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct IniFile {
-  pub sections: Vec<IniSection>,
-  /// Values a read dropped for a later line of the same key.
-  pub overridden: Vec<IniOverride>,
+  /// Added to only through [`Self::section_mut`] and [`Self::insert_section`], which never add a name twice.
+  pub(crate) sections: Vec<IniSection>,
+  pub(crate) overridden: Vec<IniOverride>,
 }
 
 impl IniFile {
+  pub fn sections(&self) -> &[IniSection] {
+    &self.sections
+  }
+
+  /// Values a read dropped for a later line of the same key.
+  pub fn overridden(&self) -> &[IniOverride] {
+    &self.overridden
+  }
+
   pub fn section(&self, name: &str) -> Option<&IniSection> {
     self.sections.iter().find(|section| section.name == name)
   }
@@ -49,6 +58,19 @@ impl IniFile {
     };
 
     &mut self.sections[index]
+  }
+
+  /// Puts `section` in place of the one of its name, or after the others when the file has none; returns the one it
+  /// replaced.
+  pub fn insert_section(&mut self, section: IniSection) -> Option<IniSection> {
+    match self.sections.iter_mut().find(|existing| existing.name == section.name) {
+      Some(existing) => Some(std::mem::replace(existing, section)),
+      None => {
+        self.sections.push(section);
+
+        None
+      }
+    }
   }
 
   pub fn get(&self, section: &str, key: &str) -> Option<&str> {

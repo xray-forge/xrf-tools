@@ -15,27 +15,13 @@ pub(crate) async fn configs_find_declarations(
   projects: State<'_, ConfigsProjects>,
   request: ConfigsFindDeclarationsRequest,
 ) -> TauriResult<SessionSnapshot<ConfigsDeclarationSearch>> {
-  let ConfigsFindDeclarationsRequest {
-    session_id,
-    section,
-    field,
-    value,
-  } = request;
-
-  if section.is_none() && field.is_none() && value.is_none() {
-    return Err(String::from(
-      "Cannot find declarations without a section, a field or a value to look for",
-    ));
-  }
+  let query: LtxDeclarationQuery = request
+    .get_query()
+    .ok_or_else(|| String::from("Cannot find declarations without a section, a field or a value to look for"))?;
 
   projects
-    .read_on_pool(&execution, session_id, "Configs declarations", move |opened| {
-      opened.find_declarations(LtxDeclarationQuery {
-        section,
-        field,
-        value,
-        ..LtxDeclarationQuery::default()
-      })
+    .read_on_pool(&execution, request.session_id, "Configs declarations", move |opened| {
+      opened.find_declarations(query)
     })
     .await
 }
