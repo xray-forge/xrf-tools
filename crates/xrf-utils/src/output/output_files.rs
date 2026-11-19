@@ -121,6 +121,22 @@ impl OutputFiles {
     ))
   }
 
+  /// Each file the run names ([`Self::with_file`]), in that order: the path the file system holds it under where it is
+  /// there, matched without case; its families are not looked at.
+  ///
+  /// # Errors
+  ///
+  /// Returns an IO error when a directory on the way cannot be listed.
+  pub fn find_each(&self) -> XrfResult<Vec<Option<PathBuf>>> {
+    let mut listings: HashMap<PathBuf, HashMap<String, String>> = HashMap::new();
+
+    self
+      .files
+      .iter()
+      .map(|file| Self::find_file(&self.directory, file, &mut listings))
+      .collect()
+  }
+
   /// The files of the run already there, by the names the file system holds them under, in the order the run names
   /// them and then its families' members by name; none where the directory is missing.
   ///
@@ -225,8 +241,14 @@ impl OutputFiles {
   ) -> XrfResult<&'a HashMap<String, String>> {
     if !listings.contains_key(directory) {
       let mut entries: HashMap<String, String> = HashMap::new();
+      // A bare file name's directory is empty, which names the working directory, though `read_dir` finds none there.
+      let listed: &Path = if directory.as_os_str().is_empty() {
+        Path::new(".")
+      } else {
+        directory
+      };
 
-      match fs::read_dir(directory) {
+      match fs::read_dir(listed) {
         Ok(read) => {
           for entry in read {
             let name: String = entry?.file_name().to_string_lossy().into_owned();

@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use byteorder::ByteOrder;
@@ -232,8 +233,14 @@ impl LevelSceneDecompiler {
       // Checked before anything is removed, so a link the policy refuses leaves the earlier scene whole.
       let write: LevelSceneWrite<'_> = decompiled.check_write(destination, &objects, &textures, request.link_policy)?;
 
-      // The parts an earlier scene had and this one has not go first: the editor would read them as this scene's.
-      removed.extend(scene_outputs.remove_stale(&written_scene)?);
+      // The parts an earlier scene had and this one has not go first: the editor would read them as this scene's. Other
+      // files in the part directory are the user's, read by no editor.
+      removed.extend(scene_outputs.remove_stale_where(&written_scene, |path| {
+        path
+          .file_name()
+          .and_then(OsStr::to_str)
+          .is_some_and(EditableLevelPart::is_part_file_name)
+      })?);
       decompiled.write_checked::<T>(write)?;
       // The family's names are the SDK's too: only what a decompile's sidecar marks is this run's to remove.
       removed.extend(object_outputs.remove_stale_where(&written_objects, ObjectProvenance::is_decompiled)?);

@@ -557,6 +557,31 @@ fn writes_a_scene_for_a_front_end_and_nothing_once_cancelled() -> XrfResult {
 
 // The level's own objects are those under `levels\<name>\` named `<name>_`; the SDK names its own there alike, so a
 // forced run removes only those a decompile's sidecar marks.
+// The part directory may hold the user's own files beside the parts, which the editor never reads.
+#[test]
+fn removes_forced_only_the_stale_files_the_editor_reads_as_parts() -> XrfResult {
+  let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "stale_parts_out"))?;
+  let parts: PathBuf = output.join("levels").join("test_level");
+  let request: LevelDecompileRequest = LevelDecompileRequest {
+    source: level_directory("stale_parts", 10.0)?,
+    destination: output.join("levels").join("test_level.level"),
+    textures: Some(output.join("textures")),
+    is_forced: true,
+    ..LevelDecompileRequest::default()
+  };
+
+  std::fs::create_dir_all(&parts)?;
+  std::fs::write(parts.join("old_tool.part1"), b"earlier")?;
+  std::fs::write(parts.join("notes.txt"), b"the user's")?;
+
+  LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &JobHandle::inert())?;
+
+  assert!(!parts.join("old_tool.part1").exists(), "a stale part is removed");
+  assert!(parts.join("notes.txt").is_file(), "the user's file is left");
+
+  Ok(())
+}
+
 #[test]
 fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_written() -> XrfResult {
   let level: PathBuf = level_directory("own_objects", 10.0)?;

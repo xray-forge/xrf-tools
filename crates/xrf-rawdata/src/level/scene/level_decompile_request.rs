@@ -79,7 +79,8 @@ impl LevelDecompileRequest {
     })
   }
 
-  /// What the decompile owns beside the scene: its main file, its sidecar, and every file in its part directory.
+  /// What the decompile owns beside the scene: its main file, its sidecar, and its part directory, whose files refuse an
+  /// unforced run; a forced run removes only the stale ones the editor reads as parts.
   ///
   /// # Errors
   ///

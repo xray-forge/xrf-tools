@@ -108,6 +108,37 @@ fn owns_the_one_file_or_directory_a_path_names() -> XrfResult {
 }
 
 #[test]
+fn finds_each_named_file_in_any_case_in_the_order_named() -> XrfResult {
+  let directory: PathBuf = holding("each", &["Terrain/Terrain_Lm.dds", "level.geom"])?;
+  let found: Vec<Option<PathBuf>> = OutputFiles::new(&directory)
+    .with_files(["LEVEL.GEOM", "missing.dds", "terrain\\terrain_lm.dds"])
+    .with_family("level")
+    .find_each()?;
+
+  assert_eq!(
+    found,
+    [
+      Some(directory.join("level.geom")),
+      None,
+      Some(directory.join("Terrain").join("Terrain_Lm.dds"))
+    ]
+  );
+
+  Ok(())
+}
+
+// A bare file name lies in the working directory, the crate's own under `cargo test`.
+#[test]
+fn owns_a_bare_file_name_in_the_working_directory() -> XrfResult {
+  let outputs: OutputFiles = OutputFiles::of_path(Path::new("cargo.toml"));
+
+  assert_eq!(outputs.find_existing()?, [PathBuf::from("Cargo.toml")]);
+  assert!(outputs.assert_free(false).is_err());
+
+  Ok(())
+}
+
+#[test]
 fn counts_a_familys_members_as_the_runs_own() -> XrfResult {
   let directory: PathBuf = holding(
     "family",

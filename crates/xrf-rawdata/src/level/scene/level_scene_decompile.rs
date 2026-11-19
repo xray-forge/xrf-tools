@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use byteorder::ByteOrder;
 use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{HostDestination, HostLinkPolicy, HostRelativePath, StagedFile, format_path};
+use xrf_utils::{HostDestination, HostLinkPolicy, HostRelativePath, OutputFiles, StagedFile, format_path};
 
 use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
@@ -24,21 +24,45 @@ pub struct LevelSceneDecompile {
 }
 
 impl LevelSceneDecompile {
-  /// What a write would replace of the textures the objects need, under `textures_root`; a library object's own
-  /// texture the root holds is kept, so replaces nothing.
+  /// What a write would replace of the textures the objects need, under `textures_root`, found in any case; a library
+  /// object's own texture the root holds is kept, so replaces nothing.
   ///
   /// # Errors
   ///
   /// Returns an invalid error when a texture's name names no file below the root.
   pub fn get_existing_texture_paths(&self, textures_root: &Path) -> XrfResult<Vec<PathBuf>> {
+    let written: Vec<PathBuf> = self
+      .get_written_textures(textures_root)?
+      .into_iter()
+      .map(|(_, path)| path)
+      .collect();
+
     Ok(
-      self
-        .get_written_textures(textures_root)?
+      Self::find_held(textures_root, &written)?
         .into_iter()
-        .map(|(_, path)| path)
-        .filter(|path| path.exists())
+        .flatten()
         .collect(),
     )
+  }
+
+  /// Each of `paths`, which lie below `root`, as the file system holds it there in any case, as the game and Windows
+  /// match names; none where it is not there.
+  fn find_held(root: &Path, paths: &[PathBuf]) -> XrfResult<Vec<Option<PathBuf>>> {
+    let mut outputs: OutputFiles = OutputFiles::new(root);
+
+    for path in paths {
+      let below: &Path = path.strip_prefix(root).map_err(|_| {
+        XrfError::new_invalid_error(format!(
+          "{} does not lie below {}",
+          format_path(path),
+          format_path(root)
+        ))
+      })?;
+
+      outputs = outputs.with_file(&below.to_string_lossy());
+    }
+
+    outputs.find_each()
   }
 
   /// The textures a write puts under `textures_root`, each with its path: all but a library object's own the root
@@ -57,8 +81,9 @@ impl LevelSceneDecompile {
     Ok(written)
   }
 
-  /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars; a library
-  /// copy that would write a file's own bytes again replaces nothing, as where the objects root is the library's.
+  /// What a write would replace of the objects the scene places, under `objects_root`, and their sidecars, found in any
+  /// case; a library copy that would write a file's own bytes again replaces nothing, as where the objects root is the
+  /// library's.
   ///
   /// # Errors
   ///
@@ -77,11 +102,15 @@ impl LevelSceneDecompile {
       written.push((thumbnail, file.thumbnail.as_deref()));
     }
 
+    let paths: Vec<PathBuf> = written.iter().map(|(path, _)| path.clone()).collect();
+
     Ok(
-      written
+      Self::find_held(objects_root, &paths)?
         .into_iter()
-        .filter(|(path, bytes)| path.exists() && !bytes.is_some_and(|bytes| Self::is_same_file(path, bytes)))
-        .map(|(path, _)| path)
+        .zip(written)
+        .filter_map(|(held, (_, bytes))| {
+          held.filter(|held| !bytes.is_some_and(|bytes| Self::is_same_file(held, bytes)))
+        })
         .collect(),
     )
   }
