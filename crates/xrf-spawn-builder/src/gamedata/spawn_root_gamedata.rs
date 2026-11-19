@@ -63,7 +63,7 @@ impl SpawnRootGamedata {
     let inputs: Vec<SpawnRootLevel<'_>> = files
       .iter()
       .zip(&selected)
-      .map(|(files, level)| files.get_input(level, &classes))
+      .map(|(files, level)| files.get_input(level))
       .collect();
 
     stages.advance();

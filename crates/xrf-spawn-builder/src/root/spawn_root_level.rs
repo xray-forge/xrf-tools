@@ -1,5 +1,5 @@
 use xrf_level::LevelGameFile;
-use xrf_spawn::{LevelSpawnFile, SpawnSectionClasses};
+use xrf_spawn::AlifeObject;
 
 use crate::graph::spawn_removed_graph_point::SpawnRemovedGraphPoint;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
@@ -8,9 +8,8 @@ use crate::merge::spawn_merge_level::SpawnMergeLevel;
 /// the graph points left out, for the report.
 pub(crate) struct SpawnRootLevel<'a> {
   pub merge: SpawnMergeLevel<'a>,
-  pub spawn: &'a LevelSpawnFile,
-  /// The class each section of `spawn` is read as.
-  pub classes: &'a SpawnSectionClasses,
+  /// Every object of its `level.spawn` in order, typed as its section's class.
+  pub objects: &'a [AlifeObject],
   pub game: Option<&'a LevelGameFile>,
   pub removed: &'a [SpawnRemovedGraphPoint],
 }

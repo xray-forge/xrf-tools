@@ -49,9 +49,8 @@ impl SpawnRootBuilder {
   /// # Errors
   ///
   /// Returns an error when the levels do not merge ([`SpawnGameGraphMerger::merge`]), a level has no graph point or
-  /// entity, an entity does not read as its class, two entities share a story id, a level changer cannot be linked, two
-  /// patrols share a name, the levels hold no actor or several, the start level is not built, or, when strict, a
-  /// restrictor cuts an AI map apart.
+  /// entity, two entities share a story id, a level changer cannot be linked, two patrols share a name, the levels hold
+  /// no actor or several, the start level is not built, or, when strict, a restrictor cuts an AI map apart.
   pub(crate) fn build(levels: &[SpawnRootLevel<'_>], options: &SpawnRootOptions) -> XrfResult<SpawnRootBuild> {
     let mut ordered: Vec<&SpawnRootLevel<'_>> = levels.iter().collect();
 
@@ -283,11 +282,11 @@ impl SpawnRootBuilder {
   /// The spawn's GUID: the first 16 bytes of the SHA-256 of the file written with a nil GUID, so the same levels give
   /// the same spawn.
   fn derive_guid(spawn: &SpawnFile) -> XrfResult<Uuid> {
-    let mut bytes: Vec<u8> = Vec::new();
+    let mut hasher: Sha256 = Sha256::new();
 
-    spawn.write_to::<XRayByteOrder>(&mut bytes)?;
+    spawn.write_to::<XRayByteOrder>(&mut hasher)?;
 
-    let digest = Sha256::digest(&bytes);
+    let digest = hasher.finalize();
     let mut guid: [u8; 16] = [0; 16];
 
     guid.copy_from_slice(&digest[..16]);

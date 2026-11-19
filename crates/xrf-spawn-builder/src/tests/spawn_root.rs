@@ -4,17 +4,20 @@ use xrf_level::{LevelGameFile, LevelGameWay, LevelGameWayLink, LevelGameWayPoint
 use xrf_ltx::Ltx;
 use xrf_math::Vector3d;
 use xrf_spawn::{
-  AlifeObject, AlifeObjectInherited, GraphCrossTableCell, LevelSpawnFile, SpawnFile, SpawnSectionClasses,
+  AlifeObject, AlifeObjectInherited, GraphCrossTableCell, GraphEdge, GraphHeader, GraphVertex, SpawnFile,
+  SpawnGraphsChunk, SpawnSectionClasses,
 };
 
 use crate::SpawnRootOptions;
 use crate::gamedata::spawn_game_level::SpawnGameLevel;
 use crate::gamedata::spawn_game_levels::SpawnGameLevels;
+use crate::gamedata::spawn_level_files::SpawnLevelFiles;
 use crate::graph::spawn_graph_points::SpawnGraphPoints;
 use crate::graph::spawn_level_game_graph::SpawnLevelGameGraph;
 use crate::map::spawn_ai_map::SpawnAiMap;
 use crate::map::spawn_cross_table::SpawnCrossTable;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
+use crate::root::spawn_actor_start::SpawnActorStart;
 use crate::root::spawn_root_build::SpawnRootBuild;
 use crate::root::spawn_root_builder::SpawnRootBuilder;
 use crate::root::spawn_root_level::SpawnRootLevel;
@@ -24,8 +27,7 @@ use crate::tests::fixtures::{
 
 struct Level {
   map: SpawnAiMap,
-  list: LevelSpawnFile,
-  classes: SpawnSectionClasses,
+  objects: Vec<AlifeObject>,
   game: LevelGameFile,
   points: SpawnGraphPoints,
   graph: SpawnLevelGameGraph,
@@ -43,16 +45,15 @@ impl Level {
     ways: Vec<LevelGameWay>,
     classes: SpawnSectionClasses,
   ) -> XrfResult<Self> {
-    let list: LevelSpawnFile = spawn_file(objects)?;
-    let points: SpawnGraphPoints = SpawnGraphPoints::read(&list, &map, &classes)?;
+    let objects: Vec<AlifeObject> = SpawnLevelFiles::read_objects(&spawn_file(objects)?, &classes)?;
+    let points: SpawnGraphPoints = SpawnGraphPoints::read(&objects, &map);
     let nodes: Vec<u32> = points.points.iter().map(|point| point.node).collect();
     let cells: Vec<GraphCrossTableCell> = SpawnCrossTable::build(&map, &nodes)?;
     let graph: SpawnLevelGameGraph = SpawnLevelGameGraph::build(&map, &points.points, &cells)?;
 
     Ok(Self {
       map,
-      list,
-      classes,
+      objects,
       game: LevelGameFile {
         rpoints: Vec::new(),
         ways,
@@ -76,8 +77,7 @@ impl Level {
         graph: &self.graph,
         cells: &self.cells,
       },
-      spawn: &self.list,
-      classes: &self.classes,
+      objects: &self.objects,
       game: Some(&self.game),
       removed: &self.points.removed,
     }
@@ -277,6 +277,54 @@ fn moves_the_actor_only_to_another_start_level() -> XrfResult {
   assert_eq!(actor.header.position, Vector3d::new(3.0, 0.0, 0.0));
 
   Ok(())
+}
+
+// Vertex 0 on level 0; vertices 1, 10 m off, and 2, 3 m off, on level 1.
+fn start_graph(edges: Vec<GraphEdge>) -> SpawnGraphsChunk {
+  let vertex = |level_id: u8, x: f32, edges_count: u8| GraphVertex {
+    level_point: Vector3d::new(x, 0.0, 0.0),
+    game_point: Vector3d::new(x, 0.0, 0.0),
+    level_id,
+    level_vertex_id: 0,
+    vertex_type: (0, 0, 0, 0).into(),
+    edges_offset: 0,
+    level_points_offset: 0,
+    edges_count,
+    level_points_count: 0,
+  };
+
+  SpawnGraphsChunk {
+    header: GraphHeader {
+      version: 10,
+      vertices_count: 3,
+      edges_count: 0,
+      points_count: 0,
+      guid: Uuid::nil(),
+      levels_count: 2,
+    },
+    levels: Vec::new(),
+    vertices: vec![
+      vertex(0, 0.0, u8::try_from(edges.len()).expect("a few edges")),
+      vertex(1, 10.0, 0),
+      vertex(1, 3.0, 0),
+    ],
+    edges,
+    points: Vec::new(),
+    cross_tables: Vec::new(),
+  }
+}
+
+#[test]
+fn starts_the_actor_at_the_first_vertex_reached_else_the_nearest() {
+  let reached: SpawnGraphsChunk = start_graph(vec![GraphEdge {
+    game_vertex_id: 1,
+    distance: 10.0,
+  }]);
+
+  assert_eq!(SpawnActorStart::find_vertex(&reached, 0, 1), Some(1));
+  // No edge leaves the actor's vertex: the level's vertex nearest it in the world.
+  assert_eq!(SpawnActorStart::find_vertex(&start_graph(Vec::new()), 0, 1), Some(2));
+  assert_eq!(SpawnActorStart::find_vertex(&reached, 0, 2), None);
 }
 
 #[test]

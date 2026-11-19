@@ -1,9 +1,6 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
-use xrf_spawn::{
-  AlifeBuiltFields, AlifeObject, AlifeObjectInherited, ArtefactSpawnPoint, LevelSpawnFile, SpawnSectionClasses,
-};
+use xrf_spawn::{AlifeBuiltFields, AlifeObject, AlifeObjectInherited, ArtefactSpawnPoint};
 
 use crate::entity::spawn_ai_locations::SpawnAiLocations;
 use crate::entity::spawn_artefact_buffer::SpawnArtefactBuffer;
@@ -34,14 +31,14 @@ impl SpawnLevelEntities {
   ///
   /// # Errors
   ///
-  /// Returns an error when a packet does not read as its class, or the level holds no entity (`load_objects`).
+  /// Returns an error when the level holds no entity (`load_objects`).
   pub(crate) fn build(
     root: &SpawnRootLevel<'_>,
     vertices: &SpawnLevelVertices,
     random: &mut SpawnRandom,
   ) -> XrfResult<Self> {
     let level: &SpawnMergeLevel<'_> = &root.merge;
-    let mut entities: Self = Self::load(root.spawn, root.classes)?;
+    let mut entities: Self = Self::load(root.objects);
 
     if entities.objects.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
@@ -76,18 +73,16 @@ impl SpawnLevelEntities {
   }
 
   /// `load_objects`: every single player object, with graph points set apart.
-  fn load(list: &LevelSpawnFile, classes: &SpawnSectionClasses) -> XrfResult<Self> {
+  fn load(list: &[AlifeObject]) -> Self {
     let mut entities: Self = Self {
       objects: Vec::new(),
       artefacts: Vec::new(),
       graph_points: Vec::new(),
     };
 
-    for packet in &list.objects {
-      let object: AlifeObject = packet.read_alife_object_by::<XRayByteOrder>(classes)?;
-
+    for object in list {
       if matches!(object.inherited, AlifeObjectInherited::CseAlifeGraphPoint(_)) {
-        entities.graph_points.push(object);
+        entities.graph_points.push(object.clone());
         continue;
       }
 
@@ -95,10 +90,10 @@ impl SpawnLevelEntities {
         continue;
       }
 
-      entities.objects.push(object);
+      entities.objects.push(object.clone());
     }
 
-    Ok(entities)
+    entities
   }
 
   /// `correct_objects`: an object using AI locations takes the node under its raised position, moving onto it when

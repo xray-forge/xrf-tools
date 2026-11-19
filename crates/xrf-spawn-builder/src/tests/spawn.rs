@@ -8,6 +8,7 @@ use xrf_spawn::{
   SpawnSectionClasses,
 };
 
+use crate::gamedata::spawn_level_files::SpawnLevelFiles;
 use crate::graph::spawn_graph_point_removal::SpawnGraphPointRemoval;
 use crate::graph::spawn_graph_points::SpawnGraphPoints;
 use crate::map::spawn_ai_map::SpawnAiMap;
@@ -207,17 +208,17 @@ fn spawn_list(positions: &[Vector3d]) -> XrfResult<LevelSpawnFile> {
 
 #[test]
 fn places_graph_points_and_leaves_out_what_xrai_removes() -> XrfResult {
+  let list: LevelSpawnFile = spawn_list(&[
+    Vector3d::new(0.0, 0.2, 0.1),
+    Vector3d::new(0.0, 0.2, 0.11),
+    Vector3d::new(0.0, 0.0, 6.0),
+    Vector3d::new(0.0, 0.5, -0.3),
+    Vector3d::new(0.0, 0.0, 4.0),
+  ])?;
   let points: SpawnGraphPoints = SpawnGraphPoints::read(
-    &spawn_list(&[
-      Vector3d::new(0.0, 0.2, 0.1),
-      Vector3d::new(0.0, 0.2, 0.11),
-      Vector3d::new(0.0, 0.0, 6.0),
-      Vector3d::new(0.0, 0.5, -0.3),
-      Vector3d::new(0.0, 0.0, 4.0),
-    ])?,
+    &SpawnLevelFiles::read_objects(&list, &SpawnSectionClasses::default())?,
     &map()?,
-    &SpawnSectionClasses::default(),
-  )?;
+  );
 
   assert_eq!(
     points
