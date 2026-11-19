@@ -157,8 +157,8 @@ Reading never fails on content the schema does not describe. Check `get_issues` 
 A dialog with no phrases is not malformed: a script may build them at runtime.
 
 A project turns issues and unreadable files into `DialogFinding`s (`dialog.schema`, `dialog.unreadable`, and
-`dialog.text.*` for its text) and keeps reading. `DialogPartners` reports an unreadable file and a repeated id (the
-engine keeps the first) the same way.
+`dialog.text.*` and `dialog.text-unreadable` for its text) and keeps reading. `DialogPartners` reports an unreadable
+file and a repeated id (the engine keeps the first) the same way.
 
 File, encoding and XML failures of a single document return `Err`.
 

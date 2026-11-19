@@ -188,5 +188,5 @@ cargo test --locked -p xrf-archive
 cargo doc --locked -p xrf-archive --no-deps
 ```
 
-Sources: the [project operations](src/archive_project.rs), [payload reads and copies](src/payload/archive_open_volumes.rs),
-and [public exports](src/lib.rs).
+Sources: the [project operations](src/archive_project.rs),
+[payload reads and copies](src/payload/archive_open_volumes.rs), and [public exports](src/lib.rs).

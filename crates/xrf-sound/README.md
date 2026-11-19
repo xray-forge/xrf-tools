@@ -32,8 +32,7 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-The path must be an Ogg/Vorbis sound. For an archive entry, read its bytes through the VFS and use the byte-based
-method; nothing needs extracting first.
+For an archive entry, pass the bytes the VFS reads to `read_from_bytes`; nothing needs extracting first.
 
 ### Validation depth
 
@@ -144,9 +143,9 @@ fn main() -> xrf_error::XrfResult {
   and from which a reader receives a packet. Packets up to that page's end are decoded and dropped.
 - A packet the codec refuses as corrupt is skipped; the packets after it wait for the next page's granule position.
 
-The `fixtures` feature exports `VorbisNoiseFixture`: an Ogg/Vorbis noise sound written without an encoder (one codebook
-pair, a flat floor, random residues; short and long blocks, a packet over three pages, a trimmed last page). This
-crate's decoder tests and `xrf-audio`'s seek tests compare against it frame for frame.
+The `fixtures` feature exports `VorbisNoiseFixture`, an Ogg/Vorbis noise sound written without an encoder, with short
+and long blocks, a packet over three pages and a trimmed last page. This crate's decoder tests and `xrf-audio`'s seek
+tests compare against it frame for frame.
 
 ## Sound environments
 

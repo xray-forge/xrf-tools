@@ -106,19 +106,19 @@ On Windows the application ships DXC, which D3D12 compiles shader model 6 with: 
 pinned release in `.sdks/dxc`, and `tauri.windows.conf.json` copies it into the renderer's bundle. Every task that
 builds the application fetches it first; a plain `cargo build -p xrf-app` wants it fetched once.
 
-The application's acoustics are Valve's Steam Audio (Apache-2.0, through the `audionimbus` crate), which every build of
-the application links:
+Every build of the application links Valve's Steam Audio (Apache-2.0, through the `audionimbus` crate) for its
+acoustics:
 
-- `cargo make fetch-sdks` places the pinned 4.8.1 release's library for the platform in `.sdks/steam-audio`
-  (`phonon.dll` and `phonon.lib`, `libphonon.dylib` or `libphonon.so`) with Valve's `LICENSE.md` and the
-  `THIRDPARTY.md` notices of what the library is built with. `.cargo/config.toml` points `STEAMAUDIO_LIB_DIR` there.
-- Building its bindings needs libclang, which `.cargo/config.toml` points `LIBCLANG_PATH` at `.sdks/libclang` for: the
-  fetched one on Windows, a link to the system's elsewhere (Xcode's command line tools, libclang-dev or LLVM).
-- The library is loaded as the audio starts, not as the application does, so where it is missing or broken sound plays
-  dry and the Sound panel says why: on Windows every binary delay-loads `phonon.dll` (`.cargo/config.toml`), on macOS it
-  is linked weakly and found in the application's resources. `tauri.windows.conf.json` and `tauri.macos.conf.json` copy
-  it and its notices into `resources/audio/steam-audio/`; a development build loads it from `.sdks/steam-audio`.
-- `xrf-audio` alone builds without it (its `steam-audio` feature off), playing dry, as Linux CI tests it.
+- `cargo make fetch-sdks` places the pinned 4.8.1 library for the platform in `.sdks/steam-audio` (`phonon.dll` and
+  `phonon.lib`, `libphonon.dylib` or `libphonon.so`) with Valve's `LICENSE.md` and `THIRDPARTY.md`.
+  `.cargo/config.toml` points `STEAMAUDIO_LIB_DIR` there.
+- Its bindings need libclang: `.cargo/config.toml` points `LIBCLANG_PATH` at `.sdks/libclang`, the fetched one on
+  Windows and a link to the system's elsewhere (Xcode's command line tools, libclang-dev or LLVM).
+- The library loads when the audio starts, so where it is missing or broken sound plays dry and the Sound panel says
+  why. On Windows every binary delay-loads `phonon.dll` (`.cargo/config.toml`); on macOS it is linked weakly.
+  `tauri.windows.conf.json` and `tauri.macos.conf.json` copy it and its notices into `resources/audio/steam-audio/`; a
+  development build loads it from `.sdks/steam-audio`.
+- `xrf-audio` builds without it when its `steam-audio` feature is off, playing dry; Linux CI tests it that way.
 
 ### DLSS
 

@@ -14,8 +14,8 @@ Packs, unpacks and patches X-Ray `.db` archive volumes.
 | `XrayWorldExtractor` | Extracts the winning assets of a mounted search |
 | `ArchivePatcher`     | Compares two trees and writes patch volumes     |
 
-Each is a stateless unit struct with a plain entry point and an `_opt` one taking run options (progress, cancellation
-and the like). What to act on is always an argument.
+Each is a stateless unit struct: what to act on is always an argument, and run options go to an `_opt` twin of the
+entry point.
 
 ## Pack and unpack
 
@@ -47,7 +47,8 @@ println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.ar
 ### Running
 
 - Operations are synchronous. On an async executor, run them on a blocking thread.
-- `pack_opt`, `unpack_opt` and `extract_directory_opt` take options built by `with_job`, for progress and cancellation.
+- The `_opt` entry points (`pack_opt`, `unpack_opt`, `extract_directory_opt`, `patch_opt`, `compare_opt`) take options
+  whose `with_job` adds progress and cancellation.
 - A cancelled run returns `Ok` with `outcome` set to `JobOutcome::Cancelled`. Check `outcome` before treating a result
   as complete.
 
@@ -104,7 +105,8 @@ println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.ar
   with the greater `ArchiveFileDescriptor::get_precedence` (the later volume); that copy is written, on every host.
 - Every entry name is checked before the first write. A name with a `.` or `..` component or a colon fails the run.
 - `unpack` and `extract_directory` follow existing symlinks, junctions and reparse points under the destination. For an
-  untrusted destination, `ArchiveExtractOptions::with_link_policy(HostLinkPolicy::Refuse)` (`xrf_utils::HostLinkPolicy`) refuses them.
+  untrusted destination, `ArchiveExtractOptions::with_link_policy(HostLinkPolicy::Refuse)` refuses them
+  (`xrf_utils::HostLinkPolicy`).
 - Extraction can leave completed files behind after a failure or cancellation.
 
 ## Build a patch

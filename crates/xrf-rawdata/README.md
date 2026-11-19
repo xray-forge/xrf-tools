@@ -7,7 +7,7 @@ Converts between the game's compiled assets and the SDK's rawdata, the tree the 
 | OGF → editable `.object`             | `ObjectDecompiler::decompile`                |
 | `.dm` detail model → `.object`       | `ObjectDecompiler::decompile_detail`         |
 | Level visuals → one static `.object` | `ObjectDecompiler::decompile_level_geometry` |
-| Level files ↔ Level Editor parts     | `parts::Level*Conversion`                    |
+| Level files ↔ Level Editor parts     | `parts::Level*Conversion` (most)             |
 | Level directory → Level Editor scene | `LevelSceneDecompiler::decompile`            |
 | … written to disk, for a front-end   | `LevelSceneDecompiler::decompile_to_path`    |
 | Level Editor scene → its game files  | `parts::LevelSceneExporter::export`          |
@@ -20,17 +20,20 @@ Converts between the game's compiled assets and the SDK's rawdata, the tree the 
 It sits beside the format crates because each conversion reads one format and writes another, so `xrf-ogf` and
 `xrf-editable-object` stay independent of each other.
 
-`xrf-cli level decompile` and `level build` and the app's level decompiler and compiler both call the two front-end
-entry points: they take a `LevelDecompileRequest` or `LevelBuildRequest`, resolve the defaults the SDK's layout gives
-(the gamedata beside a level, its root spawn and libraries, the objects and textures roots beside a scene), refuse to
-overwrite unless asked, report to an `xrf-job` `JobHandle` and stop between steps once it is cancelled, and return a
-`LevelDecompileReport` or `LevelBuildReport`.
+`xrf-cli level decompile` and `level build`, and the app's level decompiler and compiler, call the two front-end entry
+points. Each takes a `LevelDecompileRequest` or `LevelBuildRequest` and:
+
+- resolves the defaults the SDK's layout gives: the gamedata beside a level, its root spawn and libraries, the objects
+  and textures roots beside a scene;
+- refuses to overwrite unless forced;
+- reports to an `xrf-job` `JobHandle` and stops between steps once it is cancelled;
+- returns a `LevelDecompileReport` or `LevelBuildReport`.
 
 The crate root exports those front-ends, the object compiler, decompiler and verifier, and the data they take and
-return. `xrf_rawdata::parts` exports the pieces beneath them, one at a time: each scene part's conversion, the
-geometry, surface and entity passes and the context they share, the object library and its instances, and a
-compile's skeleton split.
-They let a check run one part against its compiled file, and change with the pipeline.
+return. `xrf_rawdata::parts` exports the pieces beneath them so a check can run one part against its compiled file:
+each scene part's conversion, the geometry, surface and entity passes and the context they share, the object library
+and its instances, and a compile's skeleton split. These change with the pipeline. The AI map and detail conversions
+are reached only through the scene decompile and the build.
 
 ## Decompile an OGF
 
@@ -91,8 +94,8 @@ back with that method.
 with one mesh and one surface: its engine shader and texture, and its triangles over positions and texture coordinates,
 welded by position.
 
-- A `.dm` stores no normals and no mirrored copy, so every edge comes back smooth, no surface is two-sided, and no corner
-  normals are written.
+- A `.dm` stores no normals and no mirrored copy, so every edge comes back smooth, no surface is two-sided, and no
+  corner normals are written.
 - Its flags and scale range, which the Level Editor keeps on the `EDetail` entry rather than in the object, come back
   in `ObjectDecompile::detail` and the sidecar's `detail`.
 
@@ -131,10 +134,12 @@ within `1e-3`.
 Over vanilla CoP's 22 levels at full detail: 11,692,886 mirrored corners are one step off and 36 exact. Corners sharing
 a position agree exactly or differ by more than 20 steps, except 5,372 that are one step apart.
 
-## A level's pass-through parts
+## A level's parts
 
 The Level Editor's Build writes some level files straight from the scene's parts, with no compiler in between
 (`BuilderGame.cpp`). Each such file decompiles back to the part it came from and exports again as the editor would.
+Glows, lights, geometry, details and the AI map pass through a compiler; their parts are recovered from what it wrote,
+and their export goes into the Build's compiler inputs.
 
 - Each conversion takes the scene's typed part from `xrf-editable-level` and the compiled file from `xrf-level`.
 - Every decompile takes the scene's `LevelDecompileContext`: the GUID its parts carry, and the names given so far.
@@ -236,11 +241,12 @@ All 174 files across the game trees round-trip through the part's text: 172 with
 
 ### Entity spawn data
 
-`LevelSpawnDataFields` is an entity's `[object_N_spawndata]` as the editor saves it: `write_section` numbers the
-`ChunkField`s a spawn packet records from `000001` and prints each as `CInifile` prints its kind (`%d` integers, a
-`u32` past `i32::MAX` negative, `%f` floats, `x, y, z` vectors, quoted strings), refusing a string holding `"`, which
-`SIniFileStream` writes unescaped. As a `ChunkFieldSource` it reads them back as the packet asks; `assert_read` refuses
-a field past the packet's last.
+`LevelSpawnDataFields` is an entity's `[object_N_spawndata]` as the editor saves it.
+
+- `write_section` numbers the `ChunkField`s a spawn packet records from `000001` and prints each as `CInifile` prints
+  its kind: `%d` integers (a `u32` past `i32::MAX` negative), `%f` floats, `x, y, z` vectors, quoted strings. It
+  refuses a string holding `"`, which `SIniFileStream` writes unescaped.
+- As a `ChunkFieldSource` it reads them back as the packet asks; `assert_read` refuses a field past the packet's last.
 
 ### Entities
 
@@ -332,262 +338,390 @@ The sun and sky the build generates fold back into the scene's settings:
 `labx8` gives back GSC's own hemisphere quality 3, sun quality 0 and sun direction text. CS-era suns of other sample
 counts keep a new level's quality, and a direction may come back one unit off in its sixth decimal.
 
-### A whole scene
+## Decompile a level into a scene
 
 `LevelSceneDecompiler::decompile` turns a level's directory into a scene (`LevelSceneDecompile`) in steps over one
-draft, each a `LevelSceneStep` declaring the files it reads (`level/scene/steps/`):
+draft. Each step is a `LevelSceneStep` declaring the files it reads (`level/scene/steps/`). They run in this order, so
+names come out the same each time:
 
-| Step                 | Files                                                                                                                  | Gives                                            |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `LevelGeometryStep`  | `level`, `level.geom`, `level.cform`, `level.hom`, `level.som`, `level.wallmarks`, `level.spawn`, `meshes/brkbl#*.ogf` | Objects, scene objects, sectors, portals (below) |
-| `LevelBundleStep`    | `level`, `build.lights`                                                                                                | Glows, lights, the light qualities               |
-| `LevelCompanionStep` | `level.ps_static`, `level.snd_static`, `level.snd_env`, `level.fog_vol`, `level.wallmarks`                             | One part each                                    |
-| `LevelGameStep`      | `level.game`, `level.env_mod`, `level.spawn`, `level_rs.spawn`                                                         | Ways, spawn points, the game modes               |
+| Step                 | Gives                                                                      |
+| -------------------- | -------------------------------------------------------------------------- |
+| `LevelMapStep`       | Level options, the map's bound and sector map parts, from `level.ltx`      |
+| `LevelGeometryStep`  | Objects, scene objects, sectors and portals (below)                        |
+| `LevelBundleStep`    | Glows, lights and the light qualities, from `level` and `build.lights`     |
+| `LevelCompanionStep` | A part per file the Build writes straight from one (above)                 |
+| `LevelDetailStep`    | Detail objects, from `level.details`                                       |
+| `LevelAiMapStep`     | The AI map, from `level.ai`                                                |
+| `LevelGameStep`      | Ways, spawn points, game modes, from `level.game`, `level.env_mod`, spawns |
 
-The decompile reads every step's files once (`LevelSceneSources`, which also reads the bundle once for the two steps
-that need it), runs the steps in that order, so names come out the same each time, and finishes the draft:
+The geometry step reads `level`, `level.geom`, `level.cform`, `level.hom`, `level.som`, `level.wallmarks`,
+`level.spawn`, the impostor atlas `level_lods.dds` and `level_lods_nm.dds`, and the breakable parts
+`meshes/brkbl#*.ogf`.
+
+`LevelSceneSources` reads every step's files once, and the draft is finished as:
 
 - a part per tool, sorted by name, each recording the files it came from;
 - a main file of a new level named after `LevelDecompileOptions::name`, serving its respawn points' game modes (single
-  player where it has none), the editor's build parameters with a weld distance of 0, the camera at the origin, and
-  recording the files its options came from;
+  player where it has none), with the editor's build parameters at a weld distance of 0, the camera at the origin, and
+  the files its options came from;
 - a scene GUID from the SHA-256 over each source's name, length and bytes in name order, then a root spawn's hash where
   the entities came from one, so the same level always gives the same scene;
 - the objects the scene places (`LevelSceneObjectFile`), each with its own `ObjectProvenance` naming the compiled file
   it came from (`LevelDecompiledObject::source`).
 
-A new source is a file in a step's `FILES`, or a `LevelSceneListing` in its `LISTINGS` for files known by what their
-names hold (the breakable parts), read in its `decompile`; a new kind of part is a step of its own. A step that needs a
-file another step decompiles reads it without taking it (`LevelSceneSources::peek_read`).
+To add a source, name a file in a step's `FILES`, or a `LevelSceneListing` in its `LISTINGS` for files known by what
+their names hold (the breakable parts), and read it in the step's `decompile`; a new kind of part is a step of its
+own. A step needing a file another step decompiles reads it without taking it (`LevelSceneSources::peek_read`).
 
-`LevelGeometryConversion::decompile` gives a level's geometry back from `LevelGeometrySources` (the bundle, its
-visuals, `level.geom`, and where held the indexed collision form, `level.hom`, `level.som`, the wall marks, the spawn
-list and the breakable parts): every object below, each placed by a scene object, with the sectors and portals. The static geometry comes back as one object
-per compiled sector, `levels\<name>\<name>_sector_<N>`: the static visuals the sector's root reaches, trees and their
-impostors left out, through `ObjectDecompiler::decompile_level_geometry`. Each object keeps the level's coordinates and its scene object
-stands at the origin, since a pivot inside a sector-sized object would round the low bits off the points nearer the
-origin and open seams between sectors. A sector per compiled sector names its object, and a portal per compiled portal
-joins two of them; the Build numbers sectors in the order the scene lists them, so the compiled indices come back. A
-sector drawing no static geometry would leave no object to name, and the editor drops a sector of no item, renumbering
-the rest: such a level keeps its shells but no sector or portal, each empty sector refused. A sector drawing trees
-alone is kept, naming their placements.
+### Sectors and static geometry
+
+`LevelGeometryConversion::decompile` gives a level's geometry back from `LevelGeometrySources`: the bundle, its
+visuals and `level.geom`, and where held the indexed collision form, `level.hom`, `level.som`, the wall marks, the
+spawn list and the breakable parts. It gives every object below, each placed by a scene object, with the sectors and
+portals.
+
+- The static geometry comes back as one object per compiled sector, `levels\<name>\<name>_sector_<N>`: the static
+  visuals the sector's root reaches, trees and impostors left out, through
+  `ObjectDecompiler::decompile_level_geometry`.
+- Each object keeps the level's coordinates and its scene object stands at the origin: a pivot inside a sector-sized
+  object would round the low bits off the points nearer the origin and open seams between sectors.
+- A sector per compiled sector names its object, and a portal per compiled portal joins two of them. The Build numbers
+  sectors in the order the scene lists them, so the compiled indices come back.
+- The editor drops a sector of no item and renumbers the rest, so a level with a sector drawing no static geometry
+  keeps its shells but no sector or portal, each empty sector refused. A sector drawing trees alone is kept, naming
+  their placements.
+
+### Trees
 
 Trees come back as the multi-use objects the Build placed them from (`LevelTreeConversion`, `BuildMUObject`). xrLC
 draws each placement as one tree visual per subdivision of its model, in the model's own space with the placement's
-matrix, under one `MT_LOD` where the model has an impostor. So a placement is the visuals one `MT_LOD` parents, or that
-share a sector and matrix where none does, and a model is the set of subdivisions a placement draws; no subdivision
-belongs to two models in vanilla's `mp_darkvalley`, `mp_firestation` or `zaton`. Each model is written once as
-`levels\<name>\<name>_tree_<N>`, in its own space and flagged `eoMultipleUsage`, dressed from where its first placement
-lies on the collision form; each placement is a scene object of its matrix that its sector names. `mp_darkvalley`'s 162
-tree visuals come back as 19 models and 73 placements.
+matrix, under one `MT_LOD` where the model has an impostor.
 
-A model's impostor comes back where its first placement's `MT_LOD` names it in the level's atlas,
-`level_lods.dds` and `level_lods_nm.dds` (`LevelGeometrySources::impostors`, a `LevelTreeImpostorAtlas`). The eight
-facets' coordinates must fit one place of a whole 512 by 64 strip, turned or not; the strip and its normals are cut back
-out as the textures the Build loads, `lod\lod_<model>` and its `_nm` under `$game_textures$`
-(`LevelGeometryDecompile::textures`, written by `LevelSceneDecompile::write_to_path` under the textures root), and the
-model is flagged `eoUsingLOD`. The Build stands the quads in the union of the model's meshes' boxes, which the editor
-reads from the file as saved; the source object's box held geometry the level does not draw, such as a collision trunk
-under the ground, so the model's stored box is widened to the one the facets were stood in, read back through the
-placement. An impostor that does not cut is refused and its model comes back without one. All 19 of `mp_darkvalley`'s
-cut, and rebuilt they stand within 0.05 mm of the shipped quads, sampling the same pixels but for DXT noise.
+- A placement is the visuals one `MT_LOD` parents, or that share a sector and matrix where none does. A model is the set
+  of subdivisions a placement draws; no subdivision belongs to two models in vanilla's `mp_darkvalley`,
+  `mp_firestation` or `zaton`.
+- Each model is written once as `levels\<name>\<name>_tree_<N>`, in its own space, flagged `eoMultipleUsage`, and
+  dressed from where its first placement lies on the collision form. Each placement is a scene object of its matrix
+  that its sector names.
+- `mp_darkvalley`'s 162 tree visuals come back as 19 models and 73 placements.
 
-A decompile lists its library roots once (`LevelObjectLibrary`): each root in name order, through links and junctions,
-a link back to a folder above it or to nothing recorded rather than followed, a folder that cannot be listed an error.
-The geometry reads each object once for both the shader pairings and the instance library; the details read the objects
-under `detail\`. A file that does not read or compile is one of the scene's refusals, with its path and the error,
-however many steps tried it.
+A model's impostor comes back from where its first placement's `MT_LOD` names it in the level's atlas,
+`level_lods.dds` and `level_lods_nm.dds` (`LevelGeometrySources::impostors`, a `LevelTreeImpostorAtlas`):
 
-With a `LevelInstanceLibrary` (`LevelGeometrySources::library`, the static and multi-use objects of the decompile's
-library roots), the library objects the Build merged into the static geometry come back as placements of them
-(`LevelGeometryDecompile::instances`), found by `level/instance/`'s `LevelInstanceMatcher` before the shells decompile:
-each object, largest first, from anchor triangles the level keeps whole, rigid by edge lengths then uniformly scaled by
-edge ratios, texture coordinates matched modulo whole repeats; a fit stands where it finds 80% of the object's rendered
-area (the pieces xrLC cut long faces into counted), fitted again over every corner matched, and claims one copy of each
-face. Claimed triangles leave the shells; each placement is a scene object of the library reference, named by the
-sector holding most of its triangles, and its collision-only faces leave `<name>_collision`. Each tree model a library
-tree draws is placed by the library's name instead (`LevelGeometryDecompile::trees`). The scene step copies each object
-found with its thumbnail beside the scene's objects (`LevelSceneLibraryFile`). On vanilla `labx8` with SDK 0.7's
-objects, 236 of GSC's 237 library placements come back, 5 under the name of an object of identical geometry, corners
-within 0.34 mm; geometry no library object matches stays in the shells.
+- The eight facets' coordinates must fit one place of a whole 512 by 64 strip, turned or not. The strip and its normals
+  are cut back out as the textures the Build loads, `lod\lod_<model>` and its `_nm` under `$game_textures$`
+  (`LevelGeometryDecompile::textures`, which `LevelSceneDecompile::write_to_path` writes under the textures root), and
+  the model is flagged `eoUsingLOD`.
+- The Build stands the quads in the union of the model's meshes' boxes as saved. The source object's box could hold
+  geometry the level does not draw, such as a collision trunk under the ground, so the model's stored box is widened to
+  the one the facets were stood in, read back through the placement.
+- An impostor that does not cut is refused, and its model comes back without one. All 19 of `mp_darkvalley`'s cut, and
+  rebuilt they stand within 0.05 mm of the shipped quads, sampling the same pixels but for DXT noise.
 
-With a `LevelSurfaceInference` (`LevelSurfaces::Infer`), each visual is split by the game material its
-triangles lie on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material,
-the editor's `default` otherwise):
+### Object libraries
 
-- the game material is the collision face's on the triangle's very points, else that of the one its normal through its
-  centre crosses nearest it within 5 cm (xrLC splits render faces it keeps whole in `level.cform`; the nearest, not the
-  first a ray from above meets, keeps a floor's material under a plate lying on it), else none; `level.cform` stores
-  the material's `gamemtl.xr` ID, as the editor wrote it into `build.prj`;
-- the compiler shader is one of `shaders_xrlc.xr` that renders and fits the evidence, collision and vertex lighting
-  (vertices without lightmap coordinates), ranked by how often an object library pairs it with the surface's engine
-  shader (`LevelShaderPairings`), then the one GSC's objects use most for that evidence, then library order;
+A decompile lists its library roots once (`LevelObjectLibrary`): each root in name order, through links and junctions.
+A link back to a folder above it, or to nothing, is recorded rather than followed; a folder that cannot be listed is an
+error. The geometry reads each object once for both the shader pairings and the instance library; the details read the
+objects under `detail\`. A file that does not read or compile is one of the scene's refusals, with its path and the
+error, however many steps tried it.
+
+### Library placements
+
+With a `LevelInstanceLibrary` (`LevelGeometrySources::library`: the static and multi-use objects of the library roots),
+the library objects the Build merged into the static geometry come back as placements of them
+(`LevelGeometryDecompile::instances`). `level/instance/`'s `LevelInstanceMatcher` finds them before the shells
+decompile:
+
+- Each object is tried largest first, from anchor triangles the level keeps whole: rigid by edge lengths, then
+  uniformly scaled by edge ratios, texture coordinates matched modulo whole repeats.
+- A fit stands where it finds 80% of the object's rendered area (counting the pieces xrLC cut long faces into); it is
+  then fitted again over every corner matched, and claims one copy of each face.
+- Claimed triangles leave the shells, and the placement's collision-only faces leave `<name>_collision`. Each
+  placement is a scene object of the library reference, named by the sector holding most of its triangles.
+- A tree model a library tree draws is placed by the library's name instead (`LevelGeometryDecompile::trees`).
+- Each object found is copied with its thumbnail beside the scene's objects (`LevelSceneLibraryFile`).
+
+On vanilla `labx8` with SDK 0.7's objects, 236 of GSC's 237 library placements come back, 5 under the name of an
+object of identical geometry, corners within 0.34 mm. Geometry no library object matches stays in the shells.
+
+### Surface materials
+
+With a `LevelSurfaceInference` (`LevelSurfaces::Infer`), each visual is split by the game material its triangles lie
+on before the decompile, so each surface carries one `SurfaceDress` (compiler shader and game material; the editor's
+`default` otherwise):
+
+- **Game material:** the collision face's on the triangle's own points, else that of the face its normal through its
+  centre crosses nearest within 5 cm, else none. xrLC splits render faces it keeps whole in `level.cform`; taking the
+  nearest face, not the first a ray from above meets, keeps a floor's material under a plate lying on it.
+  `level.cform` stores the material's `gamemtl.xr` ID, as the editor wrote it into `build.prj`.
+- **Compiler shader:** one of `shaders_xrlc.xr` that renders and fits the evidence (collision, and vertex lighting for
+  vertices without lightmap coordinates), ranked by how often an object library pairs it with the surface's engine
+  shader (`LevelShaderPairings`), then by the one GSC's objects use most for that evidence, then library order.
 - `LevelSurfaceCensus` counts exact, traced and uncollided triangles and lists every choice with its reason.
 
+### Collision-only faces
+
 Where the level holds `level.cform`, `LevelCollisionIndex` holds those lookups and marks which collision faces a static
-render triangle, or only a tree's, lies on. The faces nothing covers come back as `levels\<name>\<name>_collision`, a
-mesh per sector they lie in (`collision_<N>`, which that sector names), dressed as GSC dressed its collision-only props
-(`LevelGeometryConversion::COLLISION_TEXTURE` and the two shaders beside it). `ObjectDecompile::merge_meshes` joins the
-sectors' decompiles into the one object. A face no render triangle's centre lands on is still covered where it lies
-under one of its sector's render triangles that lies on collision of its game material (`cover_under_static`): xrLC
-kept it whole where it split the render faces over it. A face of another material there is collision of its own, such
-as a collision-only prop laid on a floor, and stays. Over vanilla, 288,343 of 10,830,486 collision faces are
-collision-only and 2,646,858 lie under trees alone.
+render triangle, or only a tree's, lies on.
 
-The Level Editor builds a picking model of every mesh it loads and refuses one of fewer than 4 points and 2 faces
-(`CDB::MODEL::build`), so `ObjectDecompiler::decompile_level_geometry` gives a mesh of one face back halved through its
-longest edge, the same area in two faces, and records `ObjectInference::HalvedFace`; the census counts it as the one
-face it was. A sector's lone collision-only face is the usual case (`labx8`'s sector 13).
+- The faces nothing covers come back as `levels\<name>\<name>_collision`, a mesh per sector they lie in
+  (`collision_<N>`, which that sector names), dressed as GSC dressed its collision-only props
+  (`LevelGeometryConversion::COLLISION_TEXTURE` and the two shaders beside it). `ObjectDecompile::merge_meshes` joins
+  the sectors' decompiles into the one object.
+- A face no render triangle's centre lands on is still covered where it lies under a render triangle of its sector
+  that lies on collision of its own game material (`cover_under_static`): xrLC kept it whole where it split the render
+  faces over it. A face of another material there, such as a collision-only prop on a floor, stays.
+- Over vanilla, 288,343 of 10,830,486 collision faces are collision-only and 2,646,858 lie under trees alone.
 
-The Build adds every wall mark to the static faces too (`ESceneWallmarkTool::ExportStatic`, compiler shader
-`def_shaders\def_vertex_ghost_no_shadow`) beside writing `level.wallmarks`, so the compiled geometry holds each decal
-twice. With the wall marks, `LevelDecalIndex` drops a static triangle of a slot's texture whose centre lies within 1 cm
-of one of that slot's decal triangles: `wallmark.part` holds it, and a rebuild would otherwise draw it twice. Over
-vanilla every one of the 11,768 static triangles of a slot's texture lies so (6,601 exactly), and the census counts them
-as `decal_triangles`.
+### Faces the editor or xrLC would refuse
 
-xrLC leaves needles along T-junctions in its own output: triangles a millimetre or two across whose two shorter edges add
-up to the longest within a few single-precision steps. The Build and xrLC measure a face by Heron's formula in single
-precision, which rounds such a face's area to zero, and xrLC stops on one (`Face::Verify`), so the decompile leaves
-them out, static and collision-only alike, and the census counts them as `needle_triangles` (54 on `labx8`).
+- The Level Editor builds a picking model of every mesh it loads and refuses one of fewer than 4 points and 2 faces
+  (`CDB::MODEL::build`). `ObjectDecompiler::decompile_level_geometry` gives a one-face mesh back halved through its
+  longest edge, the same area in two faces, and records `ObjectInference::HalvedFace`; the census counts it as one
+  face. A sector's lone collision-only face is the usual case (`labx8`'s sector 13).
+- The Build adds every wall mark to the static faces (`ESceneWallmarkTool::ExportStatic`, compiler shader
+  `def_shaders\def_vertex_ghost_no_shadow`) as well as writing `level.wallmarks`, so the compiled geometry holds each
+  decal twice. With the wall marks, `LevelDecalIndex` drops a static triangle of a slot's texture whose centre lies
+  within 1 cm of one of that slot's decal triangles, which `wallmark.part` holds. Over vanilla all 11,768 such static
+  triangles lie so (6,601 exactly); the census counts them as `decal_triangles`.
+- xrLC leaves needles along T-junctions: triangles a millimetre or two across whose two shorter edges add up to the
+  longest within a few single-precision steps. Heron's formula in single precision rounds their area to zero, and xrLC
+  stops on one (`Face::Verify`), so the decompile leaves them out, static and collision-only alike; the census counts
+  them as `needle_triangles` (54 on `labx8`).
 
-`LevelOccluderConversion` gives `level.hom` back as `<name>_hom`, an ordinary object whose surfaces have the
-`materials\occ` game material, as GSC's `labx8` keeps its occluders, and `level.som` as `<name>_som`, flagged
-`eoSoundOccluder`, a surface per game material whose sound occlusion factor is a polygon's (the lowest number where
-several share it). A two-sided polygon goes in with its mirror, so the decompile folds the two into one two-sided face.
-Exported again as the Build exports them, every vanilla `level.hom` polygon comes back, and every `level.som` polygon
-of CS, CoC, Anomaly and GAMMA.
+### Occluders
+
+`LevelOccluderConversion` gives back:
+
+- `level.hom` as `<name>_hom`, an ordinary object whose surfaces have the `materials\occ` game material, as GSC's
+  `labx8` keeps its occluders;
+- `level.som` as `<name>_som`, flagged `eoSoundOccluder`, a surface per game material whose sound occlusion factor is a
+  polygon's (the lowest number where several share it). A two-sided polygon is stored with its mirror, so the
+  decompile folds the two into one two-sided face.
+
+Exported again as the Build exports them, every vanilla `level.hom` polygon comes back, and every `level.som` polygon of
+CS, CoC, Anomaly and GAMMA.
+
+### Ladders and breakables
 
 The Build leaves faces of a climbable or breakable game material out of the geometry and exports each connected part as
-an entity, so with the spawn list (`LevelGeometrySources::spawn`) the decompile folds them back into objects and names
+an entity. With the spawn list (`LevelGeometrySources::spawn`), the decompile folds them back into objects and names
 their packets in `LevelGeometryDecompile::folded_entities`, which the entities then leave out:
 
 - `LevelLadderConversion` turns a `climable_object` into `<name>_ladder_<N>`: its box less the face behind its thinnest
   axis (the front alone where the box is flat), standing at the middle of the box's lowest end, dressed as GSC dressed
   its ladders, of the packet's game material or `materials\fake_ladders` where the packet keeps none.
 - `LevelBreakableConversion` turns a `breakable_object` into `<name>_breakable_<N>` from the part its visual names,
-  `meshes/brkbl#<n>.ogf` (`LevelGeometrySources::breakable_parts`), through `ObjectDecompiler::decompile_breakable`: the
-  random fragments' bones dropped and their points welded, each surface of its fragments' game material. A breakable
-  whose part is missing stays an entity, counted.
+  `meshes/brkbl#<n>.ogf` (`LevelGeometrySources::breakable_parts`), through `ObjectDecompiler::decompile_breakable`:
+  the random fragments' bones dropped and their points welded, each surface of its fragments' game material. A
+  breakable whose part is missing stays an entity, counted.
 
 Both stand where their packets placed them, `Affine3d::from_xyz` of the angles. Over vanilla, all 380 ladders and 173
-breakables fold back. A placed library object keeps the faces the Build cut its ladders and breakables from, so
-`LevelInstanceCutouts` cuts the placements' parts as the Build does (`LevelBuildParts`, with the inference's game
-materials or `LevelGeometrySources::game_materials`) and folds a packet whose box one of them makes (within 5 cm, a
-ladder's length and width too) into its placement alone; folded into an object as well, it would be built twice. With
-no game material library, no packet is folded into a placement. Over the SDK's library, an object of their own would
-double 10 of the 135 ladders of zaton, jupiter and jupiter_underground and merge 4 more with the library's faces into a
-larger box; folded, those 14 keep vanilla's centre, length and width but come back thinner (12 flat), the SDK's
-objects differing from those GSC built them from by up to 10 cm of half thickness.
+breakables fold back.
 
-Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collision face, 2,036,780 are traced to one
-and 601,675 lie on none. Where the SDK's objects dress the same texture and engine shader, the compiler shader is one
-GSC used for 95.2% of faces (96.0% with the SDK's objects as the library) and the game material for 86.8% (the
-collision object counted).
+A placed library object keeps the faces the Build cut its ladders and breakables from. `LevelInstanceCutouts` cuts the
+placements' parts as the Build does (`LevelBuildParts`, with the inference's game materials or
+`LevelGeometrySources::game_materials`), and folds a packet whose box one of them makes (within 5 cm, a ladder's length
+and width too) into its placement alone, since folded into an object as well it would be built twice. With no game
+material library, no packet is folded into a placement. Over the SDK's library, objects of their own would double 10
+of the 135 ladders of zaton, jupiter and jupiter_underground and merge 4 more into a larger box; folded, those 14 keep
+vanilla's centre, length and width but come back thinner (12 flat), the SDK's objects differing from GSC's by up to
+10 cm of half thickness.
+
+### Geometry census
+
 `LevelGeometryCensus` counts the triangles read, the faces written, the two-sided folds, the repeats dropped, and the
-tree triangles, models and placements. Over every tree's 202 levels, every static triangle is a face, a fold or a repeat, and every
-written point is a position the level's vertices hold, bit for bit.
+tree triangles, models and placements.
 
-`write_to_path` writes the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`), then each object under the
-objects root after its own sidecar, then the textures the objects need (the impostor strips) under the textures root,
-then the scene, so a failed write never leaves a decompile that looks authored.
+- Over every tree's 202 levels, every static triangle is a face, a fold or a repeat, and every written point is a
+  position the level's vertices hold, bit for bit.
+- Over vanilla CoP's 22 levels, 7,189,838 static triangles lie exactly on a collision face, 2,036,780 are traced to one
+  and 601,675 lie on none.
+- Where the SDK's objects dress the same texture and engine shader, the compiler shader is one GSC used for 95.2% of
+  faces (96.0% with the SDK's objects as the library), and the game material for 86.8% (the collision object
+  counted).
+
+### Level map
+
+`LevelMapConversion` reads `level.ltx` back as the decompile's first step:
+
+- the map version and game types into the level options (the respawn points' game types only where the level has no
+  `level.ltx`);
+- each sector's part of the map (`[sub_level_map]`, by the sector's number);
+- the map's rectangle as a level-bound shape, `level_bound_NNNN`, whose box the Build takes over the objects'. The
+  shipped files were saved again after the Build, holding decimals no float prints (`126.614072`), so a rectangle comes
+  back as the floats it reads as.
+
+Sections the Build writes only from the build options' text, such as a multiplayer level's `[*_anomaly_sets]`, are
+refused: the scene's main file holds that text on one line.
+
+### Detail objects
+
+`LevelDetailConversion` gives `level.details` back as `detail_object.part`. The file keeps each detail model's geometry
+but not the object it came from, its coordinates moved into the level's atlas.
+
+- Each model is matched against the detail objects of the object libraries (`LevelDetailLibrary`: every `.object`
+  under a root's `detail\`, compiled as `EDetail` exports it): the same positions and indices, its coordinates a remap
+  of the object's, turned or not. A match comes back as the object's reference at the level's scale range and flags.
+- A model no library draws is refused, and the corners planting it plant nothing: its texture is not recovered from
+  the atlas. Where none matches, there is no part.
+- The slots keep their heights, corners and densities, their light zeroed as the Build zeroes it before the detail
+  lighter runs (inference `detailObjects`).
+
+With the SDK's objects as the library, all 14 of `mp_darkvalley`'s models come back.
+
+### AI map
+
+`LevelAiMapConversion` gives `level.ai` back as `ai_map.part`, in the level's order: each node's cell, counted from the
+world origin, its height packed over a box of the map's floor and height, its plane, and its links. The covers are left
+for xrAI to compute again, and the generator's settings but the patch size take the editor's defaults (inference
+`aiMapSettings`). Vanilla `labx8` against GSC's own part: all 6,781 nodes at the same cells, heights within a
+millimetre, every link the same, 6,353 planes the same.
+
+### Write the decompile
+
+`LevelSceneDecompile::write_to_path` writes, in this order, so a failed write never leaves a decompile that looks
+authored:
+
+1. the sidecar, `<name>.level.xrf.json` (`LevelSceneProvenance`);
+2. each object under the objects root, after its own sidecar;
+3. the library copies, skipping files that already hold them;
+4. the textures the objects need (the impostor strips) under the textures root, but a library object's own texture
+   the root holds;
+5. the scene.
+
+It writes nothing where the scene's `check_writable` refuses or a name from the data would leave its root.
+
 The sidecar holds the front-end the options name, each source's SHA-256, each written file and its sources, and what
-the decompile chose rather than read (`LevelSceneInference`), recorded only for a part that holds what it was chosen
-for: a level of no light records no light inference. The object and scene sidecars share one convention, the
-`.xrf.json` suffix beside their file and sources named by SHA-256.
+the decompile chose rather than read (`LevelSceneInference`). An inference is recorded only for a part holding what it
+was chosen for: a level of no light records no light inference. Object and scene sidecars share one convention: the
+`.xrf.json` suffix beside their file, and sources named by SHA-256.
 
-`LevelSceneExporter::export` goes back: the files the Build writes from a scene's parts (`BuildGame`,
-`BuildWallmarks`), by name. `level.game`, `level.env_mod` and `level.fog_vol` are written for every scene, empty where
-it has no such tool; the rest only where their tool exports something. All 22 vanilla CoP levels decompile and export
-every such file byte for byte. Across the other trees the differences are the ones each conversion above names, plus
-nine Anomaly and GAMMA underground levels that ship no `level.env_mod` or `level.fog_vol`, which CoP's Build always
-writes. `write_to_directory` writes them, each staged, saying of each whether it is new, the same or changed. Since the editor's Build moves every file it may write aside
-first, it refuses a directory holding one the scene does not build rather than delete it. Whether existing files may be
-replaced is the front-end's to ask (`--force`, a confirmation), as `LevelSceneDecompile::get_existing_paths` lets it ask
-before a decompile and `get_existing_object_paths` after it. Vanilla CoP's `labx8`, `zaton` and `mp_atp`, and CS's
-`agroprom_underground`, decompile, read back to the same bytes, and export every file byte for byte; so does GSC's own
-`labx8` scene.
+`LevelSceneDecompiler::decompile_to_path`, unforced, refuses before reading the level when the scene or one of the
+level's objects exists (`LevelDecompileRequest::get_scene_outputs` and `get_object_outputs`), and after the decompile
+when a library copy or texture it writes exists. `LevelSceneDecompile::get_existing_object_paths` and
+`get_existing_texture_paths` tell a front-end what a write would replace.
+
+## Export a scene's game files
+
+`LevelSceneExporter::export` gives the files the Build writes from a scene's parts (`BuildGame`, `BuildWallmarks`),
+by name. `level.game`, `level.env_mod` and `level.fog_vol` are written for every scene, empty where it has no such tool;
+the rest only where their tool exports something. `write_to_directory` writes them, each staged, saying of each whether
+it is new, the same or changed.
+
+- All 22 vanilla CoP levels decompile and export every such file byte for byte. Across the other trees the
+  differences are the ones each conversion above names, plus nine Anomaly and GAMMA underground levels that ship no
+  `level.env_mod` or `level.fog_vol`, which CoP's Build always writes.
+- Vanilla CoP's `labx8`, `zaton` and `mp_atp`, and CS's `agroprom_underground`, decompile, read back to the same bytes,
+  and export every file byte for byte; so does GSC's own `labx8` scene.
 
 Every export reads a tool's objects with the groups' members of its class first (`EditableGroupTool`), as the editor
 loads the group tool before the others and keeps a member's transform in the level. `xrf-editable-level`'s
-`EditableToolObjects` is that read, the members kept apart with their groups' names for a reader listing them, and
-`into_part` the part the editor holds once loaded, which every export reads. GSC's `labx8` holds 99 scene objects, 229
-lights, 43 spawn points and 29 glows in groups; with them its scene exports 361 of the shipped `level.spawn`'s 379
-packets byte for byte and in its order. The other 18 are the climbable objects the Build cuts out of the geometry,
-which `LevelBuildClimbables` makes (below).
+`EditableToolObjects` is that read, keeping members apart with their groups' names; its `into_part` is the part the
+editor holds once loaded, which every export reads. GSC's `labx8` holds 99 scene objects, 229 lights, 43 spawn points
+and 29 glows in groups; with them its scene exports 361 of the shipped `level.spawn`'s 379 packets byte for byte and in
+order. The other 18 are the climbable objects the Build cuts out of the geometry (`LevelBuildClimbables`, below).
 
-`LevelBuildExporter::export` writes the `build.prj` the Build hands xrLC (`CompileStatic`, `SaveBuild`), reading each
-placed object from an objects root and its game materials from `gamemtl.xr`: the sky and the sun generated from the
-level options (the sun's samples each taken from the one before, as the shipped editor's loop reads the variable it
-declares), then glows, static objects (`BuildMesh`: world space, occluder, breakable and climbable surfaces skipped,
-faces of no area dropped, two-sided backs added), the scene's lights under their controls, portals and wall marks,
-each material once per texture, shaders and sector. A wall mark's triangle of no area is left out too, where the
-editor passes it on: xrLC refuses it by the same measure and stops on seven, as vanilla `jupiter`'s wall marks hold. A
-portal of more than six corners is simplified as `CPortal` simplifies one (`LevelBuildPortal`: the plane fitted, the
-convex hull, the smallest edges collapsed), in double precision rather than bit for bit. Beside it go `level.hom` and
-`level.som` (`BuildHOMModel`: an `eoHOM` object's faces and any `materials\occ` surface's; `BuildSOMModel`: an
-`eoSoundOccluder` object's, with its game materials' factors) and `level.ltx` (`LevelMapConversion::export`);
-`LevelBuildExport::into_files` gives them by name. The breakables and ladders it cuts from the geometry are
-`LevelBuildExport::entities`, breakables first, which `LevelSceneExporter::export` writes first in `level.spawn`. Both
-take their faces from `LevelBuildParts` (`CGeomPartExtractor`: faces of a breakable or climbable game material in parts
-sharing a point, each fitted a box). A ladder (`LevelBuildClimbables`, `ExportClimableObjects`) is a `climable_object`
-at its box; over GSC's `labx8` they are SDK 0.7's ladders but for its single-precision fit's noise. A breakable
-(`LevelBuildBreakables`, `ExportBreakableObjects`) is its part in the box's frame, cut into fragments grown to sizes
-drawn from the editor's `CRandom` seeded at zero (`SBPart::prepare`), written as a rigid skeleton of a breakable bone
-per fragment through the skeleton export's splits (`SBPart::Export`) to `meshes/brkbl#<n>.ogf`, and a `breakable_object`
-at the box. Vanilla `jupiter` decompiled and built gives its 65 breakables by name, every point of their parts placed
-within a millimetre of the shipped parts' both ways; the fragments differ, as GSC's rebuilds' do, and in game one breaks
-into its fragments. A part already in `meshes` that a build does not write is refused as stale
-(`LevelBuildExport::list_file_names`). A multi-use object goes in as `BuildMUObject` puts it: its model once, in its own
-space and its first placement's sector, and a reference per placement, of its transform and the sector naming its first
-mesh (`LevelBuildModels`). A model flagged `eoUsingLOD` gets its impostor first, as `BuildObjectLOD` makes one
-(`LevelBuildImpostors`): a material of `level_lods` under `details\lod`, eight quads standing through the model's box
-with their cells of its strip, the strips read from the textures root and merged with their normals into
-`level_lods.dds` and `level_lods_nm.dds` by the same packer as the details' atlas, 512 by 64 up to 4096 a side
-(`LevelBuildImpostorLimit::Extended`, as Anomaly's largest levels ship 4096 by 2048; `Sdk` keeps SDK 0.7's 2048 and
-refuses past its 128 strips, `level build --sdk-impostor-atlas`), DXT5 with mips. It refuses a draft-quality scene.
-Gunslinger's `l01_test` decompiled and exported comes back to its shipped `build.prj` on all its area, its sky, sun and
-dynamic lights exact; the decompiled `labx8`'s compiles in GSC's xrLC and plays. GSC's own `labx8` scene builds a
-`level.hom` byte for byte as shipped, and a `level.ltx` of the same rectangle and sector map parts.
+## Build a scene for the level compiler
 
-`LevelMapConversion` reads `level.ltx` back as the decompile's first step: the map version and game types into the level
-options (the respawn points' game types only where the level has no `level.ltx`), each sector's part of the map
-(`[sub_level_map]`, by the sector's number), and the map's rectangle as a level-bound shape, `level_bound_NNNN`, whose
-box the Build takes over the objects'. The shipped files were saved again after the Build, holding decimals no float
-prints (`126.614072`), so a rectangle comes back as the floats it reads as. Sections the Build writes only from the
-build options' text, such as a multiplayer level's `[*_anomaly_sets]`, are refused: the scene's main file holds that
-text on one line.
+`LevelBuildExporter::export` writes the `build.prj` the Build hands xrLC (`CompileStatic`, `SaveBuild`). It takes
+`LevelBuildSources`:
 
-`LevelDetailConversion` gives `level.details` back as `detail_object.part`. The file keeps each detail model's geometry
-but not the object it came from, its coordinates moved into the level's atlas, so each model is matched against the
-detail objects of the object libraries (`LevelDetailLibrary`: every `.object` under a root's `detail\`, compiled as
-`EDetail` exports it): the same positions and indices, its coordinates a remap of the object's, turned or not. A match
-comes back as the object's reference at the level's scale range and flags. A model no library draws is refused and the
-corners planting it plant nothing, since recovering its texture from the atlas is not done; where none matches, there
-is no part. The slots keep their heights, corners and densities, their light zeroed as the Build zeroes it before the
-detail lighter runs (inference `detailObjects`). With the SDK's objects as the library, all 14 of `mp_darkvalley`'s
-models come back.
+- the objects roots, each object read from the first holding it;
+- the game materials from `gamemtl.xr`;
+- the textures root a scene of details or impostors needs;
+- the impostor atlas's limit;
+- the decompile the scene came from (`held`), whose objects and impostor strips it takes from memory before any root,
+  so a level decompiled and built again writes nothing in between.
 
-`LevelBuildDetails` exports the tool back as `EDetailManager::Export` does: `build.details` of the planted objects
-alone, each compiled from its library object, its coordinates moved into the atlas and its texture named
-`build_details`, the slots renumbered with their light zeroed; and `build_details.dds`, the objects' textures merged
-by `LevelBuildAtlas` (the editor's packer: largest first at the first free spot, turned where only that fits, 256 to
-1024 a side) and saved as the editor's `tfADXT1`, DXT1 with mipmaps whose cut-out pixels stay transparent
-(`DdsEncoding::with_cut_out`). `LevelBuildExporter::export` takes `LevelBuildSources`: objects roots,
-each object from the first holding it, the game materials, the textures root a scene of details needs, the impostor
-atlas's limit, and the decompile the scene came from (`held`), whose objects and impostor strips it takes from memory
-before any root, so a level decompiled and built again writes nothing in between. The build options are the scene's,
-as the Level Editor's Build writes them.
-`mp_darkvalley` decompiled and built gives the shipped `level.details`' header, its 14 objects in order with the same
-geometry, shader, flags and scale range, and all 39,601 slots, the light zeroed; only the atlas is its own.
+The build options are the scene's, as the Level Editor's Build writes them. It refuses a scene of draft quality, whose
+shaders the Build would swap.
 
-`LevelAiMapConversion` gives `level.ai` back as `ai_map.part`: each node's cell, counted from the world origin, its
-height packed over a box of the map's floor and height, its plane, and its links, in the level's order; the covers
-are left for xrAI to compute again, and the generator's settings but the patch size take the editor's defaults
-(inference `aiMapSettings`). Vanilla `labx8` against GSC's own part: all 6,781 nodes at the same cells, heights
-within a millimetre, every link the same, 6,353 planes the same. Its `export` writes `build.aimap` as
-`ESceneAIMapTool::Export` does, each node packed again over the box around every node, which `LevelBuildExporter`
-adds beside `build.prj`.
+### build.prj
+
+In order:
+
+1. the sky and the sun generated from the level options, each sun sample taken from the one before, as the shipped
+   editor's loop reads the variable it declares;
+2. glows;
+3. static objects (`BuildMesh`): in world space, occluder, breakable and climbable surfaces skipped, faces of no area
+   dropped, two-sided backs added;
+4. the scene's lights under their controls, portals and wall marks;
+5. each material once per texture, the shaders and the sectors.
+
+- A wall mark's triangle of no area is left out too, where the editor passes it on: xrLC refuses it by the same
+  measure and stops on seven, as vanilla `jupiter`'s wall marks hold.
+- A portal of more than six corners is simplified as `CPortal` simplifies one (`LevelBuildPortal`: the plane fitted,
+  the convex hull, the smallest edges collapsed), in double precision rather than bit for bit.
+
+### Files beside it
+
+`LevelBuildExport::into_files` gives the files by name:
+
+- `level.hom` (`BuildHOMModel`: an `eoHOM` object's faces and any `materials\occ` surface's);
+- `level.som` (`BuildSOMModel`: an `eoSoundOccluder` object's, with its game materials' factors);
+- `level.ltx` (`LevelMapConversion::export`);
+- `build.details` and its atlas, `build.aimap`, the impostor atlas, and the breakable parts (below).
+
+### Ladders and breakables
+
+The breakables and ladders cut from the geometry are `LevelBuildExport::entities`, breakables first, which
+`LevelSceneExporter::export` writes first in `level.spawn`. Both take their faces from `LevelBuildParts`
+(`CGeomPartExtractor`: faces of a breakable or climbable game material, in parts sharing a point, each fitted a box).
+
+- A ladder (`LevelBuildClimbables`, `ExportClimableObjects`) is a `climable_object` at its box. Over GSC's `labx8` they
+  are SDK 0.7's ladders but for the single-precision fit's noise.
+- A breakable (`LevelBuildBreakables`, `ExportBreakableObjects`) is its part in the box's frame, cut into fragments
+  grown to sizes drawn from the editor's `CRandom` seeded at zero (`SBPart::prepare`). It is written as a rigid
+  skeleton of a breakable bone per fragment, through the skeleton export's splits (`SBPart::Export`), to
+  `meshes/brkbl#<n>.ogf`, with a `breakable_object` at the box.
+- Vanilla `jupiter` decompiled and built gives its 65 breakables by name, every point of their parts within a
+  millimetre of the shipped parts' both ways. The fragments differ, as GSC's own rebuilds' do, and in game each breaks
+  into its fragments.
+
+### Multi-use objects and impostors
+
+A multi-use object goes in as `BuildMUObject` puts it (`LevelBuildModels`): its model once, in its own space and its
+first placement's sector, and a reference per placement, of its transform and the sector naming its first mesh.
+
+A model flagged `eoUsingLOD` gets its impostor first, as `BuildObjectLOD` makes one (`LevelBuildImpostors`):
+
+- a material of `level_lods` under `details\lod`, and eight quads standing through the model's box with their cells of
+  its strip;
+- the strips read from the textures root and merged with their normals into `level_lods.dds` and `level_lods_nm.dds`
+  by the details' atlas packer, DXT5 with mips;
+- 512 by 64 strips, up to 4096 a side (`LevelBuildImpostorLimit::Extended`, as Anomaly's largest levels ship 4096 by
+  2048). `Sdk` keeps SDK 0.7's 2048 and refuses past its 128 strips (`level build --sdk-impostor-atlas`).
+
+### Details and the AI map
+
+`LevelBuildDetails` exports the detail tool as `EDetailManager::Export` does:
+
+- `build.details`: the planted objects alone, each compiled from its library object, its coordinates moved into the
+  atlas and its texture named `build_details`; the slots renumbered, their light zeroed;
+- `build_details.dds`: the objects' textures merged by `LevelBuildAtlas` (the editor's packer: largest first at the
+  first free spot, turned where only that fits, 256 to 1024 a side), saved as the editor's `tfADXT1`, DXT1 with mipmaps
+  whose cut-out pixels stay transparent (`DdsEncoding::with_cut_out`).
+
+The AI map conversion's `export` writes `build.aimap` as `ESceneAIMapTool::Export` does, each node packed again over
+the box around every node.
+
+### Results
+
+- Gunslinger's `l01_test` decompiled and exported comes back to its shipped `build.prj` on all its area, its sky, sun
+  and dynamic lights exact.
+- The decompiled `labx8` compiles in GSC's xrLC and plays. GSC's own `labx8` scene builds a `level.hom` byte for byte as
+  shipped, and a `level.ltx` of the same rectangle and sector map parts.
+- `mp_darkvalley` decompiled and built gives the shipped `level.details`' header, its 14 objects in order with the same
+  geometry, shader, flags and scale range, and all 39,601 slots, the light zeroed; only the atlas is its own.
+
+### Into a directory
+
+`LevelBuildExporter::build_to_directory` builds a `LevelBuildRequest` into a level directory: the level compiler's
+files where the request names game materials, then the game files. The files it owns are the game files, and with game
+materials the compiler's and the breakable parts (`LevelBuildRequest::get_outputs`). Unforced, it refuses a directory
+holding any of them before reading the scene; forced, it replaces them and removes those it no longer writes.
 
 ## Compile an object into an OGF
 

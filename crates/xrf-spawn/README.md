@@ -21,36 +21,39 @@ Most `.spawn` files in a game tree are level lists; only a few have a header. Ea
 `SpawnFile` requires exactly its five root chunks, and `LevelSpawnFile` requires every chunk to start with an `M_SPAWN`
 packet, which a set's header never does.
 
-A caller holding a `.spawn` of either kind walks its top-level chunks once and asks `SpawnFileKind::of_chunks`: `Root`
-(a set) where chunk 0 reads whole as a `SpawnHeaderChunk`, `Level` otherwise, reading nothing but that chunk's 44 bytes.
-It then hands the same chunks to `SpawnFile::read_from_chunks` or `LevelSpawnFile::read_from_chunks`, whose own read
-refuses a file that is neither. `SpawnFileKind::read_root_header` is the same rule for a caller that wants the header.
-`AnySpawnFile::read_from_path` does both for a file on disk and answers `Root` or `Level` with the file read, refusing
-one that is neither with a message naming both kinds; `LevelSpawnFile::write_to_path` writes a list back, staged.
-`AnySpawnFile::import_from_path` is the same for an unpacked folder, told by its files (`SpawnFileKind::of_folder`): a
-set's holds `header.ltx`, a level list's `level_spawns.ltx`, and a folder holding neither or both is refused.
+To read a `.spawn` of either kind:
+
+- `AnySpawnFile::read_from_path` reads a file and answers `Root` (a set) or `Level` with it, refusing one that is
+  neither with a message naming both kinds.
+- From top-level chunks already walked, `SpawnFileKind::of_chunks` answers `Root` where chunk 0 reads whole as a
+  `SpawnHeaderChunk` and `Level` otherwise, reading only that chunk's 44 bytes; hand the same chunks to
+  `SpawnFile::read_from_chunks` or `LevelSpawnFile::read_from_chunks`. `SpawnFileKind::read_root_header` applies the
+  same rule and returns the header.
+- `AnySpawnFile::import_from_path` does the same for an unpacked folder, told by its files
+  (`SpawnFileKind::of_folder`): `header.ltx` for a set, `level_spawns.ltx` for a level list; a folder holding neither
+  or both is refused.
 
 ## Read a spawn set
 
 `SpawnFile::read_from_path` (and `read_from_file`, `read_from_chunk`) reads the whole set and checks the header's object
 and level counts against the chunks. The game graph is most of a set's bytes, so read less when you can:
 
-| Method                           | Reads                                                                                                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `read_graphs_from_path`          | Only the game graph (`SpawnGraphsChunk`): levels, vertices, edges, level points, cross tables. Parses no alife object, so it works on sets with classes this crate cannot read |
-| `read_level_objects_from_chunks` | The objects one level places, continuing past unreadable ones (each listed with its index and reason), plus the level changers arriving there                                  |
-| `read_level_graph_from_chunks`   | One level's game vertices, and the patrols whose first point is on it                                                                                                          |
+- `read_graphs_from_path` reads only the game graph (`SpawnGraphsChunk`): levels, vertices, edges, level points and
+  cross tables. It parses no alife object, so it works on sets holding classes this crate cannot read.
+- `read_level_objects_from_chunks` reads the objects one level places, continuing past unreadable ones (each listed
+  with its index and reason), and the level changers arriving there.
+- `read_level_graph_from_chunks` reads one level's game vertices and the patrols whose first point is on it.
 
 ### Alife objects
 
 - An alife object is chunk-framed and its reader checks it consumed everything, so a misread class fails that object
   instead of corrupting the next.
 - A section's class selects the server-class reader (`AlifeObjectInherited`) for its payload. `SpawnSectionClasses`
-  gives it: the `class` key a game's configs set for the section, through its parents, as the game reads it; else the
-  built-in table of vanilla sections (`ClsId::from_dialect_section`), which is also all a reader without configs uses.
-  Every table section vanilla Call of Pripyat's configs declare (679) reads as the payload their class gives, and every
-  one of Clear Sky's (458) but two multiplayer weapons.
-  `level.spawn` readers take the classes (`read_alife_object_by`); `all.spawn` and LTX imports use the table.
+  gives the class: the section's `class` key in the game's configs, through its parents, as the game reads it; else
+  the built-in table of Call of Pripyat and Clear Sky sections (`ClsId::from_dialect_section`). The table reads every
+  section vanilla Call of Pripyat's configs declare (679) as its class's payload, and every one of Clear Sky's (458)
+  but two multiplayer weapons. `LevelSpawnObject::read_alife_object_by` takes the configs' classes; `all.spawn` and LTX
+  imports use the table.
 - Script fields at the end are read from the object's remaining bytes.
 - Stored values are kept as written, not normalized the way the engine's `STATE_Read` would. `LastSpawnTime` keeps its
   three states (`Absent`, `Unset`, `Set`) apart.
@@ -94,19 +97,20 @@ for a new stalker and monster.
 - `export_to_path` unpacks a set into a directory of editable LTX files; `import_from_path` reads it back. Unpacking and
   packing again should reproduce the original bytes.
 - `write_to_path` and `write_to` write the binary set.
-- `SpawnGraphsChunk::derive_layout` lays a graph assembled in memory out as the engine stores it: the header's counts and
-  every vertex's edge and level point offsets, each vertex's following the one before. Every shipped graph is laid out
-  that way already.
+- `SpawnGraphsChunk::derive_layout` sets a graph built in memory's header counts and each vertex's edge and level point
+  offsets as the engine stores them, each vertex's records following the previous one's. Every shipped graph is laid
+  out that way.
 
 Writing refuses what the engine would misread:
 
 - header counts that differ from the objects and levels the set holds;
 - graph counts that differ from its tables;
-- a graph GUID other than the graph's (`assert_engine_agreement`), and a graph `SpawnGraphsChunk::assert_engine_layout`
-  refuses: an edge to a vertex past the graph, a vertex on no level or naming a node past 24 bits, edges or level points
-  off their tables' records, cross tables not one a level in ascending level id order, each naming its level and the graph,
-  sized to the level's vertices, every cell's vertex on that level;
-- a cross table whose cells (`GraphCrossTableCell`, refused on read too) are not one a node;
+- a header graph GUID other than the graph's (`SpawnFile::assert_engine_agreement`);
+- a graph `SpawnGraphsChunk::assert_engine_layout` refuses: an edge to a missing vertex; a vertex on no listed level,
+  past 24-bit node ids, or with edges or level points off their tables' records; cross tables that are not one per
+  level in ascending level id order, each naming its level and the graph, sized to the level's vertices, with every
+  cell's vertex on that level;
+- a cross table whose cells (`GraphCrossTableCell`, refused on read too) are not one per node;
 - an object whose payload class is not its section's;
 - a patrol link to a point the patrol lacks;
 - a smart terrain or skeleton declaring state this crate cannot carry;
@@ -150,10 +154,10 @@ whether each velocity is omitted; an omitted velocity is `None`.
 
 - The engine reads a physic object's empty packet as no state, and a state ending before its closing byte as awake.
   Both shapes, which no shipped spawn contains, write back as read: `PhysicsClosingState::Absent`, and `awake: None`.
-- A physic object's state closes its packet, so a zero byte with bytes behind it is a state whose count and mask pack
-  to zero (`PhysicsClosingState`): the SDK's 2009 `xrSE_Factory` writes one for an object of no items and
-  both velocities set, which the engine skips past its zero byte. A root spawn the SDK's xrAI builds holds one; an
-  item's state, which other fields follow, keeps the zero byte as no state.
+- A physic object's state closes its packet (`PhysicsClosingState`), so a zero byte with bytes behind it is a state
+  packing to zero. The SDK's 2009 `xrSE_Factory` writes one for an object of no items with both velocities set, and
+  the engine skips past its zero byte; a root spawn the SDK's xrAI builds holds one. An item's state, which other
+  fields follow, reads a zero byte as no state.
 - A quantised field keeps its stored byte; the float the engine reads is a derived accessor (`get_update_condition`).
 - The SDK writes some states uninitialised, so their floats are `RawFloat`s that keep their bits. Vanilla's spawn holds
   5,286 floats of `0xffffffff` and NaNs with payloads; LTX and JSON carry those as hex (`0xffffffff`) and every finite
@@ -217,24 +221,28 @@ assert_eq!(read.get_sections().get("medkit"), Some(&1));
 # }
 ```
 
-`LevelSpawnFile::export_to_path` unpacks a list into a folder holding `level_spawns.ltx`, a section per object named by
-its place, and `import_from_path` reads it back. An object the typed read accepts, and whose typed form writes back its
-own bytes, is written as an unpacked set writes an ALife object, with the same keys. Any other is written verbatim
-under `form = verbatim`: its section, name, script bytes, position and direction, the rest of its packet in base64
-under `payload`, and the refusal under `reason`, with the object's name left out so objects refused alike share one
-and its double quotes made single so the value reads back. Importing packs a verbatim record from its payload whatever
-it holds and reads nothing of its reason. An object found under another chunk than its place keeps it in `chunk_id`; no
-shipped list needs one. The export answers a `LevelSpawnExport`: the objects written typed, and those written verbatim
-grouped by reason. Every one of the 168 shipped lists of the reference trees unpacks and packs back byte for byte, 579
-objects of Shadow of Chernobyl's spawn version 118 verbatim.
+`LevelSpawnFile::write_to_path` writes a list through a staged file. `LevelSpawnFile::export_to_path` unpacks it into a
+folder holding `level_spawns.ltx`, one section per object named by its place, and `import_from_path` reads that back:
+
+- An object the typed read accepts, and whose typed form writes back its own bytes, is written as an unpacked set
+  writes an alife object, with the same keys.
+- Any other is written under `form = verbatim`: its section, name, script bytes, position and direction, the rest of
+  its packet in base64 under `payload`, and the refusal under `reason`. The reason leaves out the object's name, so
+  objects refused alike share one, and turns double quotes single, so it reads back. Importing packs a verbatim record
+  from its payload alone.
+- An object stored under a chunk other than its place keeps it in `chunk_id`; no shipped list needs one.
+
+The export answers a `LevelSpawnExport`: the count written typed, and those written verbatim grouped by reason. All 168
+shipped lists of the reference trees unpack and pack back byte for byte, with 579 objects of Shadow of Chernobyl's spawn
+version 118 written verbatim.
 
 ## The Level Editor's form
 
 The Level Editor stores each entity of a scene in `spawn.part` as an `[object_N_spawndata]` section: the entity's spawn
-packet as numbered fields, one per value (`000001 = 1`, `000002 = "wpn_groza"`, ...). The editor fills them with the
-same `Spawn_Write` that writes the binary packet. This crate does the same: each class writes once, through
-[xrf-chunk's field traits](../xrf-chunk/README.md#values-as-bytes-and-as-fields), and the writer decides the form. A
-`ChunkWriter` gets the packet's bytes; a `ChunkFieldRecorder` gets the fields with their kinds.
+packet as numbered fields, one per value (`000001 = 1`, `000002 = "wpn_groza"`, ...), filled by the same `Spawn_Write`
+that writes the binary packet. Here too each class writes once, through
+[xrf-chunk's field traits](../xrf-chunk/README.md#values-as-bytes-and-as-fields), and the writer decides the form: a
+`ChunkWriter` takes the packet's bytes, a `ChunkFieldRecorder` the fields with their kinds.
 
 - `AlifeObject::write_spawn_packet` and `read_spawn_packet` handle the spawn packet alone, which is all a scene or a
   `level.spawn` keeps, in either form. Reading fills the update fields the way the SDK's spawn builder does when it

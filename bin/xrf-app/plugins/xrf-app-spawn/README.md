@@ -16,9 +16,8 @@ One type to a file, grouped by concern:
 - `conversion/`: `SpawnConversion` and `SpawnConversionResult`, packing a directory of chunks into one file or
   unpacking a file into one, run as a job on one lane shared by both, and what reached disk. A conversion gives up only
   before it starts writing.
-- `build/`: `SpawnBuild` and `SpawnBuildResult`, a root spawn built from a game's levels by `xrf-spawn-builder`, as
-  `xrf-cli spawn build` builds it, run as a job one at a time, stopped between its stages and never once it writes, and
-  how it ended.
+- `build/`: `SpawnBuild` and `SpawnBuildResult`, a root spawn built from a game's levels as `xrf-cli spawn build`
+  builds it, and how it ended. It runs as a job one at a time, cancellable between stages but not once it writes.
 - `request/`: `SpawnConvertRequest`, the source and output paths of a conversion.
 - `commands/`: opening, restoring and closing a spawn; reading one chunk; saving a spawn as a packed file or as a
   directory of unpacked chunks; packing and unpacking; and listing the levels a spawn can be built from and building

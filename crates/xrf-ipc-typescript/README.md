@@ -48,9 +48,8 @@ An `IpcCommandSurface` is one plugin:
 - the raw commands and bulk routes the builder cannot hold, each declared by hand as a name and
   `(argument, TypeScript type)` pairs.
 
-`MirrorImports::new(root)` names the output directory as its modules import it: `@/core/ipc` under an application
-alias, or `#` inside a package that maps `"#/*"` to its own sources. The desktop app's mirror is the `@xrf/ipc` package,
-generated with the root `#`.
+`MirrorImports::new(root)` names the output directory as its modules import it: an application alias, or `#` inside a
+package that maps `"#/*"` to its own sources, as the desktop app's `@xrf/ipc` package does.
 
 The runtime beside the mirror must provide:
 
@@ -186,14 +185,13 @@ export type Shading = `${EShading}`;
 ```
 
 - Tagging is detected from the shape: an internally tagged variant renders as named fields with a one-member literal
-  tag. (`specta-serde` keeps `EnumRepr` private.) Externally tagged, adjacently tagged and untagged unions have no tag
-  to name and get nothing.
+  tag. Externally tagged, adjacently tagged and untagged unions have no tag to name and get nothing.
 - Member names come from the Rust identifier, not the wire spelling: `AiCrow` gives `AI_CROW`, not `AICROW`. Two
   variants that fold to one name fail generation, naming both; rename one.
 - A variant's doc comment carries over to its member.
 
-Caveat for consumers: a `switch` over enum members narrows the union but does not prove it exhaustive. Add an
-`assertExhaustive`-style default, or a variant added in Rust compiles silently.
+A `switch` over enum members narrows the union but does not prove it exhaustive: end it with a default calling
+`assertExhaustive` from `@xrf/types`, or a variant added in Rust compiles silently.
 
 ## Verify a committed mirror
 
@@ -211,14 +209,14 @@ This lets a consumer keep its mirror in version control and fail a test when the
 One type per file, named for it. [`IpcBindingsGenerator`](src/ipc_bindings_generator.rs) runs the steps above; each
 lives in its own directory:
 
-| Directory                            | Holds                                                                                                                                                                                                              |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`input/`](src/input/)               | What the caller passes: `IpcCommandSurface`, `TypeModules`, `MirrorImports`                                                                                                                                        |
-| [`collected/`](src/collected/)       | What the run gathers first: `CommandTypescript` records each plugin's `PluginCommands` (its `SpectaCommand`s and their `CommandWrappers`) into `CollectedCommands`; `CollectedConstants` adds the marked constants |
-| [`write/`](src/write/)               | `TypeModuleWriter` and `CommandModuleWriter` writing through `GeneratedOutput`; `TypeOwnership`, `PluginSymbols`, `PluginModules`                                                                                  |
-| [`verify/`](src/verify/)             | `Surface` reads a generated tree back; `SurfaceDrift` compares two                                                                                                                                                 |
-| [`enumerations/`](src/enumerations/) | The `E*` enums: `Enumeration` and `EnumerationSubject`                                                                                                                                                             |
-| [`typescript/`](src/typescript/)     | Leaf helpers: `source` reads generated text, `syntax` emits it, `normalization` canonicalizes, `format` is the expected Specta shape                                                                               |
+| Directory                            | Holds                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [`input/`](src/input/)               | What the caller passes: `IpcCommandSurface`, `TypeModules`, `MirrorImports`                                                          |
+| [`collected/`](src/collected/)       | What the run gathers first: each plugin's `PluginCommands` into `CollectedCommands`, and `CollectedConstants`                        |
+| [`write/`](src/write/)               | `TypeModuleWriter` and `CommandModuleWriter`, writing through `GeneratedOutput`                                                      |
+| [`verify/`](src/verify/)             | `Surface` reads a generated tree back; `SurfaceDrift` compares two                                                                   |
+| [`enumerations/`](src/enumerations/) | The `E*` enums: `Enumeration` and `EnumerationSubject`                                                                               |
+| [`typescript/`](src/typescript/)     | Leaf helpers: `source` reads generated text, `syntax` emits it, `normalization` canonicalizes, `format` is the expected Specta shape |
 
 ## Checks
 

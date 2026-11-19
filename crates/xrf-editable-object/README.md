@@ -48,23 +48,20 @@ apart:
 - **Layout:** each container's `layout` (`xrf-chunk`'s `ChunkLayout`) records the stored chunk order and keeps every
   child no field takes as a `ChunkPayload`, including a second copy of a named one.
 
-Code that builds or edits an object never handles storage detail. An object built in code uses
-`ChunkLayout::default()`.
+Code that builds or edits an object never handles storage detail; an object built in code uses
+`ChunkLayout::default()`. The named chunks of each container:
 
-| Container             | Named chunks                                                                                    |
-| --------------------- | ----------------------------------------------------------------------------------------------- |
-| Object body           | version, class script, LODs, flags, meshes, surfaces (`SURFACES3`), bones, embedded motions,    |
-|                       | motion references (`SMOTIONS3`), bone parts (`BONEPARTS2`), actor transform, description        |
-| Mesh (`EditableMesh`) | version, name, bounds, flags, options, points, faces, smoothing groups, corner normals          |
-|                       | (`blender-xray`'s `0x1014`, which the SDK does not read), vertex map references, surface faces, |
-|                       | vertex maps (`VMAPS_2`)                                                                         |
-| Bone (`EditableBone`) | version, definition, bind pose, the repeated definition, material, shape, joint flags, joint,   |
-|                       | joint break, friction, mass                                                                     |
+- **Object body:** version, class script, LODs, flags, meshes, surfaces (`SURFACES3`), bones, embedded motions, motion
+  references (`SMOTIONS3`), bone parts (`BONEPARTS2`), actor transform, description.
+- **Mesh (`EditableMesh`):** version, name, bounds, flags, options, points, faces, smoothing groups, corner normals
+  (`blender-xray`'s `0x1014`, which the SDK does not read), vertex map references, surface faces, vertex maps
+  (`VMAPS_2`).
+- **Bone (`EditableBone`):** version, definition, bind pose, the repeated definition, material, shape, joint flags,
+  joint, joint break, friction, mass.
 
-Shared types: a bone's collision shape, joint limits and joint kind are [xrf-skeleton](../xrf-skeleton/README.md)'s
+A bone's collision shape, joint limits and joint kind are [xrf-skeleton](../xrf-skeleton/README.md)'s
 `SkeletonBoneShape`, `SkeletonJointLimit` and `SkeletonJointKind` (the engine's `SBoneShape`, `SJointLimit` and
-`EJointType`), the same records an OGF's IK data stores. A mesh's
-bounds are [xrf-math](../xrf-math/README.md)'s `Aabb`.
+`EJointType`), the records an OGF's IK data stores. A mesh's bounds are [xrf-math](../xrf-math/README.md)'s `Aabb`.
 
 ### Older layouts
 

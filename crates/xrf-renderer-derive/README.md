@@ -101,7 +101,6 @@ Each field carries exactly one kind attribute:
 - An acceleration structure is a top-level one rays are traced against; `ENABLES` then names `wgpu_ray_query`.
 - `#[uniform]`, `#[storage]` and `#[acceleration_structure]` take no arguments. A word a kind does not take, or a second
   word of one class (two dimensions, say), is refused rather than dropped.
-
 - A binding is visible to every stage, except a writable one or an acceleration structure, which a vertex shader may
   not hold.
 - A field's name is its WGSL name, so it must not be a WGSL reserved word (`target`, `filter`, …). The derive does not

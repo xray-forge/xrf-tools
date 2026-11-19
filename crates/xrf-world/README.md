@@ -1,10 +1,9 @@
 # xrf-world
 
 Decides what is in a level each frame, for [xrf-renderer](../xrf-renderer/README.md) to draw: the cameras, the
-weather, the level streaming into its scene, and its skinned objects' poses.
-
-It runs inline on the render thread before each frame and hands the renderer one frame's input. The renderer draws;
-this crate decides what there is to draw.
+weather, the level streaming into its scene, its skinned objects' poses, and the level's sound. It runs inline on the
+render thread before each frame and hands the renderer one frame's input: the renderer draws, this crate decides what
+there is to draw.
 
 The desktop app owns one `World`, shares it with the renderer as its `RenderWorld`, and steers it from its viewport
 commands.
@@ -26,8 +25,8 @@ holds is keyed by `RenderViewportId`.
   it.
 
 - **`set_toggles`** sets what plays from the next frame (`WorldToggles`): rain, lightning, wind, campfires, ambient
-  effects, and which groups of spawned objects stream in. By default everything plays except the objects a new game
-  releases.
+  effects, which groups of spawned objects stream in, and which sound categories are heard. By default everything
+  plays except the objects a new game releases.
 
 ## Levels and scenes
 
@@ -48,8 +47,8 @@ them.
   objects as that viewport asks (`pose_model`).
 - When the driver leaves, the next viewer drives. When the last leaves, the scene is dropped.
 - `reload_scene(key, source, reload)` moves a shared scene to a new source for the same level, keeping its id and
-  viewers. Only the parts `reload` names (the renderer's `LevelParts`) are read again, each replacing what was drawn once
-  read.
+  viewers. Only the parts `reload` names (the renderer's `LevelParts`) are read again, each replacing what was drawn
+  once read.
 - `reopen_scene(key, source)` streams the level afresh as a new scene, which every viewer of the old one then shows.
 
 ### Reports
@@ -64,6 +63,16 @@ A scene reads its level's weather once; every viewer plays from that read. Weath
 - `play_weather`, `set_weather_control`, `seek_weather`;
 - `play_weather_effect`;
 - `play_ambient_effect`, near the driving camera and never indoors.
+
+### Sound
+
+One viewport is heard at a time, from its camera; every other scene plays on silent. The heard viewport is the one
+`pin_listener` pins, else the one `set_listener` names, else the last to show a level.
+
+- The source's `read_sounds` gives the level's static sounds and music tracks, and `open_sound` the `WorldSoundSink`
+  the scene's sound frames go to; a source that opens none is not heard.
+- `has_sound` tells whether a viewport's scene plays sound, `report_sound` reports it, and `command_music` steers its
+  music.
 
 ## Each frame
 
@@ -83,11 +92,12 @@ As the renderer's `RenderWorld`, the world answers the render thread before each
 
 - The contract types (`World*` under `src/contract/`) cross IPC to the page. The `typescript-bindings` feature derives
   their Specta types for the generated mirrors.
-- What the host provides (`src/host/`: the level source, its weather and ambients, the event sink) stays in-process.
+- What the host provides (`src/host/`: the level source, its weather, ambients and sounds, the event and sound sinks)
+  stays in-process.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-world`.
+Run `cargo test --locked -p xrf-world` from the repository root.
 
 Sources: [`World`](src/world.rs), its [level source](src/host/world_level_source.rs), the
 [level](src/level/world_level.rs) and its [streaming](src/level/streaming/), the [weather](src/weather/) and the

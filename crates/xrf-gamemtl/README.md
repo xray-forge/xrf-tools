@@ -59,7 +59,7 @@ fn main() -> xrf_error::XrfResult {
 The library is a chunk tree: a version (`0x1000`), the editor's next material and pair numbers (`0x1001`), then a
 materials chunk and a pairs chunk with one child each.
 
-- Only version 1, `GAMEMTL_VERSION_COP`, is read; the engine reads no other.
+- Only version 1 (`CURRENT_VERSION`, the engine's `GAMEMTL_VERSION_COP`) is read; the engine reads no other.
 - `material_index` and `material_pair_index` are one past the highest number ever assigned, not counts.
 
 Every game wrote version 1, so `get_game_version` tells games apart as `CGameMtlLibrary::Load` does, by the newest chunk

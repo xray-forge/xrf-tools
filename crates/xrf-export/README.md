@@ -16,7 +16,8 @@ use std::path::Path;
 use xrf_export::{ExternFormat, ExternManifestParser, ParsedExternManifest};
 
 fn main() -> xrf_error::XrfResult {
-  let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(Path::new("src/engine/declarations"))?;
+  let root: &Path = Path::new("src/engine/declarations");
+  let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(root)?;
   let json: String = parsed.manifest.render(ExternFormat::Json, None)?;
 
   println!("{} exports", parsed.manifest.exports.len());
@@ -43,8 +44,8 @@ A successful extraction does not prove an export is callable in the game.
 
 ## Conflicting declarations
 
-At runtime, `extern(key, value)` splits the key on dots, creates a table under `_G` for each missing segment, and assigns
-the value at the last one, replacing whatever was there and everything under it.
+At runtime, `extern(key, value)` splits the key on dots, creates a table under `_G` for each missing segment, and
+assigns the value at the last one, replacing whatever was there and everything under it.
 
 The parser therefore refuses two calls when the game would keep at most one of them:
 
@@ -102,13 +103,15 @@ overrides the format's default.
 
 Errors split by cause, so `externs export --check` can tell a finding from a run that could not complete:
 
-| Variant              | Cause                                                                                                                                          |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Parsing`, `Invalid` | TypeScript that does not parse, an unreadable contract, a duplicate name, or two calls overwriting each other (`Invalid`, naming both sources) |
-| `Invalid`            | An unsupported extension or format name, or a JSON file that is not a manifest                                                                 |
-| `Verify`             | A file describing a different manifest                                                                                                         |
-| `Io`                 | A root that is not a directory, an unreadable source or file, a failed write                                                                   |
-| `Serde`              | JSON rendering failed                                                                                                                          |
+| Variant    | Cause                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| `Parsing`  | TypeScript that does not parse                                                              |
+| `Invalid`  | An unreadable contract, a duplicate name, or two calls overwriting each other (naming both) |
+| `Invalid`  | An unsupported extension or format name, or a JSON file that is not a manifest              |
+| `Verify`   | A file describing a different manifest                                                      |
+| `Io`       | A root that is not a directory, an unreadable source or file, a failed write                |
+| `Serde`    | JSON rendering failed                                                                       |
+| `NotFound` | `read_declaration_source` asked for a name the project does not hold                        |
 
 ## Checks
 

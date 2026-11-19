@@ -1,13 +1,12 @@
 # xrf-object-visual
 
-Turns an SDK `.object` editable object into the model a renderer draws: the object compiled as the Actor Editor's
-`Export OGF` writes it, and packed as any game visual is, so its surfaces are described as a game visual's are.
+Turns an SDK `.object` editable object into the model a renderer draws: compiled as the Actor Editor's `Export OGF`
+writes it, then packed as any game visual is. The desktop app's model viewer and scene editor draw `.object` files
+through it.
 
-It joins two crates that stay apart: [xrf-rawdata](../xrf-rawdata/README.md) compiles the object and
-[xrf-visual](../xrf-visual/README.md) packs the model, whose `VisualSurfaces` describes each submesh's surface through
-[xrf-material](../xrf-material/README.md). `xrf-visual` taking `xrf-rawdata` would pull the compile's shaders, DDS and
-tangent work into every renderer build, and `xrf-rawdata` is conversion only, so the join is a crate of its own. The desktop app's model viewer
-and its scene editor draw `.object` files through it.
+It joins [xrf-rawdata](../xrf-rawdata/README.md), which compiles the object, and [xrf-visual](../xrf-visual/README.md),
+which packs the model and describes its surfaces through [xrf-material](../xrf-material/README.md). The join is a crate
+of its own so that renderer builds taking `xrf-visual` do not pull in the compile's shaders, DDS and tangent work.
 
 ## Draw an object
 
@@ -40,17 +39,15 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-- `ObjectVisual::compile` writes the OGF and reads it back before packing, so the renderer is handed exactly what the
-  game would load from the compiled file. A rigid object stays in its own space; whoever places it applies its
-  transform, converted to renderer space as `xrf-visual` converts the model.
-- A rigid object compiles to static vertices, which `VisualPacker::pack` does not pack (it packs skinned ones), so each
-  of its parts is packed as a `VisualMesh`, its tangent frame derived from its uvs, and the model described as the file
-  declares it. A skeleton packs through `VisualPacker::pack` like any skinned model.
-- `ObjectVisual::motions` keeps what posing a skeleton object needs, and is `None` for a static one.
-- `xrf-visual`'s `VisualSurfaces::describe` answers every submesh in its order, a compiled object's as a game visual's;
-  open one `XraySurfaceResolver` for many models, since one `shaders.xr` answers every surface in a tree.
-- A compile fails where the object does not export, a static object holding no mesh among the cases `ObjectCompiler`
-  refuses.
+- `ObjectVisual::compile` writes the OGF and reads it back before packing, so the renderer gets exactly what the game
+  would load. It fails where `ObjectCompiler` refuses the object or the compiled file does not read back.
+- `package` is in renderer space. A rigid object stays in its own space, and whoever places it applies its transform,
+  converted as `xrf-visual` converts the model. A skeleton packs in its bind pose with its skin.
+- `VisualPacker::pack` packs skinned vertices only, so a rigid object's parts pack as `VisualMesh` values, their
+  tangents derived from their uvs, under the description the file declares.
+- `motions` holds what posing a skeleton needs, and is `None` for an object with no bind pose.
+- `VisualSurfaces::describe` answers every submesh in order. Share one `XraySurfaceResolver` across a tree's models:
+  one `shaders.xr` answers every surface in it.
 
 ## Checks
 

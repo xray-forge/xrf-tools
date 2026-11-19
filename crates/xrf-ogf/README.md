@@ -78,7 +78,8 @@ Only header version 4 is read; any other is `NotImplemented`.
 - A description stores its times as wide as `time_t` was where it was exported, 32 or 64 bits. `OgfDescriptionChunk`
   reads whichever the chunk ends on and writes back the same. If neither fits, `description` is an `Err` and nothing
   else is lost; no loader depends on it.
-- `read_motion_refs_from_path` and `read_texture_refs_from_path` read only what a reference check needs.
+- `read_motion_refs_from_bytes` and `read_motion_refs_from_chunk` read the kinematics chunk's motion references and
+  skip the rest; `read_texture_refs_from_bytes` and `read_texture_refs_from_chunk` list each nested child's texture.
 
 ## Embedded motions
 

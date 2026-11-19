@@ -176,8 +176,7 @@ The encoding always comes from the format, never from guessing. Game text is Win
   `encode_string_to_bytes` encodes. Each returns `InvalidData` rather than substituting characters.
 - Windows-1251 helpers: `decode_w1251_bytes_to_string`, `encode_string_to_w1251_bytes`,
   `read_as_string_from_w1251_encoded`.
-- `encode_string_into_w1251_bytes` and `read_as_string_from_w1251_encoded` keep an ASCII buffer as it is instead of
-  copying it, which matters for documents of tens of megabytes.
+- `encode_string_into_w1251_bytes` and `read_as_string_from_w1251_encoded` keep an ASCII buffer instead of copying it.
 - Base64 helpers use the URL-safe alphabet without padding.
 
 ### Parsing
@@ -191,8 +190,8 @@ The encoding always comes from the format, never from guessing. Game text is Win
 
 - Runtime durations are `Duration`. A serialized one is whole `u64` milliseconds, through
   `#[serde(with = "xrf_utils::duration_ms")]`, `optional_duration_ms` (`null` when unmeasured) or `duration_ms_vec`.
-  The `duration_wire_format` test scans the workspace and fails for a `Duration` or `Option<Duration>` field of a
-  `Serialize` type without one of these in the six lines above it.
+  [A workspace scan](tests/duration_wire_format.rs) fails for a `Duration` or `Option<Duration>` field of a
+  `Serialize` type without one of these.
 - Sizes are `u64` bytes. `BYTES_PER_KILOBYTE` and its siblings are binary (1024); `megabytes_to_bytes` saturates.
 - `format_duration` renders `742 ms`, `3.2 s` or `1 m 12 s`; `format_bytes` renders `512 B`, `1.5 KB` or `1.17 GB`.
   Both match the UI's `@xrf/format`. `format_bytes_pair` renders two sizes for comparison in the larger one's unit.

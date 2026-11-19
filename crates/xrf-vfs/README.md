@@ -77,8 +77,7 @@ revisions of what they hold, and what it keeps after parsing.
 
 ### Search
 
-`XraySearch` is an ordered list of steps over one snapshot it owns, the first hit winning: what PhysicsFS and Source's
-file system call a search path.
+`XraySearch` is an ordered list of steps over one snapshot it owns, the first hit winning.
 
 - Each step is a label and an `XrayLookupScope`: which mounts, in what order, and which logical subtree.
 - A search has no lifetime, is cheap to clone, and can record every input it reads.
@@ -331,8 +330,8 @@ More detail:
 - `with_root_mode` fails for `Installation` on a path with no fsgame file, or an unreadable one; `open` reports an
   unopenable source as skipped instead.
 - A commit fails for a stale expectation, a path no writable mount can take, or a failed swap.
-- `NotFound` is reserved for absence, so a consumer can tell "the asset is not here" from "the source holding it
-  failed" without parsing messages.
+- `NotFound` is reserved for absence, so a consumer tells a missing asset from a failing source without parsing
+  messages.
 - `XraySearch::open` and `read_shared` are declared but always answer `NotImplemented`: every read is whole.
 
 ## Module map

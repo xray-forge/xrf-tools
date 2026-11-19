@@ -160,9 +160,9 @@ the `ParticleEngineRules`, and an optional `ParticleCollider`.
 `ParticleEngineRules` names the engine ([xrf-engine-target](../xrf-engine-target/README.md)) and its update
 coefficient:
 
-- OpenXRay steps every 33 ms and ignores the coefficient.
-- Monolith scales the step by `particle_update_mod`, clamped to its console range of 0.04 to 10, truncating the
-  milliseconds as the engine casts them.
+- OpenXRay (`XrayEngine::Vanilla`) steps every 33 ms and ignores the coefficient.
+- Monolith (`XrayEngine::Extended`) scales the step by `particle_update_mod`, clamped to its console range of 0.04 to
+  10, truncating the milliseconds as the engine casts them.
 
 ```rust
 use xrf_engine_target::XrayEngine;

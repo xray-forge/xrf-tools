@@ -45,23 +45,24 @@ process. `<target>` is the test binary's name without Cargo's hash; `<nanos>` is
 Every type is a unit struct exported at the crate root. A `GeneratedResources` resource is a name relative to the run's
 directory; operations ending in `path` or `root` answer absolute paths.
 
-| Operation                                     | Use                                                              |
-| --------------------------------------------- | ---------------------------------------------------------------- |
-| `GeneratedResources::path`                    | A path in this run's directory; creates nothing                  |
-| `GeneratedResources::write`                   | Write one file and get its path                                  |
-| `GeneratedResources::create_dir`              | An empty directory, cleared of an earlier run's files            |
-| `GeneratedResources::overwrite`               | Create or truncate a generated file, with its parents            |
-| `GeneratedResources::overwrite_path`          | The same for an already resolved path                            |
-| `GeneratedResources::open`                    | Open a generated file                                            |
-| `GeneratedResources::open_slice`              | Open a generated file as a `FileSlice`                           |
-| `GeneratedResources::sample_name`             | A resource name grouped under the test source's file stem        |
-| `GeneratedResources::sample_path`             | That grouped name made absolute                                  |
-| `GeneratedResources::sample_root`             | The absolute directory a test source's names are grouped in      |
-| `HostFilesystem::link_directory`, `link_file` | Create a link for a containment test                             |
-| `HostFilesystem::non_unicode_file_name`       | A file name the host accepts and `Path::to_str` refuses          |
-| `RefusedPublication::assert_left_previous`    | Assert a refused staged write left the previous file and no more |
-| `GpuRequirement::skip_without_device`         | Skip a GPU test that found no device                             |
-| `TestSkip::report`                            | Say why a test skips before it returns                           |
+| Operation                                       | Use                                                              |
+| ----------------------------------------------- | ---------------------------------------------------------------- |
+| `GeneratedResources::path`                      | A path in this run's directory; creates nothing                  |
+| `GeneratedResources::write`                     | Write one file and get its path                                  |
+| `GeneratedResources::create_dir`                | An empty directory, cleared of an earlier run's files            |
+| `GeneratedResources::overwrite`                 | Create or truncate a generated file, with its parents            |
+| `GeneratedResources::overwrite_path`            | The same for an already resolved path                            |
+| `GeneratedResources::open`                      | Open a generated file                                            |
+| `GeneratedResources::open_slice`                | Open a generated file as a `FileSlice`                           |
+| `GeneratedResources::sample_name`               | A resource name grouped under the test source's file stem        |
+| `GeneratedResources::sample_path`               | That grouped name made absolute                                  |
+| `GeneratedResources::sample_root`               | The absolute directory a test source's names are grouped in      |
+| `HostFilesystem::link_directory`, `link_file`   | Create a link for a containment test                             |
+| `HostFilesystem::non_unicode_file_name`         | A file name the host accepts and `Path::to_str` refuses          |
+| `HostFilesystem::deny_listing`, `allow_listing` | Make a directory unlistable, so a walk fails, and undo it        |
+| `RefusedPublication::assert_left_previous`      | Assert a refused staged write left the previous file and no more |
+| `GpuRequirement::skip_without_device`           | Skip a GPU test that found no device                             |
+| `TestSkip::report`                              | Say why a test skips before it returns                           |
 
 ### Files
 
@@ -80,6 +81,8 @@ directory; operations ending in `path` or `root` answer absolute paths.
 - `link_directory` and `link_file` return `false`, after reporting the skip, when the host cannot create the link; the
   test then skips. On Windows, `link_directory` falls back to a junction when symlinks need a privilege the account
   lacks; `link_file` has no fallback.
+- `deny_listing` likewise returns `false` and skips where the account still lists the directory, as `root` does.
+  Call `allow_listing` before removing the tree.
 
 ### Skipping
 
@@ -94,7 +97,6 @@ directory; operations ending in `path` or `root` answer absolute paths.
 
 Run `cargo test --locked -p xrf-test-utils` from the repository root.
 
-Sources: the
-[generated resources](src/generated_resources.rs), [host filesystem](src/host_filesystem.rs),
+Sources: the [generated resources](src/generated_resources.rs), [host filesystem](src/host_filesystem.rs),
 [refused publication](src/refused_publication.rs), [GPU requirement](src/gpu_requirement.rs) and
 [test skip](src/test_skip.rs).

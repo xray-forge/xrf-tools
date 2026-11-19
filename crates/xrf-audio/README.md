@@ -62,8 +62,8 @@ fn main() -> xrf_error::XrfResult {
 ## The audio thread
 
 `AudioMixer::render` takes no lock and allocates nothing; a test renders every command under `assert_no_alloc`. The
-control side builds and boxes each voice, the mixer moves it into one of its preallocated slots, and a finished voice
-returns through a ring to be freed by the engine on its next call (or `AudioEngine::collect`).
+control side builds and boxes each voice, and the mixer moves it into a preallocated slot. A finished voice returns
+through a ring and is freed on the engine's next call, or by `AudioEngine::collect`.
 
 The control side reaches the audio thread two ways:
 
@@ -72,9 +72,8 @@ The control side reaches the audio thread two ways:
 | Command ring           | A voice's start, pause, resume, stop; bus and master | Refused with `AudioRefusal::CommandsFull`       |
 | Slot's parameter block | Gain, rate, pan, and a placed voice's spatial block  | Never: the latest write wins, read once a block |
 
-Voice controls never queue, because a level's emitters change them every frame and a device may not be taking buffers
-at all: a thousand voices updated every frame cost a thousand writes and nothing else. A full voice pool refuses a voice
-with `AudioRefusal::VoicesExhausted`.
+Voice controls never queue: a level's emitters change them every frame, and a device may not be taking buffers at all.
+A full voice pool refuses a voice with `AudioRefusal::VoicesExhausted`.
 
 ### Blocks and timing
 
@@ -108,24 +107,22 @@ the first two; a mono device gets the two averaged.
 
 ## Sounds
 
-`SoundDecoder` reads Ogg/Vorbis, as the game ships sounds, through `xrf-sound`'s `VorbisDecoder` (its own Ogg reading,
-symphonia's Vorbis codec), and WAV, as the SDK keeps sources, through symphonia: any PCM WAV its `pcm` codec decodes,
-16-bit, 24-bit or float.
+`SoundDecoder` reads two formats:
 
-- Only one or two channels are accepted, as the engines play nothing else.
-- An Ogg/Vorbis sound's length is what `ov_pcm_total` says, the engine's count, and a WAV's the length its track
-  states. Decoding is not cut to it: the decoder gives every frame the container holds.
-- Seeking is exact to the frame: the decoder lands on the packet holding the frame, or before it, and drops what it
-  decodes before the frame.
+- Ogg/Vorbis, as the game ships sounds, through [xrf-sound](../xrf-sound/README.md)'s `VorbisDecoder`.
+- PCM WAV (16-bit, 24-bit or float), as the SDK keeps sources, through symphonia.
+
+Only one or two channels are accepted, as the engines play nothing else. A sound's length is the engine's count
+(`ov_pcm_total`) for Ogg/Vorbis and the track's stated length for WAV, but decoding gives every frame the container
+holds. Seeking is exact to the frame.
 
 A sound is held one of three ways:
 
 - `DecodedSound` holds it whole, interleaved at its own rate; most voices play short sounds this way.
-- `SoundStream::start` takes the sound's `SoundFormat` (rate, channels, length, from `SoundDecoder::get_format` or a
-  header) and returns at once. Its thread opens and seeks the sound, then decodes about 0.7 s ahead into a ring the
-  voice reads; the voice plays silence until the first frames come. A sound that cannot be opened, does not match the
-  format, or cannot be sought ends the voice, and `StreamControl::get_failure` says why. The thread ends when its voice
-  is freed.
+- `SoundStream::start` takes the sound's `SoundFormat` (from `SoundDecoder::get_format` or a header) and returns at
+  once. Its thread decodes about 0.7 s ahead into a ring the voice reads, and the voice plays silence until the first
+  frames come. A sound that cannot be opened, sought, or does not match the format ends the voice;
+  `StreamControl::get_failure` says why. The thread ends when its voice is freed.
 - `SoundPeaks::read` streams a sound into the loudest sample of each of a number of stretches, for a waveform, without
   holding it.
 

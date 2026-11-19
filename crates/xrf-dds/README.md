@@ -46,11 +46,10 @@ A successful metadata read does not validate the texture.
   of copying them.
 - **Decode:** `decode_rgba` for one mip level, `to_png` for a PNG of the base level. `get_data` is the payload as
   stored, each layer's chain largest level first.
-- **Decode alpha as the SDK's compilers read it:** `decode_sdk_alpha` gives the base level's alpha as FreeImage 3.9,
-  their image library, decodes it. A DXT5 block's interpolated alpha rounds to nearest where `decode_rgba` rounds down,
-  one step apart on up to a fifth of a texture's texels. A 16-bit or 24-bit packing reads opaque. A DX10 header, an
-  alpha-only or luminance layout, a level with no texels, and a block-compressed level that is not whole blocks are
-  refused.
+- **Decode alpha as the SDK's compilers read it:** `decode_sdk_alpha` gives the base level's alpha as their image
+  library, FreeImage 3.9, decodes it. DXT5 interpolated alpha rounds to nearest, one step off `decode_rgba` on some
+  texels, and 16-bit and 24-bit packings read opaque. It refuses what FreeImage does not load (a DX10 header, an
+  alpha-only or luminance layout), a level with no texels, and a block-compressed level that is not whole blocks.
 - **Write:** `write_to_path` or `write_to_bytes`.
 - **Encode:** build a `DdsMipChain`, then call `DdsEncoding::encode`, or `encode_cube` with six square chains
   (`+x -x +y -y +z -z`).
@@ -116,11 +115,11 @@ BC7.
 
 `DdsFormatSupport` answers `Supported`, `Unsupported`, or `Unverified` (nobody has checked that loader):
 
-| Path   | Loads                                                         | Refuses or unverified           |
-| ------ | ------------------------------------------------------------- | ------------------------------- |
-| D3D9   | Every legacy D3D9 format; DXGI legacy block and plain layouts | Refuses BC4, BC5 and BC7        |
-| DX11   | Every DXGI block-compressed and plain layout; the DXT family  | Other legacy layouts unverified |
-| OpenGL | —                                                             | Everything unverified           |
+| Path   | Loads                                                         | Refuses or unverified                      |
+| ------ | ------------------------------------------------------------- | ------------------------------------------ |
+| D3D9   | Every legacy D3D9 format; DXGI legacy block and plain layouts | Refuses BC4, BC5, BC7 and the rest of DXGI |
+| DX11   | Every DXGI block-compressed and plain layout; the DXT family  | Other layouts unverified                   |
+| OpenGL | —                                                             | Everything unverified                      |
 
 ## Errors
 

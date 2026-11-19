@@ -10,12 +10,14 @@ device and decoders.
 
 An `AudioSceneFrame` describes one moment on the scene's clock:
 
-| Part                | Meaning                              |
-| ------------------- | ------------------------------------ |
-| `AudioListener`     | Where the scene is heard from        |
-| `AudioSceneRules`   | Which game's voice rules it plays by |
-| `AudioBus`          | Which of the scene's buses are heard |
-| `AudioSceneEmitter` | Every sound playing                  |
+| Field           | Holds                                                                      |
+| --------------- | -------------------------------------------------------------------------- |
+| `scene`, `time` | The host's id for the scene and the scene's clock                          |
+| `rules`         | `AudioSceneRules`: vanilla (32 voices at once) or extended (1024)          |
+| `is_audible`    | Whether the scene is heard; one that is not fades out and plays on, silent |
+| `listener`      | `AudioListener`: where the scene is heard from                             |
+| `heard`         | Which buses are heard, indexed by `AudioBus::get_index`                    |
+| `emitters`      | One `AudioSceneEmitter` per sound playing                                  |
 
 ## Send frames
 
@@ -35,6 +37,9 @@ let frame: Box<AudioSceneFrame> = mailbox.take().expect("the frame came through"
 mailbox.give_back(frame);
 assert!(inbox.take_spent().is_some());
 ```
+
+- `send` never waits: with four frames still untaken it hands the frame back, to fill again next time.
+- Dropping the inbox closes the scene and fades its voices out.
 
 ## Checks
 

@@ -115,12 +115,12 @@ vertex decodes through `LevelVertexBytes`, so verification and the renderer read
   (`LevelCformMaterials`), keeping nothing else, for checking a level against the material library.
 - `LevelCformGeometry::build_tracer` puts the whole form in an `xrf-geometry` tracer for the engine's static ray and
   box queries, each face named by its index in the form, whose material the caller reads off the form.
-- `LevelAiFile::read_with_nodes_*` reads the nodes as `LevelAiNodes`, packed as stored and decoded one at a time
-  (`LevelAiNode`) in any layout the engine loads, versions 8 to 13. Keeping the bytes is what lets the writer
-  reproduce the file. `LevelAiNodes::from_nodes` packs computed nodes in a version's layout, refusing a value its bits
-  cannot hold; a node's `light` is the bits older compilers left past the links. `LevelAiHeader::get_node_position`
-  gives a node's world position as `CLevelGraph` does. `build.aimap`'s nodes keep their cell and height as an
-  `xrf-math` `AiNodePosition`.
+- `LevelAiFile::read_with_nodes_*` reads the nodes as `LevelAiNodes`, packed as stored so the writer reproduces the
+  file, and decoded one at a time (`LevelAiNode`) in any layout the engine loads, versions 8 to 13.
+- `LevelAiNodes::from_nodes` packs computed nodes in a version's layout, refusing a value its bits cannot hold. A
+  node's `light` is the bits older compilers left past the links.
+- `LevelAiHeader::get_node_position` gives a node's world position as `CLevelGraph` does. `build.aimap`'s nodes keep
+  their cell and height as an `xrf-math` `AiNodePosition`.
 
 ### Surface materials
 
@@ -138,9 +138,9 @@ does not record.
 - Record chunks the engine casts onto an array (portals, static lights, glows, occlusion meshes) are read through
   `ChunkReader::read_xr_records`, which refuses a chunk that is not whole records.
 - `LevelDetailsFile` keeps its slot grid packed as the file's 16-byte words (up to 667,489 slots per level) and
-  computes totals by folding over it. `LevelDetailsSlot` is a view built per slot, and its associated functions are the
-  one rule every crate packs a slot's words by: a corner's object, its densities, the light (`LevelDetailsLight`, five
-  values of four bits, `quantize` as the detail lighter rounds them), and the corners the lighter clears.
+  computes totals by folding over it. `LevelDetailsSlot` is a view built per slot; its associated functions are the
+  one place a slot's words are packed: a corner's object and densities, the light (`LevelDetailsLight`, five 4-bit
+  values, which `quantize` rounds as the detail lighter does), and the corners the lighter clears.
 - `build.lights` holds one chunk per `LevelLightRole`, rgb, hemi and sun; `get_role_lights` reads one, point and
   directional lights alike (xrLC's `LT_DIRECT` 0 and `LT_POINT` 1).
 - A `.dm` is one `CDetail`, so `DetailModel` reads both a library entry and a whole `.dm`.

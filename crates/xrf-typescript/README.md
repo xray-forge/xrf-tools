@@ -124,8 +124,8 @@ formatting, not to preserve a user's source text for an edit.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-typescript`, adding `--features codegen` to build the item renderer.
+Run `cargo test --locked -p xrf-typescript` from the repository root, adding `--features codegen` to build the item
+renderer.
 
-Sources: the
-[source](src/typescript_source.rs), [type renderer](src/typescript_type_renderer.rs),
+Sources: the [source](src/typescript_source.rs), [type renderer](src/typescript_type_renderer.rs),
 [symbol resolver](src/symbol_resolver), and [item renderer](src/typescript_item_renderer.rs).

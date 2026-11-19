@@ -109,9 +109,9 @@ Walking back from the last pass, a pass survives when it:
 
 - `tag` attaches a `&'static str` to a pass in the report (`GraphPassReport::tags`) for checks over the declared frame;
   the graph itself reads none.
-- A **bridge** is an encoder pass marked `bridge`, recorded as code did before the graph existed, opening its own
-  render and compute passes. Its accesses are declared by hand and cannot be checked. It is never culled, and the report
-  names it, so what is left to convert stays visible.
+- A **bridge** is an encoder pass marked `bridge` that opens its own render and compute passes. Its accesses are
+  declared by hand and cannot be checked. It is never culled, and the report names it, so what is left to convert
+  stays visible.
 - `GraphCompileOptions` turns culling, pooling, merging and grouping off one at a time, or all at once (`serial()`), to
   bisect a difference in a capture.
 - `CompiledGraph::describe` returns a `GraphReport`: the passes, their render passes and groups, the textures each
@@ -335,12 +335,16 @@ A caller warns, then takes the automatic one, where the named GPU cannot do its 
 
 ## A device for tools
 
-`RayQueryDevice::request(RayQueryAsk { dxc, gpu })` starts a GPU without a window that traces rays in compute shaders
-(`EXPERIMENTAL_RAY_QUERY`), with the adapter's own limits, for a tool tracing offline rather than drawing. D3D12 compiles
-ray query shaders only through DXC, so with `dxc` naming DXC's `dxcompiler.dll` it tries D3D12 first; Vulkan needs no
-library and is tried after it, or alone. On each it takes the GPU `gpu` names where that one traces rays, else, warning
-where one was named, the high-performance one. Its `name` says the adapter and the backend, as a report names the GPU
-that traced. The level compiler's detail lighter traces on it (`xrf-level-compiler`'s `gpu` feature).
+`RayQueryDevice::request(RayQueryAsk { dxc, gpu })` starts a windowless device that traces rays in compute shaders
+(`EXPERIMENTAL_RAY_QUERY`), with the adapter's own limits, for a tool tracing offline rather than drawing.
+
+- D3D12 compiles ray query shaders only through DXC, so it is tried first only where `dxc` names DXC's
+  `dxcompiler.dll`. Vulkan needs no library and is tried after it, or alone.
+- On each backend it takes the GPU `gpu` names where that one traces rays, else, warning where one was named, the
+  high-performance one.
+- Its `name` gives the adapter and backend, as a report names the GPU that traced.
+
+`xrf-level-compiler`'s `gpu` feature traces the lightmaps, the details' light and the AI map's covers on it.
 
 ## Generated files
 

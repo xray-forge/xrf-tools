@@ -123,12 +123,12 @@ Files are decoded as strict Windows-1251: a byte outside it is an error, not rep
 
 ## Verify
 
-Options, both off by default:
+`LtxProjectOptions`, both off by default:
 
-- `LtxProjectOptions::is_with_schemes_check` loads section schemes (`scheme.ltx` and `*.scheme.ltx`) when the project
+- `is_with_schemes_check` loads section schemes (`scheme.ltx` and `*.scheme.ltx`) when the project
   opens. A section opts in with a `$scheme` field. Schemes judge resolved values, since only resolution knows whether
   inheritance supplied a required field.
-- `is_strict_check` adds stricter checks; currently, that `#include` names match file names case-sensitively.
+- `is_strict_check` requires `#include` names to match file names case-sensitively.
 
 Calls:
 

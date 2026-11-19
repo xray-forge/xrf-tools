@@ -2,12 +2,12 @@
 
 Reads and writes INI files: `[section]` headers and `key = value` fields, kept in the order they were read or added.
 
-Nothing else is assumed. Every other convention (the encoding, padded columns, values spanning lines) is a field of an
-`IniFormat` the caller names. Methods without a format use `IniFormat::PLAIN`.
+Every other convention (the encoding, padded columns, values spanning lines) is a field of an `IniFormat` the caller
+names; methods without an `_as` suffix use `IniFormat::PLAIN`.
 
-Use [xrf-ltx](../xrf-ltx/README.md) for the game's LTX configs: it resolves includes, section parents, the DLTX dialect
-and whole config trees. `xrf-ini` handles one file as it stands, so a file a program saved comes back byte for byte, as
-the SDK's own text files need.
+`xrf-ini` handles one file as it stands, so a file a program saved comes back byte for byte, as the SDK's own text
+files need. For the game's LTX configs, with includes, section parents, the DLTX dialect and whole config trees, use
+[xrf-ltx](../xrf-ltx/README.md).
 
 ## Read and write a plain file
 
@@ -75,19 +75,19 @@ fn main() -> xrf_error::XrfResult {
 
 ## How lines are read
 
-- `[name]` opens a section. A header followed by anything but a `;` comment is refused; section parents are an LTX
-  feature.
+- `[name]` opens a section. Section parents (`[name]:parent`) are an LTX feature and are refused.
 - A line with `=` is a field; key and value are trimmed at both ends.
 - A line without `=` is a key with an empty value.
 - Blank lines and lines starting with `;` are skipped.
 - Values are kept as written, quotes included. A multi-line value's line breaks are joined with the format's line end.
 - Both `\n` and `\r\n` are accepted.
-- A byte order mark at the start of the file is skipped.
+- A byte order mark at the start of a file or bytes is skipped; `read_from_str` takes text without one.
 
 ## Errors
 
 Reads refuse, naming the line:
 
+- a section header with no `]`, or followed by anything but a `;` comment;
 - a field before any section, or a field with no key;
 - a repeated key, where the format refuses it;
 - a section declared twice (`CInifile` treats this as fatal too);

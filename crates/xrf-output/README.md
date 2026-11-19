@@ -33,6 +33,7 @@ without allocating a `String` first. Options clone cheaply and share the sink.
 ## Channels and verbosity
 
 `OutputOptions` filters by channel before the sink sees a message; a sink never applies verbosity itself.
+`write_record` replays a captured `OutputRecord` unfiltered.
 
 | Verbosity          | Delivered channels                              |
 | ------------------ | ----------------------------------------------- |
@@ -93,4 +94,5 @@ assert_eq!(messages, ["first", "second"]);
 
 Run `cargo test --locked -p xrf-output` from the repository root.
 
-Sources: the [options](src/output_options.rs), [sinks](src/sink/output.rs) and [ordered output](src/sequence/output_sequence.rs).
+Sources: the [options](src/output_options.rs), [sinks](src/sink/output.rs) and
+[ordered output](src/sequence/output_sequence.rs).

@@ -68,9 +68,9 @@ fn main() -> xrf_error::XrfResult {
   `XrfError::Parsing`.
 
 `from_compressed_normal` and `to_compressed_normal` are `pvDecompress` and `pvCompress`, the 16-bit normal an AI node
-stores its plane in, computed as SDK 0.7's xrCore computes them: the table at x87 extended precision, the rest in single
-precision, the compression's sum `(z + y) + x`, a sign bit forced on rather than negated. All 65,536 values round trip
-through decompression, normalisation and compression as SDK 0.7's xrAI saves them.
+stores its plane in. They compute as SDK 0.7's xrCore does: the table at x87 extended precision, the rest in single
+precision, the sum `(z + y) + x`, a sign bit forced on rather than negated. All 65,536 values round trip through
+decompression, normalisation and compression as SDK 0.7's xrAI saves them.
 
 `Vector2d` is the same for two `f32` components: `new`, `ZERO`, `to_array`, and `x,y` through `Display` and `FromStr`.
 It holds a texture coordinate or a sprite's size on its sheet.
@@ -153,9 +153,8 @@ the world origin, and its height packed across a box's height. `pack` and `unpac
   display's 2.2 power (`SRGB_DISPLAY_POWER`).
 - `luminance` weights linear light by Rec. 709 (`LUMINANCE_WEIGHTS`).
 
-The renderer lights with these (its `lighting/srgb.rs` and `lighting/luminance.rs` mirror `common/srgb.wgsl` and
-`common/luminance.wgsl` through them), and `xrf-texture`'s albedo measure reads textures with them, so the measure
-agrees with what the renderer draws.
+The renderer's CPU mirrors of `common/srgb.wgsl` and `common/luminance.wgsl` use these, as does `xrf-texture`'s albedo
+measure, so the measure agrees with what the renderer draws.
 
 ## Features
 
@@ -171,5 +170,5 @@ Run `cargo test --locked -p xrf-math` from the repository root.
 
 Sources: [Vector2d](src/vector_2d.rs), [Vector3d](src/vector_3d.rs), [Matrix4x4](src/matrix_4x4.rs),
 [Affine3d](src/affine_3d.rs), [Quaternion](src/quaternion.rs), [Color](src/color.rs), the [shapes](src/shape/),
-[AiNodePosition](src/ai_node_position.rs), the
-[glam conversions](src/glam_conversions.rs) and the [epsilons](src/math_constants.rs).
+[AiNodePosition](src/ai_node_position.rs), the [glam conversions](src/glam_conversions.rs), the
+[epsilons](src/math_constants.rs) and the [display colour](src/display_colour.rs) helpers.

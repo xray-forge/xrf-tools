@@ -11,10 +11,10 @@ the texture view.
 
 ## What the host provides
 
-The renderer takes what it draws in memory and never opens a file. It knows its host only through these traits, which
-the app implements:
+The renderer takes what it draws in memory and never opens a file. It knows its host only through these types: traits
+the app implements, and the thread pool it hands in.
 
-| Trait               | What the host gives                                                                        |
+| Type                | What the host gives                                                                        |
 | ------------------- | ------------------------------------------------------------------------------------------ |
 | `RenderLevelSource` | An open level as a scene draws it: its sector count and shader table's surfaces            |
 | `RenderAssetSource` | Texture bytes by reference, within a scope two sources share when they read the same files |
@@ -39,9 +39,10 @@ attached.
 
 - Every `RenderCommand` is a message to the render thread, the only thread touching the GPU. Clones reach the same
   thread.
-- The first `Attach` starts the thread; it stops a few seconds after the last detach. A tool that never draws never
-  starts a GPU.
-- With no thread running, any command other than an attach does nothing, but `Settings` are kept for the next thread.
+- The first `Attach` or `Hold` starts the thread; it stops a few seconds after the last detach and `Release`. A tool
+  that never draws never starts a GPU, and one whose viewports come and go holds it.
+- With no thread running, any command other than an attach or a hold does nothing, but `Settings` are kept for the next
+  thread.
 
 Commands:
 
@@ -140,7 +141,7 @@ Their passes are built once for every view and grouped the same way; each holds 
   volumes) joins `LevelPrepare` (`scene/level/level_prepare.rs`), which the view takes from the scene once per frame
   and passes to its units and stages.
 
-**A new drawable kind** beside the static scene (grass is the one today, `feature/scene/grass/`): add a variant to each
+**A new drawable kind** beside the static scene (such as grass, `feature/scene/grass/`): add a variant to each
 enum that the all-kinds consumers dispatch through (`feature/scene/drawable/`).
 
 - The scene group draws it into the G-buffer in phases: `DrawableKindSource` readies it before the static scene draws;

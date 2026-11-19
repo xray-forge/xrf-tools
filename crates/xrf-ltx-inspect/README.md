@@ -6,9 +6,9 @@ resolved fields, scheme reports, source lines, and findings anchored to lines.
 The records feed the desktop app's configs explorer and `xrf-cli ltx list`, `find` and `inspect`.
 
 - Every record serializes in camelCase, is anchored to source lines, and carries the `entry` point it was computed
-  against. A consumer can key a cache by it and never computes a line number itself.
-- The crate only reads. It does not select dialects or edit files, and it does not depend on `xrf-dltx`.
-- It sits on top of `xrf-ltx` so that viewer needs never shape the core reader every command resolves configs through.
+  against, so a consumer can key a cache by it and never computes a line number itself.
+- The crate only reads: it selects no dialect, edits no file, and does not depend on `xrf-dltx`. Keeping viewer needs
+  here leaves the core reader in `xrf-ltx` free of them.
 
 ## Inspect a resolved root
 

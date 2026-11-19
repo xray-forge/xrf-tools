@@ -54,9 +54,9 @@ Then:
   four bytes.
 - `read_u8_payload`, `read_u32_payload`, `read_w1251_string_payload` and their kin read a chunk whose whole payload is
   one value, and fail when bytes remain after it.
-- A reader that decodes a run of bytes and keeps none of them takes it through `read_remaining_with`, or a source's
-  `read_with` and `read_at_with`: an in-memory source lends the bytes where they lie, any other reads them into a
-  buffer first. OGF vertices and level render geometry are decoded this way.
+- To decode a run of bytes without keeping them, use `read_remaining_with`, `read_with`, or a source's `read_at_with`:
+  an in-memory source lends the bytes where they lie, any other reads them into a buffer first. OGF vertices and level
+  render geometry decode this way.
 - Build a payload with `ChunkWriter`, then use `flush_chunk_into` or `flush_chunk_into_buffer` for a framed chunk, or
   `flush_raw_into` for raw bytes.
 - Implement `ChunkReadWrite` for a format's typed payload; `ChunkReadWriteList` and `ChunkReadWriteOptional` cover
@@ -77,49 +77,48 @@ unrelated payload. A payload larger than a `u32` can declare is refused.
 the child iterators always read headers little-endian.
 
 Strings are null-terminated Windows-1251, read up to 10,240 bytes unless a `_limited` form gives another bound, and
-decoded through `xrf_utils::decode_w1251_field_to_string`: no byte order mark is looked for, so a string opening on
-`EF BB BF` reads as «п»ї» and writes back as the same bytes.
-`read_w1251_line` reads a value ended by any run of `\r` and `\n`, and returns a `ChunkLine` carrying that terminator so
-`write_w1251_line` can put back exactly what the file held. `read_f32_q16` and `write_f32_q16` read and write a float
+decoded through `xrf_utils::decode_w1251_field_to_string`. No byte order mark is looked for: a string opening on
+`EF BB BF` reads as `п»ї` and writes back as the same bytes.
+
+`read_w1251_line` reads a value ended by any run of `\r` and `\n`, and returns a `ChunkLine` carrying that terminator
+so `write_w1251_line` can put back exactly what the file held. `read_f32_q16` and `write_f32_q16` read and write a float
 quantised into a `u16` over a range the format supplies; a write clamps a value outside the range, and only the bytes,
 not the float, survive a round trip. `new_bounded_vec` reserves for a declared record count only after checking it
 against the bytes remaining.
 
 ## Values as bytes and as fields
 
-The engine's `NET_Packet` writes each value through a primitive (`w_u16`, `w_float`, `w_vec3`, `w_stringZ`); with an
+The engine's `NET_Packet` writes each value through a primitive (`w_u16`, `w_float`, `w_vec3`, `w_stringZ`). With an
 ini stream attached it also saves one field per primitive, which is how the Level Editor keeps an entity's spawn data.
-Here those primitives are `ChunkFieldWriter` and `ChunkFieldReader`: `u8`, `u16`, `u32`, `u64`, `f32`, a three-float
-vector, a Windows-1251 string, raw bytes, the position (`w_tell`), a patch (`w_seek`), the end (`r_eof`), and the
-packet's own question, `is_field_form` (`inistream != nullptr`), for a value the engine writes otherwise to an ini
-stream. Provided methods build on them under `ChunkReader`'s and `ChunkWriter`'s own names (`read_xr`, `read_xr_list`,
-`read_xr_optional`, `read_u16_vector`, `new_bounded_vec` and their writer twins), so a value's code reads the same over
-either form.
+`ChunkFieldWriter` and `ChunkFieldReader` are those primitives: `u8`, `u16`, `u32`, `u64`, `f32`, a three-float vector,
+a Windows-1251 string, raw bytes, the position (`w_tell`), a `u16` patch (`w_seek`), the end (`r_eof`), and
+`is_field_form` (`inistream != nullptr`) for a value the engine writes differently to an ini stream. Provided methods
+(`read_xr`, `read_xr_list`, `read_xr_optional`, `read_u16_vector`, `new_bounded_vec` and their writer twins) carry
+`ChunkReader`'s and `ChunkWriter`'s names, so a value's code reads the same over either form.
 
-- `ChunkWriter` and `ChunkReader` implement them as bytes.
+- `ChunkWriter` and `ChunkReader` implement the traits as bytes.
 - `ChunkFieldRecorder` records each value as a `ChunkField` of its `ChunkFieldKind`; `ChunkFieldReplay` reads them back
-  from any `ChunkFieldSource`, asking each field as the kind it reads. Both count the bytes the values take, as the
-  packet does, so a size or a save marker taken from their position is the binary one. A patch changes the bytes alone
-  and leaves a field as written; raw bytes make no field and are refused unless empty. A count is bounded by the bytes
-  left only in bytes, which fields do not carry.
-- A type implementing `ChunkFieldReadWrite` (or `ChunkFieldReadWriteList`, `ChunkFieldReadWriteOptional`) writes itself
-  once against the traits and gets `ChunkReadWrite` (or `ChunkReadWriteList`, `ChunkReadWriteOptional`) from a blanket
-  impl: its bytes are its fields over a `ChunkWriter`, so the two forms cannot drift, and a hand-written byte impl for
-  it would not compile.
+  from any `ChunkFieldSource`. Both count the bytes the values would take, so a size or marker taken from their position
+  matches the byte form. A patch leaves recorded fields as written; raw bytes make no field and are refused unless
+  empty; `new_bounded_vec` checks a count against the bytes left only in the byte form.
+- A type implementing `ChunkFieldReadWrite` (or its `List` and `Optional` forms) gets `ChunkReadWrite` (or the matching
+  form) from a blanket impl, so its bytes are its fields over a `ChunkWriter` and the two forms cannot drift. Every
+  `xrf-math` chunk type and every `xrf-spawn` ALife class and value is written this way.
 
 The traits' methods share their names with `byteorder`'s (`write_u16::<T>`), so a file using both on a `ChunkWriter`
-must call one through its trait. Users: every `xrf-math` chunk type and every `xrf-spawn` ALife class and value.
+must call one through its trait.
 
 ## Layout of a container
 
-`ChunkLayout` keeps how a container's children were laid out in a file, apart from what a format reads out of them:
-the order they were stored in, and every child no field takes as a `ChunkPayload`, its id and payload bytes.
-`ChunkLayout::read` hands each child to a closure that folds it into a field and answers `true`, or answers `false` to
-keep it. To write, a format encodes its children into a `ChunkSequence` in its own writer's order and hands it to
-`ChunkLayout::write`, which puts them down in the stored order, each id taking the first child with that id not yet
-written, then any the order does not list, the kept ones last. A default layout writes the format's own order. It
-serves a format whose reader finds chunks by id, where order carries no meaning but a byte-for-byte rewrite needs it:
+`ChunkLayout` lets a format that finds chunks by id rewrite a file byte for byte. It keeps the children's stored order
+and, as `ChunkPayload`s (id and bytes), every child no field takes.
 [xrf-editable-object](../xrf-editable-object/README.md) keeps one per container.
+
+- `ChunkLayout::read` hands each child to a closure that folds it into a field and answers `true`, or answers `false`
+  to keep it.
+- `ChunkLayout::write` takes the format's children encoded into a `ChunkSequence` and writes them in the stored order,
+  each id taking the first unwritten child with that id, then the rest, kept children last.
+- A default layout keeps nothing and writes the format's own order.
 
 ## Errors, trailing bytes and compressed chunks
 

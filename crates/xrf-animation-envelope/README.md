@@ -73,8 +73,8 @@ The editing methods match the engine's `CEnvelope`:
 - No keys reads zero; one key reads its value.
 - Between keys, each span follows its shape: TCB, Hermite, Bezier, line, step or `BEZ2`.
 - Outside the keys, the before or after behaviour applies: reset, constant, repeat, oscillate, offset or linear.
-- Repeat (the engine's `range`) wraps by `low + time - span * floor(time / span)`, so a span not starting at zero repeats from where that
-  lands. Oscillation reads the span's length less the time.
+- Repeat wraps with the engine's `range`, `low + time - span * floor(time / span)`, so a span not starting at zero
+  repeats from where that lands. Oscillation reads the span's length less the time.
 - An unknown shape reads as the offset alone, as the engine's `default` case does. An unknown behaviour leaves the time
   outside the keys, and the first or last span extrapolates where the engine would read past them.
 

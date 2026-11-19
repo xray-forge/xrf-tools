@@ -19,9 +19,9 @@ The renderer's `dlss` feature, and through it the app's, turns `sdk` on.
 
 Building with `sdk` needs:
 
-- NVIDIA's DLSS SDK (`DLSS_SDK`), the Vulkan SDK (`VULKAN_SDK`) and libclang. `cargo make fetch-sdks` sets them up, as
-  [DEVELOPMENT.md](../../DEVELOPMENT.md) describes. On Windows with no `LIBCLANG_PATH`, the build uses the libclang
-  `fetch-sdks` placed in `.sdks/libclang`.
+- NVIDIA's DLSS SDK (`DLSS_SDK`), the Vulkan headers (`VULKAN_SDK`) and libclang (`LIBCLANG_PATH`).
+  `cargo make fetch-sdks` places them under `.sdks/`, where `.cargo/config.toml` points those variables, as
+  [DEVELOPMENT.md](../../DEVELOPMENT.md) describes.
 - An x86-64 Windows or Linux target, the only ones NGX's static library ships for.
 
 The build script binds NGX's C API with bindgen, compiles its inline helpers, links the static library, and records
@@ -49,11 +49,15 @@ if let Some(dlss) = dlss.get() {
 
 **`DlssInstance::new(descriptor, is_upscaled, runtime)`** makes the instance; `instance` is the plain `wgpu::Instance`.
 
-- With `is_upscaled` and Vulkan as the only backend, it adds the instance extensions NGX needs.
-- With D3D12 as the only backend (Windows only), it prepares NGX for the device.
-- Any other backend set gives a plain instance, as does a Vulkan instance NGX's extensions fail on (with a warning).
-- `runtime` is the directory the application ships NGX's runtime library in (`Dlss::RUNTIME_LIBRARY`,
-  `nvngx_dlss.dll` on Windows, with ray reconstruction's beside it). NGX also searches the SDK the build used.
+With `is_upscaled`:
+
+- with Vulkan as the only backend, it adds the instance extensions NGX needs;
+- with D3D12 as the only backend (Windows only), it prepares NGX for the device.
+
+Otherwise it gives a plain instance, as it does, with a warning, where NGX's Vulkan extensions fail.
+
+`runtime` is the directory the application ships NGX's runtime library in (`Dlss::RUNTIME_LIBRARY`, `nvngx_dlss.dll` on
+Windows, with ray reconstruction's beside it). NGX also searches the SDK the build used.
 
 **`request_device(adapter, descriptor)`** answers the device, its queue and a `DlssTask`.
 
@@ -112,9 +116,9 @@ Ray reconstruction also takes:
 - the unjittered view and projection;
 - optionally, the frame before and after its transparent layers.
 
-Neither feature takes a current-colour bias mask: NGX's `pInBiasCurrentColorMask` serves super resolution's preset F
-alone, the transformer presets ignore it (DLSS Programming Guide, "Biasing the Current Frame"), and ray reconstruction's
-models E and F drew water rippling in rain alike with a mask of 0.8 over it and with none.
+Neither feature takes a current-colour bias mask (`pInBiasCurrentColorMask`). It serves super resolution's preset F
+alone; the transformer presets ignore it (DLSS Programming Guide, "Biasing the Current Frame"); and ray
+reconstruction's models E and F drew rain-rippled water the same with a 0.8 mask and without.
 
 NGX's own messages are logged under the `xrf_dlss::ngx` target while its debug level is on.
 

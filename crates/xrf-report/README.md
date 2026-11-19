@@ -67,5 +67,6 @@ Building a report does not log, write a file, or choose an exit code; the consum
 
 Run `cargo test --locked -p xrf-report` from the repository root.
 
-Sources: the [report](src/report.rs), [check](src/check_report.rs), [finding](src/finding.rs), [status](src/status.rs), the
-[check](src/check_id.rs) and [rule](src/rule_id.rs) identifiers and their [error](src/identifier_error.rs).
+Sources: the [report](src/report.rs), [check](src/check_report.rs), [finding](src/finding.rs),
+[status](src/status.rs), the [check](src/check_id.rs) and [rule](src/rule_id.rs) identifiers and their
+[error](src/identifier_error.rs).

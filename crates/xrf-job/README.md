@@ -5,7 +5,8 @@ Progress reporting, cooperative cancellation and worker limits for long-running 
 An operation takes a `JobHandle` (usually in its options struct) and runs on an installed thread pool. The CLI and the
 desktop app decide where progress goes, when to cancel, and how many workers to use.
 
-Live messages belong to [xrf-output](../xrf-output/README.md), and final findings to [xrf-report](../xrf-report/README.md).
+Live messages belong to [xrf-output](../xrf-output/README.md), and final findings to
+[xrf-report](../xrf-report/README.md).
 
 ## Report progress
 
@@ -14,7 +15,7 @@ the work and keeps another to call `cancel` on.
 
 | Constructor                       | Use                                                                               |
 | --------------------------------- | --------------------------------------------------------------------------------- |
-| `JobHandle::inert()` or `default` | Reports nowhere but can still be cancelled; the CLI and most tests use it         |
+| `JobHandle::inert()` or `default` | Reports nowhere but can still be cancelled; most tests use it                     |
 | `JobHandle::new(sink)`            | Reports to a `ProgressSink` at most once per `DEFAULT_PROGRESS_INTERVAL` (100 ms) |
 | `JobHandle::with_interval(..)`    | The same with another interval; `Duration::ZERO` reports every unit, for tests    |
 
@@ -67,8 +68,8 @@ created, and the current `detail`.
 
 - `NoopSink` discards snapshots.
 - `RecordingSink` keeps every snapshot for tests (`list_reported`, `take_reported`).
-- Consumers write their own: the CLI's `TerminalProgressSink` writes a line to stderr at a coarse interval; the app
-  forwards snapshots to the window.
+- Consumers write their own: the CLI's `TerminalProgressSink` writes a line to stderr every two seconds when stderr is
+  a terminal (otherwise the CLI's handle is inert); the app forwards snapshots to the window.
 
 ## Cancel
 

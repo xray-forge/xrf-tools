@@ -9,17 +9,17 @@ commands and the desktop app's texture and sprite editors. For THM dependency re
 
 ## Choose an operation
 
-| Operation                                                                                              | Does                                                                                           |
-| ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| `BuildTextureProcessor::build`                                                                         | Rebuilds a texture from a source image as its `.thm` says (the SDK's `DXTCompress`)            |
-| `BuildTextureRecipe::of`                                                                               | Reads a descriptor as a recipe                                                                 |
-| `GenerateBumpProcessor::generate`                                                                      | Produces a bump pair from a height map and gloss                                               |
-| `CropTextureProcessor::crop`                                                                           | Extracts a DDS region, optionally fits it, writes PNG or DDS                                   |
-| `DescriptionSpritePacker::pack_xml_descriptions`, `DescriptionSpriteUnpacker::unpack_xml_descriptions` | Packs or unpacks sprite sheets an XML description lays out; both take `PackDescriptionOptions` |
-| `EquipmentSpritePacker::pack_sprites`, `EquipmentSpriteUnpacker::unpack_sprites`                       | Packs or unpacks the inventory icon sheet                                                      |
-| `EquipmentGridVerifier::find_overlaps`                                                                 | Finds overlapping inventory rectangles in resolved LTX                                         |
-| `TextureAlbedo::read`, `AlbedoVerdict`                                                                 | Measures a diffuse texture's albedo and judges it                                              |
-| `BumpAlignment::compare`, `BumpAlignmentVerdict`                                                       | Measures whether a bump belongs to its diffuse, and judges it                                  |
+| Operation                                                                                              | Does                                                                                             |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `BuildTextureProcessor::build`                                                                         | Rebuilds a texture from a source image as its `.thm` says (the SDK's `DXTCompress`)              |
+| `BuildTextureRecipe::of`                                                                               | Reads a descriptor as a recipe                                                                   |
+| `GenerateBumpProcessor::generate`                                                                      | Produces a bump pair from a height map and gloss                                                 |
+| `CropTextureProcessor::crop`                                                                           | Extracts a DDS region, optionally fits it, writes PNG or DDS                                     |
+| `DescriptionSpritePacker::pack_xml_descriptions`, `DescriptionSpriteUnpacker::unpack_xml_descriptions` | Packs or unpacks sprite sheets an XML description lays out; both take `DescriptionSpriteOptions` |
+| `EquipmentSpritePacker::pack_sprites`, `EquipmentSpriteUnpacker::unpack_sprites`                       | Packs or unpacks the inventory icon sheet                                                        |
+| `EquipmentGridVerifier::find_overlaps`                                                                 | Finds overlapping inventory rectangles in resolved LTX                                           |
+| `TextureAlbedo::read`, `AlbedoVerdict`                                                                 | Measures a diffuse texture's albedo and judges it                                                |
+| `BumpAlignment::compare`, `BumpAlignmentVerdict`                                                       | Measures whether a bump belongs to its diffuse, and judges it                                    |
 
 General points:
 
@@ -163,9 +163,8 @@ decide it.
 `BumpAlignment::compare` measures whether a bump belongs to its diffuse.
 
 - `BumpAlignmentLevel::read` decodes a diffuse or a bump at its largest level within 512 texels a side, so a survey can
-  release each file before the comparison, which takes most of the time.
-- The two levels are brought to the coarser of the two along each side (sampled over the same texture coordinates
-  whatever their proportions).
+  release each file before comparing.
+- The two levels are sampled over the same texture coordinates at the coarser of the two along each side.
 - Their edges are correlated texel by texel: the diffuse's colour gradient against the gradient of the bump's normal,
   ignoring gloss. A set authored together has its cracks, seams and atlas outlines at the same texels in both.
 - The same correlation with the bump shifted along the tile (the highest of eight shifts placed by Roberts' R2
@@ -178,8 +177,8 @@ decide it.
 | `Mismatched`  | Under 0.03                            |
 | `Featureless` | Either texture has nothing to compare |
 
-Edges are compared rather than slopes because an atlas's bump lies flat along the outlines where its diffuse changes
-most, and at 256 texels a bump's fine relief averages away; both misread stock Anomaly's aligned atlases.
+Edges are compared rather than slopes: an atlas's bump lies flat along the outlines where its diffuse changes most, so
+slopes misread stock Anomaly's aligned atlases.
 
 ## Cropping
 
@@ -236,7 +235,7 @@ replaces nothing.
 - An unreadable icon is skipped with a warning, or fails the run when `is_strict` is set.
 - A slot claimed by two sections with different art is warned about; the last packed wins.
 
-**Unpacking** writes one `<section>.dds` per declared icon and skips an icon outside the sheet. It does not yet honour
+**Unpacking** writes one `<section>.dds` per declared icon and skips an icon outside the sheet. It ignores
 `$inventory_icon_path`.
 
 **XML description sheets** use texture and sprite descriptors instead of inventory sections. With `is_strict` they fail
