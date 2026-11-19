@@ -7,6 +7,7 @@ use xrf_pack::{ArchivePatchConfig, ArchivePatchOptions};
 use xrf_utils::format_path;
 
 use crate::commands::archive::{ArchiveVolumeArguments, ArchiveVolumeRequest};
+use crate::core::arguments::InputArgument;
 
 /// What `archive pack-patch` was asked to do, read from its arguments with every path made absolute.
 pub(crate) struct ArchivePatchRequest {
@@ -25,11 +26,7 @@ impl ArchivePatchRequest {
   pub(crate) fn of(matches: &ArgMatches, output: OutputOptions) -> XrfResult<Self> {
     let volumes: ArchiveVolumeRequest = ArchiveVolumeArguments::of(matches)?;
     let mut config: ArchivePatchConfig = ArchivePatchConfig::new(
-      xrf_utils::resolve_absolute_path(
-        matches
-          .get_one::<PathBuf>("path")
-          .expect("Expected a provided root to be read"),
-      )?,
+      xrf_utils::resolve_absolute_path(InputArgument::of(matches))?,
       &volumes.dest,
       &volumes.name,
     );

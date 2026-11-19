@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use rayon::prelude::*;
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
@@ -11,7 +11,7 @@ use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};
 
 use super::report::ArchiveVerifyReport;
 use crate::commands::archive::list::ArchiveEntrySelection;
-use crate::core::arguments::JobsArgument;
+use crate::core::arguments::{InputArgument, JobsArgument};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 use crate::core::terminal::SourceReachability;
@@ -39,25 +39,15 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    let command: Command = command
-      .about("Read every archive payload and verify decompression and CRC checks")
-      .arg(
-        Arg::new("path")
-          .help("Path to an archive volume or a directory containing volumes")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      );
-
-    JobsArgument::declare(command)
+    JobsArgument::declare(InputArgument::declare(
+      command.about("Read every archive payload and verify decompression and CRC checks"),
+      "Path to an archive volume or a directory containing volumes",
+    ))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
-    let path: &PathBuf = matches
-      .get_one("path")
-      .expect("Expected an archive path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;

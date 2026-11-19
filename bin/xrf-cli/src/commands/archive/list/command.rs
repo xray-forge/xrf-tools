@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
@@ -9,6 +9,7 @@ use xrf_utils::format_path;
 use super::archive_entry_selection::ArchiveEntrySelection;
 use super::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use super::report::ArchiveListReport;
+use crate::core::arguments::InputArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
@@ -20,36 +21,28 @@ impl GenericCommand for ListCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    command
-      .about("List the merged entries in an X-Ray archive volume or volume set")
-      .arg(
-        Arg::new("path")
-          .help("Path to an archive volume or a directory containing volumes")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("files")
-          .help("List files only, excluding directory records")
-          .long("files")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("directories")
-          .help("List directory records only, excluding files")
-          .long("directories")
-          .action(ArgAction::SetTrue),
-      )
-      .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
+    InputArgument::declare(
+      command.about("List the merged entries in an X-Ray archive volume or volume set"),
+      "Path to an archive volume or a directory containing volumes",
+    )
+    .arg(
+      Arg::new("files")
+        .help("List files only, excluding directory records")
+        .long("files")
+        .action(ArgAction::SetTrue),
+    )
+    .arg(
+      Arg::new("directories")
+        .help("List directory records only, excluding files")
+        .long("directories")
+        .action(ArgAction::SetTrue),
+    )
+    .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
-    let path: &PathBuf = matches
-      .get_one("path")
-      .expect("Expected an archive path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
@@ -101,7 +94,7 @@ mod tests {
     assert!(
       ListCommand
         .init()
-        .try_get_matches_from(["list", "--path", "archive.db", "--files", "--directories"])
+        .try_get_matches_from(["list", "archive.db", "--files", "--directories"])
         .is_err()
     );
   }

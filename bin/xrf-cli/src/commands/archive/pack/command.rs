@@ -9,6 +9,7 @@ use xrf_pack::{
 use xrf_utils::format_path;
 
 use crate::commands::archive::{ArchiveVolumeArguments, ArchiveVolumeRequest};
+use crate::core::arguments::InputArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// The options that name the selection rules directly, which a configuration file also carries.
@@ -31,89 +32,79 @@ impl GenericCommand for PackCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    let command: Command = command
-      .about("Pack a directory into *.db archive volumes")
-      .arg(
-        Arg::new("path")
-          .help("Directory to pack, normally a gamedata root")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("config")
-          .help("Path to a packing configuration describing what to include, as *.ltx or *.json")
-          .long("config")
-          .required(false)
-          .conflicts_with_all(SELECTION_ARGUMENTS)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("include-file")
-          .help("File to pack, named relative to the source, repeatable")
-          .long("include-file")
-          .required(false)
-          .action(ArgAction::Append)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("include-directory")
-          .help("Directory to pack with everything below it, relative to the source, repeatable")
-          .long("include-directory")
-          .required(false)
-          .action(ArgAction::Append)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("include-directory-shallow")
-          .help("Directory whose own files are packed while its subdirectories only get listed, repeatable")
-          .long("include-directory-shallow")
-          .required(false)
-          .action(ArgAction::Append)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("exclude-directory")
-          .help("Directory to leave out along with everything below it, repeatable")
-          .long("exclude-directory")
-          .required(false)
-          .action(ArgAction::Append)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("exclude-directory-shallow")
-          .help("Directory to leave out while its contents still pack, repeatable")
-          .long("exclude-directory-shallow")
-          .required(false)
-          .action(ArgAction::Append)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("exclude-extension")
-          .help("Extension pattern that keeps a file out, such as *.txt, repeatable")
-          .long("exclude-extension")
-          .required(false)
-          .action(ArgAction::Append)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("no-skip-list")
-          .help("Keep editor and source leftovers the engine build normally drops")
-          .long("no-skip-list")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      );
+    let command: Command = InputArgument::declare(
+      command.about("Pack a directory into *.db archive volumes"),
+      "Directory to pack, normally a gamedata root",
+    )
+    .arg(
+      Arg::new("config")
+        .help("Path to a packing configuration describing what to include, as *.ltx or *.json")
+        .long("config")
+        .required(false)
+        .conflicts_with_all(SELECTION_ARGUMENTS)
+        .value_parser(value_parser!(PathBuf)),
+    )
+    .arg(
+      Arg::new("include-file")
+        .help("File to pack, named relative to the source, repeatable")
+        .long("include-file")
+        .required(false)
+        .action(ArgAction::Append)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("include-directory")
+        .help("Directory to pack with everything below it, relative to the source, repeatable")
+        .long("include-directory")
+        .required(false)
+        .action(ArgAction::Append)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("include-directory-shallow")
+        .help("Directory whose own files are packed while its subdirectories only get listed, repeatable")
+        .long("include-directory-shallow")
+        .required(false)
+        .action(ArgAction::Append)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("exclude-directory")
+        .help("Directory to leave out along with everything below it, repeatable")
+        .long("exclude-directory")
+        .required(false)
+        .action(ArgAction::Append)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("exclude-directory-shallow")
+        .help("Directory to leave out while its contents still pack, repeatable")
+        .long("exclude-directory-shallow")
+        .required(false)
+        .action(ArgAction::Append)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("exclude-extension")
+        .help("Extension pattern that keeps a file out, such as *.txt, repeatable")
+        .long("exclude-extension")
+        .required(false)
+        .action(ArgAction::Append)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("no-skip-list")
+        .help("Keep editor and source leftovers the engine build normally drops")
+        .long("no-skip-list")
+        .required(false)
+        .action(ArgAction::SetTrue),
+    );
 
     ArchiveVolumeArguments::declare(command, "gamedata")
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: PathBuf = xrf_utils::resolve_absolute_path(
-      matches
-        .get_one::<PathBuf>("path")
-        .expect("Expected valid source path to be provided"),
-    )?;
+    let path: PathBuf = xrf_utils::resolve_absolute_path(InputArgument::of(matches))?;
     let volumes: ArchiveVolumeRequest = ArchiveVolumeArguments::of(matches)?;
     let destination: &PathBuf = &volumes.dest;
     let output: OutputOptions = context.get_output().clone();

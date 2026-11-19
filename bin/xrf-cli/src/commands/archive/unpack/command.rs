@@ -7,7 +7,7 @@ use xrf_pack::{ArchiveExtractOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use xrf_utils::format_path;
 
 use super::report::ArchiveUnpackDryReport;
-use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
+use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
@@ -20,50 +20,40 @@ impl GenericCommand for UnpackCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    let command: Command = command
-      .about("Unpack an archive into separate files")
-      .arg(
-        Arg::new("path")
-          .help("Path to the *.db archive")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("dest")
-          .help("Folder to unpack into")
-          .short('d')
-          .long("dest")
-          .default_value("unpacked")
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("dry-run")
-          .help("Report what would be unpacked without writing anything")
-          .long("dry-run")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("force")
-          .help(
-            "Overwrite files already in the folder, names compared without case; without it, one there is refused \
+    let command: Command = InputArgument::declare(
+      command.about("Unpack an archive into separate files"),
+      "Path to an archive volume or a directory containing volumes",
+    )
+    .arg(
+      Arg::new("dest")
+        .help("Folder to unpack into")
+        .short('d')
+        .long("dest")
+        .default_value("unpacked")
+        .value_parser(value_parser!(PathBuf)),
+    )
+    .arg(
+      Arg::new("dry-run")
+        .help("Report what would be unpacked without writing anything")
+        .long("dry-run")
+        .action(ArgAction::SetTrue),
+    )
+    .arg(
+      Arg::new("force")
+        .help(
+          "Overwrite files already in the folder, names compared without case; without it, one there is refused \
              before any is written",
-          )
-          .short('f')
-          .long("force")
-          .action(ArgAction::SetTrue),
-      );
+        )
+        .short('f')
+        .long("force")
+        .action(ArgAction::SetTrue),
+    );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: PathBuf = xrf_utils::resolve_absolute_path(
-      matches
-        .get_one::<PathBuf>("path")
-        .expect("Expected valid path to be provided"),
-    )?;
+    let path: PathBuf = xrf_utils::resolve_absolute_path(InputArgument::of(matches))?;
     let destination: PathBuf = xrf_utils::resolve_absolute_path(
       matches
         .get_one::<PathBuf>("dest")
@@ -148,12 +138,12 @@ mod tests {
   /// An alias would have kept a second name for a plan the report can only print under one of them.
   #[test]
   fn no_longer_answers_to_the_flag_it_replaced() {
-    assert!(parse(&["unpack", "--path", "archive.db", "--parallel", "4"]).is_err());
+    assert!(parse(&["unpack", "archive.db", "--parallel", "4"]).is_err());
   }
 
   #[test]
   fn takes_the_width_every_other_command_takes() {
-    let matches = parse(&["unpack", "--path", "archive.db", "-j", "4"]).expect("the arguments parse");
+    let matches = parse(&["unpack", "archive.db", "-j", "4"]).expect("the arguments parse");
 
     assert_eq!(
       JobsArgument::of(&matches),
@@ -164,7 +154,7 @@ mod tests {
   /// Omitting it stays valid and means what it always meant here: whatever the host offers.
   #[test]
   fn unpacks_at_the_host_width_when_nobody_says_otherwise() {
-    let matches = parse(&["unpack", "--path", "archive.db"]).expect("the arguments parse");
+    let matches = parse(&["unpack", "archive.db"]).expect("the arguments parse");
 
     assert_eq!(JobsArgument::of(&matches), Some(ExecutionRequest::Auto));
   }

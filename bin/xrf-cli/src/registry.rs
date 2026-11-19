@@ -46,7 +46,62 @@ impl CommandGroup {
 mod tests {
   use std::collections::HashSet;
 
+  use clap::{Arg, Command};
+
+  use crate::core::arguments::InputArgument;
   use crate::core::command::CommandGroup;
+
+  // todo: Move these domains' inputs to `InputArgument` and their positional selectors to named flags, then drop
+  // the list so the rule below holds for every command.
+  /// Domains still reading their input through `-p/--path`.
+  const NAMED_INPUT_DOMAINS: [&str; 15] = [
+    "dds",
+    "dialog",
+    "externs",
+    "gamedata",
+    "gamemtl",
+    "level",
+    "ltx",
+    "object",
+    "ogf",
+    "omf",
+    "particle",
+    "spawn",
+    "sprite",
+    "thm",
+    "translation",
+  ];
+
+  /// What a command reads is its one positional, and nothing names it `-p/--path`.
+  #[test]
+  fn every_command_reads_its_input_positionally() {
+    for group in CommandGroup::list_all() {
+      for command in &group.commands {
+        let declared: Command = command.init();
+        let name: String = format!("{} {}", group.slug, command.operation());
+        let positionals: Vec<&Arg> = declared.get_positionals().collect();
+
+        assert!(positionals.len() <= 1, "'{name}' declares more than one positional");
+
+        if NAMED_INPUT_DOMAINS.contains(&group.slug) {
+          continue;
+        }
+
+        assert!(
+          positionals
+            .iter()
+            .all(|argument| argument.get_id() == InputArgument::ID),
+          "'{name}' declares a positional that is not its input"
+        );
+        assert!(
+          declared
+            .get_arguments()
+            .all(|argument| argument.get_long() != Some("path") && argument.get_short() != Some('p')),
+          "'{name}' still names an input with -p/--path"
+        );
+      }
+    }
+  }
 
   #[test]
   fn registered_domain_slugs_are_unique() {

@@ -6,7 +6,7 @@ use xrf_output::OutputVerbosity;
 use xrf_utils::HostLinkPolicy;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::core::arguments::{JobsArgument, LinkPolicyArgument, ReportingArguments, XrayRootsArguments};
+use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument, ReportingArguments, XrayRootsArguments};
 use crate::core::report::{ReportDestination, ReportingOptions};
 
 fn parse_reporting(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
@@ -167,6 +167,32 @@ fn follows_links_on_a_command_without_the_flag() {
         .expect("arguments parse")
     ),
     HostLinkPolicy::Follow
+  );
+}
+
+fn parse_input(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
+  InputArgument::declare(Command::new("info").no_binary_name(true), "a volume").try_get_matches_from(arguments)
+}
+
+#[test]
+fn reads_the_input_from_its_positional_slot() {
+  let matches: ArgMatches = parse_input(&["archive.db"]).expect("the arguments parse");
+
+  assert_eq!(InputArgument::of(&matches), &PathBuf::from("archive.db"));
+}
+
+/// Both refusals are clap's, so they end the run with the usage exit every other bad argument has.
+#[test]
+fn refuses_a_missing_input_and_the_flag_it_replaced() {
+  assert_eq!(
+    parse_input(&[]).expect_err("the input is required").kind(),
+    clap::error::ErrorKind::MissingRequiredArgument
+  );
+  assert_eq!(
+    parse_input(&["--path", "archive.db"])
+      .expect_err("the flag is gone")
+      .kind(),
+    clap::error::ErrorKind::UnknownArgument
   );
 }
 

@@ -9,6 +9,7 @@ use xrf_utils::format_path;
 use super::report::ArchiveFindReport;
 use crate::commands::archive::list::ArchiveEntrySelection;
 use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedPayloadIndex;
+use crate::core::arguments::InputArgument;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
@@ -20,44 +21,36 @@ impl GenericCommand for FindCommand {
   }
 
   fn declare(&self, command: Command) -> Command {
-    command
-      .about("Find archive entries whose logical path contains text")
-      .arg(
-        Arg::new("path")
-          .help("Path to an archive volume or a directory containing volumes")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("query")
-          .help("Case-insensitive text to find in an entry's logical path")
-          .short('q')
-          .long("query")
-          .required(true)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("files")
-          .help("Search files only, excluding directory records")
-          .long("files")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("directories")
-          .help("Search directory records only, excluding files")
-          .long("directories")
-          .action(ArgAction::SetTrue),
-      )
-      .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
+    InputArgument::declare(
+      command.about("Find archive entries whose logical path contains text"),
+      "Path to an archive volume or a directory containing volumes",
+    )
+    .arg(
+      Arg::new("query")
+        .help("Case-insensitive text to find in an entry's logical path")
+        .short('q')
+        .long("query")
+        .required(true)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("files")
+        .help("Search files only, excluding directory records")
+        .long("files")
+        .action(ArgAction::SetTrue),
+    )
+    .arg(
+      Arg::new("directories")
+        .help("Search directory records only, excluding files")
+        .long("directories")
+        .action(ArgAction::SetTrue),
+    )
+    .group(ArgGroup::new("entry-kind").args(["files", "directories"]))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
-    let path: &PathBuf = matches
-      .get_one("path")
-      .expect("Expected an archive path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let query: &String = matches.get_one("query").expect("Expected a query to be provided");
     let output: OutputOptions = context.get_output().clone();
 
