@@ -6,6 +6,7 @@ use xrf_job::JobHandle;
 use xrf_spawn::LevelSpawnFile;
 use xrf_utils::format_path;
 
+use crate::level::details::level_detail_library::LevelDetailLibrary;
 use crate::level::entities::level_entity_conversion::LevelEntityConversion;
 use crate::level::entities::level_entity_sources::LevelEntitySources;
 use crate::level::geometry::level_decompiled_object::LevelDecompiledObject;
@@ -53,6 +54,9 @@ pub(crate) struct LevelSceneDraft {
   pub(crate) map: Option<LevelMapSettings>,
   /// The options' library roots, listed once; what they could not read is refused when the scene is finished.
   pub(crate) object_library: LevelObjectLibrary,
+  /// The library's detail objects, compiled where the geometry step's walk read them, so the detail step need not read
+  /// them again.
+  pub(crate) detail_library: Option<LevelDetailLibrary>,
   /// The decompile's job, which the library walks stop on when it is cancelled.
   pub(crate) job: JobHandle,
 }
@@ -110,6 +114,7 @@ impl LevelSceneDraft {
       respawn,
       map: None,
       object_library,
+      detail_library: None,
       job,
     }
   }

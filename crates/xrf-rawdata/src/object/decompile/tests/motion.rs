@@ -1,4 +1,5 @@
 use xrf_math::{Affine3d, Quaternion};
+use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonPart};
 
 use crate::object::decompile::skeleton::motion_converter::MotionConverter;
 
@@ -44,4 +45,25 @@ fn keys_a_rotation_by_angles_that_give_it_back_within_a_step() {
 
     assert!(steps <= 1.0, "{rotation:?} came back {steps} steps off");
   }
+}
+
+#[test]
+fn refuses_two_parts_naming_one_bone() {
+  let part = |name: &str, bones: &[(&str, u32)]| SkeletonPart {
+    name: String::from(name),
+    bones: bones.iter().map(|(bone, run)| (String::from(*bone), *run)).collect(),
+  };
+  let parameters = SkeletonMotionParametersChunk {
+    version: SkeletonMotionParametersChunk::MAXIMUM_VERSION,
+    parts: vec![
+      part("torso", &[("root", 0), ("spine", 1)]),
+      part("legs", &[("Spine", 2)]),
+    ],
+    motions: Vec::new(),
+  };
+  let bone_names: Vec<String> = ["root", "spine", "leg"].map(String::from).to_vec();
+
+  let error = MotionConverter::bone_of_run(&parameters, &bone_names).expect_err("a bone named twice");
+
+  assert!(error.to_string().contains("'Spine'"), "{error}");
 }

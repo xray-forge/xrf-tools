@@ -97,6 +97,7 @@ for a new stalker and monster.
 - `export_to_path` unpacks a set into a directory of editable LTX files; `import_from_path` reads it back. Unpacking and
   packing again should reproduce the original bytes.
 - `write_to_path` and `write_to` write the binary set.
+- Each chunk logs its read, write, import and export at `debug`, so a tool's `info` output stays its own.
 - `SpawnGraphsChunk::derive_layout` sets a graph built in memory's header counts and each vertex's edge and level point
   offsets as the engine stores them, each vertex's records following the previous one's. Every shipped graph is laid
   out that way.

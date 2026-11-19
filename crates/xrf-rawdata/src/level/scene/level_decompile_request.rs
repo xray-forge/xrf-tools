@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use xrf_editable_level::EditableLevelFile;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{OutputFiles, format_path};
+use xrf_utils::{HostLinkPolicy, OutputFiles, format_path};
 
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
 use crate::level::surfaces::level_surface_inference::LevelSurfaceInference;
@@ -38,6 +38,10 @@ pub struct LevelDecompileRequest {
   /// Whether existing files are overwritten and an earlier decompile's stale parts and objects removed. Unforced, an
   /// existing scene or level object is refused before the level is read.
   pub is_forced: bool,
+  /// What the writes do with a link already below the scene's directory or a root: followed by default.
+  #[serde(skip)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
+  pub link_policy: HostLinkPolicy,
 }
 
 impl LevelDecompileRequest {

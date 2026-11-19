@@ -27,7 +27,7 @@ impl SpawnPatrolsChunk {
 impl ChunkReadWrite for SpawnPatrolsChunk {
   /// Read patrols list from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading patrols chunk, bytes {}", reader.read_bytes_remain());
+    log::debug!("Reading patrols chunk, bytes {}", reader.read_bytes_remain());
 
     let mut meta_reader: ChunkReader<D> = reader.read_child_by_index(Self::META_NESTED_CHUNK_ID)?;
     let mut data_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_NESTED_CHUNK_ID)?;
@@ -63,7 +63,7 @@ impl ChunkReadWrite for SpawnPatrolsChunk {
         .as_slice(),
     )?;
 
-    log::info!("Written patrols chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written patrols chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -87,7 +87,7 @@ impl FileImportExport for SpawnPatrolsChunk {
       )?);
     }
 
-    log::info!("Imported patrols chunk");
+    log::debug!("Imported patrols chunk");
 
     Ok(Self { patrols })
   }
@@ -111,7 +111,7 @@ impl FileImportExport for SpawnPatrolsChunk {
     patrol_points_ltx.write_to_path(path.as_ref().join("patrol_points.ltx"))?;
     patrol_links_ltx.write_to_path(path.as_ref().join("patrol_links.ltx"))?;
 
-    log::info!("Exported patrols chunk");
+    log::debug!("Exported patrols chunk");
 
     Ok(())
   }

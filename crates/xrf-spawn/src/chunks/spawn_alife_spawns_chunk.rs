@@ -108,7 +108,7 @@ impl SpawnALifeSpawnsChunk {
 impl ChunkReadWrite for SpawnALifeSpawnsChunk {
   /// Read spawns chunk by position descriptor from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading ALife spawns chunk, {} bytes", reader.read_bytes_remain());
+    log::debug!("Reading ALife spawns chunk, {} bytes", reader.read_bytes_remain());
 
     let mut objects: Vec<AlifeObject> = Vec::new();
     let mut failure: Option<XrfError> = None;
@@ -184,7 +184,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
         .as_slice(),
     )?;
 
-    log::info!("Written ALife spawns chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written ALife spawns chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -195,7 +195,7 @@ impl FileImportExport for SpawnALifeSpawnsChunk {
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     let objects: Vec<AlifeObject> = LtxRecordReader::import_all(path.as_ref().join("alife_spawns.ltx"))?;
 
-    log::info!("Imported ALife spawns chunk");
+    log::debug!("Imported ALife spawns chunk");
 
     Ok(Self { objects })
   }
@@ -210,7 +210,7 @@ impl FileImportExport for SpawnALifeSpawnsChunk {
 
     ltx.write_to_path(path.as_ref().join("alife_spawns.ltx"))?;
 
-    log::info!("Exported ALife spawns chunk");
+    log::debug!("Exported ALife spawns chunk");
 
     Ok(())
   }

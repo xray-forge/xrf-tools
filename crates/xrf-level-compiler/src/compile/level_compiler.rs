@@ -42,8 +42,15 @@ impl LevelCompiler {
   pub fn compile(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileReport> {
     let steps: Vec<LevelCompileStep> = Self::get_steps(&request.steps);
 
-    Self::check_files(request, &steps, &[])?;
-    Self::check_textures_and_outputs(request, &steps)?;
+    Self::check_files(request, &steps, &[], &[])?;
+
+    let project: Option<BuildPrjFile> = steps
+      .iter()
+      .any(|step| step.is_reading_textures(request.ai_covers))
+      .then(|| BuildPrjFile::read_from_path::<XRayByteOrder, _>(&request.level.join(BuildPrjFile::FILE_NAME)))
+      .transpose()?;
+
+    Self::check_textures_and_outputs(request, &steps, project.as_ref())?;
 
     let light: Option<RayTracing<'_>> = steps.contains(&LevelCompileStep::Light).then(|| request.get_tracing());
 
@@ -105,8 +112,9 @@ impl LevelCompiler {
     })
   }
 
-  /// The checks of [`Self::compile`] for a job that writes `built` into the level's directory first, as a build before
-  /// its compile does: each of `built` taken as there, and the textures unchecked since `build.prj` is not yet written.
+  /// The checks of [`Self::compile`] for a job that may write `built` into the level's directory first, before it knows
+  /// which: each of `built` taken as there, and the textures unchecked since `build.prj` is not yet made. A quick
+  /// refusal before the build's work; [`Self::check_build`] follows once the build is made.
   ///
   /// # Errors
   ///
@@ -114,8 +122,27 @@ impl LevelCompiler {
   pub fn check_before_writing(request: &LevelCompileRequest, built: &[&str]) -> XrfResult {
     let steps: Vec<LevelCompileStep> = Self::get_steps(&request.steps);
 
-    Self::check_files(request, &steps, built)?;
+    Self::check_files(request, &steps, built, built)?;
     Self::get_outputs(request, &steps, &[]).assert_free(request.is_forced)
+  }
+
+  /// The checks of [`Self::compile`] for a build made but not yet written into the level's directory: `project` its
+  /// `build.prj`, `written` the files it writes, and the rest of `owned`, the files it may write, gone once it has, as
+  /// a build removes or refuses its own files it does not write.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the compile would refuse once the build is written.
+  pub fn check_build(
+    request: &LevelCompileRequest,
+    project: &BuildPrjFile,
+    written: &[&str],
+    owned: &[&str],
+  ) -> XrfResult {
+    let steps: Vec<LevelCompileStep> = Self::get_steps(&request.steps);
+
+    Self::check_files(request, &steps, written, owned)?;
+    Self::check_textures_and_outputs(request, &steps, Some(project))
   }
 
   /// `steps`, each once in the order a compile runs them; every step where none is given.
@@ -136,9 +163,15 @@ impl LevelCompiler {
       .ok_or_else(|| XrfError::new_invalid_error(format!("{} names no level directory", format_path(level))))
   }
 
-  /// Whether `steps` can run together, the level's directory is named, every input is there (those `given` or written
-  /// by an earlier step aside), and the game data holds `shaders_xrlc.xr` where a step reads it.
-  fn check_files(request: &LevelCompileRequest, steps: &[LevelCompileStep], given: &[&str]) -> XrfResult {
+  /// Whether `steps` can run together, the level's directory is named, every input is there (those `written` first or
+  /// by an earlier step taken as there, the rest of `owned` as missing), and the game data holds `shaders_xrlc.xr`
+  /// where a step reads it.
+  fn check_files(
+    request: &LevelCompileRequest,
+    steps: &[LevelCompileStep],
+    written: &[&str],
+    owned: &[&str],
+  ) -> XrfResult {
     if let Some(step) = steps.iter().find(|step| {
       step
         .get_companion()
@@ -159,9 +192,17 @@ impl LevelCompiler {
     for step in steps {
       for input in step.get_inputs(request.ai_covers) {
         if (is_geometry_run && *step != LevelCompileStep::Geometry && written_by_geometry.contains(input))
-          || given.contains(input)
+          || written.contains(input)
         {
           continue;
+        }
+
+        if owned.contains(input) {
+          return Err(XrfError::new_not_found_error(format!(
+            "The {} step needs {}, which the build does not write",
+            step.get_name(),
+            input
+          )));
         }
 
         if !request.level.join(input).is_file() {
@@ -181,21 +222,23 @@ impl LevelCompiler {
     }
   }
 
-  /// Whether every `build.prj` texture has the `.thm` the compilers assert on, where a step reads textures; and,
-  /// unforced, no file a step writes is already there.
-  fn check_textures_and_outputs(request: &LevelCompileRequest, steps: &[LevelCompileStep]) -> XrfResult {
+  /// Whether every texture of `project`, the level's `build.prj`, has the `.thm` the compilers assert on, where a step
+  /// reads textures; and, unforced, no file a step writes is already there.
+  fn check_textures_and_outputs(
+    request: &LevelCompileRequest,
+    steps: &[LevelCompileStep],
+    project: Option<&BuildPrjFile>,
+  ) -> XrfResult {
     let mut implicit: Vec<String> = Vec::new();
 
-    if steps.iter().any(|step| step.is_reading_textures(request.ai_covers)) {
-      let project: BuildPrjFile =
-        BuildPrjFile::read_from_path::<XRayByteOrder, _>(&request.level.join(BuildPrjFile::FILE_NAME))?;
+    if let Some(project) = project.filter(|_| steps.iter().any(|step| step.is_reading_textures(request.ai_covers))) {
       let roots: Vec<PathBuf> = request.get_textures_roots();
 
-      Self::check_textures(&project, &roots)?;
+      Self::check_textures(project, &roots)?;
 
       // Only the light step writes an implicitly lit texture's maps.
       if steps.contains(&LevelCompileStep::Light) {
-        implicit = CompilerTexture::resolve_all(&project, &roots)?
+        implicit = CompilerTexture::resolve_all(project, &roots)?
           .into_iter()
           .filter(|texture| texture.is_implicitly_lit)
           .map(|texture| texture.name)

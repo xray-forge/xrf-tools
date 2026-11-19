@@ -1,16 +1,23 @@
+use std::path::PathBuf;
+
 use xrf_chunk::{ChunkLayout, ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_editable_object::{EditableObjectFile, EditableSurface};
 use xrf_error::XrfResult;
+use xrf_level::{DetailModel, DetailVertex};
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{
   OgfFile, OgfFvf, OgfGeometry, OgfHeaderChunk, OgfModelType, OgfSlideWindow, OgfStaticVertex, OgfSwiDataChunk,
   OgfTextureChunk,
 };
+use xrf_test_utils::GeneratedResources;
 
 use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
+use crate::object::decompile::object_decompile_request::ObjectDecompileRequest;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::object::decompile::tests::fixtures::{DOWN, UP, assemble, corner, surface, with_uv};
+use crate::provenance::object_provenance::ObjectProvenance;
+use crate::provenance::sidecar::Sidecar;
 
 #[test]
 fn cuts_an_ogf_string_at_the_terminator_it_kept() {
@@ -163,6 +170,43 @@ fn refuses_a_visual_no_editable_object_exports_to() -> XrfResult {
     .to_string();
 
   assert!(error.contains("MT_TREE_ST"), "{error}");
+
+  Ok(())
+}
+
+#[test]
+fn names_the_source_in_the_sidecar_by_the_hash_of_the_bytes_read() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "source_hash"))?;
+  let request: ObjectDecompileRequest = ObjectDecompileRequest {
+    source: root.join("leaf.dm"),
+    destination: root.join("leaf.object"),
+    is_forced: true,
+  };
+  let leaf: DetailModel = DetailModel {
+    shader: String::from("details\\blend"),
+    texture: String::from("det\\det_listya"),
+    flags: 0,
+    min_scale: 0.5,
+    max_scale: 2.0,
+    vertices: [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0]]
+      .map(|position| DetailVertex {
+        position: Vector3d::from(position),
+        u: position[0],
+        v: position[1],
+      })
+      .to_vec(),
+    indices: vec![0, 1, 2],
+  };
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  leaf.write::<XRayByteOrder>(&mut writer)?;
+  std::fs::write(&request.source, writer.flush_raw_into_buffer()?)?;
+  ObjectDecompiler::decompile_to_path(&request, "test", "1.0.0")?;
+
+  assert_eq!(
+    ObjectProvenance::read_beside(&request.destination)?.map(|provenance| provenance.source_sha256),
+    Some(Sidecar::get_sha256_hex(&std::fs::read(&request.source)?))
+  );
 
   Ok(())
 }

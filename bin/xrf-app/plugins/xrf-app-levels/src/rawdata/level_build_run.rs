@@ -30,7 +30,9 @@ impl LevelBuildRun {
     Self { build, compile }
   }
 
-  /// Run the build, then the compile, on the job's thread. A cancel during the compile keeps the build's report.
+  /// Run the build, then the compile, on the job's thread. The compile's checks run before the build writes: its
+  /// files and shader library before the scene is read, its `.thm` files and inputs once the build is made. A cancel
+  /// during the compile keeps the build's report.
   ///
   /// # Errors
   ///
@@ -47,11 +49,21 @@ impl LevelBuildRun {
       LevelCompiler::check_before_writing(compile, &LevelBuildExport::FILE_NAMES)?;
     }
 
-    let report: LevelBuildReport = match LevelBuildExporter::build_to_directory::<XRayByteOrder>(&self.build, job) {
-      Ok(report) => report,
-      Err(_) if job.is_cancelled() => return Ok(Self::cancelled(None)),
-      Err(error) => return Err(error),
+    let check = |export: &LevelBuildExport| match &self.compile {
+      Some(compile) => LevelCompiler::check_build(
+        compile,
+        &export.project,
+        &export.get_file_names(),
+        &LevelBuildExport::FILE_NAMES,
+      ),
+      None => Ok(()),
     };
+    let report: LevelBuildReport =
+      match LevelBuildExporter::build_to_directory_checked::<XRayByteOrder>(&self.build, job, check) {
+        Ok(report) => report,
+        Err(_) if job.is_cancelled() => return Ok(Self::cancelled(None)),
+        Err(error) => return Err(error),
+      };
     let compiled: Option<LevelCompileReport> = match self
       .compile
       .as_ref()

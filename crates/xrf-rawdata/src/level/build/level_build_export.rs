@@ -54,6 +54,20 @@ impl LevelBuildExport {
     LevelTreeImpostorAtlas::NORMAL_FILE_NAME,
   ];
 
+  /// The names of [`Self::FILE_NAMES`] that [`Self::into_files`] gives, sorted by name.
+  pub fn get_file_names(&self) -> Vec<&'static str> {
+    let is_present = |name: &str| match name {
+      BuildAimapFile::FILE_NAME => self.ai_map.is_some(),
+      LevelBuildDetails::FILE_NAME | LevelBuildDetails::ATLAS_FILE_NAME => self.details.is_some(),
+      LevelHomFile::FILE_NAME => self.hom.is_some(),
+      LevelSomFile::FILE_NAME => self.som.is_some(),
+      LevelTreeImpostorAtlas::COLOR_FILE_NAME | LevelTreeImpostorAtlas::NORMAL_FILE_NAME => self.impostors.is_some(),
+      _ => true,
+    };
+
+    Self::FILE_NAMES.into_iter().filter(|name| is_present(name)).collect()
+  }
+
   /// Each file by its path in the level's directory, in `T`'s byte order: `build.prj` and `level.ltx` always, each
   /// optional file where it is present, and each breakable part under `meshes`.
   ///

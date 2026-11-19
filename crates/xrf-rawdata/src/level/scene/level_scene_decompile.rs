@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use byteorder::ByteOrder;
 use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{StagedFile, format_path};
+use xrf_utils::{HostDestination, HostLinkPolicy, HostRelativePath, StagedFile, format_path};
 
 use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
@@ -122,50 +122,94 @@ impl LevelSceneDecompile {
     Ok(paths)
   }
 
+  /// [`Self::write_to_path_with`], following any link below the roots as the filesystem resolves it.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::write_to_path_with`].
+  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path, objects_root: &Path, textures_root: &Path) -> XrfResult {
+    self.write_to_path_with::<T>(level_path, objects_root, textures_root, HostLinkPolicy::Follow)
+  }
+
   /// Writes the decompile: the scene's sidecar, each object after its own sidecar, the library copies (skipping files
   /// that already hold them), the textures but a library object's own the root holds, then the scene at `level_path`
   /// with its parts beside it.
   ///
-  /// Each sidecar goes before what it describes, so a failed write leaves a stray sidecar, never a decompile taken for
-  /// authored work.
+  /// Each file goes through a [`HostDestination`] at its root (the scene's directory, the objects root, the textures
+  /// root) under `link_policy`. Each sidecar goes before what it describes, so a failed write leaves a stray sidecar,
+  /// never a decompile taken for authored work.
   ///
   /// # Errors
   ///
-  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene or a name from
-  /// data leaves its root; otherwise when a file cannot be written, as [`EditableLevelScene::write_to_path`] does.
-  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path, objects_root: &Path, textures_root: &Path) -> XrfResult {
+  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene, a name from data
+  /// leaves its root, or a refused link already stands where a file goes; otherwise when a file cannot be written, as
+  /// [`EditableLevelScene::write_to_path`] does.
+  pub fn write_to_path_with<T: ByteOrder>(
+    &self,
+    level_path: &Path,
+    objects_root: &Path,
+    textures_root: &Path,
+    link_policy: HostLinkPolicy,
+  ) -> XrfResult {
     // Refused before the sidecar is written, so a sidecar never lands beside an authored scene left as it was.
     self.scene.check_writable(level_path)?;
 
-    // Every path resolved before the first write, so a name that would leave its root writes nothing.
+    let scene_root: HostDestination =
+      HostDestination::new(level_path.parent().unwrap_or_else(|| Path::new("")), link_policy);
+    let objects_root: HostDestination = HostDestination::new(objects_root, link_policy);
+    let textures_root: HostDestination = HostDestination::new(textures_root, link_policy);
+
+    // Every path resolved and checked before the first write, so a name that would leave its root, or a link the policy
+    // refuses, writes nothing.
+    let scene: Vec<PathBuf> = self.get_written_scene_paths(level_path)?;
     let objects: Vec<PathBuf> = self
       .objects
       .iter()
-      .map(|object| object.get_path(objects_root))
+      .map(|object| object.get_path(objects_root.get_root()))
       .collect::<XrfResult<_>>()?;
     let library: Vec<(PathBuf, PathBuf)> = self
       .library
       .iter()
-      .map(|file| file.get_paths(objects_root))
+      .map(|file| file.get_paths(objects_root.get_root()))
       .collect::<XrfResult<_>>()?;
-    let textures: Vec<(&LevelSceneTextureFile, PathBuf)> = self.get_written_textures(textures_root)?;
+    let textures: Vec<(&LevelSceneTextureFile, PathBuf)> = self.get_written_textures(textures_root.get_root())?;
+
+    for path in &scene {
+      Self::check_file(&scene_root, path)?;
+    }
+
+    for path in &objects {
+      Self::check_file(&objects_root, &ObjectProvenance::sidecar_path(path))?;
+      Self::check_file(&objects_root, path)?;
+    }
+
+    for (path, thumbnail) in &library {
+      Self::check_file(&objects_root, path)?;
+      Self::check_file(&objects_root, thumbnail)?;
+    }
+
+    for (_, path) in &textures {
+      Self::check_file(&textures_root, path)?;
+    }
 
     Self::write_file(
+      &scene_root,
       &LevelSceneProvenance::sidecar_path(level_path),
       self.provenance.to_json()?.as_bytes(),
     )?;
 
     for (object, path) in self.objects.iter().zip(&objects) {
       Self::write_file(
+        &objects_root,
         &ObjectProvenance::sidecar_path(path),
         object.provenance.to_json()?.as_bytes(),
       )?;
-      Self::write_file(path, &object.object.write_to_bytes::<T>()?)?;
+      Self::write_file(&objects_root, path, &object.object.write_to_bytes::<T>()?)?;
     }
 
     for (file, (path, thumbnail)) in self.library.iter().zip(library) {
       if !Self::is_same_file(&path, &file.object) {
-        Self::write_file(&path, &file.object)?;
+        Self::write_file(&objects_root, &path, &file.object)?;
       }
 
       if let Some(bytes) = file
@@ -173,19 +217,55 @@ impl LevelSceneDecompile {
         .as_deref()
         .filter(|bytes| !Self::is_same_file(&thumbnail, bytes))
       {
-        Self::write_file(&thumbnail, bytes)?;
+        Self::write_file(&objects_root, &thumbnail, bytes)?;
       }
     }
 
     for (texture, path) in textures {
-      Self::write_file(&path, &texture.bytes)?;
+      Self::write_file(&textures_root, &path, &texture.bytes)?;
+    }
+
+    // The scene writes its own files, into the directories made and through the slots checked here.
+    scene_root.create_root()?;
+
+    for path in &scene {
+      scene_root.prepare_file(&Self::get_relative(&scene_root, path)?)?;
     }
 
     self.scene.write_to_path::<T, _>(&level_path)
   }
 
-  fn write_file(path: &Path, bytes: &[u8]) -> XrfResult {
-    StagedFile::write_creating_directories(path, bytes)
-      .map_err(|error| XrfError::new_io_error(format!("{} was not written: {error}", format_path(path)), error.kind()))
+  /// `path`, which a getter joined below `destination`'s root, as the path below it.
+  fn get_relative(destination: &HostDestination, path: &Path) -> XrfResult<HostRelativePath> {
+    let relative: Option<&str> = path.strip_prefix(destination.get_root()).ok().and_then(Path::to_str);
+
+    match relative {
+      Some(relative) => HostRelativePath::new_file(relative, "Decompiled file"),
+      None => Err(XrfError::new_invalid_error(format!(
+        "{} does not lie below {}",
+        format_path(path),
+        format_path(destination.get_root())
+      ))),
+    }
+  }
+
+  /// Checks `path` against `destination`'s link policy as far as it exists, creating nothing.
+  fn check_file(destination: &HostDestination, path: &Path) -> XrfResult {
+    destination.resolve_file(&Self::get_relative(destination, path)?)?;
+
+    Ok(())
+  }
+
+  /// Writes `bytes` at `path` below `destination`, creating the root where this is its first file: a root is made only
+  /// where something is written into it.
+  fn write_file(destination: &HostDestination, path: &Path, bytes: &[u8]) -> XrfResult {
+    let relative: HostRelativePath = Self::get_relative(destination, path)?;
+
+    destination.create_root()?;
+
+    let path: PathBuf = destination.prepare_file(&relative)?;
+
+    StagedFile::write(&path, bytes)
+      .map_err(|error| XrfError::new_io_error(format!("{} was not written: {error}", format_path(&path)), error.kind()))
   }
 }

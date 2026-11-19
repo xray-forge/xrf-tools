@@ -34,21 +34,16 @@ export const LEVEL_COMPILER_HELP: IToolHelp = {
       "writes, names compared without case, unless overwriting is chosen; overwriting also removes what of their " +
       "own an earlier run wrote and this one does not, such as breakable parts and lightmap pages, which the game " +
       "would still load. The result lists what was removed.",
-    "Before anything is written, the run is also refused where the compile would refuse it: a step's input the build " +
-      "does not write, or the compiler shader library, is missing. The texture descriptions (`.thm`) of the " +
-      "textures `build.prj` names can only be checked once it is written, so a missing one stops the compile after " +
-      "the build, naming the files the build wrote. Stopping the job stops the running step and keeps what was " +
-      "already written.",
+    "Before anything is written, the run is also refused where the compile would refuse it: a step's input is " +
+      "missing, such as the details' `build.details` for a scene holding no details, or the compiler shader " +
+      "library is, or a texture `build.prj` names has no description (`.thm`). Stopping the job stops the running " +
+      "step and keeps what was already written.",
     "The light is baked in the same pass as the geometry, so ticking the geometry ticks the light, and the light is " +
       "offered only with the geometry. Geometry compiled without its light gets flat neutral light: enough to walk " +
       "the level, not to judge its look.",
     "The light, the details and the AI map's covers trace their rays on the GPU chosen in the renderer settings where " +
       "it supports ray tracing, or on the CPU, the reference, when chosen or where no GPU can.",
   ],
-  limitations: [
-    "The objects roots are typed rather than picked.",
-    "Ticking the details for a level whose scene holds none stops the compile after the build: the build writes no " +
-      "`build.details` to light.",
-  ],
+  limitations: ["The objects roots are typed rather than picked."],
   relatedTools: [EToolId.LEVEL_DECOMPILER, EToolId.LEVEL_VIEWER, EToolId.SPAWN_COMPILER],
 };

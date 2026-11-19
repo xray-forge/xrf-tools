@@ -2,9 +2,11 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
+use xrf_level::BuildPrjFile;
 use xrf_shaders::ShaderCompilerFile;
 use xrf_test_utils::GeneratedResources;
 
+use crate::tests::geometry::geometry_mesh::project;
 use crate::{AiMapCovers, LevelCompileRequest, LevelCompileStep, LevelCompiler};
 
 fn level(name: &str, files: &[&str]) -> XrfResult<PathBuf> {
@@ -173,6 +175,48 @@ fn counts_every_file_a_step_writes_and_every_earlier_page_as_the_compiles() -> X
   assert_eq!(found(&[LevelCompileStep::Details], &[])?, ["level.details"]);
 
   Ok(())
+}
+
+#[test]
+fn checks_a_build_by_what_it_writes_before_it_writes() -> XrfResult {
+  let level: PathBuf = level("build_checked", &[])?;
+  let gamedata: PathBuf = gamedata("build_checked_gamedata")?;
+  let project: BuildPrjFile = project(&[], &[])?;
+  let check = |steps: &[LevelCompileStep], written: &[&str]| {
+    LevelCompiler::check_build(
+      &LevelCompileRequest {
+        gamedata: gamedata.clone(),
+        ..request(&level, steps)
+      },
+      &project,
+      written,
+      &["build.details", "build.prj"],
+    )
+  };
+
+  // An earlier build's details are gone once a build of none is written.
+  std::fs::write(level.join("build.details"), b"")?;
+
+  let details: String = check(&[LevelCompileStep::Details], &["build.prj"])
+    .unwrap_err()
+    .to_string();
+  let textures: String = check(&[LevelCompileStep::Geometry], &["build.prj"])
+    .unwrap_err()
+    .to_string();
+
+  assert!(
+    details.contains("details step needs build.details, which the build does not write"),
+    "{details}"
+  );
+  assert!(
+    textures.contains("have no .thm") && textures.contains("ground"),
+    "{textures}"
+  );
+
+  std::fs::create_dir_all(level.join("textures"))?;
+  std::fs::write(level.join("textures").join("ground.thm"), b"")?;
+
+  check(&[LevelCompileStep::Geometry], &["build.prj"])
 }
 
 #[test]

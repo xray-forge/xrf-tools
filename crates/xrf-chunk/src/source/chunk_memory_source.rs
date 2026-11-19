@@ -296,6 +296,13 @@ mod tests {
   }
 
   #[test]
+  fn refuses_a_read_at_an_offset_ending_past_u64() {
+    let error: std::io::Error = source().read_at_with(u64::MAX - 1, 2, |_| ()).unwrap_err();
+
+    assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+  }
+
+  #[test]
   fn fails_a_short_read_as_read_exact_does() {
     // A reader's error and position must not depend on whether it lent or copied the bytes.
     let mut lent: InMemoryChunkDataSource = source().slice(0..4);

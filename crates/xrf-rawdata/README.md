@@ -67,7 +67,8 @@ It undoes what the editor's `Export OGF` did:
 
 - Bones come from the bones and IK data chunks, with joint limits converted back from the physics engine's sense.
 - The OGF's own motions become the object's: each bone keyed at every frame, rotations turned back into the angles the
-  editor keys, plus how each motion plays and the bone parts it plays on.
+  editor keys, plus how each motion plays and the bone parts it plays on. Parts naming one bone twice are refused,
+  naming it, as the export refuses them: the second key run would overwrite the first and leave a bone unanimated.
 
 A static OGF becomes a static object laid out as the SDK lays one out: object flags `0` (progressive when the OGF has
 sliding windows), no bones, and one mesh whose UV maps are named `Texture`, with no weight map.
@@ -422,8 +423,9 @@ A model's impostor comes back from where its first placement's `MT_LOD` names it
 
 A decompile lists its library roots once (`LevelObjectLibrary`): each root in name order, through links and junctions.
 A link back to a folder above it, or to nothing, is recorded rather than followed; a folder that cannot be listed is an
-error. The geometry reads each object once for both the shader pairings and the instance library; the details read the
-objects under `detail\`. A file that does not read or compile is one of the scene's refusals, with its path and the
+error. The geometry reads each object once for the shader pairings, the instance library and the detail objects (those
+under `detail\`), which the details step then takes as compiled; it reads them itself only where the geometry step did
+not run. A file that does not read or compile is one of the scene's refusals, with its path and the
 error, however many steps tried it.
 
 ### Library placements
@@ -591,7 +593,11 @@ authored:
    the root holds;
 5. the scene.
 
-It writes nothing where the scene's `check_writable` refuses or a name from the data would leave its root.
+Each file goes through a `HostDestination` at its root (the scene's directory, the objects root, the textures root).
+`write_to_path` follows links below them; `write_to_path_with` takes the link policy, which
+`LevelDecompileRequest::link_policy` sets (the CLI's `--refuse-links`). It writes nothing where the scene's
+`check_writable` refuses, a name from the data would leave its root, or a link the policy refuses stands where a file
+goes.
 
 The sidecar holds the front-end the options name, each source's SHA-256, each written file and its sources, and what
 the decompile chose rather than read (`LevelSceneInference`). An inference is recorded only for a part holding what it
@@ -653,7 +659,8 @@ In order:
 - A wall mark's triangle of no area is left out too, where the editor passes it on: xrLC refuses it by the same
   measure and stops on seven, as vanilla `jupiter`'s wall marks hold.
 - A portal of more than six corners is simplified as `CPortal` simplifies one (`LevelBuildPortal`: the plane fitted,
-  the convex hull, the smallest edges collapsed), in double precision rather than bit for bit.
+  the convex hull, the smallest edges collapsed), in double precision rather than bit for bit. One of fewer than three
+  corners is refused, naming it, before any file is written.
 
 ### Files beside it
 
@@ -722,6 +729,9 @@ the box around every node.
 files where the request names game materials, then the game files. The files it owns are the game files, and with game
 materials the compiler's and the breakable parts (`LevelBuildRequest::get_outputs`). Unforced, it refuses a directory
 holding any of them before reading the scene; forced, it replaces them and removes those it no longer writes.
+`LevelBuildExporter::build_to_directory_checked` hands the compiler's files (`LevelBuildExport`, its
+`get_file_names` those it writes) to a check before any is written, as a build followed by a compile checks the
+compile.
 
 ## Compile an object into an OGF
 
@@ -827,7 +837,8 @@ Not compared: the orders the compile chooses, how a surface's faces fall among c
 part; other tools spread one surface over several), tangents, bone boxes, and authoring stamps.
 
 `ObjectVerification` lists the differences in each area and counts what matched. It distinguishes a vertex that differs
-only in its normal from one that differs more.
+only in its normal from one that differs more. `ObjectVerificationDurations` holds how long each area's comparison
+took, the compile left out; `object verify` reports each check with its own.
 
 ## Checks
 

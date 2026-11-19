@@ -59,8 +59,8 @@ impl LevelBuildExporter {
   ///
   /// # Errors
   ///
-  /// Returns an error, as the Build stops, when the scene is of draft quality, a part does not read, a placed object
-  /// or light does not build, or the details or impostors need a textures root `sources` lacks or do not export.
+  /// Returns an error, as the Build stops, when the scene is of draft quality, a part does not read, a placed object,
+  /// light or portal does not build, or the details or impostors need a textures root `sources` lacks or do not export.
   pub fn export<T: ByteOrder>(
     scene: &EditableLevelScene,
     sources: &LevelBuildSources<'_>,
@@ -316,9 +316,17 @@ impl LevelBuildExporter {
     })
   }
 
+  /// Corners a portal needs to be a polygon, as the simplified one must keep.
+  const MINIMUM_PORTAL_VERTICES: usize = 3;
+
   /// A portal between the sectors it names, its polygon simplified ([`LevelBuildPortal`]) only where it has more
   /// corners than a compiled portal holds.
-  fn get_portal(portal: &EditablePortalObject, sectors: &LevelBuildSectors) -> XrfResult<BuildPrjPortal> {
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the portal joins a sector the scene lacks, has fewer than three corners, or simplifies to
+  /// no polygon.
+  pub(crate) fn get_portal(portal: &EditablePortalObject, sectors: &LevelBuildSectors) -> XrfResult<BuildPrjPortal> {
     let sector = |name: &str| {
       sectors.get_number(name).ok_or_else(|| {
         XrfError::new_invalid_error(format!(
@@ -327,6 +335,16 @@ impl LevelBuildExporter {
         ))
       })
     };
+
+    if portal.vertices.len() < Self::MINIMUM_PORTAL_VERTICES {
+      return Err(XrfError::new_invalid_error(format!(
+        "Portal '{}' has {} corners, fewer than the {} of a polygon, which the editor holds invalid",
+        portal.object.name,
+        portal.vertices.len(),
+        Self::MINIMUM_PORTAL_VERTICES
+      )));
+    }
+
     let vertices: Vec<Vector3d> = if portal.vertices.len() > BuildPrjPortal::MAXIMUM_VERTICES {
       LevelBuildPortal::simplify(&portal.vertices).ok_or_else(|| {
         XrfError::new_invalid_error(format!(
@@ -366,6 +384,20 @@ impl LevelBuildExporter {
   /// materials do not read, the scene places objects but no game materials are named, no objects root is found, the
   /// export fails, the job is cancelled, or a file does not write or remove.
   pub fn build_to_directory<T: ByteOrder>(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
+    Self::build_to_directory_checked::<T>(request, job, |_| Ok(()))
+  }
+
+  /// [`Self::build_to_directory`], handing the level compiler's files to `check` once made and before any is written,
+  /// where the request names game materials; an error from `check` stops the build there.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where [`Self::build_to_directory`] does, or `check` does.
+  pub fn build_to_directory_checked<T: ByteOrder>(
+    request: &LevelBuildRequest,
+    job: &JobHandle,
+    check: impl FnOnce(&LevelBuildExport) -> XrfResult,
+  ) -> XrfResult<LevelBuildReport> {
     let (source, destination) = (&request.source, &request.destination);
     let outputs: OutputFiles = request.get_outputs();
 
@@ -409,6 +441,9 @@ impl LevelBuildExporter {
             held: None,
           },
         )?;
+
+        check(&export)?;
+
         let (census, entities, refused) = (
           export.census,
           std::mem::take(&mut export.entities),

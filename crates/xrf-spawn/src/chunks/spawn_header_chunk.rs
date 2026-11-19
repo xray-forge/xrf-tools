@@ -29,7 +29,7 @@ impl ChunkReadWrite for SpawnHeaderChunk {
   /// Read header chunk by position descriptor.
   /// Parses binary data into header chunk representation object.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Parsing header chunk, {} bytes", reader.read_bytes_remain());
+    log::debug!("Parsing header chunk, {} bytes", reader.read_bytes_remain());
 
     let header: Self = Self {
       version: reader.read_u32::<T>()?,
@@ -53,7 +53,7 @@ impl ChunkReadWrite for SpawnHeaderChunk {
     writer.write_u32::<T>(self.objects_count)?;
     writer.write_u32::<T>(self.levels_count)?;
 
-    log::info!("Written header chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written header chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -68,13 +68,17 @@ impl FileImportExport for SpawnHeaderChunk {
       .section("header")
       .expect("Patrol section 'header' should be defined in ltx file");
 
-    Ok(Self {
+    let header: Self = Self {
       version: section.read_field("version")?,
       guid: section.read_field("guid")?,
       graph_guid: section.read_field("graph_guid")?,
       objects_count: section.read_field("objects")?,
       levels_count: section.read_field("level_count")?,
-    })
+    };
+
+    log::debug!("Imported header chunk");
+
+    Ok(header)
   }
 
   /// Export header data into provided path.
@@ -92,7 +96,7 @@ impl FileImportExport for SpawnHeaderChunk {
 
     ltx.write_to_path(path.as_ref().join(Self::UNPACKED_FILE_NAME))?;
 
-    log::info!("Exported header chunk");
+    log::debug!("Exported header chunk");
 
     Ok(())
   }

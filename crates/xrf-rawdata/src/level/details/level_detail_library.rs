@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use byteorder::ByteOrder;
+use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_level::DetailModel;
@@ -9,6 +10,7 @@ use xrf_math::Vector2d;
 use crate::level::build::level_build_atlas_place::LevelBuildAtlasPlace;
 use crate::level::details::level_detail_match::LevelDetailMatch;
 use crate::level::level_object_library::LevelObjectLibrary;
+use crate::level::level_object_library_entry::LevelObjectLibraryEntry;
 use crate::object::compile::detail::detail_model_builder::DetailModelBuilder;
 use crate::object::detail_parameters::DetailParameters;
 
@@ -44,27 +46,44 @@ impl LevelDetailLibrary {
     let mut detail: Self = Self::default();
     let mut uncompiled: Vec<(PathBuf, String)> = Vec::new();
 
-    library.read_each::<T>(
-      job,
-      |entry| entry.is_under(Self::DIRECTORY),
-      |entry, object| {
-        match DetailModelBuilder::build_model(&object, &DetailParameters::default()) {
-          Ok((model, _)) => detail.sources.push((entry.reference.clone(), model)),
-          Err(error) => uncompiled.push((
-            entry.path.clone(),
-            format!("it did not compile as a detail object: {error}"),
-          )),
-        }
+    library.read_each::<T>(job, Self::is_detail, |entry, object| {
+      detail.add(entry, &object, &mut uncompiled);
 
-        Ok(())
-      },
-    )?;
+      Ok(())
+    })?;
 
+    Self::record_uncompiled(library, uncompiled);
+
+    Ok(detail)
+  }
+
+  /// Whether `entry` stands among the detail objects, under its root's [`Self::DIRECTORY`].
+  pub(crate) fn is_detail(entry: &LevelObjectLibraryEntry) -> bool {
+    entry.is_under(Self::DIRECTORY)
+  }
+
+  /// Adds `object`, read from `entry`, compiled as `EDetail` exports it; one that does not compile goes to
+  /// `uncompiled` with why, for [`Self::record_uncompiled`] once the walk is done.
+  pub(crate) fn add(
+    &mut self,
+    entry: &LevelObjectLibraryEntry,
+    object: &EditableObjectFile,
+    uncompiled: &mut Vec<(PathBuf, String)>,
+  ) {
+    match DetailModelBuilder::build_model(object, &DetailParameters::default()) {
+      Ok((model, _)) => self.sources.push((entry.reference.clone(), model)),
+      Err(error) => uncompiled.push((
+        entry.path.clone(),
+        format!("it did not compile as a detail object: {error}"),
+      )),
+    }
+  }
+
+  /// Records in `library` each detail object [`Self::add`] could not compile, which then matches nothing.
+  pub(crate) fn record_uncompiled(library: &mut LevelObjectLibrary, uncompiled: Vec<(PathBuf, String)>) {
     for (path, cause) in uncompiled {
       library.record_unread(&path, cause);
     }
-
-    Ok(detail)
   }
 
   /// The first object drawing `stored`: the same positions and indices, its texture coordinates `stored`'s before

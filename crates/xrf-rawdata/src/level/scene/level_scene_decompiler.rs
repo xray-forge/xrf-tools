@@ -185,7 +185,8 @@ impl LevelSceneDecompiler {
   /// Returns an error when the request does not resolve; unforced, before the level is read, when the scene or one of
   /// the level's objects exists ([`LevelDecompileRequest::get_scene_outputs`],
   /// [`LevelDecompileRequest::get_object_outputs`]); when the decompile fails or is cancelled; unforced, when a library
-  /// copy or texture it writes exists; or when a file does not write or a stale one is not removed.
+  /// copy or texture it writes exists; when a link the request's policy refuses stands where a file goes; or when a
+  /// file does not write or a stale one is not removed.
   pub fn decompile_to_path<T: ByteOrder>(
     request: &LevelDecompileRequest,
     tool: &str,
@@ -227,7 +228,7 @@ impl LevelSceneDecompiler {
       job.set_detail(Some(format_path(destination).to_string()));
       // The parts an earlier scene had and this one has not go first: the editor would read them as this scene's.
       removed.extend(scene_outputs.remove_stale(&written_scene)?);
-      decompiled.write_to_path::<T>(destination, &objects, &textures)?;
+      decompiled.write_to_path_with::<T>(destination, &objects, &textures, request.link_policy)?;
       removed.extend(object_outputs.remove_stale(&written_objects)?);
     }
 

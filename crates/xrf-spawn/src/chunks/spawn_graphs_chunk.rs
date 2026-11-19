@@ -250,7 +250,7 @@ impl SpawnGraphsChunk {
 impl ChunkReadWrite for SpawnGraphsChunk {
   /// Read graphs chunk by position descriptor.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading graphs chunk, bytes {}", reader.read_bytes_remain());
+    log::debug!("Reading graphs chunk, bytes {}", reader.read_bytes_remain());
 
     let header: GraphHeader = reader.read_xr::<T, _>()?;
 
@@ -293,7 +293,7 @@ impl ChunkReadWrite for SpawnGraphsChunk {
 
     let cross_tables: Vec<GraphCrossTable> = reader.read_xr_list::<T, _>()?;
 
-    log::info!("Read graphs ver {}, {} bytes", header.version, reader.read_bytes_len(),);
+    log::debug!("Read graphs ver {}, {} bytes", header.version, reader.read_bytes_len(),);
 
     let graphs: Self = Self {
       header,
@@ -333,7 +333,7 @@ impl ChunkReadWrite for SpawnGraphsChunk {
 
     writer.write_xr_list::<T, _>(&self.cross_tables)?;
 
-    log::info!("Written graphs chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written graphs chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -359,7 +359,7 @@ impl FileImportExport for SpawnGraphsChunk {
     let cross_tables: Vec<GraphCrossTable> =
       GraphCrossTable::import_list::<XRayByteOrder>(&mut File::open(path.as_ref().join("graphs_cross_tables.gct"))?)?;
 
-    log::info!("Imported graphs chunk");
+    log::debug!("Imported graphs chunk");
 
     Ok(Self {
       header,
@@ -388,7 +388,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     graphs_level_ltx.write_to_path(path.as_ref().join("graphs_levels.ltx"))?;
 
-    log::info!("Exported graph levels");
+    log::debug!("Exported graph levels");
 
     let mut graphs_vertices_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
@@ -398,7 +398,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     graphs_vertices_ltx.write_to_path(path.as_ref().join("graphs_vertices.ltx"))?;
 
-    log::info!("Exported graph vertices");
+    log::debug!("Exported graph vertices");
 
     let mut graphs_points_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
@@ -408,7 +408,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     graphs_points_ltx.write_to_path(path.as_ref().join("graphs_points.ltx"))?;
 
-    log::info!("Exported graph points");
+    log::debug!("Exported graph points");
 
     let mut graphs_edges_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
@@ -418,16 +418,16 @@ impl FileImportExport for SpawnGraphsChunk {
 
     graphs_edges_ltx.write_to_path(path.as_ref().join("graphs_edges.ltx"))?;
 
-    log::info!("Exported graph edges");
+    log::debug!("Exported graph edges");
 
     let mut cross_tables: Vec<u8> = Vec::new();
 
     GraphCrossTable::export_list::<XRayByteOrder>(&self.cross_tables, &mut cross_tables)?;
     StagedFile::write_creating_directories(&path.as_ref().join("graphs_cross_tables.gct"), &cross_tables)?;
 
-    log::info!("Exported graph cross tables");
+    log::debug!("Exported graph cross tables");
 
-    log::info!("Exported graphs chunk");
+    log::debug!("Exported graphs chunk");
 
     Ok(())
   }

@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_chunk::XRayByteOrder;
@@ -7,7 +7,7 @@ use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_ogf::OgfFile;
 use xrf_output::OutputOptions;
-use xrf_rawdata::{ObjectGeometryCensus, ObjectVerification, ObjectVerifier};
+use xrf_rawdata::{ObjectGeometryCensus, ObjectVerification, ObjectVerificationDurations, ObjectVerifier};
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::format_path;
 
@@ -54,9 +54,8 @@ impl GenericCommand for VerifyCommand {
       format_path(reference)
     );
 
-    let started: Instant = Instant::now();
     let verification: ObjectVerification = Self::verify(source, reference)?;
-    let report: Report = Self::report(&verification, started.elapsed());
+    let report: Report = Self::report(&verification);
     let census: &ObjectGeometryCensus = &verification.census;
 
     xrf_output::info!(
@@ -89,9 +88,9 @@ impl VerifyCommand {
     ObjectVerifier::verify(&object, &reference)
   }
 
-  /// One check per area the engine reads, failed by any difference in it.
-  pub(crate) fn report(verification: &ObjectVerification, duration: Duration) -> Report {
-    let check = |id: &'static str, differences: &[String]| {
+  /// One check per area the engine reads, failed by any difference in it and timed by its own comparison.
+  pub(crate) fn report(verification: &ObjectVerification) -> Report {
+    let check = |id: &'static str, differences: &[String], duration: Duration| {
       CheckReport::new(
         CheckId::of_static(id),
         Status::from_is_valid(differences.is_empty()),
@@ -102,12 +101,13 @@ impl VerifyCommand {
           .collect(),
       )
     };
+    let durations: &ObjectVerificationDurations = &verification.durations;
 
     Report::new(vec![
-      check("object.model", &verification.model),
-      check("object.skeleton", &verification.skeleton),
-      check("object.motions", &verification.motions),
-      check("object.geometry", &verification.geometry),
+      check("object.model", &verification.model, durations.model),
+      check("object.skeleton", &verification.skeleton, durations.skeleton),
+      check("object.motions", &verification.motions, durations.motions),
+      check("object.geometry", &verification.geometry, durations.geometry),
     ])
   }
 }

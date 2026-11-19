@@ -24,7 +24,8 @@ impl MotionConverter {
   /// # Errors
   ///
   /// Returns an error when the motions come without the parameters that say how they play, a part names a bone the
-  /// skeleton lacks, or a motion's keys do not decode for the skeleton's bones at its declared length or one key more.
+  /// skeleton lacks or two parts name one bone, or a motion's keys do not decode for the skeleton's bones at its
+  /// declared length or one key more.
   pub(crate) fn convert<T: ByteOrder>(file: &OgfFile, bone_names: &[String]) -> XrfResult<Option<ConvertedMotions>> {
     let Some(motions) = file.motions.as_ref().filter(|chunk| !chunk.motions.is_empty()) else {
       return Ok(None);
@@ -70,14 +71,29 @@ impl MotionConverter {
   }
 
   /// The bone each key run animates: `motions_value::load` hands run `i` to the bone a part stores with index `i`.
-  fn bone_of_run(parameters: &SkeletonMotionParametersChunk, bone_names: &[String]) -> XrfResult<Vec<usize>> {
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a part names a bone the skeleton lacks, or the parts name one bone twice, whose second run
+  /// would overwrite the first and leave a bone unanimated, as `MotionExport::parts` refuses on export.
+  pub(crate) fn bone_of_run(
+    parameters: &SkeletonMotionParametersChunk,
+    bone_names: &[String],
+  ) -> XrfResult<Vec<usize>> {
     let mut bone_of_run: Vec<usize> = (0..bone_names.len()).collect();
+    let mut is_named: Vec<bool> = vec![false; bone_names.len()];
 
     for (name, run) in parameters.parts.iter().flat_map(|part| &part.bones) {
       let bone: usize = bone_names
         .iter()
         .position(|it| it.eq_ignore_ascii_case(name))
         .ok_or_else(|| XrfError::new_invalid_error(format!("A bone part names bone '{name}', which has no bone")))?;
+
+      if std::mem::replace(&mut is_named[bone], true) {
+        return Err(XrfError::new_invalid_error(format!(
+          "The bone parts name bone '{name}' twice, which each motion would key twice and another bone not at all"
+        )));
+      }
 
       if let Some(slot) = bone_of_run.get_mut(*run as usize) {
         *slot = bone;

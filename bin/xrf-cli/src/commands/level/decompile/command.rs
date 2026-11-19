@@ -6,7 +6,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileReport, LevelDecompileRequest, LevelSceneDecompiler, LevelSurfaces};
 
-use crate::core::arguments::{InputArgument, JobsArgument};
+use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument};
 use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
@@ -123,7 +123,7 @@ impl GenericCommand for DecompileCommand {
           .action(ArgAction::SetTrue),
       );
 
-    JobsArgument::declare(command)
+    JobsArgument::declare(LinkPolicyArgument::declare(command))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -148,6 +148,7 @@ impl GenericCommand for DecompileCommand {
         .map(|roots| roots.cloned().collect())
         .unwrap_or_default(),
       is_forced: matches.get_flag("force"),
+      link_policy: LinkPolicyArgument::of(matches),
     };
     let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
       &request,

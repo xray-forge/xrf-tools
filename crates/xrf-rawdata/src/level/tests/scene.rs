@@ -16,7 +16,8 @@ use xrf_level::{
   LevelGameWayPoint,
 };
 use xrf_math::Vector3d;
-use xrf_test_utils::GeneratedResources;
+use xrf_test_utils::{GeneratedResources, HostFilesystem};
+use xrf_utils::HostLinkPolicy;
 
 use crate::level::build::level_exported_previous::LevelExportedPrevious;
 use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
@@ -319,6 +320,45 @@ fn refuses_a_name_that_would_leave_its_root_and_writes_nothing() -> XrfResult {
     0,
     "nothing is written, not even the sidecar"
   );
+
+  Ok(())
+}
+
+// A link below a root is the user's layout: followed by default, refused before the first write where the run says so.
+#[test]
+fn refuses_a_link_below_a_root_where_asked_and_writes_nothing() -> XrfResult {
+  let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "linked_root"))?;
+  let (elsewhere, objects) = (output.join("elsewhere"), output.join("objects"));
+  let level: PathBuf = output.join("scenes").join("test_level.level");
+  let mut decompiled: LevelSceneDecompile = decompile(&level_directory("linked", 10.0)?)?;
+
+  std::fs::create_dir_all(&elsewhere)?;
+  std::fs::create_dir_all(&objects)?;
+
+  if !HostFilesystem::link_directory(&elsewhere, &objects.join("levels")) {
+    return Ok(());
+  }
+
+  decompiled.library.push(LevelSceneLibraryFile {
+    reference: String::from("levels\\test_level\\copied"),
+    object: vec![0],
+    thumbnail: None,
+  });
+
+  assert!(
+    decompiled
+      .write_to_path_with::<XRayByteOrder>(&level, &objects, &output.join("textures"), HostLinkPolicy::Refuse)
+      .is_err()
+  );
+  assert!(
+    !output.join("scenes").exists(),
+    "nothing is written, not even the sidecar"
+  );
+  assert_eq!(std::fs::read_dir(&elsewhere)?.count(), 0);
+
+  decompiled.write_to_path_with::<XRayByteOrder>(&level, &objects, &output.join("textures"), HostLinkPolicy::Follow)?;
+
+  assert!(elsewhere.join("test_level").join("copied.object").is_file());
 
   Ok(())
 }

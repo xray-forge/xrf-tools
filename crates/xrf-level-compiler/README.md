@@ -34,6 +34,10 @@ Before any step runs, it refuses:
 - a texture `build.prj` names with no `.thm` under the textures roots, where a step reads textures;
 - an output already there, unless forced.
 
+A job that builds the level first runs the same checks before the build writes: `LevelCompiler::check_before_writing`
+before the scene is read, taking every file the build may write as there, then `LevelCompiler::check_build` on the build
+made, with its `build.prj` and the files it writes, the rest of the build's own taken as gone.
+
 Each step writes its outputs staged, so a failed write leaves the old file. A cancelled job stops the compile with
 `XrfError::Cancelled`. The `LevelCompileReport` holds one `LevelCompileStepReport` per step: its time and what ran it
 (`LevelCompileStepRun`), with that compiler's census and the GPU that traced, if any.

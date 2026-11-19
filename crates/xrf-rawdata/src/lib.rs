@@ -47,6 +47,7 @@ pub use crate::object::decompile::object_inference::ObjectInference;
 pub use crate::object::detail_parameters::DetailParameters;
 pub use crate::object::verify::object_geometry_census::ObjectGeometryCensus;
 pub use crate::object::verify::object_verification::ObjectVerification;
+pub use crate::object::verify::object_verification_durations::ObjectVerificationDurations;
 pub use crate::object::verify::object_verifier::ObjectVerifier;
 pub use crate::provenance::level_scene_disagreement::LevelSceneDisagreement;
 pub use crate::provenance::level_scene_file::LevelSceneFile;

@@ -1,4 +1,4 @@
-use std::io::{Read, Result as IoResult, SeekFrom};
+use std::io::{Error as IoError, ErrorKind, Read, Result as IoResult, SeekFrom};
 use std::ops::RangeBounds;
 
 use byteorder::ReadBytesExt;
@@ -45,7 +45,18 @@ pub trait ChunkDataSource: ReadBytesExt + Read + Clone {
   }
 
   /// [`Self::read_with`] at a window-local offset, without moving this source's own cursor.
+  ///
+  /// # Errors
+  ///
+  /// Returns an `InvalidInput` error when the range ends past `u64`, and an error where the read does.
   fn read_at_with<R>(&self, offset: u64, count: usize, visit: impl FnOnce(&[u8]) -> R) -> IoResult<R> {
-    self.slice(offset..offset + count as u64).read_with(count, visit)
+    let end: u64 = offset.checked_add(count as u64).ok_or_else(|| {
+      IoError::new(
+        ErrorKind::InvalidInput,
+        format!("A read of {count} bytes at {offset} ends past the largest offset"),
+      )
+    })?;
+
+    self.slice(offset..end).read_with(count, visit)
   }
 }

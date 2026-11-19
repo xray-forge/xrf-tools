@@ -30,6 +30,7 @@ use crate::object::decompile::skeleton::converted_motions::ConvertedMotions;
 use crate::object::decompile::skeleton::motion_converter::MotionConverter;
 use crate::object::detail_parameters::DetailParameters;
 use crate::provenance::object_provenance::ObjectProvenance;
+use crate::provenance::sidecar::Sidecar;
 
 /// Turns an OGF the Actor Editor exported back into the editable object it was exported from, as near as the OGF
 /// allows: see the crate's documentation for what is recovered and what inferred.
@@ -66,14 +67,16 @@ impl ObjectDecompiler {
 
     let bytes: Vec<u8> = std::fs::read(&request.source)
       .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(&request.source))))?;
+    // Hashed before the reader takes the bytes, so the source is held once.
+    let source_sha256: String = Sidecar::get_sha256_hex(&bytes);
     let decompile: ObjectDecompile = if XrayExtension::Dm.matches_path(&request.source) {
-      Self::decompile_detail(&DetailModel::read_from_bytes::<XRayByteOrder>(bytes.clone())?)?
+      Self::decompile_detail(&DetailModel::read_from_bytes::<XRayByteOrder>(bytes)?)?
     } else {
-      Self::decompile(&OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?)?
+      Self::decompile(&OgfFile::read_from_bytes::<XRayByteOrder>(bytes)?)?
     };
-    let provenance: ObjectProvenance = ObjectProvenance::new(
+    let provenance: ObjectProvenance = ObjectProvenance::of_source_hash(
       format_path(&request.source).to_string(),
-      &bytes,
+      source_sha256,
       tool,
       tool_version,
       decompile.inferred.clone(),

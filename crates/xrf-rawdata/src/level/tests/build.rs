@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
-  EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditableSceneObject, EditableSectorItem,
-  EditableSectorObject,
+  EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditablePortalObject, EditableSceneObject,
+  EditableSectorItem, EditableSectorObject,
 };
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
@@ -16,6 +16,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::level::build::level_build_breakables::LevelBuildBreakables;
 use crate::level::build::level_build_climbables::LevelBuildClimbables;
+use crate::level::build::level_build_exporter::LevelBuildExporter;
 use crate::level::build::level_build_geometry::LevelBuildGeometry;
 use crate::level::build::level_build_lights::LevelBuildLights;
 use crate::level::build::level_build_models::LevelBuildModels;
@@ -318,6 +319,23 @@ fn simplifies_a_portal_of_more_corners_to_six_on_its_plane_wound_as_it_was() {
     None,
     "corners holding no plane"
   );
+}
+
+#[test]
+fn refuses_a_portal_of_fewer_than_three_corners_naming_it() {
+  let portal = |corners: usize| EditablePortalObject {
+    object: EditableCustomObject::new(String::from("portal_0007"), EditableObjectTransform::default()),
+    sector_front: String::from("room"),
+    sector_back: String::from("hall"),
+    vertices: (0..corners)
+      .map(|index| Vector3d::new(index as f32, 0.0, 0.0))
+      .collect(),
+  };
+
+  let error = LevelBuildExporter::get_portal(&portal(2), &sectors()).expect_err("two corners hold no polygon");
+
+  assert!(error.to_string().contains("'portal_0007'"), "{error}");
+  assert!(LevelBuildExporter::get_portal(&portal(3), &sectors()).is_ok());
 }
 
 #[test]

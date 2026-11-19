@@ -12,6 +12,7 @@ use xrf_ogf::OgfFile;
 use xrf_shaders::ShaderCompilerFile;
 use xrf_utils::format_path;
 
+use crate::level::details::level_detail_library::LevelDetailLibrary;
 use crate::level::entities::level_entity_conversion::LevelEntityConversion;
 use crate::level::geometry::level_collision_index::LevelCollisionIndex;
 use crate::level::geometry::level_decal_index::LevelDecalIndex;
@@ -110,13 +111,16 @@ impl LevelSceneStep for LevelGeometryStep {
       .as_ref()
       .map(|(_, shaders, _)| shaders)
       .or(named_shaders.as_ref());
-    let (pairings, library) = Self::read_object_library::<T>(
+    let (pairings, library, details) = Self::read_object_library::<T>(
       options,
       &mut draft.object_library,
       &draft.job,
       compiler_shaders,
       surface_libraries.is_some(),
     )?;
+
+    draft.detail_library = Some(details);
+
     let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = surface_libraries
       .zip(pairings)
       .map(|((game_materials, compiler_shaders, libraries), pairings)| {
@@ -300,18 +304,25 @@ impl LevelGeometryStep {
     Ok((files, instances))
   }
 
-  /// Reads each library object once for the shader pairings, where `is_inferring`, and the objects to look for in the
-  /// static geometry, where a root is named. The walk stops once `job` is cancelled.
+  /// Reads each library object once for the shader pairings, where `is_inferring`, the objects to look for in the
+  /// static geometry, where a root is named, and the detail objects the detail step matches, which it then need not
+  /// read again. The walk stops once `job` is cancelled.
   fn read_object_library<T: ByteOrder>(
     options: &LevelDecompileOptions,
     library: &mut LevelObjectLibrary,
     job: &JobHandle,
     compiler_shaders: Option<&ShaderCompilerFile>,
     is_inferring: bool,
-  ) -> XrfResult<(Option<LevelShaderPairings>, Option<LevelInstanceLibrary>)> {
+  ) -> XrfResult<(
+    Option<LevelShaderPairings>,
+    Option<LevelInstanceLibrary>,
+    LevelDetailLibrary,
+  )> {
     let mut pairings: Option<LevelShaderPairings> = is_inferring.then(LevelShaderPairings::default);
     let mut instances: Option<LevelInstanceLibrary> =
       (!options.libraries.is_empty()).then(LevelInstanceLibrary::default);
+    let mut details: LevelDetailLibrary = LevelDetailLibrary::default();
+    let mut uncompiled: Vec<(PathBuf, String)> = Vec::new();
 
     library.read_each::<T>(
       job,
@@ -325,9 +336,15 @@ impl LevelGeometryStep {
           instances.add(entry.reference.clone(), entry.path.clone(), &object, compiler_shaders);
         }
 
+        if LevelDetailLibrary::is_detail(entry) {
+          details.add(entry, &object, &mut uncompiled);
+        }
+
         Ok(())
       },
     )?;
+
+    LevelDetailLibrary::record_uncompiled(library, uncompiled);
 
     if let Some(instances) = &mut instances {
       // An earlier decompile's own objects would be found whole as placements.
@@ -339,7 +356,7 @@ impl LevelGeometryStep {
         .retain(|object| !object.reference.to_lowercase().starts_with(&own));
     }
 
-    Ok((pairings, instances))
+    Ok((pairings, instances, details))
   }
 
   /// The trees' impostor atlas, where the level has one. One missing a file or not reading is refused, and the trees

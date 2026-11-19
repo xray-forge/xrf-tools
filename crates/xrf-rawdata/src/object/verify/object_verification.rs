@@ -1,7 +1,8 @@
 use crate::object::verify::object_geometry_census::ObjectGeometryCensus;
+use crate::object::verify::object_verification_durations::ObjectVerificationDurations;
 
 /// How an object compiled compares with an OGF it should stand in for: what differs, by what the engine reads it for,
-/// and how much of the geometry matched.
+/// how much of the geometry matched, and how long each area took.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ObjectVerification {
   /// What the model is to the engine: its model type, user data, LODs and motion references.
@@ -15,6 +16,8 @@ pub struct ObjectVerification {
   pub geometry: Vec<String>,
   /// The children of each side and the vertices and faces matched between them.
   pub census: ObjectGeometryCensus,
+  /// How long each area's comparison took.
+  pub durations: ObjectVerificationDurations,
 }
 
 impl ObjectVerification {

@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::time::{Duration, Instant};
 
 use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
@@ -24,7 +25,7 @@ impl ObjectVerifier {
   /// Header bounds within this of the reference's are the same bounds.
   const BOUNDS_TOLERANCE: f32 = 1e-4;
 
-  /// How `object` compiled compares with `reference`.
+  /// How `object` compiled compares with `reference`, with how long each area's comparison took.
   ///
   /// # Errors
   ///
@@ -45,16 +46,29 @@ impl ObjectVerifier {
     Ok(Self::compare(&compiled, reference))
   }
 
-  /// How `compiled` compares with `reference`.
+  /// How `compiled` compares with `reference`, each area timed.
   fn compare(compiled: &OgfFile, reference: &OgfFile) -> ObjectVerification {
     let mut verification: ObjectVerification = ObjectVerification::default();
 
-    Self::compare_model(compiled, reference, &mut verification.model);
-    Self::compare_skeleton(compiled, reference, &mut verification.skeleton);
-    Self::compare_motions(compiled, reference, &mut verification.motions);
-    verification.census = Self::compare_geometry(compiled, reference, &mut verification.geometry);
+    verification.durations.model = Self::time(|| Self::compare_model(compiled, reference, &mut verification.model));
+    verification.durations.skeleton =
+      Self::time(|| Self::compare_skeleton(compiled, reference, &mut verification.skeleton));
+    verification.durations.motions =
+      Self::time(|| Self::compare_motions(compiled, reference, &mut verification.motions));
+    verification.durations.geometry = Self::time(|| {
+      verification.census = Self::compare_geometry(compiled, reference, &mut verification.geometry);
+    });
 
     verification
+  }
+
+  /// How long `area` takes.
+  fn time(area: impl FnOnce()) -> Duration {
+    let started: Instant = Instant::now();
+
+    area();
+
+    started.elapsed()
   }
 
   fn compare_model(compiled: &OgfFile, reference: &OgfFile, differences: &mut Vec<String>) {

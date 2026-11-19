@@ -9,7 +9,7 @@ use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::OgfHeaderChunk;
-use xrf_rawdata::ObjectVerification;
+use xrf_rawdata::{ObjectVerification, ObjectVerificationDurations};
 use xrf_report::{Report, Status};
 use xrf_test_utils::GeneratedResources;
 
@@ -111,27 +111,38 @@ fn refuses_a_reference_that_is_not_an_ogf() -> XrfResult {
 }
 
 #[test]
-fn checks_each_area_and_fails_only_where_it_differs() {
-  let report: Report = VerifyCommand::report(
-    &ObjectVerification {
-      skeleton: vec![String::from("bone 2: tip under 'b', the reference's c under 'b'")],
-      ..ObjectVerification::default()
+fn checks_each_area_in_its_own_time_and_fails_only_where_it_differs() {
+  let millis = Duration::from_millis;
+  let report: Report = VerifyCommand::report(&ObjectVerification {
+    skeleton: vec![String::from("bone 2: tip under 'b', the reference's c under 'b'")],
+    durations: ObjectVerificationDurations {
+      model: millis(1),
+      skeleton: millis(2),
+      motions: millis(3),
+      geometry: millis(4),
     },
-    Duration::ZERO,
-  );
-  let statuses: Vec<(String, Status, usize)> = report
+    ..ObjectVerification::default()
+  });
+  let statuses: Vec<(String, Status, usize, Option<Duration>)> = report
     .checks()
     .iter()
-    .map(|check| (check.id().to_string(), check.status(), check.findings().len()))
+    .map(|check| {
+      (
+        check.id().to_string(),
+        check.status(),
+        check.findings().len(),
+        check.duration(),
+      )
+    })
     .collect();
 
   assert_eq!(
     statuses,
     [
-      (String::from("object.model"), Status::Passed, 0),
-      (String::from("object.skeleton"), Status::Failed, 1),
-      (String::from("object.motions"), Status::Passed, 0),
-      (String::from("object.geometry"), Status::Passed, 0),
+      (String::from("object.model"), Status::Passed, 0, Some(millis(1))),
+      (String::from("object.skeleton"), Status::Failed, 1, Some(millis(2))),
+      (String::from("object.motions"), Status::Passed, 0, Some(millis(3))),
+      (String::from("object.geometry"), Status::Passed, 0, Some(millis(4))),
     ]
   );
   assert_eq!(report.status(), Status::Failed);
