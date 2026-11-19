@@ -1,7 +1,7 @@
 use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 
-/// The vertex declarations xrLC stores a level's static geometry in (`xrLC/OGF_Face_Save.cpp:46`).
+/// The vertex declarations xrLC stores a level's static geometry in (`xrLC/OGF_Face_Save.cpp`).
 pub struct LevelVertexDeclaration;
 
 impl LevelVertexDeclaration {
@@ -59,7 +59,7 @@ impl LevelVertexDeclaration {
     )]
   }
 
-  /// A tree's (`xrMU_Model_export_geometry.cpp:14`), 32 bytes: position, normal, tangent, binormal, and the base
+  /// A tree's (`xrMU_Model_export_geometry.cpp`), 32 bytes: position, normal, tangent, binormal, and the base
   /// coordinate with its wind terms.
   pub fn get_tree() -> Vec<LevelGeomVertexElement> {
     vec![

@@ -13,19 +13,18 @@ use crate::{
   EditableOccluder, EditableSurface,
 };
 
-/// An editable object, the `.object` file the SDK's Actor and Level editors open: meshes, the surfaces their faces
-/// are made of, and for a dynamic object its skeleton. It is the source an OGF is exported from, and holds what the
-/// export drops: shared points, vertex maps, smoothing groups and every surface's names.
+/// An editable object, the `.object` file the SDK's Actor and Level editors open and an OGF is exported from. It holds
+/// what the export drops: shared points, vertex maps, smoothing groups and every surface's names.
 ///
-/// Every chunk the SDK names is a field. How the file laid them out, and any chunk no field takes, is the body's,
-/// each mesh's and each bone's [`ChunkLayout`], so a file reads and writes back byte for byte whichever editor
-/// or exporter saved it, and an object built in code is written in the order `CEditableObject::Save` writes.
+/// Every chunk the SDK names is a field. The body's, each mesh's and each bone's [`ChunkLayout`] keep the stored order
+/// and any chunk no field takes, so a file writes back byte for byte whichever tool saved it, and an object built in
+/// code is written in `CEditableObject::Save`'s order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableObjectFile {
   /// `CEditableObject::m_objectFlags`: dynamic, HOM, multiple usage, sound occluder and the rest.
   pub flags: u32,
-  /// Bytes the flags chunk holds: 4 as the editor writes it, 1 in an older object. `CEditableObject::Load` reads it
-  /// with `r_chunk`, which copies however many the chunk holds into the low bytes.
+  /// Bytes the flags chunk holds: 4 as the editor writes it, 1 in an older object. `CEditableObject::Load` copies
+  /// however many there are into the low bytes.
   pub flags_size: u8,
   /// The script class the Level Editor gives the object, `None` where the chunk is absent.
   pub class_script: Option<String>,
@@ -134,8 +133,8 @@ impl EditableObjectFile {
     Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
   }
 
-  /// Reads the file's root, which must be the body chunk alone: the SDK reads nothing else, so anything beside it
-  /// would be dropped on the way back.
+  /// Reads the file's root, which must hold the body chunk alone: the SDK reads nothing else, so anything beside it
+  /// would be lost on write.
   ///
   /// # Errors
   ///
@@ -158,9 +157,9 @@ impl EditableObjectFile {
   ///
   /// # Errors
   ///
-  /// Returns an error where the SDK refuses or asserts: a version other than [`Self::VERSION`], or no flags chunk; and
-  /// where a chunk holds more or less than its fields, a mesh or bone list is not numbered from zero, a count runs
-  /// past its chunk, or a mesh or bone fails to read.
+  /// Returns an error on a version other than [`Self::VERSION`], no flags chunk, a chunk holding more or less than its
+  /// fields, a mesh or bone list not numbered from zero, a count running past its chunk, or a mesh or bone that fails
+  /// to read.
   pub fn read_from_body_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut flags: Option<u32> = None;
@@ -383,14 +382,13 @@ impl EditableObjectFile {
     self.layout.write::<T>(writer, sequence)
   }
 
-  /// Whether the object is a dynamic model, which the Actor Editor exports to an OGF of its own, rather than level
-  /// geometry a level build merges.
+  /// Whether the object is a dynamic model the Actor Editor exports to its own OGF, rather than level geometry.
   pub const fn is_dynamic(&self) -> bool {
     self.flags & Self::DYNAMIC_FLAG != 0
   }
 
-  /// What the object occludes where it is flagged an occluder, sight before sound where it is flagged both, as the
-  /// Level Editor reads the flags to draw it; none for any other object.
+  /// What the object occludes, sight before sound where it is flagged both, as the Level Editor reads the flags; `None`
+  /// for an object not flagged an occluder.
   pub const fn get_occluder(&self) -> Option<EditableOccluder> {
     if self.flags & Self::HOM_FLAG != 0 {
       Some(EditableOccluder::Hom)

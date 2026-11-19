@@ -9,16 +9,13 @@ use crate::map::spawn_ai_map::SpawnAiMap;
 use crate::separator::spawn_restrictor::SpawnRestrictor;
 use crate::separator::spawn_separator_cut::SpawnSeparatorCut;
 
-/// xrAI's separator check (`CSpaceRestrictorWrapper::verify_connectivity`, `space_restrictor_wrapper.cpp:218`), kept to
-/// what it means to find: a restrictor flagged for it whose border, the nodes it holds in part but not whole, cuts
-/// nodes off.
+/// xrAI's separator check, `CSpaceRestrictorWrapper::verify_connectivity`, kept to real cuts: a flagged restrictor
+/// whose border, the nodes it holds in part, cuts nodes off.
 ///
-/// GSC floods the whole map from its first node outside the restrictor, the border masked, to 6,000 m, and asserts
-/// unless the nodes reached and the nodes held make the map. That also fires where a part of the map was apart before
-/// the restrictor, and where nodes held whole are reached around the border, counted twice. Here the map's parts, a
-/// link joining either way, are found once; each part the border touches is flooded from every node outside the
-/// restrictor, the border masked, with no range, into pieces; and what is cut is the nodes outside the restrictor of
-/// every piece but the part's largest, however GSC's first node falls.
+/// GSC floods from its first node outside the restrictor, border masked, to 6,000 m, and asserts unless the nodes
+/// reached and held make the map. That also fires on a part already apart and on held nodes counted twice. Here the
+/// map's parts are found once; each part the border touches is flooded into pieces from every outside node, border
+/// masked, with no range. The cut is the outside nodes of every piece but each part's largest.
 pub(crate) struct SpawnSeparatorCheck<'a> {
   map: &'a SpawnAiMap,
   /// The part each node belongs to, named by its lowest node ([`LevelAiParts`]).
@@ -26,8 +23,7 @@ pub(crate) struct SpawnSeparatorCheck<'a> {
 }
 
 impl<'a> SpawnSeparatorCheck<'a> {
-  /// A node in no piece: on the border, held and reached from no node outside, or in a part the border does not
-  /// touch.
+  /// A node in no piece: on the border, held and unreached from outside, or in an untouched part.
   const NO_PIECE: u32 = u32::MAX;
 
   pub(crate) fn new(map: &'a SpawnAiMap) -> Self {
@@ -47,7 +43,7 @@ impl<'a> SpawnSeparatorCheck<'a> {
     }
   }
 
-  /// The cuts of the objects' restrictors flagged for the check, in the objects' order, on level `level`.
+  /// The cuts of the flagged restrictors among `objects`, in their order, on level `level`.
   pub(crate) fn find_cuts(&self, level: &str, objects: &[AlifeObject]) -> Vec<SpawnSeparatorCut> {
     let restrictors: Vec<SpawnRestrictor> = objects.iter().filter_map(SpawnRestrictor::from_object).collect();
 
@@ -84,11 +80,9 @@ impl<'a> SpawnSeparatorCheck<'a> {
     touched.dedup();
 
     let is_touched = |node: usize| touched.binary_search(&self.parts[node]).is_ok();
-    // Each node of a touched part the flood from a node outside the restrictor reaches, the border masked, labelled
-    // by its piece; a piece's size counts its nodes outside the restrictor.
+    // Each flooded node's piece; a piece's size counts only its nodes outside the restrictor.
     let mut pieces: Vec<u32> = vec![Self::NO_PIECE; count];
     let mut piece_sizes: Vec<u32> = Vec::new();
-    // The part each piece lies in, beside its size.
     let mut piece_parts: Vec<u32> = Vec::new();
     let mut queue: VecDeque<u32> = VecDeque::new();
     let mut next_piece: u32 = 0;

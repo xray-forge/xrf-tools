@@ -5,10 +5,10 @@ use crate::graph::spawn_graph_point::SpawnGraphPoint;
 use crate::map::spawn_ai_map::SpawnAiMap;
 use crate::map::spawn_path_search::SpawnPathSearch;
 
-/// How far an edge of a level's game graph runs, xrAI's `CGameGraphBuilder::path_distance` (`game_graph_builder.cpp:457`):
-/// the distance across the ground where a straight walk from one graph point's node toward the other's point reaches
-/// it, else the length of the level path search's path smoothed by straight walks (`CLevelStraightLinePathManager::
-/// create_path`, `path_manager_level_straight_line_inline.h:62`).
+/// The length of a level game graph edge, `CGameGraphBuilder::path_distance`.
+///
+/// It is the flat distance where a straight walk from one graph point's node reaches the other point, else the length
+/// of the level path search's path smoothed by straight walks, `CLevelStraightLinePathManager::create_path`.
 pub(crate) struct SpawnPathDistance<'a> {
   map: &'a SpawnAiMap,
   search: SpawnPathSearch,
@@ -46,8 +46,9 @@ impl<'a> SpawnPathDistance<'a> {
     Ok(self.smooth(&path, &from.position, &to.position))
   }
 
-  /// `create_path`'s length of a path from `start` to `finish`: from where it stands, the walk keeps the last node it
-  /// sees straight; where it sees the next no more, it goes on from that last node, or, with none, steps node to node.
+  /// `create_path`'s length of `path` from `start` to `finish`, capped at the search's range.
+  ///
+  /// The walk advances to the last node it reaches straight, or steps node to node where it reaches none.
   fn smooth(&self, path: &[u32], start: &Vector3d<f32>, finish: &Vector3d<f32>) -> f32 {
     let max: f32 = SpawnPathSearch::MAX_RANGE;
     let (mut cumulative, mut last_direct): (f32, f32) = (0.0, 0.0);

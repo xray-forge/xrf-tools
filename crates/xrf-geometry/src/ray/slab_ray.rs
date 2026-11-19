@@ -20,11 +20,8 @@ impl SlabRay {
   /// Whether the ray reaches the box from `low` to `high` within `reach` of its origin, without branching on its
   /// direction.
   ///
-  /// On an axis the ray runs parallel to, an infinite inverse puts the box's faces at minus or plus infinity: they bound
-  /// nothing when the origin is within the slab and everything when it is not. An origin exactly on a face gives a NaN
-  /// there, which counts as inside, the near side's minus infinity and the far side's plus infinity: left to `min` and
-  /// `max`, which drop a NaN for the other operand, the near side would become plus infinity and the box be missed by a
-  /// ray running along its face.
+  /// A ray parallel to an axis meets the box's faces there at infinity. An origin exactly on such a face gives a NaN,
+  /// taken as inside: left to `min` and `max`, which drop a NaN, the ray running along the face would miss the box.
   pub(crate) fn reaches(&self, reach: f32, low: Vec3A, high: Vec3A) -> bool {
     let first: Vec3A = (low - self.origin) * self.inverse;
     let second: Vec3A = (high - self.origin) * self.inverse;

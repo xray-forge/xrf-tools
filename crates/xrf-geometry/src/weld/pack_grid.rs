@@ -4,10 +4,9 @@ use xrf_math::{EPS_L, Vector3d};
 /// `CDB::CollectorPacked`) and the SDK's exports (`CSkeletonCollectorPacked`, `CObjectOGFCollectorPacked`) lay it out:
 /// `cells + 1` cells along each axis over a box.
 ///
-/// A packed vertex is filed under its own cell and under the cells one reach above it on each axis ([`Self::get_reach`],
-/// half a cell, at most `EPS_L`), and a point looks in its own cell only, in the order the vertices were filed. So the
-/// grid decides which near vertices a point can meet, and is kept as the engine lays it out. How a point falls in a cell
-/// is each caller's own: the arithmetic, and what a point outside the box comes to, differ between the engine's copies.
+/// A packed vertex is filed under its own cell and the cells one [`Self::get_reach`] above it, and a point looks in its
+/// own cell only, in filing order, so the grid decides which near vertices a point can meet. Each caller maps a point
+/// to its cell, since the engine's copies differ in that arithmetic and for a point outside the box.
 #[derive(Clone, Debug)]
 pub struct PackGrid {
   /// The vertices filed under each cell, in the order they were filed.

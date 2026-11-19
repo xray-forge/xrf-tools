@@ -5,7 +5,7 @@ use crate::ray::ray::Ray;
 use crate::ray::ray_crossing::RayCrossing;
 use crate::triangle::triangle::Triangle;
 
-/// A right triangle on the ground, its front facing up: `(p1 - p0) x (p2 - p0)` is `+y`.
+// Its front faces up: `(p1 - p0) x (p2 - p0)` is `+y`.
 fn ground() -> Triangle {
   Triangle::new([Vec3::ZERO, Vec3::new(0.0, 0.0, 2.0), Vec3::new(2.0, 0.0, 0.0)])
 }
@@ -59,8 +59,6 @@ fn crosses_an_edge_and_a_corner_and_misses_beside_them() {
   assert!(down(-0.01, 1.0).is_none());
 }
 
-// `CDB::TestRayTri` takes a determinant under `EPS` as no crossing: a ray along the triangle's plane, and a triangle a
-// couple of millimetres across.
 #[test]
 fn crosses_neither_along_the_plane_nor_a_triangle_too_small_to_tell() {
   let tiny: Triangle = Triangle::new([Vec3::ZERO, Vec3::new(0.0, 0.0, 0.002), Vec3::new(0.002, 0.0, 0.0)]);
@@ -105,7 +103,7 @@ fn faces_its_normal_the_way_its_front_does() {
   assert_eq!(Triangle::new([Vec3::ZERO; 3]).get_normal(), Vec3::ZERO);
 }
 
-/// `CDB::TestRayTri` in plain three-component arithmetic, each operation as the engine writes it.
+// `CDB::TestRayTri` in scalar arithmetic, each operation as the engine writes it.
 fn cross_scalar(corners: [Vec3; 3], origin: Vec3, direction: Vec3, facing: Facing) -> Option<[f32; 3]> {
   let edge1: Vec3 = corners[1] - corners[0];
   let edge2: Vec3 = corners[2] - corners[0];
@@ -134,8 +132,7 @@ fn cross_scalar(corners: [Vec3; 3], origin: Vec3, direction: Vec3, facing: Facin
   }
 }
 
-// The corners and rays are held a SIMD register wide; every crossing must still come out bit for bit as the scalar
-// arithmetic gives it, distance and barycentrics alike, or the light that rests on them would move.
+// Lighting rests on these crossings, so the SIMD layout must not move one by a bit.
 #[test]
 fn crosses_bit_for_bit_as_the_scalar_arithmetic_does() {
   let mut state: u64 = 3;

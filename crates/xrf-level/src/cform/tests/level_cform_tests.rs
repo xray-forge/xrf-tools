@@ -281,8 +281,7 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
   Ok(())
 }
 
-/// The lowest and highest id a face can name, beside every sector bit, read from memory and from a file, whose window
-/// steps over the vertices by seeking rather than lending them.
+// A file's window seeks past the vertices rather than lending them, so both sources are read.
 #[test]
 fn reads_the_edge_material_ids_from_memory_and_from_a_file() -> XrfResult {
   let vertices: Vec<[f32; 3]> = vec![[0.0, 0.0, 0.0]; 5];

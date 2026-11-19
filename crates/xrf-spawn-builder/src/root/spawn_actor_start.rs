@@ -3,13 +3,11 @@ use std::collections::BinaryHeap;
 
 use xrf_spawn::{GraphEdge, SpawnGraphsChunk};
 
-/// Where `--start` puts the actor on another level, as xrAI's `process_actor` (`game_spawn_constructor.cpp:248`)
-/// finds it: the first vertex of that level a search of the game graph from the actor's vertex reaches, else the
-/// level's vertex nearest it in the world.
+/// Where `--start` puts the actor on another level, `CGameSpawnConstructor::process_actor`: the first vertex of that
+/// level a game graph search from the actor's vertex reaches, else the level's vertex nearest it in the world.
 ///
-/// The search is `CAStar` with no estimate over the graph's edges, so the vertices close in order of their distance
-/// along the edges; its bucket list keeps every bucket sorted, a node ahead of others as far, so the most recently
-/// opened of equals closes first. A closed vertex is never reopened.
+/// The search is `CAStar` with no estimate, so vertices close by edge distance; of equals the most recently opened
+/// closes first, as the bucket list orders them. A closed vertex is never reopened.
 pub(crate) struct SpawnActorStart;
 
 impl SpawnActorStart {
@@ -86,7 +84,7 @@ impl SpawnActorStart {
     best.map(|(index, _)| index)
   }
 
-  /// Each vertex's edges, which the graph stores one vertex after another.
+  /// Each vertex's slice of the graph's edges.
   fn get_edges(graph: &SpawnGraphsChunk) -> Vec<&[GraphEdge]> {
     let mut start: usize = 0;
 

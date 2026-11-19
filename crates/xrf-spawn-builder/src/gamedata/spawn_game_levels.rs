@@ -7,10 +7,11 @@ use xrf_math::Vector3d;
 use crate::gamedata::spawn_game_level::SpawnGameLevel;
 use crate::gamedata::spawn_skipped_game_level::SpawnSkippedGameLevel;
 
-/// The levels a game lists in `configs/game_levels.ltx`, in the order `[levels]` lists them, and the entries it cannot
-/// take: xrAI's `read_levels` (`xr_graph_merge.cpp:397`) passes over a section that is missing or lacks its name, id
-/// or offset. It reads the id as a byte, so a test level of id 10,000, as vanilla lists, becomes 16; here such an
-/// entry is passed over too, and refused only where it is asked for.
+/// The levels `configs/game_levels.ltx` lists, in `[levels]` order, and the entries passed over, as `read_levels`
+/// skips a section that is missing or lacks its name, id or offset.
+///
+/// xrAI reads the id as a byte, so vanilla's test level of id 10,000 becomes 16; here an id past 255 is passed over
+/// too, and refused only where it is asked for.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SpawnGameLevels {
   pub(crate) levels: Vec<SpawnGameLevel>,
@@ -20,7 +21,7 @@ pub(crate) struct SpawnGameLevels {
 impl SpawnGameLevels {
   /// Where a gamedata root keeps the list.
   pub(crate) const PATH: &'static str = "configs/game_levels.ltx";
-  /// The section naming each level's own.
+  /// The section listing each level's own section.
   const LEVELS_SECTION: &'static str = "levels";
 
   /// Reads the list from a `game_levels.ltx`.
@@ -34,7 +35,7 @@ impl SpawnGameLevels {
       .map_err(|error| XrfError::new_invalid_error(format!("The level list {}: {error}", path.display())))
   }
 
-  /// The levels `[levels]` names, each from its own section, names in lower case as xrAI takes them.
+  /// The levels `[levels]` lists, each read from its own section, names lowercased as xrAI takes them.
   ///
   /// # Errors
   ///

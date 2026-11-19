@@ -13,10 +13,9 @@ use crate::graph::spawn_graph_points::SpawnGraphPoints;
 use crate::map::spawn_ai_map::SpawnAiMap;
 use crate::map::spawn_cross_table::SpawnCrossTable;
 
-/// No neighbour across an edge: past the map's nodes.
+// A link past the map's nodes: no neighbour.
 const NONE: u32 = (1 << 23) - 1;
 
-/// A flat node at cell `z` of the map's one row, at `height` in the map's ten metres, linked back and front.
 fn node(z: u32, height: u16, back: u32, front: u32) -> LevelAiNode {
   LevelAiNode {
     links: [NONE, front, NONE, back],
@@ -29,8 +28,7 @@ fn node(z: u32, height: u16, back: u32, front: u32) -> LevelAiNode {
   }
 }
 
-/// One row of one-metre cells from z 0 to 7: a strip over cells 0 to 5 (node 4 a floor above node 3, linked to
-/// nothing, and cell 4 holding node 5), and node 7 at cell 7, cut off.
+// One row of cells: a strip over cells 0 to 5, node 4 an unlinked floor above node 3, and node 7 cut off at cell 7.
 fn map() -> XrfResult<SpawnAiMap> {
   let nodes: [LevelAiNode; 8] = [
     node(0, 0, NONE, 1),
@@ -115,7 +113,7 @@ fn gives_each_node_the_nearest_graph_point_a_tie_to_the_earlier() -> XrfResult {
 
 #[test]
 fn reaches_only_through_nodes_a_point_takes() -> XrfResult {
-  // Node 1 stays the first point's at one step, so the second, at node 3, reaches node 0 no more than it reaches 1.
+  // Node 1 stays the first point's, so the second, at node 3, cannot reach node 0 through it.
   let cells: Vec<GraphCrossTableCell> = SpawnCrossTable::build(&map()?, &[1, 3])?;
 
   assert_eq!(&cells[..4], &[cell(0, 1), cell(0, 0), cell(0, 1), cell(1, 0)]);
@@ -148,8 +146,7 @@ fn finds_the_node_nearest_at_or_under_a_position_in_its_cell() -> XrfResult {
   Ok(())
 }
 
-/// A node's plane passes through its position, as the engine's `vertex_plane_y` takes it from `vertex_position`: one
-/// height for both lookups.
+// The engine's `vertex_plane_y` takes its height from `vertex_position`, so both lookups must agree.
 #[test]
 fn takes_a_node_plane_through_its_own_position() -> XrfResult {
   let map: SpawnAiMap = map()?;
@@ -163,7 +160,6 @@ fn takes_a_node_plane_through_its_own_position() -> XrfResult {
   Ok(())
 }
 
-/// `level.spawn` holding a graph point at each position, in order.
 fn spawn_list(positions: &[Vector3d]) -> XrfResult<LevelSpawnFile> {
   let objects = positions
     .iter()

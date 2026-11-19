@@ -9,14 +9,12 @@ use crate::tracer::xrlc::xrlc_child::XrlcChild;
 use crate::tracer::xrlc::xrlc_node::XrlcNode;
 use crate::triangle::triangle::Triangle;
 
-/// xrLC's ray model: the triangles in the tree xrCDB builds over them with Opcode (`MODEL::build_internal`,
-/// `xrCDB/xrCDB.cpp`), walked as its ray query walks it (`COLLIDER::ray_query` and `ray_collider::_stab`,
-/// `xrCDB/xrCDB_ray.cpp`), for the passes that must miss what xrLC misses.
+/// xrLC's ray model: the tree xrCDB builds with Opcode (`MODEL::build_internal`), walked as `COLLIDER::ray_query`
+/// walks it, for the passes that must miss what xrLC misses.
 ///
-/// It answers as testing every face would but where a ray runs exactly along a node's face: Opcode keeps a node's box
-/// as a centre and half extents, which can give it back a rounding short of a corner it holds, and a ray along an axis
-/// at that corner then misses the node and every face below it. xrLC lights such a point as if those faces were not
-/// there. [`crate::BvhTracer`] finds them, and is the faster of the two.
+/// It answers as testing every face would, except for a ray running exactly along a node's face: a node's box can end
+/// a rounding short of a corner it holds, and such a ray misses the node and every face below it, as in xrLC.
+/// [`crate::BvhTracer`] finds those faces, and is the faster of the two.
 ///
 /// Faces are visited in the tree's order, each node's first side before its second; a model of one face, which xrCDB
 /// refuses to build, has no node here, and its face is tested alone.

@@ -9,11 +9,11 @@ use crate::graph::spawn_graph_point::SpawnGraphPoint;
 use crate::graph::spawn_path_distance::SpawnPathDistance;
 use crate::map::spawn_ai_map::SpawnAiMap;
 
-/// A level's game graph as xrAI builds it from its graph points and cross table (`CGameGraphBuilder::build_graph`,
-/// `game_graph_builder.cpp:695`): a vertex a graph point, each with its edges, in order.
+/// A level's game graph built from its graph points and cross table, `CGameGraphBuilder::build_graph`: one vertex per
+/// graph point.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SpawnLevelGameGraph {
-  /// The edges leaving each vertex, a list a vertex, in the order xrAI adds them.
+  /// The edges leaving each vertex, in the order xrAI adds them.
   pub edges: Vec<Vec<SpawnGameEdge>>,
 }
 
@@ -25,13 +25,13 @@ struct SpawnEdgePair {
 }
 
 impl SpawnLevelGameGraph {
-  /// Builds the graph: each vertex gets an edge to every vertex whose cross table region its own touches, in the order
-  /// a walk over its region from its node meets them (`fill_neighbours`), weighed by `SpawnPathDistance`; then of
-  /// every triangle of edges the longest is dropped both ways, the longest pairs first (`optimize_graph`).
+  /// Builds the graph: an edge from each vertex to every vertex whose cross table region borders its own
+  /// (`fill_neighbours`), weighed by [`SpawnPathDistance`], then the longest edge of each triangle dropped
+  /// (`optimize_graph`).
   ///
   /// # Errors
   ///
-  /// Returns an error where no path joins two neighbouring vertices, a vertex would have more than 255 edges, or the
+  /// Returns an error when no path joins two neighbouring vertices, a vertex would have more than 255 edges, or the
   /// level holds more graph points than a game graph numbers.
   pub(crate) fn build(map: &SpawnAiMap, points: &[SpawnGraphPoint], cells: &[GraphCrossTableCell]) -> XrfResult<Self> {
     let mut distance: SpawnPathDistance<'_> = SpawnPathDistance::new(map);
@@ -70,8 +70,8 @@ impl SpawnLevelGameGraph {
     Ok(graph)
   }
 
-  /// The vertices whose regions border a vertex's, in the order a depth first walk over its region from its node
-  /// meets them, nodes taken from the top of the stack and their links in order.
+  /// The vertices whose regions border `vertex`'s, in the order a depth first walk of its region from `start` meets
+  /// them.
   fn find_neighbours(
     map: &SpawnAiMap,
     cells: &[GraphCrossTableCell],
@@ -116,12 +116,12 @@ impl SpawnLevelGameGraph {
     self.edges[from as usize].retain(|edge| edge.target != to);
   }
 
-  /// `optimize_graph`: each pair joined either way, longest first, loses its edges where a third vertex closes a
-  /// triangle with it, through an edge either way.
+  /// `optimize_graph`: longest first, each joined pair loses its edges both ways where a third vertex closes a
+  /// triangle with it.
   fn drop_triangles(&mut self) {
     let mut pairs: Vec<SpawnEdgePair> = Vec::new();
 
-    // `build` refuses a level of more vertices than 16 bits number, so numbering them so loses none.
+    // `build` refuses more vertices than 16 bits number, so this numbering loses none.
     for (from, edges) in (0..=u16::MAX).zip(&self.edges) {
       for edge in edges {
         let back: Option<&SpawnGameEdge> = self.find_edge(edge.target, from);

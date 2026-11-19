@@ -3,8 +3,8 @@ use glam::DVec3;
 /// The eigen decomposition of a symmetric 3x3 matrix by cyclic Jacobi rotations, in double precision: the solver the
 /// SDK's fits take their axes from (`_matrix33::Meigen`, `Mgc::OrthogonalPlaneFit`, `ComputeOBB_RAPID`).
 ///
-/// A pair is skipped once its entry is within `f64::EPSILON` of the two diagonal entries it couples, a stop that does
-/// not depend on the points' scale, so a level's coordinates and a bone's settle alike.
+/// A pair is skipped once its entry is within `f64::EPSILON` of the two diagonal entries it couples, so the stop does
+/// not depend on the points' scale.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SymmetricEigen {
   /// The eigenvalues, each at the place of the diagonal entry it settled into: unsorted, as Jacobi leaves them.

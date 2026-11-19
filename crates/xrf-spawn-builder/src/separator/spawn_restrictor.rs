@@ -5,9 +5,8 @@ use xrf_spawn::{AlifeObject, AlifeObjectInherited, AlifeObjectSpaceRestrictor, S
 use crate::map::spawn_ai_map::SpawnAiMap;
 use crate::separator::spawn_restrictor_shape::SpawnRestrictorShape;
 
-/// A space restrictor xrAI checks for cutting the AI map apart (`add_space_restrictor`, `level_spawn_constructor.cpp`):
-/// its shapes placed by the object's position and angles, and which nodes they hold, as `CSpaceRestrictorWrapper`
-/// tests them.
+/// A space restrictor xrAI checks for cutting the AI map apart, `CLevelSpawnConstructor::add_space_restrictor`, its
+/// shapes placed by the object's position and angles.
 pub(crate) struct SpawnRestrictor {
   pub(crate) name: String,
   shapes: Vec<SpawnRestrictorShape>,
@@ -21,7 +20,7 @@ impl SpawnRestrictor {
   /// The points of a node the shapes are tested at: its centre and its four corners.
   pub(crate) const NODE_POINTS: u8 = 5;
 
-  /// The restrictor of `object` where xrAI checks it: a restrictor of some type, flagged for the check.
+  /// The restrictor of `object` if xrAI checks it: one of some type, flagged for the check.
   pub(crate) fn from_object(object: &AlifeObject) -> Option<Self> {
     let restrictor: &AlifeObjectSpaceRestrictor = Self::get_restrictor(object)?;
 
@@ -54,9 +53,8 @@ impl SpawnRestrictor {
     Some(bounds)
   }
 
-  /// `inside(level_vertex_id, partially_inside)`: how many of the node's points a shape holds, its centre and its four
-  /// corners pulled `EPS_L` in and raised to its plane; any for a node held in part, [`Self::NODE_POINTS`] for one held
-  /// whole.
+  /// `inside(level_vertex_id, partially_inside)`: how many of the node's points the shapes hold, its corners pulled
+  /// `EPS_L` in and raised to its plane; [`Self::NODE_POINTS`] for a node held whole.
   pub(crate) fn count_held_points(&self, map: &SpawnAiMap, node: u32) -> u8 {
     let centre: Vec3 = Vec3::from(map.get_node_position(node));
     let offset: f32 = map.get_header().size * 0.5 - SpawnRestrictorShape::EPS_L;

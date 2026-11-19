@@ -17,8 +17,8 @@ pub struct EditableVMap {
   pub values: Vec<f32>,
   /// The point each entry belongs to.
   pub vertex_indices: Vec<u32>,
-  /// The face each entry is for, in a polygon map, which is how a seam gives one point two UVs. `None` in a map whose
-  /// entries hold for every face around their point.
+  /// The face each entry is for in a polygon map, which lets a seam give one point two UVs. `None` where entries hold
+  /// for every face around their point.
   pub polygon_indices: Option<Vec<u32>>,
 }
 
@@ -39,7 +39,7 @@ impl EditableVMap {
     self.values.get(start..start.checked_add(dimension)?)
   }
 
-  /// Refuses a map whose lists disagree on how many entries it has, which no count could describe.
+  /// Refuses a map whose lists disagree on its entry count.
   fn assert_consistent(&self) -> XrfResult {
     let count: usize = self.get_count();
     let is_consistent: bool = self.values.len() == count * usize::from(self.dimension)

@@ -15,8 +15,8 @@ use crate::map::spawn_ai_map::SpawnAiMap;
 /// No neighbour across an edge: past the map's nodes.
 const NONE: u32 = (1 << 23) - 1;
 
-/// A flat map of one-metre cells over `columns` along x by `rows` along z, every cell holding a node but `holes`,
-/// each linked to the nodes across its four sides, named `guid`.
+/// A flat map of one-metre cells, `columns` along x by `rows` along z, a node in every cell but `holes`, each linked
+/// across its four sides.
 pub(crate) fn grid(columns: u32, rows: u32, holes: &[(u32, u32)], guid: Uuid) -> XrfResult<SpawnAiMap> {
   let cells: Vec<(u32, u32)> = (0..columns)
     .flat_map(|x| (0..rows).map(move |z| (x, z)))

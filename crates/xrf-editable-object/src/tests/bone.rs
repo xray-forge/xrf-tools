@@ -41,7 +41,6 @@ fn a_bone_reads_its_place_pose_and_physics() -> XrfResult {
 
 #[test]
 fn a_bone_is_written_back_byte_for_byte_with_its_definition_repeated() -> XrfResult {
-  // `CBone::Save` writes the definition chunk twice; both come back, in place.
   for has_data_name in [true, false] {
     let original: Vec<u8> = fixtures::bone_children(has_data_name, &[]);
 

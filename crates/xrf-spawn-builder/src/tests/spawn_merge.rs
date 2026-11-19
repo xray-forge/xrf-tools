@@ -14,7 +14,6 @@ use crate::merge::spawn_random::SpawnRandom;
 use crate::merge::spawn_skipped_connection::SpawnSkippedConnection;
 use crate::tests::fixtures::{grid, point};
 
-/// A level's map, graph points connected as given, and the graph and cross table built from them.
 struct Level {
   map: SpawnAiMap,
   points: Vec<SpawnGraphPoint>,
@@ -23,7 +22,6 @@ struct Level {
 }
 
 impl Level {
-  /// A row of `columns` cells with a graph point at each x of `points`, connecting to the level and point named.
   fn new(columns: u32, guid: Uuid, points: &[(f32, &str, &str)]) -> XrfResult<Self> {
     let map: SpawnAiMap = grid(columns, 1, &[], guid)?;
     let points: Vec<SpawnGraphPoint> = points
@@ -61,8 +59,7 @@ impl Level {
   }
 }
 
-/// Level `a` (id 20, 100 m along x) with points at x 0 and 3, the second connecting to `b`'s first; level `b` (id 10)
-/// with points at x 0, connecting to `a`'s second, and 2, connecting to a level outside the build.
+// `a` and `b` connect to each other; `b`'s second point connects to `c`, a level outside the build.
 fn levels() -> XrfResult<(Level, Level)> {
   Ok((
     Level::new(

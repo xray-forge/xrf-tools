@@ -1,5 +1,5 @@
-//! Editable objects built byte by byte, independent of the crate's writer, so a round trip proves the writer against
-//! the layout `CEditableObject::Save` produces rather than against itself.
+//! Editable objects built byte by byte apart from the crate's writer, so a round trip proves the writer against the
+//! layout `CEditableObject::Save` produces rather than against itself.
 
 use crate::{EditableBone, EditableMesh, EditableObjectFile};
 

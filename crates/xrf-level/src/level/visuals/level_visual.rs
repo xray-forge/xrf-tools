@@ -83,8 +83,8 @@ impl LevelVisual {
     self.geometry.is_some()
   }
 
-  /// The window of the visual's indices holding its full detail, the first of its slide windows (see
-  /// [`Self::get_windows`]); `None` for a visual that is not progressive, whose every index draws.
+  /// The first of the visual's slide windows, which holds its full detail; `None` for a visual that is not
+  /// progressive, whose every index draws.
   ///
   /// # Errors
   ///
@@ -97,15 +97,13 @@ impl LevelVisual {
     )
   }
 
-  /// The visual's slide windows, its levels of detail finest first: a static progressive mesh stores them itself, a
-  /// progressive tree in the table of `geometry` its container names. `None` for a visual carrying none, which draws
+  /// The visual's slide windows, finest first ([`LevelVisualWindows`]); `None` for a visual carrying none, which draws
   /// every index.
   ///
   /// # Errors
   ///
-  /// Returns an error when the windows could not be read, the table named is not one `geometry` holds, or a progressive
-  /// visual carries no window: the engine asserts it has them (`FProgressive::Load`, `FTreeVisual_PM::Load`), and its
-  /// whole index run lays every level of detail end to end.
+  /// Returns an error when the windows cannot be read, the named table is not in `geometry`, or a progressive visual
+  /// carries no window, which the engine asserts against (`FProgressive::Load`, `FTreeVisual_PM::Load`).
   pub fn get_windows<'a>(&'a self, geometry: &'a LevelGeomFile) -> XrfResult<Option<LevelVisualWindows<'a>>> {
     let windows: Option<LevelVisualWindows<'_>> = match (&self.swi, &self.swi_container) {
       (Some(swi), _) => {

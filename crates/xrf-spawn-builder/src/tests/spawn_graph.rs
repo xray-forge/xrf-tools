@@ -27,12 +27,12 @@ fn joins_bordering_regions_and_drops_each_triangles_longest_edge() -> XrfResult 
   let points: Vec<SpawnGraphPoint> = vec![point(&map, 0.0, 0.0), point(&map, 5.0, 0.0), point(&map, 0.0, 5.0)];
   let graph: SpawnLevelGameGraph = build(&map, &points)?;
 
-  // The three regions all border each other; the diagonal, the triangle's longest side, goes both ways.
+  // All three regions border each other; the diagonal, the triangle's longest side, is dropped both ways.
   assert_eq!(targets(&graph.edges[0]), vec![1, 2]);
   assert_eq!(targets(&graph.edges[1]), vec![0]);
   assert_eq!(targets(&graph.edges[2]), vec![0]);
 
-  // Open ground: each edge the straight distance across it.
+  // On open ground each edge weighs the straight distance.
   for edges in &graph.edges {
     for edge in edges {
       assert_eq!(edge.distance, 5.0);
@@ -66,7 +66,7 @@ fn weighs_a_walled_edge_by_the_path_around_the_wall() -> XrfResult {
 
 #[test]
 fn leaves_regions_no_link_joins_without_an_edge() -> XrfResult {
-  // A wall across the whole map: the two halves' regions never border, so no edge joins them.
+  // A wall across the whole map.
   let map: SpawnAiMap = grid(5, 3, &[(2, 0), (2, 1), (2, 2)], Uuid::nil())?;
   let points: Vec<SpawnGraphPoint> = vec![point(&map, 0.0, 0.0), point(&map, 4.0, 0.0)];
   let graph: SpawnLevelGameGraph = build(&map, &points)?;

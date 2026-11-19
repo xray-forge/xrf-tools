@@ -12,8 +12,8 @@ use crate::geom::level_geom_vertex_data::LevelGeomVertexData;
 use crate::geom::window::level_geom_slide_window_item::LevelGeomSlideWindowItem;
 use crate::level::level_header_chunk::LevelHeaderChunk;
 
-/// A level's render geometry held whole, every buffer's bytes in hand: what xrLC writes as `level.geom` or
-/// `level.geomx` (`SaveGEOMs`, `xrLC/xrSaveOGF.cpp:58`), and what [`LevelGeomFile`] reads the shape of.
+/// A level's render geometry with every buffer's bytes, as xrLC writes `level.geom` or `level.geomx` (`SaveGEOMs`);
+/// [`LevelGeomFile`] reads only its shape.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LevelGeomBuffers {
   /// `hdrLEVEL`, of which xrLC sets the version and leaves the quality as it finds it.
@@ -78,8 +78,8 @@ impl LevelGeomBuffers {
   ///
   /// # Errors
   ///
-  /// Returns an error when a vertex buffer's bytes are not whole vertices of its declaration, a count does not fit
-  /// its 32 bits, or the writer fails.
+  /// Returns an error when a vertex buffer's bytes are not whole vertices, a count overflows 32 bits, or the writer
+  /// fails.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut header: ChunkWriter = ChunkWriter::new();
 

@@ -7,7 +7,6 @@ use crate::geom::window::level_geom_slide_window::LevelGeomSlideWindow;
 use crate::geom::window::level_geom_slide_window_item::LevelGeomSlideWindowItem;
 use crate::level::visuals::level_visual::LevelVisual;
 
-/// A visual of `model_type` with neither windows nor a table, drawing nothing yet.
 fn visual(model_type: OgfModelType) -> LevelVisual {
   LevelVisual {
     header: OgfHeaderChunk {
@@ -34,7 +33,6 @@ fn visual(model_type: OgfModelType) -> LevelVisual {
   }
 }
 
-/// Level geometry holding one window table: full detail at index 0, a coarser level after it.
 fn geometry() -> LevelGeomFile {
   LevelGeomFile {
     vertex_buffers: Vec::new(),
@@ -164,7 +162,7 @@ fn hands_out_every_window_finest_first_from_the_visual_or_its_table() -> XrfResu
 
 #[test]
 fn refuses_a_progressive_visual_without_a_window_and_takes_none_for_a_plain_one() -> XrfResult {
-  // Its whole run lays every level of detail end to end, so drawing it whole draws them all at once.
+  // A progressive run lays every level of detail end to end, so drawing it whole would draw them all.
   assert!(
     visual(OgfModelType::Progressive)
       .get_full_detail_window(&geometry())

@@ -9,10 +9,10 @@ use crate::verify::level_ai_graph_verify_result::LevelAiGraphVerifyResult;
 use crate::verify::level_file_source::LevelFileSource;
 use crate::{LevelAiFile, LevelAiHeader, LevelAiNodes, LevelAiParts};
 
-/// Checks a level's AI map as a graph, as xrAI's `-verify` does (`xrAI/verify_level_graph.cpp`): a node linked to
-/// itself fails the map, as it fails GSC's ("AI map is CORRUPTED"); links with no link back and parts of the map no link
-/// reaches are warnings with their counts and first positions, since GSC shipped maps with both. Reachability is the
-/// map's connected parts, a link joining either way, computed once rather than flooded from every one-way node.
+/// Checks a level's AI map as a graph, as xrAI's `-verify` does (`verify_level_graph.cpp`).
+///
+/// A node linked to itself fails the map ("AI map is CORRUPTED"). One-way links and unreached parts are warnings with
+/// their counts and first positions, since GSC shipped maps with both. Reachability counts a link either way.
 pub struct LevelAiGraphVerifier;
 
 impl LevelAiGraphVerifier {
@@ -45,8 +45,8 @@ impl LevelAiGraphVerifier {
     }
   }
 
-  /// Checks the map of `header` and `nodes`, its findings naming `subject`. A link is a neighbour when it names one of
-  /// the nodes held, as the engine's `valid_vertex_id` takes it against the header's count.
+  /// Checks the map of `header` and `nodes`, its findings naming `subject`. A link is a neighbour when it names a node
+  /// held, as `valid_vertex_id` checks it against the header's count.
   pub fn verify(header: &LevelAiHeader, nodes: &LevelAiNodes, subject: &str) -> LevelAiGraphVerifyResult {
     let started: Instant = Instant::now();
     let count: u32 = header.count.min(u32::try_from(nodes.get_count()).unwrap_or(u32::MAX));

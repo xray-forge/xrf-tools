@@ -1,21 +1,18 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, EPS_L};
 
-/// The grid of square cells a `level.ai` packs each node's cell over: cells counted from the box's lowest corner, a
-/// node's packed cell its row along x times the row length plus its cell along z (`CLevelGraph::Initialize` and
-/// `vertex_position`; xrAI's `CNodePositionCompressor`).
+/// The grid of square cells a `level.ai` packs node positions over (`CLevelGraph::Initialize`, `vertex_position`;
+/// xrAI's `CNodePositionCompressor`).
 ///
-/// A point is placed in a cell by two rules the engine keeps apart, both here so neither drifts from the other:
-/// [`Self::compress_cell`] is the compiler's, which writes the file, and [`Self::find_cell`] the game's, which looks a
-/// position up in it.
+/// Cells count from the box's lowest corner; a packed cell is its row along x times the row length plus its cell along
+/// z. The compiler ([`Self::compress_cell`]) and the game ([`Self::find_cell`]) place a point by different rules, kept
+/// side by side here so neither drifts.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LevelAiGrid {
   min_x: f32,
   min_z: f32,
   cell_size: f32,
-  /// Cells along z, the stride a packed cell counts x in (`m_row_length`).
   row_length: u32,
-  /// Cells along x (`m_column_length`).
   column_length: u32,
 }
 
@@ -60,12 +57,12 @@ impl LevelAiGrid {
     self.cell_size
   }
 
-  /// Cells along z, the stride a packed cell counts x in.
+  /// Cells along z, the stride a packed cell counts x in (`m_row_length`).
   pub fn get_row_length(&self) -> u32 {
     self.row_length
   }
 
-  /// Cells along x.
+  /// Cells along x (`m_column_length`).
   pub fn get_column_length(&self) -> u32 {
     self.column_length
   }
@@ -75,8 +72,8 @@ impl LevelAiGrid {
   ///
   /// # Errors
   ///
-  /// Returns an error when the point lies before the box, past its row, or in a cell past what 32 bits number, any of
-  /// which xrAI would wrap into another cell.
+  /// Returns an error when the point lies before the box, past its row, or past a 32-bit cell number: xrAI would wrap
+  /// each into another cell.
   pub fn compress_cell(&self, x: f32, z: f32) -> XrfResult<u32> {
     let reciprocal: f32 = 1.0 / self.cell_size;
     let axis = |value: f32, minimum: f32| ((value - minimum) * reciprocal + EPS_L + 0.5).floor() as i64;
@@ -99,8 +96,7 @@ impl LevelAiGrid {
     )
   }
 
-  /// A packed cell's corner, along x and z (`vertex_position`). A grid of no row unpacks every cell into the first
-  /// row, as no packed cell of it can name another.
+  /// A packed cell's corner, along x and z (`vertex_position`). With no row, every cell unpacks into the first row.
   pub fn unpack(&self, packed: u32) -> (f32, f32) {
     let row_length: u32 = self.row_length.max(1);
 

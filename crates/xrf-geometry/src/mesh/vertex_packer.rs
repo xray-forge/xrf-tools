@@ -11,16 +11,8 @@ use crate::weld::pack_grid::PackGrid;
 /// Packs one split's corners into vertices as `CSkeletonCollectorPacked` and `CObjectOGFCollectorPacked` do, by the
 /// grid and repeat rule of the [`VertexPacking`] given.
 ///
-/// A corner reuses a vertex already packed when the two are similar: positions and normals within
-/// `Self::POSITION_DELTA` per component, texture coordinates within `Self::TEXTURE_DELTA`, and the same bones at
-/// weights within `Self::POSITION_DELTA`, a static vertex following none. Candidates come from a grid over the
-/// object's box: a vertex is filed under its own cell and the cells one `Self::POSITION_DELTA` above it on each axis,
-/// and a corner looks in its own cell only, so the grid decides which near vertices a corner can meet, and is kept as
-/// the export lays it out. A corner matching none takes the position of the last vertex it stood within the delta of,
-/// then is packed as a vertex of its own.
-///
-/// Indices are 32-bit here, where the export's are 16-bit: a split too big for one OGF child is cut into several once
-/// its tangents are known (`SplitPartition`).
+/// Indices are 32-bit, where the export's are 16-bit: `SplitPartition` cuts a split too big for one OGF child once its
+/// tangents are known.
 pub struct VertexPacker {
   vertices: Vec<MeshVertex>,
   faces: Vec<[u32; 3]>,
@@ -130,7 +122,8 @@ impl VertexPacker {
     Ok(())
   }
 
-  /// `VPack`: the vertex `corner` is, packed now when no similar one is.
+  /// `VPack`: the vertex `corner` is, packed now when no similar one is, at the position of the last vertex it stood
+  /// near.
   fn pack(&mut self, corner: &mut MeshVertex) -> XrfResult<u32> {
     let cell: [usize; 3] = self.get_cell(&corner.position)?;
     let mut near: Option<u32> = None;

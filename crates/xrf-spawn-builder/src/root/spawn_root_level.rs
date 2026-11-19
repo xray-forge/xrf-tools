@@ -4,8 +4,8 @@ use xrf_spawn::{LevelSpawnFile, SpawnSectionClasses};
 use crate::graph::spawn_removed_graph_point::SpawnRemovedGraphPoint;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
 
-/// One level as the root spawn build takes it: what its game graph merges from, its entities, and its patrol paths
-/// where it has a `level.game`; the graph points its graph left out, for the report.
+/// One level as the root spawn build takes it: its merge input, entities, patrols where it has a `level.game`, and
+/// the graph points left out, for the report.
 pub(crate) struct SpawnRootLevel<'a> {
   pub merge: SpawnMergeLevel<'a>,
   pub spawn: &'a LevelSpawnFile,

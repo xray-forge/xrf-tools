@@ -34,7 +34,7 @@ fn a_height_reads_as_the_metres_the_engine_packs_it_from() {
   assert_eq!(described.height, 2.5);
 }
 
-/// A corner's object is six bits of the slot's first two words, the light the twenty above them.
+// A corner's object is six bits of the first two words, the light the twenty bits above them.
 #[test]
 fn reads_and_writes_a_slot_s_corners_and_light_as_the_editor_does() {
   let slot: [u32; 4] = [0x0410_03E8, 0xFFFF_F1FF, 0x1111, 0x2222];

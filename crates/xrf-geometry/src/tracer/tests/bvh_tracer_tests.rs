@@ -64,7 +64,6 @@ fn picks_the_nearest_front_face_with_its_barycentrics() {
   assert_eq!(hit.distance, 2.0);
   assert!(hit.face >= 2, "the upper floor's faces follow the lower's");
   assert_eq!(tracer.get_triangle(hit.face).get_normal(), Vec3::Y);
-  // The weights of the second and third corners: the point is their blend with the first's.
   let [a, b, c] = tracer.get_triangle(hit.face).corners;
 
   assert!(
@@ -127,8 +126,6 @@ fn names_the_face_a_line_crosses_nearest_its_point_from_either_side() {
   );
 }
 
-/// A surface's face is the one nearest it along its normal, not the first a ray from above meets: a plate lying 3 cm
-/// over a floor does not take the floor's place.
 #[test]
 fn names_the_face_nearest_the_point_before_one_stacked_above_it() {
   let tracer: BvhTracer = floors(&[-0.01, 0.03]);

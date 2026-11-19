@@ -15,12 +15,13 @@ struct SearchNode {
   next: u32,
 }
 
-/// xrAI's level path search (`CAStar` over `CLevelGraph` with the straight line path manager, `graph_engine.h:54`):
-/// A* from node to node, a step costing a cell's size, the estimate twice the cell size by the cells across and along
-/// from the node being expanded to the goal (`path_manager_level_inline.h:94`, which reads the expanded node's cell, not
-/// the neighbour's), so not admissible; a closed node is never reopened. The open list is `CDataStorageBucketList` of
-/// 8,192 buckets over `f` from 0 to 1,000, each sorted by `f` with a new node ahead of equal ones. Which path it finds
-/// decides the edge's weight, so every rule is kept, ties included. Its buffers are kept from search to search.
+/// xrAI's level path search, `CAStar` over `CLevelGraph` with the straight line path manager; buffers are reused
+/// across searches.
+///
+/// Each step costs a cell's size. The estimate is twice the cell size times the Manhattan cell distance from the
+/// expanded node, not the neighbour, to the goal, so it is not admissible; closed nodes are never reopened. The open
+/// list is `CDataStorageBucketList`: 8,192 buckets over `f` from 0 to 1,000, each sorted by `f` with a new node ahead
+/// of equals. The path found decides the edge weight, so every rule is kept, ties included.
 pub(crate) struct SpawnPathSearch {
   nodes: Vec<SearchNode>,
   buckets: Vec<u32>,
@@ -87,9 +88,10 @@ impl SpawnPathSearch {
     None
   }
 
-  /// xrAI's level flood (`CLevelFlooderPathManager`, `path_manager_level_flooder_inline.h`): the same search with no
-  /// goal and no estimate, reaching only nodes whose cell lies within `radius` of `start`'s across and along, in whole
-  /// cells (`iFloor(radius² / cell² + 0.5)`); the nodes in the order it closes them, `start` first.
+  /// xrAI's level flood, `CLevelFlooderPathManager`: the nodes the goalless search closes, in order, `start` first.
+  ///
+  /// It reaches only nodes whose cell lies within `radius` of `start`'s, in whole cells:
+  /// `iFloor(radius² / cell² + 0.5)`.
   pub(crate) fn flood(&mut self, map: &SpawnAiMap, start: u32, radius: f32) -> Vec<u32> {
     self.begin();
 
@@ -122,8 +124,8 @@ impl SpawnPathSearch {
     self.minimum_bucket = Self::BUCKETS;
   }
 
-  /// One expansion of the closed node `best`: each accessible neighbour met for the first time is opened at a cell's
-  /// step with the estimate `h`, and an open one reached shorter is relinked.
+  /// Expands the closed node `best`: opens each new accessible neighbour with estimate `h`, and relinks an open one
+  /// now reached shorter.
   fn expand(&mut self, map: &SpawnAiMap, best: u32, h: f32, is_accessible: impl Fn(u32) -> bool) {
     let g: f32 = self.nodes[best as usize].g + map.get_header().size;
 
@@ -176,7 +178,7 @@ impl SpawnPathSearch {
     }
   }
 
-  /// `add_to_bucket`: into the bucket of its `f`, ahead of the first node there of an `f` as large.
+  /// `add_to_bucket`: links a node into the bucket of its `f`, ahead of the first node there of no smaller `f`.
   fn link(&mut self, index: u32) {
     let f: f32 = self.nodes[index as usize].f;
     let bucket: usize = Self::get_bucket(f);
@@ -230,7 +232,7 @@ impl SpawnPathSearch {
     self.nodes[best as usize].is_open = false;
   }
 
-  /// `is_opened_empty`: moves the lowest bucket up to the first holding a node; false when none does.
+  /// `is_opened_empty`: advances to the lowest non-empty bucket; false when none is left.
   fn advance_minimum(&mut self) -> bool {
     while self.minimum_bucket < Self::BUCKETS && self.buckets[self.minimum_bucket] == Self::NONE {
       self.minimum_bucket += 1;

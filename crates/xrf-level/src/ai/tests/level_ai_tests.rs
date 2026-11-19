@@ -93,8 +93,6 @@ fn sample_node(widest_link: u32) -> LevelAiNode {
   }
 }
 
-/// [`sample_node`] as `version` gives it back: one cover set for both where it keeps one, no light where it has no
-/// bits for it.
 fn sample_node_of(version: LevelAiVersion, widest_link: u32) -> LevelAiNode {
   let mut node: LevelAiNode = sample_node(widest_link);
 
@@ -110,7 +108,6 @@ fn sample_node_of(version: LevelAiVersion, widest_link: u32) -> LevelAiNode {
   node
 }
 
-/// Every version with its widest link.
 const VERSIONS: [(LevelAiVersion, u32); 6] = [
   (LevelAiVersion::Soc, (1 << 23) - 1),
   (LevelAiVersion::Priquel, (1 << 23) - 1),

@@ -2,12 +2,9 @@
 
 import { Report } from "#/types/xrf-report";
 
-/**
- * A level the game lists, as a front-end offers it for a build: by its directory name, and whether that directory
- * holds what the build reads.
- */
+/** A level the game lists, as a front-end offers it for a build. */
 export type SpawnListedLevel = {
-  /** Its directory name, which a request names it by. */
+  /** Its directory name, as a request names it. */
   name: string;
   /** The name a graph point names it by in a connection. */
   caption: string;
@@ -18,11 +15,11 @@ export type SpawnListedLevel = {
 
 /** How a root spawn is built beyond its levels. */
 export type SpawnRootOptions = {
-  /** The level the actor starts on, where it is not the actor's own: xrAI's `-start`. */
+  /** The level the actor starts on, if not its own: xrAI's `-start`. */
   start: string | null;
   /**
-   * Refuse the build where a restrictor cuts the AI map apart, rather than report it: xrAI's check without
-   * `-no_separator_check`, kept to real cuts.
+   * Refuse, rather than report, a restrictor cutting an AI map apart: xrAI's check without `-no_separator_check`,
+   * kept to real cuts.
    */
   isSeparatorStrict: boolean;
 };
@@ -57,9 +54,6 @@ export type SpawnRootRequest = {
   /** The spawn's name, written as `<name>.spawn`. */
   name: string;
   options: SpawnRootOptions;
-  /**
-   * Write over the spawn where the directory holds it, in any case of its name; unforced, the build refuses before
-   * reading a level.
-   */
+  /** Write over a spawn already there in any case of its name; unforced, the build refuses before reading a level. */
   isForced: boolean;
 };

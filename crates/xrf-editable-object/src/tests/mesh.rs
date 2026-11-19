@@ -5,7 +5,7 @@ use xrf_math::Vector3d;
 use crate::tests::fixtures;
 use crate::{EditableMesh, EditableVMap, EditableVMapKind};
 
-/// Reads mesh children the way the object's mesh list hands one over: inside a chunk of its own.
+// The object's mesh list hands each mesh over inside a chunk of its own.
 fn read(children: &[u8]) -> XrfResult<EditableMesh> {
   let mut reader: ChunkReader<InMemoryChunkDataSource> =
     ChunkReader::from_vec(fixtures::chunk(0, children))?.read_child_by_index(0)?;
@@ -65,8 +65,7 @@ fn a_mesh_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_mesh_another_exporter_laid_out_comes_back_in_its_own_order() -> XrfResult {
-  // Mod-shipped objects store the vertex map references before the smoothing groups, the other way round from
-  // `SaveMesh`; the editor finds both by id, and the file has to come back as it was.
+  // Mod-shipped objects store the vertex map references before the smoothing groups, unlike `SaveMesh`.
   let mut chunks: Vec<ChunkPayload> = Vec::new();
 
   for chunk in ChunkReader::from_vec(fixtures::mesh_children(&fixtures::vmaps_payload(false), &[]))
@@ -129,7 +128,6 @@ fn a_polygon_map_mark_past_one_is_refused() {
 fn smoothing_groups_not_matching_the_faces_are_refused() {
   let mut children: Vec<u8> = Vec::new();
 
-  // Rebuild the mesh with two groups for its one face.
   for chunk in ChunkReader::from_vec(fixtures::mesh_children(&fixtures::vmaps_payload(false), &[]))
     .and_then(|mut reader| reader.read_children())
     .expect("expect the fixture to read")
@@ -154,7 +152,7 @@ fn smoothing_groups_not_matching_the_faces_are_refused() {
 
 #[test]
 fn corner_normals_read_three_a_face_and_write_back_where_they_stood() -> XrfResult {
-  // As `blender-xray` appends them: no count, a normal per corner of the one face.
+  // As `blender-xray` appends them: no count, a normal per corner.
   let normals: [f32; 9] = [0.0, 0.0, 1.0, 0.0, 0.6, 0.8, 0.6, 0.0, 0.8];
   let original: Vec<u8> = fixtures::mesh_children(
     &fixtures::vmaps_payload(false),

@@ -3,19 +3,17 @@ use xrf_spawn::GraphCrossTableCell;
 
 use crate::map::spawn_ai_map::SpawnAiMap;
 
-/// A level's cross table as xrAI builds it (`CGameGraphBuilder::build_cross_table`, `game_graph_builder.cpp:376`): for
-/// every AI node, the game vertex whose graph point reaches it first in link steps, and how far.
+/// A level's cross table, `CGameGraphBuilder::build_cross_table`: for every AI node, the game vertex whose graph point
+/// reaches it first in link steps, and how far.
 ///
-/// Each graph point in turn floods the map breadth first from its node. It takes a node only where it is strictly
-/// nearer than the node's owner so far, and goes on only through nodes it takes, so a tie stays with the earlier
-/// point; a point always takes its own node. Nodes no graph point reaches keep the first vertex and a distance of
-/// `u32::MAX` cells. xrAI keeps a distance row a graph point (zaton: 317 rows of 1.85 M), but only the owner's
-/// distance to each node is ever read back, so this keeps that alone: the same tables in a few arrays a node.
+/// Each graph point in turn floods breadth first from its node, taking only nodes strictly nearer than their owner so
+/// far, so a tie stays with the earlier point; a point always takes its own node. Unreached nodes keep the first
+/// vertex and a distance of `u32::MAX`. xrAI keeps a distance row per graph point (zaton: 317 rows of 1.85 M), but
+/// reads back only the owner's distance, so this keeps that alone.
 pub(crate) struct SpawnCrossTable;
 
 impl SpawnCrossTable {
-  /// The cells of a level's cross table, game vertices numbered from 0 on the level, for graph points standing on
-  /// `nodes` in vertex order.
+  /// The cells of a level's cross table for graph points on `nodes`, in vertex order, vertices numbered from 0.
   ///
   /// # Errors
   ///

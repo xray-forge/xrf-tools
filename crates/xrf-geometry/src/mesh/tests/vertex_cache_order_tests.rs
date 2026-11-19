@@ -7,7 +7,6 @@ use crate::mesh::mesh_vertex::MeshVertex;
 use crate::mesh::mesh_vertex_bone::MeshVertexBone;
 use crate::mesh::vertex_cache_order::VertexCacheOrder;
 
-/// A grid of `size` by `size` quads, two triangles each, its vertices numbered row by row.
 fn grid(size: u16) -> Mesh<u16> {
   let vertices: Vec<MeshVertex> = (0..=size)
     .flat_map(|row| (0..=size).map(move |column| (row, column)))
@@ -34,7 +33,6 @@ fn grid(size: u16) -> Mesh<u16> {
   Mesh { vertices, faces }
 }
 
-/// The faces in an order no cache likes: a fixed stride through the list.
 fn scrambled(faces: &[[u16; 3]]) -> Vec<[u16; 3]> {
   let stride: usize = 97;
 
@@ -43,7 +41,6 @@ fn scrambled(faces: &[[u16; 3]]) -> Vec<[u16; 3]> {
     .collect()
 }
 
-/// Vertices a FIFO cache of 24 loads drawing `faces` in order, a triangle.
 fn misses_a_triangle(faces: &[[u16; 3]]) -> f32 {
   let mut cache: VecDeque<u16> = VecDeque::new();
   let mut misses: usize = 0;
@@ -62,7 +59,6 @@ fn misses_a_triangle(faces: &[[u16; 3]]) -> f32 {
   misses as f32 / faces.len() as f32
 }
 
-/// A face by its corners' positions, so faces compare across renumbering, its winding kept.
 fn by_position(vertices: &[MeshVertex], face: &[u16; 3]) -> [[u32; 3]; 3] {
   face.map(|vertex| vertices[usize::from(vertex)].position.to_array().map(f32::to_bits))
 }

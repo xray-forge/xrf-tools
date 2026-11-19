@@ -19,12 +19,10 @@ impl LevelCformMaterials {
   /// Every material id a face can name.
   const IDS: usize = LevelCformFace::MATERIAL_MASK as usize + 1;
 
-  /// Reads the payload after a header, keeping only each face's material: a form runs to millions of faces, and
-  /// nothing else of it is wanted.
+  /// Reads the payload after a header, keeping only each face's material.
   ///
-  /// The vertices are stepped over and the faces read where they lie, each face marking its material in a table of every
-  /// id a face can name: a level names a few dozen materials across millions of faces, so a mark per face is what keeps
-  /// this from costing a set lookup per face.
+  /// A level names a few dozen materials across millions of faces, so each face marks a table of every id rather than
+  /// paying a set lookup.
   ///
   /// # Errors
   ///

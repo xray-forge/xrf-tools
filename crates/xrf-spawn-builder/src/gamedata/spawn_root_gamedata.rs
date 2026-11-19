@@ -18,26 +18,24 @@ use crate::root::spawn_root_build::SpawnRootBuild;
 use crate::root::spawn_root_builder::SpawnRootBuilder;
 use crate::root::spawn_root_level::SpawnRootLevel;
 
-/// The root spawn build over a gamedata root, as `xrAI -s` runs over `$game_levels$` and writes `$game_spawn$`: the
-/// levels the game lists read, each object as the class its section has in the game's configs
-/// ([`SpawnSectionClasses`]), each level's graph built (in parallel; the result is the same), the spawn built and
-/// written.
+/// The root spawn build over a gamedata root, as `xrAI -s` reads `$game_levels$` and writes `$game_spawn$`.
+///
+/// Objects read as the class their section has in the game's configs ([`SpawnSectionClasses`]). Level graphs are
+/// built in parallel with the same result.
 pub struct SpawnRootGamedata;
 
 impl SpawnRootGamedata {
-  /// What a job reports a build under: its stages (the levels read, the spawn built, the spawn written), each named as
-  /// its detail.
+  /// The job progress key of a build's three stages: levels read, spawn built, spawn written.
   pub const PROGRESS_STAGES: &'static str = "stages";
 
-  /// Builds the spawn `request` asks for and writes it, stopping between its stages where `job` is cancelled.
+  /// Builds the spawn `request` asks for and writes it, stopping between stages where `job` is cancelled.
   ///
   /// # Errors
   ///
-  /// Returns an error when the spawn's name is no plain file name, the request names an empty list of levels, the
-  /// level list does not read, names no level to build or not one asked for, the configs are there but do not read, a
-  /// level's files do not read or hold an object of a section neither they nor the table give a class, the build
-  /// refuses (`SpawnRootBuilder::build`), the spawn is there in any case of its name and the request is not forced,
-  /// the job is cancelled before writing, or the spawn cannot be written.
+  /// Returns an error when the name is no plain file name, the request asks for no level or one twice, the level list
+  /// does not read or lacks a level to build, the configs or a level's files do not read, an object's section has no
+  /// class, `SpawnRootBuilder::build` refuses, an unforced request finds the spawn present in any case of its name,
+  /// the job is cancelled, or the spawn cannot be written.
   pub fn build(request: &SpawnRootRequest, job: &JobHandle) -> XrfResult<SpawnRootOutcome> {
     if request.name.is_empty() || Path::new(&request.name).file_name() != Some(OsStr::new(&request.name)) {
       return Err(XrfError::new_invalid_error(format!(
@@ -98,8 +96,9 @@ impl SpawnRootGamedata {
     })
   }
 
-  /// The levels `gamedata`'s `configs/game_levels.ltx` lists, in its order, each marked by whether its directory under
-  /// `levels_root` holds what a build reads; the entries the build passes over are left out.
+  /// The levels `gamedata`'s `configs/game_levels.ltx` lists, in its order, without the entries a build passes over.
+  ///
+  /// Each is marked by whether its directory under `levels_root` holds what a build reads.
   ///
   /// # Errors
   ///
@@ -121,7 +120,7 @@ impl SpawnRootGamedata {
     )
   }
 
-  /// The levels asked for, each listed once, or every listed level whose directory under `levels_root` is complete.
+  /// The levels asked for, refusing a repeat, or every listed level whose directory under `levels_root` is complete.
   fn select<'a>(
     listed: &'a SpawnGameLevels,
     request: &SpawnRootRequest,

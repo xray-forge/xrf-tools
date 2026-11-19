@@ -1,7 +1,5 @@
-/// Garland and Heckbert's quadric error over a point's position and texture coordinate, five dimensions, as the
-/// progressive mesh builder of xrLC's tools measures a collapse with (`MxQuadric`, `xrQSlim/src/MxQMetric.cpp`).
-///
-/// A triangle's quadric is the squared distance from its plane in the five dimensions, unweighted by its area.
+/// Garland and Heckbert's quadric error over position and texture coordinate, as xrLC's tools measure a collapse
+/// (`MxQuadric`). A triangle's quadric is not weighted by its area.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct ProgressiveQuadric {
   tensor: [[f64; Self::DIMENSIONS]; Self::DIMENSIONS],

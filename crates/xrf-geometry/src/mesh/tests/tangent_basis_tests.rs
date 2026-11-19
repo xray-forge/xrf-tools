@@ -6,7 +6,6 @@ use crate::mesh::mesh_vertex::MeshVertex;
 use crate::mesh::mesh_vertex_bone::MeshVertexBone;
 use crate::mesh::tangent_basis::TangentBasis;
 
-/// A vertex on the floor, facing up, at `position` and mapped at `uv`.
 fn vertex(position: [f32; 3], uv: [f32; 2]) -> MeshVertex {
   MeshVertex {
     position: Vector3d::from(position),
@@ -45,8 +44,7 @@ fn runs_the_tangent_along_u_and_the_binormal_along_v() -> XrfResult {
 
 #[test]
 fn splits_the_vertices_of_an_edge_the_texture_is_mirrored_across() -> XrfResult {
-  // The second face runs `u` against `x`: its tangent opposes the first's, so the two corners of the shared edge
-  // `a c` are split, one vertex for each face.
+  // The second face runs `u` against `x`, so its tangent opposes the first's.
   let Mesh { vertices, faces } = TangentBasis::mend(Mesh {
     vertices: vec![
       vertex([0.0, 0.0, 0.0], [0.0, 0.0]),

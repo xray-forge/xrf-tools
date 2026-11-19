@@ -10,24 +10,14 @@ use crate::mesh::mesh_vertex::MeshVertex;
 /// Gives a split's vertices tangents and binormals as both exports' tangent pass does, splitting a vertex where the
 /// faces around it disagree, then orders and shifts the vertices as the export leaves them.
 ///
-/// `CExportSkeleton::SSplit::CalculateTB` and the static export's `CObjectOGFCollectorPacked::CalculateTB` run NVIDIA's
-/// MeshMender (2003) over the split with the same arguments, keeping the normals and the existing vertex splits, at a
-/// smoothing cosine of 0.5 for tangents and binormals. The static export then writes no tangents, but its vertices are
-/// the ones the pass split and ordered. Each face gets a tangent and a
-/// binormal from how its texture coordinates run across it (Lengyel's gradients). Then, position by position in `x`, `y`,
-/// `z` order, the faces at a position are grouped: a face joins the group of the first or the second face sharing an
-/// edge with it, by vertex, when their tangents are within the cosine, or starts a group of its own. A vertex a second
-/// group uses is split off for it, and each group's vertices take its normalised sum; binormals are grouped the same way
-/// after. A last step meant to square each tangent and binormal to the normal only rescales them: the mender's
-/// `Vec3Normalize` multiplies the vector it writes into, here the smoothed tangent, by the inverse length of the one it
-/// measures, the squared tangent, so the smoothed direction stays and grows slightly longer. Vanilla's OGFs carry exactly
-/// that (binormals of length 1.0003, off square to the normal), so it is kept; a basis that collapses is replaced by one
-/// built from the normal. The pass then keeps the vertices faces use, in the order the faces first reach them
-/// (`t_remove_isolated_verts`), and moves the split's texture coordinates by whole tiles towards the origin
-/// (`OptimizeTextureCoordinates`).
+/// `CExportSkeleton::SSplit::CalculateTB` and `CObjectOGFCollectorPacked::CalculateTB` run NVIDIA's MeshMender (2003)
+/// with the same arguments: normals and existing vertex splits kept, a smoothing cosine of 0.5. The static export
+/// writes no tangents but keeps the vertices the pass split and ordered.
 ///
-/// One difference is deliberate: where the mender divides by a zero length into infinity or NaN and ships it, a zero
-/// length here leaves a zero vector, and the collapsed-basis fallback then builds a valid one.
+/// The mender's final squaring to the normal only rescales each direction, and vanilla's OGFs carry that (binormals of
+/// length 1.0003, off square to the normal), so it is kept. One difference is deliberate: where the mender divides by a
+/// zero length into infinity or NaN, a zero length here leaves a zero vector, which the collapsed-basis fallback
+/// replaces.
 pub struct TangentBasis {
   vertices: Vec<MeshVertex>,
   triangles: Vec<MendedFace>,

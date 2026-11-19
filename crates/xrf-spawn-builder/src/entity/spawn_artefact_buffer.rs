@@ -1,20 +1,22 @@
-/// The vector xrAI floods each anomalous zone's nodes into (`l_tpaStack`, `level_spawn_constructor.cpp:442`), kept as
-/// its memory holds them: reused from zone to zone, cleared without its elements going, and read past its end where a
-/// zone wants more points than its flood kept, which gives the previous zone's nodes, as the shipped spawn holds them.
+/// The vector xrAI floods each anomalous zone's nodes into (`l_tpaStack`), modelled as its memory.
+///
+/// xrAI reuses it across zones without erasing elements and reads past its end where a zone wants more points than its
+/// flood kept, so such a zone gets the previous zone's nodes, as the shipped spawn holds them.
 pub(crate) struct SpawnArtefactBuffer {
-  /// The vector's memory, its capacity long; past what any zone wrote, nothing the engine would read the same.
+  /// The vector's memory, its capacity long.
   memory: Vec<u32>,
 }
 
 impl SpawnArtefactBuffer {
   /// `l_tpaStack.reserve(1024)`.
   const RESERVED: usize = 1024;
-  /// What memory past every write reads as.
+  /// What memory past every write reads as; the engine's would read whatever it held, so it cannot match there.
   const UNWRITTEN: u32 = 0;
 
-  /// `push_back` of each flooded node into the cleared vector, then `remove_if` of the nodes `keep` refuses and
-  /// `erase`: the kept ones packed to the front in order, the memory after them as the pushes left it. Returns how
+  /// Pushes `flooded` into the cleared vector, then `remove_if` and `erase` of the nodes `keep` refuses, returning how
   /// many it kept.
+  ///
+  /// The kept nodes are packed to the front in order; the memory after them stays as the pushes left it.
   pub(crate) fn fill(&mut self, flooded: &[u32], keep: impl Fn(u32) -> bool) -> usize {
     let mut capacity: usize = self.memory.len();
 
@@ -46,7 +48,7 @@ impl SpawnArtefactBuffer {
     &mut self.memory[..count]
   }
 
-  /// The first `count` elements as the memory holds them, past the vector's end and its capacity too.
+  /// The first `count` elements as the memory holds them, even past the vector's end and capacity.
   pub(crate) fn read(&mut self, count: usize) -> &[u32] {
     if self.memory.len() < count {
       self.memory.resize(count, Self::UNWRITTEN);

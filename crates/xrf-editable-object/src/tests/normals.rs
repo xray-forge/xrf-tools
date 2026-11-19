@@ -4,11 +4,10 @@ use xrf_math::{Aabb, Vector3d};
 
 use crate::{EditableFace, EditableFaceCorner, EditableMesh, EditableMeshNormals};
 
-/// A face's back-face bit, which renumbers its edges.
 const BACK: u32 = 1 << 3;
 
-/// Two triangles folded along their shared edge `a c`, the first's edge 2 and the second's edge 0, so their face
-/// normals differ: `a b c` facing up and `a c d` tilted towards x.
+// Two triangles folded along their shared edge `a c`, the first's edge 2 and the second's edge 0: `a b c` faces up and
+// `a c d` tilts towards x.
 fn hinge(smoothing_groups: Option<Vec<u32>>, flags: u8) -> EditableMesh {
   let face = |points: [u32; 3]| EditableFace {
     corners: points.map(|point| EditableFaceCorner {
@@ -42,7 +41,6 @@ fn hinge(smoothing_groups: Option<Vec<u32>>, flags: u8) -> EditableMesh {
   }
 }
 
-/// Whether the corner normal at `a`, corner 0 of the first face, is the first face's own.
 fn is_flat_at_a(normals: &EditableMeshNormals) -> bool {
   (normals.corners[0][0].dot(&normals.faces[0]) - 1.0).abs() <= 1e-6
 }
@@ -101,7 +99,6 @@ fn refuses_smoothing_words_that_are_not_one_per_face() {
   assert!(EditableMeshNormals::of(&hinge(Some(vec![0]), 0)).is_err());
 }
 
-/// A mesh of `faces` over `points`, each face's smoothing word given.
 fn mesh_of(points: Vec<Vector3d>, faces: Vec<[u32; 3]>, smoothing_groups: Vec<u32>) -> EditableMesh {
   EditableMesh {
     points,
@@ -119,7 +116,6 @@ fn mesh_of(points: Vec<Vector3d>, faces: Vec<[u32; 3]>, smoothing_groups: Vec<u3
   }
 }
 
-/// A triangle fan of `count` faces around point 0, every edge soft, each face crossing to the next.
 fn fan(count: u32) -> EditableMesh {
   let points: Vec<Vector3d> = std::iter::once(Vector3d::ZERO)
     .chain((0..=count).map(|index| {
@@ -133,7 +129,7 @@ fn fan(count: u32) -> EditableMesh {
   mesh_of(points, faces, vec![0; count as usize])
 }
 
-/// The SDK's `RecurseTri` as written: every face around the point tried from every face reached, recursively.
+// The SDK's `RecurseTri` as written, recursion and all, as the reference the walk must match.
 fn sum_recursively(mesh: &EditableMesh, face_normals: &[Vector3d], around: &[u32], start: usize) -> Vector3d {
   fn recurse(
     mesh: &EditableMesh,
@@ -260,7 +256,6 @@ fn sums_each_corner_in_the_order_the_editors_recursion_does() -> XrfResult {
 
 #[test]
 fn walks_a_fan_of_thousands_of_faces_on_a_small_stack() {
-  // The walk is as deep as the fan in faces, so it keeps that depth on its own stack and needs little of the thread's.
   let normals: EditableMeshNormals = std::thread::Builder::new()
     .stack_size(256 * 1024)
     .spawn(|| EditableMeshNormals::of(&fan(4000)))

@@ -33,12 +33,11 @@ impl LevelCformHeader {
   /// `CFORM_CURRENT_VERSION`, the one version the engine reads.
   pub const CURRENT_VERSION: u32 = 4;
 
-  /// The header of `geometry` as xrLC writes it (`xrLC/xrBuildCForm.cpp:178`): the current version, the counts, and the
-  /// box around every vertex.
+  /// The header of `geometry` as xrLC writes it (`xrBuildCForm.cpp`): the current version, the counts and the box.
   ///
   /// # Errors
   ///
-  /// Returns an error for a form of no vertex, which has no box, or of more vertices or faces than the counts hold.
+  /// Returns an error for a form with no vertex, or with more vertices or faces than a 32-bit count holds.
   pub fn of(geometry: &LevelCformGeometry) -> XrfResult<Self> {
     let count = |count: usize, what: &str| -> XrfResult<u32> {
       u32::try_from(count)
@@ -150,12 +149,12 @@ impl LevelCformFile {
     Self::read_with_geometry_from_bytes::<T>(bytes).map(|(_, geometry)| geometry)
   }
 
-  /// Writes the whole file: the header as held, then `geometry` in the layout [`Self::read_with_geometry_from_bytes`]
-  /// reads, so a file read and written again comes back byte for byte.
+  /// Writes the header as held, then `geometry` as [`Self::read_with_geometry_from_bytes`] reads it; a file read and
+  /// written again comes back byte for byte.
   ///
   /// # Errors
   ///
-  /// Returns an error when the header's counts are not `geometry`'s, which the engine would read past or short of.
+  /// Returns an error when the header's counts are not `geometry`'s.
   pub fn write_with_geometry<T: ByteOrder>(
     &self,
     geometry: &LevelCformGeometry,

@@ -1,7 +1,7 @@
 use xrf_math::{EPS, Vector3d};
 
-/// A face's area as the Level Editor's Build and xrLC measure it before they refuse it: `CalcArea`
-/// (`BuilderRemote.cpp:509`, `xrLC_Light/MeshStructure.h:192`), Heron's formula over the edges in single precision.
+/// A face's area as the Level Editor's Build and xrLC measure it before they refuse it: `CalcArea`, Heron's formula
+/// over the edges in single precision.
 pub struct FaceArea;
 
 impl FaceArea {
@@ -13,8 +13,7 @@ impl FaceArea {
     (half * (half - first) * (half - second) * (half - third)).sqrt()
   }
 
-  /// Whether the face has the area the Build keeps it for and xrLC asks of it (`BuilderRemote.cpp:680`,
-  /// `xrLC_Light/xrFace.cpp:198`): a number, no less than [`EPS`].
+  /// Whether the face has the area the Build keeps it for and xrLC asks of it: a number, no less than [`EPS`].
   pub fn is_enough(corners: &[Vector3d; 3]) -> bool {
     let area: f32 = Self::of(corners);
 

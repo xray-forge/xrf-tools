@@ -5,9 +5,8 @@ use xrf_math::{EPS_L, Vector3d};
 /// Points welded within [`EPS_L`] on every axis, as the editor's `VCPacked::add_vert` welds a part's points: a point
 /// takes the index of one already held near it, else is held as a new one.
 ///
-/// Held points are filed in cells [`EPS_L`] wide; a point looks through its own cell and the 26 around it, in `x`, `y`,
-/// `z` order from the lowest, and takes the first held point it finds within reach there. Where several held points
-/// stand within reach, that is the first in this scan, not necessarily the first held.
+/// Where several held points stand within reach, the one taken is the first found scanning its own and the 26 adjacent
+/// cells, [`EPS_L`] wide, in `x`, `y`, `z` order from the lowest, not necessarily the first held.
 #[derive(Clone, Debug, Default)]
 pub struct PointWelder {
   points: Vec<Vector3d>,

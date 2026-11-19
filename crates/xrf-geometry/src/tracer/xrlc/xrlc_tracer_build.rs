@@ -24,12 +24,10 @@ impl XrlcTracer {
   /// `1 / 3` as Opcode writes it (`INV3`), in single precision.
   const THIRD: f32 = 1.0 / 3.0;
 
-  /// The nodes of Opcode's complete tree over `triangles`, as xrCDB asks for it (`MODEL::build_internal`,
-  /// `xrCDB/xrCDB.cpp`: `SPLIT_COMPLETE | SPLIT_SPLATTERPOINTS | SPLIT_GEOMCENTER`, no leaves, not quantized), the root
-  /// first and each node's first side below it before its second (`_BuildNoLeafTree`). A node's faces are split on the
-  /// axis their centres vary most along, at the middle of the node's box there ([`Self::split`]), the faces whose
-  /// centre lies above it first; where every face falls on one side, the first half of them goes first. Built without
-  /// recursion, as a split can leave one face a side all the way down.
+  /// The nodes of Opcode's complete tree over `triangles` as `MODEL::build_internal` asks for it, no leaves and not
+  /// quantized: the root first, each node's first side and all below it before its second (`_BuildNoLeafTree`).
+  ///
+  /// Built without recursion, as a split can leave one face a side all the way down.
   pub(crate) fn build_nodes(triangles: &[Triangle]) -> Vec<XrlcNode> {
     if triangles.len() < 2 {
       return Vec::new();
@@ -96,13 +94,12 @@ impl XrlcTracer {
     (first[axis] + second[axis] + third[axis]) * Self::THIRD
   }
 
-  /// Reorders a node's faces, those whose centre lies above the split first, and returns how many those are
-  /// (`AABBTreeNode::Subdivide` under `SPLIT_SPLATTERPOINTS`, `AABBTreeNode::Split`).
+  /// Reorders a node's faces on the axis their centres vary most along, those whose centre lies above `center` first,
+  /// and returns how many those are, or half the faces where all fall on one side (`AABBTreeNode::Subdivide` under
+  /// `SPLIT_SPLATTERPOINTS`).
   ///
-  /// The split is the middle `center` of the node's box on the axis chosen, though xrCDB asks for `SPLIT_GEOMCENTER`,
-  /// the mean of the faces' corners: `Split` asks the builder for `GetSplittingValueEx`, which the triangles' builder
-  /// does not override (its override keeps the name `GetSplittingValue`), so the base builder's box middle answers
-  /// (`AABBTreeBuilder::GetSplittingValueEx`, `xrCDB/OPC_TreeBuilders.h`).
+  /// The split is the box middle, though xrCDB asks for `SPLIT_GEOMCENTER`: the triangles' builder misnames its
+  /// override `GetSplittingValue`, so `AABBTreeBuilder::GetSplittingValueEx` answers with the base builder's middle.
   fn split(corners: &[[Vec3; 3]], faces: &mut [u32], center: Vec3) -> usize {
     let count: usize = faces.len();
     let mut means: [f32; 3] = [0.0; 3];

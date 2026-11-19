@@ -1,6 +1,3 @@
-//! xrLC's ray model against a walk over every face, and where it differs: a ray along an axis exactly at the corner
-//! of a node whose box Opcode gives back a rounding short.
-
 use glam::Vec3;
 
 use crate::ray::ray::Ray;
@@ -10,12 +7,10 @@ use crate::tracer::xrlc::xrlc_child::XrlcChild;
 use crate::tracer::xrlc::xrlc_tracer::XrlcTracer;
 use crate::triangle::triangle::Triangle;
 
-/// The tree and the brute-force walk over the same triangles.
 fn both(triangles: Vec<Triangle>) -> (XrlcTracer, BruteTracer) {
   (XrlcTracer::of_triangles(triangles.clone()), BruteTracer { triangles })
 }
 
-/// Asserts every ray query answers as the brute-force walk does.
 fn assert_rays_agree(tracer: &XrlcTracer, brute: &BruteTracer, rays: &[Ray]) {
   for ray in rays {
     assert_eq!(every_hit(tracer, ray), every_hit(brute, ray), "every hit of {ray:?}");
@@ -43,8 +38,7 @@ fn answers_rays_through_a_soup_as_testing_every_face_would() {
   assert_rays_agree(&tracer, &brute, &rays);
 }
 
-/// Boxes ending on whole coordinates come back whole, so rays along the axes from the blocks' faces meet every face
-/// a walk over them meets: an origin on a box's face is inside it (`0 * inf` clamped away).
+// Boxes ending on whole coordinates come back from Opcode's centre and extents unrounded.
 #[test]
 fn answers_rays_along_the_axes_from_the_faces_of_whole_boxes_as_testing_every_face_would() {
   let (tracer, brute) = both(town(4, 2.0));
@@ -101,8 +95,8 @@ fn finds_the_faces_in_a_box_and_along_a_line_as_testing_every_face_would() {
   assert!(found > 100, "the boxes take in faces: {found}");
 }
 
-/// Two faces whose box ends at `x = 7.86`, the first's corner there. `(7.86 + 4.293) / 2 + (7.86 - 4.293) / 2` is
-/// `7.8599997` in single precision, so a ray along `z` through that corner misses the root's box, and both faces.
+// `(7.86 + 4.293) / 2 + (7.86 - 4.293) / 2` is `7.8599997` in single precision, so the root's box ends short of the
+// first face's corner.
 #[test]
 fn misses_a_corner_its_box_comes_back_short_of_as_xrlc_does() {
   let corner: Vec3 = Vec3::new(7.86, 0.0, 0.0);
@@ -123,8 +117,6 @@ fn misses_a_corner_its_box_comes_back_short_of_as_xrlc_does() {
   assert!(tracer.is_blocked(&inside));
 }
 
-/// Faces in planes `x = 0` to `3`: each node puts the faces whose centre lies above its split first, so a ray across
-/// them all visits them from the furthest along `x`.
 #[test]
 fn visits_the_faces_above_each_split_first() {
   let tracer: XrlcTracer = XrlcTracer::of_triangles(
@@ -148,8 +140,7 @@ fn visits_the_faces_above_each_split_first() {
   assert_eq!(tracer.nodes.len(), 3);
 }
 
-/// Faces in planes `x = 0, 4, 5, 10`: the root splits at its box's middle, `5`, leaving the face at `10` alone above
-/// it, where the mean of the corners, `4.75`, would put the face at `5` there too.
+// The box's middle, `5`, leaves the face at `10` alone above it; the corners' mean, `4.75`, would add the face at `5`.
 #[test]
 fn splits_a_node_at_the_middle_of_its_box() {
   let tracer: XrlcTracer = XrlcTracer::of_triangles(

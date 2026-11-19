@@ -1,5 +1,4 @@
-//! The layouts older editors saved, which the CoP SDK 0.7's own `rawdata` still holds: each reduced from a file there
-//! to the smallest bytes that carry it.
+// Layouts older editors saved, each reduced from a file in the CoP SDK 0.7 `rawdata` to the bytes that carry it.
 
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
@@ -7,7 +6,6 @@ use xrf_error::XrfResult;
 use crate::tests::fixtures;
 use crate::{EditableMesh, EditableObjectFile, EditableTimeWidth};
 
-/// A body with the version, the given flags payload and the given description payload.
 fn object(flags: &[u8], description: &[u8]) -> Vec<u8> {
   let mut body: Vec<u8> = fixtures::chunk(EditableObjectFile::VERSION_CHUNK_ID, &0x0010u16.to_le_bytes());
 
@@ -17,7 +15,6 @@ fn object(flags: &[u8], description: &[u8]) -> Vec<u8> {
   fixtures::file(&body)
 }
 
-/// A description: creator, time, modifier, time, each time `width` bytes.
 fn description(width: usize) -> Vec<u8> {
   let mut bytes: Vec<u8> = fixtures::string("\\\\YURIY\\Yuriy");
 
@@ -78,7 +75,6 @@ fn an_empty_flags_chunk_is_refused() {
   assert!(EditableObjectFile::read_from_bytes::<XRayByteOrder>(object(&[], &description(4))).is_err());
 }
 
-/// The fixture mesh with its points chunk replaced.
 fn mesh_with_points(points: &[u8]) -> XrfResult<EditableMesh> {
   let mut children: Vec<u8> = Vec::new();
 
@@ -100,7 +96,6 @@ fn mesh_with_points(points: &[u8]) -> XrfResult<EditableMesh> {
   EditableMesh::read::<XRayByteOrder, _>(&mut reader)
 }
 
-/// Three points, then where `faces` asks the faces around each: one count byte and the indices.
 fn points_payload(faces: &[&[u32]]) -> Vec<u8> {
   let mut bytes: Vec<u8> = fixtures::words(&[3]);
 
@@ -114,7 +109,6 @@ fn points_payload(faces: &[&[u32]]) -> Vec<u8> {
   bytes
 }
 
-/// The points chunk a mesh writes.
 fn written_points(mesh: &EditableMesh) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -141,7 +135,6 @@ fn points_followed_by_their_faces_read_and_come_back() -> XrfResult {
 
 #[test]
 fn point_faces_follow_the_faces_an_edit_leaves() -> XrfResult {
-  // The lists are derived on write, so a face added after reading shows in them rather than leaving them stale.
   let mut mesh: EditableMesh = mesh_with_points(&points_payload(&[&[0], &[0], &[0]]))?;
 
   mesh.faces.push(mesh.faces[0]);
@@ -158,7 +151,7 @@ fn point_faces_follow_the_faces_an_edit_leaves() -> XrfResult {
 
 #[test]
 fn stored_point_faces_the_faces_do_not_give_are_refused() {
-  // Point 2 claims a face that is not there; writing would put down what the faces give instead.
+  // Point 2 claims a face that is not there.
   let error: String = mesh_with_points(&points_payload(&[&[0], &[0], &[1]]))
     .expect_err("expect stale lists refused")
     .to_string();

@@ -1,5 +1,4 @@
-/// A level changer connection the merge leaves out, as xrAI does with a message: a graph point naming a level outside
-/// the build.
+/// A graph point connection to a level outside the build, which the merge leaves out as xrAI does with a message.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct SpawnSkippedConnection {
   pub level: String,

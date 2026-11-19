@@ -1,5 +1,3 @@
-//! Where `SplitPartition` cuts a split too big for one child, and that it leaves one within the bound as it was.
-
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::mesh::mesh::Mesh;
@@ -7,8 +5,6 @@ use crate::mesh::mesh_vertex::MeshVertex;
 use crate::mesh::mesh_vertex_bone::MeshVertexBone;
 use crate::mesh::split_partition::SplitPartition;
 
-/// A strip of `count` triangles over `count + 2` vertices, numbered by first use, the last two vertices following
-/// another bone than the rest.
 fn strip(count: u32) -> Mesh<u32> {
   Mesh {
     vertices: (0..count + 2)
@@ -28,7 +24,6 @@ fn strip(count: u32) -> Mesh<u32> {
   }
 }
 
-/// Each child's faces as the positions of their corners, all children in order.
 fn positions(children: &[Mesh<u16>]) -> Vec<[[u32; 3]; 3]> {
   children
     .iter()

@@ -57,10 +57,10 @@ fn an_unreadable_bundle_is_one_read_finding() {
   assert_eq!(result.report.count_findings(), 1);
 }
 
-/// No link, the widest a `CsCop` link holds.
+// No link: the widest value a `CsCop` link holds.
 const NONE: u32 = (1 << 23) - 1;
 
-/// A `level.ai` of `links`, one node a cell along x each.
+// One node a cell along x each.
 fn ai_map(links: &[[u32; 4]]) -> XrfResult<Vec<u8>> {
   let nodes: Vec<LevelAiNode> = (0u32..)
     .zip(links)
@@ -114,7 +114,7 @@ fn check<'a>(result: &'a LevelAiGraphVerifyResult, id: &str) -> &'a CheckReport 
     .expect("the check")
 }
 
-/// Nodes 0 and 1 linked both ways along x, 1 linking on to 2 with no link back, and 3 and 4 a part of their own.
+// 0 and 1 link both ways, 1 links on to 2 with no link back, and 3 and 4 form a part of their own.
 #[test]
 fn a_one_way_link_and_a_detached_part_are_warnings_with_counts() -> XrfResult {
   let result: LevelAiGraphVerifyResult = verify_ai(Some(ai_map(&[
@@ -158,7 +158,6 @@ fn a_one_way_link_and_a_detached_part_are_warnings_with_counts() -> XrfResult {
   Ok(())
 }
 
-/// xrAI refuses a map with a node linked to itself.
 #[test]
 fn a_node_linked_to_itself_fails_the_map() -> XrfResult {
   let result: LevelAiGraphVerifyResult = verify_ai(Some(ai_map(&[[NONE, 0, NONE, NONE]])?));
@@ -170,7 +169,6 @@ fn a_node_linked_to_itself_fails_the_map() -> XrfResult {
   Ok(())
 }
 
-/// A level that ships no AI map is not checked, and an unreadable one fails its read.
 #[test]
 fn a_missing_map_skips_and_an_unreadable_one_fails() {
   let missing: LevelAiGraphVerifyResult = verify_ai(None);

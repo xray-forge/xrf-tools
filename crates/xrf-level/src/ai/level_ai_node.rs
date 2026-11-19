@@ -25,8 +25,8 @@ pub struct LevelAiNode {
   pub packed_xz: u32,
   /// The height across the map's vertical extent, 0 at the box floor and 65535 at its top.
   pub packed_y: u16,
-  /// The light value the bits past the links hold, 0 to 15 (`NodeCompressed::light`), which no loader reads; always 0
-  /// in a version with no such bits.
+  /// The light in the bits past the links, 0 to 15 (`NodeCompressed::light`), which no loader reads; 0 in a version
+  /// without those bits.
   pub light: u8,
 }
 
@@ -60,13 +60,12 @@ impl LevelAiNode {
     }
   }
 
-  /// Packs the node into `bytes`, `layout.size` long and zeroed, the inverse of [`Self::decode`]. A version keeping one
+  /// Packs the node into `bytes` (zeroed, `layout.size` long), the inverse of [`Self::decode`]. A version keeping one
   /// cover set stores [`Self::high_cover`].
   ///
   /// # Errors
   ///
-  /// Returns an error when a link, the cell, a cover or the light does not fit the bits the layout gives it, which
-  /// would write another node than this one.
+  /// Returns an error when a link, the cell, a cover or the light overflows the bits the layout gives it.
   pub(crate) fn encode<T: ByteOrder>(&self, bytes: &mut [u8], layout: &LevelAiNodeLayout) -> XrfResult {
     let mask: u32 = (1 << layout.link_bits) - 1;
     let light_bits: u32 = layout.get_light_bits();

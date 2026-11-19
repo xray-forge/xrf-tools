@@ -170,12 +170,12 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
     )
   }
 
-  /// Reads the indices `visual` draws at full detail: its whole index range, cut to its first slide window where it is
-  /// progressive (see [`LevelVisual::get_full_detail_window`]); `None` for a visual drawing nothing from the buffers.
+  /// Reads the indices `visual` draws at full detail: its index range, cut to its first slide window when progressive
+  /// ([`LevelVisual::get_full_detail_window`]). `None` for a visual drawing nothing from the buffers.
   ///
   /// # Errors
   ///
-  /// Returns an error where the indices or the window cannot be read, or the window reaches past the visual's indices.
+  /// Returns an error when the indices or the window cannot be read, or the window reaches past the indices.
   pub fn read_full_detail_indices<T: ByteOrder>(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<u16>>> {
     let Some(container) = &visual.geometry else {
       return Ok(None);

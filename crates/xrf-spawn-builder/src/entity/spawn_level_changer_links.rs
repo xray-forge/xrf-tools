@@ -7,13 +7,12 @@ use xrf_spawn::{
 use crate::entity::spawn_level_entities::SpawnLevelEntities;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
 
-/// `fill_level_changers` (`level_spawn_constructor.cpp:536`): every level changer takes, from the level it leads to,
-/// the graph point it names, the game vertex standing at that point and the vertex's node.
+/// Level changer linking, `CLevelSpawnConstructor::fill_level_changers`: each changer takes the named graph point of
+/// the level it leads to, the game vertex at that point and the vertex's node.
 pub(crate) struct SpawnLevelChangerLinks;
 
 impl SpawnLevelChangerLinks {
-  /// How near, on each axis, a vertex's level point stands to the graph point it was made from: within it, not at it,
-  /// `Fvector::similar`.
+  /// Per-axis tolerance between a vertex's level point and its graph point, `Fvector::similar`.
   const SIMILAR: f32 = 0.001;
 
   /// Links every level changer of `entities`, beside its level in `levels`, through the merged `graph`.
@@ -21,8 +20,7 @@ impl SpawnLevelChangerLinks {
   /// # Errors
   ///
   /// Returns an error when a level changer leads to a level not built, names a graph point its level lacks, or the
-  /// point has no game vertex. xrAI's release build leaves the first two unlinked and lists them, and stops on the
-  /// third (`R_ASSERT3`).
+  /// point has no game vertex. xrAI's release build lists the first two unlinked and asserts on the third.
   pub(crate) fn fill(
     levels: &[SpawnMergeLevel<'_>],
     entities: &mut [SpawnLevelEntities],

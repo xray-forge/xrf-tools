@@ -5,8 +5,6 @@ use xrf_math::{Vector2d, Vector3d};
 use crate::progressive::progressive_mesh::ProgressiveMesh;
 use crate::progressive::progressive_point::ProgressivePoint;
 
-/// A flat grid of `side` by `side` points a unit apart, its texture coordinates following its positions, the height of
-/// each point given by `height`.
 fn grid(side: u16, height: impl Fn(u16, u16) -> f32) -> (Vec<ProgressivePoint>, Vec<[u16; 3]>) {
   let mut points: Vec<ProgressivePoint> = Vec::new();
   let mut faces: Vec<[u16; 3]> = Vec::new();

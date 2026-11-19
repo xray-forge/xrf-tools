@@ -4,8 +4,8 @@ use xrf_math::Vector3d;
 
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 
-/// One vertex as a level stores it, each element in the form its declaration gives it: what a decoder reads and an
-/// encoder writes, before either turns it into or out of what xrLC computed.
+/// One vertex as a level stores it, each element in its declared form: the step between the bytes and what xrLC
+/// computed, both ways.
 ///
 /// An element the declaration lacks is `None`. A `D3DCOLOR` element is its four bytes in file order: blue, green, red,
 /// then the byte riding along (see [`crate::LevelVertex::DIRECTION_X`]).
@@ -26,8 +26,7 @@ impl LevelVertexStored {
   ///
   /// # Errors
   ///
-  /// Returns an error when `bytes` is not one stride, or the vertex carries an element the layout has no place for or
-  /// lacks one it has, which would leave bytes of the stride unwritten.
+  /// Returns an error when `bytes` is not one stride, or the vertex's elements are not exactly the layout's.
   pub fn write_into<T: ByteOrder>(&self, layout: &LevelVertexLayout, bytes: &mut [u8]) -> XrfResult {
     if bytes.len() != layout.get_stride() as usize {
       return Err(XrfError::new_invalid_error(format!(

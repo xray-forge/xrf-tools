@@ -13,12 +13,13 @@ use crate::merge::spawn_merge_level::SpawnMergeLevel;
 use crate::merge::spawn_random::SpawnRandom;
 use crate::root::spawn_root_level::SpawnRootLevel;
 
-/// A level's entities as xrAI's `CLevelSpawnConstructor::Execute` (`level_spawn_constructor.cpp:600`) leaves them:
-/// loaded from `level.spawn`, placed on the AI map, each anomalous zone given its artefact points, each level changer
-/// its own node; its graph points kept apart for the level changers that lead here.
+/// A level's entities as `CLevelSpawnConstructor::Execute` leaves them: placed on the AI map, anomalous zones given
+/// artefact points, level changers their own node.
+///
+/// Graph points are kept apart for the level changers that lead to this level.
 pub(crate) struct SpawnLevelEntities {
   pub(crate) objects: Vec<AlifeObject>,
-  /// Each object's artefact points, beside it in `objects`; an anomalous zone's alone has some.
+  /// Each object's artefact points, parallel to `objects`; only anomalous zones have some.
   pub(crate) artefacts: Vec<Option<Vec<ArtefactSpawnPoint>>>,
   pub(crate) graph_points: Vec<AlifeObject>,
 }
@@ -51,8 +52,8 @@ impl SpawnLevelEntities {
     let mut search: SpawnPathSearch = SpawnPathSearch::new(level.map);
     let mut buffer: SpawnArtefactBuffer = SpawnArtefactBuffer::default();
 
-    // xrAI places every object, then draws every zone's points, then looks the level changers up; only the draws
-    // share state, the stream and the buffer, and they keep their order object by object.
+    // xrAI runs each step over all objects in turn; one loop matches it because only the draws share state, and they
+    // keep their object order.
     for object in &mut entities.objects {
       Self::place(level, vertices, object);
       entities.artefacts.push(Self::draw_artefacts(
@@ -74,7 +75,7 @@ impl SpawnLevelEntities {
     Ok(entities)
   }
 
-  /// `load_objects`: every packet but graph points, which go apart, and objects a single player game does not load.
+  /// `load_objects`: every single player object, with graph points set apart.
   fn load(list: &LevelSpawnFile, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     let mut entities: Self = Self {
       objects: Vec::new(),
@@ -100,8 +101,8 @@ impl SpawnLevelEntities {
     Ok(entities)
   }
 
-  /// `correct_objects`: an object using AI locations takes the node under its raised position and moves onto it where
-  /// it stands outside its cell; any other takes the level's first vertex.
+  /// `correct_objects`: an object using AI locations takes the node under its raised position, moving onto it when
+  /// outside its cell; any other takes the level's first vertex.
   fn place(level: &SpawnMergeLevel<'_>, vertices: &SpawnLevelVertices, object: &mut AlifeObject) {
     if !SpawnAiLocations::is_used(object) {
       let mut fields: AlifeBuiltFields = object.get_built_fields();
@@ -123,9 +124,10 @@ impl SpawnLevelEntities {
     Self::set_node(level, vertices, object, node);
   }
 
-  /// `generate_artefact_spawn_positions` for one object, if an anomalous zone: its node looked up again unraised, from
-  /// the one it has; the nodes flooded within its offline radius and lying within it, shuffled, the first of them its
-  /// artefact points.
+  /// `generate_artefact_spawn_positions` for one object, `None` unless an anomalous zone.
+  ///
+  /// The zone's node is looked up again unless its unraised position lies inside it. The nodes within its offline
+  /// radius are shuffled and the first `artefact_spawn_count` become its points.
   fn draw_artefacts(
     level: &SpawnMergeLevel<'_>,
     vertices: &SpawnLevelVertices,
@@ -184,7 +186,7 @@ impl SpawnLevelEntities {
     object.set_built_fields(&fields);
   }
 
-  /// Whether the object is the actor, `CSE_ALifeCreatureActor`, of which a build holds one.
+  /// Whether the object is the actor, `CSE_ALifeCreatureActor`; a build holds one.
   pub(crate) fn is_actor(object: &AlifeObject) -> bool {
     matches!(
       object.inherited,
@@ -192,7 +194,7 @@ impl SpawnLevelEntities {
     )
   }
 
-  /// A position raised by [`Self::Y_SHIFT`], where xrAI looks a node up from.
+  /// A position raised by [`Self::Y_SHIFT`] for a node lookup.
   pub(crate) fn raise(position: &Vector3d<f32>) -> Vector3d<f32> {
     Vector3d::new(position.x, position.y + Self::Y_SHIFT, position.z)
   }

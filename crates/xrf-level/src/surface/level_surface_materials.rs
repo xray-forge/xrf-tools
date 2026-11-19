@@ -25,9 +25,8 @@ pub struct LevelSurfaceMaterials {
 }
 
 impl LevelSurfaceMaterials {
-  /// How far either side of a triangle along its normal the collision face it lies on is looked for: a render face and
-  /// the collision face made of it coincide but for xrLC's moves, so a few centimetres finds the one under it, the
-  /// nearest taken where others lie stacked close by.
+  /// How far along its normal, either side, a triangle's collision face is looked for, in metres. A render face and its
+  /// collision face coincide but for xrLC's moves; the nearest is taken where faces stack close.
   pub const COLLISION_REACH: f32 = 0.05;
 
   /// Tallies every drawable visual of `level.geom` against the collision form. Impostors are left out: a billboard

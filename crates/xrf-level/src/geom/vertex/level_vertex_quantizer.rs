@@ -10,8 +10,9 @@ pub struct LevelVertexQuantizer;
 
 impl LevelVertexQuantizer {
   /// A direction's `D3DCOLOR` element with `extra` in its fourth byte, `u8_vec4`: each component of `[-1, 1]` taken to
-  /// `floor((c + 1) * 127.5)` in `[0, 255]`, stored blue, green, red, extra. xrLC normalizes a normal, and a basis
-  /// vector safely (`base_basis::set`), before this; the caller does as much.
+  /// `floor((c + 1) * 127.5)` in `[0, 255]`, stored blue, green, red, extra.
+  ///
+  /// The caller normalizes `direction` first, as xrLC does (`base_basis::set` for a basis vector).
   pub fn get_direction(direction: &Vector3d, extra: u8) -> [u8; 4] {
     let component = |value: f32| ((value + 1.0) * (0.5 * 255.0)).floor().clamp(0.0, 255.0) as u8;
     let mut bytes: [u8; 4] = [0; 4];
@@ -43,8 +44,8 @@ impl LevelVertexQuantizer {
       .clamp(f32::from(i16::MIN), f32::from(i16::MAX)) as i16
   }
 
-  /// A tree's coordinate short, `QC` (`xrMU_Model_export_geometry.cpp:8`): scaled by
-  /// [`LevelVertexLayout::TREE_QUANT`] and rounded down, a base coordinate and the wind fraction alike.
+  /// A tree's coordinate short, `QC` (`xrMU_Model_export_geometry.cpp`): scaled by [`LevelVertexLayout::TREE_QUANT`]
+  /// and rounded down, for a base coordinate and the wind fraction alike.
   pub fn get_tree_coordinate(value: f32) -> i16 {
     (value * LevelVertexLayout::TREE_QUANT)
       .floor()

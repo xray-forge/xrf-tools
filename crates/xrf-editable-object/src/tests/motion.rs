@@ -5,8 +5,7 @@ use xrf_skeleton::SkeletonMotionMark;
 
 use crate::{EditableBoneMotion, EditableMotion};
 
-/// A channel through `values` at one key a second, as storing it leaves it: the narrow layout quantises its keys'
-/// parameters.
+// Round-tripped through storage, since the narrow layout quantises the keys' parameters.
 fn channel(values: &[f32]) -> AnimationEnvelope {
   let mut channel: AnimationEnvelope = AnimationEnvelope::default();
 
@@ -57,7 +56,7 @@ fn motion(marks: Vec<SkeletonMotionMark>) -> EditableMotion {
   }
 }
 
-/// `motion` written, with its version field and the marks after its last bone changed as an older SDK stored them.
+// An older SDK's layout: the version field changed and no marks count after the last bone.
 fn written_as(version: u16, motion: &EditableMotion) -> XrfResult<Vec<u8>> {
   let mut bytes: Vec<u8> = EditableMotion::write_list::<XRayByteOrder>(std::slice::from_ref(motion))?;
   // The count, then the name and its terminator, then the first and last frames and the rate.

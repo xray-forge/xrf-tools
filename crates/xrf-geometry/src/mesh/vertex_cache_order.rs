@@ -4,10 +4,8 @@ use crate::mesh::mesh_vertex::MeshVertex;
 /// Orders a child's triangles for the GPU's post-transform vertex cache, and its vertices by first use, where the
 /// Actor Editor's export took D3DX's closed `D3DXOptimizeFaces` and `D3DXOptimizeVertices` (`MakeStripify`).
 ///
-/// The triangles follow Tom Forsyth's "Linear-Speed Vertex Cache Optimisation" (2006): each vertex scores by where it
-/// stands in a modelled LRU cache and by how few triangles still need it, each triangle by the sum of its corners, and
-/// the best triangle among those touching the cache goes next, in time linear in the triangles. It reaches the cache
-/// efficiency D3DX's order has on vanilla models without depending on it, and gives one order for one input.
+/// The triangles follow Tom Forsyth's "Linear-Speed Vertex Cache Optimisation" (2006), which reaches the cache
+/// efficiency of D3DX's order on vanilla models and gives one order for one input.
 pub struct VertexCacheOrder;
 
 impl VertexCacheOrder {

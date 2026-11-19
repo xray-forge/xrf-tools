@@ -183,8 +183,8 @@ impl BuildCformFile {
     Ok(())
   }
 
-  /// The form's faces in a tracer for the engine's ray and box queries, each named by its index here, the index of its
-  /// raycast record: the ray model the light and AI compilers query (`RCAST_Model`).
+  /// The form's faces in a tracer for ray and box queries, the model the light and AI compilers query (`RCAST_Model`).
+  /// Each face is named by its index here, which is its raycast record's.
   pub fn build_tracer(&self) -> BvhTracer {
     BvhTracer::of_triangles(self.get_triangles())
   }

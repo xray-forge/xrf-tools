@@ -1,14 +1,13 @@
 use glam::{Vec3, Vec4};
 use xrf_math::{Aabb, Affine3d, Vector3d};
 
-/// One shape of a space restrictor placed in the level, as `CSpaceRestrictorWrapper` tests nodes against it
-/// (`space_restrictor_wrapper.cpp`).
+/// One shape of a space restrictor placed in the level, as `CSpaceRestrictorWrapper` tests nodes against it.
 pub(crate) enum SpawnRestrictorShape {
   Sphere {
     centre: Vec3,
     radius: f32,
   },
-  /// A box as its six planes, each a normal and an offset (`Fplane`), with the corners that bound it.
+  /// A box as its six `Fplane` planes, each a normal and an offset, with its corners.
   Box {
     planes: [Vec4; 6],
     corners: [Vec3; 8],
@@ -16,10 +15,10 @@ pub(crate) enum SpawnRestrictorShape {
 }
 
 impl SpawnRestrictorShape {
-  /// `EPS_L`, the radius every point test passes.
+  /// `EPS_L`, the radius of every point test.
   pub(crate) const EPS_L: f32 = 0.001;
 
-  /// A sphere of the object's shape, `center` and `radius` in its frame, placed by `transform`.
+  /// A sphere, `center` in the object's frame, placed by `transform`.
   pub(crate) fn new_sphere(transform: &Affine3d, center: &Vector3d, radius: f32) -> Self {
     Self::Sphere {
       centre: Vec3::from(transform.transform_point(center)),
@@ -27,7 +26,7 @@ impl SpawnRestrictorShape {
     }
   }
 
-  /// A box of the object's shape, the unit cube taken by `matrix` in its frame, placed by `transform`.
+  /// A box, the unit cube taken by `matrix` in the object's frame, placed by `transform`.
   pub(crate) fn new_box(transform: &Affine3d, matrix: &Affine3d) -> Self {
     let placed: Affine3d = transform.compose(matrix);
     let point = |x: f32, y: f32, z: f32| Vec3::from(placed.transform_point(&Vector3d::new(x, y, z)));
@@ -55,7 +54,7 @@ impl SpawnRestrictorShape {
     }
   }
 
-  /// `inside(position, EPS_L)`: a sphere of `EPS_L` at the position meets the shape.
+  /// `inside(position, EPS_L)`: whether a sphere of `EPS_L` at the position meets the shape.
   pub(crate) fn contains(&self, position: Vec3) -> bool {
     match self {
       Self::Sphere { centre, radius } => {
@@ -80,8 +79,8 @@ impl SpawnRestrictorShape {
     }
   }
 
-  /// `Fplane::build(v1, v2, v3)`: the normal of the turn from the first edge to the second, and the offset putting the
-  /// first point on the plane.
+  /// `Fplane::build(v1, v2, v3)`: the plane through the three points, its normal wound from the first edge to the
+  /// second.
   fn plane(v1: Vec3, v2: Vec3, v3: Vec3) -> Vec4 {
     let normal: Vec3 = (v1 - v2).cross(v1 - v3).normalize();
 

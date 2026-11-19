@@ -6,12 +6,11 @@ use crate::merge::spawn_skipped_connection::SpawnSkippedConnection;
 use crate::root::spawn_root_level::SpawnRootLevel;
 use crate::separator::spawn_separator_cut::SpawnSeparatorCut;
 
-/// The checks of the root spawn build's report, each finding a warning naming its level; a build that refuses gives an
-/// error instead.
+/// The checks of the root spawn build's report, each finding a warning naming its level.
 pub(crate) struct SpawnRootReport;
 
 impl SpawnRootReport {
-  /// `spawn.graph-points`: the graph points each level's graph left out, as xrAI leaves them with a message.
+  /// `spawn.graph-points`: the graph points each level's graph left out, as xrAI does with a message.
   pub(crate) fn get_graph_points(levels: &[&SpawnRootLevel<'_>]) -> CheckReport {
     Self::new_check(
       "spawn.graph-points",
@@ -34,7 +33,7 @@ impl SpawnRootReport {
     )
   }
 
-  /// `spawn.connections`: the connections to levels outside the build the merge left out.
+  /// `spawn.connections`: the merge's skipped connections to levels outside the build.
   pub(crate) fn get_connections(skipped: &[SpawnSkippedConnection]) -> CheckReport {
     Self::new_check(
       "spawn.connections",
@@ -55,7 +54,7 @@ impl SpawnRootReport {
     )
   }
 
-  /// `spawn.separators`: the restrictors whose border cuts an AI map apart, the check having taken `took`.
+  /// `spawn.separators`: the restrictors cutting an AI map apart, timed at `took`.
   pub(crate) fn get_separators(cuts: &[SpawnSeparatorCut], took: Duration) -> CheckReport {
     Self::new_check(
       "spawn.separators",
@@ -67,7 +66,7 @@ impl SpawnRootReport {
     )
   }
 
-  /// What a cut is, for a finding or a refusal.
+  /// A cut's message, for a finding or a refusal.
   pub(crate) fn describe(cut: &SpawnSeparatorCut) -> String {
     let position = &cut.first_position;
 
@@ -77,7 +76,7 @@ impl SpawnRootReport {
     )
   }
 
-  /// A check that passes whatever it finds: its findings are warnings.
+  /// A check that passes whatever it finds, so its findings are warnings.
   fn new_check(id: &'static str, took: Option<Duration>, findings: Vec<Finding>) -> CheckReport {
     CheckReport::new(CheckId::of_static(id), Status::Passed, took, findings)
   }

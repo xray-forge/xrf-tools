@@ -79,7 +79,6 @@ fn an_object_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_chunk_nothing_names_survives_at_the_end_of_every_container() -> XrfResult {
-  // The writer puts kept chunks after the named ones, so a sentinel the editor left last comes back where it was.
   let original: Vec<u8> = fixtures::file(&fixtures::body_children(
     &fixtures::mesh_children(&fixtures::vmaps_payload(false), &fixtures::sentinel()),
     &fixtures::bone_children(true, &fixtures::sentinel()),
@@ -126,7 +125,7 @@ fn a_chunk_nothing_names_comes_back_where_the_file_stored_it() -> XrfResult {
 
 #[test]
 fn an_object_built_in_code_is_written_in_the_editors_order() -> XrfResult {
-  // Without a stored order the writer falls back to `CEditableObject::Save`'s, which the fixture follows.
+  // The fixture follows `CEditableObject::Save`'s order.
   let original: Vec<u8> = fixtures::dynamic_object();
   let mut object: EditableObjectFile = read(original.clone())?;
 
@@ -164,7 +163,6 @@ fn a_named_chunk_added_after_reading_goes_where_the_editor_puts_it() -> XrfResul
   Ok(())
 }
 
-/// The body's chunk ids, in the order they sit in a file.
 fn chunk_ids(bytes: &[u8]) -> XrfResult<Vec<u32>> {
   let mut root = xrf_chunk::ChunkReader::from_bytes(bytes)?;
   let mut body = root.read_child_by_index(0)?;
@@ -235,7 +233,7 @@ fn a_root_holding_more_than_the_body_is_refused() {
 
 #[test]
 fn a_mesh_list_with_a_gap_is_refused() {
-  // The editor opens mesh 0, 1, 2 and stops at the first missing, so mesh 1 here would vanish from it.
+  // The editor stops at the first missing number, so it would never see the mesh numbered 2.
   let mesh: Vec<u8> = fixtures::mesh_children(&fixtures::vmaps_payload(false), &[]);
   let mut meshes: Vec<u8> = fixtures::chunk(0, &mesh);
 

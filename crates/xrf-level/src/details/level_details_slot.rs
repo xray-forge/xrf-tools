@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::details::level_details_light::LevelDetailsLight;
 
-/// One cell of a level's detail grid, `DetailSlot` (`Layers/xrRender/DetailFormat.h`), as far as a reader on the CPU
-/// asks it: what it plants and how high. Its densities and light are decoded where they are used, on the GPU.
+/// One cell of a level's detail grid, `DetailSlot` (`Layers/xrRender/DetailFormat.h`): what it plants and how high.
+/// Densities and light are decoded on the GPU.
 ///
-/// The associated functions read and write a slot's packed words, the one rule every crate packs a slot by: the first
-/// two words hold its base height (12 bits), height (8), four corners' objects (6 each) and light (4 each, from bit
-/// 44); the last two its corners' palettes, 16 bits each, four densities of 4 bits.
+/// The associated functions are the one rule every crate packs a slot's words by. The first two words hold the base
+/// height (12 bits), height (8), four corners' objects (6 each) and light (4 each, from bit 44); the last two hold the
+/// corners' palettes, 16 bits each of four 4-bit densities.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelDetailsSlot {
@@ -103,7 +103,7 @@ impl LevelDetailsSlot {
   }
 
   /// `words` with each corner whose densities are all zero planting nothing, as the detail lighter leaves every slot
-  /// (`process_pallete`, `xrDO_Light/DetailFormat.h:232`).
+  /// (`process_pallete`).
   pub fn with_bare_corners_cleared(words: [u32; Self::WORDS]) -> [u32; Self::WORDS] {
     (0..Self::CORNERS).fold(words, |words, corner| {
       if Self::has_density(&words, corner) {

@@ -10,9 +10,8 @@ use crate::motion::editable_bone_motion::EditableBoneMotion;
 /// A skeleton motion an object keeps itself, `CSMotion` as `EOBJ_CHUNK_SMOTIONS` stores it: its frames, how it
 /// plays, and each bone's keyed channels.
 ///
-/// The object keeps the stored bytes rather than these, since the SDK reads four layouts and saves every motion back
-/// as version 7: rewriting an older one would change bytes nobody edited. [`Self::write_list`] writes version 7, for
-/// motions built in code.
+/// The object keeps the stored bytes rather than these: the SDK reads four layouts but saves only version 7, so
+/// rewriting an older motion would change bytes nobody edited. [`Self::write_list`] writes version 7.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableMotion {
   pub name: String,
@@ -65,8 +64,8 @@ impl EditableMotion {
   ///
   /// # Errors
   ///
-  /// Returns an error where a motion is of a version before [`Self::OLDEST_VERSION`] or past
-  /// [`Self::CURRENT_VERSION`], which the SDK refuses too, or the bytes end early or run on.
+  /// Returns an error on a motion version outside [`Self::OLDEST_VERSION`] to [`Self::CURRENT_VERSION`], or bytes that
+  /// end early or run on.
   pub fn read_list<T: ByteOrder>(bytes: &[u8]) -> XrfResult<Vec<Self>> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(bytes)?;
     let count: u32 = reader.read_u32::<T>()?;
@@ -82,7 +81,7 @@ impl EditableMotion {
   }
 
   /// The bytes of an `EOBJ_CHUNK_SMOTIONS` holding `motions`, each as `CSMotion::Save` writes it: version 7, whatever
-  /// version a motion was read from.
+  /// its stored version.
   ///
   /// # Errors
   ///

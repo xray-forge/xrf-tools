@@ -2,7 +2,6 @@ use xrf_math::Vector3d;
 
 use crate::weld::pack_grid::PackGrid;
 
-/// A vertex is filed under its cell and under each cell its reach moves into, alone and together, never twice.
 #[test]
 fn files_a_vertex_under_its_cell_and_the_cells_its_reach_moves_into() {
   let mut grid: PackGrid = PackGrid::new([2, 2, 2]);
@@ -17,7 +16,6 @@ fn files_a_vertex_under_its_cell_and_the_cells_its_reach_moves_into() {
   assert!(grid.get_filed([0, 0, 0]).is_empty());
 }
 
-/// The reach is half a cell, at most `EPS_L`.
 #[test]
 fn reaches_half_a_cell_at_most_a_millimetre() {
   let grid: PackGrid = PackGrid::new([4, 4, 4]);

@@ -1,6 +1,3 @@
-//! Every query of the hierarchy against a walk over every face, over a strewn soup and over a town of axis-aligned
-//! blocks crossed by rays along the axes from origins on the blocks' faces.
-
 use glam::Vec3;
 
 use crate::ray::ray::Ray;
@@ -10,12 +7,10 @@ use crate::tracer::trace_hit::TraceHit;
 use crate::tracer::tracer::Tracer;
 use crate::triangle::triangle::Triangle;
 
-/// The hierarchy and the brute-force walk over the same triangles.
 fn both(triangles: Vec<Triangle>) -> (BvhTracer, BruteTracer) {
   (BvhTracer::of_triangles(triangles.clone()), BruteTracer { triangles })
 }
 
-/// Asserts every ray query answers as the brute-force walk does.
 fn assert_rays_agree(tracer: &BvhTracer, brute: &BruteTracer, rays: &[Ray]) {
   for ray in rays {
     assert_eq!(every_hit(tracer, ray), every_hit(brute, ray), "every hit of {ray:?}");
@@ -71,8 +66,7 @@ fn answers_every_ray_query_as_testing_every_face_would() {
   assert_rays_agree(&tracer, &brute, &rays);
 }
 
-/// Rays along the axes and level with the ground, from origins on whole coordinates, many exactly on a block's face:
-/// a zero direction component and an origin on a box's face are where a box test loses faces.
+// A zero direction component and an origin on a box's face are where a box test loses faces.
 #[test]
 fn answers_rays_along_the_axes_from_the_faces_of_boxes_as_testing_every_face_would() {
   let (tracer, brute) = both(town(6, 2.0));
@@ -110,8 +104,7 @@ fn answers_rays_along_the_axes_from_the_faces_of_boxes_as_testing_every_face_wou
   assert_rays_agree(&tracer, &brute, &rays);
 }
 
-/// A ray along `x` from an origin on the plane of a block's side meets the block's edge there; a box test reading the
-/// NaN of that origin as outside skipped the block.
+// A box test reading this origin's NaN as outside would skip the block.
 #[test]
 fn meets_a_block_along_its_face_from_an_origin_on_that_face() {
   let (tracer, brute) = both(town(2, 2.0));

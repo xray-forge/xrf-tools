@@ -5,12 +5,10 @@ use xrf_math::Vector3d;
 
 use crate::{EditableFace, EditableMesh};
 
-/// A mesh's normals as the SDK's editors compute them, which is what they draw and what the OGF export stores.
+/// A mesh's normals as `CEditableMesh::GenerateVNormals` computes them for drawing and for the OGF export.
 ///
-/// `CEditableMesh::GenerateVNormals` gives each face corner the normalised sum of the face normals reachable around its
-/// point, starting from its own face and crossing only edges both faces call soft (`face_smoth_flags.h`), their
-/// back-face bits agreeing. The faces are walked depth first in the order the adjacency lists them, so a face is
-/// summed once however many paths reach it.
+/// Each face corner takes the normalised sum of the face normals reachable from its own face around its point, crossing
+/// only edges both faces call soft with their back-face bits agreeing. Each face is summed once, in the SDK's order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableMeshNormals {
   /// Each face's normal, `(p1 - p0) × (p2 - p1)` at unit length (`Fvector::mknormal`).
@@ -100,19 +98,18 @@ impl EditableMeshNormals {
   }
 }
 
-/// The walks around one point, `itterate_adjacents::RecurseTri` over `itterate_adjacents_params_dynamic`: the faces
-/// around it, and which of them each crosses to, found once for every corner at the point.
+/// The faces around one point and which each crosses to, built once for every corner there
+/// (`itterate_adjacents::RecurseTri`).
 struct FanWalk<'a> {
   /// The faces around the point, as the adjacency lists them.
   around: &'a [u32],
-  /// For each place in `around`, the places the walk crosses to from it, in ascending order, its own among them: a
-  /// face reaches itself, which is how a corner's own face is summed.
+  /// For each place in `around`, the places the walk crosses to, ascending and including its own, so a corner's own
+  /// face is summed.
   links: Vec<Vec<usize>>,
 }
 
 impl<'a> FanWalk<'a> {
-  /// The walks around the point `around` lists the faces of: each pair of faces sharing an edge, both calling it soft
-  /// and their back-face bits agreeing, linked, and each face to itself.
+  /// Links each face `around` lists to itself and to each it is connected to.
   fn of(faces: &[EditableFace], flags: &[u32], around: &'a [u32]) -> Self {
     let mut by_edge: HashMap<[u32; 2], Vec<usize>> = HashMap::new();
 
@@ -142,9 +139,8 @@ impl<'a> FanWalk<'a> {
     Self { around, links }
   }
 
-  /// The sum of the normals `face_normals` gives the faces reached from the place `start`, walked depth first through
-  /// the links in their order, each face summed as it is first reached: the order the SDK's recursion sums them in.
-  /// The walk keeps its own stack, as deep as the fan, rather than the thread's.
+  /// Sums the normals of the faces reached from place `start`, depth first through the links, each face once as first
+  /// reached: the order the SDK's recursion sums them in. The walk keeps its own stack rather than the thread's.
   fn sum_from(&self, start: usize, face_normals: &[Vector3d]) -> Vector3d {
     let mut is_reached: Vec<bool> = vec![false; self.around.len()];
     let mut sum: Vector3d = Vector3d::ZERO;

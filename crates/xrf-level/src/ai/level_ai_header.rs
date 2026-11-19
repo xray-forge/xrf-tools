@@ -42,12 +42,13 @@ impl LevelAiHeader {
     LevelAiGrid::new(&self.bounds, self.size)
   }
 
-  /// Cells along z, the stride a node's packed cell counts x in (`m_row_length`), however the header is formed.
+  /// Cells along z, the stride a node's packed cell counts x in (`m_row_length`), unchecked unlike
+  /// [`Self::get_grid`].
   pub fn get_row_length(&self) -> u32 {
     LevelAiGrid::covering(&self.bounds, self.size).get_row_length()
   }
 
-  /// Cells along x (`m_column_length`), however the header is formed.
+  /// Cells along x (`m_column_length`), unchecked unlike [`Self::get_grid`].
   pub fn get_column_length(&self) -> u32 {
     LevelAiGrid::covering(&self.bounds, self.size).get_column_length()
   }

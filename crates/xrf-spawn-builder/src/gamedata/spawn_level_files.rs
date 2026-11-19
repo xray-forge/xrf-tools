@@ -13,8 +13,8 @@ use crate::map::spawn_cross_table::SpawnCrossTable;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
 use crate::root::spawn_root_level::SpawnRootLevel;
 
-/// A level's files as the root spawn build reads them from its directory, and what is built from the level alone: its
-/// graph points, cross table and game graph (`CGameGraphBuilder`, run over each level before the merge).
+/// A level's files read from its directory, with what `CGameGraphBuilder` builds from the level alone before the
+/// merge: its graph points, cross table and game graph.
 pub(crate) struct SpawnLevelFiles {
   map: SpawnAiMap,
   spawn: LevelSpawnFile,
@@ -25,8 +25,7 @@ pub(crate) struct SpawnLevelFiles {
 }
 
 impl SpawnLevelFiles {
-  /// Whether a directory holds what a level of the build needs, its `level.ai` and `level.spawn`, and the `level.game`
-  /// its patrols come from.
+  /// Whether a directory holds `level.ai`, `level.spawn` and `level.game`.
   pub(crate) fn is_complete(directory: &Path) -> bool {
     [
       LevelAiFile::FILE_NAME,
@@ -37,20 +36,18 @@ impl SpawnLevelFiles {
     .all(|file| directory.join(file).is_file())
   }
 
-  /// Reads the level `name` from its directory and builds its graph, each packet read as the class `classes` gives its
-  /// section; a level without `level.game` has no patrols.
+  /// Reads the level `name` from its directory and builds its graph; a level without `level.game` has no patrols.
   ///
   /// # Errors
   ///
-  /// Returns an error naming the level when a file does not read, or its graph cannot be built (a graph point no path
-  /// on the AI map reaches from a neighbour among them).
+  /// Returns an error naming the level when a file does not read or its graph cannot be built, as when no AI map path
+  /// reaches a graph point from its neighbours.
   pub(crate) fn read(directory: &Path, name: &str, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     Self::read_unnamed(directory, classes)
       .map_err(|error| XrfError::new_invalid_error(format!("Level {name}: {error}")))
   }
 
-  /// The level as the build takes it, by its entry in the game's level list, its sections' classes as `classes` gives
-  /// them.
+  /// The build's input for this level under its entry in the game's level list.
   pub(crate) fn get_input<'a>(
     &'a self,
     level: &SpawnGameLevel,

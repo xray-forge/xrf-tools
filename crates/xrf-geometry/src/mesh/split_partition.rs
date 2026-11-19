@@ -5,13 +5,11 @@ use crate::mesh::mesh_vertex::MeshVertex;
 
 /// One split cut into children an OGF's 16-bit indices reach.
 ///
-/// The skeleton export keeps a split whole and its `VPack` overflows silently past 65,535 vertices; the static export
-/// starts a new part where `VPack` reaches the bound, losing the face it was packing, and its tangent pass can then
-/// carry a part past it again. High-poly models other tools exported spread one surface over several children of one
-/// texture and shader, which a decompile welds back into one. The engine draws any number of children alike, so a split
-/// past [`Self::MAX_VERTICES`] once its tangents are known is cut, its faces taken in order into one child until the
-/// next would carry it past the bound, its vertices numbered by first use in each. A split within the bound comes back
-/// as one child, as it was.
+/// The exports fail at that bound: the skeleton export's `VPack` overflows silently past 65,535 vertices, and the
+/// static export starts a new part there, losing the face it was packing. The engine draws any number of children
+/// alike, so a split past [`Self::MAX_VERTICES`] once its tangents are known is cut: faces go in order into one child
+/// until the next would pass the bound, vertices numbered by first use in each. A split within the bound comes back as
+/// one child, unchanged.
 pub struct SplitPartition;
 
 impl SplitPartition {

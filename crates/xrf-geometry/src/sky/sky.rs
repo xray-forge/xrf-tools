@@ -29,8 +29,8 @@ impl Sky {
     Hemisphere::get_lights(quality, Self::HEMI_ENERGY)
   }
 
-  /// The sun of `quality` along `pitch` and `heading`: a square of 1, 3, 4 or 7 lights a side, meant to spread over
-  /// `Self::SUN_DISPERSION_DEGREES`, sharing an energy of 1.
+  /// The sun of `quality` along `pitch` and `heading`: a square of 1, 3, 4 or 7 lights a side sharing an energy of 1.
+  /// As in the shipped editor, the samples meant to spread over `Self::SUN_DISPERSION_DEGREES` close on one direction.
   ///
   /// # Errors
   ///
@@ -51,9 +51,8 @@ impl Sky {
     let dispersion: f32 = Self::SUN_DISPERSION_DEGREES.to_radians();
     let step: f32 = dispersion / f32::from(samples);
     let (pitch_from, heading_from) = (pitch - dispersion / 2.0, heading - dispersion / 2.0);
-    // The source's `float x = mn_x+x*da;` reads the variable it declares, so the shipped editor takes each sample from
-    // the one before, from zero, the heading carried across rows: the samples close on one direction rather than
-    // spreading over the square. `l01_test`'s `build.prj` holds exactly these.
+    // The source's `float x = mn_x+x*da;` reads the variable it declares, so each sample starts from the one before,
+    // from zero, the heading carried across rows. `l01_test`'s `build.prj` holds exactly these.
     let (mut sample_pitch, mut sample_heading): (f32, f32) = (0.0, 0.0);
     let mut lights: Vec<SkyLight> = Vec::with_capacity(usize::from(samples * samples));
 

@@ -8,9 +8,8 @@ use crate::{EditableBoneBindPose, EditableBoneBreak, EditableBoneDefinition, Edi
 
 /// One bone of an editable object's skeleton, `CBone` as `CBone::Save` stores it.
 ///
-/// The editor writes `BONE_CHUNK_DEF` twice: its place in the skeleton first, then the name alone again ahead of the
-/// physics data `CBone::SaveData` writes. `CBone::Load_1` reads only the first, so the second is
-/// [`Self::data_name`], kept to write back as stored.
+/// The editor writes `BONE_CHUNK_DEF` twice: the skeleton place first, then the name alone ahead of the physics data
+/// `CBone::SaveData` writes. `CBone::Load_1` reads only the first; the second is kept as [`Self::data_name`].
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableBone {
   /// `BONE_VERSION`: 1 or 2, which the SDK both loads.
@@ -54,9 +53,8 @@ impl EditableBone {
   ///
   /// # Errors
   ///
-  /// Returns an error where the SDK asserts — a missing version, definition, bind pose, material, shape or joint
-  /// chunk — for a version [`Self::SUPPORTED_VERSIONS`] does not hold, and where a chunk holds more or less than its
-  /// fields.
+  /// Returns an error on a missing version, definition, bind pose, material, shape or joint chunk, a version outside
+  /// [`Self::SUPPORTED_VERSIONS`], or a chunk holding more or less than its fields.
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut definition: Option<EditableBoneDefinition> = None;

@@ -2,13 +2,11 @@ use glam::{Vec3, Vec3A};
 
 use crate::tracer::xrlc::xrlc_child::XrlcChild;
 
-/// One node of xrLC's ray model (`AABBNoLeafNode`, `xrCDB/OPC_OptimizedTree.cpp`): the box of every face below it and
-/// its two sides, the first (`GetPos`) walked before the second (`GetNeg`).
+/// One node of xrLC's ray model (`AABBNoLeafNode`): the box of every face below it and its two sides, the first
+/// (`GetPos`) walked before the second (`GetNeg`).
 ///
-/// Opcode keeps the box as a centre and half extents, and the ray test gives it back as `centre - extents` to
-/// `centre + extents` (`ray_collider::_box_sse`, `xrCDB/xrCDB_ray.cpp`); both are rounded to single precision, so a box
-/// can end a rounding short of the faces it holds. The box is held here as given back, each lane the same single
-/// precision operation.
+/// The box is held as `ray_collider::_box_sse` gives back Opcode's centre and half extents, rounded in single
+/// precision, so it can end a rounding short of the faces it holds.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct XrlcNode {
   pub(crate) low: Vec3A,
@@ -30,9 +28,10 @@ impl XrlcNode {
   }
 
   /// Where along a ray from `origin` with the inverse direction `inverse` its line enters the box, where the ray
-  /// reaches it at all: `isect_sse`, lane for lane. `_mm_min_ps` and `_mm_max_ps` give their second operand where
-  /// either is NaN, so an axis whose slab gives `0 * inf` (a ray along a box's face) is clamped to plus and minus
-  /// infinity there and bounds nothing. The entry may lie behind the origin, which still reaches the box.
+  /// reaches it at all: `isect_sse`, lane for lane. The entry may lie behind the origin.
+  ///
+  /// A ray along a box's face gives `0 * inf` on that axis, which the SSE clamps to infinity, so the axis bounds
+  /// nothing.
   pub(crate) fn get_entry(&self, origin: Vec3A, inverse: Vec3A) -> Option<f32> {
     let first: Vec3A = (self.low - origin) * inverse;
     let second: Vec3A = (self.high - origin) * inverse;

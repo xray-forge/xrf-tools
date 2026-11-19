@@ -1,7 +1,6 @@
-/// An AI map's connected parts, a link joining two nodes either way, found by union-find with path halving.
+/// An AI map's connected parts, a link joining two nodes either way (union-find).
 ///
-/// Each part is named by its lowest node, whatever the order its links were joined in, so a part reads the same from
-/// every walk of the map.
+/// Each part is named by its lowest node, whatever order its links were joined in.
 #[derive(Clone, Debug)]
 pub struct LevelAiParts {
   /// Each node's parent towards its part's root, the root its own.
@@ -16,7 +15,7 @@ impl LevelAiParts {
     }
   }
 
-  /// Joins the parts of `first` and `second`; the lower root stays, so a root is always its part's lowest node.
+  /// Joins the parts of `first` and `second`, keeping the lower root.
   pub fn join(&mut self, first: u32, second: u32) {
     let (first, second) = (self.find(first), self.find(second));
 

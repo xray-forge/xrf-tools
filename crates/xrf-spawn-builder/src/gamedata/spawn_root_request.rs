@@ -21,8 +21,7 @@ pub struct SpawnRootRequest {
   /// The spawn's name, written as `<name>.spawn`.
   pub name: String,
   pub options: SpawnRootOptions,
-  /// Write over the spawn where the directory holds it, in any case of its name; unforced, the build refuses before
-  /// reading a level.
+  /// Write over a spawn already there in any case of its name; unforced, the build refuses before reading a level.
   pub is_forced: bool,
 }
 

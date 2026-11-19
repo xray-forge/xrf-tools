@@ -1,5 +1,7 @@
-/// The random stream xrAI's spawn build draws from: the MSVC runtime's `rand` and VS2008's `std::random_shuffle`, from
-/// the seed every thread starts at, 1. Nothing seeds it, so the same draws in the same order give the shipped result.
+/// The random stream xrAI's spawn build draws from: MSVC's `rand` and VS2008's `std::random_shuffle`, from the
+/// thread's initial seed of 1.
+///
+/// xrAI never seeds it, so the same draws in the same order give the shipped result.
 pub(crate) struct SpawnRandom {
   state: u32,
 }
@@ -21,8 +23,9 @@ impl SpawnRandom {
     (self.state >> 16) & Self::MAX as u32
   }
 
-  /// `_Random_shuffle`: each element from the second swapped with one at an index drawn below its own plus one, the
-  /// draw widened 15 bits at a time, in 32 bits, while the range is smaller.
+  /// `_Random_shuffle`: each element from the second swapped with one at a drawn index up to its own.
+  ///
+  /// The draw widens 15 bits at a time, within 32 bits, while its range is below the element's count.
   pub(crate) fn shuffle<T>(&mut self, items: &mut [T]) {
     for index in 2..=items.len() as u64 {
       let (mut range, mut value): (u64, u64) = (Self::MAX, u64::from(self.draw()));

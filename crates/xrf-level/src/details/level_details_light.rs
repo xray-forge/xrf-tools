@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// A detail slot's light, `DetailSlot`'s `c_dir`, `c_hemi`, `c_r`, `c_g` and `c_b` (`xrDO_Light/DetailFormat.h`): four
-/// bits each, from 0 to [`Self::MAXIMUM`], the sun's, the sky's and the static lights' colour.
+/// A detail slot's light, `DetailSlot`'s `c_dir`, `c_hemi`, `c_r`, `c_g` and `c_b`: the sun's, the sky's and the static
+/// lights' colour, four bits each up to [`Self::MAXIMUM`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelDetailsLight {
@@ -16,7 +16,7 @@ impl LevelDetailsLight {
   /// The largest value four bits hold.
   pub const MAXIMUM: u8 = 15;
 
-  /// No light at all, as the Build exports every slot for the detail lighter to light.
+  /// No light, as the Build exports every slot for the detail lighter.
   pub const UNLIT: Self = Self {
     sun: 0,
     hemi: 0,
@@ -25,8 +25,8 @@ impl LevelDetailsLight {
     blue: 0,
   };
 
-  /// A light value from 0 to 1 in four bits, `DetailSlot::w_qclr(value, 15)`: the product rounded down, clamped, and
-  /// 0 for no number at all.
+  /// A light value from 0 to 1 in four bits, `DetailSlot::w_qclr(value, 15)`: the product rounded down and clamped,
+  /// NaN giving 0.
   pub fn quantize(value: f32) -> u8 {
     ((value * f32::from(Self::MAXIMUM)).floor() as i32).clamp(0, i32::from(Self::MAXIMUM)) as u8
   }

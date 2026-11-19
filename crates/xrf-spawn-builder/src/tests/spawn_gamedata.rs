@@ -7,8 +7,6 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::{SpawnListedLevel, SpawnRootGamedata, SpawnRootOptions, SpawnRootRequest};
 
-/// A gamedata root whose `game_levels.ltx` lists `zaton` (108) and `labx8` (150), and a levels root holding a complete
-/// `labx8` and a `zaton` lacking its `level.game`.
 fn gamedata(case: &str) -> XrfResult<(PathBuf, PathBuf)> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("spawn-builder/gamedata/{case}"))?;
   let (gamedata, levels) = (root.join("gamedata"), root.join("built"));

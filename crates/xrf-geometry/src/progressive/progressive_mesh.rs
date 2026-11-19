@@ -7,17 +7,11 @@ use crate::progressive::progressive_quadric::ProgressiveQuadric;
 use crate::progressive::progressive_shape::ProgressiveShape;
 use crate::progressive::progressive_window::ProgressiveWindow;
 
-/// A mesh made progressive by sliding windows, as xrLC's tools make one (`VIPM_Convert`, `ETools/PropSlimTools.cpp`,
-/// after Tom Forsyth's "Comparison of VIPM Methods", Game Programming Gems 2, 2001).
+/// A mesh made progressive by sliding windows, as xrLC's tools make one (`VIPM_Convert`, after Tom Forsyth's
+/// "Comparison of VIPM Methods", Game Programming Gems 2, 2001).
 ///
-/// Edges are collapsed one at a time, each time the one whose removed vertex, moved onto its neighbour, lies least far
-/// off the planes of the triangles around it, measured by a quadric over position and texture coordinate
-/// (`ProgressiveQuadric`). A vertex on an open edge never moves. The collapses fall into levels: the triangles a
-/// collapse makes belong to the next level, and a collapse touching one must start that level, which it does only
-/// where its error beats the best on the current level by more than the mean error (`Self::LEVEL_TOLERANCE`). Each
-/// level's triangles are laid out once in the index buffer so every state of it is one contiguous run: those its
-/// collapses will make first, then those it leaves alone, then those its collapses take away. The vertices are
-/// renumbered so each state's are a prefix.
+/// Edges collapse cheapest first by `ProgressiveQuadric`; a vertex on an open edge never moves. Every state's
+/// triangles are one contiguous run of the index buffer, and its vertices a prefix of the renumbered ones.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProgressiveMesh {
   /// Where each vertex goes: its new index, by its old one.

@@ -1,7 +1,7 @@
 use xrf_error::{XrfError, XrfResult};
 
-/// How wide the description's time stamps are: the SDK writes its `time_t` raw, and the editors were built both with
-/// the 32-bit one and with the 64-bit one later compilers default to.
+/// How wide the description's time stamps are: the SDK writes its `time_t` raw, and editors were built with both the
+/// 32-bit and the 64-bit one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EditableTimeWidth {
   Seconds32,
@@ -17,8 +17,8 @@ impl EditableTimeWidth {
     }
   }
 
-  /// The width that lays `tail` out as a time stamp, a null-terminated string and a second time stamp of the same
-  /// width, which is what follows the creator's name.
+  /// The width that lays out `tail`, what follows the creator's name, as a time stamp, a null-terminated string and a
+  /// second time stamp.
   ///
   /// # Errors
   ///

@@ -1,5 +1,5 @@
-/// What an object flagged as an occluder blocks, which the Build writes it out as instead of level geometry, and which
-/// the Level Editor draws it as instead of its surfaces (`CEditableObject::Render`).
+/// What an object flagged as an occluder blocks. The Build writes it as that instead of level geometry, and the Level
+/// Editor draws it so instead of its surfaces (`CEditableObject::Render`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EditableOccluder {
   /// `eoHOM`: sight, written to `level.hom`.

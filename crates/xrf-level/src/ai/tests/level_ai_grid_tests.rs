@@ -3,7 +3,7 @@ use xrf_math::{Aabb, Vector3d};
 
 use crate::ai::level_ai_grid::LevelAiGrid;
 
-/// One-metre cells over a box 9 metres along x and 4 along z from the origin: 10 rows of 5 cells.
+// 10 rows of 5 one-metre cells.
 fn grid() -> XrfResult<LevelAiGrid> {
   LevelAiGrid::new(
     &Aabb {
@@ -41,7 +41,7 @@ fn places_a_point_by_the_compilers_rule_or_the_games() -> XrfResult {
   // Just short of a cell's border: the compiler's `EPS_L` tips it into the next cell, the game's lookup does not.
   assert_eq!(grid.compress_cell(0.4995, 0.0)?, 5);
   assert_eq!(grid.find_cell(0.4995, 0.0), (0, 0));
-  // Off the grid the game's lookup names a cell outside it, which its callers test; the compiler refuses the point.
+  // Off the grid the game's lookup names a cell outside it; the compiler refuses the point.
   assert_eq!(grid.find_cell(-3.0, 9.0), (-3, 9));
   assert!(grid.compress_cell(-3.0, 0.0).is_err());
   assert!(grid.compress_cell(0.0, 9.0).is_err());

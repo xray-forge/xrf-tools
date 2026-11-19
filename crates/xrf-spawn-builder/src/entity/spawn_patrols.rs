@@ -6,8 +6,8 @@ use crate::entity::spawn_level_entities::SpawnLevelEntities;
 use crate::entity::spawn_level_vertices::SpawnLevelVertices;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
 
-/// A level's patrol paths as xrAI reads them from its `level.game` (`CPatrolPathStorage::load_raw`,
-/// `patrol_path_storage.cpp:20`): each way's points placed on the AI map, its links kept as they came.
+/// A level's patrol paths read from its `level.game`, `CPatrolPathStorage::load_raw`: points placed on the AI map,
+/// links kept as they came.
 pub(crate) struct SpawnPatrols;
 
 impl SpawnPatrols {
@@ -51,11 +51,11 @@ impl SpawnPatrols {
     }
   }
 
-  /// `CPatrolPoint::load_raw` and `correct_position`: the node of the point's cell under its raised position, the
-  /// point moved onto that node where it stands outside its cell, and the node's game vertex.
+  /// `CPatrolPoint::load_raw` and `correct_position`: the node under the raised point and its game vertex, the point
+  /// moved onto the node when outside its cell.
   ///
-  /// A point with no node under it keeps none; xrAI leaves its game vertex as memory held it, where this takes the
-  /// game vertex of its nearest node's cell, a vertex of its own level.
+  /// A point with no node under it keeps none. xrAI leaves its game vertex uninitialised; this takes the nearest
+  /// node's game vertex, one of its own level.
   fn build_point(level: &SpawnMergeLevel<'_>, point: &LevelGameWayPoint, vertices: &SpawnLevelVertices) -> PatrolPoint {
     let raised: Vector3d<f32> = SpawnLevelEntities::raise(&point.position);
     let node: Option<u32> = level

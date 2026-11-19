@@ -2,7 +2,6 @@ use glam::Vec3A;
 
 use crate::ray::slab_ray::SlabRay;
 
-/// Whether a ray reaches the box a metre across from the origin.
 fn reaches_unit_box(origin: [f32; 3], direction: [f32; 3], reach: f32) -> bool {
   SlabRay::new(Vec3A::from(origin), Vec3A::from(direction)).reaches(reach, Vec3A::ZERO, Vec3A::ONE)
 }
@@ -15,8 +14,6 @@ fn reaches_a_box_along_its_axes_and_misses_one_beside_them() {
   assert!(!reaches_unit_box([0.5, 0.5, -1.0], [0.0, 0.0, -1.0], 5.0));
 }
 
-// A direction with a zero component from an origin on a face's plane runs along the face: the NaN the products give
-// there counts as inside.
 #[test]
 fn reaches_a_box_along_a_face_from_an_origin_on_its_plane() {
   assert!(reaches_unit_box([0.0, 0.5, -1.0], [0.0, 0.0, 1.0], 5.0));

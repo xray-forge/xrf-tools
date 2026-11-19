@@ -22,7 +22,6 @@ use crate::tests::fixtures::{
   actor_object, changer_object, graph_point_object, grid, separator_object, spawn_file, zone_object,
 };
 
-/// A level's files, and the graph and cross table built from them.
 struct Level {
   map: SpawnAiMap,
   list: LevelSpawnFile,
@@ -38,7 +37,6 @@ impl Level {
     Self::with_classes(map, objects, ways, SpawnSectionClasses::default())
   }
 
-  /// The level, its sections read as `classes` gives them.
   fn with_classes(
     map: SpawnAiMap,
     objects: &[AlifeObject],
@@ -86,7 +84,6 @@ impl Level {
   }
 }
 
-/// A patrol named `name` through the cells at `points`, each linked to the next.
 fn way(name: &str, points: &[(f32, f32)]) -> LevelGameWay {
   LevelGameWay {
     version: 0x13,
@@ -111,8 +108,7 @@ fn way(name: &str, points: &[(f32, f32)]) -> LevelGameWay {
   }
 }
 
-/// Level `b` (id 10): six cells by two, cell (5, 1) a hole; graph points at (0, 0), connecting to `a`'s `a_end`, and
-/// (5, 0); the actor, a zone and a changer into `a`; a patrol whose second point stands over the hole.
+// Cell (5, 1) is a hole, where the `b_walk` patrol of `levels` puts its second point.
 fn level_b(extra: &[AlifeObject], ways: Vec<LevelGameWay>) -> XrfResult<Level> {
   let mut objects: Vec<AlifeObject> = vec![
     graph_point_object("b_start", 0.0, 0.0, "a", "a_end")?,
@@ -131,8 +127,6 @@ fn level_b(extra: &[AlifeObject], ways: Vec<LevelGameWay>) -> XrfResult<Level> {
   )
 }
 
-/// Level `a` (id 20, 100 m along x): a row of four cells, graph points at either end, the second connecting to `b`'s
-/// `b_start`; a zone, a changer into `b` and a patrol.
 fn level_a(extra: &[AlifeObject], ways: Vec<LevelGameWay>) -> XrfResult<Level> {
   let mut objects: Vec<AlifeObject> = vec![
     graph_point_object("a_start", 0.0, 0.0, "", "")?,
@@ -227,7 +221,7 @@ fn lays_the_levels_out_by_id_and_links_their_changers() -> XrfResult {
 
   assert_eq!((into_b.dest_game_vertex_id, into_b.dest_level_vertex_id), (0, 0));
 
-  // The zones' points one level after another, each zone's offset where its own begin.
+  // `b`'s zone keeps two points, so `a`'s begin at 2.
   let offsets: Vec<Option<u32>> = ["b_zone", "a_zone"]
     .iter()
     .map(|name| find(&spawn, name).get_built_fields().artefact_position_offset)
@@ -348,7 +342,6 @@ fn refuses_patrols_sharing_a_name_and_an_unknown_start() -> XrfResult {
   Ok(())
 }
 
-/// An object with `story_id`, a zone's.
 fn with_story_id(mut object: AlifeObject, story_id: u32) -> AlifeObject {
   if let AlifeObjectInherited::CseAlifeAnomalousZone(zone) = &mut object.inherited {
     zone.base.base.base.base.story_id = story_id;
@@ -458,8 +451,7 @@ fn refuses_a_shared_story_id_and_a_level_of_no_entity() -> XrfResult {
   Ok(())
 }
 
-/// An entity of a mod's section, which the table does not know, builds as the class the game's configs give its
-/// section, through its parent.
+// The class table does not know the mod's section; only the configs give its class, through its parent.
 #[test]
 fn builds_an_entity_of_a_mod_section_by_its_configs() -> XrfResult {
   let (_, b) = levels()?;
@@ -523,7 +515,7 @@ fn refuses_a_level_whose_graph_points_are_all_left_out() -> XrfResult {
   Ok(())
 }
 
-/// The engine lowercases a section's name as it reads it, so a mod listing `Level01` over a `[Level01]` names the level.
+// The engine lowercases section names as it reads them, as mods rely on.
 #[test]
 fn reads_a_level_listed_and_declared_in_capitals() -> XrfResult {
   let ltx = Ltx::read_from_str("[levels]\nLevel01\n\n[Level01]\nname = Mod_Level\noffset = 0, 0, 0\nid = 1\n")?;

@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 
 use crate::EditableFaceCorner;
 
-/// One triangle of a mesh, `st_Face`. Corners that share a point but not a vertex map reference are where a seam
-/// splits UVs while the surface stays joined, which is what an OGF loses and a decompiler has to weld back.
+/// One triangle of a mesh, `st_Face`. Corners sharing a point but not a vertex map reference mark a UV seam on a joined
+/// surface, which an OGF loses and a decompiler must weld back.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EditableFace {
   pub corners: [EditableFaceCorner; 3],

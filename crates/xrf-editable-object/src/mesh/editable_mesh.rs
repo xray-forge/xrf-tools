@@ -19,15 +19,14 @@ pub struct EditableMesh {
   /// accepts.
   pub options: Option<[u32; 2]>,
   pub points: Vec<Vector3d>,
-  /// Whether the points chunk also carries the faces around each point, as editors older than `SaveMesh` saved it.
-  /// `LoadMesh` never reads them; the writer derives them from [`Self::faces`], see [`Self::get_point_faces`], so an
-  /// edited mesh cannot write back lists its faces no longer give.
+  /// Whether the points chunk also carries the faces around each point, as older editors saved it. `LoadMesh` ignores
+  /// them; the writer derives them with [`Self::get_point_faces`], so they always match [`Self::faces`].
   pub has_point_faces: bool,
   pub faces: Vec<EditableFace>,
   /// One smoothing group mask per face, `None` where the mesh stores none.
   pub smoothing_groups: Option<Vec<u32>>,
-  /// Each face's corner normals, in corner order, which `blender-xray` writes beside the smoothing groups and the SDK
-  /// never reads (see [`Self::CORNER_NORMALS_CHUNK_ID`]). `None` where the mesh stores none.
+  /// Each face's corner normals, which `blender-xray` writes and the SDK never reads
+  /// ([`Self::CORNER_NORMALS_CHUNK_ID`]). `None` where the mesh stores none.
   pub corner_normals: Option<Vec<[Vector3d; 3]>>,
   pub vmap_references: Vec<EditableVMapReference>,
   pub surface_faces: Vec<EditableSurfaceFaces>,
@@ -53,8 +52,8 @@ impl EditableMesh {
   pub const OPTIONS_CHUNK_ID: u32 = 0x1010;
   pub const VMAPS_CHUNK_ID: u32 = 0x1012;
   pub const SMOOTHING_GROUPS_CHUNK_ID: u32 = 0x1013;
-  /// `blender-xray`'s per-corner normals (`Chunks.Mesh.NORMALS`): three per face, no count, which its importer applies
-  /// as custom split normals. `CEditableMesh::LoadMesh` reads no such chunk, so the SDK keeps smoothing by the groups.
+  /// `blender-xray`'s per-corner normals (`Chunks.Mesh.NORMALS`), three per face with no count, which its importer
+  /// applies as custom split normals. `LoadMesh` ignores the chunk, so the SDK smooths by the groups.
   pub const CORNER_NORMALS_CHUNK_ID: u32 = 0x1014;
 
   /// `flVisible`: the editor draws the mesh, as every mesh it saves for export is.
@@ -74,9 +73,9 @@ impl EditableMesh {
   ///
   /// # Errors
   ///
-  /// Returns an error where the SDK fails or asserts: a version other than [`Self::VERSION`], or a required chunk
-  /// missing; and where a chunk holds more or less than its fields, smoothing groups or corner normals do not match the
-  /// faces, stored point face lists are not the ones the faces give, or a count runs past its chunk.
+  /// Returns an error on a version other than [`Self::VERSION`], a missing required chunk, a chunk holding more or less
+  /// than its fields, per-face lists not one per face, stored point faces the faces do not give, or a count running
+  /// past its chunk.
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut name: Option<String> = None;
@@ -201,9 +200,8 @@ impl EditableMesh {
   ///
   /// # Errors
   ///
-  /// Returns an error when a list is longer than its count field holds, smoothing groups or corner normals do not match
-  /// the faces, a face names a point the mesh does not have while its point faces are written, or a vertex map's lists
-  /// disagree on its entry count.
+  /// Returns an error when a list overflows its count field, per-face lists are not one per face, a face names a
+  /// missing point while point faces are written, or a vertex map's lists disagree on its entry count.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_per_face_lists_match()?;
 
@@ -289,8 +287,8 @@ impl EditableMesh {
     self.flags & Self::SMOOTHING_GROUP_MASK_FLAG != 0
   }
 
-  /// The bit of a face's smoothing word that marks `edge`, from corner `edge` to corner `(edge + 1) % 3`, hard
-  /// (`face_smoth_flags.h`): a back face stores edge `e` at bit `(4 - e) % 3` (`convert_edge_index`).
+  /// The bit of smoothing word `smoothing` that marks `edge`, corner `edge` to corner `(edge + 1) % 3`, hard. A back
+  /// face stores edge `e` at bit `(4 - e) % 3` (`convert_edge_index`).
   pub const fn get_hard_edge_flag(smoothing: u32, edge: usize) -> u32 {
     let bit: usize = if smoothing & Self::BACK_FACE_SMOOTHING_FLAG != 0 {
       (4 - edge) % 3
@@ -331,8 +329,7 @@ impl EditableMesh {
     Ok(point_faces)
   }
 
-  /// Refuses smoothing groups or corner normals that are not one entry per face, which their readers take straight off
-  /// the chunk per face.
+  /// Refuses smoothing groups or corner normals that are not one entry per face, since their chunks store no count.
   fn assert_per_face_lists_match(&self) -> XrfResult {
     let lists = [
       ("smoothing groups", self.smoothing_groups.as_ref().map(Vec::len)),

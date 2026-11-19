@@ -8,8 +8,7 @@ use crate::graph::spawn_graph_point_removal::SpawnGraphPointRemoval;
 use crate::graph::spawn_removed_graph_point::SpawnRemovedGraphPoint;
 use crate::map::spawn_ai_map::SpawnAiMap;
 
-/// A level's game vertices to be, its graph points in `level.spawn`'s order (`load_graph_points`), with the ones the
-/// build leaves out and why.
+/// A level's graph points in `level.spawn` order, `load_graph_points`, with the ones left out and why.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SpawnGraphPoints {
   pub points: Vec<SpawnGraphPoint>,
@@ -20,8 +19,7 @@ impl SpawnGraphPoints {
   /// `EPS_L`, the squared distance under which two graph points are one.
   const TOO_CLOSE_SQUARED: f32 = 0.001;
 
-  /// The graph points of a level's spawn list, each placed on the node of its cell nearest at or under it, each packet
-  /// read as the class `classes` gives its section.
+  /// The graph points of a level's spawn list, each placed on the node under it.
   ///
   /// # Errors
   ///
@@ -58,8 +56,8 @@ impl SpawnGraphPoints {
     }
   }
 
-  /// The node a graph point at `position` takes, tested as xrAI does in order: not too close to a point kept before,
-  /// over a node, and not over a kept point's node.
+  /// The node a graph point at `position` takes, testing in xrAI's order: not too close to a kept point, over a node,
+  /// and not on a kept point's node.
   fn place(&self, position: &Vector3d<f32>, map: &SpawnAiMap) -> Result<u32, SpawnGraphPointRemoval> {
     if self.points.iter().any(|kept| {
       let (dx, dy, dz) = (

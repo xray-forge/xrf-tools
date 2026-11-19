@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// What a list of `build.lights` lights, by the chunk xrLC writes it to (`base_lighting`, read by
-/// `xrLC_Light/global_calculation_data.cpp:66`): the static lights' colour, the sky's hemisphere, or the sun.
+/// `global_calculation_data.cpp`): the static lights' colour, the sky's hemisphere, or the sun.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LevelLightRole {

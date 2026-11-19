@@ -1,11 +1,10 @@
 use xrf_spawn::{AlifeObject, AlifeObjectInherited};
 
-/// Whether an object stands on the AI map, `CSE_ALifeObject::used_ai_locations` and its overrides: such an object takes
-/// the node under it and that node's game vertex, any other the level's first vertex.
+/// Whether an object stands on the AI map, `CSE_ALifeObject::used_ai_locations` and its overrides.
 pub(crate) struct SpawnAiLocations;
 
 impl SpawnAiLocations {
-  /// `flUsedAI_Locations`, the flag the classes that do not decide for themselves read.
+  /// `flUsedAI_Locations`, read by the classes without an override.
   const FLAG: u32 = 1 << 7;
 
   pub(crate) fn is_used(object: &AlifeObject) -> bool {

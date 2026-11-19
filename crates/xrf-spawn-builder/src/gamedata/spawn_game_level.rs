@@ -1,6 +1,6 @@
 use xrf_math::Vector3d;
 
-/// One level the game's `[levels]` lists (`configs/game_levels.ltx`), as xrAI's `read_levels` takes it.
+/// One `[levels]` entry of `configs/game_levels.ltx`, as `read_levels` takes it.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SpawnGameLevel {
   /// Its section, `level108` for vanilla's zaton.

@@ -14,29 +14,23 @@ use crate::merge::spawn_merge_level::SpawnMergeLevel;
 use crate::merge::spawn_random::SpawnRandom;
 use crate::merge::spawn_skipped_connection::SpawnSkippedConnection;
 
-/// The levels' game graphs merged into the one a root spawn holds, as xrAI's `CGraphMerger` does
-/// (`xr_graph_merge.cpp:526`).
+/// The levels' game graphs merged into the one a root spawn holds, `CGraphMerger`.
 ///
-/// The levels go in ascending id order, each vertex's edges numbered past the vertices of the levels before. Each
-/// vertex keeps level points ("death points", `vfGenerateDeathPoints`): its region's nodes in node order, shuffled by
-/// [`SpawnRandom`], the first tenth kept, at most 255, or every one of ten or fewer; the build's one stream, from its
-/// start, which gives the shipped points. Then each graph point naming a connection on a level
-/// of the build gets an edge to that point's vertex, the distance between them in the world the levels share; the
-/// levels in id order, each level's points by name. The graph GUID is derived from the graph as written with no
-/// GUID, so the same levels give the same graph.
+/// Levels go in ascending id order, each level's vertices numbered after those of the levels before. The graph GUID is
+/// derived from the content, so the same levels give the same graph.
 pub(crate) struct SpawnGameGraphMerger;
 
 impl SpawnGameGraphMerger {
   /// `XRAI_CURRENT_VERSION`, the version of the graph and its cross tables.
   pub(crate) const VERSION: u8 = 10;
 
-  /// Merges the levels' graphs, the level points drawn from `random`: the build's one stream, which the zones'
+  /// Merges the levels' graphs, drawing level points from `random`, the build's one stream, which the zones'
   /// artefact points draw from next.
   ///
   /// # Errors
   ///
-  /// Returns an error when two levels share an id or a name, a level's graph or cross table is not its points' and
-  /// map's, a connection names a graph point its level lacks, or the graph is past what its format counts.
+  /// Returns an error when two levels share an id or a name, a level's graph or cross table does not match its points
+  /// and map, a connection names a graph point its level lacks, or the graph exceeds its format's counts.
   pub(crate) fn merge(levels: &[SpawnMergeLevel<'_>], random: &mut SpawnRandom) -> XrfResult<SpawnGameGraphMerge> {
     let mut ordered: Vec<&SpawnMergeLevel<'_>> = levels.iter().collect();
 
@@ -155,8 +149,8 @@ impl SpawnGameGraphMerger {
     Ok(SpawnGameGraphMerge { graph, skipped })
   }
 
-  /// Refuses levels the merge cannot number: two sharing an id or a name, a level whose graph or cross table does not
-  /// match its graph points or map, or more vertices in all than a game vertex id holds.
+  /// Refuses levels sharing an id or a name, a level whose graph or cross table does not match its points or map, or
+  /// more vertices in all than a game vertex id holds.
   fn assert_mergeable(ordered: &[&SpawnMergeLevel<'_>]) -> XrfResult {
     let invalid = |message: String| Err(XrfError::new_invalid_error(message));
 
@@ -193,6 +187,9 @@ impl SpawnGameGraphMerger {
   }
 
   /// `vfGenerateDeathPoints` for every vertex of a level, in vertex order.
+  ///
+  /// Each vertex's region nodes, in node order, are shuffled; it keeps the first tenth, at most 255, or all of ten or
+  /// fewer. Drawn from the stream's start, this gives the shipped points.
   fn draw_level_points(level: &SpawnMergeLevel<'_>, random: &mut SpawnRandom) -> Vec<Vec<GraphLevelPoint>> {
     let mut regions: Vec<Vec<u32>> = vec![Vec::new(); level.points.len()];
 
@@ -225,8 +222,10 @@ impl SpawnGameGraphMerger {
       .collect()
   }
 
-  /// "Adding interconnection points": an edge from each graph point naming a connection to the vertex of the graph
-  /// point it names, on a level of the build; a level outside the build is skipped.
+  /// "Adding interconnection points": an edge from each connecting graph point to the vertex it names, weighed by
+  /// their distance in the shared world; a connection to a level outside the build is skipped.
+  ///
+  /// Levels go in id order, each level's points by name.
   fn connect(
     levels: &[&SpawnMergeLevel<'_>],
     firsts: &[u32],
@@ -289,8 +288,8 @@ impl SpawnGameGraphMerger {
     Ok(skipped)
   }
 
-  /// The graph GUID: the first 16 bytes of the SHA-256 of the graph chunk written with a nil one, set on the graph and
-  /// on every cross table.
+  /// Sets the graph GUID on the graph and every cross table: the first 16 bytes of the SHA-256 of the graph chunk
+  /// written with a nil GUID.
   fn assign_guid(graph: &mut SpawnGraphsChunk) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
