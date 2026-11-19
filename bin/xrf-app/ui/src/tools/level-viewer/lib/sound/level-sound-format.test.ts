@@ -5,9 +5,11 @@ import {
   formatLevelSoundAcoustics,
   formatLevelSoundAcousticsState,
   formatLevelSoundGain,
+  formatLevelSoundMixerLoad,
   formatLevelSoundSeconds,
   formatLevelSoundTimeOfDay,
   formatLevelSoundTrackTime,
+  formatLevelSoundVoice,
 } from "@/tools/level-viewer/lib/sound/level-sound-format";
 
 function voice(gain: number | null, isLoading: boolean = false): WorldSoundVoiceReport {
@@ -37,6 +39,20 @@ describe("level sound format", () => {
     expect(formatLevelSoundGain(voice(0))).toBe("Silent");
     expect(formatLevelSoundGain(voice(null))).toBe("Silent");
     expect(formatLevelSoundGain(voice(1, true))).toBe("Reading");
+  });
+
+  it("says a voice's kind, distance and gain, a simulated one and its restarts, and its acoustics once taken", () => {
+    expect(formatLevelSoundVoice(voice(0.5))).toBe("static, 10.0 m, -6.0 dB");
+    expect(formatLevelSoundVoice({ ...voice(0.5), distance: null, isReal: false, restarts: 2 })).toBe(
+      "static, 2D, simulated at -6.0 dB, started over 2×"
+    );
+    expect(formatLevelSoundVoice({ ...voice(0.5), occlusion: 1, transmission: [1, 1, 1], reverbSend: 0 })).toBe(
+      "static, 10.0 m, -6.0 dB; unobstructed, panned"
+    );
+  });
+
+  it("says the mixer's load as a share of the period", () => {
+    expect(formatLevelSoundMixerLoad(0.125)).toBe("12.5% of the period");
   });
 
   it("says how the walls and the reverb shape a placed sound, and nothing before the audio took it", () => {

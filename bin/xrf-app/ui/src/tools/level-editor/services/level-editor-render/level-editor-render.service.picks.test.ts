@@ -196,12 +196,12 @@ describe("LevelEditorRenderPicks", () => {
 
     expect(lastItems()).toBe(true);
 
-    helpers.setHelperTools({ isOn: false, tools: [ESceneToolKind.SPAWN] });
+    helpers.setHelperTool({ isOn: false, tool: ESceneToolKind.SPAWN });
     await flush();
 
     expect(lastItems()).toBe(false);
 
-    helpers.setHelperTools({ isOn: true, tools: [ESceneToolKind.SPAWN] });
+    helpers.setHelperTool({ isOn: true, tool: ESceneToolKind.SPAWN });
     helpers.toggleHelpers();
     await flush();
 

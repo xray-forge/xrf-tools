@@ -54,21 +54,17 @@ export function LevelEditorShowAction({
         isOn={helpers.isShown}
         onToggle={helpersService.toggleHelpers}
       >
-        {SCENE_HELPER_TOOLS.map((entry: SceneHelperToolEntry) => {
-          const isOn: boolean = isLevelEditorHelperOn(helpers, entry.tool);
-
-          return (
-            <LevelEditorHelperToolRow
-              key={entry.tool}
-              entry={entry}
-              count={counts.find((counted: SceneHelperToolCount) => counted.tool === entry.tool)?.count ?? 0}
-              isOn={isOn}
-              isDisabled={isOff}
-              reason={LEVEL_EDITOR_HELPERS_OFF_REASON}
-              onChange={() => helpersService.setHelperTools({ isOn: !isOn, tools: [entry.tool] })}
-            />
-          );
-        })}
+        {SCENE_HELPER_TOOLS.map((entry: SceneHelperToolEntry) => (
+          <LevelEditorHelperToolRow
+            key={entry.tool}
+            entry={entry}
+            count={counts.find((counted: SceneHelperToolCount) => counted.tool === entry.tool)?.count ?? 0}
+            isOn={isLevelEditorHelperOn(helpers, entry.tool)}
+            isDisabled={isOff}
+            reason={LEVEL_EDITOR_HELPERS_OFF_REASON}
+            onChange={(isOn: boolean) => helpersService.setHelperTool({ isOn, tool: entry.tool })}
+          />
+        ))}
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection

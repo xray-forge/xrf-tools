@@ -223,7 +223,7 @@ describe("LevelEditorRenderService", () => {
       selected: [],
     });
 
-    container.get(LevelEditorHelpersService).setHelperTools({ isOn: false, tools: [ESceneToolKind.WAY] });
+    container.get(LevelEditorHelpersService).setHelperTool({ isOn: false, tool: ESceneToolKind.WAY });
     await flush();
 
     expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)?.options.helpers.kinds).toBe(

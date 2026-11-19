@@ -1,4 +1,4 @@
-import { LtxDeclaration } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { ELtxDeclarationStatement, LtxDeclaration } from "@xrf/ipc/types/xrf-ltx-inspect";
 
 /**
  * One found statement as it is written: its header with prefix, then the field line, prefix and value included.
@@ -11,7 +11,7 @@ import { LtxDeclaration } from "@xrf/ipc/types/xrf-ltx-inspect";
 export function describeDeclaration(declaration: LtxDeclaration): string {
   const header: string = declaration.section === null ? "" : `${declaration.sectionOperation}[${declaration.section}]`;
 
-  if (declaration.kind === "section") {
+  if (declaration.kind === ELtxDeclarationStatement.SECTION) {
     return declaration.parents.length ? `${header}:${declaration.parents.join(", ")}` : header;
   }
 

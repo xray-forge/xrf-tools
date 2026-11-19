@@ -30,6 +30,28 @@ export function formatLevelSoundTimeOfDay(milliseconds: number): string {
 }
 
 /**
+ * @param load - The share of each audio period the mixer spends, from 0 to 1.
+ * @returns It as a percentage of the period.
+ */
+export function formatLevelSoundMixerLoad(load: number): string {
+  return `${(load * 100).toFixed(1)}% of the period`;
+}
+
+/**
+ * @param voice - One sound the scene plays.
+ * @returns Its kind, how far it stands or that it is 2D, how it is heard, how often it started over, and for a real
+ *   one how the level's acoustics shape it.
+ */
+export function formatLevelSoundVoice(voice: WorldSoundVoiceReport): string {
+  const distance: string = voice.distance === null ? "2D" : `${voice.distance.toFixed(1)} m`;
+  const gain: string = voice.isReal ? formatLevelSoundGain(voice) : `simulated at ${formatLevelSoundGain(voice)}`;
+  const restarts: string = voice.restarts > 0 ? `, started over ${voice.restarts}×` : "";
+  const acoustics: string = voice.isReal ? formatLevelSoundAcoustics(voice) : "";
+
+  return `${voice.kind}, ${distance}, ${gain}${restarts}${acoustics ? `; ${acoustics}` : ""}`;
+}
+
+/**
  * @param voice - One sound the scene plays.
  * @returns How it is heard: its gain in decibels, or why it is not.
  */

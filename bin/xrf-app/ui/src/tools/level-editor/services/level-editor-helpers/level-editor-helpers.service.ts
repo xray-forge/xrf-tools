@@ -1,6 +1,5 @@
 import { Injectable } from "@wirestate/core";
 import { BoundAction, Computed } from "@wirestate/mobx";
-import { SceneToolKind } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 
 import {
@@ -13,7 +12,7 @@ import {
 } from "@/core/storage";
 import {
   ILevelEditorHelperOptions,
-  ILevelEditorHelperToolsChange,
+  ILevelEditorHelperToolChange,
   toLevelEditorHelperOptions,
 } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
 
@@ -86,15 +85,12 @@ export class LevelEditorHelpersService {
   }
 
   /**
-   * @param change - Helped tools, and whether their helpers are drawn from now on, while helpers are.
+   * @param change - A helped tool, and whether its helpers are drawn from now on, while helpers are.
    */
   @BoundAction()
-  public setHelperTools(change: ILevelEditorHelperToolsChange): void {
-    const { tools, isOn } = change;
+  public setHelperTool(change: ILevelEditorHelperToolChange): void {
+    const { tool, isOn } = change;
 
-    this.stored.set({
-      ...this.helpers,
-      tools: { ...this.helpers.tools, ...Object.fromEntries(tools.map((tool: SceneToolKind) => [tool, isOn])) },
-    });
+    this.stored.set({ ...this.helpers, tools: { ...this.helpers.tools, [tool]: isOn } });
   }
 }

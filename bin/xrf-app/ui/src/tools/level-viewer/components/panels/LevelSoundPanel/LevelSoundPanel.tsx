@@ -16,11 +16,11 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { LevelSoundMusicSection } from "@/tools/level-viewer/components/panels/LevelSoundPanel/LevelSoundMusicSection";
 import {
-  formatLevelSoundAcoustics,
   formatLevelSoundAcousticsState,
-  formatLevelSoundGain,
+  formatLevelSoundMixerLoad,
   formatLevelSoundSeconds,
   formatLevelSoundTimeOfDay,
+  formatLevelSoundVoice,
   sortLevelSoundVoices,
 } from "@/tools/level-viewer/lib/sound/level-sound-format";
 
@@ -71,7 +71,7 @@ export function LevelSoundPanel({
         <EditorPanelProperty label={"Voices"} value={`${report.realVoices} of ${report.targets} targets`} />
         <EditorPanelProperty label={"Acoustics"} value={formatLevelSoundAcousticsState(report.acoustics)} />
         {report.mixerLoad !== null ? (
-          <EditorPanelProperty label={"Mixer"} value={`${(report.mixerLoad * 100).toFixed(1)}% of the period`} />
+          <EditorPanelProperty label={"Mixer"} value={formatLevelSoundMixerLoad(report.mixerLoad)} />
         ) : null}
       </EditorPanelSection>
 
@@ -92,21 +92,9 @@ export function LevelSoundPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={`Playing (${voices.length})`}>
-        {voices.map((voice: WorldSoundVoiceReport) => {
-          const acoustics: string = voice.isReal ? formatLevelSoundAcoustics(voice) : "";
-
-          return (
-            <EditorPanelProperty
-              key={voice.id}
-              label={voice.sound}
-              value={`${voice.kind}, ${voice.distance !== null ? `${voice.distance.toFixed(1)} m` : "2D"}, ${
-                voice.isReal ? "" : "simulated at "
-              }${formatLevelSoundGain(voice)}${voice.restarts > 0 ? `, started over ${voice.restarts}×` : ""}${
-                acoustics ? `; ${acoustics}` : ""
-              }`}
-            />
-          );
-        })}
+        {voices.map((voice: WorldSoundVoiceReport) => (
+          <EditorPanelProperty key={voice.id} label={voice.sound} value={formatLevelSoundVoice(voice)} />
+        ))}
       </EditorPanelSection>
 
       {report.refused.length > 0 ? (

@@ -21,6 +21,11 @@ const PREVIOUS_LABELS: Record<ELevelExportedPrevious, string> = {
   [ELevelExportedPrevious.CHANGED]: "replaced",
 };
 
+/** How many of the files written stand to what was there before as `previous` says. */
+function countFilesBy(files: ReadonlyArray<LevelExportedFile>, previous: ELevelExportedPrevious): number {
+  return files.filter((file: LevelExportedFile) => file.previous === previous).length;
+}
+
 interface ILevelBuildResultViewProps extends BaseComponentProps {
   result: LevelBuildResult;
   /** Where the run was told to write, to reveal it; the report's paths are display text. */
@@ -51,14 +56,10 @@ export function LevelBuildResultView({
       return [];
     }
 
-    function count(files: Array<LevelExportedFile>, previous: ELevelExportedPrevious): number {
-      return files.filter((file: LevelExportedFile) => file.previous === previous).length;
-    }
-
     return [
       { label: "files", value: report.files.length },
-      { label: "new", value: count(report.files, ELevelExportedPrevious.NEW) },
-      { label: "replaced", value: count(report.files, ELevelExportedPrevious.CHANGED) },
+      { label: "new", value: countFilesBy(report.files, ELevelExportedPrevious.NEW) },
+      { label: "replaced", value: countFilesBy(report.files, ELevelExportedPrevious.CHANGED) },
       { label: "removed", value: report.removed.length },
       { label: "faces", value: formatCount(report.geometry?.faces ?? 0) },
       { label: "lights", value: formatCount(report.geometry?.staticLights ?? 0) },

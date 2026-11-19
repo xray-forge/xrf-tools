@@ -13,9 +13,9 @@ export interface ILevelEditorHelperOptions {
   tools: Partial<Record<SceneToolKind, boolean>>;
 }
 
-/** Helped tools whose helpers are switched together, and whether they are drawn from now on. */
-export interface ILevelEditorHelperToolsChange {
-  tools: ReadonlyArray<SceneToolKind>;
+/** A helped tool whose helpers are switched, and whether they are drawn from now on. */
+export interface ILevelEditorHelperToolChange {
+  tool: SceneToolKind;
   isOn: boolean;
 }
 
