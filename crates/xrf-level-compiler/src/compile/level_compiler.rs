@@ -224,7 +224,7 @@ impl LevelCompiler {
 
   /// Whether every texture of `project`, the level's `build.prj`, has the `.thm` the compilers assert on, where a step
   /// reads textures; and, unforced, no file a step writes is already there.
-  fn check_textures_and_outputs(
+  pub(crate) fn check_textures_and_outputs(
     request: &LevelCompileRequest,
     steps: &[LevelCompileStep],
     project: Option<&BuildPrjFile>,
@@ -236,8 +236,8 @@ impl LevelCompiler {
 
       Self::check_textures(project, &roots)?;
 
-      // Only the light step writes an implicitly lit texture's maps.
-      if steps.contains(&LevelCompileStep::Light) {
+      // The geometry step writes every implicitly lit texture's maps: baked with the light step, neutral without it.
+      if steps.contains(&LevelCompileStep::Geometry) {
         implicit = CompilerTexture::resolve_all(project, &roots)?
           .into_iter()
           .filter(|texture| texture.is_implicitly_lit)

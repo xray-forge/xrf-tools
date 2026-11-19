@@ -1,10 +1,13 @@
 use std::path::{Path, PathBuf};
 
+use xrf_chunk::XRayByteOrder;
+use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_level::BuildPrjFile;
 use xrf_shaders::ShaderCompilerFile;
 use xrf_test_utils::GeneratedResources;
+use xrf_thm::{ThmFile, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk};
 
 use crate::tests::geometry::geometry_mesh::project;
 use crate::{AiMapCovers, LevelCompileRequest, LevelCompileStep, LevelCompiler};
@@ -29,6 +32,21 @@ fn gamedata(name: &str) -> XrfResult<PathBuf> {
   std::fs::write(root.join(ShaderCompilerFile::FILE_NAME), b"")?;
 
   Ok(root)
+}
+
+// The `.thm` of the test project's one texture, 4 by 4, under the level's texture root.
+fn write_ground_thm(level: &Path, flags: ThmTextureFlags) -> XrfResult {
+  let textures: PathBuf = level.join("textures");
+  let mut thumbnail: ThmFile = ThmFile::new_texture();
+
+  thumbnail.texture_param = Some(ThmTextureParamChunk {
+    flags,
+    width: 4,
+    height: 4,
+    ..ThmTextureParamChunk::default()
+  });
+  std::fs::create_dir_all(&textures)?;
+  thumbnail.write_to_path::<XRayByteOrder, _>(&textures.join("ground.thm"))
 }
 
 fn request(level: &Path, steps: &[LevelCompileStep]) -> LevelCompileRequest {
@@ -163,7 +181,7 @@ fn counts_every_file_a_step_writes_and_every_earlier_page_as_the_compiles() -> X
     found(&[LevelCompileStep::Geometry], &[])?,
     ["Level.Geom", "LMAP#3_2.dds"]
   );
-  // The light step writes an implicitly lit texture's maps below the level.
+  // An implicitly lit texture's maps are written below the level.
   assert_eq!(
     found(
       &[LevelCompileStep::Geometry, LevelCompileStep::Light],
@@ -173,6 +191,52 @@ fn counts_every_file_a_step_writes_and_every_earlier_page_as_the_compiles() -> X
   );
   assert_eq!(found(&[LevelCompileStep::Ai], &[])?, Vec::<String>::new());
   assert_eq!(found(&[LevelCompileStep::Details], &[])?, ["level.details"]);
+
+  Ok(())
+}
+
+// The geometry step gives an implicitly lit texture neutral maps without the light step, so an earlier compile's are
+// replaced either way.
+#[test]
+fn counts_an_implicitly_lit_textures_maps_among_the_geometry_steps_outputs() -> XrfResult {
+  let level: PathBuf = level("implicit_outputs", &["build.prj"])?;
+  let project: BuildPrjFile = project(&[], &[])?;
+  let textures: PathBuf = level.join("textures");
+
+  write_ground_thm(
+    &level,
+    ThmTextureFlags::none().with(ThmTextureFlag::ImplicitLighted, true),
+  )?;
+  DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast)
+    .encode(&DdsMipChain::build(
+      &RgbaImage::from_pixel(4, 4, Rgba([96, 96, 96, 255])),
+      DdsMipmaps::Disabled,
+    )?)?
+    .write_to_path(&textures.join("ground.dds"))?;
+  std::fs::write(level.join("ground_lm.dds"), b"earlier")?;
+
+  let check = |steps: &[LevelCompileStep], is_forced: bool| {
+    LevelCompiler::check_textures_and_outputs(
+      &LevelCompileRequest {
+        is_forced,
+        ..request(&level, steps)
+      },
+      steps,
+      Some(&project),
+    )
+  };
+
+  for steps in [
+    [LevelCompileStep::Geometry].as_slice(),
+    &[LevelCompileStep::Geometry, LevelCompileStep::Light],
+  ] {
+    let error: String = check(steps, false)
+      .expect_err("an earlier implicit map is there")
+      .to_string();
+
+    assert!(error.contains("ground_lm.dds"), "{steps:?}: {error}");
+    check(steps, true)?;
+  }
 
   Ok(())
 }
@@ -213,8 +277,7 @@ fn checks_a_build_by_what_it_writes_before_it_writes() -> XrfResult {
     "{textures}"
   );
 
-  std::fs::create_dir_all(level.join("textures"))?;
-  std::fs::write(level.join("textures").join("ground.thm"), b"")?;
+  write_ground_thm(&level, ThmTextureFlags::DEFAULT)?;
 
   check(&[LevelCompileStep::Geometry], &["build.prj"])
 }
