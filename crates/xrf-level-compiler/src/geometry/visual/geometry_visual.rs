@@ -222,14 +222,17 @@ impl GeometryVisual {
     }
   }
 
-  /// A vertex's place as the visual's 16-bit indices hold it.
+  /// A vertex's place as the visual's 16-bit indices hold it: at most 65,535 vertices, the count a 16-bit field holds.
   fn get_index(&self, index: usize) -> XrfResult<u16> {
-    u16::try_from(index).map_err(|_| {
-      XrfError::new_invalid_error(format!(
-        "A visual of material {} ({}) welds more than 65,536 vertices, past what its 16-bit indices reach",
-        self.material, self.shader
-      ))
-    })
+    u16::try_from(index)
+      .ok()
+      .filter(|index| *index < u16::MAX)
+      .ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "A visual of material {} ({}) welds more than 65,535 vertices, past what its 16-bit indices reach",
+          self.material, self.shader
+        ))
+      })
   }
 
   /// `OGF_Vertex::similar`: position and normal within `EPS_L`, the basis within a step, each coordinate within a

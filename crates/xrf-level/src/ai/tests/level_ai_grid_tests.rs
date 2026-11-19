@@ -45,6 +45,9 @@ fn places_a_point_by_the_compilers_rule_or_the_games() -> XrfResult {
   assert_eq!(grid.find_cell(-3.0, 9.0), (-3, 9));
   assert!(grid.compress_cell(-3.0, 0.0).is_err());
   assert!(grid.compress_cell(0.0, 9.0).is_err());
+  // Past the last column xrAI's number would wrap into the next cells; far past it, past any cell number.
+  assert!(grid.compress_cell(10.0, 0.0).is_err());
+  assert!(grid.compress_cell(1.0e12, 0.0).is_err());
 
   Ok(())
 }

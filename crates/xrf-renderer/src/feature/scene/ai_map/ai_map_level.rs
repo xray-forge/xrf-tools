@@ -33,7 +33,8 @@ impl AiMapLevel {
     let cell_count: u64 = u64::from(map.row_length) * u64::from(map.column_length);
     let limits: wgpu::Limits = device.limits();
     let bound: u64 = limits.max_buffer_size.min(limits.max_storage_buffer_binding_size);
-    let is_bound: bool = cell_count * 4 <= bound && map.nodes.len() as u64 * 8 <= bound;
+    // Saturating: two 32-bit sides from the file multiply to near 2^64, past which four bytes a cell would wrap.
+    let is_bound: bool = cell_count.saturating_mul(4) <= bound && (map.nodes.len() as u64).saturating_mul(8) <= bound;
 
     if cell_count == 0 || cell_count > Self::MAX_CELLS || map.nodes.len() >= Self::MAX_NODES || !is_bound {
       log::warn!(

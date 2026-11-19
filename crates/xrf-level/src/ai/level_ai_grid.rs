@@ -72,19 +72,20 @@ impl LevelAiGrid {
   ///
   /// # Errors
   ///
-  /// Returns an error when the point lies before the box, past its row, or past a 32-bit cell number: xrAI would wrap
-  /// each into another cell.
+  /// Returns an error when the point lies outside the box's columns or rows, or past a 32-bit cell number: xrAI would
+  /// wrap each into another cell.
   pub fn compress_cell(&self, x: f32, z: f32) -> XrfResult<u32> {
     let reciprocal: f32 = 1.0 / self.cell_size;
     let axis = |value: f32, minimum: f32| ((value - minimum) * reciprocal + EPS_L + 0.5).floor() as i64;
     let (column, row) = (axis(x, self.min_x), axis(z, self.min_z));
     let outside = || XrfError::new_invalid_error(format!("AI map point at x {x}, z {z} falls outside the map's cells"));
 
-    if column < 0 || !(0..i64::from(self.row_length)).contains(&row) {
+    if !(0..i64::from(self.column_length)).contains(&column) || !(0..i64::from(self.row_length)).contains(&row) {
       return Err(outside());
     }
 
-    u32::try_from(column * i64::from(self.row_length) + row).map_err(|_| outside())
+    // Column and row are below 2^32, both bounds checked above, so the cell number fits `u64` before it is narrowed.
+    u32::try_from(column.unsigned_abs() * u64::from(self.row_length) + row.unsigned_abs()).map_err(|_| outside())
   }
 
   /// The cell the game looks a point up in (`CLevelGraph::vertex_id`), along x and z: each axis

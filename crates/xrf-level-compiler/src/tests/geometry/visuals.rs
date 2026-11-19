@@ -242,8 +242,8 @@ fn refuses_a_vertex_past_what_the_visuals_16_bit_indices_reach() {
     GeometryVisualLight::Vertex,
   );
 
-  // Every index a visual holds already taken, by vertices far from the face's.
-  visual.vertices = vec![corner([-100.0, 0.0, 0.0], [0.0, 0.0], 255); usize::from(u16::MAX) + 1];
+  // The most vertices a visual holds, 65,535, already taken by vertices far from the face's.
+  visual.vertices = vec![corner([-100.0, 0.0, 0.0], [0.0, 0.0], 255); usize::from(u16::MAX)];
 
   let error: String = visual
     .add_face(
