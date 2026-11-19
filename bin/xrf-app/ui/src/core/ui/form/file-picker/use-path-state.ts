@@ -24,19 +24,9 @@ export interface IPathStateOptions {
 export type TPathState = [Nullable<string>, (value: Nullable<string>) => void, () => Promise<Nullable<string>>];
 
 /**
- * Holds a picked path and the action that fills it.
+ * Holds a picked path and the action that fills it, opening the dialog where the held path leads. No dialog opens
+ * while disabled, and a cancelled one leaves the current value alone.
  *
- * Barely more than `useState` plus a configured dialog call, and that is the point: the two guards it
- * owns - refusing to open while disabled, and leaving the current value alone when the user cancels.
- * The dialog opens where the held path leads.
- *
- * @param options - Dialog and interaction options.
- * @param options.title - Dialog title.
- * @param options.filters - File filters shown by the dialog.
- * @param options.isDisabled - Whether selection is disabled.
- * @param options.isDirectory - Whether the dialog selects a directory.
- * @param options.isSave - Whether the dialog selects an output path.
- * @param options.initial - Starting path, evaluated once.
  * @returns The selected path, its setter, and the selection action reporting what was picked.
  */
 export function usePathState({

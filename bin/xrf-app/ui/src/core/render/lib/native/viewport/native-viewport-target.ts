@@ -32,8 +32,8 @@ import { clearWindowTextSelection } from "@/lib/dom/selection";
 const DRAG_CURSOR: string = "grabbing";
 
 /**
- * Css pixels a press may travel and still be a click, rather than the drag a camera moves by; a drag of a button that
- * never clicks asks for its lock past it, so a right click stays a menu's.
+ * Css pixels a press may travel and still be a click rather than a drag. A drag asks for its lock only past it, so a
+ * right click stays a menu's.
  */
 const RENDER_CLICK_SLOP: number = 4;
 
@@ -114,13 +114,11 @@ export interface INativeViewportPointerListeners {
 /**
  * The page's side of a native viewport: an element the renderer draws under.
  *
- * It opens a hole down to the window through the page (`NativeViewportHole`) once the renderer draws the window, reports
- * where the element is and what the page shows around it whenever that changes, and tells the world what the person
- * does over it. It alone tells a click from a drag: a main-button press let go within the slop is a click, handed to
- * `onClick`; one travelling past it is a drag. Any other button drags as it goes down, so the camera hears it held
- * before the pointer moves. A drag is sent as gestures with the pointer locked once it travels past the slop, a button
- * joining or leaving it as its buttons changing. Drag motion and hovering merge into one event a frame, the hovering
- * handed to `onHover` too.
+ * It opens a hole through the page (`NativeViewportHole`) once the renderer draws the window, reports the element's
+ * layout and surroundings as they change, and tells the world what the person does over it. It alone tells a click
+ * from a drag: a main-button press let go within the slop is a click, handed to `onClick`; past it, a drag. Any other
+ * button drags as it goes down, so the camera hears it held before the pointer moves. A drag locks the pointer past the
+ * slop. Drag motion and hovering merge into one event a frame, the hovering handed to `onHover` too.
  */
 export class NativeViewportTarget {
   private readonly hole: NativeViewportHole;
@@ -314,8 +312,8 @@ export class NativeViewportTarget {
   }
 
   /**
-   * Hears a button go down or up while another is held, which reaches the page as a move rather than a press: a press
-   * still pending becomes a drag of them all, a drag tells the world its buttons changed.
+   * Hears a button go down or up while another is held, which reaches the page as a move: a pending press becomes a
+   * drag of them all, and a drag tells the world its buttons changed.
    */
   private rebutton(press: IPress, pointer: PointerEvent): void {
     const buttons: WorldInputButtons = this.getHeldButtons(press, pointer);
@@ -455,8 +453,7 @@ export class NativeViewportTarget {
       this.cancel();
       this.send({ kind: EWorldInputEvent.RELEASE_ALL });
     },
-    // The secondary button's release asks for a menu, unless it dragged the camera: the press just let go travelled, or,
-    // let go first of a chord, the press still held has.
+    // The secondary button's release asks for a menu, unless its press travelled, or the chord's press still held has.
     contextmenu: (event: Event): void => {
       event.preventDefault();
 

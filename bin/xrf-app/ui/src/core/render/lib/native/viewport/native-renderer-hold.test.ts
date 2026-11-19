@@ -31,7 +31,6 @@ describe("NativeRendererHold", () => {
   });
 
   it("releases a hold let go before the renderer answered it, once it answers", async () => {
-    // A tool left at once still lets the GPU go: the hold it asked for is released as soon as it exists.
     const answer: IDeferred<number> = deferred();
 
     mockIpcCommands({ [ERenderCommand.HOLD]: () => answer.promise });

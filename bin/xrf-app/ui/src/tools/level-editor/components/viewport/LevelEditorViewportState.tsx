@@ -8,8 +8,7 @@ import { ReactElement } from "react";
 import { ELevelEditorSceneBlank } from "@/tools/level-editor/lib/render/level-editor-scene-blank";
 
 /**
- * @param blank - Why an open scene draws nothing.
- * @returns What the viewport says of it.
+ * What the viewport says when an open scene draws nothing.
  */
 function describeSceneBlank(blank: ELevelEditorSceneBlank): string {
   switch (blank) {
@@ -42,8 +41,8 @@ interface ILevelEditorViewportStateProps extends BaseComponentProps {
 }
 
 /**
- * What covers the viewport while it draws no scene: why the last open failed, with a retry, why the scene open draws
- * nothing, or that none is open.
+ * The viewport's cover while it draws no scene: the open's error with a retry, why the scene draws nothing, or that
+ * none is open.
  */
 export function LevelEditorViewportState({
   "data-testid": dataTestId = "level-editor-viewport-state",

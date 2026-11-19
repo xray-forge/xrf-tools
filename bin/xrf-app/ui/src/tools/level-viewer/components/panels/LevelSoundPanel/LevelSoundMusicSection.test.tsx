@@ -5,7 +5,6 @@ import { WorldMusicCommand, WorldSoundMusicReport } from "@xrf/ipc/types/xrf-wor
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { LevelSoundMusicSection } from "@/tools/level-viewer/components/panels/LevelSoundPanel/LevelSoundMusicSection";
 
-/** The world's answer to any command: taken. */
 function answer(_: WorldMusicCommand): Promise<boolean> {
   return Promise.resolve(true);
 }
@@ -60,8 +59,7 @@ describe("LevelSoundMusicSection", () => {
     expect(onCommand).toHaveBeenLastCalledWith({ kind: "seek", position: 66_000 });
   });
 
-  // A report made before the world took the seek still stands where the track was: the slider keeps the point let go of
-  // until the next report comes.
+  // A report asked before the seek can arrive after it, still at the old position.
   it("holds the point let go of until a report made after the seek comes", async () => {
     const onCommand = jest.fn(answer);
     const { getByRole, getByText, rerender } = renderWithProviders(

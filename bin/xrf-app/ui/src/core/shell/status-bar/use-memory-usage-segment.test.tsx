@@ -26,7 +26,6 @@ const SOURCES: ReadonlyArray<TMemoryDetailSource> = [
   () => ({ label: "Second", value: "2 MB" }),
 ];
 
-/** Draws the segment's text and its hover rows, or nothing before a reading. */
 function Segment(): ReactElement {
   const segment: Nullable<IShellStatusSegment> = useMemoryUsageSegment(SOURCES);
 

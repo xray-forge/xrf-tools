@@ -99,7 +99,6 @@ describe("toLevelEditorOutlinerTree", () => {
     expect(toLabels(tree)).toEqual(["Scene objects", "Spawn points", "AI map", "Lights", "custom_tool"]);
   });
 
-  // A tool whose objects did not read is still the scene's, and its row says why it lists nothing.
   it("marks a tool with its problems, listing it though nothing of it read", () => {
     const tree: Array<ITreeNode<TLevelEditorOutlinerRow>> = toLevelEditorOutlinerTree(
       mockSources({

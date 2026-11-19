@@ -36,8 +36,7 @@ interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
 }
 
 /**
- * The weather's ambient effects: what plays near the camera and how long it has left, when the next may start, and,
- * from the title line, a way to play one at once.
+ * The weather's ambient effects: what plays and for how long, when the next may start, and a title button to play one.
  */
 export function LevelWeatherAmbientSection({
   "data-testid": dataTestId = "level-weather-ambient-section",

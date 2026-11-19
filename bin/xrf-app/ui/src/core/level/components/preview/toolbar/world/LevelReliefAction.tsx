@@ -25,9 +25,8 @@ import {
 } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
- * The surfaces' relief: their bumps, their parallax with its settings, and the terrain's details varied or repeating as
- * a grid with theirs. What the frame shows, the wireframe and the wall marks are no part of it: they have no settings to
- * tune beside their switch.
+ * The surfaces' relief: their bumps, their parallax, and the terrain's details varied or tiled, each with its settings.
+ * The shadings, the wireframe and the wall marks have no settings to tune, so they are chosen elsewhere.
  */
 export function LevelReliefAction({
   "data-testid": dataTestId = "level-relief-action",

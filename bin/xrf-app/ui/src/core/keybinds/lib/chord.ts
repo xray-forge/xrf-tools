@@ -235,7 +235,6 @@ export function matchesChord(event: KeyboardEvent, chord: IKeyChord): boolean {
 /**
  * The key an event presses, as a chord spells it.
  *
- * @param event - Keyboard event being dispatched.
  * @returns A lowercase character, or a canonical key name.
  */
 function toChordEventKey(event: KeyboardEvent): string {

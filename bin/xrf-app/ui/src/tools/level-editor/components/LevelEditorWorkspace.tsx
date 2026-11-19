@@ -24,15 +24,14 @@ import { ELevelEditorPanelId } from "@/tools/level-editor/lib/panels/level-edito
 
 interface ILevelEditorWorkspaceProps extends BaseComponentProps {
   /**
-   * What the open scene is called, which heads the workspace. Its presence decides only what covers the viewport: the
-   * open scene's cover, or why the last open failed; what the viewport draws is the render service's.
+   * The open scene's name, heading the workspace. Its presence decides only the viewport's cover; what the viewport
+   * draws is the render service's.
    */
   name?: Nullable<string>;
-  /** What the scene being opened is called, which heads the workspace until it is open. */
+  /** The name of the scene being opened, heading the workspace until it is open. */
   pending?: Nullable<string>;
-  /** Whether a scene is being opened. */
   isLoading?: boolean;
-  /** Whether a change moved what the open scene was read from, which it is shown as until it is read again. */
+  /** Whether the open scene's sources changed since it was read. */
   isStale?: boolean;
   /** Why the last open failed, shown with `onRetry` while no scene is open. */
   error?: string;
@@ -44,8 +43,7 @@ interface ILevelEditorWorkspaceProps extends BaseComponentProps {
 }
 
 /**
- * The level editor's chrome: the toolbar with what is shown and the camera, the scene's header, the viewport the scene
- * is drawn in, and the panel stripe listing, inspecting and checking what the scene holds.
+ * The level editor's chrome: toolbar, scene header, viewport, and the panel stripe.
  */
 export function LevelEditorWorkspace({
   "data-testid": dataTestId = "level-editor-workspace",

@@ -23,9 +23,9 @@ import {
 import { TRenderCameraSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
- * The camera this view's frame is shown through: its motion blur, its depth of field focused by a value or by a click
- * in the view, its vignette, its film grain and its chromatic aberration, a section each, all over the settings for the
- * view alone and set back together from the popover's heading.
+ * This view's camera effects, a section each: motion blur, depth of field focused by a value or a click in the view,
+ * vignette, film grain and chromatic aberration. They override the settings for this view alone and reset together
+ * from the popover's heading.
  */
 export function LevelCameraEffectsAction({
   "data-testid": dataTestId = "level-camera-effects-action",

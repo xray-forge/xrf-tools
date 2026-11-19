@@ -42,8 +42,7 @@ export const CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND: IKeybindCommand = defineKeyb
 });
 
 /**
- * Starts recording the viewport with its sound to the recordings folder, or stops the recording running; beside the
- * screenshot's F9, as both are taken of what the viewport shows.
+ * Starts or stops recording the viewport with its sound; on `shift+F9`, beside the screenshot's F9.
  */
 export const RECORD_LEVEL_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
   category: EKeybindCommandCategory.VIEW,
@@ -57,8 +56,8 @@ export const RECORD_LEVEL_KEYBIND_COMMAND: IKeybindCommand = defineKeybindComman
 });
 
 /**
- * Puts where the camera stands on the clipboard as its readout states it, which Go to coordinates reads back; `alt` and
- * `shift` with `c`, as an editor copies a path, since `mod+shift+c` is the webview's element picker.
+ * Copies the camera's position for Go to coordinates. On `shift+alt+c` because `mod+shift+c` is the webview's element
+ * picker.
  */
 export const COPY_LEVEL_COORDINATES_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
   category: EKeybindCommandCategory.VIEW,

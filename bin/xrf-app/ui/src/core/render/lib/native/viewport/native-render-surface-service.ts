@@ -16,9 +16,9 @@ import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-hos
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /**
- * A service owning one native viewport: attached where a view hands it an element, told everything through reactions
- * while attached, and let go when the view or the tool goes. It holds the renderer for as long as its tool is open, so
- * the GPU is started by the time a view asks for the viewport and stays started between views.
+ * A service owning one native viewport: attached where a view hands it an element, kept current through reactions, and
+ * let go when the view or the tool goes. It holds the renderer while its tool is open, so the GPU is started before a
+ * view asks and stays started between views.
  */
 export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   public abstract readonly log: Logger;
@@ -42,9 +42,8 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   protected viewport: Nullable<NativeViewport> = null;
 
   /**
-   * Whether the viewport is revealed by its first frame, whatever it drew. A service attaching its viewport before
-   * what it shows is drawn answers false and calls `reveal` once it is, so the page never shows the grid a viewport
-   * draws while it has nothing to show.
+   * Whether the viewport is revealed by its first frame, whatever it drew. A service attaching before what it shows is
+   * drawn answers false and calls `reveal` once it is, so the page never shows the empty viewport's grid.
    */
   protected readonly isRevealedByAnyFrame: boolean = true;
 
@@ -192,8 +191,8 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   protected onHover(_point: Nullable<IRenderViewPoint>): void {}
 
   /**
-   * Called with the steps of speed the viewport's fly camera asked for, its wheel turned while the secondary button
-   * flew it: the speed is the subclass's setting to change.
+   * Called with the speed steps the fly camera asked for, its wheel turned while the secondary button flies it; the
+   * speed is the subclass's to change.
    *
    * @param _steps - Whole steps, positive faster.
    */
@@ -247,8 +246,8 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   protected release(): void {}
 
   /**
-   * Shows the viewport through the page, once it has drawn: the page's backgrounds over it are taken off, the renderer
-   * painting them now. Again does nothing.
+   * Shows the viewport through the page once it has drawn, taking off the page's backgrounds over it. Calling it again
+   * does nothing.
    */
   protected reveal(): void {
     this.target?.openHole();

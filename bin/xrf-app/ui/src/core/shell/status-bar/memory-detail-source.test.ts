@@ -4,7 +4,7 @@ import { readPageScriptHeapDetail } from "@/core/shell/status-bar/memory-detail-
 
 const MB: number = 1024 * 1024;
 
-/** Hangs Chromium's heap figures off `performance`, which jsdom leaves bare. */
+// Chromium's heap figures, which jsdom's `performance` lacks.
 function publishHeap(used: number, total: number, limit: number): void {
   Object.defineProperty(performance, "memory", {
     configurable: true,

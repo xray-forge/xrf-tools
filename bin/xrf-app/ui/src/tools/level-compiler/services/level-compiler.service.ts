@@ -18,16 +18,13 @@ import { describeBuildOutcome } from "@/tools/level-compiler/lib/describe-build-
 export class LevelCompilerService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  /** A cancel stops the build before it writes, or the compile within its running step, keeping what it wrote. */
+  /** A cancel stops the build before it writes, or the compile in its running step, keeping what it wrote. */
   public readonly operation: JobOperation<LevelBuildResult> = new JobOperation(this.log, {
     kinds: [LEVELS_JOB_BUILD],
   });
 
   /**
-   * Builds a Level Editor scene into a level directory, then compiles it where steps are asked for.
-   *
-   * @param request - The scene, the directory to write and how.
-   * @param compile - The steps to compile the written level with, and what the compilers read; none to build alone.
+   * Builds a Level Editor scene into a level directory, then runs `compile` on it; null `compile` builds alone.
    */
   @ExclusiveFlow("operation")
   public *build(request: LevelBuildRequest, compile: Nullable<LevelCompileRequest>): TFlow {

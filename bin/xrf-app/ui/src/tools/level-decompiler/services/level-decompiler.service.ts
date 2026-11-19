@@ -23,8 +23,6 @@ export class LevelDecompilerService {
 
   /**
    * Decompiles a compiled level into a Level Editor scene on disk.
-   *
-   * @param request - The level, the scene to write and how.
    */
   @ExclusiveFlow("operation")
   public *decompile(request: LevelDecompileRequest): TFlow {

@@ -74,7 +74,7 @@ export class LevelRenderCaptures {
 
   /**
    * @param name - What the recording's file in the recordings folder is named for, without its extension.
-   * @param progress - Where the recording tells where it stands, and why where it ends by itself.
+   * @param progress - Where the recording reports its progress, and why it ended where it ends on its own.
    * @returns The file it records into, or null with no viewport attached; rejects for a recording that cannot start.
    */
   public async startRecording(name: string, progress: Channel<RecordingProgress>): Promise<Nullable<string>> {

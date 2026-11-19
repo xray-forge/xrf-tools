@@ -13,44 +13,38 @@ import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-e
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
-/** What the scene's picks ask of the render service that composes them. */
+/** What the picks read from the render service that composes them. */
 export interface ILevelEditorRenderPicksContext {
-  /** The viewport attached, or null for none. */
   getViewport: () => Nullable<NativeViewport>;
-  /** The scene session shown, which what a pick hits is one of, or null for none. */
+  /** The scene session shown, which every hit belongs to. */
   getSessionId: () => Nullable<SessionId>;
 }
 
-/** What the scene's picks name and change. */
+/** The services the picks read and change. */
 export interface ILevelEditorRenderPicksSources {
   /** The open scene's objects, which name what a pick hits. */
   sceneService: LevelEditorSceneService;
   /** Whether helpers are drawn, which hovering needs. */
   helpersService: LevelEditorHelpersService;
-  /** What is selected and hovered. */
   selectionService: LevelEditorSelectionService;
 }
 
-/** A pick asked of the viewport: where, and whether glass is passed by. */
+/** A viewport pick. */
 export interface ILevelEditorPickRequest {
   /** In css pixels from the viewport's top left corner. */
   point: IRenderViewPoint;
-  /** Whether glass is passed by, picking what stands behind it. */
+  /** Whether the pick passes through glass to what stands behind it. */
   isThrough: boolean;
 }
 
 /**
- * What of the open scene is drawn where the viewport is clicked or hovered, and what it changes: the scene object
- * selected, outlined where it is drawn, and the one hovered; let go with the scene they were asked of.
+ * Viewport clicks and hovers on the open scene: selection, its outline, and the hovered object, all let go with the
+ * scene they were asked of.
  */
 export class LevelEditorRenderPicks {
   /** The pointer's picks, one in flight at a time. */
   private readonly hovering: LevelHoverPick = new LevelHoverPick();
 
-  /**
-   * @param context - The viewport and the scene shown.
-   * @param sources - What the picks name and change.
-   */
   public constructor(
     private readonly context: ILevelEditorRenderPicksContext,
     private readonly sources: ILevelEditorRenderPicksSources
@@ -60,10 +54,7 @@ export class LevelEditorRenderPicks {
   }
 
   /**
-   * Selects the scene object drawn under a point of the viewport, or nothing where none the scene lists is. The scene
-   * shown let go meanwhile cancels it, as what it hit names something else now.
-   *
-   * @param request - Where, and whether glass is passed by.
+   * Selects the listed scene object under a viewport point, or nothing. Letting go of the scene meanwhile cancels it.
    */
   @LatestFlow()
   public *pick(request: ILevelEditorPickRequest): TFlow {
@@ -81,10 +72,9 @@ export class LevelEditorRenderPicks {
   }
 
   /**
-   * Notes the scene object under a point of the viewport as hovered, with one hover pick in flight at a time
-   * ({@link LevelHoverPick}).
+   * Notes the scene object under a viewport point as hovered, one pick in flight at a time ({@link LevelHoverPick}).
    *
-   * @param point - Where, in css pixels from the viewport's top left corner; null for nothing hovered.
+   * @param point - In css pixels from the viewport's top left corner; null for nothing hovered.
    */
   @LatestFlow()
   public *hover(point: Nullable<IRenderViewPoint>): TFlow {
@@ -105,10 +95,9 @@ export class LevelEditorRenderPicks {
   }
 
   /**
-   * Outlines what is selected in a viewport just attached, and lets go of what is hovered while helpers are off.
+   * Follows the selection's outline in a just-attached viewport, and clears the hover while helpers are off.
    *
-   * @param viewport - The viewport just attached.
-   * @returns What stops following them.
+   * @returns The disposers that stop following.
    */
   public start(viewport: NativeViewport): Array<() => void> {
     const { helpersService, selectionService } = this.sources;
@@ -131,11 +120,6 @@ export class LevelEditorRenderPicks {
     ];
   }
 
-  /**
-   * Picks what a click meets.
-   *
-   * @param click - Where it landed, and whether glass is passed by.
-   */
   public click(click: INativeViewportClick): void {
     void this.pick({ isThrough: click.isThrough, point: click.point });
   }
@@ -143,13 +127,13 @@ export class LevelEditorRenderPicks {
   /**
    * Hovers where the pointer rests while helpers are drawn, and nothing otherwise.
    *
-   * @param point - Where, in css pixels from the viewport's top left corner; null once it leaves.
+   * @param point - Null once the pointer leaves.
    */
   public rest(point: Nullable<IRenderViewPoint>): void {
     void this.hover(this.sources.helpersService.helpers.isShown ? point : null);
   }
 
-  /** Lets go of the picks asked of the scene shown, which name it alone, and of what is hovered in it. */
+  /** Cancels the picks asked of the scene shown, which name it alone, and clears its hover. */
   @BoundAction()
   public leave(): void {
     cancelFlow(this, "pick");

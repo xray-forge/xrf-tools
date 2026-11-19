@@ -79,8 +79,7 @@ export function toRoundedLevelGoTo(goTo: ILevelGoTo, decimals: number): ILevelGo
 }
 
 /**
- * @param text - Text naming a place as the readout does, a copy of it or part of one; or bare numbers in the readout's
- *   order, as a config writes a position.
+ * @param text - The readout's text, whole or in part, or bare numbers in its order as a config writes a position.
  * @param current - What each value is where the text does not state it.
  * @returns The place, or null for text stating none of it.
  */

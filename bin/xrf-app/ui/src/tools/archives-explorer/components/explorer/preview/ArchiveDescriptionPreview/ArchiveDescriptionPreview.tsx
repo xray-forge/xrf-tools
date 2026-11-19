@@ -400,8 +400,7 @@ export function ArchiveDescriptionPreview({
   const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
   const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
-  // The previous description stays on screen while the next one is read, rather than the panel blanking between
-  // clicks - the same courtesy the texture and sound previews extend.
+  // The previous description stays on screen while the next one is read, so the panel never blanks between clicks.
   const described: Nullable<TArchiveContent & { kind: "description" }> = useLastValue(
     content.value?.kind === "description" ? content.value : null,
     content.isLoading

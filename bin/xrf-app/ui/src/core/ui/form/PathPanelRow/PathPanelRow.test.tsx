@@ -7,7 +7,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { PathPanelRow } from "./PathPanelRow";
 
-/** Supplies the field contract without starting filesystem validation. */
+// A plain field, so no filesystem validation starts.
 function mockField(overrides: Partial<IPathField> = {}): IPathField {
   return {
     value: null,

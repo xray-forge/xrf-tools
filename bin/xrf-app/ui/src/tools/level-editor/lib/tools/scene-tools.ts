@@ -28,17 +28,14 @@ export const SCENE_TOOL_LABELS: Readonly<Record<ESceneToolKind, string>> = {
 };
 
 /**
- * @param kind - The editor's tool, none for one it does not save.
- * @param name - The tool's name, as its part files carry it.
- * @returns What the panels call it: its label, or its own name for a tool the editor does not save.
+ * A tool's panel label, or its part-file name for a tool the editor does not save.
  */
 export function getSceneToolLabel(kind: Nullable<SceneToolKind>, name: string): string {
   return kind === null ? name : SCENE_TOOL_LABELS[kind];
 }
 
 /**
- * @param tool - What one binary tool holds, counted.
- * @returns Its counts, as a row says them beside the tool's name.
+ * A binary tool's counts, as its row shows them beside the name.
  */
 export function describeSceneBinaryTool(tool: SceneBinaryToolDescription): string {
   switch (tool.tool) {

@@ -41,11 +41,11 @@ export interface IAttachedSceneRender {
 }
 
 /**
- * The fixture scene restored and provisioned as the editor provisions it, its render service attached; each show
- * answers a scene of its own, as the renderer starts one for every show of a viewport it alone draws.
+ * The fixture scene restored and provisioned as the editor does it, with its render service attached.
+ *
+ * Each show answers a new scene, as the renderer starts one for every show of a viewport it alone draws.
  *
  * @param parts - What the scene's parts answer, each defaulting to the fixture's own.
- * @returns The container and the services a test drives.
  */
 export async function mockAttachedSceneRender(parts: IMockSceneParts = {}): Promise<IAttachedSceneRender> {
   let scenes: number = 0;
@@ -83,9 +83,7 @@ export async function mockAttachedSceneRender(parts: IMockSceneParts = {}): Prom
 }
 
 /**
- * Tells the attached viewport's service what the renderer reported.
- *
- * @param event - What the viewport reported.
+ * Delivers a renderer viewport event to the attached viewport's service.
  */
 export function emitSceneViewportEvent(event: ViewportEvent): void {
   (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);

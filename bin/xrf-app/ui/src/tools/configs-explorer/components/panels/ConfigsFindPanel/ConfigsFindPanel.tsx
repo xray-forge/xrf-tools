@@ -24,8 +24,7 @@ import { ConfigsFindRow } from "./ConfigsFindRow";
 /**
  * Where the open project writes a section, a field or a value, each row opening the config at its line.
  *
- * What the rows show is written, not resolved: several configs can write one field, and the Resolved view says which
- * of them the engine ends up with.
+ * Rows show what is written, not resolved; the Resolved view says which write the engine ends up with.
  */
 export function ConfigsFindPanel({
   "data-testid": dataTestId = "configs-find-panel",
@@ -52,7 +51,7 @@ export function ConfigsFindPanel({
   const onFieldChange = useCallback((field: string) => findService.setQuery({ field }), [findService]);
   const onValueChange = useCallback((value: string) => findService.setQuery({ value }), [findService]);
 
-  // The way from a section on screen to every config writing it, declaring or patching, archived ones included.
+  // Every config declaring or patching the selected section, archived ones included.
   const onFindSelected = useCallback(() => {
     if (selectedSection) {
       void findService.findSection(selectedSection);

@@ -21,8 +21,8 @@ import {
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
 /**
- * What a game root is, which decides the directory the compilers read: an installation keeps its libraries in its
- * gamedata. None where the probe fails, the root then taken as game data.
+ * A game root's kind, which decides the directory the compilers read; null where the probe fails, so the root is taken
+ * as game data.
  */
 async function probeKind(root: string): Promise<Nullable<XrayRootKind>> {
   try {
@@ -35,9 +35,7 @@ async function probeKind(root: string): Promise<Nullable<XrayRootKind>> {
 }
 
 /**
- * The step from the scene the editor shows to its build: the level compiler opened holding the scene, the level
- * directory beside its `rawdata`, the textures its decompile cut where they exist, the objects roots it was opened
- * with, and the game data it is drawn with.
+ * Opens the level compiler over the open scene, with the paths {@link getLevelEditorBuildPaths} lays out.
  */
 export function LevelEditorBuildAction({
   "data-testid": dataTestId = "level-editor-build-action",
@@ -56,15 +54,15 @@ export function LevelEditorBuildAction({
 
     const root: Nullable<string> = getLevelEditorGameRoot(scene);
     const paths: ILevelEditorBuildPaths = getLevelEditorBuildPaths(scene, root === null ? null : await probeKind(root));
-    // A textures root the decompile never made would hold the form back as a path that does not exist, and one
-    // remembered from another scene would lend this one that scene's strips, so the field is emptied instead.
+    // Emptied where the decompile made no textures root: a missing path would block the form, and one remembered from
+    // another scene would lend it that scene's strips.
     const isCut: boolean = await exists(paths.textures).catch(() => false);
 
     handOverPaths(EToolId.LEVEL_COMPILER, {
       [ELevelCompilerField.SOURCE]: paths.source,
       [ELevelCompilerField.DESTINATION]: paths.destination,
       [ELevelCompilerField.TEXTURES]: isCut ? paths.textures : null,
-      // The roots the scene was drawn with, or none for the objects beside it, as the build reads them.
+      // Empty roots make the build read the objects beside the scene.
       [ELevelCompilerField.OBJECTS]: LEVEL_COMPILER_OBJECTS_CODEC.write(paths.objects),
       ...(paths.gamedata ? { [ELevelCompilerField.GAMEDATA]: paths.gamedata } : {}),
       ...(paths.gameMaterials ? { [ELevelCompilerField.GAME_MATERIALS]: paths.gameMaterials } : {}),

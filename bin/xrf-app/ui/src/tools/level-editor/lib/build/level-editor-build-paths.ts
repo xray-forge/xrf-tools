@@ -10,15 +10,15 @@ export interface ILevelEditorBuildPaths {
   /** `gamedata\levels\<name>` beside the scene's `rawdata`, where an SDK keeps a scene's build. */
   destination: string;
   /**
-   * `gamedata\textures` beside the scene's `rawdata`, where its decompile writes the textures it cuts: the build's
-   * impostor strips and details, read before the game data's own.
+   * `gamedata\textures` beside the scene's `rawdata`, where a decompile writes impostor strips and details, read before
+   * the game data's own.
    */
   textures: string;
-  /** Where the scene's library objects are looked for, as it was opened with; empty for `objects` beside it. */
+  /** The objects roots the scene was opened with; empty for `objects` beside it. */
   objects: Array<string>;
   /**
-   * The game data the scene is drawn with other than the one beside its `rawdata`: the root itself, or an
-   * installation's `gamedata`; none where it names no other.
+   * The game data from the scene's other game root: the root itself, or an installation's `gamedata`; null where it
+   * names no other.
    */
   gamedata: Nullable<string>;
   /** That game data's `gamemtl.xr`. */
@@ -26,11 +26,7 @@ export interface ILevelEditorBuildPaths {
 }
 
 /**
- * The first game root the scene is drawn with other than the gamedata beside its `rawdata`, which the build's game
- * data comes from.
- *
- * @param scene - The open scene.
- * @returns That root's path, or none.
+ * The scene's first game root other than the `gamedata` beside its `rawdata`, which the build's game data comes from.
  */
 export function getLevelEditorGameRoot(scene: SelectedSceneDescription): Nullable<string> {
   const beside: string = getBesideGamedata(scene.source.path);
@@ -41,14 +37,11 @@ export function getLevelEditorGameRoot(scene: SelectedSceneDescription): Nullabl
 }
 
 /**
- * Where the level compiler builds the scene the editor shows, as a decompile lays a scene out: the scene in
- * `rawdata\levels`, its build and the textures its decompile cut in `gamedata` beside `rawdata`, its objects where it
- * was opened with them, and the game's own data from the game root the scene is drawn with.
+ * The level compiler form's paths for the open scene, laid out as a decompile writes a scene.
  *
  * @param scene - The open scene.
- * @param gameRootKind - What the game root ([`getLevelEditorGameRoot`]) is, so an installation hands its `gamedata`;
- *   none where it is unknown, the root taken as game data.
- * @returns The compiler form's paths.
+ * @param gameRootKind - The kind of {@link getLevelEditorGameRoot}'s root, so an installation hands its `gamedata`;
+ *   null where unknown, the root then taken as game data.
  */
 export function getLevelEditorBuildPaths(
   scene: SelectedSceneDescription,

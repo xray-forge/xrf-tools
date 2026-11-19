@@ -24,10 +24,9 @@ export type TArchiveBytes = Uint8Array<ArrayBuffer>;
 /**
  * What was loaded for the current selection, whatever form it took.
  *
- * A picture carries its description and its bytes side by side because they arrive as two calls: the bytes are what
- * the webview paints, the descriptor is what the engine would read. A sound carries its description and where it is,
- * as the application's audio plays it from the backend: its player opens it there by the same session and name. Every
- * read is addressed by the open subject's session, so they always describe the same file.
+ * A picture carries its descriptor beside its bytes, as they arrive by two calls. A sound carries its descriptor and
+ * where it is, as the application's audio plays it from the backend by the same session and name. Every read is
+ * addressed by the open subject's session, so the parts always describe the same file.
  */
 export type TArchiveContent =
   | { kind: "text"; result: ArchiveReadResult }

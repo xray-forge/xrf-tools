@@ -18,8 +18,7 @@ export interface IEditorPopoverSwitchRowProps extends BaseComponentProps {
 }
 
 /**
- * One of a list of switches with no value but on or off, as an editor's show menu lists them: the box before its name,
- * the name taking the row.
+ * One of a list of switches, as an editor's show menu lists them: the box before its name, the name taking the row.
  */
 export function EditorPopoverSwitchRow({
   "data-testid": dataTestId = "editor-popover-switch-row",

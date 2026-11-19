@@ -25,8 +25,7 @@ export interface IEditorPopoverRowProps extends BaseComponentProps {
 }
 
 /**
- * One setting of a toolbar popover in a single row, as an editor's details panel lays it: the label in a column every
- * row shares, the control beside it, what it does on hovering the label.
+ * One setting of a toolbar popover in a single row: the label in a column every row shares, the control beside it.
  */
 export function EditorPopoverRow({
   "data-testid": dataTestId = "editor-popover-row",

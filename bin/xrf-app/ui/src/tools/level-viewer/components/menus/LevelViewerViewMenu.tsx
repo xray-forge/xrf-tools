@@ -19,8 +19,7 @@ import {
 import { LEVEL_VIEWER_VIEW_MENU } from "@/tools/level-viewer/menus";
 
 /**
- * The level viewer's View menu: the frame's shading and overlays, then the level objects' helpers and which are drawn,
- * each switching what the toolbar's popover for it does.
+ * The level viewer's View menu, switching the same state as the toolbar's popovers.
  */
 export function LevelViewerViewMenu(): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);

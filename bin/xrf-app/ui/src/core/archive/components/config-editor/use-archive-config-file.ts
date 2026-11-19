@@ -14,7 +14,6 @@ import { askToOpen, askToSave } from "@/core/path/native-dialog";
  * The open dialog's filter: one entry listing every format, so browsing shows all configurations at once.
  *
  * @param noun - What the configuration is called, such as "packing configuration".
- * @returns The filters to offer.
  */
 function toImportFilters(noun: string): Array<IFileFilter> {
   return [{ name: noun.charAt(0).toUpperCase() + noun.slice(1), extensions: [...ARCHIVE_CONFIG_EXTENSIONS] }];

@@ -12,12 +12,9 @@ import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { LevelRenderCamera } from "@/core/level/services/level-render/level-render.service.camera";
 
-/** A camera a quarter turn round and level, somewhere every axis has something to say. */
+// Every axis away from zero, so each has something to say.
 const CAMERA: ILevelCamera = { heading: Math.PI / 2, pitch: 0, position: { x: -243.75, y: 12.5, z: 87.25 } };
 
-/**
- * @returns The field, opened over a camera standing at `CAMERA`, and what it asks the camera to go to.
- */
 function renderField(): { rendered: TLevelViewRenderResult; goTo: jest.SpiedFunction<(goTo: ILevelGoTo) => void> } {
   // Spied before the container builds the camera, whose bound action is fixed on it as it is made.
   const goTo = jest.spyOn(LevelRenderCamera.prototype, "goTo").mockImplementation(() => {});

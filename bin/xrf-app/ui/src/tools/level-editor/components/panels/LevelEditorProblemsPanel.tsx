@@ -21,7 +21,7 @@ import { listLevelEditorProblems } from "@/tools/level-editor/lib/problems/level
 import { LevelEditorRenderService } from "@/tools/level-editor/services/level-editor-render";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
-/** What the panel says while a part's problems are not all in: that it is read, or why it could not be. */
+/** What the panel says while a part is unread: that it is being read, or why it could not be; null once read. */
 function toPartStatus(name: string, state: AsyncState<unknown>): Nullable<string> {
   if (state.error) {
     return `The scene's ${name} could not be read: ${state.error.message}`;
@@ -31,12 +31,11 @@ function toPartStatus(name: string, state: AsyncState<unknown>): Nullable<string
 }
 
 /**
- * Everything of the open scene the SDK's Level Editor would skip or refuse, and what of it is not drawn: what the open
- * found of its part files, then what reading its objects and its binary tools found, then the scene objects its
- * picture leaves out, then the textures and the models of library objects and spawn points the renderer could not draw.
- * The findings listed are those read so far: beside them, the panel says which of the objects, binary tools, library
- * objects and helpers is still being read or could not be read, the first such in that order, and then, as the level
- * viewer says it, that what the renderer could not draw waits for the scene to be resident.
+ * What the SDK's Level Editor would skip or refuse in the open scene, and what the renderer does not draw, in the order
+ * {@link listLevelEditorProblems} gives.
+ *
+ * Lists the findings read so far, with a status for the first part still being read or failed, and notes that render
+ * problems wait for the scene to be resident.
  */
 export function LevelEditorProblemsPanel({
   "data-testid": dataTestId = "level-editor-problems-panel",

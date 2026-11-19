@@ -186,10 +186,7 @@ export const PANEL = {
   contentLineHeight: 1.6,
 } as const;
 
-/**
- * Toolbar popovers: one width for all of them, so each settings row lines its label, control and readout up in the
- * same columns as the next popover's.
- */
+/** Toolbar popovers: one width for all, so every row's columns line up with the next popover's. */
 export const POPOVER = {
   width: 304,
   /** For rows of several named choices. */

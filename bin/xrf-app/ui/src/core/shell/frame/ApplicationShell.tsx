@@ -14,9 +14,9 @@ interface IApplicationShellProps {
 }
 
 /**
- * Renders the shell frame, the root lifecycle service's leave prompt, settings, and the keyboard dispatcher, asks
- * before the window closes, subscribes the window to committed changes, tells the backend which tools the page
- * holds openings for, and has the window shown once this first screen is drawn.
+ * Renders the shell frame, the root lifecycle service's leave prompt, settings and the keyboard dispatcher. Asks before
+ * the window closes, subscribes it to committed changes, tells the backend which tools the page can open, and shows
+ * the window once this first screen is drawn.
  */
 export function ApplicationShell({ children }: IApplicationShellProps): ReactElement {
   useWindowReveal();

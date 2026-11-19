@@ -11,10 +11,7 @@ export interface IEditorPopoverContentProps extends BaseComponentProps {
   label: string;
   /** Whether it takes the wider width, for rows of several named choices. */
   isWide?: boolean;
-  /**
-   * Sets back what every section of the popover sets, from a button at the end of its heading, where one reset covers
-   * them all; none while nothing is to set back.
-   */
+  /** Sets back every section from one button at the end of the heading; omit it while nothing is to set back. */
   onReset?: () => void;
   /** What the reset sets them back to, its tooltip. */
   resetLabel?: string;

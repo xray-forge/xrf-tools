@@ -15,8 +15,8 @@ interface ISettingsAboutPendingProps {
 }
 
 /**
- * What an About section shows while its read has no answer: that it is reading, or why it could not, with a way to read
- * again rather than a "Reading..." that never ends.
+ * What an About section shows while its read has no answer: that it is reading, or why it failed, with a way to read
+ * again.
  */
 export function SettingsAboutPending({ error, label }: ISettingsAboutPendingProps): ReactElement {
   const aboutService: SettingsAboutService = useInjection(SettingsAboutService);

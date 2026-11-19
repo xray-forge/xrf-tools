@@ -17,20 +17,18 @@ import {
 export enum ELevelEditorSceneBlank {
   /** None of its object tools holds an object. */
   EMPTY = "empty",
-  /** It places library objects, none of them was drawn, and it holds nothing a helper is drawn for. */
+  /** It places library objects, none was drawn, and nothing it holds draws a helper. */
   NOTHING_FOUND = "nothing-found",
-  /** It holds objects, of tools that draw neither a model nor a helper: sectors, groups and the like. */
+  /** Its objects are of tools drawing neither a model nor a helper: sectors, groups and the like. */
   NOTHING_DRAWN = "nothing-drawn",
-  /** It draws helpers alone, and the Show action has every one of them switched off. */
+  /** It draws helpers alone, all switched off in the Show action. */
   HELPERS_HIDDEN = "helpers-hidden",
 }
 
 /**
- * @param objects - The open scene's object tools' objects, or null before they are read.
- * @param drawing - What the open scene's picture needs, or null before it is read.
- * @param helpers - What the page needs of the open scene's helpers, or null before it is read.
- * @param shown - Which helpers the Show action has switched on.
- * @returns Why the scene draws nothing, or null while any is unread and for a scene that draws an object or a helper.
+ * Why the open scene draws nothing.
+ *
+ * @returns The reason, or null while any part is unread or where the scene draws an object or a helper.
  */
 export function toLevelEditorSceneBlank(
   objects: Nullable<SceneObjectsDescription>,

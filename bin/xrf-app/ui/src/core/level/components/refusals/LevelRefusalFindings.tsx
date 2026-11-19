@@ -16,8 +16,7 @@ interface ILevelRefusalFindingsProps {
 }
 
 /**
- * What a level decompile or build left out, a row per object with the file it came from and why: the table both level
- * tools end on, searchable by any of the three.
+ * What a level decompile or build left out: a searchable row per object, with its file and why.
  */
 export function LevelRefusalFindings({ refused, emptyLabel }: ILevelRefusalFindingsProps): ReactElement {
   const rows: Array<ILevelRefusalRow> = useMemo(

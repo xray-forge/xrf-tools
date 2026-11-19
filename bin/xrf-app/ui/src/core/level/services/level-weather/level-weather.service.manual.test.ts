@@ -83,7 +83,6 @@ describe("LevelWeatherService, set by hand", () => {
 
     expect(service.manual?.skyTexture).toBe("sky\\sky_night");
     expect(service.manual?.rainDensity).toBe(0.5);
-    // Its keys the weather's again, a reset would change nothing; the rain set by hand still would.
     expect(service.isManualResettable(["skyTexture"])).toBe(false);
     expect(service.isManualResettable(["skyTexture", "rainDensity"])).toBe(true);
     expect(

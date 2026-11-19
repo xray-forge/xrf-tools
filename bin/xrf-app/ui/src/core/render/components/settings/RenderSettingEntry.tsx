@@ -34,9 +34,8 @@ export interface IRenderSettingEntryProps<G, K extends keyof G> extends BaseComp
 }
 
 /**
- * One setting's entry in a popover, as its declaration says: one row, what it does read on hovering its label and said
- * under it only where the declaration asks, and disabled where it changes nothing. A setting drawn by a control of its
- * own draws nothing here.
+ * One setting's row in a popover, as its declaration says: its description on hovering the label, or under it where
+ * asked, and disabled where it changes nothing. A setting with a control of its own draws nothing here.
  */
 export function RenderSettingEntry<G, K extends keyof G>({
   "data-testid": dataTestId = "render-setting-entry",

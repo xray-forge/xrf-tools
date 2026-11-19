@@ -10,8 +10,8 @@ import { LevelEditorOpenForm } from "./components/LevelEditorOpenForm";
 import { LevelEditorWorkspace } from "./components/LevelEditorWorkspace";
 
 /**
- * Open a Level Editor scene and inspect what it holds, read-only. An open that fails shows why where the scene would
- * be, with a retry, the open form one step back.
+ * Opens a Level Editor scene to inspect, read-only. A failed open shows why in the viewport, with a retry, and the open
+ * form one step back.
  */
 export function LevelEditorTool({
   "data-testid": dataTestId = "level-editor-tool",

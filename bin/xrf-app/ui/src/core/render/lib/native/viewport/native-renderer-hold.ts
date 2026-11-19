@@ -4,15 +4,15 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 /**
- * A hold on the native renderer, keeping its GPU started between viewports: a tool whose viewports come and go takes
- * it as it opens, so the first viewport and every one after it draws without waiting for the GPU to start.
+ * A hold on the native renderer, keeping its GPU started between viewports. A tool whose viewports come and go takes
+ * it as it opens, so no viewport waits for the GPU to start.
  */
 export class NativeRendererHold {
   /** The hold asked for, answered with its number, or null for one the renderer refused. */
   private held: Nullable<Promise<Nullable<RenderHoldId>>> = null;
 
   /**
-   * @param log - The owner's logger, which a refused hold is told on.
+   * @param log - The owner's logger, which a refused hold is reported on.
    */
   public constructor(private readonly log: Logger) {}
 

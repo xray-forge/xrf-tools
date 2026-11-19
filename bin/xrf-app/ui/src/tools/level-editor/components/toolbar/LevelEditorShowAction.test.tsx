@@ -24,11 +24,6 @@ interface IRenderedShowAction {
   rendered: RenderResult;
 }
 
-/**
- * The fixture scene open, its three spawn points helped, and the Show action over it.
- *
- * @returns The rendered action and its container.
- */
 async function renderShowAction(): Promise<IRenderedShowAction> {
   mockIpcCommands({
     [ELevelsCommand.OPEN_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),

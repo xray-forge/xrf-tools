@@ -41,8 +41,8 @@ function describeToolFiles(tool: SceneToolDescription, guid: string): string {
 }
 
 /**
- * What the open scene's `.level` holds worth showing - where it lies, its GUID, where its library objects are looked
- * for and its textures read, what it builds with and where the editor's camera stood - and every tool's part files.
+ * The open scene's `.level`: path, GUID, objects and texture roots, build settings, saved camera, and each tool's part
+ * files.
  */
 export function LevelEditorScenePanel({
   "data-testid": dataTestId = "level-editor-scene-panel",

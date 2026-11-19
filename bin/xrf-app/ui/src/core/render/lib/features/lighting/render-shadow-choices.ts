@@ -27,7 +27,7 @@ export const RENDER_SHADOW_RESOLUTION_OPTIONS: ReadonlyArray<IChoiceFormRowOptio
 
 /**
  * @param texels - Texels each way a shadow's edge is averaged over.
- * @returns It as both surfaces read it: a width in texels, which its label names, or the hardest edge for none.
+ * @returns A width in texels, or "Hard" for none.
  */
 export function formatShadowFilter(texels: number): string {
   return texels ? formatNumber(texels, 0) : "Hard";

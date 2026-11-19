@@ -35,7 +35,7 @@ import { LevelEditorSelectionService } from "@/tools/level-editor/services/level
 
 import { LevelEditorOutlinerToolLabel } from "./LevelEditorOutlinerToolLabel";
 
-/** What the panel says while the scene's objects are not listed: why they could not be read, or that they are read. */
+/** What the panel says while the scene's objects are not listed: the read error, or that they are being read. */
 function toEmptyLabel(objects: AsyncState<SceneObjectsDescription>): string {
   return objects.error
     ? `The scene's objects could not be read: ${objects.error.message}`
@@ -43,9 +43,9 @@ function toEmptyLabel(objects: AsyncState<SceneObjectsDescription>): string {
 }
 
 /**
- * Everything the open scene holds, `tool -> object`: each tool in the SDK's order with what it holds, a binary tool
- * counted, a tool with problems marked; found by name, reference or section, selected for the Inspector as the
- * viewport selects, framed when activated, and hidden one by one.
+ * The open scene as a `tool -> object` tree, in the SDK's tool order, filterable by name, reference or section.
+ *
+ * Its selection is shared with the viewport and the Inspector; activating a row frames it, and each row can be hidden.
  */
 export function LevelEditorOutlinerPanel({
   "data-testid": dataTestId = "level-editor-outliner-panel",
@@ -86,7 +86,7 @@ export function LevelEditorOutlinerPanel({
   const hiddenRowIds: ReadonlySet<string> = useMemo(() => new Set(hidden.map(toLevelEditorOutlinerObjectId)), [hidden]);
   const activeId: Nullable<string> = selectedId ? toLevelEditorOutlinerObjectId(selectedId) : null;
 
-  // The object row the rows chose last, so the tree leaves itself as it is when it hears its own choice back.
+  // The row the tree chose last, so it ignores its own choice echoed back from the selection.
   const chosen = useRef<Nullable<string>>(null);
 
   const onSelect = useCallback(
@@ -146,14 +146,13 @@ export function LevelEditorOutlinerPanel({
     [hiddenRowIds, selectionService]
   );
 
-  // What the tree's cursor stands on belongs to the scene it was chosen in.
+  // The tree's cursor belongs to the scene it was chosen in.
   useEffect(() => {
     chosen.current = null;
     select(null);
   }, [sessionId, select]);
 
-  // The tree shows what is selected elsewhere, the viewport's pick: its tool opened, any filter hiding it cleared and
-  // its row brought into view; nothing selected there chooses nothing here.
+  // A selection made elsewhere, such as a viewport pick, clears the filter and opens its tool to reveal the row.
   useEffect(() => {
     const rowId: Nullable<string> = selectedId ? toLevelEditorOutlinerObjectId(selectedId) : null;
 

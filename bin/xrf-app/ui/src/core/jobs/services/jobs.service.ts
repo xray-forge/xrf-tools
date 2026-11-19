@@ -231,11 +231,7 @@ export class JobsService {
 
   /**
    * Takes where the adopted jobs have got to from a listing the backend answered, and settles the ones that have ended.
-   * A listing that could not be read never arrives here, so it settles nothing.
-   *
-   * Only adopted jobs are updated from a listing. A job this window started is already receiving its own snapshots
-   * through a channel, and a listing can lag those by up to one emission interval - merging the two would let a
-   * running bar go backwards.
+   * A job this window started keeps its own channel's snapshots, which a listing can lag.
    *
    * @param listed - Every job the backend describes.
    */

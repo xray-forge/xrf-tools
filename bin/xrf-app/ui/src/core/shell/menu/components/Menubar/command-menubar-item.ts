@@ -26,9 +26,7 @@ export function toCommandMenubarItem(
 }
 
 /**
- * @param command - A command a menu row does the same as.
- * @param keymapService - What says the chords reaching it.
- * @returns Its first reachable chord as a row writes it, or null where none reaches it.
+ * @returns The command's first reachable chord as a menu row writes it, or null where none reaches it.
  */
 export function toCommandShortcut(command: IKeybindCommand, keymapService: KeymapService): Nullable<string> {
   const [chord] = keymapService.getReachableChords(command);

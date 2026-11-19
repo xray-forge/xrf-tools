@@ -21,7 +21,7 @@ function renderActions(): ReadonlyArray<IMenuContribution> {
     LevelViewerSnapshotService,
   ]);
 
-  // The tool open is read off the route, which is what keys what it publishes.
+  // The route keys what the menu publishes.
   renderWithProviders(<LevelViewerActionsMenu />, { container, route: "/level-viewer" });
 
   return container.get(ShellContributionsService).menus.get(EToolId.LEVEL_VIEWER);

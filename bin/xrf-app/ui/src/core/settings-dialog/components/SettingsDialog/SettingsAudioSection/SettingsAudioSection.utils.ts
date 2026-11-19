@@ -49,12 +49,11 @@ export function fromAudioOutputKey(key: TAudioOutputKey): AudioOutputChoice {
 }
 
 /**
- * The devices a person can pick, a row each however long its name: the system default, every device the system
- * offers, and the chosen one while it is missing, so the choice never disappears from under the list.
+ * The devices a person can pick: the system default, every device the system offers, and the chosen one while it is
+ * missing, so the choice never disappears from the list.
  *
  * @param devices - The devices the system offers, or null before it was asked.
  * @param choice - The device the settings name.
- * @returns The list's options.
  */
 export function listAudioOutputOptions(
   devices: Nullable<ReadonlyArray<AudioDeviceDescription>>,

@@ -18,7 +18,7 @@ interface IArchiveConfigOptionsSectionProps extends BaseComponentProps {
 
 /**
  * How the volumes are written, as opposed to what goes into them. The volume ceiling is the editor's per-run one,
- * bounded by the ceiling the backend reports, so the form carries no copy of the format's limit.
+ * bounded by the ceiling the backend reports.
  */
 export function ArchiveConfigOptionsSection({
   "data-testid": dataTestId = "archive-config-options-section",

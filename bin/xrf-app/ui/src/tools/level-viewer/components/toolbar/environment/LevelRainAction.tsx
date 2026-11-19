@@ -39,7 +39,7 @@ import {
 import { TRenderRainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { LevelWeatherCollectionSelect } from "@/tools/level-viewer/components/weather/LevelWeatherCollectionSelect";
 
-/** The rain settings the falling drops' section sets, and gives back to the settings. */
+/** The rain settings the drops section sets and resets. */
 const RAIN_DROPS_KEYS: ReadonlyArray<keyof TRenderRainSettings> = [
   "drops",
   "dropSquare",
@@ -49,18 +49,15 @@ const RAIN_DROPS_KEYS: ReadonlyArray<keyof TRenderRainSettings> = [
 ];
 
 /**
- * The rain settings the puddles' section sets, and gives back to the settings: every other one, the wetting pace among
- * them, so each rain setting is given back by exactly one of the two sections.
+ * The rain settings the puddles section sets and resets: every other one, so each is reset by exactly one section.
  */
 const RAIN_PUDDLES_KEYS: ReadonlyArray<keyof TRenderRainSettings> = (
   Object.keys(RENDER_RAIN_SETTINGS) as Array<keyof TRenderRainSettings>
 ).filter((key: keyof TRenderRainSettings) => !RAIN_DROPS_KEYS.includes(key));
 
 /**
- * How hard it rains and the streaks' colour; whether the drops bend the scene behind them, how far about the camera
- * they fall, and how far, how strongly and how wide their rings ripple; the bolts that strike with it; whether puddles
- * gather on flat ground over the engine's own wetting, how many of the sites hold one, how much they reflect, how far
- * they are drawn and how strongly the rain ripples them. Each section resets its own part.
+ * The rain popover: rain strength and colour, the drops and their rings, thunderbolts, and puddles. Each section resets
+ * its own part.
  */
 export function LevelRainAction({
   "data-testid": dataTestId = "level-rain-action",
@@ -88,7 +85,6 @@ export function LevelRainAction({
   const manual: ILevelManualWeather = weatherService.shown;
   const collections: ReadonlyArray<ThunderboltCollection> =
     weatherService.description.value?.thunderboltCollections ?? EMPTY_ARRAY;
-  // The rain as the view draws it: its drops, whether puddles gather, and their strengths.
   const rain: TRenderRainSettings = toLevelModeFeature("rain", settings, features);
   const isRaining: boolean = isRainy && manual.rainDensity > 0;
   const isStriking: boolean = isThundering && manual.thunderboltCollection !== "";

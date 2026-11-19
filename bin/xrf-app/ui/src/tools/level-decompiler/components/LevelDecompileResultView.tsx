@@ -45,7 +45,7 @@ export function LevelDecompileResultView({
       { label: "textures", value: report.textures },
       { label: "inferred", value: report.inferred.length },
       { label: "left out", value: report.refused.length },
-      // The parts and objects of the level's own an earlier decompile wrote and this forced one does not.
+      // Parts and objects an earlier decompile wrote that this forced one took away.
       { label: "removed", value: report.removed.length },
     ];
   }, [report]);

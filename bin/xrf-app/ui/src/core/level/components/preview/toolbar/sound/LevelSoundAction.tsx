@@ -8,9 +8,8 @@ import { ILevelHelperOptions, LEVEL_HELPERS_OFF_REASON } from "@/core/level/lib/
 import { LevelViewService } from "@/core/level/services/level-view";
 
 /**
- * Whether the level's sound is heard while its viewport is the one listening, and which of its categories: a sound
- * switched off is silent and its schedule runs on, so switching it back on hears it where it would be. Its emitters'
- * spheres draw among the helpers.
+ * Whether the level's sound is heard while its viewport listens, and which categories. A sound switched off keeps its
+ * schedule running, so switching it back on hears it where it would be.
  */
 export function LevelSoundAction({
   "data-testid": dataTestId = "level-sound-action",

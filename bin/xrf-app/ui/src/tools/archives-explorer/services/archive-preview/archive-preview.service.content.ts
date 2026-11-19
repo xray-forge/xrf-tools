@@ -56,8 +56,7 @@ export class ArchiveContentReader {
   }
 
   /**
-   * Reads a sound as the description the engine would read; its player opens the sound itself, by the same session
-   * and name, as the application's audio plays it.
+   * Reads a sound's engine description. The player opens the sound itself by the same session and name.
    */
   private async readAudio(sessionId: SessionId, entry: IArchiveEntry): Promise<TArchiveContent> {
     return {

@@ -17,8 +17,7 @@ interface ILevelBuildSpawnActionProps extends BaseComponentProps {
 }
 
 /**
- * The step from a built level to its spawn: the spawn compiler opened holding the directory the level was built into,
- * where its neighbours are built too, a `spawns` directory beside it, and the game data the level was compiled with.
+ * Opens the spawn compiler over a built level, with the paths {@link getSpawnHandOverPaths} lays out.
  */
 export function LevelBuildSpawnAction({
   "data-testid": dataTestId = "level-build-spawn-action",

@@ -146,8 +146,7 @@ export class SpawnEditorService {
    * Writes the open spawn to `path`.
    *
    * @param path - Where to write it.
-   * @param isForced - Whether a file already at `path` is written over, which the backend refuses otherwise; true once
-   *   the person was asked, as the native save dialog asks.
+   * @param isForced - Whether a file already at `path` is written over; the backend refuses otherwise.
    */
   @LatestFlow("operation")
   public *saveFile(path: string, isForced: boolean): TFlow {
@@ -170,8 +169,7 @@ export class SpawnEditorService {
    * Exports the open spawn into the directory `path`, a file per chunk.
    *
    * @param path - The directory to write into.
-   * @param isForced - Whether a directory already at `path` is written into, which the backend refuses otherwise; true
-   *   once the person confirmed it.
+   * @param isForced - Whether a directory already at `path` is written into; the backend refuses otherwise.
    */
   @LatestFlow("operation")
   public *saveUnpackedDirectory(path: string, isForced: boolean): TFlow {

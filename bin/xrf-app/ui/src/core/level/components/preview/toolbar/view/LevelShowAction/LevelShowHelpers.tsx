@@ -12,8 +12,8 @@ import {
 import { LevelViewService } from "@/core/level/services/level-view";
 
 /**
- * The helpers' master switch, `G`, heading how they are drawn: whether what they leave unmarked fades and whether a
- * screenshot draws them too, how a wire shows behind the level and how far off they fade; each waits on the switch.
+ * The helpers' master switch, `G`, over how they are drawn: the unmarked fade, screenshots, the wire behind the level
+ * and the fade distance, each waiting on the switch.
  */
 export function LevelShowHelpers({
   "data-testid": dataTestId = "level-show-helpers",

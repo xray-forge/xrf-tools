@@ -118,7 +118,7 @@ export function SpawnCompilerTool(): ReactElement {
     [start]
   );
 
-  // The levels are listed again whenever either path changes, and a level no longer built there is unticked.
+  // The levels are listed again whenever either path changes.
   useEffect(() => {
     if (!gamedata.value || !levelsRoot.value) {
       compilerService.resetLevels();
@@ -129,8 +129,7 @@ export function SpawnCompilerTool(): ReactElement {
     void compilerService.listLevels(gamedata.value, levelsRoot.value);
   }, [compilerService, gamedata.value, levelsRoot.value]);
 
-  // No listing, being read again or failed, builds nothing: a level ticked under other paths is unticked, so Build never
-  // sends levels the form does not show.
+  // Levels the current listing does not show built are unticked, so Build never sends levels the form does not show.
   useEffect(() => {
     function isBuilt(level: string): boolean {
       return built.some((it: SpawnListedLevel) => it.name === level);

@@ -9,10 +9,10 @@ import { LevelWeatherService } from "@/core/level/services/level-weather";
 export const LEVEL_WEATHER_RESET_LABEL: string = "Reset to the weather";
 
 /**
- * @param keys - Keys of the keyframe set by hand, as a popover section heads them; one group of
- *   `level-manual-weather-groups`, so the reference stays the same between renders.
- * @returns What sets them back to the weather the keyframe was seeded from, for the section's heading, while that
- *   changes one of them; none while the weather lights the level or each stands as it was seeded.
+ * @param keys - Keys of the keyframe set by hand, as a popover section heads them; a group from
+ *   `level-manual-weather-groups`, so the reference is stable between renders.
+ * @returns The section heading's reset to the seeded weather, or none while the weather lights the level or no key
+ *   differs from its seed.
  */
 export function useLevelWeatherReset(keys: ReadonlyArray<keyof ILevelManualWeather>): Optional<() => void> {
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);

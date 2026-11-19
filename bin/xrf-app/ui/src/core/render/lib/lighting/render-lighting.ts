@@ -28,9 +28,7 @@ export const RENDER_LIGHTING_LIMITS = {
 } as const;
 
 /**
- * @param lighting - A preview's light.
- * @param other - Another, such as the one its reset puts back.
- * @returns Whether every value of the two is the same, so setting one to the other would change nothing.
+ * @returns Whether every value of two preview lights is the same, so setting one to the other would change nothing.
  */
 export function isSameRenderLighting(lighting: IRenderLighting, other: IRenderLighting): boolean {
   return (Object.keys(lighting) as Array<keyof IRenderLighting>).every(

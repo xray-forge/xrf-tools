@@ -2,10 +2,7 @@ import { AudioTransportState } from "@xrf/ipc/types/xrf-audio";
 import { IAudioTransportState } from "@xrf/ui/media/audio-player";
 
 /**
- * A preview's state as a player shows it: in seconds, as the backend's milliseconds read.
- *
- * @param state - The state the backend sent.
- * @returns The state in a player's terms.
+ * A preview's state as a player shows it: in seconds, where the backend sends milliseconds.
  */
 export function toAudioTransportState(state: AudioTransportState): IAudioTransportState {
   return {

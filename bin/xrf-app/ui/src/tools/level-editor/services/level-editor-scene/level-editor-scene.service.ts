@@ -23,36 +23,31 @@ import { Maybe, Nullable } from "@xrf/types";
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
 /**
- * Opens a Level Editor scene, its `.level` and the part files beside it, and keeps each part of it the editor shows -
- * its object tools' objects, its binary tools' counts, what its picture needs and its helpers' extent and counts - as a
- * resource read apart from it and again apart from it. Nothing of the scene is written.
+ * Opens a Level Editor scene read-only: its `.level` and part files, with each part the editor shows kept as a
+ * resource read and re-read on its own.
  */
 @Injectable()
 export class LevelEditorSceneService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  /** Every object of the open scene's object tools, typed, which the Outliner lists and the Inspector shows. */
+  /** Every object of the open scene's object tools, for the Outliner and the Inspector. */
   public readonly objects: SessionPartResource<SceneObjectsDescription>;
 
-  /** What the open scene's AI map, detail objects and wall marks hold, counted. */
+  /** The counts of the open scene's AI map, detail objects and wall marks. */
   public readonly binaryTools: SessionPartResource<SceneBinaryToolsDescription>;
 
   /**
-   * Where the open scene's drawn objects stand, which the camera is framed on, and each scene object it does not draw
-   * for its library object missing or unreadable. What the renderer could not compile or texture is the viewport's to
-   * say once the scene is resident (`LevelEditorRenderService.resident`).
+   * The drawn objects' extent, which the camera frames, and the scene objects not drawn for a missing or unreadable
+   * library object. Compile and texture failures come from `LevelEditorRenderService.resident` instead.
    */
   public readonly drawing: SessionPartResource<SceneDrawDescription>;
 
-  /**
-   * Where the open scene's helpers reach, which the camera is framed on where it draws no object, and how many each
-   * helped tool draws, which the Show action counts.
-   */
+  /** The helpers' extent, framed where the scene draws no object, and each helped tool's count. */
   public readonly helpers: SessionPartResource<SceneHelpersDescription>;
 
   /**
-   * The open scene, read again once its session derives it anew. A scene that fails to open, or to close, is let go
-   * all the same: the editor shows the failure rather than the scene it was asked to leave.
+   * The open scene, re-read when its session derives it anew. A scene that fails to open or close is let go anyway, so
+   * the editor shows the failure rather than the scene it was asked to leave.
    */
   public readonly scene: SessionRootResource<SelectedSceneDescription> = new SessionRootResource(this.log, {
     subject: "scene",
@@ -66,11 +61,11 @@ export class LevelEditorSceneService {
   /** The last open asked for, which a retry asks for again. */
   private request: Nullable<SceneOpenRequest> = null;
 
-  /** The scene being opened, named before it is open: what the editor heads its workspace with while it waits. */
+  /** The scene being opened, which heads the workspace while it waits. */
   @RefObservable()
   public opening: Nullable<SceneSource> = null;
 
-  /** Opens begun, so one taken over by a later open leaves that one's name. */
+  /** Opens begun, so a superseded open leaves the later one's name. */
   private openings: number = 0;
 
   public constructor(eventBus: EventBus = inject(EventBus)) {
@@ -84,7 +79,7 @@ export class LevelEditorSceneService {
     this.helpers = new SessionPartResource(eventBus, [SCENE_HELPERS_PART], levelsCommands.describeSceneHelpers);
   }
 
-  /** Whether a change moved what the open scene was read from: it shows as it opened until it is read again. */
+  /** Whether the open scene's sources changed; it shows as opened until read again. */
   @Computed()
   public get isStale(): boolean {
     return this.scene.isStale;
@@ -99,8 +94,7 @@ export class LevelEditorSceneService {
   }
 
   /**
-   * Restores the scene the backend holds for the editor unless a user action has taken the scene's flow, its parts
-   * read after it.
+   * Restores the scene the backend holds, then its parts, unless a user action has taken the scene's flow.
    */
   @BoundAction()
   public restore(): Promise<void> {
@@ -108,10 +102,8 @@ export class LevelEditorSceneService {
   }
 
   /**
-   * Opens a scene and lists its tools' part files, its parts read after it. One that fails closes the scene open before
-   * it, so the editor shows the failure rather than the scene it was asked to replace.
-   *
-   * @param request - The `.level` to open and the roots its library objects are looked for in.
+   * Opens a scene, then reads its parts. A failed open closes the previous scene, so the editor shows the failure
+   * rather than the scene it was asked to replace.
    */
   @BoundAction()
   public async open(request: SceneOpenRequest): Promise<void> {
@@ -125,19 +117,18 @@ export class LevelEditorSceneService {
         this.scene.open(request.source.path, levelsCommands.openScene, request)
       );
 
-      // Failed rather than superseded: a later open's answer decides what the parts read.
+      // Only a failure detaches; a superseded open leaves the parts to the later one.
       if (isOpened === false) {
         this.detachParts();
       }
     } finally {
-      // A later open took the flow over meanwhile, and names its own scene.
+      // Unless a later open took over and names its own scene.
       this.forgetOpening(opening);
     }
   }
 
   /**
-   * Tries again what failed: the last scene asked for, or the restore of the scene the backend held where nothing was
-   * asked for since.
+   * Retries the last open, or the restore where nothing was opened since.
    */
   public async retry(): Promise<void> {
     if (this.request) {
@@ -148,14 +139,14 @@ export class LevelEditorSceneService {
   }
 
   /**
-   * Closes the open scene without clearing a newer one. The view is cleared even where the backend failed to let the
-   * scene go, which stays owned for the next close to release.
+   * Closes the open scene without clearing a newer one. The view clears even where the backend failed to let go; the
+   * scene then stays owned for the next close.
    */
   @BoundAction()
   public async close(): Promise<void> {
     const isClosed: Maybe<boolean> = await flowResult(this.scene.close());
 
-    // Superseded rather than settled: a later open's answer decides what the parts read.
+    // Undefined means superseded: the later open's answer decides what the parts read.
     if (isClosed !== undefined) {
       this.detachParts();
     }
@@ -169,9 +160,8 @@ export class LevelEditorSceneService {
   }
 
   /**
-   * Reads the parts of an adopted opening side by side, each settling on its own; a part that fails is told by its
-   * resource. Attaching to another opening lets the parts of the scene held before go first, so nothing shows one
-   * scene's parts beside another.
+   * Reads an adopted session's parts in parallel, each settling and failing on its own. The previous scene's parts are
+   * let go first, so no two scenes' parts show together.
    */
   private *attachParts(sessionId: SessionId): TFlow {
     yield* call(

@@ -38,9 +38,9 @@ import {
 } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
- * Whether this view draws the water, the engine's own or the enhanced water refracting what lies under it, and a
- * section each of its waves, of what shows under its surface, of its reflection and of its distortion, the enhanced
- * water's values disabled under the engine's; then how strongly the weather has it reflect.
+ * Whether this view draws the water, the engine's or the enhanced refracting one, with a section each for its waves,
+ * depth, reflection and distortion, then the weather's reflection strength. Enhanced values are disabled under the
+ * engine's water.
  */
 export function LevelWaterAction({
   "data-testid": dataTestId = "level-water-action",

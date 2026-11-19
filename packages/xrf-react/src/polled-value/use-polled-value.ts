@@ -5,8 +5,7 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Re-reads a value on an interval for as long as the component is mounted and the document is visible.
  *
- * A hidden document (a minimized window) skips its ticks and reads once as soon as it is shown again, since nobody is
- * looking at the value in between.
+ * A hidden document (a minimized window) skips its ticks and reads once as soon as it is shown again.
  *
  * @param read - Reads the current value, synchronously or not.
  * @param intervalMs - How long to wait between reads.

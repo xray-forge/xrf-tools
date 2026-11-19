@@ -21,9 +21,7 @@ export interface IEditorProblem {
   rule: string;
   subject: Nullable<string>;
   message: string;
-  /**
-   * Where opening this problem would take a reader, when anything can.
-   */
+  /** Where opening this problem would take a reader, when anything can. */
   location?: IEditorProblemLocation;
 }
 

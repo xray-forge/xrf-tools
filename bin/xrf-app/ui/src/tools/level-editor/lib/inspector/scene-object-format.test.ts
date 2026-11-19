@@ -17,7 +17,6 @@ describe("formatSceneList", () => {
     expect(formatSceneList(["a", "b"], (it: string, index: number) => `${index}: ${it}`)).toBe("0: a\n1: b");
   });
 
-  // A way of three thousand points is laid out as twenty lines and a count, never as three thousand.
   it("counts what lies past the limit instead of writing it, describing only what it writes", () => {
     const described: Array<number> = [];
     const items: Array<number> = Array.from({ length: 3000 }, (_, index: number) => index);

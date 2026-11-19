@@ -27,8 +27,7 @@ export function SpawnEditorActions({
   const isBusy: boolean = spawnEditorService.isBusy;
 
   const onSave = useCallback(async () => {
-    // The save dialog asks about overwriting an existing file itself, so its answer is the force and there is no second
-    // prompt here.
+    // The save dialog already asked about overwriting, so its answer is the force.
     const path: Nullable<string> = await askToSave({
       title: "Save spawn file",
       start: spawnEditorService.path,

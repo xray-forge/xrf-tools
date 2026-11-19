@@ -17,23 +17,19 @@ import { toSceneRenderId } from "@/tools/level-editor/lib/render/scene-render-id
 import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-editor-helpers";
 import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
-/** The fixture's second library object placed. */
 const BOX: SceneObjectId = { index: 1, tool: ESceneToolKind.SCENE_OBJECT };
 
-/** The fixture's third spawn point. */
 const STALKER: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
 
-/** Whether the viewport was last told to draw the items group, which the spawn points' models stand in. */
+// Spawn point models stand in the items group.
 function lastItems(): unknown {
   return listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES).at(-1)?.toggles.isSpawnedItems;
 }
 
-/** The render id `object` carries. */
 function toId(object: SceneObjectId): number {
   return toSceneRenderId(object) ?? -1;
 }
 
-/** The helpers the viewport was last told to draw. */
 function lastHelpers(): RenderHelperOptions {
   return listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)?.options.helpers as RenderHelperOptions;
 }
@@ -68,7 +64,6 @@ describe("LevelEditorRenderPicks", () => {
     expect(lastHelpers().selected).toEqual([toId(BOX)]);
   });
 
-  // A spawn point drawn as its model is picked by its model and outlined as one, its volume marked selected too.
   it("selects the spawn point a model or a helper stands for, outlining its model and lifting its helper", async () => {
     const { container, service } = await mockAttachedSceneRender();
     const id: number = toId(STALKER);

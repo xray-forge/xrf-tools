@@ -7,32 +7,27 @@ import { Nullable } from "@xrf/types";
 import { findSceneObject } from "@/tools/level-editor/lib/tools/scene-objects";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
-/** The object chosen, with the opening of the scene it was chosen in. */
+/** The selected object, with the session it was selected in. */
 interface ILevelEditorSelection {
   sessionId: SessionId;
   id: SceneObjectId;
 }
 
-/** The objects hidden, with the opening of the scene they were hidden in. */
+/** The hidden objects, with the session they were hidden in. */
 interface ILevelEditorHidden {
   sessionId: SessionId;
   ids: ReadonlyArray<SceneObjectId>;
 }
 
-/**
- * @param first - A scene object.
- * @param second - Another.
- * @returns Whether both name the same object.
- */
 function isSameObject(first: SceneObjectId, second: SceneObjectId): boolean {
   return first.tool === second.tool && first.index === second.index;
 }
 
 /**
- * Which objects of the open scene are singled out, each by its tool and index: the one selected, the one under the
- * pointer, and those hidden one by one. The selection and the hidden objects are kept with the scene's opening they
- * were chosen in, so a scene opened or closed since selects and hides nothing; the selection is kept with the objects
- * listed of it too, so a listing read again without the object selects nothing.
+ * The open scene's selected, hovered and hidden objects.
+ *
+ * Selection and hiding are tied to the session they were made in, so another open drops them; the selection also
+ * drops once a re-read listing lacks the object.
  */
 @Injectable()
 export class LevelEditorSelectionService {
@@ -48,7 +43,7 @@ export class LevelEditorSelectionService {
 
   public constructor(private readonly sceneService: LevelEditorSceneService = inject(LevelEditorSceneService)) {}
 
-  /** The selected object as the open scene's listing describes it, or none. */
+  /** The selected object as the open scene's listing describes it. */
   @Computed()
   public get selected(): Nullable<SceneObjectDescription> {
     const selection: Nullable<ILevelEditorSelection> = this.selection;
@@ -66,13 +61,12 @@ export class LevelEditorSelectionService {
     return findSceneObject(objects.tools, selection.id);
   }
 
-  /** The selected object's id, or none while nothing the open scene lists is selected. */
   @Computed()
   public get selectedId(): Nullable<SceneObjectId> {
     return this.selected?.id ?? null;
   }
 
-  /** The objects of the open scene hidden one by one, in the order they were hidden; none for another opening's. */
+  /** The open scene's hidden objects, in the order they were hidden. */
   @Computed()
   public get hidden(): ReadonlyArray<SceneObjectId> {
     const hiding: Nullable<ILevelEditorHidden> = this.hiding;
@@ -81,9 +75,7 @@ export class LevelEditorSelectionService {
   }
 
   /**
-   * Selects one object of the open scene, or nothing.
-   *
-   * @param id - The object, by its tool and index; none to select nothing.
+   * Selects one object of the open scene; null selects nothing.
    */
   @BoundAction()
   public select(id: Nullable<SceneObjectId>): void {
@@ -92,9 +84,6 @@ export class LevelEditorSelectionService {
     this.selection = id && sessionId ? { id, sessionId } : null;
   }
 
-  /**
-   * @param id - The object under the pointer, or null for none.
-   */
   @BoundAction()
   public noteHovered(id: Nullable<SceneObjectId>): void {
     if (this.hovered === null || id === null || !isSameObject(this.hovered, id)) {
@@ -102,18 +91,12 @@ export class LevelEditorSelectionService {
     }
   }
 
-  /**
-   * @param id - An object of the open scene.
-   * @returns Whether it is hidden.
-   */
   public isHidden(id: SceneObjectId): boolean {
     return this.hidden.some((it: SceneObjectId) => isSameObject(it, id));
   }
 
   /**
-   * Hides one object of the open scene, or shows it again where it is hidden, as an Outliner row's eye does.
-   *
-   * @param id - The object.
+   * Hides or shows one object of the open scene, as an Outliner row's eye does.
    */
   @BoundAction()
   public toggleHidden(id: SceneObjectId): void {
@@ -131,7 +114,7 @@ export class LevelEditorSelectionService {
     };
   }
 
-  /** Shows every object of the open scene hidden again. */
+  /** Shows every hidden object again. */
   @BoundAction()
   public revealAll(): void {
     this.hiding = null;

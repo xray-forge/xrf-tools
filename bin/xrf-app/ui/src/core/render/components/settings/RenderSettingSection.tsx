@@ -33,9 +33,8 @@ export interface IRenderSettingSectionProps<G> extends BaseComponentProps {
 }
 
 /**
- * One switch of a group heading a popover section of the values it turns on, as its declaration says: the switch's
- * name, its description read on hovering it, disabled where its rule finds it changing nothing; the values follow as
- * their entries, each disabled while the switch is off by its own rule.
+ * A popover section headed by one switch of a group, with the values it turns on as entries below. The switch is
+ * disabled where its rule finds it changing nothing, and each entry by its own rule while the switch is off.
  */
 export function RenderSettingSection<G>({
   "data-testid": dataTestId = "render-setting-section",

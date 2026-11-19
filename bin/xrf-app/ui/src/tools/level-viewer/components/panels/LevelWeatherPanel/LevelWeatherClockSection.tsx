@@ -27,7 +27,7 @@ interface ILevelWeatherClockSectionProps extends BaseComponentProps {
 }
 
 /**
- * The time of day as the toolbar's Weather popover shows it too (`LevelWeatherTime`), and how the sun stands for it.
+ * The time of day, as the Weather popover's `LevelWeatherTime` shows it, and the sun's position for it.
  */
 export function LevelWeatherClockSection({
   "data-testid": dataTestId = "level-weather-clock-section",

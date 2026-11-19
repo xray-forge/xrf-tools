@@ -113,7 +113,7 @@ describe("LevelViewerRecordingService", () => {
     expect(service.isRecording).toBe(false);
     expect(asked).toEqual(["stop"]);
     expect(service.outcome).toEqual(OUTCOME);
-    // Its toast tells a recording that dropped nothing; no notice.
+    // The toast alone reports a recording that dropped nothing.
     expect(raised).toEqual([]);
   });
 

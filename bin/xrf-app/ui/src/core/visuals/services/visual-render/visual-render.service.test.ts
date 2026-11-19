@@ -82,7 +82,7 @@ describe("VisualRenderService", () => {
   });
 
   it("holds the renderer while its tool is open, before any view attaches", async () => {
-    // A tool opens by provisioning its container: the GPU starts then, so the first model shown waits for none of it.
+    // A tool opens by provisioning its container, so the GPU starts before any view.
     mockIpcCommands({ [ERenderCommand.HOLD]: 7 });
 
     const container: Container = mockContainer([
@@ -176,7 +176,7 @@ describe("VisualRenderService", () => {
 
     expect(sent()).toEqual([SCENE]);
 
-    // The next model is read before the renderer names its scene: its grid waits for that, never sent for the last.
+    // The next model is read before the renderer names its scene.
     mockIpcCommands({ [ERenderCommand.ATTACH_VIEWPORT]: VIEWPORT, [EVisualsCommand.SHOW_MODEL]: SCENE + 1 });
     runInAction(() => {
       source.model = mockVisualModelViews({ fit: { center: [0, 1, 0], radius: 4 } });

@@ -35,7 +35,7 @@ interface IEditor {
   selection: LevelEditorSelectionService;
 }
 
-/** Builds the editor's two services and opens the fixture scene, each open a session of its own. */
+// Each open gets a session of its own.
 async function openEditor(): Promise<IEditor> {
   const container: Container = mockContainer([LevelEditorSceneService, LevelEditorSelectionService]);
   const scene: LevelEditorSceneService = container.get(LevelEditorSceneService);
@@ -119,7 +119,6 @@ describe("LevelEditorSelectionService", () => {
     expect(selection.hidden).toEqual([]);
   });
 
-  // What was hidden belongs to the scene's opening, not to the editor.
   it("hides nothing once another scene opens", async () => {
     const { scene, selection } = await openEditor();
 

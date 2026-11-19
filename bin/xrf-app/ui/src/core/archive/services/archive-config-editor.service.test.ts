@@ -21,9 +21,8 @@ enum ETestSection {
 }
 
 interface ITestConfig extends IArchiveEditedConfig {
-  /** What a file carries beyond the shared fields. */
   rule: string;
-  /** What a file never carries, as the run's paths are not. */
+  // Never written to a file, as the run's paths are not.
   path: string;
 }
 
@@ -37,7 +36,6 @@ const CONFIG: ITestConfig = {
   path: "",
 };
 
-/** An editor over files held in memory, so the base is tested without any backend answering for it. */
 @Injectable()
 class TestConfigEditorService extends ArchiveConfigEditorService<ITestConfig, string, ETestSection> {
   public readonly files: Map<string, Partial<ITestConfig>> = new Map();

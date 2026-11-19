@@ -14,7 +14,7 @@ import { LevelEditorRenderService } from "@/tools/level-editor/services/level-ed
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
-/** What the editor does with the scene object chosen: framing it with the camera, by where the backend says it stands. */
+/** Frames scene objects with the camera, by where the backend says they stand. */
 @Injectable()
 export class LevelEditorObjectsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
@@ -26,10 +26,8 @@ export class LevelEditorObjectsService {
   ) {}
 
   /**
-   * Stands the camera framing one object of the open scene, by the sphere it is drawn in: a scene object's model or a
-   * helped object's helper. An object that draws nothing, a sector or a group, leaves the camera where it is.
-   *
-   * @param id - The object, by its tool and index.
+   * Frames one object of the open scene by its model's or helper's sphere. An object drawing nothing, such as a sector
+   * or a group, leaves the camera where it is.
    */
   @LatestFlow()
   public *goTo(id: SceneObjectId): TFlow {
@@ -50,23 +48,21 @@ export class LevelEditorObjectsService {
       )
     );
 
-    // Another scene opened while the backend answered: the object is not where the camera now is.
+    // Another scene may have opened while the backend answered.
     if (sphere && this.sceneService.scene.sessionId === sessionId) {
       this.renderService.frameSphere(sphere);
     }
   }
 
   /**
-   * Selects one object of the open scene and frames it, as activating its Outliner row does.
-   *
-   * @param id - The object, by its tool and index.
+   * Selects and frames one object of the open scene, as activating its Outliner row does.
    */
   public focus(id: SceneObjectId): void {
     this.selectionService.select(id);
     void this.goTo(id);
   }
 
-  /** Stands the camera framing what is selected, as Unreal's `F` does. */
+  /** Frames the selection, as Unreal's `F` does. */
   @KeybindCommand(FRAME_LEVEL_SELECTION_KEYBIND_COMMAND, {
     isEnabled: (service: LevelEditorObjectsService) => service.selectionService.selectedId !== null,
   })

@@ -23,9 +23,8 @@ export interface IJobPickerFormProps<TRequest, TResult> extends Omit<
 }
 
 /**
- * A picker screen over one job: busy while the job runs, its progress while it is found, its failure or its answer
- * once it settles, including a run rediscovered after the window reloaded. Submitting is offered only while there is a
- * request to submit.
+ * A picker screen over one job: busy with its progress while it runs, then its failure or answer, a run rediscovered
+ * after a window reload included. Submitting is offered only while there is a request to submit.
  */
 export function JobPickerForm<TRequest, TResult>({
   operation,

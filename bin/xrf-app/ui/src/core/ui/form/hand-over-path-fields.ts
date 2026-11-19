@@ -4,9 +4,8 @@ import { EToolId } from "@/core/routing/tool";
 import { getFieldValueStorageKey, setLocalStorageValueSafe } from "@/core/storage";
 
 /**
- * Fills another tool's path fields before it is opened, as picking each path there would: each of the tool's
- * `usePathField`s reads its remembered value as it mounts, so it opens holding the paths handed over. A field
- * handed null opens empty, and one left out keeps what it remembered.
+ * Fills another tool's path fields before it is opened, as picking each path there would, since each `usePathField`
+ * reads its remembered value as it mounts. A field handed null opens empty; one left out keeps what it remembered.
  *
  * @param tool - The tool the fields belong to.
  * @param fields - Each field's path, or null to empty it, by the field's id within that tool.

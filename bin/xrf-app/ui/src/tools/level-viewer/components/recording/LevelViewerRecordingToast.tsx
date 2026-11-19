@@ -10,8 +10,7 @@ import { LevelViewerRecordingReadout } from "@/tools/level-viewer/lib/recording/
 import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 
 /**
- * The recording just written, as a screenshot's toast shows a screenshot: its name, length, size and what it dropped,
- * its folder, its path, and its deletion.
+ * The recording just written, with its readout and the file actions a screenshot's toast offers.
  */
 export function LevelViewerRecordingToast({
   "data-testid": dataTestId = "level-viewer-recording-toast",

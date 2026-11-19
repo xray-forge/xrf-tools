@@ -12,7 +12,6 @@ function Window(): ReactElement {
   return <div>window</div>;
 }
 
-/** Runs the animation frames asked for so far, one round per frame. */
 function runFrame(frames: Array<FrameRequestCallback>): void {
   act(() => {
     for (const frame of frames.splice(0)) {

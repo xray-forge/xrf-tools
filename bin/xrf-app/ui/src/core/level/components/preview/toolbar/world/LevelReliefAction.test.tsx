@@ -44,7 +44,7 @@ describe("LevelReliefAction", () => {
     expect(getByRole("button", { name: "Relief", hidden: true })).toHaveAccessibleDescription("Flat");
   });
 
-  // A switch with no settings to tune is no popover's: the shadings, the wireframe and the wall marks are chosen apart.
+  // They have no settings to tune, so no popover holds them.
   it("offers neither the shadings nor the wireframe and wall marks", async () => {
     const { getByRole, findByRole, queryByRole } = renderAction();
 
@@ -121,7 +121,6 @@ describe("LevelReliefAction", () => {
     await userEvent.click(getByRole("checkbox", { name: "Varied terrain" }));
 
     expect(view.features.terrain).toEqual({ tiling: ERenderTerrainTiling.ENGINE });
-    // The view's own value is the settings' again, so a reset would change nothing and is not offered.
     expect(queryByRole("button", { name: "Varied terrain: Back to the settings" })).toBeNull();
   });
 });

@@ -51,8 +51,8 @@ export function toggleSpawnLevel(
 }
 
 /**
- * Whether the build the form names cannot run: no level ticked, a start level not among them, or a name that is no
- * plain file name. Writing over a spawn already there is left to the build, which alone sees whether it is.
+ * Why the build the form names cannot run: no level ticked, a start level not among them, or a name that is no plain
+ * file name. An existing spawn of that name is left to the build to refuse.
  *
  * @param choice - What the form names.
  * @returns Why it cannot run, or null where it can.

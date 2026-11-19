@@ -8,8 +8,9 @@ export type TRecordingDrops = Pick<RecordingOutcome, "droppedFrames" | "droppedS
 /** How a recording reads to the user, running in the status bar and written in its toast and notice. */
 export class LevelViewerRecordingReadout {
   /**
-   * @param progress - Where a recording stands, null before its first word.
-   * @returns How long it has run and what it dropped.
+   * How long a running recording has run and what it dropped.
+   *
+   * @param progress - Where it stands, null before its first report.
    */
   public static describeProgress(progress: Nullable<RecordingProgress>): string {
     if (!progress) {
@@ -23,8 +24,7 @@ export class LevelViewerRecordingReadout {
   }
 
   /**
-   * @param outcome - A recording written.
-   * @returns Its length, size and what it dropped.
+   * A written recording's length, size and what it dropped.
    */
   public static describeOutcome(outcome: RecordingOutcome): string {
     return (
@@ -34,8 +34,7 @@ export class LevelViewerRecordingReadout {
   }
 
   /**
-   * @param drops - What a recording dropped.
-   * @returns The frames and sound dropped, or that nothing was.
+   * The frames and sound blocks a recording dropped, or that nothing was.
    */
   public static describeDrops(drops: TRecordingDrops): string {
     if (!LevelViewerRecordingReadout.hasDrops(drops)) {
@@ -45,25 +44,19 @@ export class LevelViewerRecordingReadout {
     return `${drops.droppedFrames} frames and ${drops.droppedSound} sound blocks dropped`;
   }
 
-  /**
-   * @param drops - What a recording dropped.
-   * @returns Whether it dropped a frame or a block of sound.
-   */
   public static hasDrops(drops: TRecordingDrops): boolean {
     return drops.droppedFrames + drops.droppedSound > 0;
   }
 
   /**
-   * @param file - A recording's path.
-   * @returns Its file's name.
+   * The file name of a recording's path.
    */
   public static getFileName(file: string): string {
     return file.split(/[\\/]/).at(-1) ?? file;
   }
 
   /**
-   * @param seconds - A recording's length, null before it is known.
-   * @returns It as a duration.
+   * A recording's length as a duration, zero while unknown.
    */
   private static describeLength(seconds: Nullable<number>): string {
     return formatDuration((seconds ?? 0) * 1000);

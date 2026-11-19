@@ -52,8 +52,8 @@ interface IMenubarListProps {
 }
 
 /**
- * One open menu's rows, its sections set apart by dividers, with the submenu one row has open beside it: it opens when
- * the pointer rests on its row, on a click or on the right arrow, and closes on the left arrow or Escape.
+ * One open menu's rows, its sections set apart by dividers, with one row's submenu beside it. A submenu opens when the
+ * pointer rests on its row, on a click or on the right arrow, and closes on the left arrow or Escape.
  */
 export function MenubarList({ label, sections, focus, onClose, onKeyDown, onChoose }: IMenubarListProps): ReactElement {
   const list = useRef<Nullable<HTMLUListElement>>(null);

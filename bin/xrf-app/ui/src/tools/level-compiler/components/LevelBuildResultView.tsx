@@ -30,16 +30,12 @@ interface ILevelBuildResultViewProps extends BaseComponentProps {
   result: LevelBuildResult;
   /** Where the run was told to write, to reveal it; the report's paths are display text. */
   outputPath: Nullable<string>;
-  /**
-   * The game data the form named for the compile, handed to the spawn compiler with the level's directory only where a
-   * compile ran and read it.
-   */
+  /** Game data the form named, handed to the spawn compiler only where a compile ran and read it. */
   gamedata: Nullable<string>;
 }
 
 /**
- * What a build wrote: each file with its size and what it replaced, the files of its own it removed, the build project
- * counted, and every part refused.
+ * What a build wrote: files with size and what they replaced, files it removed, the geometry counted, parts refused.
  */
 export function LevelBuildResultView({
   "data-testid": dataTestId = "level-build-result",
@@ -64,7 +60,6 @@ export function LevelBuildResultView({
       { label: "faces", value: formatCount(report.geometry?.faces ?? 0) },
       { label: "lights", value: formatCount(report.geometry?.staticLights ?? 0) },
       { label: "refused", value: report.refused.length },
-      // Each compile step the run took, by how long its compiler ran.
       ...(result.compile?.steps ?? []).map((step: LevelCompileStepReport) => ({
         label: step.step,
         value: formatDuration(step.duration),
@@ -79,7 +74,7 @@ export function LevelBuildResultView({
       ...(report?.files ?? []).map(
         (file: LevelExportedFile) => `${file.name} (${formatBytes(file.size)}, ${PREVIOUS_LABELS[file.previous]})`
       ),
-      // What an earlier build wrote and this forced one does not, which it took away.
+      // Files an earlier build wrote that this forced one took away.
       ...(report?.removed ?? []).map((name: string) => `${name} (removed)`),
     ],
     [report]

@@ -22,7 +22,7 @@ export interface IEditorPopoverSelectRowProps<T extends string> extends BaseComp
 
 /**
  * One of a list of named values in a single row of a toolbar popover: the label in the column every row shares, the
- * select beside it, its menu holding however much each option says.
+ * select beside it.
  */
 export function EditorPopoverSelectRow<T extends string>({
   "data-testid": dataTestId = "editor-popover-select-row",

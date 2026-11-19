@@ -30,7 +30,6 @@ function countCalls(command: string): number {
   return mockInvoke.mock.calls.filter(([name]) => name === command).length;
 }
 
-/** Provisions the service, as the editor does, and opens the fixture scene. */
 async function openScene(): Promise<IOpenedScene> {
   const container: Container = mockContainer([LevelEditorSceneService]);
   const service: LevelEditorSceneService = container.get(LevelEditorSceneService);
@@ -111,7 +110,7 @@ describe("LevelEditorSceneService changes", () => {
     expect(service.objects.value).toEqual(mockSceneObjectsDescription());
   });
 
-  // A `.level` edited on disk derives the scene anew: the root is read again, and both parts with it.
+  // As when the `.level` is edited on disk.
   it("reads a scene its session derived anew, and both its parts", async () => {
     const { container, service, sessionId } = await openScene();
 

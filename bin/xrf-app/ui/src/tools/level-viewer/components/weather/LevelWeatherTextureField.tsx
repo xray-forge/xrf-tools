@@ -20,8 +20,8 @@ interface ILevelWeatherTextureFieldProps extends BaseComponentProps {
 }
 
 /**
- * A weather texture key in one popover row: one the game's weather names, with how many keyframes use it and whether it
- * resolves, or any reference typed.
+ * A weather texture key in a popover row: a texture the game's weather names, with its use count and whether it
+ * resolves, or any typed reference.
  */
 export function LevelWeatherTextureField({
   "data-testid": dataTestId = "level-weather-texture-field",
@@ -63,8 +63,7 @@ export function LevelWeatherTextureField({
           getOptionLabel={(option: string | LevelWeatherTexture) =>
             typeof option === "string" ? option : option.texture.reference
           }
-          // The value is a reference and the options are textures: matched by reference, the one drawn now is marked and
-          // scrolled to when the list opens.
+          // Matched by reference, so the current texture is marked and scrolled to when the list opens.
           isOptionEqualToValue={(option: LevelWeatherTexture, current: string | LevelWeatherTexture) =>
             option.texture.reference === (typeof current === "string" ? current : current.texture.reference)
           }

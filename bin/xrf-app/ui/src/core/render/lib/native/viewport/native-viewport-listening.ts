@@ -23,8 +23,8 @@ function activate(viewport: NativeViewport): void {
 }
 
 /**
- * Hears a viewport's scene while it is the focused window's active pane: as it is pressed in, as its window takes the
- * focus, as it attaches while no pane of the window is active, and as the active pane goes while it stays.
+ * Hears a viewport's scene while it is the focused window's active pane. It becomes active when pressed in, when it
+ * attaches while no pane is active, and when the active pane goes, the latest attached taking over.
  *
  * @param viewport - The viewport, just attached.
  * @param container - The element it draws under, which a press makes the active pane.

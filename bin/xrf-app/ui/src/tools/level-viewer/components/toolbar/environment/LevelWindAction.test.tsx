@@ -64,7 +64,7 @@ describe("LevelWindAction", () => {
       density: 0.5,
       foliage: { ...FOLIAGE, sssIntensity: FOLIAGE.sssIntensity + 0.25 },
     });
-    // What is left, the light through leaves and the density, is the Grass popover's to give back.
+    // The light through leaves and the density are the Grass popover's to reset.
     expect(queryByRole("button", { name: "Foliage motion: Back to the settings" })).toBeNull();
   });
 });

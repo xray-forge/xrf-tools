@@ -25,8 +25,7 @@ interface ILevelEditorOpenFormProps extends BaseComponentProps {
 }
 
 /**
- * The way into the editor: a scene's `.level`, where its library objects are looked for, and the game data its
- * textures are read from, with how that game data's configs read.
+ * The editor's open form: a scene's `.level`, its objects roots, and the game roots its textures and configs come from.
  */
 export function LevelEditorOpenForm({
   "data-testid": dataTestId = "level-editor-open-form",
@@ -52,7 +51,7 @@ export function LevelEditorOpenForm({
 
   const path: Nullable<string> = scene.value;
 
-  // Remembered per root as the level viewer's is: the first game root named, which the scene's configs are read from.
+  // Remembered per root, as in the level viewer; the scene's configs are read from the first game root.
   const engine: IEngineChoice = useEngineChoice(toPaths(gameRoots)[0] ?? null);
 
   const onOpen = useCallback(async () => {

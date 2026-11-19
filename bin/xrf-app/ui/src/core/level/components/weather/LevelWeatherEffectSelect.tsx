@@ -25,8 +25,8 @@ interface ILevelWeatherEffectSelectProps extends BaseComponentProps {
 }
 
 /**
- * The game's weather effects, one of which plays over what lights the level until it gives it back; None stops it.
- * What is left of the one playing is said under it.
+ * The game's weather effects, one of which plays over what lights the level until it ends; None stops it. The time
+ * left of the one playing shows under it.
  */
 export function LevelWeatherEffectSelect({
   "data-testid": dataTestId = "level-weather-effect-select",

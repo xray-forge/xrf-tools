@@ -10,10 +10,8 @@ import { countSpawnFindings } from "@/tools/spawn-compiler/lib/spawn-findings";
 /**
  * What the notification centre says when a spawn's build ends.
  *
- * Pure over its arguments: the jobs service calls it when the run settles, possibly after this tool was closed.
- *
- * A finished build that reported findings is a warning one: a connection left out or a restrictor cutting an AI map
- * apart is written as the game would get it, and is worth reading before the spawn is played.
+ * Pure over its arguments: the jobs service calls it when the run settles, possibly after this tool was closed. A
+ * build that reported findings is a warning, since the spawn is written with them.
  *
  * @param request - What the run was asked to do.
  * @param outcome - How the run ended.

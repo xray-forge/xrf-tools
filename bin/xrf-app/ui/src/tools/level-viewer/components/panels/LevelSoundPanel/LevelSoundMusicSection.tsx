@@ -26,7 +26,7 @@ const SECOND_MS: number = 1000;
 /** How far from a seek's point a report may stand and still be one made after it. */
 const SEEK_REACHED_MS: number = 2000;
 
-/** Reports after the world answered a seek past which the slider follows them whatever they say. */
+/** Reports after a seek's answer past which the slider follows them whatever they say. */
 const SEEK_REPORTS_MOST: number = 2;
 
 interface ILevelSoundMusicSectionProps extends BaseComponentProps {
@@ -37,8 +37,7 @@ interface ILevelSoundMusicSectionProps extends BaseComponentProps {
 }
 
 /**
- * The level's music: the track playing and how far into it, which the slider plays from any point once let go, or the
- * wait for the next; and which plays, the game's schedule or one track chosen by hand.
+ * The level's music: the track and its position, seekable by slider, and whether the schedule or a chosen track plays.
  */
 export function LevelSoundMusicSection({
   "data-testid": dataTestId = "level-sound-music-section",
@@ -47,12 +46,12 @@ export function LevelSoundMusicSection({
   music,
   onCommand,
 }: ILevelSoundMusicSectionProps): ReactElement {
-  // Where the slider is held while dragged, shown and kept for its letting go, which a key's step sends in the same
-  // event as its change, before the state is rendered; the music plays from there only once it is let go.
+  // Held in a ref too: a key's step sends its change and release in one event, before the state renders. The music
+  // seeks only on release.
   const [dragged, setDragged] = useState<Nullable<number>>(null);
   const held: RefObject<Nullable<number>> = useRef<Nullable<number>>(null);
-  // The reports come every half second, one asked before the seek perhaps answered after it: until one stands at the
-  // point, plays another track, or a couple have come, the slider keeps the point rather than jump back.
+  // A report asked before the seek may arrive after it, so the slider keeps the point until a report reaches it,
+  // another track plays, or a couple have come.
   const [seek, setSeek] = useState<Nullable<ILevelSoundSeek>>(null);
   const shown: RefObject<Nullable<WorldSoundMusicReport>> = useRef<Nullable<WorldSoundMusicReport>>(music);
 

@@ -32,8 +32,8 @@ const SOURCE_PANEL: IShellPanel = {
 /**
  * What the explorer contributes to the panel stripe.
  *
- * Inserted where the shared motions panel used to sit rather than appended, so the stripe order a user learned does
- * not move, and after the header, which stays the panel a model opens on; the object's source last.
+ * Motions sits after bones rather than at the end, so the stripe order users know holds; the object's source comes
+ * last.
  */
 export const VISUALS_EXPLORER_PANELS: Array<IShellPanel> = [
   ...VISUAL_PANELS.flatMap((panel: IShellPanel) => (panel.id === "bones" ? [panel, MOTIONS_PANEL] : [panel])),

@@ -452,10 +452,9 @@ export const LEVEL_FEATURE_TOGGLES_ON: Readonly<TLevelFeatureToggles> = {
  * @param key - A feature group the view sets part of.
  * @param settings - What the renderer's settings set, for every viewport.
  * @param view - What the view sets over them.
- * @param unset - What the view keeps of the group once its reset is done, none of it by default; a popover owning only
- *   part of a group keeps the rest.
- * @returns Whether what the view sets draws the group otherwise than the settings do, which its reset would undo; a
- *   value set to what the settings say already changes nothing.
+ * @param unset - What the view keeps of the group once reset, none of it by default.
+ * @returns Whether the view draws the group otherwise than the settings, which its reset would undo; a value set to
+ *   the settings' own changes nothing.
  */
 export function isLevelFeatureSet<K extends keyof ILevelFeatureOptions & keyof IRenderFeatureSettings>(
   key: K,

@@ -12,19 +12,17 @@ function stateAt(position: number): AudioTransportState {
   return { playback: "playing", position, duration: 2000, isLooped: false, failure: null };
 }
 
-/** The previews closed so far, by id. */
 function getClosed(): Array<unknown> {
   return mockInvoke.mock.calls
     .filter(([name]) => name === EAudioCommand.CLOSE_PREVIEW)
     .map(([, args]) => (args as { transport: AudioTransportId }).transport);
 }
 
-/** Lets the open, watch and peaks requests answer, as a task later than every promise they chain. */
+// A task, so it runs after every promise the open, watch and peaks requests chain.
 async function settle(): Promise<void> {
   await act(async () => new Promise((resolve) => setTimeout(resolve)));
 }
 
-/** A preview keyed `key` that opens as `id`. */
 function previewOf(key: string, id: AudioTransportId): IAudioPreviewOptions {
   return { key, open: async () => id };
 }

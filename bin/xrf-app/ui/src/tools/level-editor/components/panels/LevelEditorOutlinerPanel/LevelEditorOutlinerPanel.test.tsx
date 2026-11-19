@@ -35,7 +35,6 @@ import { LevelEditorSelectionService } from "@/tools/level-editor/services/level
 
 import { LevelEditorOutlinerPanel } from "./LevelEditorOutlinerPanel";
 
-/** The services the Outliner and the Inspector reach, framing an object's included. */
 const OUTLINER_BINDINGS: Array<Binding> = [
   LevelEditorSceneService,
   LevelEditorSelectionService,
@@ -46,7 +45,6 @@ const OUTLINER_BINDINGS: Array<Binding> = [
   LevelEditorObjectsService,
 ];
 
-/** The fixture's objects, one library object a member of a group. */
 function mockGroupedObjects(): SceneObjectsDescription {
   const [sceneObjects, spawns] = mockSceneObjectsDescription().tools;
 
@@ -119,7 +117,6 @@ describe("LevelEditorOutlinerPanel", () => {
     expect(listRows(view)).toEqual(["Scene objects3", "Spawn points3", "AI map12,480 nodes"]);
   });
 
-  // The Problems panel says what is wrong; the row says where to look.
   it("marks a tool its scene's problems name", async () => {
     const view: RenderResult = await renderPanels();
 
@@ -180,7 +177,6 @@ describe("LevelEditorOutlinerPanel", () => {
     expect(view.getByRole("treeitem", { name: /box_2/ })).toHaveAttribute("aria-current", "true");
   });
 
-  // A pick in the viewport is answered where the Outliner lists it, whatever the filter hid.
   it("opens the tool of an object selected elsewhere and chooses its row, clearing the filter", async () => {
     const container: Container = mockContainer(OUTLINER_BINDINGS);
     const view: RenderResult = await renderPanels(mockGroupedObjects(), container);
@@ -249,7 +245,7 @@ describe("LevelEditorOutlinerPanel", () => {
     expect(view.queryByText(/hidden$/)).not.toBeInTheDocument();
   });
 
-  // A spawn's packet can run to hundreds of fields: the Inspector writes twenty and counts the rest.
+  // A spawn's packet can run to hundreds of fields.
   it("caps a long list of an object's properties with a count of the rest", async () => {
     const data: Array<SceneSpawnField> = Array.from({ length: 250 }, (_, index: number) => ({
       key: `field_${index}`,

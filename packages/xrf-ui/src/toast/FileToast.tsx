@@ -45,8 +45,8 @@ export interface IFileToastProps extends BaseComponentProps {
 }
 
 /**
- * A file just written, in the viewport's corner for a few seconds and while the pointer is over it: its preview, its
- * name and what it holds, its folder, its path, and its deletion, which a second click confirms.
+ * A file just written, in the viewport's corner for a few seconds and while the pointer is over it. Its delete takes a
+ * second click to confirm.
  */
 export function FileToast({
   "data-testid": dataTestId = "file-toast",

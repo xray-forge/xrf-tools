@@ -1,9 +1,7 @@
 import { ELtxDeclarationStatement, LtxDeclaration } from "@xrf/ipc/types/xrf-ltx-inspect";
 
 /**
- * One found statement as it is written: its header with prefix, then the field line, prefix and value included.
- *
- * Spelled the way the file spells it, because the point of a found row is to be recognised in the file it opens.
+ * One found statement as the file spells it: its header with prefix, then the field line with prefix and value.
  *
  * @param declaration - The statement to spell.
  * @returns The statement's text.

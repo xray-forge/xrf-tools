@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** How often a control dragged by hand tells its owner, in milliseconds: about every third frame, which reads as live. */
+/** Milliseconds between a hand-dragged control's tellings: about every third frame, which reads as live. */
 export const DEFAULT_DRAFT_INTERVAL: number = 50;
 
 /** What a control shows as it is dragged, and how it reports the drag. */
@@ -22,14 +22,13 @@ export interface IThrottledValue<T> {
 /**
  * A value that follows the hand at once but tells its owner at most once an interval, and always the last.
  *
- * Only what this gesture dragged to is told, never what the owner holds or was last told; the owner holding anything
+ * Only what this gesture dragged to is told, never what the owner holds or was last told. The owner holding anything
  * else drops the draft, which also ends a gesture the browser cancelled.
  *
  * @param value - The owner's value.
  * @param isSame - Whether two values are one position of the control, a value told before against one held.
  * @param onChange - Told what the value became.
  * @param intervalMs - The least time between two tellings.
- * @returns What to show, and how to report the drag.
  */
 export function useThrottledValue<T>(
   value: T,

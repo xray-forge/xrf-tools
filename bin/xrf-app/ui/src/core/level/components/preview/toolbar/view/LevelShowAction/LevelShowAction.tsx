@@ -22,9 +22,8 @@ const DRAWN_KINDS: ReadonlyArray<TLevelVisibleOption> = LEVEL_OBJECT_KINDS.map((
 ).filter((option: Nullable<TLevelVisibleOption>): option is TLevelVisibleOption => option !== null);
 
 /**
- * What the view shows over and of the level, as an editor's show menu gathers it: the overlays, the helpers with their
- * switch (`G`), the particles and ambient effects, and a kind table of which objects are drawn and helped. The View
- * menu offers each as well.
+ * What the view shows over and of the level, as an editor's show menu gathers it: the overlays, the helpers (`G`), the
+ * effects and the kind table. The View menu offers each as well.
  */
 export function LevelShowAction({
   "data-testid": dataTestId = "level-show-action",

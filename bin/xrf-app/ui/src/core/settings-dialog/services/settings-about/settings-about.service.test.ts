@@ -14,7 +14,6 @@ const BUILD: BuildInfo = { version: "1.0.0" } as unknown as BuildInfo;
 const HOST: HostInfo = { os: "windows" } as unknown as HostInfo;
 const LIBRARIES: RenderLibraries = { dlss: null } as unknown as RenderLibraries;
 
-/** How many times the backend was asked one command. */
 function countCalls(command: string): number {
   return mockInvoke.mock.calls.filter(([called]) => called === command).length;
 }

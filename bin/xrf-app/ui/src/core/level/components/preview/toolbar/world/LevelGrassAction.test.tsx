@@ -32,7 +32,7 @@ describe("LevelGrassAction", () => {
     expect(view.features).toEqual({ ...before, grass: {} });
   });
 
-  // The foliage's motion is the Wind popover's, so the reset here neither offers to set it back nor does.
+  // The foliage's motion is the Wind popover's.
   it("offers no reset for the foliage's motion alone, and keeps it on setting the grass back", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
     const FOLIAGE: TRenderFoliageSettings = descriptor.renderSettings.rendererFeatures.grass.foliage;

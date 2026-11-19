@@ -57,8 +57,7 @@ export function DialogsEditorWorkspace(): ReactElement {
       {
         icon: <InfoOutlinedIcon />,
         id: "inspector",
-        // Open by default: it is the half of the read-only editor the canvas cannot show, and a graph
-        // node carries more than a node is wide.
+        // Open by default: it shows what a graph node is too narrow to carry.
         isOpenByDefault: true,
         label: "Inspector",
         render: () => <DialogInspectorPanel />,
@@ -67,8 +66,7 @@ export function DialogsEditorWorkspace(): ReactElement {
       {
         icon: <ReportProblemIcon />,
         id: "problems",
-        // Opened when there is something to read, matching the translations editor: a reader that
-        // reports rather than refuses is only useful if what it reports is in front of you.
+        // Opened when there is something to read, as in the translations editor.
         isOpenByDefault: findings.length > 0,
         label: "Problems",
         render: () => <DialogsProblemsPanel findings={findings} />,
@@ -81,11 +79,9 @@ export function DialogsEditorWorkspace(): ReactElement {
   useShellStatus([
     `${formatCount(fileCount)} ${fileCount === 1 ? "file" : "files"}`,
     `${formatCount(dialogCount)} dialogs`,
-    // Zero text keys beside real dialogs is the signature of a layout pointed at the wrong place, so
-    // it reads as a state rather than being left to infer from every phrase showing its key.
+    // Zero text keys beside real dialogs usually means a layout pointed at the wrong place.
     project?.textKeys ? `${formatCount(project.textKeys)} text keys` : "no text",
-    // The language in force is state, so it reads here rather than from the toolbar action that changes
-    // it — the division `EditorToolbar` states in its own contract.
+    // The language in force is state, so the status shows it rather than the toolbar action that changes it.
     ...(viewService.resolvedLanguage ? [viewService.resolvedLanguage] : []),
     ...(findings.length ? [`${formatCount(findings.length)} problems`] : []),
   ]);

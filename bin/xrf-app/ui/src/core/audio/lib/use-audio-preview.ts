@@ -36,10 +36,9 @@ export interface IAudioPreview {
 
 /**
  * Plays one sound through the application's audio as a preview: opens it, follows its state on a channel, reads its
- * waveform, and closes it when the key changes or the component goes, a preview that opens too late included.
+ * waveform, and closes it when the key changes or the component goes, even a preview that opens too late.
  *
  * @param options - The sound's key and how it is opened, or null while there is no sound to preview.
- * @returns The transport a player plays it through, and why it failed.
  */
 export function useAudioPreview(options: Nullable<IAudioPreviewOptions>): IAudioPreview {
   const [preview, setPreview] = useState<Nullable<IOpenPreview>>(null);

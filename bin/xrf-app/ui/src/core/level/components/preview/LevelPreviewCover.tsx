@@ -30,9 +30,8 @@ interface ILevelPreviewCoverProps extends BaseComponentProps {
 }
 
 /**
- * What hides the viewport until a level or a scene has been drawn with everything it opens with, so it never assembles
- * in view: opaque, taking the pointer from the canvas under it, and faded out once it is shown. A renderer that failed
- * never shows it, so the cover stays and says why.
+ * Hides the viewport, taking its pointer, until a level or a scene is drawn with everything it opens with, so it never
+ * assembles in view. After a renderer failure the cover stays and says why.
  */
 export function LevelPreviewCover({
   "data-testid": dataTestId = "level-preview-cover",

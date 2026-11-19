@@ -12,7 +12,7 @@ export interface IRenderGraphSwitchRowsProps extends BaseComponentProps {
 }
 
 /**
- * The frame graph's mechanisms, a switch each, to be turned off alone, or all for serial mode, to bisect a difference
+ * The frame graph's mechanisms, a switch each, turned off alone or all at once for serial mode to bisect a difference
  * in a capture; held for the session only.
  */
 export function RenderGraphSwitchRows({

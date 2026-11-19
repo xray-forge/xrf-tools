@@ -37,10 +37,7 @@ export interface IEditorPanelPropertyProps extends BaseComponentProps {
   href?: Nullable<string>;
   /** Uses the shared identifier and path typography for the value. */
   isMonospace?: boolean;
-  /**
-   * Sets the label in a column of its own beside the value once the window is wide enough, as reading surfaces and
-   * summaries list their facts. Stacked otherwise, which is what a narrow panel needs.
-   */
+  /** Sets the label in its own column beside the value once the window is wide enough; stacked otherwise. */
   isInline?: boolean;
 }
 

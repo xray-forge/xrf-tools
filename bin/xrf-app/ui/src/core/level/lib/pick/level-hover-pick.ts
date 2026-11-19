@@ -6,9 +6,8 @@ import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 
 /**
- * The pointer's picks over a viewport, one in flight at a time: a point arriving meanwhile waits for it and is picked
- * next, and a newer one, its flow taking over, drops the point waiting, so the pointer is answered as fast as a pick
- * comes back and never queues the renderer's readbacks.
+ * The pointer's picks over a viewport, one in flight at a time. A point arriving meanwhile waits and is picked next,
+ * unless a newer one's flow takes over, so the pointer never queues the renderer's readbacks.
  */
 export class LevelHoverPick {
   /** The hover pick in flight, settled either way, which the next hover waits for; null while none is. */

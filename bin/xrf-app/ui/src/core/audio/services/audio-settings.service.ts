@@ -16,8 +16,8 @@ import { readAudioVolume, TAudioVolume } from "@/core/audio/lib/audio-volumes";
 
 /**
  * How the application plays sound: the output device, the volumes, the background mute, and whether placed sounds are
- * heard for headphones or speakers. The backend keeps them between runs, so they hold before any page loads; this
- * reads them once and sends each change, taking back what the backend kept.
+ * heard for headphones or speakers. The backend keeps them between runs; this reads them once and sends each change,
+ * taking back what the backend kept.
  */
 @Injectable()
 export class AudioSettingsService {
@@ -127,9 +127,8 @@ export class AudioSettingsService {
   }
 
   /**
-   * Shows the settings at once and takes back what the backend kept of them, unless a later write has gone out since:
-   * a slider dragged sends several, and an earlier answer must not pull it back. A write refused reads the settings
-   * again, so the page never shows what the backend does not play with.
+   * Shows the settings at once and takes back what the backend kept, unless a later write has gone out since, as a
+   * dragged slider sends several. A refused write reads the settings again, so the page shows what the backend plays.
    */
   private async write(settings: AudioSettings): Promise<void> {
     const write: number = ++this.writes;

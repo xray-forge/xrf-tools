@@ -26,13 +26,11 @@ import {
   toLevelEditorSceneBlank,
 } from "@/tools/level-editor/lib/render/level-editor-scene-blank";
 
-/** What a scene's picture needs where it draws no object. */
 const UNDRAWN: SceneDrawDescription = { ...mockSceneDrawDescription(), bounds: null };
 
-/** Helpers as the editor draws them until told otherwise. */
 const SHOWN: ILevelEditorHelperOptions = DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS;
 
-/** A scene decompiled before its geometry: spawn points and nothing drawn as a model. */
+// A scene decompiled before its geometry: spawn points alone.
 const SPAWNS_ALONE: SceneObjectsDescription = {
   problems: [],
   tools: [mockSceneObjectTool(ESceneToolKind.SPAWN, [mockSceneSpawn(0, "actor", "actor")])],

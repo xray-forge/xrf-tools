@@ -23,9 +23,8 @@ interface ILevelWeatherTimeProps extends BaseComponentProps {
 }
 
 /**
- * The time of day and how it runs, a row each: the clock with the cycle's keyframes marked, the two keyframes it stands
- * between and how far, and how many times real time it runs. The Weather panel and the toolbar's Weather popover show
- * the same.
+ * The time of day and how it runs, a row each: the clock, the two keyframes it stands between and how far, and its
+ * speed against real time. Shared by the Weather panel and the toolbar's Weather popover.
  */
 export function LevelWeatherTime({
   "data-testid": dataTestId = "level-weather-time",

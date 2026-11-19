@@ -9,8 +9,8 @@ import { RENDER_PARALLAX_SETTINGS } from "@/core/render/lib/features/world/rende
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
- * How this view's surfaces are displaced by their height: the engine's steep parallax, or the enhanced march, its
- * terrain's reach, then the level surfaces', then how it shades. Their reset is the section's heading's.
+ * How this view's surfaces are displaced by their height: the engine's steep parallax, or the enhanced march with its
+ * reach and shading. The section's heading resets them.
  */
 export function LevelParallaxSettings({
   "data-testid": dataTestId = "level-parallax-settings",

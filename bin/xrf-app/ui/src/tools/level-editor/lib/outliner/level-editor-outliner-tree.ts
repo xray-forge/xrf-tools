@@ -31,14 +31,14 @@ export type TLevelEditorOutlinerRow =
       kind: ELevelEditorOutlinerRow.TOOL;
       /** The tool's name, as its part files carry it. */
       tool: string;
-      /** What it holds, said beside its label: a count of objects, a binary tool's counts; none before it is read. */
+      /** Its object count or binary tool counts, beside the label; null before it is read. */
       caption: Nullable<string>;
       /** How many of the scene's problems are the tool's. */
       problems: number;
     }
   | { kind: ELevelEditorOutlinerRow.OBJECT; object: SceneObjectDescription };
 
-/** What the Outliner is built from: the open scene's tools, what was read of them, and what is wrong with them. */
+/** What the Outliner is built from: the open scene's tools, what was read of them, and their problems. */
 export interface ILevelEditorOutlinerSources {
   /** Every tool the scene holds part files of, in the order the backend lists them. */
   tools: ReadonlyArray<SceneToolDescription>;
@@ -46,7 +46,7 @@ export interface ILevelEditorOutlinerSources {
   objects: Nullable<SceneObjectsDescription>;
   /** The binary tools' counts, once read. */
   binaryTools: Nullable<SceneBinaryToolsDescription>;
-  /** Every problem found in the scene, each kept on the tool it belongs to. */
+  /** Every problem found in the scene, each naming its tool. */
   problems: ReadonlyArray<SceneProblem>;
 }
 
@@ -60,30 +60,24 @@ export interface ILevelEditorOutlinerFilter {
 const NAME_ORDER: Intl.Collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 /**
- * @param tool - A tool's name.
- * @returns Its row's id.
+ * The row id of a tool, by its name.
  */
 export function toLevelEditorOutlinerToolId(tool: string): string {
   return `tool:${tool}`;
 }
 
 /**
- * @param id - A scene object's id.
- * @returns Its row's id.
+ * The row id of a scene object.
  */
 export function toLevelEditorOutlinerObjectId(id: SceneObjectId): string {
   return `object:${id.tool}:${id.index}`;
 }
 
 /**
- * The scene as a tree, `tool -> object`, the tools in the order the backend lists them and each tool's objects by name.
- * Every tool the scene holds is listed, a binary tool as a leaf counting what it holds, then any tool only its objects
- * (a group's members of a tool with no part) or its problems name; a filter keeps the objects it matches and only the
- * tools holding one.
+ * The scene as a `tool -> object` tree: tools in the backend's order, each tool's objects by name.
  *
- * @param sources - The scene's tools, what was read of them and their problems.
- * @param filter - What to keep.
- * @returns The tools' rows, each with its objects beneath it.
+ * Every tool is listed, a binary tool as a leaf with its counts, then any tool named only by objects (a group's members
+ * of a tool with no part) or problems. A filter keeps the objects it matches and only the tools holding one.
  */
 export function toLevelEditorOutlinerTree(
   sources: ILevelEditorOutlinerSources,
@@ -102,7 +96,7 @@ export function toLevelEditorOutlinerTree(
     problems.set(problem.tool, (problems.get(problem.tool) ?? 0) + 1);
   }
 
-  // Each tool by its name, which every source shares, with the editor's tool where one is known.
+  // Keyed by name, which every source shares.
   const tools: Map<string, Nullable<SceneToolKind>> = new Map(
     sources.tools.map((it: SceneToolDescription) => [it.name, it.kind])
   );
@@ -149,8 +143,7 @@ export function toLevelEditorOutlinerTree(
 }
 
 /**
- * @param nodes - An Outliner tree.
- * @returns Every row holding others' id, which a filter opens so what it matched shows.
+ * The ids of rows holding others, which a filter opens so its matches show.
  */
 export function listLevelEditorOutlinerParentIds(
   nodes: ReadonlyArray<ITreeNode<TLevelEditorOutlinerRow>>
@@ -159,8 +152,7 @@ export function listLevelEditorOutlinerParentIds(
 }
 
 /**
- * @param nodes - An Outliner tree.
- * @returns How many objects it lists.
+ * How many objects an Outliner tree lists.
  */
 export function countLevelEditorOutlinerObjects(nodes: ReadonlyArray<ITreeNode<TLevelEditorOutlinerRow>>): number {
   return nodes.reduce((sum: number, node: ITreeNode<TLevelEditorOutlinerRow>) => sum + (node.children?.length ?? 0), 0);
@@ -179,7 +171,7 @@ function toObjectNodes(objects: ReadonlyArray<SceneObjectDescription>): Array<IT
     }));
 }
 
-/** Whether an object's name, or the reference or section its kind keeps, holds `needle`, already lower-cased. */
+/** Whether an object's name, reference or section holds `needle`, already lower-cased. */
 function isMatched(object: SceneObjectDescription, needle: string): boolean {
   return [object.name, ...listSearchedProperties(object)].some((text: string) => text.toLowerCase().includes(needle));
 }

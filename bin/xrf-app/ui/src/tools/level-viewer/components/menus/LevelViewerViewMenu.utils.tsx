@@ -28,13 +28,11 @@ export interface ILevelViewerViewMenuState {
 /** A heading the shadings are listed under. */
 type TLevelShadingSection = ILevelShadingChoice["section"];
 
-/** The shadings listed in the Shading submenu itself; the targets the frame is built from each get a further one. */
+/** The section listed in the Shading submenu itself; every other section gets a submenu of its own. */
 const FRAME_SHADING_SECTION: TLevelShadingSection = "Frame";
 
 /**
- * @param state - The view as it stands.
- * @param viewService - What the entries switch.
- * @returns The frame's entries: Shading and Overlays.
+ * The frame's View menu entries: Shading and Overlays.
  */
 export function toLevelViewerFrameEntries(
   state: ILevelViewerViewMenuState,
@@ -44,9 +42,7 @@ export function toLevelViewerFrameEntries(
 }
 
 /**
- * @param state - The view as it stands.
- * @param viewService - What the entries switch.
- * @returns The level objects' entries: Helpers and Objects.
+ * The level objects' View menu entries: Helpers and Objects.
  */
 export function toLevelViewerObjectEntries(
   state: ILevelViewerViewMenuState,
@@ -56,8 +52,7 @@ export function toLevelViewerObjectEntries(
 }
 
 /**
- * What the frame shows, one choice: the frame's own looks first, a further submenu for each kind of target it is built
- * from, each saying in its tooltip how to read it, then the surfaces' switches.
+ * The Shading submenu: the frame's own shadings, a submenu per target section, then the surface switches.
  */
 function toShadingSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
   const targetSections: Array<TLevelShadingSection> = [
@@ -91,7 +86,7 @@ function toShadingSubmenu(state: ILevelViewerViewMenuState, viewService: LevelVi
   };
 }
 
-/** The shadings offered under one heading, each a choice, the one shown chosen. */
+/** One section's shadings as choices. */
 function toShadingChoices(
   state: ILevelViewerViewMenuState,
   viewService: LevelViewService,
@@ -109,7 +104,7 @@ function toShadingChoices(
     }));
 }
 
-/** What is drawn over the frame, as the toolbar's Show popover lists it under Overlays. */
+/** The Overlays submenu, as the toolbar's Show popover lists them. */
 function toOverlaysSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
   return {
     kind: EMenuEntryKind.SUBMENU,
@@ -125,7 +120,7 @@ function toOverlaysSubmenu(state: ILevelViewerViewMenuState, viewService: LevelV
   };
 }
 
-/** The helpers' master switch and how they are drawn, then each kind's helper, which waits on the master switch. */
+/** The Helpers submenu: the master switch and look, then each kind's helper, disabled while helpers are off. */
 function toHelpersSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
   const { helpers } = state;
 
@@ -175,7 +170,7 @@ function toHelpersSubmenu(state: ILevelViewerViewMenuState, viewService: LevelVi
   };
 }
 
-/** Which kinds of level object are drawn, as the toolbar's Show popover lists them, then what a new game releases. */
+/** The Objects submenu: which level object kinds are drawn, as the toolbar's Show popover lists them. */
 function toObjectsSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
   return {
     kind: EMenuEntryKind.SUBMENU,

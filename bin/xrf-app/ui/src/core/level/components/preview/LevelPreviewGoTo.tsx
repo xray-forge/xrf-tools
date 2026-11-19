@@ -13,9 +13,8 @@ import { LevelViewportService } from "@/core/level/services/level-viewport";
 const UNREAD: string = "Names no place: x 0 y 0 z 0 h 0 p 0, part of it, or numbers in that order";
 
 /**
- * The camera readout turned into a field, in its corner and its type: where the camera stood as it opened, which a
- * person edits or pastes over, `Enter` going there and `Escape` or a click away leaving it. A value the text leaves out
- * stays as it was.
+ * The camera readout turned into a field holding where the camera stood: `Enter` goes to the place typed, `Escape` or a
+ * click away closes it. A value the text leaves out stays as it was.
  */
 export function LevelPreviewGoTo({
   "data-testid": dataTestId = "level-preview-go-to",

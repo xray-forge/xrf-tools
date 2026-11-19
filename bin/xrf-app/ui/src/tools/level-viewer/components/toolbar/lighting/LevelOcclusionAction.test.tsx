@@ -56,7 +56,6 @@ describe("LevelOcclusionAction", () => {
 
     expect(view.features.ambientOcclusion).toEqual({});
     expect(view.hemiStrength).toBe(1);
-    // Both give back what changed, so neither is offered again.
     expect(queryByRole("button", { name: "Ambient occlusion: Back to the settings" })).toBeNull();
     expect(queryByRole("button", { name: "Baked light: Reset to the game's" })).toBeNull();
   });

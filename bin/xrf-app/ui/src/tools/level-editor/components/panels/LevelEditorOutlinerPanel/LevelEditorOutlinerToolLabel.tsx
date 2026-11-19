@@ -14,7 +14,7 @@ interface ILevelEditorOutlinerToolLabelProps {
 }
 
 /**
- * A tool's row in the Outliner: its name, what it holds, and a mark where the Problems panel lists something of it.
+ * A tool's Outliner row: its name, what it holds, and a mark where it has problems.
  */
 export function LevelEditorOutlinerToolLabel({
   label,

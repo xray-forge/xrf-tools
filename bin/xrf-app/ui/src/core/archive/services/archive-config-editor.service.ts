@@ -93,7 +93,6 @@ export abstract class ArchiveConfigEditorService<
   /**
    * @param log - The subclass's logger, taken here because a subclass's fields are set only after this runs.
    * @param kinds - The kinds of run the configuration is used for.
-   * @param section - The section the editor opens on.
    */
   protected constructor(
     public readonly log: Logger,
@@ -163,11 +162,6 @@ export abstract class ArchiveConfigEditorService<
     return resolveArchiveVolumeSize(this.volumeSize, this.config?.maxVolumeSize ?? 0);
   }
 
-  /**
-   * Opens one section of the configuration.
-   *
-   * @param section - Section to show.
-   */
   @BoundAction()
   public openSection(section: TSection): void {
     this.section = section;

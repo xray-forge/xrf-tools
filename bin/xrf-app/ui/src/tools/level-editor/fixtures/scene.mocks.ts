@@ -29,12 +29,7 @@ import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 export const MOCK_SCENE_GUID: string = "1a2b3c4d:5e6f7a8b";
 
 /**
- * One tool of the SDK's editor a scene holds a part file of.
- *
- * @param kind - The tool, whose name names its file.
- * @param format - How it saves its part.
- * @param size - The part file's size, in bytes.
- * @returns A tool fixture with one part file carrying the scene's GUID.
+ * A scene tool with one part file of `size` bytes, named after the tool and carrying the scene's GUID.
  */
 export function mockSceneToolDescription(
   kind: SceneToolKind,
@@ -45,10 +40,7 @@ export function mockSceneToolDescription(
 }
 
 /**
- * An open scene holding scene objects, spawn points and an AI map, with nothing wrong with it.
- *
- * @param overrides - Fields to replace on the description.
- * @returns A scene fixture.
+ * An open scene holding scene objects, spawn points and an AI map, with no problems.
  */
 export function mockSelectedSceneDescription(
   overrides: Partial<SelectedSceneDescription> = {}
@@ -78,10 +70,7 @@ export function mockSelectedSceneDescription(
 }
 
 /**
- * One object of a scene's object tool: a library object placed, unless the overrides say otherwise.
- *
- * @param overrides - Fields to replace on the object.
- * @returns An object fixture standing at the origin.
+ * A library object placed at the origin, unless the overrides say otherwise.
  */
 export function mockSceneObject(overrides: Partial<SceneObjectDescription> = {}): SceneObjectDescription {
   return {
@@ -105,13 +94,12 @@ export function mockSceneObject(overrides: Partial<SceneObjectDescription> = {})
 }
 
 /**
- * A spawn point placing a server entity.
+ * A spawn point placing a server entity of `section`.
  *
  * @param index - Its place among the spawn tool's objects.
  * @param name - Its name.
  * @param section - The section its entity is created from.
  * @param data - Its packet's fields, as the scene saves them.
- * @returns A spawn point fixture.
  */
 export function mockSceneSpawn(
   index: number,
@@ -131,9 +119,7 @@ export function mockSceneSpawn(
 }
 
 /**
- * @param tool - The tool.
- * @param objects - Its objects, in the order the editor loads them.
- * @returns One object tool of a scene, with its objects.
+ * One object tool of a scene, its objects in the order the editor loads them.
  */
 export function mockSceneObjectTool(
   tool: SceneToolKind,
@@ -143,10 +129,9 @@ export function mockSceneObjectTool(
 }
 
 /**
- * What the fixture scene's object tools hold: two library objects and three spawn points.
+ * The fixture scene's object tools: two library objects, one of them not found, and three spawn points.
  *
  * @param problems - The tools whose objects did not read.
- * @returns An objects description fixture.
  */
 export function mockSceneObjectsDescription(problems: Array<SceneProblem> = []): SceneObjectsDescription {
   return {
@@ -175,21 +160,18 @@ export function mockSceneObjectsDescription(problems: Array<SceneProblem> = []):
 }
 
 /**
- * What the fixture scene's binary tools hold: its AI map.
+ * The fixture scene's binary tools: its AI map.
  *
  * @param problems - The binary tools whose parts did not read.
- * @returns A binary tools description fixture.
  */
 export function mockSceneBinaryToolsDescription(problems: Array<SceneProblem> = []): SceneBinaryToolsDescription {
   return { problems, tools: [{ nodes: 12_480, tool: ESceneBinaryToolDescription.AI_MAP }] };
 }
 
 /**
- * What the fixture scene's picture needs: the extent of its two library objects, ten metres across about a point off
- * the origin, and nothing it does not draw unless told.
+ * The fixture scene's drawing: its library objects' extent, ten metres across about a point off the origin.
  *
  * @param problems - The scene objects it does not draw.
- * @returns A draw description fixture.
  */
 export function mockSceneDrawDescription(problems: Array<SceneDrawProblem> = []): SceneDrawDescription {
   return {
@@ -202,10 +184,7 @@ export function mockSceneDrawDescription(problems: Array<SceneDrawProblem> = [])
 }
 
 /**
- * What the fixture scene's helpers come to: its three spawn points' icons, about a point off its drawn objects.
- *
- * @param overrides - Fields to replace on the description.
- * @returns A helpers description fixture.
+ * The fixture scene's helpers: its three spawn points' icons, about a point away from its drawn objects.
  */
 export function mockSceneHelpersDescription(overrides: Partial<SceneHelpersDescription> = {}): SceneHelpersDescription {
   return {
@@ -231,11 +210,7 @@ export interface IMockSceneParts {
 }
 
 /**
- * What the open scene's part queries answer, each a snapshot of the opening asked about.
- *
- * @param parts - The parts to answer with.
- * @param revision - The revision they are read at.
- * @returns Responses for the `describe_scene_*` queries.
+ * Responses for the `describe_scene_*` queries, each a snapshot of the session asked about at `revision`.
  */
 export function mockScenePartResponses(parts: IMockSceneParts = {}, revision: number = 0): IpcCommandMocks {
   return {

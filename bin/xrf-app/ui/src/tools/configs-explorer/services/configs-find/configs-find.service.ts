@@ -25,8 +25,8 @@ export interface IConfigsFindQuery {
 /**
  * Where the open project writes a section, a field or a value.
  *
- * The answer is authored statements, declarations and patches alike; which of them survives is the Resolved view's
- * question. Held across the panel closing, so a search reopened shows what it found rather than asking again.
+ * Finds authored statements, declarations and patches alike, not what survives resolution. Kept while the panel is
+ * closed, so a reopened search shows its last answer.
  */
 @Injectable()
 export class ConfigsFindService {
@@ -50,8 +50,7 @@ export class ConfigsFindService {
   @OnProvision()
   public onProvision(): void {
     this.stopFollowing?.();
-    // A search answers one session of the project: another session, or none, makes its rows point at lines and files
-    // that may have moved, however the project was left.
+    // Rows point into one session of the project; in another session their lines and files may have moved.
     this.stopFollowing = reaction(
       () => this.projectService.project.sessionId,
       () => this.clear()
@@ -128,7 +127,7 @@ export class ConfigsFindService {
   }
 
   /**
-   * Cancel the pending search and forget the query and its answer, as the project's session changes or goes.
+   * Cancel the pending search and forget the query and its answer.
    */
   @BoundAction()
   public clear(): void {
@@ -141,8 +140,7 @@ export class ConfigsFindService {
   /**
    * One field of the query as the backend takes it: as typed, or null when empty.
    *
-   * Not trimmed: a header keeps its padding in the name it records, so `[ wpn_base ]` is a section of its own, and the
-   * panel answers exactly what `ltx find` would.
+   * Not trimmed: `[ wpn_base ]` is a section of its own, and the panel answers exactly what `ltx find` would.
    *
    * @param typed - The field's text.
    * @returns The text to ask for, or null for nothing of that kind.

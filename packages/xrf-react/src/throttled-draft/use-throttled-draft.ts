@@ -20,15 +20,14 @@ export interface IThrottledDraft {
 }
 
 /**
- * A slider value that follows the hand at once but tells its owner at most once an interval, and always the last, as
- * `useThrottledValue` does for any value.
+ * {@link useThrottledValue} for a MUI `Slider`: its value follows the hand at once, its owner is told at most once an
+ * interval, and always the last.
  *
  * @param value - The owner's value.
- * @param step - The slider's step: values within half of one are the same position, since an owner storing a mapping of
- *   the value hands back its round trip, which floats need not return exactly; only equal ones for a step of none.
+ * @param step - The slider's step. Values within half of one are one position, since an owner storing a mapping of the
+ *   value hands back a float round trip; a step of none compares exactly.
  * @param onChange - Told what the value became.
  * @param intervalMs - The least time between two tellings.
- * @returns What to show, and the slider's `onChange` and `onChangeCommitted`.
  */
 export function useThrottledDraft(
   value: number,

@@ -38,7 +38,6 @@ function countCalls(command: string): number {
   return mockInvoke.mock.calls.filter(([name]) => name === command).length;
 }
 
-/** Arms an open of the fixture scene and the reads of its two parts. */
 function armScene(): void {
   mockIpcCommands({
     [ELevelsCommand.OPEN_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),
@@ -66,7 +65,7 @@ describe("LevelEditorSceneService", () => {
     expect(isObservableProp(service, "isStale")).toBe(true);
   });
 
-  // The open lists the part files alone: what each tool holds is read apart from it, side by side.
+  // The open lists the part files alone; each part is read separately.
   it("opens a scene, then reads its objects, its binary tools' counts, what its picture and helpers need", async () => {
     const { service } = mockInjectedService(LevelEditorSceneService);
 
@@ -105,7 +104,7 @@ describe("LevelEditorSceneService", () => {
     expect(service.opening).toBeNull();
   });
 
-  // A refresh re-provisions the service while the backend keeps the scene, which is why it keeps it.
+  // A page refresh re-provisions the service while the backend keeps the scene.
   it("takes back the scene the backend still has open, without opening it again", async () => {
     const { service } = mockInjectedService(LevelEditorSceneService);
 
@@ -151,7 +150,7 @@ describe("LevelEditorSceneService", () => {
     expect(listMockInvokeCalls(ELevelsCommand.CLOSE_SCENE)).toHaveLength(1);
   });
 
-  // Showing the scene it was asked to replace, with no word, reads as the open having worked.
+  // Showing the replaced scene silently would read as a successful open.
   it("closes the open scene when another fails to open, and holds the failure", async () => {
     const { service } = mockInjectedService(LevelEditorSceneService);
 
@@ -187,7 +186,6 @@ describe("LevelEditorSceneService", () => {
     expect(listMockInvokeCalls(ELevelsCommand.OPEN_SCENE).at(-1)?.request).toEqual(OTHER_REQUEST);
   });
 
-  // A restore that failed shows Retry like an open that failed; with no open asked for, Retry restores again.
   it("restores again on a retry after the restore failed", async () => {
     const { service } = mockInjectedService(LevelEditorSceneService);
 

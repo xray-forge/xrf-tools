@@ -6,9 +6,8 @@ import { useEffect, useRef } from "react";
 const log: Logger = new Logger(__MODULE_NAME__);
 
 /**
- * Asks the backend, once, to put the window on screen when the page's first screen has been drawn. The window is built
- * hidden, and shown any earlier it stands empty until the webview draws into it. The backend reveals each window once:
- * a page reloaded over a shown window changes nothing.
+ * Asks the backend once to show the window when the page's first screen is drawn, as the window is built hidden and
+ * would stand empty until then. The backend reveals each window once, so a page reload changes nothing.
  */
 export function useWindowReveal(): void {
   const isAsked = useRef<boolean>(false);

@@ -23,7 +23,6 @@ import { LevelEditorSelectionService } from "@/tools/level-editor/services/level
 
 import { LevelEditorProblemsPanel } from "./LevelEditorProblemsPanel";
 
-/** What the renderer says of a resident scene whose terrain texture the game data does not hold. */
 const UNTEXTURED: ILevelResident = {
   ...EMPTY_LEVEL_RESIDENT,
   problems: {
@@ -43,12 +42,6 @@ const UNTEXTURED: ILevelResident = {
   },
 };
 
-/**
- * The fixture scene open, its parts read, and the problems panel over it.
- *
- * @param resident - How asking the renderer about the resident scene went.
- * @returns The rendered panel.
- */
 async function renderProblems(resident: AsyncState<ILevelResident>): Promise<RenderResult> {
   mockIpcCommands({
     [ELevelsCommand.OPEN_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),
@@ -93,7 +86,6 @@ describe("LevelEditorProblemsPanel", () => {
     expect(panel.textContent).not.toContain("No problems found");
   });
 
-  // Before the scene is resident the renderer has said nothing, which is not the same as having found nothing.
   it("says the renderer's part is not read yet rather than calling the scene clean", async () => {
     const { getByTestId } = await renderProblems(AsyncState.idle());
 

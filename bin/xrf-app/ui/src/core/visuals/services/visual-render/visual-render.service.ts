@@ -66,8 +66,8 @@ export class VisualRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * The scene the source's model is drawn as: null until the renderer answers for its session, however the source's
-   * model and the show change in turn, so helpers sized to the next model are never sent for the one it replaces.
+   * The scene the source's model is drawn as, or null until the renderer answers for its session, so helpers sized to
+   * the next model are never sent for the one it replaces.
    */
   private get modelScene(): Nullable<number> {
     const shown: Nullable<IShownScene> = this.shown;
@@ -180,8 +180,8 @@ export class VisualRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Reveals the viewport once it draws the model shown whole, whichever of the show's answer and the load report comes
-   * last; a viewport with no model shown stays under the page, whose empty state covers it.
+   * Reveals the viewport once it draws the shown model whole, whichever of the show's answer and the load report comes
+   * last. With no model shown it stays under the page's empty state.
    */
   private revealWhenDrawn(): void {
     const report: Nullable<RenderLoadReport> = this.loaded;

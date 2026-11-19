@@ -17,7 +17,7 @@ export interface IAudioTransportState {
 
 /**
  * What a player plays one sound through: where it stands, its waveform, and what it can be asked. The player keeps no
- * idea of its own of what plays, so whatever plays the sound decides it.
+ * playback state of its own; whatever plays the sound owns it.
  */
 export interface IAudioTransport {
   state: IAudioTransportState;

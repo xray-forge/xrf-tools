@@ -3,13 +3,11 @@ import { LevelBuildReport } from "@xrf/ipc/types/xrf-rawdata";
 import { Nullable } from "@xrf/types";
 
 /**
- * The one sentence a build's result opens with: what was built where, and what the compile after it ran or that it
- * stopped.
+ * The sentence a build's result opens with: what was built where, and what the compile ran or that it stopped.
  *
  * @param report - What the build wrote.
  * @param compile - What the compile ran, where one ran to its end.
  * @param isCompileStopped - Whether the run was cancelled after the build was written.
- * @returns The headline.
  */
 export function describeBuildHeadline(
   report: LevelBuildReport,

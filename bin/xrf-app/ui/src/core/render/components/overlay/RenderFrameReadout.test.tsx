@@ -38,7 +38,7 @@ describe("RenderFrameReadout", () => {
   it("marks the frame rate with the long job the viewport runs, coloured and named by it", () => {
     const { getByRole, queryByRole, rerender } = render(<RenderFrameReadout report={REPORT} />);
 
-    // The readout is laid over the viewport hidden from assistive technology; its marks are found among the hidden.
+    // The readout is hidden from assistive technology, so its marks are found among the hidden.
     expect(queryByRole("img", { hidden: true })).toBeNull();
 
     rerender(<RenderFrameReadout report={{ ...REPORT, job: ERenderViewportJob.RECORDING }} />);

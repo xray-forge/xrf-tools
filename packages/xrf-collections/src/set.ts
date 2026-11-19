@@ -15,9 +15,8 @@ class EmptySet extends Set<never> {
 }
 
 /**
- * The one empty set, shared by everything that needs a stable "nothing here".
+ * The one empty set, shared wherever a stable "nothing here" is needed.
  *
- * Typed `never` so it satisfies a `ReadonlySet<T>` of any element type, and refuses entries so a caller that tries to add
- * one fails loudly rather than quietly filling in everyone else's default.
+ * Typed `never` so it fits a `ReadonlySet<T>` of any element type. Adding to it throws, since it is everyone's default.
  */
 export const EMPTY_SET: ReadonlySet<never> = Object.freeze(new EmptySet());

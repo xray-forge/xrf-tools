@@ -20,9 +20,9 @@ interface IThemeRootProps {
  * The React half of the application's look: its stylesheets, its theme in both colour schemes, the style cache MUI
  * injects through, and the baseline. It starts dark, keeps the scheme a viewer picks, and never animates the switch.
  *
- * It does not publish the `--xrf-*` variables the kit's utilities read (`surface-content`, `panel-section`, `bg-well`
- * and the rest): those come only from `getPreloadThemeCss`, which the page hosting the tree must inline into its head,
- * as the application's `index.html` and the Storybook preview head do. Without it those utilities resolve to nothing.
+ * The `--xrf-*` variables the kit's utilities read (`surface-content`, `panel-section`, `bg-well` and the rest) come
+ * only from `getPreloadThemeCss`: the hosting page must inline it into its head, as `index.html` and the Storybook
+ * preview head do, or those utilities resolve to nothing.
  */
 export function ThemeRoot({ colorSchemeStorageKey, children }: IThemeRootProps): ReactElement {
   const theme: Theme = useMemo(() => createApplicationTheme(), []);

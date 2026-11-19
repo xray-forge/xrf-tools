@@ -10,7 +10,7 @@ import { TRenderTerrainSettings } from "@/core/render/lib/settings/choice/render
 
 /**
  * How this view's varied terrain tiling lays its hexagons: how small, how far their copies turn, how sharply they meet.
- * Their reset is the section's heading's.
+ * The section's heading resets them.
  */
 export function LevelTerrainSettings({
   "data-testid": dataTestId = "level-terrain-settings",

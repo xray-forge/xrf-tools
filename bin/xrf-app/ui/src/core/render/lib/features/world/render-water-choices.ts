@@ -71,8 +71,8 @@ function isUndrawnWater(water: TRenderWaterSettings): boolean {
 }
 
 /**
- * How each water setting is set, in the settings and the Water popover alike; both the engine's water and the
- * enhanced one draw them, the popover's sections placing each by what it shapes.
+ * How each water setting is set, in the settings and the Water popover alike, for the engine's and the enhanced water
+ * both.
  */
 export const RENDER_WATER_SETTINGS: TRenderSettings<TRenderWaterSettings> = {
   distortion: {

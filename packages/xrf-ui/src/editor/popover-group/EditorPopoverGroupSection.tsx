@@ -32,8 +32,7 @@ export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
 }
 
 /**
- * One section of a toolbar popover heading its settings, as an editor's details panel heads a category: the box before
- * its name where it turns something on, its actions and its reset at the end, set apart from the section before.
+ * One headed section of a toolbar popover's settings, ruled off from the section before.
  */
 export function EditorPopoverGroupSection({
   "data-testid": dataTestId = "editor-popover-group-section",

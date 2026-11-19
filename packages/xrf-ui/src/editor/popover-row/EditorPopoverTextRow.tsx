@@ -11,8 +11,8 @@ export interface IEditorPopoverTextRowProps extends BaseComponentProps {
   /** What it holds, read on hovering the label and by a screen reader. */
   description?: string;
   /**
-   * A number field's value is given as a number, so React compares it numerically and leaves a half-typed `0.0` alone
-   * rather than writing `0` back over it; an empty string shows it empty.
+   * A number field's value is given as a number, so React leaves a half-typed `0.0` alone rather than writing `0` back
+   * over it; an empty string shows it empty.
    */
   value: string | number;
   /** A number field takes digits and steps by the arrows; the value still comes back as typed. */
@@ -26,7 +26,7 @@ export interface IEditorPopoverTextRowProps extends BaseComponentProps {
 
 /**
  * One typed value in a single row of a toolbar popover or panel: the label in the column every row shares, the field
- * beside it as low as the row's other controls.
+ * beside it.
  */
 export function EditorPopoverTextRow({
   "data-testid": dataTestId = "editor-popover-text-row",

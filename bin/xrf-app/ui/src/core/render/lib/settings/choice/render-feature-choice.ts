@@ -79,10 +79,7 @@ export function isRenderFeatureCustom(
 }
 
 /**
- * @param group - One feature group.
- * @param a - The group as one source draws it.
- * @param b - The group as another does.
- * @returns Whether the two draw alike, setting by setting as the schema compares them.
+ * @returns Whether two sources draw a feature group alike, setting by setting as the schema compares them.
  */
 export function isSameRenderFeature<K extends keyof IRenderFeatureSettings>(
   group: K,

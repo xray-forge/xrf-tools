@@ -6,8 +6,8 @@ import { RuntimeUsageService } from "@/core/diagnostics/services/runtime-usage.s
 import { usePolledCommand } from "@/core/operations/lib/use-polled-command";
 
 /**
- * Reads what the backend and the webview's processes hold, for as long as the caller is mounted and the window shown,
- * sharing one poll with every other reader.
+ * Reads what the backend and the webview's processes hold while the caller is mounted and the window shown, sharing
+ * one poll with every other reader.
  *
  * @returns The most recent reading, or `null` before the first and on a platform that cannot say.
  */

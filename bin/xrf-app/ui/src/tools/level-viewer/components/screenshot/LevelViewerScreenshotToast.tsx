@@ -9,7 +9,7 @@ import { ILevelViewerScreenshot } from "@/tools/level-viewer/lib/screenshot/leve
 import { LevelViewerScreenshotService } from "@/tools/level-viewer/services/level-viewer-screenshot";
 
 /**
- * The screenshot just taken: its thumbnail opening it whole, its folder, its path, and its deletion.
+ * The screenshot just taken, its thumbnail opening it whole, with its file actions.
  */
 export function LevelViewerScreenshotToast({
   "data-testid": dataTestId = "level-viewer-screenshot-toast",

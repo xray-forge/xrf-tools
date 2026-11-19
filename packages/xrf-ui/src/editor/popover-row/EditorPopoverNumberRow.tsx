@@ -24,8 +24,8 @@ function toText(value: Nullable<number>): string {
 }
 
 /**
- * One typed number in a single row of a toolbar popover or panel, as `EditorPopoverTextRow` lays it, told only numbers:
- * a field mid-edit that reads empty or as a lone minus sign is left to the hand.
+ * One typed number in a row of a toolbar popover or panel, laid out as `EditorPopoverTextRow`. A field mid-edit that
+ * reads empty or as a lone minus sign tells the owner nothing.
  */
 export function EditorPopoverNumberRow({
   "data-testid": dataTestId = "editor-popover-number-row",

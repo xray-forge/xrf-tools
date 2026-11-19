@@ -29,8 +29,8 @@ const COLUMNS: ReadonlyArray<IEditorPopoverCheckboxColumn> = [
 ];
 
 /**
- * Which of the level's objects are drawn and helped, a row a kind of the kind table: a kind drawn as a model shown or
- * not, every kind's helper, which waits on the helpers being on; then whether what a new game releases is drawn too.
+ * Which of the level's objects are drawn and helped, a kind table row each, the helpers waiting on their switch; then
+ * whether what a new game releases is drawn too.
  */
 export function LevelShowObjects({
   "data-testid": dataTestId = "level-show-objects",

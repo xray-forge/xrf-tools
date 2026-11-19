@@ -26,16 +26,9 @@ export interface ILevelRenderCameraSources {
  * there with the toolbar's speeds and lens.
  */
 export class LevelRenderCamera {
-  /**
-   * Where the camera was last stood: the start, or a place gone to. The toolbar's speeds and lens are sent with it, so
-   * changing one leaves the camera where it has flown rather than taking it back.
-   */
+  /** Where the camera was last stood: the start, or a place gone to. */
   private viewpoint: Nullable<ILevelViewpoint> = null;
 
-  /**
-   * @param context - The viewport the camera stands in.
-   * @param sources - What the camera is stood by.
-   */
   public constructor(
     private readonly context: Pick<ILevelRenderContext, "getViewport">,
     private readonly sources: ILevelRenderCameraSources
@@ -64,8 +57,7 @@ export class LevelRenderCamera {
   }
 
   /**
-   * Steps the toolbar's speed, as the wheel does while the secondary button flies the camera; the camera keeps where it
-   * has flown.
+   * Steps the toolbar's speed, as the wheel does while the secondary button flies the camera.
    *
    * @param steps - Whole steps, positive faster.
    */

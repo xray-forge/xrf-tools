@@ -58,7 +58,7 @@ describe("LevelViewportService", () => {
     expect(service.picked).toBeNull();
   });
 
-  // The field starts at where the camera stands, so it opens only once the viewport has said, and a closed level shuts it.
+  // The field starts where the camera stands, so it waits for the viewport's report.
   it("opens the go-to field once the camera has reported, and shuts it with the level", () => {
     const container: Container = mockContainer([LevelViewportService]).provision();
     const commandsService: KeybindCommandsService = container.get(KeybindCommandsService);

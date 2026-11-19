@@ -6,10 +6,9 @@ import * as path from "node:path";
 import * as process from "node:process";
 
 /**
- * Fetches the SDKs the native features build against into `.sdks/`, which `.cargo/config.toml` points the builds at:
- * each pinned to a commit and checked out sparsely, only the headers and libraries a build reads. It also places the
- * libraries taken from a pinned archive: Steam Audio for the audio on every platform, and on Windows libclang for the
- * builds and DXC for the renderer. Elsewhere `.sdks/libclang` links the system's libclang.
+ * Fetches the SDKs the native features build against into `.sdks/`, where `.cargo/config.toml` points the builds. Each
+ * is pinned to a commit and checked out sparsely, only the headers and libraries a build reads. Pinned archives add
+ * Steam Audio on every platform, and libclang and DXC on Windows; elsewhere `.sdks/libclang` links the system's one.
  */
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const SDKS_ROOT = path.join(REPOSITORY_ROOT, ".sdks");
@@ -196,8 +195,8 @@ const ARCHIVED_TOOLS = [
   },
   {
     // Steam Audio 4.8.1 (February 2026), the audio's acoustics: `audionimbus-sys` links the library (`STEAMAUDIO_LIB_DIR`
-    // in `.cargo/config.toml`), and the application ships it with Valve's licence and the third-party notices of what
-    // the library is built with, as `bin/xrf-app/app/tauri.windows.conf.json` and `tauri.macos.conf.json` map them.
+    // in `.cargo/config.toml`), and the application ships it with Valve's licence and its third-party notices, as
+    // `bin/xrf-app/app/tauri.windows.conf.json` and `tauri.macos.conf.json` map them.
     name: "steam-audio",
     url: "https://github.com/ValveSoftware/steam-audio/releases/download/v4.8.1/steamaudio_4.8.1.zip",
     hash: "4a0aa5ec1176f38f0b0993a37c2259d9e86f27e22d5e24f83ec4c3cb9a1d5449",

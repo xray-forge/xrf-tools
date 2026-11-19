@@ -3,8 +3,8 @@ import { MyLocationIcon } from "@xrf/ui/icons/my-location";
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 
 /**
- * Opens the field the camera readout turns into, which stands the camera wherever coordinates typed or pasted into it
- * say; `mod+g`, as an editor goes to a line.
+ * Turns the camera readout into a field that stands the camera at the coordinates typed or pasted into it; `mod+g`, as
+ * an editor goes to a line.
  */
 export const GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
   category: EKeybindCommandCategory.VIEW,

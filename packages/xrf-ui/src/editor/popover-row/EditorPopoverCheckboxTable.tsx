@@ -38,8 +38,7 @@ export interface IEditorPopoverCheckboxTableProps extends BaseComponentProps {
 }
 
 /**
- * Several switches for each of many things in one dense table, as an editor's gizmo or visibility menu lists object
- * kinds: a row a thing, a column a switch, each column headed by its icon.
+ * A dense table of switches, as a gizmo or visibility menu lists object kinds: a row a thing, a column a switch.
  */
 export function EditorPopoverCheckboxTable({
   "data-testid": dataTestId = "editor-popover-checkbox-table",

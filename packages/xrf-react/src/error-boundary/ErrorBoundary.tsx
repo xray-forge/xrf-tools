@@ -11,16 +11,9 @@ export interface IErrorBoundaryFallbackProps {
 export interface IErrorBoundaryProps {
   children: ReactNode;
   fallback: ComponentType<IErrorBoundaryFallbackProps>;
-  /**
-   * Clears a caught error whenever it changes.
-   *
-   * Without it a crash is permanent: the boundary keeps rendering its fallback even after the user has
-   * navigated somewhere else, because nothing else ever resets the state.
-   */
+  /** Clears a caught error whenever it changes, such as on navigation; otherwise only the fallback's retry does. */
   resetKey?: string;
-  /**
-   * Reports a caught crash to whoever wants a durable record of it.
-   */
+  /** Reports a caught crash to whoever wants a durable record of it. */
   onCaught?: (error: Error, componentStack: Nullable<string>) => void;
 }
 

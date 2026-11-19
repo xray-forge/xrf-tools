@@ -14,7 +14,6 @@ import { toSceneRenderId } from "@/tools/level-editor/lib/render/scene-render-id
 const BOX: SceneObjectId = { index: 1, tool: ESceneToolKind.SCENE_OBJECT };
 const STALKER: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
 
-/** The render id `object` carries. */
 function toId(object: SceneObjectId): number {
   return toSceneRenderId(object) ?? -1;
 }
@@ -29,7 +28,7 @@ describe("toLevelEditorPick", () => {
     expect(
       toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.HELPER, object: toId(STALKER), point: [0, 0, 0] }, objects)
     ).toEqual(STALKER);
-    // A spawn point drawn as its model answers its spawn point, as its helper does.
+    // A spawn point drawn as its model.
     expect(
       toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: toId(STALKER), point: [0, 0, 0] }, objects)
     ).toEqual(STALKER);
@@ -65,7 +64,7 @@ describe("toLevelEditorPick", () => {
         objects
       )
     ).toBeNull();
-    // A bare index names the first tool's object, a group's, which the listing does not hold.
+    // A bare index names the first tool's object, a group's, which the listing lacks.
     expect(
       toLevelEditorPick({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] }, objects)
     ).toBeNull();

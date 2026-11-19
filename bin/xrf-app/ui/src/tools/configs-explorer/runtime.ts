@@ -7,9 +7,7 @@ import { ConfigsResolvedService } from "@/tools/configs-explorer/services/config
 import { ConfigsSchemeService } from "@/tools/configs-explorer/services/configs-scheme";
 
 export const container: ContainerDefinition = {
-  // The project owns which tree is open and what it holds, the document owns whichever config of it is on screen, three
-  // own what that config's entry point comes to - its sections, what is wrong with it, and what judges the section the
-  // reader selected - and the last owns where the whole project writes what a reader searched for.
+  // The open project, the config on screen, three views of that config, and the project-wide find.
   bindings: [
     ConfigsProjectService,
     ConfigsDocumentService,

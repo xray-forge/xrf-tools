@@ -30,8 +30,7 @@ import { TextureSelectField } from "./TextureSelectField";
 /**
  * Flags that belong with the fields a person changes to change how a surface looks.
  *
- * Every flag is labelled by its SDK identifier (`flHasAlpha`, not "Has alpha"): what an author of a `.thm` recognises
- * and what every other tool and every piece of documentation calls it.
+ * Labelled by SDK identifier (`flHasAlpha`, not "Has alpha"), the name `.thm` authors and other tools use.
  */
 const PRIMARY_FLAG_LABELS: ReadonlyArray<string> = ["flDiffuseDetail", "flBumpDetail", "flHasAlpha", "flBinaryAlpha"];
 

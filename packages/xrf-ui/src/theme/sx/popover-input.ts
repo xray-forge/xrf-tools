@@ -7,9 +7,9 @@ const LINE_HEIGHT: number = POPOVER.inputHeight - POPOVER.inputPaddingY * 2;
 const PADDING_Y: string = `${POPOVER.inputPaddingY}px`;
 
 /**
- * A small outlined field as a popover row holds it, given to the field's own root (a `Select`, or an `Autocomplete`'s
- * input through its `input` slot): the row's type and the height of its choices, where the theme sizes every small field
- * as a form's. Tripled `&` outranks the theme's small height and the autocomplete's own padding.
+ * A small outlined field sized for a popover row rather than a form, given to the field's own root (a `Select`, or an
+ * `Autocomplete`'s input through its `input` slot). Tripled `&` outranks the theme's small height and the
+ * autocomplete's own padding.
  */
 export const POPOVER_INPUT_SX: SystemStyleObject<Theme> = {
   "&&&": {

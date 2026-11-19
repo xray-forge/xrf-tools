@@ -22,18 +22,17 @@ import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-rep
 import { findSceneObject } from "@/tools/level-editor/lib/tools/scene-objects";
 import { getSceneToolLabel } from "@/tools/level-editor/lib/tools/scene-tools";
 
-/** What a library object the renderer could not make a model of is listed under. */
+/** The rule for a library object the renderer could not make a model of. */
 export const LEVEL_EDITOR_MODEL_PROBLEM_RULE: string = "Library object not drawn";
 
-/** What a spawn point's model found in the game data and not read by the renderer is listed under. */
+/** The rule for a spawn point model found in the game data that the renderer could not read. */
 export const LEVEL_EDITOR_SPAWN_MODEL_PROBLEM_RULE: string = "Spawn point model not drawn";
 
 /**
- * Everything a scene's problems are listed from: what its open found, what reading each of its parts found, and what
- * the renderer said of the scene once resident.
+ * What a scene's problems are listed from: the open, each part's read, and the renderer once resident.
  */
 export interface ILevelEditorProblemSources {
-  /** Every tool the scene holds part files of, which names the tool a problem is on. */
+  /** Every tool the scene holds part files of, naming the tool a problem is on. */
   tools: ReadonlyArray<SceneToolDescription>;
   /** What the open found of the scene's part files. */
   scene: ReadonlyArray<SceneProblem>;
@@ -43,30 +42,22 @@ export interface ILevelEditorProblemSources {
   binaryTools: ReadonlyArray<SceneProblem>;
   /** The scene objects the scene's picture does not draw. */
   drawing: ReadonlyArray<SceneDrawProblem>;
-  /** Every object tool's objects, which name the scene object a drawing problem is on and those placing a model. */
+  /** Every object tool's objects, naming the objects that drawing and model problems are on. */
   objectTools: ReadonlyArray<SceneObjectToolDescription>;
   /** What the renderer's texture set could not answer for properly. */
   textures: ReadonlyArray<ILevelTextureProblem>;
-  /**
-   * The models the renderer could not make: a library object's, named by its reference, or a spawn point's, named by
-   * its file.
-   */
+  /** Models the renderer could not make: a library object's by reference, or a spawn point's by file. */
   models: ReadonlyArray<RenderLoadFailure>;
-  /** The spawn points drawn as their models, which name those standing as a model the renderer could not make. */
+  /** The spawn points drawn as models, naming those standing as a failed model. */
   spawnModels: ReadonlyArray<SceneSpawnModelDescription>;
 }
 
 /**
- * Everything the SDK's Level Editor would skip or refuse of a scene, and what of it is not drawn, as rows: what the
- * open found first, then what its object tools' and binary tools' reads found, then the scene objects its picture
- * leaves out, then the textures and the library objects the renderer could not draw.
+ * What the SDK's Level Editor would skip or refuse of a scene, and what is not drawn, one row a problem.
  *
- * @param sources - What the problems are listed from.
- * @returns One row a problem, named by its kind. A part's problem has its tool's label and its part file, where it has
- *   one, as the subject the row shows and the file as where it lies; a drawing problem has the scene object's name and
- *   the library object it places; a texture problem its reference, as the level viewer lists it; a model problem the
- *   first scene object placing the library object, or the first spawn point standing as the model, and the model, the
- *   others standing as it counted.
+ * Rows run: the open's findings, the object and binary tool reads, undrawn scene objects, then texture and model
+ * failures. A part's subject is its tool's label and part file; a drawing problem's, the object and its library
+ * object; a model problem's, the first object standing as the model, the others counted.
  */
 export function listLevelEditorProblems(sources: ILevelEditorProblemSources): Array<IEditorProblem> {
   const tools: ReadonlyMap<string, SceneToolDescription> = new Map(
@@ -97,8 +88,7 @@ export function listLevelEditorProblems(sources: ILevelEditorProblemSources): Ar
 }
 
 /**
- * @param kind - Why the editor would skip or refuse a part.
- * @returns It as a problem's rule names it.
+ * The rule name for why the editor would skip or refuse a part.
  */
 export function describeSceneProblemKind(kind: SceneProblemKind): string {
   switch (kind) {
@@ -117,8 +107,7 @@ export function describeSceneProblemKind(kind: SceneProblemKind): string {
 }
 
 /**
- * @param kind - Why a scene object is not drawn.
- * @returns It as a problem's rule names it.
+ * The rule name for why a scene object is not drawn.
  */
 export function describeSceneDrawProblemKind(kind: SceneDrawProblemKind): string {
   switch (kind) {
@@ -134,13 +123,9 @@ export function describeSceneDrawProblemKind(kind: SceneDrawProblemKind): string
 }
 
 /**
- * Each model the renderer could not make, with the objects standing as it, which are not drawn as it: a library
- * object's, placed by scene objects, or a spawn point's, found in the game data; a library object whose `.object` the
- * scene's drawing found unreadable is listed there already, by scene object.
+ * One row per model the renderer could not make, naming the first object standing as it and counting the rest.
  *
- * @param sources - What the problems are listed from: the models, the drawing, the spawn points drawn as models and
- *   every object tool's objects.
- * @returns One row a model, the first object standing as it named and the rest counted.
+ * Skips a library object the drawing already lists by scene object.
  */
 function listModelProblems(sources: ILevelEditorProblemSources): Array<IEditorProblem> {
   const { models, drawing, spawnModels, objectTools } = sources;
@@ -189,10 +174,7 @@ function listModelProblems(sources: ILevelEditorProblemSources): Array<IEditorPr
 }
 
 /**
- * @param first - The first object standing as a model, if the listing holds any.
- * @param others - How many more stand as it.
- * @param noun - What such an object is called.
- * @returns Who is not drawn, as a sentence's subject.
+ * The objects not drawn as a model, as a sentence's subject: `first` and a count of `others`.
  */
 function describePlacing(first: Maybe<string>, others: number, noun: string): string {
   if (!first) {
@@ -207,9 +189,7 @@ function describePlacing(first: Maybe<string>, others: number, noun: string): st
 }
 
 /**
- * @param objectTools - Every object tool's objects.
- * @param id - A scene object.
- * @returns Its name, or its tool and place among the tool's objects where the listing holds it not.
+ * A scene object's name, or its tool and index where the listing lacks it.
  */
 function nameSceneObject(objectTools: ReadonlyArray<SceneObjectToolDescription>, id: SceneObjectId): string {
   return findSceneObject(objectTools, id)?.name ?? `${getSceneToolLabel(id.tool, id.tool)} #${id.index}`;

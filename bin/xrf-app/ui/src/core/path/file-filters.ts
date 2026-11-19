@@ -38,8 +38,6 @@ export const XR_LIBRARY_FILE_FILTERS: Array<IFileFilter> = [{ name: "xr library"
  * One save dialog entry per format, so the extension a person picks is what decides the writer.
  *
  * @param formats - The formats, in the order the dialog offers them.
- * @param toName - What an entry is called, from its format.
- * @returns The filters.
  */
 export function toFormatFilters(
   formats: ReadonlyArray<EXrayExtension>,

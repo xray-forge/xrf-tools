@@ -9,14 +9,8 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
 /**
  * What the notification centre says when a decompile ends.
  *
- * Pure over its arguments: the jobs service calls it when the run settles, possibly after this tool was closed.
- *
- * A finished decompile that left something out is still a success, but a warning one, since the scene lacks what the
- * level held; the result lists each piece with why.
- *
- * @param request - What the run was asked to do.
- * @param outcome - How the run ended.
- * @returns What to record about it.
+ * Pure: the jobs service calls it when the run settles, possibly after this tool closed. A decompile that left
+ * something out is a warning success, since the scene lacks what the level held.
  */
 export function describeDecompileOutcome(
   request: LevelDecompileRequest,

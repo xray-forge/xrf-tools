@@ -54,10 +54,6 @@ const VIEWPORT: number = MOCK_SCENE_VIEWPORT;
 const SESSION: string = MOCK_SCENE_SESSION;
 const emit: (event: ViewportEvent) => void = emitSceneViewportEvent;
 
-/**
- * @param bounds - What the camera is framed on.
- * @returns Where the camera stands once framed on them.
- */
 function toFramedPosition(bounds: VisualBounds): IPoint3 {
   return toLevelGoToViewpoint(
     toLevelFramedGoTo(null, toLevelEditorSceneSphere(bounds.boundingSphere), DEFAULT_LEVEL_CAMERA_OPTIONS.fieldOfView)
@@ -102,7 +98,6 @@ describe("LevelEditorRenderService", () => {
     expect(service.isRevealed).toBe(false);
   });
 
-  // The renderer answers for its textures and models as it does for any source; the scene's part is not read again.
   it("reveals the scene once it is resident whole, and asks the renderer then what it could not draw", async () => {
     const { service } = await mockAttachedSceneRender();
     const reads: number = countCalls(ELevelsCommand.DESCRIBE_SCENE_DRAW);
@@ -158,7 +153,7 @@ describe("LevelEditorRenderService", () => {
     expect(service.resident.value).toBeNull();
   });
 
-  // The backend draws a snapshot as it was shown: the page shows the scene's session again once it is read again.
+  // The backend draws a snapshot as it was shown and follows no commit itself.
   it("shows the scene again, concealed until ready, when its snapshot is read again", async () => {
     const { container, service } = await mockAttachedSceneRender();
 
@@ -184,10 +179,9 @@ describe("LevelEditorRenderService", () => {
 
     expect(listMockInvokeCalls(ELevelsCommand.SHOW_SCENE)).toEqual([{ sessionId: SESSION, viewport: VIEWPORT }]);
     expect(service.isRevealed).toBe(false);
-    // The camera stays where it has flown: the same scene, read again.
     expect(countCalls(ERenderCommand.COMMAND_CAMERA)).toBe(0);
 
-    // The scene shown before is not the one read again.
+    // A load report of the previously shown renderer scene.
     emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: 1 }) });
     await flush();
 

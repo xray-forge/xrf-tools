@@ -58,7 +58,7 @@ describe("LevelEditorOpenForm", () => {
     expect(getByRole("button", { name: "Open" })).toBeDisabled();
   });
 
-  // No root named is the backend's default, `objects` and `gamedata` beside the scene, which the request leaves to it.
+  // Empty roots leave the backend's default: `objects` and `gamedata` beside the scene.
   it("opens the scene named, leaving its objects and game data roots to the default", async () => {
     const onFinished = jest.fn();
     const form: RenderResult = renderForm(onFinished);

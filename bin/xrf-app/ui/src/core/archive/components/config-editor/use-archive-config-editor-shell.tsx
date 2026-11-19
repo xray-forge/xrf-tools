@@ -22,9 +22,9 @@ export interface IArchiveConfigEditorShellOptions<TSection extends string> {
 }
 
 /**
- * What an archive configuration editor publishes to the shell: the section navigation as a left panel beside every
- * other tool's navigation, the configuration's name and state in the status bar, and the busy and unsaved state that
- * holds the tool open. Unsaved edits have nowhere to go but a file the user picks, so leaving offers no save.
+ * What an archive configuration editor publishes to the shell: the section navigation as a left panel, the
+ * configuration's name and state in the status bar, and the busy and unsaved state that holds the tool open. Leaving
+ * offers no save, as unsaved edits can only go to a file the user picks.
  */
 export function useArchiveConfigEditorShell<TSection extends string>({
   editor,

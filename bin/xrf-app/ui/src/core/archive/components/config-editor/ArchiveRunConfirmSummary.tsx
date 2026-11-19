@@ -17,8 +17,8 @@ interface IArchiveRunConfirmSummaryProps extends BaseComponentProps {
 }
 
 /**
- * What an archive run is about to do, read from the configuration it will be given. An output already holding this set
- * is where the run turns destructive, so replacing it is asked for here rather than assumed.
+ * What an archive run is about to do, read from its configuration. Replacing an output that already holds this set is
+ * asked for here, not assumed.
  */
 export function ArchiveRunConfirmSummary({
   "data-testid": dataTestId = "archive-run-confirm-summary",

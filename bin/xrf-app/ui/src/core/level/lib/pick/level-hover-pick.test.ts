@@ -10,7 +10,7 @@ import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewpor
 
 const HIT: RenderLevelHit = { depth: 1, kind: ERenderLevelHit.SPAWN, object: 3, point: [0, 0, 0] };
 
-/** A pointer hovering a viewport, each point taking over the last as a service's hover does. */
+// Each point takes over the last, as a service's hover does.
 class Pointer {
   public hovered: Array<Nullable<RenderLevelHit>> = [];
 
@@ -24,7 +24,6 @@ class Pointer {
   }
 }
 
-/** A viewport whose picks answer when told, each in turn. */
 function mockViewport(): { viewport: NativeViewport; answers: Array<(hit: RenderLevelHit) => void>; pick: jest.Mock } {
   const answers: Array<(hit: RenderLevelHit) => void> = [];
   const pick = jest.fn(
@@ -35,7 +34,6 @@ function mockViewport(): { viewport: NativeViewport; answers: Array<(hit: Render
 }
 
 describe("LevelHoverPick", () => {
-  // A pick a frame away answers the pointer; points arriving meanwhile wait for it, the latest of them alone picked next.
   it("keeps one pick in flight, picking the latest point waiting once it settles", async () => {
     const { answers, pick, viewport } = mockViewport();
     const pointer: Pointer = new Pointer(viewport);

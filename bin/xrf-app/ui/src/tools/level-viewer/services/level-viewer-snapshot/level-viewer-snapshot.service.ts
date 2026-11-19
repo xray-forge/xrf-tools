@@ -55,10 +55,10 @@ import {
 } from "@/tools/level-viewer/lib/snapshot/level-viewer-snapshot-files";
 
 /**
- * A level view as a file holds it: what the viewer draws, from where and under what weather, taken whole and given
- * back in part, a value at a time, into the view's own settings alone; File › Export view and Import view, the view
- * written to a file the user picks, in the tool's own folder of views by default, and read back for import. Its camera
- * alone copies to the clipboard as the readout states it, for Go to coordinates to read back.
+ * Level view snapshots: what the viewer draws, from where and under what weather, behind File › Export view (into the
+ * tool's views folder by default) and Import view, and the camera's coordinates on the clipboard.
+ *
+ * A snapshot is taken whole and applied in part, a value at a time, into the view's own settings alone.
  */
 @Injectable()
 export class LevelViewerSnapshotService {
@@ -114,7 +114,7 @@ export class LevelViewerSnapshotService {
     return this.viewportService.camera !== null;
   }
 
-  /** Puts where the camera stands on the clipboard as its readout states it, which Go to coordinates reads back. */
+  /** Copies the camera's position as its readout states it, which Go to coordinates reads back. */
   @KeybindCommand(COPY_LEVEL_COORDINATES_KEYBIND_COMMAND, {
     isEnabled: (service: LevelViewerSnapshotService) => service.isCameraPlaced,
   })

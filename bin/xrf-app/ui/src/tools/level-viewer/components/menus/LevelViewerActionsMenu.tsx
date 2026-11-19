@@ -17,8 +17,7 @@ import { LEVEL_VIEWER_ACTIONS_MENU } from "@/tools/level-viewer/menus";
 import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 
 /**
- * The level viewer's Actions menu: Capture ▸ a screenshot, the recording, a level map and a cubemap, Record turned to
- * Stop recording, its dot red, while one runs; then Go to coordinates and Copy coordinates.
+ * The level viewer's Actions menu: Capture ▸ (Record reads Stop recording while one runs), then the coordinates.
  */
 export function LevelViewerActionsMenu(): ReactElement {
   const recordingService: LevelViewerRecordingService = useInjection(LevelViewerRecordingService);

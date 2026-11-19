@@ -27,15 +27,15 @@ export class SpawnCompilerService {
     kinds: [SPAWN_JOB_BUILD],
   });
 
-  /** Forgets a listing, which is what paths that are no longer the ones it was made for make it. */
+  /** Forgets the listing, for paths it was not made for. */
   @BoundAction()
   public resetLevels(): void {
     this.levels.reset();
   }
 
   /**
-   * Lists the levels the game data's `configs/game_levels.ltx` names, starting from nothing so a failed listing never
-   * offers another folder's levels.
+   * Lists the levels the game data's `configs/game_levels.ltx` names. Clears the last listing first, so a failure
+   * never offers another folder's levels.
    *
    * @param gamedata - The game data holding the level list.
    * @param levelsRoot - The directory holding the built levels' directories.
@@ -49,7 +49,7 @@ export class SpawnCompilerService {
       subject: levelsRoot,
       command: () => spawnCommands.listLevels(gamedata, levelsRoot),
       failure: "Could not list the levels",
-      // Listed as the paths are named, not asked for: the form shows why beside the levels.
+      // A warning: the listing runs as paths are named, unasked, and the form shows why beside the levels.
       failureSeverity: ENotificationSeverity.WARNING,
     });
   }

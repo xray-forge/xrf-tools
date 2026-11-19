@@ -18,9 +18,9 @@ import { LevelViewerRecordingReadout } from "@/tools/level-viewer/lib/recording/
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 /**
- * The level viewer's recording: the viewport with what its camera hears written into one video in the recordings
- * folder until it is stopped, one at a time, its camera heard whatever window takes the focus meanwhile. Off where this
- * machine cannot record, saying why.
+ * Records the viewport and its camera's sound into one video in the recordings folder, one recording at a time.
+ *
+ * The camera stays heard whatever window takes the focus. Off, saying why, where this machine cannot record.
  */
 @Injectable()
 export class LevelViewerRecordingService {
@@ -34,7 +34,7 @@ export class LevelViewerRecordingService {
   @RefObservable()
   public file: Nullable<string> = null;
 
-  /** Where the recording stands, as last told; null before its first word. */
+  /** The running recording's last report; null before its first. */
   @RefObservable()
   public progress: Nullable<RecordingProgress> = null;
 
@@ -44,7 +44,6 @@ export class LevelViewerRecordingService {
 
   private readonly reporter: CommandReporter = new CommandReporter(this.log);
 
-  /** Deletes, shows and copies the last recording. */
   private readonly outcomeFile: WrittenFileActions<RecordingOutcome> = new WrittenFileActions(this.reporter, {
     nouns: { name: "recording" },
     current: () => this.outcome,
@@ -68,7 +67,6 @@ export class LevelViewerRecordingService {
     }
   }
 
-  /** Whether a recording runs. */
   @Computed()
   public get isRecording(): boolean {
     return this.file !== null;
@@ -81,8 +79,10 @@ export class LevelViewerRecordingService {
   }
 
   /**
-   * Starts a recording where none runs, else stops the one running. It shares one lane with {@link start} and
-   * {@link stop}: the backend keeps one recording, so a start or stop asked while another is under way joins it.
+   * Starts a recording where none runs, else stops the one running.
+   *
+   * Shares one lane with {@link start} and {@link stop}: the backend keeps one recording, so a start or stop asked while
+   * another is under way joins it.
    */
   @KeybindCommand(RECORD_LEVEL_KEYBIND_COMMAND, {
     isEnabled: (service: LevelViewerRecordingService) => service.isRecording || service.canStart,
@@ -102,7 +102,7 @@ export class LevelViewerRecordingService {
     return yield* this.record();
   }
 
-  /** Stops the recording and finishes its file, its toast telling where it went. */
+  /** Stops the recording and finishes its file; its toast tells where it went. */
   @ExclusiveFlow<LevelViewerRecordingService>("file")
   public *stop(): TFlow<Nullable<RecordingOutcome>> {
     return yield* this.finish();
@@ -151,8 +151,7 @@ export class LevelViewerRecordingService {
     if (started.result) {
       this.begin(started.result);
 
-      // A recording the renderer refused at once, as while another long job runs, can say it ended before its start
-      // answers; it is collected here, its failure telling why.
+      // A recording refused at once, as while another long job runs, can end before its start answers.
       if (this.progress?.ended) {
         yield* this.finish();
       }
@@ -171,7 +170,7 @@ export class LevelViewerRecordingService {
       subject: this.file,
       command: () => levelsCommands.stopRecording(),
       failure: "Could not finish the recording",
-      // Its toast tells it; a notice stays only where it dropped something, which the toast's fading would lose.
+      // The toast reports success; a notice stays only for drops, which a fading toast would lose.
       success: (outcome: RecordingOutcome) =>
         LevelViewerRecordingReadout.hasDrops(outcome)
           ? {
@@ -187,7 +186,6 @@ export class LevelViewerRecordingService {
     return stopped.result;
   }
 
-  /** Asks whether this machine can record. */
   private async describe(): Promise<void> {
     const availability: RecordingAvailability = await levelsCommands
       .describeRecording()
@@ -223,8 +221,8 @@ export class LevelViewerRecordingService {
   }
 
   /**
-   * Takes what the recording told; one that ended by itself is stopped and collected, saying why. One that ends while
-   * it starts is collected by the start itself, since this stop joins the start's lane.
+   * Takes a progress report, stopping a recording that ended by itself. One that ends while starting is collected by
+   * the start, since this stop joins the start's lane.
    */
   @BoundAction()
   private follow(told: RecordingProgress): void {

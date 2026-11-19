@@ -71,7 +71,6 @@ describe("LevelSunAction", () => {
 
     await userEvent.click(rendered.getByRole("button", { name: "Light: Reset to the weather" }));
 
-    // Set back, the keys stand as the weather's again, so there is nothing left to reset.
     expect(rendered.queryByRole("button", { name: "Light: Reset to the weather" })).toBeNull();
     expect(rendered.weather.manual).toMatchObject({
       ambientColor: DEFAULT_LEVEL_MANUAL_WEATHER.ambientColor,

@@ -5,8 +5,7 @@ import { Box } from "#/layout/stack";
 /**
  * Renders a line of prose with its backticked spans as inline code, as help and descriptions write identifiers.
  *
- * @param text - Prose, possibly holding backticked spans.
- * @returns The text as it came when it holds no backtick, otherwise each backticked span rendered as code.
+ * @returns The text unchanged when it holds no backtick.
  */
 export function renderCodeSpans(text: string): ReactNode {
   const segments: Array<string> = text.split("`");

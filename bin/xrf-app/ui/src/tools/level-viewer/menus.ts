@@ -4,8 +4,7 @@ import { EToolId } from "@/core/routing/tool";
 import { FILE_MENU } from "@/core/shell/menu/menus";
 
 /**
- * How the level viewer shows the open level, switched from the menu as from the toolbar: the frame (its shading and
- * the overlays over it), then the level objects (their helpers and which are drawn).
+ * The level viewer's View menu: the frame's shading and overlays, then the level objects' helpers and visibility.
  */
 export const LEVEL_VIEWER_VIEW_MENU: IMenu<"frame" | "objects"> = defineMenu({
   id: "level-viewer/view",
@@ -13,14 +12,14 @@ export const LEVEL_VIEWER_VIEW_MENU: IMenu<"frame" | "objects"> = defineMenu({
   sections: ["frame", "objects"],
 });
 
-/** What the level viewer does with the open level: Capture ▸ first, then where the camera goes. */
+/** The level viewer's Actions menu: Capture ▸, then camera placement. */
 export const LEVEL_VIEWER_ACTIONS_MENU: IMenu<"capture" | "camera"> = defineMenu({
   id: "level-viewer/actions",
   label: "Actions",
   sections: ["capture", "camera"],
 });
 
-/** What the level viewer adds to File: the view written to a file and read back. */
+/** The level viewer's File section: view export and import. */
 export const LEVEL_VIEWER_FILE_MENU_EXTENSION: IMenuExtension<"view"> = defineMenuExtension(FILE_MENU, {
   owner: EToolId.LEVEL_VIEWER,
   sections: ["view"],

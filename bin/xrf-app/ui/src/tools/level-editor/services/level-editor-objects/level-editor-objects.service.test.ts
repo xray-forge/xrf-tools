@@ -21,13 +21,10 @@ import { LevelEditorSelectionService } from "@/tools/level-editor/services/level
 
 import { LevelEditorObjectsService } from "./level-editor-objects.service";
 
-/** The fixture's third spawn point. */
 const STALKER: SceneObjectId = { index: 2, tool: ESceneToolKind.SPAWN };
 
-/** Where the backend says the fixture's objects stand. */
 const SPHERE: Sphere = { center: { x: 30, y: 2, z: -6 }, radius: 1.5 };
 
-/** Answers every locate with `sphere`, for the session asked about. */
 function mockLocated(sphere: Sphere | null): void {
   mockIpcCommands({
     [ELevelsCommand.LOCATE_SCENE_OBJECT]: (args: { sessionId: string }) => mockSessionSnapshot(sphere, args.sessionId),
@@ -57,7 +54,7 @@ describe("LevelEditorObjectsService", () => {
     ]);
 
     const [x, y, z] = lastCamera().position;
-    // No camera reported yet: framed facing as a camera does before it reports.
+    // No camera pose reported yet, so framing uses the default heading.
     const expected = toLevelGoToViewpoint(
       toLevelFramedGoTo(null, toLevelEditorSceneSphere(SPHERE), DEFAULT_LEVEL_CAMERA_OPTIONS.fieldOfView)
     ).position;

@@ -16,10 +16,9 @@ interface IPathPanelRowProps extends BaseComponentProps {
 }
 
 /**
- * A remembered, validated path among a panel's rows: the label over the field, as a path is too long to share a row
- * with its label in a narrow panel, the field as low as the rows around it, and what the validation found under it.
- *
- * Unlike `PathFormRow` it joins no form, since a panel has none: the action that reads the path commits it.
+ * A remembered, validated path among a panel's rows: the label above the field, as a path is too long to share a
+ * narrow panel's row, and the validation under it. Unlike `PathFormRow` it joins no form: the action that reads the
+ * path commits it.
  */
 export function PathPanelRow({
   "data-testid": dataTestId = "path-panel-row",

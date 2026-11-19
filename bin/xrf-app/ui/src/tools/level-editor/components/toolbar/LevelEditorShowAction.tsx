@@ -15,10 +15,10 @@ import { LevelEditorHelpersService } from "@/tools/level-editor/services/level-e
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
 /**
- * What the editor shows over the scene beside its objects, as an editor's show menu gathers it: the helpers' master
- * switch heading a switch for each helped tool, with the picture its helpers draw and how many the open scene holds,
- * the spawn points' switch, and the master one over it, switching the spawn points' models too; and the switches of the
- * surfaces the game never draws and of those dressed in the SDK's marker textures, each off until asked for.
+ * The editor's Show popover: the helpers' master switch over a switch per helped tool, and switches for surfaces the
+ * game never draws and those in the SDK's marker textures, each off by default.
+ *
+ * The master switch also covers the spawn points' models.
  */
 export function LevelEditorShowAction({
   "data-testid": dataTestId = "level-editor-show-action",

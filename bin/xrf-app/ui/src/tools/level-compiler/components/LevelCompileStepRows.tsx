@@ -12,8 +12,8 @@ interface ILevelCompileStepRowsProps {
 }
 
 /**
- * One box per compile step, in the order the compile runs them. The light is offered only with the geometry it is
- * baked with, and ticking either changes both as {@link toggleCompileStep} decides.
+ * One box per compile step, in run order. The light box is disabled without the geometry it is baked with, and ticking
+ * either changes both as {@link toggleCompileStep} decides.
  */
 export function LevelCompileStepRows({ steps, isDisabled, onChange }: ILevelCompileStepRowsProps): ReactElement {
   return (

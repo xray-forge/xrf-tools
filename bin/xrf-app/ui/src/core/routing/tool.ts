@@ -68,11 +68,8 @@ export enum EToolId {
 }
 
 /**
- * The route a tool answers on, its id: read from the id rather than the catalog, which loads every tool, so a tool can
- * open another without an import cycle.
- *
- * @param tool - The tool.
- * @returns Its route.
+ * The route a tool answers on, read from its id rather than the catalog, which loads every tool, so a tool can open
+ * another without an import cycle.
  */
 export function getToolRoute(tool: EToolId): string {
   return `/${tool}`;

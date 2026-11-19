@@ -107,7 +107,6 @@ describe("LevelImageQualityAction", () => {
     await userEvent.click(rendered.getByRole("button", { name: "Antialiasing: Back to the settings" }));
 
     expect(rendered.view.features).toEqual(before);
-    // The settings' own mode again, so there is nothing left to give back.
     expect(rendered.queryByRole("button", { name: "Antialiasing: Back to the settings" })).toBeNull();
   });
 

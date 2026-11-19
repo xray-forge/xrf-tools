@@ -34,8 +34,7 @@ export function findLastSeparator(path: string): number {
 }
 
 /**
- * The separator to extend a host path with, so a path built from it reads in the style it arrived in: a backslash where
- * it carries one, else a forward slash.
+ * The separator to extend a host path with in its own style: a backslash where it carries one, else a forward slash.
  *
  * @param path - A path from the host, in either separator style.
  * @returns The separator it is written with.

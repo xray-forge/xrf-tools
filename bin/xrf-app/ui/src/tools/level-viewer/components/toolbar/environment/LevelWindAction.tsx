@@ -29,8 +29,8 @@ import { RENDER_FOLIAGE_SETTINGS } from "@/core/render/lib/features/world/render
 import { TRenderFoliageSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
- * The wind the rain drifts on and the trees' sway, by the weather's keys; whether the trees and the grass sway at all,
- * and how the foliage moves, whose reset keeps the light through leaves the Grass popover sets.
+ * The wind popover: the weather's wind keys, whether trees and grass sway, and foliage motion. The foliage reset keeps
+ * the light through leaves, which the Grass popover owns.
  */
 export function LevelWindAction({
   "data-testid": dataTestId = "level-wind-action",

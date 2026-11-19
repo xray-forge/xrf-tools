@@ -25,10 +25,7 @@ export const AUDIO_VOLUME_DESCRIPTIONS: Readonly<Record<TAudioVolume, string>> =
 };
 
 /**
- * One volume as a slider shows it: in `[0, 1]`, a value the wire could not carry as a number at full volume.
- *
- * @param volume - The volume as the backend sent it.
- * @returns The volume in range.
+ * One volume as the backend sent it, as a slider shows it: in `[0, 1]`, and full where the wire carried no number.
  */
 export function readAudioVolume(volume: Nullable<number> | undefined): number {
   return typeof volume === "number" && Number.isFinite(volume) ? saturate(volume) : 1;

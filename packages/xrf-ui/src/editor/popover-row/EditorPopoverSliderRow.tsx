@@ -32,8 +32,8 @@ export interface IEditorPopoverSliderRowProps extends BaseComponentProps {
 }
 
 /**
- * One numeric value in a single row of a toolbar popover: the label in the column every row shares, the slider beside
- * it and what it reads, measured by the reference source about it and the recommended range.
+ * One numeric value in a single row of a toolbar popover: the label in the column every row shares, the slider and its
+ * readout beside it.
  */
 export function EditorPopoverSliderRow({
   "data-testid": dataTestId = "editor-popover-slider-row",

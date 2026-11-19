@@ -31,11 +31,10 @@ interface ILevelViewerToolbarProps extends BaseComponentProps {
 }
 
 /**
- * Composes the level view's actions in the editor toolbar in the order a look at a level is made: the viewport (what
- * is shown and from where), the world (how its surfaces, vegetation and geometry are drawn), the lighting, the
- * environment, the image (how the frame is finished), and the sound last, the one that is no part of the picture; the
- * captures are the Actions menu's. Each action reads and sets what it shows itself, its sliders measured by the
- * settings, which its popover resets to.
+ * The level view's toolbar actions, in the order a look at a level is made: viewport, world, lighting, environment,
+ * image, then sound. Captures live in the Actions menu.
+ *
+ * Each action owns its state; its sliders are measured against the settings, which its popover resets to.
  */
 export function LevelViewerToolbar({
   "data-testid": dataTestId,

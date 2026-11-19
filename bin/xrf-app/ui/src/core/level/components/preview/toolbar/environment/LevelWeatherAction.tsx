@@ -26,8 +26,7 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 
 /**
- * The weather in short: what lights the level, the cycle and the effect, and the time of day as the panel shows it (the
- * clock with the cycle's keyframes marked, the keyframes it stands between, its speed); the panel keeps the detail.
+ * The weather in short: what lights the level, the cycle, the effect and the time of day; the panel keeps the detail.
  */
 export function LevelWeatherAction({
   "data-testid": dataTestId = "level-weather-action",

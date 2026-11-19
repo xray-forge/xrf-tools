@@ -2,9 +2,7 @@ import { SceneObjectDescription, SceneObjectId, SceneObjectToolDescription } fro
 import { Nullable } from "@xrf/types";
 
 /**
- * @param tools - Every object tool's objects, as a scene's listing holds them.
- * @param id - A scene object, by its tool and index.
- * @returns The object as the listing describes it; null where the listing holds it not.
+ * A scene object as the listing describes it, or null where the listing lacks it.
  */
 export function findSceneObject(
   tools: ReadonlyArray<SceneObjectToolDescription>,

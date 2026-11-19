@@ -110,9 +110,8 @@ function describeGameDefaults(defaults: AsyncState<LevelConsoleDefaults>): strin
 }
 
 /**
- * How the level is exposed, lit, bloomed and corrected: the game's console defaults, the settings', a built-in engine's,
- * or values edited by hand, a section each of the light, the exposure, the display, the bloom (the engine's values
- * first, the enhanced bloom's after them) and the image; and the sky's debanding last.
+ * The look popover: a preset (console defaults, the settings', a built-in engine's) or hand-edited light, exposure,
+ * display, bloom and image values, then the sky's debanding.
  */
 export function LevelLookAction({
   "data-testid": dataTestId = "level-look-action",

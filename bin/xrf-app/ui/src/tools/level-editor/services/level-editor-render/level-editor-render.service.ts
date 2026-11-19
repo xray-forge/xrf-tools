@@ -42,47 +42,44 @@ import { LevelEditorRenderPicks } from "@/tools/level-editor/services/level-edit
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 import { LevelEditorSelectionService } from "@/tools/level-editor/services/level-editor-selection";
 
-/** What the open scene's camera is framed by: its picture's part and its helpers' part, each as last read. */
+/** The open scene's drawing and helpers parts as last read, which the camera is framed by. */
 interface ILevelEditorSceneExtent {
   drawing: Nullable<SessionSnapshot<SceneDrawDescription>>;
   helpers: Nullable<SessionSnapshot<SceneHelpersDescription>>;
 }
 
 /**
- * Owns the native viewport the open scene is drawn in: the scene shown, concealed until it is resident whole, what it
- * is asked of the scene once resident, the editor's light in place of a weather, the helpers switched in the Show
- * action, the objects hidden one by one, what a click selects and the pointer hovers (`picks`), and the fly camera,
- * framed on the scene's drawn objects, or its helpers where it draws none, as each scene opens, and on one object as
- * asked.
+ * Owns the native viewport the open scene is drawn in, under the editor's light, with the Show action's helpers and
+ * the hidden objects left out.
+ *
+ * The scene stays concealed until resident whole. The fly camera frames each opened scene on its drawn objects, or its
+ * helpers where it draws none, and one object on request.
  */
 @Injectable()
 export class LevelEditorRenderService extends NativeRenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /**
-   * What the renderer says of the open scene once it is resident whole, its textures and the library objects it could
-   * not make a model of, as it says them of a level: idle until then, and failed with why where it could not say. A
-   * scene has no sectors, so nothing of its surfaces is measured.
+   * The renderer's texture and model failures for the open scene once resident whole, as for a level; idle until then.
+   * A scene has no sectors, so no surfaces are measured.
    */
   public readonly resident: CommandOperation<ILevelResident> = new CommandOperation(this.log);
 
-  /** Where the camera stands, framed on the scene and flown on from with the toolbar's speeds and lens. */
+  /** The fly camera, flown with the toolbar's speeds and lens. */
   public readonly camera: LevelRenderCamera;
 
-  /** What of the scene is drawn where the viewport is clicked or hovered, and what that selects and lifts. */
   public readonly picks: LevelEditorRenderPicks;
 
-  /** Which scene shows the open scene's snapshot, and whether it is revealed. */
+  /** Which renderer scene shows the open scene's snapshot, and whether it is revealed. */
   private readonly shown: LevelSceneShow = new LevelSceneShow({
     onLeft: () => this.leaveScene(),
     onResident: () => void this.describeResident(),
   });
 
-  /** The scene session shown, or null for none. */
   private sessionId: Nullable<SessionId> = null;
-  /** The scene session the camera was framed on, so a scene is framed once however often its picture is read. */
+  /** The session the camera was framed on, so a scene is framed once however often its parts are read. */
   private framed: Nullable<SessionId> = null;
-  /** Where the camera stands and faces as the viewport last said, which framing keeps the heading of. */
+  /** The camera's last reported pose, whose heading framing keeps. */
   private pose: Nullable<ILevelCamera> = null;
 
   public constructor(
@@ -99,7 +96,7 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
       { getViewport: () => this.viewport },
       {
         config: DEFAULT_LEVEL_RENDER_CONFIG,
-        // A decompiled scene's own camera stands at the origin: the scene is framed once its extent is read.
+        // A decompiled scene's camera stands at the origin, so the scene is framed once its extent is read.
         toStart: () => toLevelStartViewpoint(null),
         viewService,
       }
@@ -110,15 +107,14 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
     );
   }
 
-  /** Whether the viewport shows the open scene: not until every object it draws is resident, textures included. */
+  /** Whether the viewport shows the open scene: only once everything it draws is resident, textures included. */
   @Computed()
   public get isRevealed(): boolean {
     return this.shown.isRevealed;
   }
 
   /**
-   * What the scene is asked to be drawn with: the settings' features under the editor's light, helpers as switched, the
-   * selected, hovered and hidden objects' singled out.
+   * The scene's view options: the settings' features under the editor's light, with helpers and targets as switched.
    */
   @Computed()
   public get options(): RenderViewOptions {
@@ -135,9 +131,7 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Stands the camera framing a sphere, keeping the heading it faces now, as `F` frames the selection.
-   *
-   * @param sphere - What to frame, in renderer space.
+   * Frames a renderer-space sphere, keeping the camera's heading, as `F` frames the selection.
    */
   public frameSphere(sphere: Sphere): void {
     this.camera.goTo(
@@ -206,7 +200,7 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
     this.camera.stepSpeed(steps);
   }
 
-  /** A view mounted again shows and frames the scene open as a view first shown does. */
+  /** Resets state so a remounted view shows and frames the open scene as a first mount does. */
   protected release(): void {
     this.sessionId = null;
     this.framed = null;
@@ -216,11 +210,10 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Shows the open scene's snapshot: a scene opened anew from the camera's start, one read again in its session in
-   * place of the snapshot shown, concealed until it is ready, since the backend draws a snapshot as it was shown and
-   * follows no commit itself; and nothing once the scene closes.
+   * Shows the open scene's snapshot, or nothing once it closes.
    *
-   * @param scene - The open scene's session and the revision its snapshot was read at, or null for none open.
+   * A new session starts from the camera's start; a re-read in the same session replaces the shown snapshot, concealed
+   * until ready, since the backend draws a snapshot as shown and follows no commit itself.
    */
   @BoundAction()
   private showScene(scene: Nullable<ILevelScene>): void {
@@ -242,11 +235,8 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Frames the camera on the drawn objects of a scene the first time its picture is read with any, or on its helpers
-   * once they are read where it draws none: reading either again, as the scene's load finishes, leaves the camera where
-   * it has flown.
-   *
-   * @param extent - What the open scene's picture and helpers need, each as last read, or null before it is.
+   * Frames a session's scene once, on its drawn objects or else its helpers. Later re-reads leave the camera where it
+   * has flown.
    */
   @BoundAction()
   private frameOnce(extent: ILevelEditorSceneExtent): void {
@@ -272,8 +262,7 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Asks what each texture came to and what the scene could not draw, once it is resident whole; the scene shown let go
-   * meanwhile cancels it, as it describes something else.
+   * Asks for texture loads and draw problems once the scene is resident whole. Letting go of the scene cancels it.
    */
   @LatestFlow("resident")
   private *describeResident(): TFlow {
@@ -294,8 +283,7 @@ export class LevelEditorRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Lets go of what was asked of the scene shown: what it described and what a click picked or the pointer hovered in
-   * it name it alone.
+   * Drops the resident description and picks of the scene shown, which name it alone.
    */
   @BoundAction()
   private leaveScene(): void {

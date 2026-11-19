@@ -21,8 +21,8 @@ interface ILevelWeatherCycleSelectProps extends BaseComponentProps {
 }
 
 /**
- * Every cycle the level can be played under, the ones its weather resolves to first and marked; the one being read
- * named in its place until it plays.
+ * Every cycle the level can be played under, the ones its weather resolves to first and marked. A cycle still being
+ * read is named in its place until it plays.
  */
 export function LevelWeatherCycleSelect({
   "data-testid": dataTestId = "level-weather-cycle-select",

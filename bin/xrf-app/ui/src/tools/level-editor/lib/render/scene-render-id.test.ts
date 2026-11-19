@@ -16,12 +16,11 @@ import {
   toSceneRenderObject,
 } from "@/tools/level-editor/lib/render/scene-render-id";
 
-/** The highest index an id holds. */
 const MAX_INDEX: number = 2 ** SCENE_RENDER_INDEX_BITS - 1;
 
 describe("scene render ids", () => {
-  // The backend makes the same ids (`names_an_object_to_the_renderer_by_its_tool_and_index_both_ways`): the tool's
-  // place, 7 for a way and 2 for a scene object, above 24 bits of index.
+  // Mirrors the backend's `names_an_object_to_the_renderer_by_its_tool_and_index_both_ways`: the tool's place, 7 for a
+  // way and 2 for a scene object, above 24 bits of index.
   it("names a way's helper and a scene object's model as the backend does", () => {
     const way: SceneObjectId = { index: 5, tool: ESceneToolKind.WAY };
     const box: SceneObjectId = { index: 3, tool: ESceneToolKind.SCENE_OBJECT };
@@ -67,7 +66,7 @@ describe("scene render ids", () => {
     ]);
   });
 
-  // The backend stands each other kind of a scene object's surfaces under its id with a top bit set (`SceneRenderId`).
+  // The backend's `SceneRenderId` names each other surface kind by the object's id with a top bit set.
   it("names an object's other models with the kinds' bits, and reads a pick of any as the object", () => {
     const box: SceneObjectId = { index: 3, tool: ESceneToolKind.SCENE_OBJECT };
     const way: SceneObjectId = { index: 5, tool: ESceneToolKind.WAY };

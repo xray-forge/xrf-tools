@@ -3,7 +3,6 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { followListening } from "@/core/render/lib/native/viewport/native-viewport-listening";
 
-/** A viewport counting how often it was told to listen. */
 function mockViewport(): NativeViewport & { listen: jest.Mock } {
   return { listen: jest.fn() } as unknown as NativeViewport & { listen: jest.Mock };
 }

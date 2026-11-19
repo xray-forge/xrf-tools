@@ -23,8 +23,7 @@ interface ILevelEditorHelperToolRowProps extends BaseComponentProps {
 }
 
 /**
- * One helped tool's switch in the Show action: its box and name, then the picture its helpers draw, the icon in the
- * tool's colour or a swatch of it, and how many of the open scene's objects draw one.
+ * One helped tool's switch in the Show action, with its helper's icon or colour swatch and the scene's helper count.
  */
 export function LevelEditorHelperToolRow({
   "data-testid": dataTestId = "level-editor-helper-tool-row",

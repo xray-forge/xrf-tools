@@ -156,8 +156,8 @@ export class ArchivePreviewService {
   }
 
   /**
-   * Selects a file and reads it for its preview; the latest file picked is the one read. Refused while the explorer
-   * writes to disk: a write leaves the archive and cannot be abandoned the way a read can.
+   * Selects a file and reads it for its preview; the latest pick wins. Refused while the explorer writes to disk,
+   * since a write cannot be abandoned the way a read can.
    *
    * @param entry - File to select.
    */
@@ -193,8 +193,7 @@ export class ArchivePreviewService {
   }
 
   /**
-   * Selects a directory instead of a file, forgetting how the last writes ended, as they named what was selected.
-   * Refused while the explorer writes to disk, as a file is.
+   * Selects a directory and forgets how the last writes ended. Refused while the explorer writes to disk.
    *
    * @param path - Engine directory path; an empty string selects the tree root.
    */
@@ -212,7 +211,7 @@ export class ArchivePreviewService {
   }
 
   /**
-   * Opens a sound read for its preview as one the application's audio plays, by the session and name it was read by.
+   * Opens a previewed sound in the application's audio.
    *
    * @param audio - The sound as its preview was read.
    * @returns The transport it plays through, which the caller closes.

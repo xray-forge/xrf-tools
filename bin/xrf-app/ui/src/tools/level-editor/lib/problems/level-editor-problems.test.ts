@@ -26,7 +26,6 @@ import {
   listLevelEditorProblems,
 } from "@/tools/level-editor/lib/problems/level-editor-problems";
 
-/** Nothing wrong with a scene, each source empty. */
 const NO_PROBLEMS: ILevelEditorProblemSources = {
   binaryTools: [],
   drawing: [],
@@ -124,7 +123,7 @@ describe("listLevelEditorProblems", () => {
         rule: "Library object missing",
         subject: "box_2 · props\\crate",
       },
-      // An object the listing does not hold is named by its tool and its place among the tool's objects.
+      // An object the listing lacks is named by its tool and index.
       {
         message: "Library object 'props\\barrel' does not read",
         rule: "Library object unreadable",
@@ -133,7 +132,6 @@ describe("listLevelEditorProblems", () => {
     ]);
   });
 
-  // The renderer's textures are listed as the level viewer lists them, by the same lister.
   it("lists the textures the renderer could not answer for after the drawing, under the viewer's rules", () => {
     expect(
       listLevelEditorProblems({
@@ -257,7 +255,7 @@ describe("listLevelEditorProblems", () => {
     ]);
   });
 
-  // An unreadable `.object` is in the drawing already, by scene object; the renderer meets it again reading it.
+  // The renderer reports an unreadable `.object` again, which the drawing already lists.
   it("lists no library object the drawing found unreadable again among the models", () => {
     expect(
       listLevelEditorProblems({

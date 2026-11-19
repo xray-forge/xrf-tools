@@ -26,8 +26,8 @@ interface IAudioPlayerControlsProps {
 const VOLUME_STEP: number = 0.01;
 
 /**
- * Playback, looping, and volume controls for a single sound. The volume follows the hand at once and tells its owner at
- * most once an interval while dragged, as the kit's other sliders do, since an owner may keep it on disk.
+ * Playback, looping, and volume controls for a single sound. A dragged volume tells its owner at most once an interval,
+ * since an owner may keep it on disk.
  */
 export function AudioPlayerControls({
   isPlaying,

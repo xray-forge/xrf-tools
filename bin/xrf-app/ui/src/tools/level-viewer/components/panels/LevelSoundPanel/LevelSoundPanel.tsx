@@ -28,8 +28,7 @@ import {
 const LEVEL_SOUND_REFRESH_MS: number = 500;
 
 /**
- * The level's sound as it plays: whether it is heard, each sound with where it stands and how loud, the music, the
- * weather ambient's channels, and every sound that could not play and why.
+ * The level's live sound: whether it is heard, each voice, the music, the weather ambient, and sounds that failed.
  */
 export function LevelSoundPanel({
   "data-testid": dataTestId = "level-sound-panel",
@@ -39,7 +38,7 @@ export function LevelSoundPanel({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  // One question at a time: the world answers from the audio's thread, so a slow answer must not pile up behind it.
+  // One question at a time: the world answers from the audio thread, so slow answers must not pile up.
   const report: Nullable<WorldSoundReport> = usePolledValue(
     () => renderService.describeSound(),
     LEVEL_SOUND_REFRESH_MS

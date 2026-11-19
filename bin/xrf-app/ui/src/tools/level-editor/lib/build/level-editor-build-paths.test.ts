@@ -34,7 +34,7 @@ describe("getLevelEditorBuildPaths", () => {
     });
   });
 
-  // An installation holds its libraries in gamedata\, not at its top, where the compilers would not find them.
+  // An installation keeps its libraries in gamedata\, not at its top.
   it("hands an installation's gamedata as the game data", () => {
     const paths = getLevelEditorBuildPaths(
       mockSelectedSceneDescription({

@@ -4,14 +4,12 @@ import { KeyboardEvent, useCallback, useDeferredValue, useMemo, useState } from 
 /** Past a couple of screens nobody reads results, and the renderer pays for every one of them. */
 export const DEFAULT_SEARCH_LIMIT: number = 200;
 
-/**
- * Dataset size up to which filtering runs on the keystroke itself rather than behind a deferred value.
- */
+/** Dataset size up to which filtering runs on the keystroke itself rather than behind a deferred value. */
 export const EAGER_SEARCH_LIMIT: number = 2000;
 
 export interface IUseRankedSearchOptions<T> {
   items: ReadonlyArray<T>;
-  /** The identity of an item - what ranking is computed from. Keep it cheap rather than clever. */
+  /** The text an item is ranked by. Keep it cheap rather than clever. */
   toSearchText: (item: T) => string;
   /** Optional extra text that should match but never outrank a name match. */
   toSecondaryText?: (item: T) => string;
@@ -38,19 +36,9 @@ export interface IUseRankedSearch<T> {
 /**
  * Searches a large list without blocking the input field.
  *
- * Three things make this fast, and all three matter: the searchable text is lowercased once per dataset
- * rather than once per keystroke, a dataset past `EAGER_SEARCH_LIMIT` defers the query so react can
- * abandon a filter that a newer keystroke has already invalidated, and only `limit` results reach the
- * renderer. The last is the one that counts - filtering tens of thousands of rows costs a couple of
- * milliseconds, while rendering them costs seconds.
- *
- * @param options - Search inputs and behavior.
- * @param options.items - Items to index and search.
- * @param options.toSearchText - Extracts the primary searchable text.
- * @param options.toSecondaryText - Extracts optional lower-priority searchable text.
- * @param options.limit - Maximum number of results exposed to the renderer.
- * @param options.onSelect - Receives the active result when Enter is pressed.
- * @returns The query state, ranked results, and keyboard interaction callbacks.
+ * The searchable text is lowercased once per dataset, a dataset past `EAGER_SEARCH_LIMIT` defers the query so React
+ * can drop a filter a newer keystroke invalidated, and only `limit` results reach the renderer: filtering tens of
+ * thousands of rows costs milliseconds, rendering them seconds.
  */
 export function useRankedSearch<T>({
   items,

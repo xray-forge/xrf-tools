@@ -12,14 +12,12 @@ import {
 } from "@/tools/level-editor/lib/helpers/level-editor-helper-options";
 import { toSceneRenderId } from "@/tools/level-editor/lib/render/scene-render-id";
 
-/** Every helped tool's bit. */
 const EVERY_KIND: number = SCENE_HELPER_TOOLS.reduce(
   (bits: number, entry: SceneHelperToolEntry) => (bits | (1 << entry.kind)) >>> 0,
   0
 );
 
 describe("toLevelEditorHelperOptions", () => {
-  // A scene of helpers alone opens showing them.
   it("draws every helped tool by default", () => {
     expect(toLevelEditorHelperOptions(null)).toEqual(DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS);
     expect(DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS.isShown).toBe(true);
@@ -80,7 +78,7 @@ describe("toLevelEditorHelperRenderOptions", () => {
       hovered: toSceneRenderId(stalker),
       selected: [toSceneRenderId(light)],
     });
-    // A spawn point drawn as its model marks its volume selected, as the model is outlined.
+    // A spawn point drawn as its model also marks its volume selected.
     expect(
       toLevelEditorHelperRenderOptions(DEFAULT_LEVEL_EDITOR_HELPER_OPTIONS, {
         hidden: [],

@@ -219,9 +219,6 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
 
 /**
  * What an SDK object holds beyond its model: one surface, one bone, and a decompile's provenance.
- *
- * @param overrides - Fields to replace.
- * @returns The description.
  */
 export function mockSelectedObject(overrides: Partial<SelectedObjectDescription> = {}): SelectedObjectDescription {
   return {

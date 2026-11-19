@@ -29,12 +29,6 @@ import { LevelEditorSelectionService } from "@/tools/level-editor/services/level
 
 import { LevelEditorViewport } from "./LevelEditorViewport";
 
-/**
- * The fixture scene open with the parts given, its viewport over a stub surface.
- *
- * @param parts - What the scene's parts answer.
- * @returns The rendered viewport.
- */
 async function renderViewport(parts: IMockSceneParts = {}): Promise<RenderResult> {
   mockIpcCommands({
     [ELevelsCommand.OPEN_SCENE]: mockSessionResponse(mockSelectedSceneDescription()),

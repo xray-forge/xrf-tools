@@ -18,8 +18,7 @@ function toScrim(tone: string, share: number): string {
 
 /**
  * `core.disableWhatsNewNotifications` stops the release-notes notification, but 10.6's settings button still draws an
- * unread dot: it reads the flag from the top of the manager's state, where nothing writes it. Marking each post read as
- * it arrives, once the manager has stored it, leaves the dot nothing to say.
+ * unread dot from a flag nothing writes. Marking each post read once the manager has stored it clears the dot.
  */
 addons.register("xrf/quiet-whats-new", (api) => {
   api.on(RESULT_WHATS_NEW_DATA, () => setTimeout(() => api.whatsNewHasBeenRead(), 0));

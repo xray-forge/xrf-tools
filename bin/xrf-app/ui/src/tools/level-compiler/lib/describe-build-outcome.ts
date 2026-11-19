@@ -9,14 +9,8 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
 /**
  * What the notification centre says when a build ends.
  *
- * Pure over its arguments: the jobs service calls it when the run settles, possibly after this tool was closed.
- *
- * A finished build that refused a part is a warning one: the level lacks that breakable or ladder, though everything
- * else was written.
- *
- * @param request - What the run was asked to do.
- * @param outcome - How the run ended.
- * @returns What to record about it.
+ * Pure: the jobs service calls it when the run settles, possibly after this tool closed. A build that refused a part
+ * is a warning, since the level lacks that breakable or ladder.
  */
 export function describeBuildOutcome(request: LevelBuildRequest, outcome: IJobOutcome<LevelBuildResult>): IJobNotice {
   const { result, error } = outcome;

@@ -32,7 +32,6 @@ export const LEVEL_CAMERA_LIMITS = {
 } as const;
 
 /**
- * @param options - How the camera sees and moves now.
  * @returns Whether every value stands at its default, so setting the camera back would change nothing.
  */
 export function isDefaultLevelCamera(options: ILevelCameraOptions): boolean {

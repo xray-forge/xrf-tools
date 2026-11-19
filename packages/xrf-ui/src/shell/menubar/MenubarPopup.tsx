@@ -36,9 +36,8 @@ interface IMenubarPopupProps {
  * window rather than running past it. A submenu draws in a layer of its own, so the scroll never clips one.
  */
 export function MenubarPopup({ anchor, placement, children, onPointerEnter }: IMenubarPopupProps): ReactElement {
-  // The tallest the menu draws before it scrolls: from under its button to the window's foot for a menubar's menu,
-  // which cannot move up past it, or the window's height for a submenu, moved up beside its row to fit. Measured once,
-  // as what opened it stays put while it is open.
+  // The tallest the menu draws before it scrolls: to the window's foot for a menubar's menu, which cannot move up past
+  // its button, or the window's height for a submenu, which moves up to fit. Measured once, as its opener stays put.
   const maxHeight: string = useMemo(() => {
     const top: number =
       placement === "bottom-start" ? anchor.getBoundingClientRect().bottom + POPUP_MENU_OFFSET : POPUP_EDGE_GAP;

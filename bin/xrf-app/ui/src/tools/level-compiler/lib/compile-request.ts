@@ -19,21 +19,21 @@ export interface ICompileChoice {
   /** The game data holding `gamemtl.xr` and `shaders_xrlc.xr`. */
   gamedata: Nullable<string>;
   /**
-   * The textures root read before the game data's own `textures`, such as the one a decompile wrote impostor strips
-   * into; none to read the game data's alone. Between them they hold a `.thm` for every texture `build.prj` names.
+   * Textures root read before the game data's own, such as a decompile's impostor strips; null for the game data's
+   * alone. Together they must hold a `.thm` for every texture `build.prj` names.
    */
   textures: Nullable<string>;
-  /** What traces the rays: the light's lightmap and terrain rays, the details' shadow rays and the AI map's cover rays. */
+  /** What traces the light, details and AI cover rays. */
   rayBackend: RayBackend;
-  /** The GPU they trace on, the renderer's choice; null for the automatic one. */
+  /** GPU the rays trace on; null for the automatic one. */
   rayGpu: Nullable<RayGpu>;
-  /** The covers the AI map gets: full ones traced against `build.cform`, or none. */
+  /** AI map covers: traced against `build.cform`, or none. */
   aiCovers: AiMapCovers;
-  /** How finely the light step lights the level: by `build.prj`'s own sky and sun, or a cheap draft. */
+  /** Light step quality: `build.prj`'s own sky and sun, or a cheap draft. */
   lightQuality: LightQuality;
 }
 
-/** Every step the form offers, in the order the compile runs them and the form lists them. */
+/** Every step the form offers, in run order. */
 export const COMPILE_STEPS: ReadonlyArray<LevelCompileStep> = [
   ELevelCompileStep.GEOMETRY,
   ELevelCompileStep.LIGHT,
@@ -42,13 +42,10 @@ export const COMPILE_STEPS: ReadonlyArray<LevelCompileStep> = [
 ];
 
 /**
- * The steps chosen after one step's box changes: the light is baked in the geometry's pass, so ticking the geometry
- * ticks its light too and unticking it drops the light, and a choice never holds the light without the geometry.
+ * The steps chosen after one step's box changes.
  *
- * @param steps - The steps chosen before.
- * @param step - The step whose box changed.
- * @param isChecked - Whether it is now ticked.
- * @returns The steps chosen after.
+ * The light is baked in the geometry's pass: ticking the geometry ticks the light, unticking it drops the light, and
+ * the result never holds the light without the geometry.
  */
 export function toggleCompileStep(
   steps: ReadonlySet<LevelCompileStep>,
@@ -86,11 +83,9 @@ export interface ICompileProblem {
 }
 
 /**
- * Whether the compile the form names cannot run: a step is chosen but the game materials the build writes `build.prj`
- * from or the game data is not named, or the light is chosen without the geometry it is baked with.
+ * Why the compile the form names cannot run: light without geometry, or no game materials or game data named.
  *
- * @param choice - What the form names.
- * @returns Why it cannot run, or null where it can or no step is chosen.
+ * @returns The problem, or null where it can run or no step is chosen.
  */
 export function getCompileProblem(choice: ICompileChoice): Nullable<ICompileProblem> {
   if (choice.steps.size === 0) {
@@ -119,11 +114,9 @@ export function getCompileProblem(choice: ICompileChoice): Nullable<ICompileProb
 }
 
 /**
- * The compile request for the steps the form chose, run on the directory the build writes; none where no step is
- * chosen, so the build runs alone.
+ * The compile request for the chosen steps, run on the directory the build writes.
  *
- * @param choice - What the form names; {@link getCompileProblem} must have found nothing.
- * @returns The request, or null.
+ * @returns The request, or null where no step is chosen or {@link getCompileProblem} finds one, so the build runs alone.
  */
 export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileRequest> {
   if (choice.steps.size === 0 || getCompileProblem(choice) || !choice.gamedata) {
@@ -131,8 +124,8 @@ export function toCompileRequest(choice: ICompileChoice): Nullable<LevelCompileR
   }
 
   return {
-    // The backend runs the compile on the build's destination, forces it as the build is forced, gives it the DXC the
-    // app bundles, whatever is named here, and reads the game data's textures after the roots named.
+    // The backend takes the level and forcing from the build, gives the compile the DXC the app bundles, and reads the
+    // game data's textures after these roots.
     level: "",
     steps: COMPILE_STEPS.filter((step: LevelCompileStep) => choice.steps.has(step)),
     gamedata: choice.gamedata,

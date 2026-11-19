@@ -21,11 +21,6 @@ import { LevelEditorSceneService } from "@/tools/level-editor/services/level-edi
 
 import { LevelEditorScenePanel } from "./LevelEditorScenePanel";
 
-/**
- * @param panel - The rendered panel.
- * @param label - A property's label.
- * @returns The property's value as the panel writes it.
- */
 function readProperty(panel: HTMLElement, label: string): string {
   const property: Maybe<Element> = Array.from(panel.querySelectorAll("dl")).find(
     (it: Element) => it.querySelector("dt")?.textContent === label
@@ -36,12 +31,6 @@ function readProperty(panel: HTMLElement, label: string): string {
   return property?.querySelector("dd")?.textContent ?? "";
 }
 
-/**
- * The scene panel over `scene` once it is open.
- *
- * @param scene - What the open answers.
- * @returns The rendered panel.
- */
 async function renderScene(scene: SelectedSceneDescription): Promise<RenderResult> {
   mockIpcCommands({
     [ELevelsCommand.OPEN_SCENE]: mockSessionResponse(scene),

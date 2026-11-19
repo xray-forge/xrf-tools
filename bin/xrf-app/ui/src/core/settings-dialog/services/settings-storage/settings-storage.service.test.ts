@@ -43,7 +43,7 @@ describe("SettingsStorageService", () => {
     expect(service.usage.error).toBeNull();
   });
 
-  // Reopening the section measures again; it must not cancel the clear, whose report and re-measure still follow.
+  // Reopening the section measures again, which must not cancel the clear.
   it("finishes a clear that the section shown again overlaps", async () => {
     const cleared = deferred<null>();
     let kept: number = 400;

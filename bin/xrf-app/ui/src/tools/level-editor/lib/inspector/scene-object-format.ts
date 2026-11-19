@@ -17,22 +17,19 @@ import { assertExhaustive, Nullable } from "@xrf/types";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 
 /**
- * How many entries of a list the Inspector writes out before it counts the rest: a way or a sector holds thousands,
- * which no reader scrolls through and a panel should not lay out.
+ * Entries of a list the Inspector writes out before counting the rest; a way or a sector can hold thousands.
  */
 export const SCENE_LIST_LIMIT: number = 20;
 
 /**
- * @param vector - A point in the scene's own space.
- * @returns It as the Inspector writes a place, a decimal an axis.
+ * A point in the scene's space, one decimal an axis.
  */
 export function formatScenePoint(vector: Vector3d): string {
   return formatLevelPoint(toPoint3(vector));
 }
 
 /**
- * @param rotation - Angles about `x`, `y` and `z`, in radians.
- * @returns Them in degrees, a decimal each.
+ * Radian angles about `x`, `y` and `z` in degrees, one decimal each.
  */
 export function formatSceneRotation(rotation: Vector3d): string {
   const { x, y, z }: IPoint3 = toPoint3(rotation);
@@ -41,8 +38,7 @@ export function formatSceneRotation(rotation: Vector3d): string {
 }
 
 /**
- * @param rotation - Heading, pitch and bank, in radians, as the editor's camera keeps them.
- * @returns Them in degrees, a decimal each.
+ * The editor camera's radian heading, pitch and bank in degrees, one decimal each.
  */
 export function formatSceneFacing(rotation: Vector3d): string {
   const { x, y, z }: IPoint3 = toPoint3(rotation);
@@ -51,37 +47,28 @@ export function formatSceneFacing(rotation: Vector3d): string {
 }
 
 /**
- * @param scale - A scale along each axis.
- * @returns It, two decimals an axis.
+ * A scale, two decimals an axis.
  */
 export function formatSceneScale(scale: Vector3d): string {
   return `x ${formatNumber(scale.x, 2)} y ${formatNumber(scale.y, 2)} z ${formatNumber(scale.z, 2)}`;
 }
 
 /**
- * @param value - A length in metres, or none where it is not a number.
- * @returns It, two decimals and its unit, or the absent mark.
+ * A length in metres to two decimals, or the absent mark for null or a non-finite value.
  */
 export function formatSceneMetres(value: Nullable<number>): string {
   return value === null || !Number.isFinite(value) ? ABSENT_VALUE : `${formatNumber(value, 2)} m`;
 }
 
 /**
- * @param channels - A colour's channels, as many as it keeps.
- * @param digits - Decimals each channel is written with: none for bytes.
- * @returns Its channels in order, apart.
+ * A colour's channels, space-separated, `digits` decimals each: zero for bytes.
  */
 export function formatSceneColor(channels: ReadonlyArray<Nullable<number>>, digits: number = 2): string {
   return channels.map((channel: Nullable<number>) => formatNumber(channel, digits)).join(" ");
 }
 
 /**
- * Writes a list out one entry a line, the entries past {@link SCENE_LIST_LIMIT} counted rather than described.
- *
- * @param items - The list.
- * @param describe - How one entry is written, given its place in the list.
- * @param limit - How many entries are written out.
- * @returns The lines, or `None` for an empty list.
+ * A list one entry a line, entries past the limit counted rather than described; `None` for an empty list.
  */
 export function formatSceneList<T>(
   items: ReadonlyArray<T>,
@@ -100,8 +87,7 @@ export function formatSceneList<T>(
 }
 
 /**
- * @param lightType - What kind of light a light is.
- * @returns It as the Inspector names it; a type the editor gives no name by its number.
+ * A light type's Inspector name; an unnamed type by its number.
  */
 export function describeSceneLightType(lightType: SceneLightType): string {
   switch (lightType.kind) {
@@ -123,8 +109,7 @@ export function describeSceneLightType(lightType: SceneLightType): string {
 }
 
 /**
- * @param usage - What a shape is used for.
- * @returns It as the Inspector names it; a usage the editor gives no name by its number.
+ * A shape usage's Inspector name; an unnamed usage by its number.
  */
 export function describeSceneShapeUsage(usage: SceneShapeUsage): string {
   switch (usage.kind) {
@@ -143,8 +128,7 @@ export function describeSceneShapeUsage(usage: SceneShapeUsage): string {
 }
 
 /**
- * @param wayType - What a way is.
- * @returns It as the Inspector names it; a type the editor gives no name by its number.
+ * A way type's Inspector name; an unnamed type by its number.
  */
 export function describeSceneWayType(wayType: SceneWayType): string {
   switch (wayType.kind) {
@@ -160,8 +144,7 @@ export function describeSceneWayType(wayType: SceneWayType): string {
 }
 
 /**
- * @param element - One sphere or box of a shape, in its object's own space.
- * @returns Its kind, size and where it stands.
+ * A shape's sphere or box: kind, size and position in its object's space.
  */
 export function describeSceneShapeElement(element: SceneShapeElement): string {
   switch (element.kind) {
@@ -184,8 +167,7 @@ export function describeSceneShapeElement(element: SceneShapeElement): string {
 }
 
 /**
- * @param shape - The volume a shape encloses.
- * @returns Its spheres and boxes, one a line.
+ * A shape's spheres and boxes, one a line.
  */
 export function describeSceneShape(shape: SceneShape): string {
   return formatSceneList(shape.elements, describeSceneShapeElement);

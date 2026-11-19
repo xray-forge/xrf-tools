@@ -71,7 +71,6 @@ describe("toLevelEditorViewOptions", () => {
 describe("toLevelEditorWorldToggles", () => {
   const none: ILevelEditorHelperOptions = { isShown: false, tools: {} };
 
-  /** The toggles of a scene whose Show action keeps its defaults but for `inputs`. */
   function toToggles(inputs: Partial<ILevelEditorWorldTogglesInputs>): WorldToggles {
     return toLevelEditorWorldToggles({
       hidden: [],
@@ -82,7 +81,7 @@ describe("toLevelEditorWorldToggles", () => {
     });
   }
 
-  // Every scene object stands in the props group, which nothing hides; every spawn point's model in the items group.
+  // Scene objects stand in the props group, spawn point models in the items group.
   it("plays the scene's objects and its spawn points' models alone, silent", () => {
     expect(toToggles({})).toMatchObject({
       hiddenSpawnObjects: [],
@@ -95,7 +94,7 @@ describe("toLevelEditorWorldToggles", () => {
     });
   });
 
-  // The surfaces the game never draws stand in the weapons group, which nothing else of a scene stands in.
+  // Collision-only surfaces stand alone in the weapons group.
   it("draws the surfaces the game never draws only where asked, whatever the helpers", () => {
     expect(toToggles({ isCollisionShown: true })).toMatchObject({
       isSpawnedLamps: false,
@@ -105,7 +104,7 @@ describe("toLevelEditorWorldToggles", () => {
     expect(toToggles({ helpers: none, isCollisionShown: true }).isSpawnedWeapons).toBe(true);
   });
 
-  // The surfaces dressed in the SDK's marker textures stand in the lamps group, which nothing else of a scene stands in.
+  // Marker-textured surfaces stand alone in the lamps group.
   it("draws the surfaces dressed in marker textures only where asked, whatever the helpers", () => {
     expect(toToggles({ isEditorOnlyShown: true })).toMatchObject({
       isSpawnedLamps: true,

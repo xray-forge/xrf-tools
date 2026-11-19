@@ -18,7 +18,6 @@ import { LevelEditorSceneService } from "@/tools/level-editor/services/level-edi
 interface ILevelEditorViewportProps extends BaseComponentProps {
   /** Whether a scene is open, which chooses its cover over why the last open failed; the surface draws regardless. */
   isOpen?: boolean;
-  /** Whether a scene is being opened. */
   isLoading?: boolean;
   /** Why the last open failed, shown with `onRetry` while no scene is open. */
   error?: string;
@@ -28,10 +27,10 @@ interface ILevelEditorViewportProps extends BaseComponentProps {
 }
 
 /**
- * Where the open scene is drawn: the native surface, covered while the scene opens and until every object it draws is
- * resident, the cover saying why where the renderer cannot draw it; why the scene draws nothing once its objects,
- * drawing and helpers are read and it draws neither an object nor a helper, its helpers switched off included; and
- * why the open failed while none is open.
+ * The native surface the open scene is drawn on.
+ *
+ * Covered while the scene opens and until everything it draws is resident, saying why where the renderer cannot draw
+ * it; once read, while it draws nothing, saying why; and with the open's error while no scene is open.
  */
 export function LevelEditorViewport({
   "data-testid": dataTestId = "level-editor-viewport",

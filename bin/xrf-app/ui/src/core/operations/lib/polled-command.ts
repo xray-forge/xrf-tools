@@ -8,19 +8,19 @@ export interface IPolledCommandOptions<T> {
   /** How long to wait between reads. */
   interval: number;
   /**
-   * Whether two readings are the same, so the later notifies no watcher; `Object.is` by default, which a native read
-   * answering a new value every time never meets, so a structural one suits a reading that rarely changes.
+   * Whether two readings are the same, so the later notifies no watcher; `Object.is` by default. A native read answers
+   * a new value every time, so a structural one suits a reading that rarely changes.
    */
   equals?: (previous: T, next: T) => boolean;
 }
 
 /**
- * A native read asked again on an interval for as long as any view watches it, so every view showing it shares one
- * poll. The sibling of `CommandOperation` for a reading that changes on its own, such as memory or the jobs listing.
+ * A native read asked again on an interval while any view watches it, every view sharing one poll: the sibling of
+ * `CommandOperation` for a reading that changes on its own, such as memory or the jobs listing.
  *
- * A hidden document skips its ticks and reads once as soon as it is shown again, since nobody is looking in between.
- * The reading is forgotten once the last view stops watching, so the next one starts from nothing rather than from an
- * old reading. A failed read raises no notice: the owner's `read` logs it and says what it leaves.
+ * A hidden document skips its ticks and reads once shown again. The reading is forgotten once the last view stops
+ * watching, so the next starts from nothing. A failed read raises no notice: the owner's `read` logs it and says what
+ * it leaves.
  */
 export class PolledCommand<T> {
   @Observable()
@@ -38,10 +38,6 @@ export class PolledCommand<T> {
   /** Reads once as the document is shown again, having skipped the ticks it was hidden for. */
   private readonly onVisibilityChange = (): void => void this.poll();
 
-  /**
-   * @param log - The owning service's logger.
-   * @param options - What is read and how often.
-   */
   public constructor(
     private readonly log: Logger,
     private readonly options: IPolledCommandOptions<T>

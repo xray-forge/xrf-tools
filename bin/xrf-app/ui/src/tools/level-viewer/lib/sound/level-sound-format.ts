@@ -2,16 +2,14 @@ import { WorldSoundAcousticsReport, WorldSoundReport, WorldSoundVoiceReport } fr
 import { Nullable } from "@xrf/types";
 
 /**
- * @param milliseconds - Milliseconds of the level's clock.
- * @returns Them as whole seconds, rounded up.
+ * Level clock milliseconds as whole seconds, rounded up.
  */
 export function formatLevelSoundSeconds(milliseconds: number): string {
   return `${Math.ceil(milliseconds / 1000)} s`;
 }
 
 /**
- * @param milliseconds - Milliseconds into a track.
- * @returns Them as `m:ss`, whole seconds rounded down.
+ * A track position in milliseconds as `m:ss`, rounded down.
  */
 export function formatLevelSoundTrackTime(milliseconds: number): string {
   const seconds: number = Math.floor(Math.max(0, milliseconds) / 1000);
@@ -20,8 +18,7 @@ export function formatLevelSoundTrackTime(milliseconds: number): string {
 }
 
 /**
- * @param milliseconds - Milliseconds since midnight.
- * @returns The time of day they name, `hh:mm`.
+ * Milliseconds since midnight as `hh:mm`.
  */
 export function formatLevelSoundTimeOfDay(milliseconds: number): string {
   const minutes: number = Math.floor(milliseconds / 60_000);
@@ -30,17 +27,16 @@ export function formatLevelSoundTimeOfDay(milliseconds: number): string {
 }
 
 /**
- * @param load - The share of each audio period the mixer spends, from 0 to 1.
- * @returns It as a percentage of the period.
+ * The mixer's load as a percentage of the audio period.
+ *
+ * @param load - Share of each period the mixer spends, from 0 to 1.
  */
 export function formatLevelSoundMixerLoad(load: number): string {
   return `${(load * 100).toFixed(1)}% of the period`;
 }
 
 /**
- * @param voice - One sound the scene plays.
- * @returns Its kind, how far it stands or that it is 2D, how it is heard, how often it started over, and for a real
- *   one how the level's acoustics shape it.
+ * A voice's kind, distance or 2D, gain, restarts, and for a real one its acoustics.
  */
 export function formatLevelSoundVoice(voice: WorldSoundVoiceReport): string {
   const distance: string = voice.distance === null ? "2D" : `${voice.distance.toFixed(1)} m`;
@@ -52,8 +48,7 @@ export function formatLevelSoundVoice(voice: WorldSoundVoiceReport): string {
 }
 
 /**
- * @param voice - One sound the scene plays.
- * @returns How it is heard: its gain in decibels, or why it is not.
+ * A voice's gain in decibels, or why it is not heard.
  */
 export function formatLevelSoundGain(voice: WorldSoundVoiceReport): string {
   if (voice.isLoading) {
@@ -68,17 +63,14 @@ export function formatLevelSoundGain(voice: WorldSoundVoiceReport): string {
 }
 
 /**
- * @param share - A share from 0 to 1, null where it was not a number.
- * @returns It as a whole percentage.
+ * A 0 to 1 share as a whole percentage; null, where it was not a number, reads as zero.
  */
 function formatShare(share: Nullable<number>): string {
   return `${Math.round((share ?? 0) * 100)}%`;
 }
 
 /**
- * @param voice - One sound the scene plays.
- * @returns How the level's walls and the listener's reverb shape it, and how it reaches the ears; empty for a 2D sound
- *   or one the audio has not taken.
+ * How walls, reverb and panning shape a voice; empty for a 2D sound or one the audio has not taken.
  */
 export function formatLevelSoundAcoustics(voice: WorldSoundVoiceReport): string {
   if (voice.occlusion === null || voice.distance === null) {
@@ -95,8 +87,9 @@ export function formatLevelSoundAcoustics(voice: WorldSoundVoiceReport): string 
 }
 
 /**
- * @param acoustics - How the host's acoustics shape the scene, null until the audio has taken it.
- * @returns Whether they run and on what walls, or why the scene plays dry.
+ * Whether the acoustics run and on what walls, or why the scene plays dry.
+ *
+ * @param acoustics - Null until the audio has taken the scene.
  */
 export function formatLevelSoundAcousticsState(acoustics: Nullable<WorldSoundAcousticsReport>): string {
   if (!acoustics) {
@@ -121,8 +114,7 @@ export function formatLevelSoundAcousticsState(acoustics: Nullable<WorldSoundAco
 }
 
 /**
- * @param report - What the scene plays.
- * @returns Its voices, the real ones first, each group loudest first.
+ * The scene's voices, real ones first, each group loudest first.
  */
 export function sortLevelSoundVoices(report: WorldSoundReport): Array<WorldSoundVoiceReport> {
   return [...report.voices].sort(

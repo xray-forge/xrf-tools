@@ -19,10 +19,9 @@ export const LEVEL_GAME_RESET_LABEL: string = "Reset to the game's";
 
 /**
  * @param key - A feature group the view sets part of, as a popover section heads it.
- * @param unset - What the view keeps of the group once reset, where the popover owns only part of it (the Grass
- *   popover keeps the foliage's motion, the Wind popover's); the whole group goes back to the settings by default.
- * @returns What gives the group back to the settings, for the section's heading, while that changes what is drawn;
- *   none while what the view sets draws as the settings do.
+ * @param unset - What the view keeps of the group once reset, where the popover owns only part of it; by default the
+ *   whole group goes back to the settings.
+ * @returns The section heading's reset, or none while what the view sets draws as the settings do.
  */
 export function useLevelFeatureReset<K extends TLevelFeatureGroupKey & keyof IRenderFeatureSettings>(
   key: K,

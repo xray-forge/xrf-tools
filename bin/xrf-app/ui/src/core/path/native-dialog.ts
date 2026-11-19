@@ -27,10 +27,6 @@ export interface INativeDirectoryDialogOptions extends INativeDialogOptions {
 /**
  * Asks for one existing file to read.
  *
- * @param options - The dialog's options.
- * @param options.title - The dialog's title.
- * @param options.start - The path it opens at or near.
- * @param options.filters - The file types offered.
  * @returns The file picked, or null where the dialog was dismissed.
  */
 export async function askToOpen({ title, start, filters }: INativeFileDialogOptions): Promise<Nullable<string>> {
@@ -46,10 +42,6 @@ export async function askToOpen({ title, start, filters }: INativeFileDialogOpti
 /**
  * Asks for one directory.
  *
- * @param options - The dialog's options.
- * @param options.title - The dialog's title.
- * @param options.start - The path it opens at or near.
- * @param options.isDestination - Whether the directory may not exist yet.
  * @returns The directory picked, or null where the dialog was dismissed.
  */
 export async function askToOpenDirectory({
@@ -68,10 +60,6 @@ export async function askToOpenDirectory({
 /**
  * Asks where to write one file; the host asks about replacing one that is there.
  *
- * @param options - The dialog's options.
- * @param options.title - The dialog's title.
- * @param options.start - The path it opens at or near; a bare name is offered as the file's name.
- * @param options.filters - The file types offered.
  * @returns The path chosen, as typed, or null where the dialog was dismissed.
  */
 export async function askToSave({ title, start, filters }: INativeFileDialogOptions): Promise<Nullable<string>> {
@@ -85,14 +73,10 @@ export async function askToSave({ title, start, filters }: INativeFileDialogOpti
 /**
  * Where a native dialog opens for a path the caller holds.
  *
- * Answering nothing leaves it to the host, which means wherever a dialog was last used - in any tool, for any purpose -
- * so a field plainly showing one game data tree would open in another. The path on screen is a better guess whenever it
- * leads anywhere. A destination need not exist, so its own path is offered back once the directory around it does:
- * falling back to that directory would discard the name chosen for it.
+ * Left to the host, a dialog opens wherever one was last used, in any tool, so the path on screen is the better guess
+ * whenever it leads anywhere. A destination's own path is offered once its directory exists, as falling back to the
+ * directory would discard the name chosen for it.
  *
- * @param current - The path held.
- * @param options - How the path is used.
- * @param options.isSave - Whether it names something to write.
  * @returns The path to open at, or nothing to leave it to the host.
  */
 async function resolveDialogStart(
