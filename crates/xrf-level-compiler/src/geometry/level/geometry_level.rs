@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use xrf_dds::RgbaImage;
 use xrf_error::{XrfError, XrfResult};
@@ -183,6 +183,16 @@ impl GeometryLevel {
       })
       .collect::<XrfResult<_>>()?;
     let mut records: Vec<LevelVisualRecord> = Vec::with_capacity(hierarchy.nodes.len());
+    // The node each tree stands at, where a LOD's children start.
+    let tree_nodes: HashMap<u32, usize> = hierarchy
+      .nodes
+      .iter()
+      .enumerate()
+      .filter_map(|(index, node)| match node.kind {
+        GeometryNodeKind::Tree(tree) => Some((tree, index)),
+        _ => None,
+      })
+      .collect();
 
     for node in &hierarchy.nodes {
       let bounds: &GeometryBounds = &node.bounds;
@@ -267,10 +277,10 @@ impl GeometryLevel {
         }
         GeometryNodeKind::Lod(index) => {
           let lod = &models.lods[*index as usize];
-          let first_tree: usize = hierarchy
-            .nodes
-            .iter()
-            .position(|node| matches!(node.kind, GeometryNodeKind::Tree(tree) if Some(&tree) == lod.trees.first()))
+          let first_tree: usize = lod
+            .trees
+            .first()
+            .and_then(|tree| tree_nodes.get(tree).copied())
             .ok_or_else(|| XrfError::new_unexpected_error("A LOD stands over no tree node"))?;
           let material: u16 = u16::try_from(lod.material)
             .map_err(|_| XrfError::new_invalid_error(format!("A LOD names material {}", lod.material)))?;

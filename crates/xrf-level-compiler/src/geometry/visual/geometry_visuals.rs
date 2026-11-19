@@ -87,7 +87,7 @@ impl GeometryVisuals {
       let page: Option<u32> = lightmaps.and_then(|lightmaps| lightmaps.pages[*first as usize]);
 
       if texture.is_implicitly_lit {
-        names.push(format!("{}_lm.dds", texture.name));
+        names.push(format!("{}_lm", texture.name));
         texel.push(texel[0]);
       } else if light == GeometryVisualLight::Lightmap {
         match page {
@@ -102,18 +102,8 @@ impl GeometryVisuals {
         }
       }
 
-      let dress: String = names
-        .iter()
-        .map(|name| name.split('.').next().unwrap_or_default())
-        .collect::<Vec<_>>()
-        .join(",");
-      let mut visual: GeometryVisual = GeometryVisual::new(
-        material_index,
-        material.sector,
-        names,
-        format!("{}/{dress}", render_shader.name.value),
-        light,
-      );
+      let dress: String = format!("{}/{}", render_shader.name.value, names.join(","));
+      let mut visual: GeometryVisual = GeometryVisual::new(material_index, material.sector, names, dress, light);
       let fast_path: GeometryFastPath = if texture.is_opaque() {
         GeometryFastPath::Joined
       } else {

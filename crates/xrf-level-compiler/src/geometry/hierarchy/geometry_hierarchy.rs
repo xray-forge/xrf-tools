@@ -4,6 +4,7 @@ use xrf_math::{Aabb, EPS_L, Vector3d};
 use xrf_utils::narrow_format_size;
 
 use crate::geometry::hierarchy::geometry_bounds::GeometryBounds;
+use crate::geometry::hierarchy::geometry_hierarchy_points::GeometryHierarchyPoints;
 use crate::geometry::hierarchy::geometry_node::GeometryNode;
 use crate::geometry::hierarchy::geometry_node_kind::GeometryNodeKind;
 use crate::geometry::hierarchy::geometry_sector::GeometrySector;
@@ -37,7 +38,7 @@ impl GeometryHierarchy {
   /// Returns an error for a sector holding no visual, or a portal naming a sector past the last or the same sector on
   /// both sides, which xrLC asserts on.
   pub(crate) fn build(visuals: &GeometryVisuals, models: &GeometryModels, project: &BuildPrjFile) -> XrfResult<Self> {
-    let mut points: Vec<Vec<Vector3d>> = Vec::new();
+    let mut points: GeometryHierarchyPoints = GeometryHierarchyPoints::default();
     let mut nodes: Vec<GeometryNode> = Vec::new();
 
     for (index, visual) in visuals.visuals.iter().enumerate() {
@@ -46,9 +47,9 @@ impl GeometryHierarchy {
       nodes.push(Self::node(
         GeometryNodeKind::Visual(index as u32),
         visual.sector,
-        &geometry,
+        geometry.iter(),
       ));
-      points.push(geometry);
+      points.push_leaf(geometry);
     }
 
     let mut lods = models.lods.iter().enumerate().peekable();
@@ -61,8 +62,12 @@ impl GeometryHierarchy {
         .map(|vertex| GeometryPlacement::transform(&tree.transform, &vertex.position))
         .collect();
 
-      nodes.push(Self::node(GeometryNodeKind::Tree(index as u32), tree.sector, &geometry));
-      points.push(geometry);
+      nodes.push(Self::node(
+        GeometryNodeKind::Tree(index as u32),
+        tree.sector,
+        geometry.iter(),
+      ));
+      points.push_leaf(geometry);
 
       let is_last_of_reference: bool = models
         .trees
@@ -70,15 +75,12 @@ impl GeometryHierarchy {
         .is_none_or(|next| next.reference != tree.reference);
 
       if is_last_of_reference && let Some((lod_index, lod)) = lods.next_if(|(_, lod)| lod.reference == tree.reference) {
-        let first: usize = nodes.len() - lod.trees.len();
-        let geometry: Vec<Vector3d> = points[first..].concat();
-
+        points.push_over(nodes.len() - lod.trees.len()..nodes.len());
         nodes.push(Self::node(
           GeometryNodeKind::Lod(lod_index as u32),
           lod.sector,
-          &geometry,
+          points.get(nodes.len()),
         ));
-        points.push(geometry);
       }
     }
 
@@ -137,7 +139,7 @@ impl GeometryHierarchy {
   /// One sector's hierarchy, and its root.
   fn grow(
     nodes: &mut Vec<GeometryNode>,
-    points: &mut Vec<Vec<Vector3d>>,
+    points: &mut GeometryHierarchyPoints,
     is_connected: &mut Vec<bool>,
     sector: u16,
   ) -> XrfResult<u32> {
@@ -209,13 +211,12 @@ impl GeometryHierarchy {
         }
 
         if children.len() > 1 {
-          let geometry: Vec<Vector3d> = children
-            .iter()
-            .flat_map(|child| points[*child as usize].clone())
-            .collect();
-
-          nodes.push(Self::node(GeometryNodeKind::Hierarchy(children), sector, &geometry));
-          points.push(geometry);
+          points.push_over(children.iter().map(|child| *child as usize));
+          nodes.push(Self::node(
+            GeometryNodeKind::Hierarchy(children),
+            sector,
+            points.get(nodes.len()),
+          ));
           is_connected.push(false);
           root = Some((nodes.len() - 1) as u32);
         } else {
@@ -236,7 +237,11 @@ impl GeometryHierarchy {
   }
 
   /// A node of `kind` in `sector`, its bounds from `geometry`.
-  fn node(kind: GeometryNodeKind, sector: u16, geometry: &[Vector3d]) -> GeometryNode {
+  fn node<'a>(
+    kind: GeometryNodeKind,
+    sector: u16,
+    geometry: impl Iterator<Item = &'a Vector3d> + Clone,
+  ) -> GeometryNode {
     GeometryNode {
       kind,
       sector,

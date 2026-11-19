@@ -115,7 +115,12 @@ impl LightmapAtlas {
         }
       }
 
+      let unplaced: usize = waiting.len();
+
       waiting.retain(|chart| placements[*chart].is_none());
+      // A chart's sides stay within `LightChart::MAXIMUM_SIDE`, so an empty page takes the first chart; a page
+      // taking none would repeat forever.
+      debug_assert!(waiting.len() < unplaced, "Page {pages} took none of {unplaced} charts");
       pages += 1;
     }
 

@@ -12,16 +12,16 @@ pub(crate) struct GeometryBounds {
 }
 
 impl GeometryBounds {
-  /// The bounds of `points`, of which there is at least one.
+  /// The bounds of `points`, of which there is at least one, each pass walking a clone of it.
   #[expect(
     clippy::manual_midpoint,
     reason = "`Fbox::getcenter` sums and halves in single precision, which `f32::midpoint` does not"
   )]
-  pub(crate) fn of(points: &[Vector3d]) -> Self {
-    let mut min: Vector3d = points.first().copied().unwrap_or(Vector3d::ZERO);
+  pub(crate) fn of<'a>(mut points: impl Iterator<Item = &'a Vector3d> + Clone) -> Self {
+    let mut min: Vector3d = points.clone().next().copied().unwrap_or(Vector3d::ZERO);
     let mut max: Vector3d = min;
 
-    for point in points {
+    for point in points.clone() {
       min = Vector3d::new(min.x.min(point.x), min.y.min(point.y), min.z.min(point.z));
       max = Vector3d::new(max.x.max(point.x), max.y.max(point.y), max.z.max(point.z));
     }
@@ -36,18 +36,14 @@ impl GeometryBounds {
       (bounds.min.z + bounds.max.z) * 0.5,
     );
     let box_radius: f32 = points
-      .iter()
+      .clone()
       .map(|point| box_center.distance_squared(point))
       .fold(-1.0, f32::max)
       .abs()
       .sqrt();
-    let ritter: Self = Self::get_ritter(points, bounds);
+    let ritter: Self = Self::get_ritter(points.clone(), bounds);
 
-    if ritter.radius < box_radius
-      && points
-        .iter()
-        .all(|point| ritter.center.distance(point) <= ritter.radius + EPS_L)
-    {
+    if ritter.radius < box_radius && points.all(|point| ritter.center.distance(point) <= ritter.radius + EPS_L) {
       ritter
     } else {
       Self {
@@ -64,15 +60,15 @@ impl GeometryBounds {
     clippy::manual_midpoint,
     reason = "kept in the same single-precision form as the box's centre beside it"
   )]
-  fn get_ritter(points: &[Vector3d], bounds: Aabb) -> Self {
+  fn get_ritter<'a>(points: impl Iterator<Item = &'a Vector3d> + Clone, bounds: Aabb) -> Self {
     let farthest_from = |from: &Vector3d| {
       points
-        .iter()
+        .clone()
         .copied()
         .max_by(|first, second| from.distance_squared(first).total_cmp(&from.distance_squared(second)))
         .unwrap_or(*from)
     };
-    let start: Vector3d = points.first().copied().unwrap_or(Vector3d::ZERO);
+    let start: Vector3d = points.clone().next().copied().unwrap_or(Vector3d::ZERO);
     let first: Vector3d = farthest_from(&start);
     let second: Vector3d = farthest_from(&first);
     let mut center: Vector3d = Vector3d::new(

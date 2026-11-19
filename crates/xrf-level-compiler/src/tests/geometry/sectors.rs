@@ -232,7 +232,7 @@ fn bounds_a_geometry_in_its_grown_box_and_a_sphere_holding_every_point() {
     Vector3d::new(0.0, 2.0, 0.0),
     Vector3d::new(4.0, 2.0, 1.0),
   ];
-  let bounds: GeometryBounds = GeometryBounds::of(&points);
+  let bounds: GeometryBounds = GeometryBounds::of(points.iter());
 
   assert_eq!(bounds.bounds.min, Vector3d::new(-EPS_L, -EPS_L, -EPS_L));
   assert_eq!(bounds.bounds.max, Vector3d::new(4.0 + EPS_L, 2.0 + EPS_L, 1.0 + EPS_L));
