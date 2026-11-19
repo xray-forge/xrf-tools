@@ -163,22 +163,38 @@ impl OutputFiles {
   /// Returns an invalid error, removing nothing, when a written path is not below the directory as spelled here; an IO
   /// error when a directory cannot be listed or a stale file cannot be removed.
   pub fn remove_stale(&self, written: &[PathBuf]) -> XrfResult<Vec<PathBuf>> {
+    self.remove_stale_where(written, |_| true)
+  }
+
+  /// [`Self::remove_stale`], removing only the stale files `is_removable` takes: where a family's names alone would also
+  /// take files the run did not make, it proves which it made. Every stale file is judged before the first is removed,
+  /// so removing one does not change the answer for another.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::remove_stale`].
+  pub fn remove_stale_where(
+    &self,
+    written: &[PathBuf],
+    is_removable: impl Fn(&Path) -> bool,
+  ) -> XrfResult<Vec<PathBuf>> {
     let written: Vec<String> = written
       .iter()
       .map(|path| self.fold_below(path))
       .collect::<XrfResult<_>>()?;
-    let mut removed: Vec<PathBuf> = Vec::new();
+    let mut stale: Vec<PathBuf> = Vec::new();
 
     for path in self.find_existing()? {
-      if written.contains(&self.fold_below(&path)?) || !path.is_file() {
-        continue;
+      if !written.contains(&self.fold_below(&path)?) && path.is_file() && is_removable(&path) {
+        stale.push(path);
       }
-
-      fs::remove_file(&path)?;
-      removed.push(path);
     }
 
-    Ok(removed)
+    for path in &stale {
+      fs::remove_file(path)?;
+    }
+
+    Ok(stale)
   }
 
   /// The path a file's folded components name below `directory`, each matched without case; none when one is

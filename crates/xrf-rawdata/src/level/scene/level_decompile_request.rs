@@ -101,7 +101,8 @@ impl LevelDecompileRequest {
     Ok(outputs)
   }
 
-  /// What the decompile owns under the objects root: the level's objects and sidecars, `levels\<name>\<name>_*`.
+  /// What the decompile may write under the objects root: the level's objects and sidecars, `levels\<name>\<name>_*`.
+  /// The SDK names its own objects there the same way, so a forced run removes only those a decompile's sidecar marks.
   ///
   /// # Errors
   ///

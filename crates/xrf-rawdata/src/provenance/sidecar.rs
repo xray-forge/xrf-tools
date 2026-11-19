@@ -21,6 +21,15 @@ impl Sidecar {
     PathBuf::from(name)
   }
 
+  /// The file the sidecar at `path` describes, its name without the suffix in any case; none where `path` names no
+  /// sidecar.
+  pub(crate) fn get_described(path: &Path) -> Option<PathBuf> {
+    let name: &str = path.file_name()?.to_str()?;
+    let stem: usize = name.len().checked_sub(Self::SUFFIX.len())?;
+
+    (stem > 0 && name.get(stem..)?.eq_ignore_ascii_case(Self::SUFFIX)).then(|| path.with_file_name(&name[..stem]))
+  }
+
   /// The SHA-256 of `bytes`, lowercase hex, as a sidecar names a source by.
   pub(crate) fn get_sha256_hex(bytes: &[u8]) -> String {
     Self::format_hex(&Sha256::digest(bytes))

@@ -14,4 +14,5 @@ pub(crate) mod level_scene_listing;
 pub(crate) mod level_scene_object_file;
 pub(crate) mod level_scene_sources;
 pub(crate) mod level_scene_texture_file;
+pub(crate) mod level_scene_write;
 pub(crate) mod steps;

@@ -8,6 +8,7 @@ use xrf_utils::{HostDestination, HostLinkPolicy, HostRelativePath, StagedFile, f
 use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
 use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
+use crate::level::scene::level_scene_write::LevelSceneWrite;
 use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 use crate::provenance::object_provenance::ObjectProvenance;
 
@@ -151,16 +152,29 @@ impl LevelSceneDecompile {
     textures_root: &Path,
     link_policy: HostLinkPolicy,
   ) -> XrfResult {
-    // Refused before the sidecar is written, so a sidecar never lands beside an authored scene left as it was.
-    self.scene.check_writable(level_path)?;
+    let write: LevelSceneWrite<'_> = self.check_write(level_path, objects_root, textures_root, link_policy)?;
 
+    self.write_checked::<T>(write)
+  }
+
+  /// Resolves every path a write writes and checks each against its root's link policy, creating nothing, so a caller
+  /// can refuse before it changes anything on disk. Whether the scene's part directory holds parts it would not write
+  /// is left to [`Self::write_checked`].
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a name from data leaves its root, or a refused link already stands where a file goes.
+  pub(crate) fn check_write(
+    &self,
+    level_path: &Path,
+    objects_root: &Path,
+    textures_root: &Path,
+    link_policy: HostLinkPolicy,
+  ) -> XrfResult<LevelSceneWrite<'_>> {
     let scene_root: HostDestination =
       HostDestination::new(level_path.parent().unwrap_or_else(|| Path::new("")), link_policy);
     let objects_root: HostDestination = HostDestination::new(objects_root, link_policy);
     let textures_root: HostDestination = HostDestination::new(textures_root, link_policy);
-
-    // Every path resolved and checked before the first write, so a name that would leave its root, or a link the policy
-    // refuses, writes nothing.
     let scene: Vec<PathBuf> = self.get_written_scene_paths(level_path)?;
     let objects: Vec<PathBuf> = self
       .objects
@@ -191,6 +205,42 @@ impl LevelSceneDecompile {
     for (_, path) in &textures {
       Self::check_file(&textures_root, path)?;
     }
+
+    Ok(LevelSceneWrite {
+      level_path: level_path.to_path_buf(),
+      scene_root,
+      objects_root,
+      textures_root,
+      scene,
+      objects,
+      library,
+      textures,
+    })
+  }
+
+  /// Carries out `write`, which [`Self::check_write`] made of this decompile, once
+  /// [`EditableLevelScene::check_writable`] accepts the scene.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; otherwise when a
+  /// file cannot be written, as [`EditableLevelScene::write_to_path`] does.
+  pub(crate) fn write_checked<T: ByteOrder>(&self, write: LevelSceneWrite<'_>) -> XrfResult {
+    let LevelSceneWrite {
+      level_path,
+      scene_root,
+      objects_root,
+      textures_root,
+      scene,
+      objects,
+      library,
+      textures,
+    } = write;
+    let level_path: &Path = &level_path;
+
+    // Refused before the sidecar is written, so a sidecar never lands beside an authored scene left as it was. Checked
+    // here rather than with the paths: a forced decompile removes an earlier scene's stale parts between the two.
+    self.scene.check_writable(level_path)?;
 
     Self::write_file(
       &scene_root,

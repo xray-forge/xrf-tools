@@ -103,6 +103,14 @@ impl ObjectProvenance {
     Sidecar::get_path(object)
   }
 
+  /// Whether `path`, an object or an object's sidecar, is a decompile's: the object's sidecar reads as a provenance. An
+  /// authored object has none, and one whose sidecar does not read is not taken as a decompile's.
+  pub(crate) fn is_decompiled(path: &Path) -> bool {
+    let object: PathBuf = Sidecar::get_described(path).unwrap_or_else(|| path.to_path_buf());
+
+    Self::read_beside(&object).is_ok_and(|provenance| provenance.is_some())
+  }
+
   /// The provenance of the object at `object`, read from its sidecar, or `None` when it has none, as an authored object
   /// has none.
   ///

@@ -32,6 +32,7 @@ use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
 use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
 use crate::level::tests::fixtures::GUID;
+use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::provenance::level_scene_inference::LevelSceneInference;
@@ -363,6 +364,40 @@ fn refuses_a_link_below_a_root_where_asked_and_writes_nothing() -> XrfResult {
   Ok(())
 }
 
+// The earlier scene's stale parts go only once the write is sure to go ahead.
+#[test]
+fn refuses_a_link_before_removing_an_earlier_scenes_parts() -> XrfResult {
+  let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "linked_forced"))?;
+  let elsewhere: PathBuf = output.join("elsewhere");
+  let stale: PathBuf = elsewhere.join("stale.part");
+
+  std::fs::create_dir_all(&elsewhere)?;
+  std::fs::create_dir_all(output.join("levels"))?;
+  std::fs::write(&stale, b"earlier")?;
+
+  // The part directory is a link to an earlier scene's parts, which the scene writes through.
+  if !HostFilesystem::link_directory(&elsewhere, &output.join("levels").join("test_level")) {
+    return Ok(());
+  }
+
+  let request: LevelDecompileRequest = LevelDecompileRequest {
+    source: level_directory("linked_forced_level", 10.0)?,
+    destination: output.join("levels").join("test_level.level"),
+    textures: Some(output.join("textures")),
+    is_forced: true,
+    link_policy: HostLinkPolicy::Refuse,
+    ..LevelDecompileRequest::default()
+  };
+
+  assert!(
+    LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &JobHandle::inert()).is_err()
+  );
+  assert!(stale.is_file(), "the earlier scene's part is left");
+  assert!(!request.destination.exists(), "nothing is written");
+
+  Ok(())
+}
+
 #[test]
 fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
   let decompiled: LevelSceneDecompile = decompile(&level_directory("written", 10.0)?)?;
@@ -520,13 +555,15 @@ fn writes_a_scene_for_a_front_end_and_nothing_once_cancelled() -> XrfResult {
   Ok(())
 }
 
-// The level's own objects are those under `levels\<name>\` named `<name>_`.
+// The level's own objects are those under `levels\<name>\` named `<name>_`; the SDK names its own there alike, so a
+// forced run removes only those a decompile's sidecar marks.
 #[test]
 fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_written() -> XrfResult {
   let level: PathBuf = level_directory("own_objects", 10.0)?;
   let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "own_objects_out"))?;
   let stale: PathBuf = output.join("objects/levels/test_level/Test_Level_Sector_9.object");
   let kept: PathBuf = output.join("objects/levels/test_level/authored.object");
+  let authored: PathBuf = output.join("objects/levels/test_level/test_level_fence.object");
   let request: LevelDecompileRequest = LevelDecompileRequest {
     source: level,
     destination: output.join("levels").join("test_level.level"),
@@ -536,7 +573,12 @@ fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_w
   std::fs::create_dir_all(output.join("levels"))?;
   std::fs::create_dir_all(output.join("objects/levels/test_level"))?;
   std::fs::write(&stale, b"earlier")?;
+  std::fs::write(
+    ObjectProvenance::sidecar_path(&stale),
+    ObjectProvenance::new("level.geom", b"", "test", "1.0.0", Vec::new(), TangentMethod::default()).to_json()?,
+  )?;
   std::fs::write(&kept, b"authored")?;
+  std::fs::write(&authored, b"authored")?;
 
   let error: String =
     LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &JobHandle::inert())
@@ -557,7 +599,15 @@ fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_w
   )?;
 
   assert!(!stale.exists(), "the object no longer written is removed");
+  assert!(
+    !ObjectProvenance::sidecar_path(&stale).exists(),
+    "its sidecar goes with it"
+  );
   assert!(kept.is_file(), "an object not named as the level's own is left");
+  assert!(
+    authored.is_file(),
+    "an object of the level's name with no sidecar is left"
+  );
   assert!(
     report
       .removed

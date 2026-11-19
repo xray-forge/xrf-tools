@@ -20,6 +20,7 @@ use crate::level::scene::level_scene_decompile::LevelSceneDecompile;
 use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
+use crate::level::scene::level_scene_write::LevelSceneWrite;
 use crate::level::scene::steps::level_ai_map_step::LevelAiMapStep;
 use crate::level::scene::steps::level_bundle_step::LevelBundleStep;
 use crate::level::scene::steps::level_companion_step::LevelCompanionStep;
@@ -30,6 +31,7 @@ use crate::level::scene::steps::level_map_step::LevelMapStep;
 use crate::level::scene::steps::level_root_spawn::LevelRootSpawn;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::provenance::level_scene_provenance::LevelSceneProvenance;
+use crate::provenance::object_provenance::ObjectProvenance;
 
 /// Decompiles a level's directory into a Level Editor scene, running its steps in turn over one draft: map settings,
 /// geometry, glows and lights, passed-through parts, details, AI map, ways and spawn points.
@@ -226,10 +228,15 @@ impl LevelSceneDecompiler {
       let _writing: JobScope = job.enter(Self::PROGRESS_WRITE, None);
 
       job.set_detail(Some(format_path(destination).to_string()));
+
+      // Checked before anything is removed, so a link the policy refuses leaves the earlier scene whole.
+      let write: LevelSceneWrite<'_> = decompiled.check_write(destination, &objects, &textures, request.link_policy)?;
+
       // The parts an earlier scene had and this one has not go first: the editor would read them as this scene's.
       removed.extend(scene_outputs.remove_stale(&written_scene)?);
-      decompiled.write_to_path_with::<T>(destination, &objects, &textures, request.link_policy)?;
-      removed.extend(object_outputs.remove_stale(&written_objects)?);
+      decompiled.write_checked::<T>(write)?;
+      // The family's names are the SDK's too: only what a decompile's sidecar marks is this run's to remove.
+      removed.extend(object_outputs.remove_stale_where(&written_objects, ObjectProvenance::is_decompiled)?);
     }
 
     Ok(LevelDecompileReport {
