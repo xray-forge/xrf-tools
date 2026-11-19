@@ -1,5 +1,10 @@
 #![doc = include_str!("../README.md")]
 
+// The `tracy` feature takes `profiling` only to switch its Tracy backend on for the whole build; naming it here keeps
+// Cargo's unused-dependency lint from flagging that.
+#[cfg(feature = "tracy")]
+use profiling as _;
+
 /// Starts the Tracy client, before any thread opens a zone; call once, first thing in a binary's `main`.
 ///
 /// A zone opened before it panics in a `tracy` build, as the client it streams to is not running.

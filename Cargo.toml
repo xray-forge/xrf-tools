@@ -76,7 +76,7 @@ members = [
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.99.1"
+rust-version = "1.100.0"
 
 [workspace.dependencies]
 ash = "0.38.0"
