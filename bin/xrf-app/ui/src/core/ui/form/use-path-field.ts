@@ -1,9 +1,9 @@
-import { exists } from "@tauri-apps/plugin-fs";
 import { Nullable } from "@xrf/types";
 import { IPathFieldRecents } from "@xrf/ui/form/file-picker";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { IFileFilter } from "@/core/path/file-filters";
+import { isPathPresent } from "@/core/path/presence";
 import { EToolId } from "@/core/routing/tool";
 import {
   getFieldRecentsStorageKey,
@@ -182,10 +182,8 @@ export function usePathField({
     let isCurrent: boolean = true;
 
     const handle = setTimeout(() => {
-      exists(value)
-        .then((isPresent) => isCurrent && setError(isPresent ? null : "Path does not exist"))
-        // A failed check is not proof of absence, so it is reported as unknown rather than missing.
-        .catch(() => isCurrent && setError(null));
+      // A path the host refuses to look at is one no tool here could read either, so it reads as missing.
+      isPathPresent(value).then((isPresent) => isCurrent && setError(isPresent ? null : "Path does not exist"));
     }, VALIDATE_DEBOUNCE_MS);
 
     return () => {

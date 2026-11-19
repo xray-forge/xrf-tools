@@ -1,15 +1,13 @@
-import { fixupConfigRules } from "@eslint/compat";
 import jsPlugin from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
-import importPlugin from "eslint-plugin-import";
 import importXPlugin, { flatConfigs as importXConfigs } from "eslint-plugin-import-x";
 import jestPlugin from "eslint-plugin-jest";
-import jsdocPlugin from "eslint-plugin-jsdoc";
+import { configs as jsdocConfigs } from "eslint-plugin-jsdoc";
 import sortKeysFixPlugin from "eslint-plugin-sort-keys-fix";
 import unusedImportsPlugin from "eslint-plugin-unused-imports";
 import globals from "globals";
-import tsPlugin from "typescript-eslint";
+import { configs as tsConfigs } from "typescript-eslint";
 
 /**
  * Layer failing on an import cycle among `files`, following the member's path aliases through its `tsconfig`. A
@@ -77,11 +75,11 @@ export function createEslintConfig(rootDir, ...layers) {
       ignores: ["target/**", "dist/**"],
     },
     jsPlugin.configs.recommended,
-    ...tsPlugin.configs.recommended,
-    // Adapt the retained ESLint 9 plugins until their releases support ESLint 10 directly.
-    ...fixupConfigRules([importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript]),
+    ...tsConfigs.recommended,
+    importXConfigs.recommended,
+    importXConfigs.typescript,
     jestPlugin.configs["flat/style"],
-    jsdocPlugin.configs["flat/recommended"],
+    jsdocConfigs["flat/recommended"],
     {
       files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],
       languageOptions: {
@@ -162,9 +160,9 @@ export function createEslintConfig(rootDir, ...layers) {
         "eol-last": ["error", "always"],
         "func-call-spacing": ["error", "never"],
         "function-paren-newline": "off",
-        "import/default": "off",
-        "import/no-unresolved": "off",
-        "import/order": [
+        "import-x/default": "off",
+        "import-x/no-unresolved": "off",
+        "import-x/order": [
           "error",
           {
             alphabetize: { caseInsensitive: true, order: "asc" },

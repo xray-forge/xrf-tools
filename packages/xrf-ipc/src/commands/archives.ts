@@ -74,7 +74,10 @@ export const archivesCommands = {
   /** What the open subject holds, broken down by extension, folder, size, and where its files come from. */
   describeStatistics: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<ArchiveStatistics>>(EArchivesCommand.DESCRIBE_STATISTICS, { sessionId }),
-  /** Write every file the open subject holds under one directory into a destination root. */
+  /**
+   * Write every file the open subject holds under one directory into a destination root; refused before writing where
+   * a file it writes is already there, unless forced.
+   */
   extractDirectory: (request: ArchivesExtractRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveExtractDirectoryResult>(EArchivesCommand.EXTRACT_DIRECTORY, { request, jobId, progress }),
   /** Write one file of the open subject to a path the user chose. */
@@ -163,7 +166,10 @@ export const archivesCommands = {
   /** Publishes added and modified entries as patch volumes. */
   patchArchives: (request: ArchivesPatchRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchivePatchResult>(EArchivesCommand.PATCH_ARCHIVES, { request, jobId, progress }),
-  /** Unpack every archive of a directory into a destination tree, reporting progress and stopping on request. */
+  /**
+   * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request; refused
+   * before writing where a file it writes is already there, unless forced.
+   */
   unpackDirectory: (request: ArchivesUnpackRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveUnpackResult>(EArchivesCommand.UNPACK_DIRECTORY, { request, jobId, progress }),
 };

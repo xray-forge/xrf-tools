@@ -53,7 +53,7 @@ impl BurstFiles {
   /// # Errors
   ///
   /// Returns the first picture's write error.
-  pub(crate) fn finish(mut self) -> TauriResult {
+  pub(crate) fn finish(&mut self) -> TauriResult {
     let mut result: TauriResult = Ok(());
 
     while self.pending > 0 {

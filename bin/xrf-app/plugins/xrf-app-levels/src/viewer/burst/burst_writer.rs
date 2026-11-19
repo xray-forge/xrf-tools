@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
@@ -62,7 +63,7 @@ impl BurstWriter {
   /// back, comes within a few seconds.
   const SILENCE: Duration = Duration::from_secs(60);
 
-  /// A writer of `burst` into `folder`, which is there.
+  /// A writer of `burst` into `folder`, which is there and is the burst's own: a failed burst removes it.
   pub(crate) fn new(folder: PathBuf, burst: &RenderBurst) -> Self {
     Self {
       outcome: BurstOutcome {
@@ -93,13 +94,39 @@ impl BurstWriter {
     }
   }
 
-  /// Write each frame from `events` until the burst finishes, then its sound and video, and wait for its pictures.
+  /// Write each frame from `events` until the burst finishes, then its sound and video, and wait for its pictures. A
+  /// burst that fails removes its folder, so neither a partial burst nor its name is left behind.
   ///
   /// # Errors
   ///
   /// Returns an error when the burst stops, the renderer is silent for `SILENCE`, frames arrive out of order, or a
   /// picture, the sound or the video cannot be written.
   pub(crate) fn receive(mut self, events: &Receiver<BurstEvent>) -> TauriResult<BurstOutcome> {
+    let written: TauriResult = self.write_all(events);
+    // Every picture under way lands before the folder is removed, which a write still going would refill or hold open.
+    let pictures: TauriResult = self.files.finish();
+
+    match written.and(pictures) {
+      Ok(()) => Ok(self.outcome),
+      Err(error) => {
+        // The video's file is closed as it is dropped, which a folder holding it open could not be removed past.
+        drop(self.video.take());
+        drop(self.sound.take());
+
+        if let Err(removal) = fs::remove_dir_all(&self.folder) {
+          log::warn!(
+            "Could not remove the failed burst's folder '{}': {removal}",
+            self.folder.display()
+          );
+        }
+
+        Err(error)
+      }
+    }
+  }
+
+  /// Write each frame from `events` until the burst finishes, then its sound and video.
+  fn write_all(&mut self, events: &Receiver<BurstEvent>) -> TauriResult {
     loop {
       match events.recv_timeout(Self::SILENCE) {
         Ok(BurstEvent::Shot {
@@ -119,9 +146,7 @@ impl BurstWriter {
             self.outcome.video = Some(video.finish()?);
           }
 
-          self.files.finish()?;
-
-          return Ok(self.outcome);
+          return Ok(());
         }
         Ok(BurstEvent::Stopped { error }) => return Err(format!("The burst stopped: {error}")),
         Err(RecvTimeoutError::Timeout) => {

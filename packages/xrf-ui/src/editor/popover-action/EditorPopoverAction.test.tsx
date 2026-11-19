@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, waitFor } from "@testing-library/react";
+import { act, fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { TuneIcon } from "#/icons/tune";
@@ -26,6 +26,34 @@ describe("EditorPopoverAction", () => {
     expect(await findByRole("dialog", { name: "Look" })).toHaveStyle({
       maxHeight: `${window.innerHeight - 64 - 16}px`,
     });
+  });
+
+  it("refits the popover to the room under its trigger when the window resizes while it is open", async () => {
+    const { getByRole, findByRole } = renderWithTheme(
+      <EditorPopoverAction label={"Look"} description={"The look"} icon={<TuneIcon />}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+    const initialHeight: number = window.innerHeight;
+
+    jest
+      .spyOn(getByRole("button", { name: "Look" }), "getBoundingClientRect")
+      .mockReturnValue(DOMRect.fromRect({ x: 0, y: 40, width: 24, height: 24 }));
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Look" });
+
+    try {
+      act(() => {
+        window.innerHeight = 400;
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(dialog).toHaveStyle({ maxHeight: `${400 - 64 - 16}px` });
+    } finally {
+      window.innerHeight = initialHeight;
+    }
   });
 
   it("opens a named dialog from the keyboard and restores focus when dismissed", async () => {

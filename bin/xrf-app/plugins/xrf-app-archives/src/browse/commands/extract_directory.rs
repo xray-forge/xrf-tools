@@ -13,7 +13,8 @@ use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions};
 use crate::browse::{ArchiveSubject, ArchiveSubjects, ArchivesExtractRequest};
 use crate::ipc::archives::ARCHIVES_JOB_EXTRACT;
 
-/// Write every file the open subject holds under one directory into a destination root.
+/// Write every file the open subject holds under one directory into a destination root; refused before writing where
+/// a file it writes is already there, unless forced.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "extract_directory")]
 pub(crate) async fn archives_extract_directory(
@@ -34,6 +35,7 @@ pub(crate) async fn archives_extract_directory(
     session_id,
     prefix,
     destination,
+    is_forced,
   } = request;
 
   log::info!("Extracting directory '{prefix}' to '{}'", destination.display());
@@ -42,8 +44,6 @@ pub(crate) async fn archives_extract_directory(
   let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
   // An empty prefix means the whole tree, so this is a full unpack in everything but name.
-  // todo: the extraction writes over files already in the directory picked, as no dialog asks first; ask, and force
-  // only on that answer.
   registry
     .run(
       &execution,
@@ -52,7 +52,7 @@ pub(crate) async fn archives_extract_directory(
         subject.extract_directory(
           &prefix,
           &destination,
-          ArchiveExtractOptions::default().with_job(job).with_forced(true),
+          ArchiveExtractOptions::default().with_job(job).with_forced(is_forced),
         )
       },
       |result| result.outcome,

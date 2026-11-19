@@ -1,7 +1,10 @@
+import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
+import { ReplaceConfirmDialog } from "@/core/jobs/components/ReplaceConfirmDialog";
+import { IReplaceRetry, IReplaceRetryStart, useReplaceRetry } from "@/core/jobs/lib/use-replace-retry";
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
@@ -46,40 +49,45 @@ export function SpawnPackerTool(): ReactElement {
     [destination.value, source.value]
   );
 
-  const onPack = useCallback(
-    async (submitted: ISpawnPackRequest) => {
-      await conversionService.pack(submitted.source, submitted.destination);
-    },
-    [conversionService]
+  const pack: IReplaceRetry<ISpawnPackRequest> = useReplaceRetry(
+    useCallback(
+      ({ request: submitted, isForced }: IReplaceRetryStart<ISpawnPackRequest>) =>
+        flowResult(conversionService.pack({ ...submitted, isForced })),
+      [conversionService]
+    )
   );
 
   return (
-    <JobPickerForm
-      operation={conversionService.operation}
-      request={request}
-      isSubmitDisabled={!source.isValid || !destination.isValid}
-      title={"Pack spawn file"}
-      description={
-        "Builds one spawn file from the unpacked chunks. The output file is overwritten. " +
-        "Cancellation stops before writing; a write already started finishes."
-      }
-      submitLabel={"Pack"}
-      renderResult={(result) => <SpawnConversionOutcome result={result} />}
-      onSubmit={onPack}
-    >
-      <PathFormRow
-        isDisabled={isLoading}
-        label={"Source"}
-        description={"Directory holding the unpacked spawn chunks"}
-        field={source}
-      />
+    <>
+      <JobPickerForm
+        operation={conversionService.operation}
+        request={request}
+        isSubmitDisabled={!source.isValid || !destination.isValid}
+        title={"Pack spawn file"}
+        description={
+          "Builds one spawn file from the unpacked chunks; an output file already there is replaced once you agree. " +
+          "Cancellation stops before writing; a write already started finishes."
+        }
+        submitLabel={"Pack"}
+        renderResult={(result) => <SpawnConversionOutcome result={result} />}
+        onSubmit={pack.run}
+      >
+        <PathFormRow
+          isDisabled={isLoading}
+          label={"Source"}
+          description={"Directory holding the unpacked spawn chunks"}
+          field={source}
+        />
 
-      <PathFormRow
-        isDisabled={isLoading}
-        label={"Output spawn"}
-        description={"Where the packed *.spawn file is written"}
-        field={destination}
-      />
-    </JobPickerForm>
+        <PathFormRow
+          isDisabled={isLoading}
+          label={"Output spawn"}
+          description={"Where the packed *.spawn file is written"}
+          field={destination}
+        />
+      </JobPickerForm>
+
+      <ReplaceConfirmDialog retry={pack} />
+    </>
   );
 }

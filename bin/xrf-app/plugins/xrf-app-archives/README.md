@@ -8,7 +8,8 @@ that belong together sit together.
 ## Layout
 
 - `browse`: what the explorer has open (`ArchiveSubject`, a volume set or a game folder, and the world of entries it
-  lists), and reading or extracting out of it.
+  lists), and reading or extracting out of it. A directory extract, like an unpack, refuses a file it writes that is
+  already there unless forced.
 - `describe`: saying in words what an entry the viewer cannot draw contains, one describer per format: `anm`,
   `animation` (envelopes), `chunks` (a container nothing else reads), `detail`, `efd`, `gamemtl`, `level` (a module per
   compiled level file), `light_anim`, `omf`, `particles`, `ppe`, `shader_compiler`, `shaders`, `sound`, `spawn` and

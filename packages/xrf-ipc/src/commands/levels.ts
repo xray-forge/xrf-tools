@@ -289,7 +289,8 @@ export const levelsCommands = {
    * Draw a burst of consecutive frames in a viewport and write each with its G-buffer marks into a new bursts folder,
    * plus the camera's sound and a video when asked; answers once the last is written.
    *
-   * A burst with sound is refused up front when the viewport's level plays none.
+   * A burst with sound is refused up front when the viewport's level plays none; a burst that fails once its folder is
+   * made removes the folder.
    */
   saveBurst: (request: BurstCaptureRequest) => __TAURI_INVOKE<BurstOutcome>(ELevelsCommand.SAVE_BURST, { request }),
   /**

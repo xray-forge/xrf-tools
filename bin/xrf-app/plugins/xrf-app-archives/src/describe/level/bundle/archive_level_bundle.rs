@@ -84,8 +84,7 @@ impl ArchiveLevelBundle {
 mod tests {
   use super::ArchiveLevelBundle;
   use crate::describe::description::{ArchiveReference, ArchiveReferenceStatus};
-  use crate::describe::level::bundle::ArchiveLevelShader;
-  use crate::describe::level::bundle::{ArchiveLevelEntry, ArchiveLevelSurface};
+  use crate::describe::level::bundle::{ArchiveLevelEntry, ArchiveLevelShader, ArchiveLevelSurface};
 
   fn texture(name: &str, status: ArchiveReferenceStatus) -> ArchiveReference {
     ArchiveReference {

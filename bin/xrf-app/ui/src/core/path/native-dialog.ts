@@ -1,9 +1,9 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { exists } from "@tauri-apps/plugin-fs";
 import { getPathDirectory } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { IFileFilter } from "@/core/path/file-filters";
+import { isPathPresent } from "@/core/path/presence";
 
 export interface INativeDialogOptions {
   title: string;
@@ -94,20 +94,15 @@ async function resolveDialogStart(
     return current;
   }
 
-  if (await isPresent(current)) {
+  if (await isPathPresent(current)) {
     return current;
   }
 
-  if (!directory || !(await isPresent(directory))) {
+  if (!directory || !(await isPathPresent(directory))) {
     return undefined;
   }
 
   return isSave ? current : directory;
-}
-
-/** Whether a path is there, treating a refused look as absent: this only decides where a dialog opens. */
-async function isPresent(path: string): Promise<boolean> {
-  return exists(path).catch(() => false);
 }
 
 /** The filters as the plugin takes them: a mutable list, or none for every file. */

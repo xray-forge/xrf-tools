@@ -6,8 +6,7 @@ use xrf_shaders::ShaderLibraryFile;
 use xrf_vfs::XrayAssetType;
 
 use crate::describe::description::ArchiveReference;
-use crate::describe::level::bundle::ArchiveLevelBundle;
-use crate::describe::level::bundle::ArchiveLevelSurface;
+use crate::describe::level::bundle::{ArchiveLevelBundle, ArchiveLevelSurface};
 use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about a compiled level bundle.

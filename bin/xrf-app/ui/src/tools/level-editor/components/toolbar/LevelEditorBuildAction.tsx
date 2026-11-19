@@ -1,4 +1,3 @@
-import { exists } from "@tauri-apps/plugin-fs";
 import { useInjection } from "@wirestate/react";
 import { assetsCommands } from "@xrf/ipc/commands/assets";
 import { SelectedSceneDescription } from "@xrf/ipc/types/xrf-app-levels";
@@ -11,6 +10,7 @@ import { ReactElement, useCallback } from "react";
 
 import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
 import { LEVEL_COMPILER_OBJECTS_CODEC } from "@/core/level/lib/compiler/level-compiler-objects";
+import { isPathPresent } from "@/core/path/presence";
 import { EToolId } from "@/core/routing/tool";
 import { THandOverPaths, useHandOverPaths } from "@/core/ui/form/use-hand-over-paths";
 import {
@@ -56,7 +56,7 @@ export function LevelEditorBuildAction({
     const paths: ILevelEditorBuildPaths = getLevelEditorBuildPaths(scene, root === null ? null : await probeKind(root));
     // Emptied where the decompile made no textures root: a missing path would block the form, and one remembered from
     // another scene would lend it that scene's strips.
-    const isCut: boolean = await exists(paths.textures).catch(() => false);
+    const isCut: boolean = await isPathPresent(paths.textures);
 
     handOverPaths(EToolId.LEVEL_COMPILER, {
       [ELevelCompilerField.SOURCE]: paths.source,

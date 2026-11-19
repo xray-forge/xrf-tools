@@ -111,6 +111,23 @@ export function EditorPopoverAction({
     }
   }, [isDisabled]);
 
+  // The room beside the trigger changes with the window, so an open popover is held to what is left of it.
+  useEffect(() => {
+    if (!isOpen || anchor === null) {
+      return;
+    }
+
+    const opened: HTMLElement = anchor;
+
+    function onResize(): void {
+      setMaxHeight(toPopoverMaxHeight(opened, placement));
+    }
+
+    window.addEventListener("resize", onResize);
+
+    return () => window.removeEventListener("resize", onResize);
+  }, [isOpen, anchor, placement]);
+
   return (
     <>
       <EditorIconAction

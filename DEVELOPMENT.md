@@ -128,9 +128,12 @@ on an RTX GPU, with either graphics API. `dev-app` and `build-app` build without
 
 - `cargo make fetch-sdks` checks the DLSS SDK and Vulkan's C headers out into `.sdks/`, each pinned to a commit, only
   the files the build reads, and on Windows places LLVM's libclang there for bindgen. Whatever is already there at the
-  pinned commit or hash is left alone, so it fetches nothing on a second run. Every task that builds with DLSS runs it
-  first. `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
-- Elsewhere than Windows, `.sdks/libclang` links the system's libclang (libclang-dev or LLVM), or set `LIBCLANG_PATH`.
+  pinned commit or hash is left alone and said to be up to date, so it fetches nothing on a second run. Every task that
+  builds with DLSS runs it first. `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set
+  in the environment wins.
+- Elsewhere than Windows, `.sdks/libclang` links the system's libclang (libclang-dev or LLVM), relinked only when it is
+  missing or points at another library, or set `LIBCLANG_PATH`. On Linux the archives are unpacked with `unzip`, which
+  must be installed.
 - A build with the feature copies `nvngx_dlss.dll`, `nvngx_dlssd.dll` and NVIDIA's `LICENSE.txt` into its profile's
   `resources/renderer/dlss/` (`bin/xrf-app/app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
   application, under terms as protective as its own, so they are never committed.

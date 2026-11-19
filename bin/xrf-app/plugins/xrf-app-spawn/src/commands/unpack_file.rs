@@ -11,7 +11,8 @@ use xrf_job::JobProgress;
 use crate::request::SpawnConvertRequest;
 use crate::{SpawnConversion, SpawnConversionResult};
 
-/// Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing.
+/// Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing; refused where the
+/// directory is already there, unless forced.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "unpack_file")]
 pub(crate) async fn spawn_unpack_file(

@@ -1,3 +1,4 @@
+import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
@@ -11,6 +12,8 @@ import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useId } from "react";
 
 import { getSubjectRoot, getSubjectSize } from "@/core/archive/lib/subject";
+import { ReplaceConfirmDialog } from "@/core/jobs/components/ReplaceConfirmDialog";
+import { IReplaceRetry, IReplaceRetryStart, useReplaceRetry } from "@/core/jobs/lib/use-replace-retry";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -22,7 +25,8 @@ interface IArchiveUnpackDialogProps extends BaseComponentProps {
 }
 
 /**
- * Asks where to write every file the open subject holds, then starts that run and closes.
+ * Asks where to write every file the open subject holds, then starts that run and closes; where files are already
+ * there, asks before replacing them.
  */
 export function ArchiveUnpackDialog({
   "data-testid": dataTestId = "archive-unpack-dialog",
@@ -47,6 +51,15 @@ export function ArchiveUnpackDialog({
     seed: () => resolveOutputPath(EToolId.ARCHIVES_EXPLORER),
   });
 
+  // Asked after this dialog closes, so the question outlives it.
+  const extract: IReplaceRetry<string> = useReplaceRetry(
+    useCallback(
+      ({ request: path, isForced }: IReplaceRetryStart<string>) =>
+        flowResult(archivesService.extractDirectory({ prefix: "", destination: path, isForced })),
+      [archivesService]
+    )
+  );
+
   const onUnpack = useCallback(async (): Promise<void> => {
     if (!destination.value) {
       return;
@@ -57,62 +70,66 @@ export function ArchiveUnpackDialog({
     onClose();
 
     // How it ends is published on the extraction and told by the run's notice.
-    await archivesService.extractDirectory("", destination.value);
-  }, [archivesService, destination, onClose]);
+    await extract.run(destination.value);
+  }, [destination, extract, onClose]);
 
   return (
-    <Dialog
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      aria-labelledby={titleId}
-      fullWidth
-      maxWidth={"sm"}
-      open={isOpen}
-      onClose={onClose}
-    >
-      <DialogHeader
-        title={"Unpack"}
-        titleId={titleId}
-        icon={<UnarchiveIcon fontSize={"small"} />}
-        closeLabel={"Close unpack"}
+    <>
+      <ReplaceConfirmDialog retry={extract} />
+
+      <Dialog
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        aria-labelledby={titleId}
+        fullWidth
+        maxWidth={"sm"}
+        open={isOpen}
         onClose={onClose}
-      />
-
-      <DialogContent className={"flex flex-col gap-4"}>
-        <div>
-          <Typography className={"font-monospace wrap-anywhere"} variant={"body2"}>
-            {getSubjectRoot(subject)}
-          </Typography>
-
-          <Typography className={"text-text-secondary"} variant={"caption"}>
-            {formatCount(archivesService.entries.length)} files · {formatBytes(getSubjectSize(subject))}
-          </Typography>
-        </div>
-
-        <PathFormRow
-          isDisabled={isWriting}
-          label={"Output"}
-          description={"Directory the whole tree is unpacked into, with its folder layout"}
-          field={destination}
+      >
+        <DialogHeader
+          title={"Unpack"}
+          titleId={titleId}
+          icon={<UnarchiveIcon fontSize={"small"} />}
+          closeLabel={"Close unpack"}
+          onClose={onClose}
         />
-      </DialogContent>
 
-      <DialogActions>
-        <Button size={"small"} onClick={onClose}>
-          Cancel
-        </Button>
+        <DialogContent className={"flex flex-col gap-4"}>
+          <div>
+            <Typography className={"font-monospace wrap-anywhere"} variant={"body2"}>
+              {getSubjectRoot(subject)}
+            </Typography>
 
-        <Button
-          size={"small"}
-          variant={"contained"}
-          disabled={isWriting || !destination.isValid || !archivesService.entries.length}
-          startIcon={<UnarchiveIcon fontSize={"small"} />}
-          onClick={() => void onUnpack()}
-        >
-          Unpack
-        </Button>
-      </DialogActions>
-    </Dialog>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
+              {formatCount(archivesService.entries.length)} files · {formatBytes(getSubjectSize(subject))}
+            </Typography>
+          </div>
+
+          <PathFormRow
+            isDisabled={isWriting}
+            label={"Output"}
+            description={"Directory the whole tree is unpacked into, with its folder layout"}
+            field={destination}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button size={"small"} onClick={onClose}>
+            Cancel
+          </Button>
+
+          <Button
+            size={"small"}
+            variant={"contained"}
+            disabled={isWriting || !destination.isValid || !archivesService.entries.length}
+            startIcon={<UnarchiveIcon fontSize={"small"} />}
+            onClick={() => void onUnpack()}
+          >
+            Unpack
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

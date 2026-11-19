@@ -18,11 +18,15 @@ use crate::tests::synthetic_spawn;
 fn request(case: &str) -> SpawnConvertRequest {
   let directory: PathBuf = GeneratedResources::path(&format!("spawn/conversion/{case}"));
 
+  // Emptied, as an output an earlier run left would refuse an unforced conversion.
+  let _ = fs::remove_dir_all(&directory);
+
   fs::create_dir_all(&directory).expect("scratch directory");
 
   SpawnConvertRequest {
     source: directory.join("source.spawn"),
     destination: directory.join("output"),
+    is_forced: false,
   }
 }
 
@@ -127,6 +131,7 @@ fn conversions_round_trip_and_retain_the_output() {
     SpawnConvertRequest {
       source: unpacked.destination,
       destination: request.source.with_extension("repacked"),
+      is_forced: false,
     },
     Uuid::new_v4(),
     Channel::new(|_| Ok(())),
@@ -145,6 +150,46 @@ fn conversions_round_trip_and_retain_the_output() {
       .all(|job| serde_json::to_value(job.conclusion).unwrap() == json!("completed"))
   );
   assert!(registry.list().iter().all(|job| job.result.is_some()));
+}
+
+#[test]
+fn an_output_already_there_is_refused_before_reading_unless_forced() {
+  let request: SpawnConvertRequest = request("refusal");
+  let existing: PathBuf = request.destination.join("stale");
+
+  fs::create_dir_all(&request.destination).expect("existing destination");
+  fs::write(&existing, b"existing output").expect("existing file");
+
+  // Named in another case, as the game and Windows read names regardless of it; the source is never read.
+  let refused: SpawnConvertRequest = SpawnConvertRequest {
+    destination: request.destination.with_file_name("OUTPUT"),
+    ..request.clone()
+  };
+
+  for operation in [SpawnConversion::Pack, SpawnConversion::Unpack] {
+    let error: String = operation
+      .convert(&refused, &JobHandle::inert())
+      .expect_err("unforced, an output already there is refused");
+
+    assert!(error.contains("force it to replace them"), "{operation:?}: {error}");
+    assert_eq!(fs::read(&existing).unwrap(), b"existing output", "{operation:?}");
+  }
+
+  synthetic_spawn()
+    .write_to_path::<XRayByteOrder, _>(&request.source)
+    .expect("packed source");
+
+  let unpacked = SpawnConversion::Unpack
+    .convert(
+      &SpawnConvertRequest {
+        is_forced: true,
+        ..request
+      },
+      &JobHandle::inert(),
+    )
+    .expect("forced, the output is written over");
+
+  assert_eq!(unpacked.outcome, JobOutcome::Completed);
 }
 
 #[test]

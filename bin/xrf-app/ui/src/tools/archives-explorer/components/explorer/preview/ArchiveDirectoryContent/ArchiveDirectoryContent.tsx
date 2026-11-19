@@ -1,3 +1,4 @@
+import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
@@ -15,7 +16,9 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { isUnderArchiveDirectory } from "@/core/archive/lib/tree";
+import { ReplaceConfirmDialog } from "@/core/jobs/components/ReplaceConfirmDialog";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
+import { IReplaceRetry, IReplaceRetryStart, useReplaceRetry } from "@/core/jobs/lib/use-replace-retry";
 import { askToOpenDirectory } from "@/core/path/native-dialog";
 import { resolveDirectoryDestination } from "@/tools/archives-explorer/lib/resolve-directory-destination";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
@@ -62,17 +65,27 @@ export function ArchiveDirectoryContent({
     return { count, size };
   }, [files, path]);
 
+  const extract: IReplaceRetry<string> = useReplaceRetry(
+    useCallback(
+      ({ request: destination, isForced }: IReplaceRetryStart<string>) =>
+        flowResult(archivesService.extractDirectory({ prefix: path, destination, isForced })),
+      [archivesService, path]
+    )
+  );
+
   const onExtract = useCallback(async () => {
     const picked: Nullable<string> = await askToOpenDirectory({ title: `Extract ${path} into` });
 
     if (picked) {
       // How it ends is published on the extraction, which the alerts below render.
-      await archivesService.extractDirectory(path, await resolveDirectoryDestination(picked, path));
+      await extract.run(await resolveDirectoryDestination(picked, path));
     }
-  }, [archivesService, path]);
+  }, [extract, path]);
 
   return (
     <CenteredColumn data-testid={dataTestId} id={id} className={cn("gap-2 p-6", className)}>
+      <ReplaceConfirmDialog retry={extract} />
+
       <FolderOpenIcon className={"text-text-secondary"} />
 
       <Typography className={"font-monospace wrap-anywhere"} variant={"subtitle1"}>

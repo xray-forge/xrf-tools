@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { RenderResult, waitFor } from "@testing-library/react";
+import { RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { ESystemCommand } from "@xrf/ipc/commands/system";
@@ -53,10 +53,49 @@ describe("ArchiveUnpackDialog", () => {
       expect(mockInvoke).toHaveBeenCalledWith(
         EArchivesCommand.EXTRACT_DIRECTORY,
         expect.objectContaining({
-          request: { sessionId: "fixture-session", prefix: "", destination: "C:\\xrf\\out\\archives-explorer" },
+          request: {
+            sessionId: "fixture-session",
+            prefix: "",
+            destination: "C:\\xrf\\out\\archives-explorer",
+            isForced: false,
+          },
         })
       )
     );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("asks before replacing files already there once it has closed, and unpacks again forced when agreed", async () => {
+    const { getByRole, findByRole } = await renderDialog(jest.fn());
+
+    mockIpcCommands({
+      [EArchivesCommand.EXTRACT_DIRECTORY]: ({ request }) => {
+        if (!request.isForced) {
+          throw new Error(
+            "C:\\xrf\\out already holds what this run writes (configs\\system.ltx); force it to replace them"
+          );
+        }
+
+        return mockArchiveExtractDirectoryResult();
+      },
+    });
+
+    const unpack: HTMLElement = getByRole("button", { name: "Unpack" });
+
+    await waitFor(() => expect(unpack).toBeEnabled());
+    await userEvent.click(unpack);
+
+    const question: HTMLElement = await findByRole("dialog", { name: "Replace existing files?" });
+
+    expect(question).toHaveTextContent("configs\\system.ltx");
+
+    await userEvent.click(within(question).getByRole("button", { name: "Replace" }));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith(
+        EArchivesCommand.EXTRACT_DIRECTORY,
+        expect.objectContaining({ request: expect.objectContaining({ prefix: "", isForced: true }) })
+      )
+    );
   });
 });

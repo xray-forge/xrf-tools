@@ -43,6 +43,27 @@ describe("useCopiedText", () => {
     expect(getByRole("button").textContent).toBe("Copy");
   });
 
+  it("counts the moment from the latest copy", async () => {
+    writeText.mockResolvedValue();
+    jest.useFakeTimers();
+
+    const { getByRole } = render(<Component onFailure={() => {}} />);
+
+    await act(async () => fireEvent.click(getByRole("button")));
+
+    act(() => jest.advanceTimersByTime(COPIED_FOR - 1));
+
+    await act(async () => fireEvent.click(getByRole("button")));
+
+    act(() => jest.advanceTimersByTime(COPIED_FOR - 1));
+
+    expect(getByRole("button").textContent).toBe("Copied");
+
+    act(() => jest.advanceTimersByTime(1));
+
+    expect(getByRole("button").textContent).toBe("Copy");
+  });
+
   it("tells its owner why a copy the clipboard refused failed, and says nothing was copied", async () => {
     const onFailure = jest.fn();
 

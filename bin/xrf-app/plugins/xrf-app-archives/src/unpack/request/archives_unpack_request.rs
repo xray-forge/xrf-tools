@@ -11,4 +11,6 @@ pub(crate) struct ArchivesUnpackRequest {
   pub from: PathBuf,
   /// Directory to write the contents into.
   pub destination: PathBuf,
+  /// Whether files the run writes may replace those already there; unforced, the run refuses before writing.
+  pub is_forced: bool,
 }

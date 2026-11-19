@@ -71,6 +71,11 @@ export type SpawnConversionResult = {
 export type SpawnConvertRequest = {
   source: string;
   destination: string;
+  /**
+   * Whether the output may replace a file or directory already at `destination`, in any letter case; unforced, the
+   * conversion refuses before reading.
+   */
+  isForced: boolean;
 };
 
 /**

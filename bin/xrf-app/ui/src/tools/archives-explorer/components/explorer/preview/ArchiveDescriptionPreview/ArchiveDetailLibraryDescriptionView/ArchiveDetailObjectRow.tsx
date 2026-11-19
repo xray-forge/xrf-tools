@@ -5,8 +5,8 @@ import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";
-import { describeEntryPlanting } from "./ArchiveDetailLibraryDescriptionView.utils";
 import { describeModelDetail } from "../ArchiveDetailModelSection/ArchiveDetailModelSection.utils";
+import { describeEntryPlanting } from "./ArchiveDetailLibraryDescriptionView.utils";
 
 interface IArchiveDetailObjectRowProps extends BaseComponentProps {
   entry: ArchiveDetailEntry;

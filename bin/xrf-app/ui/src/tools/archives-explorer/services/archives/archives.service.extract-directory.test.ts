@@ -41,13 +41,15 @@ describe("ArchivesService directory extraction", () => {
       }),
     });
 
-    await service.extractDirectory("configs", "C:\\out");
+    await service.extractDirectory({ prefix: "configs", destination: "C:\\out", isForced: false });
 
     // The identity and the channel are minted per run, so this names what the caller chose and lets the job's own two
     // arguments be whatever the jobs service made them.
     expect(mockInvoke).toHaveBeenCalledWith(
       EArchivesCommand.EXTRACT_DIRECTORY,
-      expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "configs", destination: "C:\\out" } })
+      expect.objectContaining({
+        request: { sessionId: "fixture-session", prefix: "configs", destination: "C:\\out", isForced: false },
+      })
     );
     expect(service.extraction.result?.extractedCount).toBe(12);
   });
@@ -55,11 +57,13 @@ describe("ArchivesService directory extraction", () => {
   it("treats the archive root as an empty prefix", async () => {
     const service: ArchivesService = mockService();
 
-    await service.extractDirectory("", "C:\\out");
+    await service.extractDirectory({ prefix: "", destination: "C:\\out", isForced: true });
 
     expect(mockInvoke).toHaveBeenCalledWith(
       EArchivesCommand.EXTRACT_DIRECTORY,
-      expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "", destination: "C:\\out" } })
+      expect.objectContaining({
+        request: { sessionId: "fixture-session", prefix: "", destination: "C:\\out", isForced: true },
+      })
     );
   });
 
@@ -72,7 +76,7 @@ describe("ArchivesService directory extraction", () => {
       },
     });
 
-    await service.extractDirectory("configs", "C:\\out");
+    await service.extractDirectory({ prefix: "configs", destination: "C:\\out", isForced: false });
 
     expect(service.extraction.isRunning).toBe(false);
     expect(service.extraction.error).toContain("read only");
@@ -84,7 +88,7 @@ describe("ArchivesService directory extraction", () => {
     mockIpcCommands({ [EArchivesCommand.EXTRACT_FILE]: () => new Promise(() => {}) });
 
     void service.extractFile(FILE, "C:\\out\\system.ltx");
-    void service.extractDirectory("configs", "C:\\out");
+    void service.extractDirectory({ prefix: "configs", destination: "C:\\out", isForced: false });
 
     expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.EXTRACT_DIRECTORY, expect.anything());
   });

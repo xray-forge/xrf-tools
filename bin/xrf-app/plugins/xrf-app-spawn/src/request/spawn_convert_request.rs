@@ -9,4 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct SpawnConvertRequest {
   pub source: PathBuf,
   pub destination: PathBuf,
+  /// Whether the output may replace a file or directory already at `destination`, in any letter case; unforced, the
+  /// conversion refuses before reading.
+  pub is_forced: bool,
 }

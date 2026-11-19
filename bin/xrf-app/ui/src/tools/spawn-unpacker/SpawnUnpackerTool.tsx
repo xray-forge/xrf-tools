@@ -1,7 +1,10 @@
+import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
+import { ReplaceConfirmDialog } from "@/core/jobs/components/ReplaceConfirmDialog";
+import { IReplaceRetry, IReplaceRetryStart, useReplaceRetry } from "@/core/jobs/lib/use-replace-retry";
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
@@ -35,6 +38,8 @@ export function SpawnUnpackerTool(): ReactElement {
     id: "destination",
     title: "Select output directory",
     isDirectory: true,
+    // A directory to make, as one already there is written into only once the person agrees.
+    isSave: true,
     isDisabled: isLoading,
     seed: () => resolveOutputPath(EToolId.SPAWN_UNPACKER),
   });
@@ -44,40 +49,45 @@ export function SpawnUnpackerTool(): ReactElement {
     [destination.value, source.value]
   );
 
-  const onUnpack = useCallback(
-    async (submitted: ISpawnUnpackRequest) => {
-      await conversionService.unpack(submitted.source, submitted.destination);
-    },
-    [conversionService]
+  const unpack: IReplaceRetry<ISpawnUnpackRequest> = useReplaceRetry(
+    useCallback(
+      ({ request: submitted, isForced }: IReplaceRetryStart<ISpawnUnpackRequest>) =>
+        flowResult(conversionService.unpack({ ...submitted, isForced })),
+      [conversionService]
+    )
   );
 
   return (
-    <JobPickerForm
-      operation={conversionService.operation}
-      request={request}
-      isSubmitDisabled={!source.isValid || !destination.isValid}
-      title={"Unpack spawn file"}
-      description={
-        "Writes the file's chunks into the destination directory, replacing files of the same name. " +
-        "Cancellation stops before writing; a write already started finishes."
-      }
-      submitLabel={"Unpack"}
-      renderResult={(result) => <SpawnConversionOutcome result={result} />}
-      onSubmit={onUnpack}
-    >
-      <PathFormRow
-        isDisabled={isLoading}
-        label={"Source"}
-        description={"The packed *.spawn file to read"}
-        field={source}
-      />
+    <>
+      <JobPickerForm
+        operation={conversionService.operation}
+        request={request}
+        isSubmitDisabled={!source.isValid || !destination.isValid}
+        title={"Unpack spawn file"}
+        description={
+          "Writes the file's chunks into the destination directory; into one already there, replacing files of the " +
+          "same name, once you agree. Cancellation stops before writing; a write already started finishes."
+        }
+        submitLabel={"Unpack"}
+        renderResult={(result) => <SpawnConversionOutcome result={result} />}
+        onSubmit={unpack.run}
+      >
+        <PathFormRow
+          isDisabled={isLoading}
+          label={"Source"}
+          description={"The packed *.spawn file to read"}
+          field={source}
+        />
 
-      <PathFormRow
-        isDisabled={isLoading}
-        label={"Destination"}
-        description={"Directory the unpacked chunks are written to"}
-        field={destination}
-      />
-    </JobPickerForm>
+        <PathFormRow
+          isDisabled={isLoading}
+          label={"Destination"}
+          description={"Directory the unpacked chunks are written to"}
+          field={destination}
+        />
+      </JobPickerForm>
+
+      <ReplaceConfirmDialog retry={unpack} />
+    </>
   );
 }

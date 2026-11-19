@@ -27,8 +27,7 @@ use crate::describe::ppe::ArchivePpeDescription;
 use crate::describe::shader_compiler::ArchiveShaderCompilerDescription;
 use crate::describe::shaders::ArchiveShadersDescription;
 use crate::describe::sound::ArchiveSoundEnvironmentDescription;
-use crate::describe::source::ArchiveDescribeSource;
-use crate::describe::source::ArchiveEntryReader;
+use crate::describe::source::{ArchiveDescribeSource, ArchiveEntryReader};
 use crate::describe::spawn::{ArchiveLevelSpawnDescription, ArchiveSpawnDescription};
 use crate::describe::thm::ArchiveThmDescription;
 

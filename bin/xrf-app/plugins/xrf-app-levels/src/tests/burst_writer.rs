@@ -133,6 +133,34 @@ fn refuses_a_sample_out_of_order_and_a_burst_that_stopped() {
   );
 }
 
+// A failed burst leaves no partial folder behind, whose name the next save of that name would be refused.
+#[test]
+fn removes_the_folder_of_a_burst_that_fails_after_writing_frames() {
+  let folder: PathBuf = folder("failed");
+  let (events, receiver) = channel();
+
+  send_sample(&events, None, 40, BurstMarks::MOVED);
+  events
+    .send(BurstEvent::Stopped {
+      error: XrfError::new_invalid_error("gone"),
+    })
+    .expect("the writer to listen");
+
+  assert!(
+    BurstWriter::new(
+      folder.clone(),
+      &RenderBurst {
+        samples: None,
+        frames: 2,
+        ..REFERENCE
+      },
+    )
+    .receive(&receiver)
+    .is_err()
+  );
+  assert!(!folder.exists(), "the failed burst's folder is removed");
+}
+
 #[test]
 fn refuses_a_burst_name_that_is_taken_or_not_one_file_name() {
   let bursts: PathBuf = folder("names");

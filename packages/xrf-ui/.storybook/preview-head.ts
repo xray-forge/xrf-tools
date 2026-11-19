@@ -1,9 +1,9 @@
 import { COLOR_SCHEME_ATTRIBUTE } from "#/theme";
 
-import { COLOR_SCHEME_STORAGE_KEY } from "./color-scheme-storage";
 // The module itself rather than its family's index, which also carries `ThemeRoot` and the stylesheets it imports:
 // this runs in Node, ahead of the preview's bundle.
 import { getPreloadThemeCss } from "../src/theme/root/preload";
+import { COLOR_SCHEME_STORAGE_KEY } from "./color-scheme-storage";
 
 /** The id `preview.tsx` finds this stylesheet by, so a hot update rewrites it rather than adding a second one. */
 export const PRELOAD_STYLE_ID: string = "xrf-storybook-preload-theme";

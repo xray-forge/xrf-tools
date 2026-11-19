@@ -46,7 +46,10 @@ export const spawnCommands = {
   /** Open the packed spawn at `path`, read on the pool, answering what describes it without its large chunks. */
   openFile: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<SessionSnapshot<SpawnSessionDescriptor>>(ESpawnCommand.OPEN_FILE, { sessionId, path }),
-  /** Pack a directory of spawn chunks into one file, as a tracked job sharing one lane with unpacking. */
+  /**
+   * Pack a directory of spawn chunks into one file, as a tracked job sharing one lane with unpacking; refused where the
+   * file is already there, unless forced.
+   */
   packFile: (request: SpawnConvertRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>(ESpawnCommand.PACK_FILE, { request, jobId, progress }),
   /** One large chunk of the spawn `session_id` holds, copied on the pool. */
@@ -67,7 +70,10 @@ export const spawnCommands = {
    */
   saveUnpackedDirectory: (path: string, sessionId: SessionId, isForced: boolean) =>
     __TAURI_INVOKE<null>(ESpawnCommand.SAVE_UNPACKED_DIRECTORY, { path, sessionId, isForced }),
-  /** Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing. */
+  /**
+   * Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing; refused where the
+   * directory is already there, unless forced.
+   */
   unpackFile: (request: SpawnConvertRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>(ESpawnCommand.UNPACK_FILE, { request, jobId, progress }),
 };

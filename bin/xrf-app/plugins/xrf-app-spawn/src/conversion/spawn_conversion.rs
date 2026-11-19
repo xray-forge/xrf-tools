@@ -9,7 +9,7 @@ use xrf_app_core::jobs::{JobKind, JobPhase, JobRegistry, JobResource, JobStart};
 use xrf_chunk::XRayByteOrder;
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
 use xrf_spawn::SpawnFile;
-use xrf_utils::error_to_string;
+use xrf_utils::{OutputFiles, error_to_string};
 
 use crate::SpawnConversionResult;
 use crate::ipc::spawn::{SPAWN_JOB_PACK, SPAWN_JOB_UNPACK};
@@ -65,7 +65,7 @@ impl SpawnConversion {
   }
 
   /// Reads the source and writes the destination, giving up only before writing begins: the writers cannot stop
-  /// safely partway through.
+  /// safely partway through. Unforced, a destination already there is refused before the source is read.
   pub(crate) fn convert(self, request: &SpawnConvertRequest, job: &JobHandle) -> TauriResult<SpawnConversionResult> {
     let mut result: SpawnConversionResult = SpawnConversionResult {
       operation: self,
@@ -76,6 +76,10 @@ impl SpawnConversion {
     if job.is_cancelled() {
       return Ok(result);
     }
+
+    OutputFiles::of_path(&request.destination)
+      .assert_free(request.is_forced)
+      .map_err(error_to_string)?;
 
     let file: SpawnFile = {
       let _reading = job.enter(JobPhase::READ, None);

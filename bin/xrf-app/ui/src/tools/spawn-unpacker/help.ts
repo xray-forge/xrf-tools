@@ -14,7 +14,8 @@ export const SPAWN_UNPACKER_HELP: IToolHelp = {
     "Cancellation stops before writing. A write already in progress finishes.",
   ],
   limitations: [
-    "Files with matching names in the destination are replaced. Use a separate directory for each spawn you unpack.",
+    "A destination directory already there is written into only once you agree, replacing files of matching names. " +
+      "Use a separate directory for each spawn you unpack.",
     "This extracts spawn chunks, not archive contents or an entire gamedata tree.",
   ],
   relatedTools: [EToolId.SPAWN_PACKER, EToolId.SPAWN_EDITOR],

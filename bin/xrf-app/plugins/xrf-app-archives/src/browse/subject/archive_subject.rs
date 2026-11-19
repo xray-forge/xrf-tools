@@ -12,11 +12,8 @@ use xrf_pack::{
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayArchiveSource, XrayInputRecord, XrayMountMode, XrayRoots, XraySearch};
 
-use crate::browse::report::ArchiveOverrideReport;
-use crate::browse::report::ArchiveResolution;
-use crate::browse::subject::ArchiveNameIndex;
-use crate::browse::subject::ArchiveWorld;
-use crate::browse::subject::ArchiveWorldEntry;
+use crate::browse::report::{ArchiveOverrideReport, ArchiveResolution};
+use crate::browse::subject::{ArchiveNameIndex, ArchiveWorld, ArchiveWorldEntry};
 use crate::describe::{ArchiveDescribeSource, ArchiveFileDescription};
 
 /// What the explorer has open: a set of `.db` volumes, or a whole mounted world.

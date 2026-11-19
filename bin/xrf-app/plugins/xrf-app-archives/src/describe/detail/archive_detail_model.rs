@@ -4,8 +4,7 @@ use xrf_error::XrfResult;
 use xrf_level::DetailModel;
 use xrf_vfs::XrayAssetType;
 
-use crate::describe::description::ArchiveBounds;
-use crate::describe::description::ArchiveReference;
+use crate::describe::description::{ArchiveBounds, ArchiveReference};
 use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about one detail object.

@@ -1,26 +1,30 @@
 //! Pins a subject's life through the browse commands: a world opened over its roots, read however a reference spells an
-//! entry, restored for the tool that opened it, and closed with nothing left bound; and a volume set read and
-//! extracted under the same spellings a world takes.
+//! entry, restored for the tool that opened it, and closed with nothing left bound; a volume set read and extracted
+//! under the same spellings a world takes; and a directory extract held to the force rule.
 
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use tauri::ipc::Channel;
 use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
 use tauri::{App, Manager};
+use uuid::Uuid;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::jobs::JobRegistry;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes, SessionSnapshot};
 use xrf_job::ExecutionRequest;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::browse::commands::close_subject::archives_close_subject;
+use crate::browse::commands::extract_directory::archives_extract_directory;
 use crate::browse::commands::extract_file::archives_extract_file;
 use crate::browse::commands::open_volumes::archives_open_volumes;
 use crate::browse::commands::open_world::archives_open_world;
 use crate::browse::commands::read_file::archives_read_file;
-use crate::browse::{ArchiveSubject, ArchiveSubjects};
+use crate::browse::{ArchiveSubject, ArchiveSubjects, ArchivesExtractRequest};
 use crate::plugin::ArchivesPlugin;
 use crate::tests::fixtures;
 
@@ -30,6 +34,7 @@ fn application() -> App<MockRuntime> {
     .manage(SessionScopes::default())
     .manage(AssetMountState::new())
     .manage(ExecutionState::new(ExecutionRequest::Auto).expect("pool starts"))
+    .manage(Arc::new(JobRegistry::new()))
     .plugin(ArchivesPlugin::init())
     .build(mock_context(noop_assets()))
     .expect("the plugin sets up")
@@ -146,6 +151,58 @@ fn a_volume_set_reads_and_extracts_an_entry_however_a_reference_spells_it() {
     fs::read_to_string(&extracted).expect("the extracted file reads"),
     "[system]"
   );
+
+  archives_close_subject(application.state(), vec![session_id]);
+}
+
+#[test]
+fn a_directory_extract_refuses_a_file_already_there_unless_forced() {
+  let application: App<MockRuntime> = application();
+  let tool: SessionScope = SessionScope::new("main", "archives-explorer");
+  let volumes: PathBuf = fixtures::volumes("browse/refusal", &[("configs/system.ltx", b"[system]")]);
+  let destination: PathBuf = GeneratedResources::path("archives/browse/refusal/extracted");
+  let existing: PathBuf = destination.join("system.ltx");
+  let session_id: SessionId = SessionId::generate();
+
+  let _ = fs::remove_dir_all(&destination);
+
+  fs::create_dir_all(existing.parent().expect("a parent")).expect("the destination is made");
+  fs::write(&existing, b"previous").expect("a file is already there");
+
+  application.state::<SessionScopes>().bind(session_id, tool);
+
+  tauri::async_runtime::block_on(archives_open_volumes(
+    session_id,
+    volumes,
+    application.state(),
+    application.state(),
+  ))
+  .expect("the volumes open");
+
+  let extract = |is_forced: bool| {
+    tauri::async_runtime::block_on(archives_extract_directory(
+      application.state(),
+      application.state(),
+      application.state(),
+      ArchivesExtractRequest {
+        session_id,
+        prefix: String::from("configs"),
+        destination: destination.clone(),
+        is_forced,
+      },
+      Uuid::new_v4(),
+      Channel::new(|_| Ok(())),
+    ))
+  };
+
+  let refused: String = extract(false).expect_err("unforced, a file already there is refused");
+
+  assert!(refused.contains("force it to replace them"), "{refused}");
+  assert_eq!(fs::read(&existing).expect("still there"), b"previous");
+
+  extract(true).expect("forced, it replaces the file");
+
+  assert_eq!(fs::read(&existing).expect("replaced"), b"[system]");
 
   archives_close_subject(application.state(), vec![session_id]);
 }

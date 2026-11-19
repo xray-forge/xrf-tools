@@ -14,7 +14,8 @@ use xrf_utils::format_path;
 use crate::ipc::archives::ARCHIVES_JOB_UNPACK;
 use crate::unpack::ArchivesUnpackRequest;
 
-/// Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
+/// Unpack every archive of a directory into a destination tree, reporting progress and stopping on request; refused
+/// before writing where a file it writes is already there, unless forced.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "unpack_directory")]
 pub(crate) async fn archives_unpack_directory(
@@ -33,6 +34,7 @@ pub(crate) async fn archives_unpack_directory(
   let ArchivesUnpackRequest {
     from: source,
     destination,
+    is_forced,
   } = request;
 
   log::info!(
@@ -48,12 +50,10 @@ pub(crate) async fn archives_unpack_directory(
       move |job| {
         let project: ArchiveProject = ArchiveProject::new(&source)?;
 
-        // todo: the unpack writes over files already in the directory picked, as no dialog asks first; ask, and force
-        // only on that answer.
         ArchiveUnpacker::unpack_opt(
           &project,
           &destination,
-          ArchiveExtractOptions::default().with_job(job).with_forced(true),
+          ArchiveExtractOptions::default().with_job(job).with_forced(is_forced),
         )
       },
       |result| result.outcome,

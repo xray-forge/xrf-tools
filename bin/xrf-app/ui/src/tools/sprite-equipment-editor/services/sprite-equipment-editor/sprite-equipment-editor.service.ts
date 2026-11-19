@@ -1,5 +1,4 @@
 import { path } from "@tauri-apps/api";
-import { exists } from "@tauri-apps/plugin-fs";
 import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
@@ -19,6 +18,7 @@ import { AssetService } from "@/core/assets/services";
 import { KeybindCommand } from "@/core/commands";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
+import { isPathPresent } from "@/core/path/presence";
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { describeEquipmentSheet, ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/sprite-equipment-packer.service";
@@ -336,7 +336,7 @@ export class SpriteEquipmentEditorService {
       const [directory, extension] = yield* all([path.dirname(spritePath), path.extname(spritePath)] as const);
       const name: string = yield* call(path.basename(spritePath, extension));
       const sourcePath: string = yield* call(path.join(directory, name));
-      const isPresent: boolean = yield* call(exists(sourcePath));
+      const isPresent: boolean = yield* call(isPathPresent(sourcePath));
 
       this.repackSourcePath = isPresent ? sourcePath : null;
     } catch (error) {

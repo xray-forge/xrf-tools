@@ -1,12 +1,14 @@
 import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
-import { ARCHIVES_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-archives";
+import { ARCHIVES_JOB_UNPACK, ArchivesUnpackRequest } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveUnpackResult } from "@xrf/ipc/types/xrf-pack";
 import { Logger } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
 
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { describeUnpackOutcome } from "@/tools/archives-unpacker/lib/describe-unpack-outcome";
 
 /**
@@ -24,16 +26,19 @@ export class ArchivesUnpackerService {
   /**
    * Unpacks every archive of a directory into a destination tree.
    *
-   * @param source - Directory holding the packed archives.
-   * @param destination - Directory the archives are unpacked into.
+   * @param request - The directory holding the packed archives, the one they are unpacked into, and whether files
+   *   already there are replaced; the backend refuses otherwise.
+   * @returns How the run ended, or null where none started.
    */
   @ExclusiveFlow("operation")
-  public *unpack(source: string, destination: string): TFlow {
+  public *unpack(request: ArchivesUnpackRequest): TFlow<Nullable<TCommandCompletion<ArchiveUnpackResult>>> {
+    const { from: source, destination } = request;
+
     this.log.info("Unpacking:", source, "to", destination);
 
-    yield* this.operation.run({
+    return yield* this.operation.run({
       kind: ARCHIVES_JOB_UNPACK,
-      invoke: (id: string, progress) => archivesCommands.unpackDirectory({ from: source, destination }, id, progress),
+      invoke: (id: string, progress) => archivesCommands.unpackDirectory(request, id, progress),
       describe: (outcome: IJobOutcome<ArchiveUnpackResult>): IJobNotice =>
         describeUnpackOutcome(source, destination, outcome),
     });

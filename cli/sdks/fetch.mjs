@@ -302,7 +302,17 @@ function extract(archive, into, members) {
       cp.execFileSync("/usr/bin/tar", ["-xf", archive, "-C", into, ...members]);
       break;
     default:
-      cp.execFileSync("unzip", ["-q", "-o", archive, ...members, "-d", into]);
+      try {
+        cp.execFileSync("unzip", ["-q", "-o", archive, ...members, "-d", into]);
+      } catch (error) {
+        if (error.code === "ENOENT") {
+          throw new Error("unzip is not installed: install it (the `unzip` package) to fetch the SDKs' archives", {
+            cause: error,
+          });
+        }
+
+        throw error;
+      }
   }
 }
 
@@ -324,6 +334,8 @@ async function fetchArchived(tool) {
   function isPlaced(file) {
     return fs.existsSync(path.join(dir, file.file)) && hash(path.join(dir, file.file)) === file.hash;
   }
+
+  const isUpToDate = files.every(isPlaced) && downloads.every(isPlaced);
 
   if (!files.every(isPlaced)) {
     console.info(`Fetching ${tool.name} from ${tool.url}`);
@@ -367,7 +379,7 @@ async function fetchArchived(tool) {
     }
   }
 
-  console.info(`${tool.name}: ${path.relative(REPOSITORY_ROOT, dir)}`);
+  console.info(`${tool.name}: ${path.relative(REPOSITORY_ROOT, dir)}${isUpToDate ? ", up to date" : ""}`);
 }
 
 /**
@@ -411,7 +423,7 @@ function findSystemLibclang() {
 
 /**
  * Links the system's libclang into `.sdks/libclang`, where `.cargo/config.toml` points `LIBCLANG_PATH` on every
- * platform; one set in the environment wins over both.
+ * platform; one set in the environment wins over both. A link already there to the same library is left alone.
  */
 function linkSystemLibclang() {
   const dir = path.join(SDKS_ROOT, "libclang");
@@ -428,10 +440,28 @@ function linkSystemLibclang() {
 
   const link = path.join(dir, path.basename(library));
 
+  if (readLink(link) === library && fs.readdirSync(dir).length === 1) {
+    console.info(`libclang: ${path.relative(REPOSITORY_ROOT, link)} -> ${library}, up to date`);
+
+    return;
+  }
+
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   fs.symlinkSync(library, link);
   console.info(`libclang: ${path.relative(REPOSITORY_ROOT, link)} -> ${library}`);
+}
+
+/**
+ * @param {string} link - a path
+ * @returns {string | null} what the symbolic link there points at, or null where none is
+ */
+function readLink(link) {
+  try {
+    return fs.readlinkSync(link);
+  } catch {
+    return null;
+  }
 }
 
 /**
