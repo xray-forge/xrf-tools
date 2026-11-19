@@ -11,6 +11,9 @@ pub(crate) enum CommandInput {
   None,
   /// One required path, the help saying what it names; read back with [`InputArgument::of`].
   Path(String),
+  /// One path the command may name its subject by instead of a named alternative, an `ArgGroup` the command declares
+  /// requiring one of the two; read back with [`InputArgument::optional_of`].
+  OptionalPath(String),
   /// One or more paths, each read on its own, as a formatter takes files and folders; read back with
   /// [`InputArgument::list_of`].
   Paths(String),
@@ -28,6 +31,11 @@ impl CommandInput {
   /// One required path, `help` saying what it names: fixed text, or text built per file format.
   pub(crate) fn path(help: impl Into<String>) -> Self {
     Self::Path(help.into())
+  }
+
+  /// One path a named alternative may stand in for, `help` saying what it names.
+  pub(crate) fn optional_path(help: impl Into<String>) -> Self {
+    Self::OptionalPath(help.into())
   }
 
   /// One or more paths read one by one, `help` saying what they name.
@@ -48,6 +56,7 @@ impl CommandInput {
     match self {
       Self::None => command,
       Self::Path(help) => InputArgument::declare(command, help),
+      Self::OptionalPath(help) => InputArgument::declare_optional(command, help),
       Self::Paths(help) => InputArgument::declare_many(command, help),
       Self::Roots { help, prefix_help } => XrayRootsArguments::declare(command, help, prefix_help),
     }

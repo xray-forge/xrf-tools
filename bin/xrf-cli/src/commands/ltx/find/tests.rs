@@ -3,7 +3,7 @@ use crate::core::command::command_testing::run_command_for_result;
 
 // The path names nothing, so an accepted query fails on opening the project instead, with a different error.
 fn is_refused(arguments: &[&str]) -> bool {
-  let arguments: Vec<String> = ["find", "--silent", "--path", "absent-configs-root"]
+  let arguments: Vec<String> = ["find", "--silent", "absent-configs-root"]
     .iter()
     .chain(arguments)
     .map(|it| String::from(*it))

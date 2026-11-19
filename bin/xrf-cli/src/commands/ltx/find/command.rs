@@ -14,8 +14,8 @@ use xrf_utils::format_path;
 use super::report::LtxFindReport;
 use crate::commands::ltx::ltx_installation::LtxInstallation;
 use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
-use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 const SECTION_ARGUMENT: &str = "section";
 const FIELD_ARGUMENT: &str = "field";
@@ -29,19 +29,15 @@ impl GenericCommand for FindCommand {
     "find"
   }
 
+  fn input(&self) -> CommandInput {
+    LtxInstallation::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about(
         "Find where a section or field is written, declared or patched, across every config a project holds. A \
          config that does not parse is reported as not searched, and the run fails, since it may hold the answer",
-      )
-      .arg(
-        Arg::new("path")
-          .help(LtxInstallation::PATH_HELP)
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new(SECTION_ARGUMENT)
@@ -75,9 +71,7 @@ impl GenericCommand for FindCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let output: OutputOptions = context.get_output().clone();
 
@@ -130,7 +124,7 @@ impl GenericCommand for FindCommand {
     {
       xrf_output::info!(
         output,
-        "Resolved values: ltx inspect --path {}{} {section}",
+        "Resolved values: ltx inspect {}{} --section {section}",
         format_path(path),
         if is_dltx { " --dltx" } else { "" }
       );

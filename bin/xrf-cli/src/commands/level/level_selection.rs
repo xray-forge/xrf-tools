@@ -7,7 +7,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::commands::level::level_assets::LevelAssets;
-use crate::core::arguments::XrayRootsArguments;
+use crate::core::arguments::{InputArgument, XrayRootsArguments};
+use crate::core::command::CommandInput;
 
 /// A level named either as a directory on disk or as one of an installation's.
 pub(crate) struct LevelSelection {
@@ -18,16 +19,15 @@ pub(crate) struct LevelSelection {
 }
 
 impl LevelSelection {
-  /// Declares the arguments on a command of the domain, so every one of them names a level the same way.
+  /// The level directory a command may name its level by, its input, unless it names one through `--root`.
+  pub(crate) fn input() -> CommandInput {
+    CommandInput::optional_path("Path to a compiled level directory, the one holding `level` and `level.geom`")
+  }
+
+  /// Declares the installation alternative to the input on a command of the domain, so every one of them names a level
+  /// the same way: the input or `--root`, exactly one.
   pub(crate) fn declare(command: Command) -> Command {
     let command: Command = command
-      .arg(
-        Arg::new("path")
-          .help("Path to a compiled level directory, the one holding `level` and `level.geom`")
-          .short('p')
-          .long("path")
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("root")
           .help("Root holding an installation's levels. Repeat to layer roots, highest priority first")
@@ -44,7 +44,11 @@ impl LevelSelection {
           .requires("root")
           .value_parser(value_parser!(String)),
       )
-      .group(ArgGroup::new("selection").args(["path", "root"]).required(true));
+      .group(
+        ArgGroup::new("selection")
+          .args([InputArgument::ID, "root"])
+          .required(true),
+      );
 
     // A level's roots are read in auto mode by default, so an installation brings its archives and a bare tree is
     // read as it is.
@@ -59,7 +63,7 @@ impl LevelSelection {
   pub(crate) fn of(matches: &ArgMatches) -> XrfResult<Self> {
     Ok(Self {
       name: matches.get_one::<String>("level").cloned(),
-      path: matches.get_one::<PathBuf>("path").cloned(),
+      path: InputArgument::optional_of(matches).cloned(),
       roots: matches
         .get_many::<PathBuf>("root")
         .map(|values| values.cloned().collect())

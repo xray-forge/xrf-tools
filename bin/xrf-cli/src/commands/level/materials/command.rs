@@ -11,7 +11,7 @@ use xrf_output::OutputOptions;
 use super::report::LevelMaterialsReport;
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct MaterialsCommand;
@@ -19,6 +19,10 @@ pub(crate) struct MaterialsCommand;
 impl GenericCommand for MaterialsCommand {
   fn operation(&self) -> &'static str {
     "materials"
+  }
+
+  fn input(&self) -> CommandInput {
+    LevelSelection::input()
   }
 
   fn declare(&self, command: Command) -> Command {

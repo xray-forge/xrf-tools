@@ -26,7 +26,7 @@ impl LtxProjectOpening {
   pub(crate) fn open(path: &Path, matches: &ArgMatches, output: &OutputOptions) -> XrfResult<LtxProject> {
     if !path.is_dir() {
       return Err(XrfError::new_read_error(
-        "Expected configs root directory path as --path parameter",
+        "Expected the input to be a configs root directory",
       ));
     }
 

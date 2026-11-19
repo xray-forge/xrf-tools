@@ -11,7 +11,7 @@ use super::report::{LevelAlbedoReport, LevelAlbedoSummary};
 use crate::commands::level::albedo::albedo_texture::AlbedoOutcome;
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct AlbedoCommand;
@@ -19,6 +19,10 @@ pub(crate) struct AlbedoCommand;
 impl GenericCommand for AlbedoCommand {
   fn operation(&self) -> &'static str {
     "albedo"
+  }
+
+  fn input(&self) -> CommandInput {
+    LevelSelection::input()
   }
 
   fn declare(&self, command: Command) -> Command {

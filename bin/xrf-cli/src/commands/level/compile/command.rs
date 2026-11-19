@@ -8,8 +8,8 @@ use xrf_level_compiler::{
 };
 use xrf_output::OutputOptions;
 
-use crate::core::arguments::JobsArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, JobsArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 /// Compiles a level directory `level build` wrote, step by step, each by our own compiler: the geometry, its light
@@ -22,6 +22,10 @@ impl GenericCommand for CompileCommand {
     "compile"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to the level directory, <levels>/<level>, that level build wrote into")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about(
@@ -32,14 +36,6 @@ impl GenericCommand for CompileCommand {
          light), details (level.details lit from build.details, as xrDO_Light lights it) and ai (level.ai from \
          build.aimap, as xrAI -f compiles it, then checked as a graph). Before any step runs, the compile checks \
          that every input of the chosen steps is there, and a .thm for every texture build.prj names",
-      )
-      .arg(
-        Arg::new("path")
-          .help("Path to the level directory, <levels>/<level>, that level build wrote into")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("steps")
@@ -122,10 +118,7 @@ impl GenericCommand for CompileCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let level: PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("the path is required")
-      .clone();
+    let level: PathBuf = InputArgument::of(matches).clone();
     let gamedata: PathBuf = matches
       .get_one::<PathBuf>("gamedata")
       .cloned()

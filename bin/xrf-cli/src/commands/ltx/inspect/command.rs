@@ -15,8 +15,8 @@ use xrf_vfs::XrayLogicalPath;
 use super::report::LtxInspectReport;
 use crate::commands::ltx::ltx_installation::LtxInstallation;
 use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
-use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 /// How wide the value column may grow before a value simply takes the room it needs.
 ///
@@ -32,20 +32,17 @@ impl GenericCommand for InspectCommand {
     "inspect"
   }
 
+  fn input(&self) -> CommandInput {
+    LtxInstallation::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Explain one resolved section: its fields, and where each value is written")
       .arg(
-        Arg::new("path")
-          .help(LtxInstallation::PATH_HELP)
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
         Arg::new("section")
           .help("Name of the section to explain, without its brackets")
+          .long("section")
           .required(true)
           .value_parser(value_parser!(String)),
       )
@@ -61,9 +58,7 @@ impl GenericCommand for InspectCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let section: &String = matches
       .get_one::<String>("section")
       .expect("Expected a section name to be provided");

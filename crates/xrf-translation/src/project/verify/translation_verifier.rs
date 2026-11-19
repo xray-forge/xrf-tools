@@ -112,7 +112,7 @@ impl TranslationVerifier {
 
   /// Verify one file, skipping any path that is not a multi-language JSON source.
   ///
-  /// For a caller holding one file and no mounted roots, such as `--path <one file>`: a VFS mounts a directory, never
+  /// For a caller holding one file and no mounted roots, such as `translation verify <one file>`: a VFS mounts a directory, never
   /// a file.
   ///
   /// # Errors

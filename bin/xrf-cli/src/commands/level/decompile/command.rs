@@ -6,8 +6,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileReport, LevelDecompileRequest, LevelSceneDecompiler, LevelSurfaces};
 
-use crate::core::arguments::JobsArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, JobsArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 /// Decompiles a compiled level's directory into a Level Editor scene, with a provenance sidecar beside it.
@@ -19,6 +19,12 @@ impl GenericCommand for DecompileCommand {
     "decompile"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path(
+      "Path to the level's directory, holding level, build.lights, level.game, level.ps_static and the rest",
+    )
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about(
@@ -27,14 +33,6 @@ impl GenericCommand for DecompileCommand {
          sounds, sound environments, fog volumes, wall marks, patrol paths, respawn points, environment modifiers and \
          entity spawns), the level's glows and lights, and its static geometry as one .object per sector with the \
          sectors and portals",
-      )
-      .arg(
-        Arg::new("path")
-          .help("Path to the level's directory, holding level, build.lights, level.game, level.ps_static and the rest")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("dest")
@@ -130,10 +128,7 @@ impl GenericCommand for DecompileCommand {
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let build: BuildInfo = build_info!();
     let request: LevelDecompileRequest = LevelDecompileRequest {
-      source: matches
-        .get_one::<PathBuf>("path")
-        .expect("the path is required")
-        .clone(),
+      source: InputArgument::of(matches).clone(),
       destination: matches
         .get_one::<PathBuf>("dest")
         .expect("the destination is required")

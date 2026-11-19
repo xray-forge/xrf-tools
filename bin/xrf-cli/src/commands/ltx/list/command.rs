@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_ltx::{LtxDocumentSource, LtxProject};
 use xrf_ltx_inspect::{LtxInventory, LtxInventoryFile, LtxInventoryReader, LtxInventoryRole};
 use xrf_output::OutputOptions;
@@ -8,8 +8,8 @@ use xrf_utils::format_path;
 
 use crate::commands::ltx::ltx_installation::LtxInstallation;
 use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
-use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct ListCommand;
@@ -19,25 +19,18 @@ impl GenericCommand for ListCommand {
     "list"
   }
 
+  fn input(&self) -> CommandInput {
+    LtxInstallation::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    let command: Command = command
-      .about("List the LTX configs a project holds, and the role each one plays")
-      .arg(
-        Arg::new("path")
-          .help(LtxInstallation::PATH_HELP)
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      );
+    let command: Command = command.about("List the LTX configs a project holds, and the role each one plays");
 
     LtxDialectArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let output: OutputOptions = context.get_output().clone();
 

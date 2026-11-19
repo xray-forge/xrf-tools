@@ -20,11 +20,22 @@ impl InputArgument {
     command.arg(Self::create(help).num_args(1..))
   }
 
+  /// Declares a path the command may go without, `help` saying what it names; an `ArgGroup` the command declares
+  /// decides when it is needed.
+  pub(crate) fn declare_optional(command: Command, help: String) -> Command {
+    command.arg(Self::create(help).required(false))
+  }
+
   /// The path the command was given.
   pub(crate) fn of(matches: &ArgMatches) -> &PathBuf {
     matches
       .get_one::<PathBuf>(Self::ID)
       .expect("Expected the required input path")
+  }
+
+  /// The path the command was given, if it was given one.
+  pub(crate) fn optional_of(matches: &ArgMatches) -> Option<&PathBuf> {
+    matches.get_one::<PathBuf>(Self::ID)
   }
 
   /// The paths the command was given, in the order given.

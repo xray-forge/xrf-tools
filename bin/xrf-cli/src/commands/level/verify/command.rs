@@ -7,7 +7,7 @@ use xrf_report::{CheckReport, Report};
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
 use crate::commands::level::verify::report::LevelVerifyReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
@@ -16,6 +16,10 @@ pub(crate) struct VerifyCommand;
 impl GenericCommand for VerifyCommand {
   fn operation(&self) -> &'static str {
     "verify"
+  }
+
+  fn input(&self) -> CommandInput {
+    LevelSelection::input()
   }
 
   fn declare(&self, command: Command) -> Command {

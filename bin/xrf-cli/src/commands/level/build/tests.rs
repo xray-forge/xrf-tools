@@ -16,7 +16,6 @@ use crate::core::command::command_testing::run_command;
 fn run(command: &str, source: &Path, destination: &Path, extra: &[&str]) -> CommandResult {
   let mut arguments: Vec<String> = vec![
     String::from(command),
-    String::from("--path"),
     source.display().to_string(),
     String::from("--dest"),
     destination.display().to_string(),

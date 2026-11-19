@@ -18,7 +18,6 @@ fn refuses_a_level_missing_a_steps_input_before_running_it() -> XrfResult {
     &CompileCommand,
     &[
       String::from("compile"),
-      String::from("--path"),
       level.display().to_string(),
       String::from("--steps"),
       String::from("ai"),
@@ -39,7 +38,6 @@ fn refuses_the_light_step_without_the_geometry_step() {
     &CompileCommand,
     &[
       String::from("compile"),
-      String::from("--path"),
       String::from("levels/test_level"),
       String::from("--steps"),
       String::from("light"),
@@ -58,7 +56,6 @@ fn refuses_a_step_it_does_not_know() {
     &CompileCommand,
     &[
       String::from("compile"),
-      String::from("--path"),
       String::from("levels/test_level"),
       String::from("--steps"),
       String::from("lights"),

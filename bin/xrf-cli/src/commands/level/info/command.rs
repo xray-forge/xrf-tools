@@ -8,7 +8,7 @@ use super::level_visuals_report::LevelVisualsReport;
 use super::report::LevelInfoReport;
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct InfoCommand;
@@ -16,6 +16,10 @@ pub(crate) struct InfoCommand;
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {
     "info"
+  }
+
+  fn input(&self) -> CommandInput {
+    LevelSelection::input()
   }
 
   fn declare(&self, command: Command) -> Command {

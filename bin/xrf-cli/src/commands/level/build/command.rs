@@ -7,7 +7,8 @@ use xrf_rawdata::{
   LevelBuildExporter, LevelBuildImpostorLimit, LevelBuildReport, LevelBuildRequest, LevelExportedPrevious,
 };
 
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 /// Builds a Level Editor scene's game files into a level directory, as the editor's Build writes them.
@@ -17,6 +18,10 @@ pub(crate) struct BuildCommand;
 impl GenericCommand for BuildCommand {
   fn operation(&self) -> &'static str {
     "build"
+  }
+
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to the scene's .level; its parts are read from the directory beside it named after it")
   }
 
   fn declare(&self, command: Command) -> Command {
@@ -30,14 +35,6 @@ impl GenericCommand for BuildCommand {
          build_details.dds where the scene holds details, build.aimap where it holds an AI map, the impostor atlas \
          level_lods.dds and level_lods_nm.dds where a multi-use object has an impostor, and each breakable part as \
          meshes/brkbl#<n>.ogf",
-      )
-      .arg(
-        Arg::new("path")
-          .help("Path to the scene's .level; its parts are read from the directory beside it named after it")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("dest")
@@ -105,10 +102,7 @@ impl GenericCommand for BuildCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let request: LevelBuildRequest = LevelBuildRequest {
-      source: matches
-        .get_one::<PathBuf>("path")
-        .expect("the path is required")
-        .clone(),
+      source: InputArgument::of(matches).clone(),
       destination: matches
         .get_one::<PathBuf>("dest")
         .expect("the destination is required")
