@@ -323,7 +323,7 @@ impl MediaSink {
 
   /// The video encoder's name from the writer's transforms on `stream`: a hardware encoder with its device, or
   /// Microsoft's software encoder's own name.
-  unsafe fn find_encoder(writer: &IMFSinkWriter, stream: u32) -> String {
+  fn find_encoder(writer: &IMFSinkWriter, stream: u32) -> String {
     let Ok(writer) = writer.cast::<IMFSinkWriterEx>() else {
       return String::from("unknown");
     };
@@ -371,7 +371,7 @@ impl MediaSink {
     Some(String::from_utf16_lossy(&buffer[..length as usize]))
   }
 
-  unsafe fn new_attributes(count: u32) -> windows::core::Result<IMFAttributes> {
+  fn new_attributes(count: u32) -> windows::core::Result<IMFAttributes> {
     let mut attributes: Option<IMFAttributes> = None;
 
     // SAFETY: the out-pointer is valid.
@@ -380,7 +380,7 @@ impl MediaSink {
     attributes.ok_or_else(windows::core::Error::empty)
   }
 
-  unsafe fn new_h264(format: &RecordFormat) -> windows::core::Result<IMFMediaType> {
+  fn new_h264(format: &RecordFormat) -> windows::core::Result<IMFMediaType> {
     let bitrate: f64 =
       f64::from(format.width) * f64::from(format.height) * Self::BITS_PER_PIXEL * Self::get_frames_per_second(format);
 
@@ -399,7 +399,7 @@ impl MediaSink {
     }
   }
 
-  unsafe fn new_rgb32(format: &RecordFormat) -> windows::core::Result<IMFMediaType> {
+  fn new_rgb32(format: &RecordFormat) -> windows::core::Result<IMFMediaType> {
     // SAFETY: setting attributes of a new media type.
     unsafe {
       let media: IMFMediaType = Self::new_video(format, &MFVideoFormat_RGB32)?;
@@ -411,7 +411,7 @@ impl MediaSink {
     }
   }
 
-  unsafe fn new_video(format: &RecordFormat, subtype: &GUID) -> windows::core::Result<IMFMediaType> {
+  fn new_video(format: &RecordFormat, subtype: &GUID) -> windows::core::Result<IMFMediaType> {
     let (numerator, denominator) = Self::get_frame_rate(format);
 
     // SAFETY: setting attributes of a new media type.
@@ -432,7 +432,7 @@ impl MediaSink {
     }
   }
 
-  unsafe fn new_aac(sound: RecordSoundFormat) -> windows::core::Result<IMFMediaType> {
+  fn new_aac(sound: RecordSoundFormat) -> windows::core::Result<IMFMediaType> {
     // SAFETY: setting attributes of a new media type.
     unsafe {
       let media: IMFMediaType = Self::new_audio(sound, &MFAudioFormat_AAC)?;
@@ -443,7 +443,7 @@ impl MediaSink {
     }
   }
 
-  unsafe fn new_pcm(sound: RecordSoundFormat) -> windows::core::Result<IMFMediaType> {
+  fn new_pcm(sound: RecordSoundFormat) -> windows::core::Result<IMFMediaType> {
     let block: u32 = u32::from(sound.channels) * u32::from(Self::SOUND_BITS / 8);
 
     // SAFETY: setting attributes of a new media type.
@@ -457,7 +457,7 @@ impl MediaSink {
     }
   }
 
-  unsafe fn new_audio(sound: RecordSoundFormat, subtype: &GUID) -> windows::core::Result<IMFMediaType> {
+  fn new_audio(sound: RecordSoundFormat, subtype: &GUID) -> windows::core::Result<IMFMediaType> {
     // SAFETY: setting attributes of a new media type.
     unsafe {
       let media: IMFMediaType = MFCreateMediaType()?;
@@ -473,7 +473,7 @@ impl MediaSink {
   }
 
   /// A sample of `data` from `time` for `duration`, both in ticks.
-  unsafe fn new_sample(data: &[u8], time: i64, duration: i64) -> windows::core::Result<IMFSample> {
+  fn new_sample(data: &[u8], time: i64, duration: i64) -> windows::core::Result<IMFSample> {
     // Media Foundation buffer lengths are 32-bit; refuse a longer sample before allocating.
     let length: u32 = u32::try_from(data.len()).map_err(|_| windows::core::Error::from(E_INVALIDARG))?;
 
