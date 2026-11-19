@@ -8,6 +8,7 @@ use uuid::Uuid;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
+use xrf_ltx::LtxStandardDialect;
 use xrf_spawn_builder::{SpawnRootOptions, SpawnRootRequest};
 use xrf_test_utils::GeneratedResources;
 
@@ -73,7 +74,7 @@ fn a_build_cancelled_before_it_writes_ends_cancelled_with_nothing_written() {
 
   job.cancel();
 
-  let result = SpawnBuild::build(&request, &job).expect("a cancelled build");
+  let result = SpawnBuild::build(&request, &LtxStandardDialect, &job).expect("a cancelled build");
 
   assert_eq!(result.outcome, JobOutcome::Cancelled);
   assert!(result.spawn.is_none());
@@ -89,7 +90,7 @@ fn a_refused_build_fails_with_its_reason_and_releases_its_spawn() {
     tauri::async_runtime::block_on(registry.run(
       &execution,
       SpawnBuild::start(&request, id, Channel::new(|_| Ok(()))),
-      move |job| SpawnBuild::build(&request, &job),
+      move |job| SpawnBuild::build(&request, &LtxStandardDialect, &job),
       |result| result.outcome,
     ))
   };

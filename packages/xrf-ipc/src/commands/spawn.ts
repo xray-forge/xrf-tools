@@ -32,9 +32,12 @@ export enum ESpawnCommand {
 
 /** Commands */
 export const spawnCommands = {
-  /** Build and write a root spawn from a game's levels, as `spawn build` does, as a job cancellable until it writes. */
-  buildSpawn: (request: SpawnRootRequest, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<SpawnBuildResult>(ESpawnCommand.BUILD_SPAWN, { request, jobId, progress }),
+  /**
+   * Build and write a root spawn from a game's levels, as `spawn build` does, as a job cancellable until it writes. The
+   * game's configs are read with the DLTX patch dialect where `is_dltx` asks, as `spawn build --dltx` does.
+   */
+  buildSpawn: (request: SpawnRootRequest, isDltx: boolean, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<SpawnBuildResult>(ESpawnCommand.BUILD_SPAWN, { request, isDltx, jobId, progress }),
   /** Close the spawns `session_ids` name, committed or opening; a closed one answers no read. */
   closeFile: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(ESpawnCommand.CLOSE_FILE, { sessionIds }),
   /**
@@ -80,7 +83,10 @@ export const spawnCommands = {
 
 /** What each command of the `spawn` plugin takes and resolves to, keyed by its wire name. */
 export interface ISpawnCommandSignatures {
-  [ESpawnCommand.BUILD_SPAWN]: IIpcCommandSignature<typeof spawnCommands.buildSpawn, ["request", "jobId", "progress"]>;
+  [ESpawnCommand.BUILD_SPAWN]: IIpcCommandSignature<
+    typeof spawnCommands.buildSpawn,
+    ["request", "isDltx", "jobId", "progress"]
+  >;
   [ESpawnCommand.CLOSE_FILE]: IIpcCommandSignature<typeof spawnCommands.closeFile, ["sessionIds"]>;
   [ESpawnCommand.LIST_LEVELS]: IIpcCommandSignature<typeof spawnCommands.listLevels, ["gamedata", "levelsRoot"]>;
   [ESpawnCommand.OPEN_FILE]: IIpcCommandSignature<typeof spawnCommands.openFile, ["sessionId", "path"]>;

@@ -58,14 +58,15 @@ export class SpawnCompilerService {
    * Builds a root spawn from the levels `request` names and writes it.
    *
    * @param request - The levels, where they and the level list are read from, and the spawn to write.
+   * @param isDltx - Whether the game's configs are read with the DLTX patch dialect, which a mod built on it needs.
    */
   @ExclusiveFlow("operation")
-  public *build(request: SpawnRootRequest): TFlow {
+  public *build(request: SpawnRootRequest, isDltx: boolean): TFlow {
     this.log.info("Building spawn:", request.name, "from", request.levels ?? [], "into", request.destination);
 
     yield* this.operation.run({
       kind: SPAWN_JOB_BUILD,
-      invoke: (id: string, progress) => spawnCommands.buildSpawn(request, id, progress),
+      invoke: (id: string, progress) => spawnCommands.buildSpawn(request, isDltx, id, progress),
       describe: (outcome: IJobOutcome<SpawnBuildResult>): IJobNotice => describeSpawnBuildOutcome(request, outcome),
     });
   }

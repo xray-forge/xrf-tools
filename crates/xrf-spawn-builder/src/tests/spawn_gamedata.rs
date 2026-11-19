@@ -1,10 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
+use xrf_ltx::LtxStandardDialect;
+use xrf_report::CheckReport;
 use xrf_test_utils::GeneratedResources;
 
+use crate::root::spawn_root_report::SpawnRootReport;
 use crate::{SpawnListedLevel, SpawnRootGamedata, SpawnRootOptions, SpawnRootRequest};
 
 fn gamedata(case: &str) -> XrfResult<(PathBuf, PathBuf)> {
@@ -45,7 +48,7 @@ fn request(gamedata: &Path, levels: Option<&[&str]>, name: &str) -> SpawnRootReq
 }
 
 fn assert_refused(request: &SpawnRootRequest, message: &str) {
-  let error: String = SpawnRootGamedata::build(request, &JobHandle::inert())
+  let error: String = SpawnRootGamedata::build(request, &LtxStandardDialect, &JobHandle::inert())
     .expect_err("expect the build refused")
     .to_string();
 
@@ -136,6 +139,38 @@ fn refuses_levels_it_cannot_take_before_reading_any() -> XrfResult {
   assert_refused(
     &request(&gamedata, None, "qa_levels"),
     "No level the game lists holds level.ai, level.spawn and level.game",
+  );
+
+  Ok(())
+}
+
+// Game data unpacked in part names includes its archives hold; the build goes on with the table's classes.
+#[test]
+fn reads_the_levels_where_the_configs_do_not_read() -> XrfResult {
+  let (gamedata, levels) = gamedata("unread-configs")?;
+
+  fs::write(
+    gamedata.join("configs/system.ltx"),
+    "#include \"weapons\\weapons.ltx\"\n\n[actor]\nclass = S_ACTOR\n",
+  )?;
+
+  // Past the configs, it reads the levels, whose files here are empty.
+  assert_refused(
+    &SpawnRootRequest {
+      levels_root: Some(levels),
+      ..request(&gamedata, Some(&["labx8"]), "qa_levels")
+    },
+    "Level labx8:",
+  );
+
+  let unread: CheckReport = SpawnRootReport::get_configs(Some(&XrfError::new_invalid_error("weapons.ltx is missing")));
+
+  assert!(SpawnRootReport::get_configs(None).findings().is_empty());
+  assert_eq!(unread.findings().len(), 1);
+  assert_eq!(unread.findings()[0].subject(), Some("configs/system.ltx"));
+  assert!(
+    unread.findings()[0].message().contains("weapons.ltx is missing"),
+    "{unread:?}"
   );
 
   Ok(())

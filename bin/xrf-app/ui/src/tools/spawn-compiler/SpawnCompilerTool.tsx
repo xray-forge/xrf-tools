@@ -9,6 +9,7 @@ import { FormRow } from "@xrf/ui/form/row";
 import { TextField } from "@xrf/ui/input";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
+import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { ESpawnCompilerField } from "@/core/spawn/lib/compiler/spawn-compiler-field";
@@ -38,6 +39,7 @@ export function SpawnCompilerTool(): ReactElement {
   const [name, setName] = useState<string>("all");
   const [isSeparatorStrict, setIsSeparatorStrict] = useState<boolean>(false);
   const [isForced, setIsForced] = useState<boolean>(false);
+  const [isDltx, setIsDltx] = useState<boolean>(false);
 
   const gamedata: IPathField = usePathField({
     tool: EToolId.SPAWN_COMPILER,
@@ -102,9 +104,9 @@ export function SpawnCompilerTool(): ReactElement {
     async (submitted: SpawnRootRequest) => {
       log.info("Building spawn:", submitted.name);
 
-      await compilerService.build(submitted);
+      await compilerService.build(submitted, isDltx);
     },
-    [compilerService, log]
+    [compilerService, isDltx, log]
   );
 
   const onLevelsChange = useCallback(
@@ -159,6 +161,8 @@ export function SpawnCompilerTool(): ReactElement {
         description={"The game data holding configs\\game_levels.ltx, which names each level's id and offset"}
         field={gamedata}
       />
+
+      <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isRunning} onChange={setIsDltx} />
 
       <PathFormRow
         isDisabled={isRunning}

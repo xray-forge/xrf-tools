@@ -33,13 +33,15 @@ describe("SpawnCompilerTool", () => {
     remember(ESpawnCompilerField.DESTINATION, "D:\\qa\\spawn");
   });
 
-  it("offers the levels built, then builds the ones ticked from the start level chosen and shows what it wrote", async () => {
+  it("offers the levels built, then builds the ones ticked from the start level and in the dialect chosen, and shows what it wrote", async () => {
     let sent: Nullable<SpawnRootRequest> = null;
+    let sentDltx: Nullable<boolean> = null;
 
     mockIpcCommands({
       [ESpawnCommand.LIST_LEVELS]: mockSpawnListedLevels(),
-      [ESpawnCommand.BUILD_SPAWN]: ({ request }) => {
+      [ESpawnCommand.BUILD_SPAWN]: ({ request, isDltx }) => {
         sent = request;
+        sentDltx = isDltx;
 
         return mockSpawnBuildResult([
           {
@@ -61,6 +63,7 @@ describe("SpawnCompilerTool", () => {
 
     fireEvent.click(getByRole("option", { name: "labx8" }));
     fireEvent.change(getByRole("textbox", { name: "Spawn name" }), { target: { value: "qa_levels" } });
+    fireEvent.click(getByRole("button", { name: "DLTX" }));
 
     const submit = getByRole("button", { name: "Build" });
 
@@ -78,6 +81,7 @@ describe("SpawnCompilerTool", () => {
       options: { start: "labx8", isSeparatorStrict: false },
       isForced: false,
     });
+    expect(sentDltx).toBe(true);
   });
 
   it("shows why the build was refused", async () => {

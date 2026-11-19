@@ -6,7 +6,7 @@ use xrf_output::OutputOptions;
 use xrf_spawn_builder::{SpawnRootGamedata, SpawnRootOptions, SpawnRootOutcome, SpawnRootRequest};
 use xrf_utils::format_path;
 
-use crate::core::arguments::{InputArgument, JobsArgument};
+use crate::core::arguments::{InputArgument, JobsArgument, LtxDialectArgument};
 use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
@@ -82,7 +82,7 @@ impl GenericCommand for BuildCommand {
           .action(ArgAction::SetTrue),
       );
 
-    JobsArgument::declare(command)
+    LtxDialectArgument::declare(JobsArgument::declare(command))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -101,7 +101,11 @@ impl GenericCommand for BuildCommand {
       },
       is_forced: matches.get_flag("force"),
     };
-    let outcome: SpawnRootOutcome = SpawnRootGamedata::build(&request, &CliJob::for_output(context.get_output()))?;
+    let outcome: SpawnRootOutcome = SpawnRootGamedata::build(
+      &request,
+      LtxDialectArgument::of(matches).as_ref(),
+      &CliJob::for_output(context.get_output()),
+    )?;
 
     Self::print(context.get_output(), &outcome);
     context.set_result(|| &outcome)?;

@@ -1,6 +1,8 @@
 use std::time::Duration;
 
+use xrf_error::XrfError;
 use xrf_report::{CheckId, CheckReport, Finding, RuleId, Status};
+use xrf_spawn::SpawnSectionClasses;
 
 use crate::merge::spawn_skipped_connection::SpawnSkippedConnection;
 use crate::root::spawn_root_level::SpawnRootLevel;
@@ -29,6 +31,24 @@ impl SpawnRootReport {
             )
           })
         })
+        .collect(),
+    )
+  }
+
+  /// `spawn.configs`: the game's configs left unread, `unread` why, so each section's class came from the table alone.
+  pub(crate) fn get_configs(unread: Option<&XrfError>) -> CheckReport {
+    Self::new_check(
+      "spawn.configs",
+      None,
+      unread
+        .map(|error| {
+          Finding::new(
+            RuleId::of_static("spawn.configs.unread"),
+            Some(String::from(SpawnSectionClasses::SYSTEM_LTX_PATH)),
+            format!("{error}; each section's class comes from the built-in table of the games' sections"),
+          )
+        })
+        .into_iter()
         .collect(),
     )
   }

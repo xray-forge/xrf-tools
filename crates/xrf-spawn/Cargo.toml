@@ -32,6 +32,8 @@ typescript-bindings = ["specta", "xrf-math/typescript-bindings"]
 
 [dev-dependencies]
 serde_json = { workspace = true }
+# A mod's configs, read as the game reads them where a caller picks the patch dialect.
+xrf-dltx = { workspace = true }
 xrf-math = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 xrf-utils = { workspace = true, features = ["staging-faults"] }

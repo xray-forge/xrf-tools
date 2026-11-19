@@ -49,7 +49,8 @@ and level counts against the chunks. The game graph is most of a set's bytes, so
 - An alife object is chunk-framed and its reader checks it consumed everything, so a misread class fails that object
   instead of corrupting the next.
 - A section's class selects the server-class reader (`AlifeObjectInherited`) for its payload. `SpawnSectionClasses`
-  gives the class: the section's `class` key in the game's configs, through its parents, as the game reads it; else
+  gives the class: the section's `class` key in the game's configs, through its parents, read under the dialect the
+  caller picks (standard or DLTX) as the game reads them; else
   the built-in table of Call of Pripyat and Clear Sky sections (`ClsId::from_dialect_section`). The table reads every
   section vanilla Call of Pripyat's configs declare (679) as its class's payload, and every one of Clear Sky's (458)
   but two multiplayer weapons. `LevelSpawnObject::read_alife_object_by` takes the configs' classes; `all.spawn` and LTX

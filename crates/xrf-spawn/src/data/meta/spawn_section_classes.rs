@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, LtxDialect};
 
 use crate::data::alife::script_dialect::ScriptDialect;
 use crate::data::meta::cls_id::ClsId;
@@ -41,20 +41,20 @@ impl SpawnSectionClasses {
     }
   }
 
-  /// The classes the configs of the game data at `gamedata` declare, or the table alone where it holds no
-  /// `configs/system.ltx`.
+  /// The classes the configs of the game data at `gamedata` declare, read under `dialect`, or the table alone where it
+  /// holds no `configs/system.ltx`.
   ///
   /// # Errors
   ///
-  /// Returns an error naming the file when the configs are there but do not read.
-  pub fn read_from_gamedata(gamedata: &Path) -> XrfResult<Self> {
+  /// Returns an error naming the file when the configs are there but do not read under `dialect`.
+  pub fn read_from_gamedata(gamedata: &Path, dialect: &dyn LtxDialect) -> XrfResult<Self> {
     let path = gamedata.join(Self::SYSTEM_LTX_PATH);
 
     if !path.is_file() {
       return Ok(Self::default());
     }
 
-    Ltx::read_from_file_standard(&path)
+    Ltx::read_from_file_with_dialect(&path, dialect)
       .map(|ltx| Self::from_configs(&ltx))
       .map_err(|error| XrfError::new_invalid_error(format!("The configs {}: {error}", path.display())))
   }
@@ -82,8 +82,12 @@ impl SpawnSectionClasses {
 
 #[cfg(test)]
 mod tests {
+  use std::path::PathBuf;
+
+  use xrf_dltx::DltxDialect;
   use xrf_error::XrfResult;
-  use xrf_ltx::Ltx;
+  use xrf_ltx::{Ltx, LtxStandardDialect};
+  use xrf_test_utils::GeneratedResources;
 
   use crate::data::alife::script_dialect::ScriptDialect;
   use crate::data::meta::cls_id::ClsId;
@@ -125,6 +129,37 @@ mod tests {
     assert_eq!(
       SpawnSectionClasses::default().get_cls_id("zone_field_acidic", ScriptDialect::ClearSky)?,
       ClsId::ZsRadio
+    );
+
+    Ok(())
+  }
+
+  // A section a mod's patch file adds reads only under the patch dialect, as the mod's game reads it.
+  #[test]
+  fn reads_the_game_datas_configs_under_the_dialect_asked_for() -> XrfResult {
+    let gamedata: PathBuf = GeneratedResources::create_dir("spawn/section-classes/dltx")?;
+
+    std::fs::create_dir_all(gamedata.join("configs"))?;
+    std::fs::write(
+      gamedata.join(SpawnSectionClasses::SYSTEM_LTX_PATH),
+      "[ammo_base]\nclass = AMMO_S\n",
+    )?;
+    std::fs::write(
+      gamedata.join("configs/mod_system_tracers.ltx"),
+      "[ammo_tracer]:ammo_base\ninv_name = tracer\n",
+    )?;
+
+    let patched: SpawnSectionClasses = SpawnSectionClasses::read_from_gamedata(&gamedata, &DltxDialect)?;
+    let standard: SpawnSectionClasses = SpawnSectionClasses::read_from_gamedata(&gamedata, &LtxStandardDialect)?;
+
+    assert_eq!(
+      patched.get_cls_id("ammo_tracer", ScriptDialect::CallOfPripyat)?,
+      ClsId::AmmoS
+    );
+    assert!(
+      standard
+        .get_cls_id("ammo_tracer", ScriptDialect::CallOfPripyat)
+        .is_err()
     );
 
     Ok(())

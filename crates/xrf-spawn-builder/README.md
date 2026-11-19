@@ -43,8 +43,11 @@ fn main() -> xrf_error::XrfResult {
 - `is_forced`: write over a spawn already there in any case of its name; unforced, the build refuses before reading a
   level.
 
-Each section's class comes from the root's `configs/system.ltx` through `xrf-spawn`'s `SpawnSectionClasses`, or from
-its built-in vanilla table where the root has none. Levels are read in parallel, with the same result. The job hears
+Each section's class comes from the root's `configs/system.ltx` through `xrf-spawn`'s `SpawnSectionClasses`, read
+under the dialect the caller picks (`SpawnRootGamedata::build` takes it; the binaries choose DLTX), or from its
+built-in vanilla table where the root has none. Configs that do not read under that dialect, as game data unpacked in
+part, leave the table alone, and the report's `spawn.configs` check says why. Levels are read in parallel, with the
+same result. The job hears
 three stages under `SpawnRootGamedata::PROGRESS_STAGES` (levels read, spawn built, spawn written), and a cancelled build
 stops between them. `SpawnRootOutcome` gives the file written, the levels in id order, both GUIDs, the counts and the
 report.

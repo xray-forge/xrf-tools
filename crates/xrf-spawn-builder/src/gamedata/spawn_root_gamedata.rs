@@ -1,10 +1,13 @@
 use std::ffi::OsStr;
+use std::iter;
 use std::path::{Path, PathBuf};
 
 use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobScope};
+use xrf_ltx::LtxDialect;
+use xrf_report::Report;
 use xrf_spawn::SpawnSectionClasses;
 use xrf_utils::{OutputFiles, narrow_format_size};
 
@@ -17,6 +20,7 @@ use crate::gamedata::spawn_root_request::SpawnRootRequest;
 use crate::root::spawn_root_build::SpawnRootBuild;
 use crate::root::spawn_root_builder::SpawnRootBuilder;
 use crate::root::spawn_root_level::SpawnRootLevel;
+use crate::root::spawn_root_report::SpawnRootReport;
 
 /// The root spawn build over a gamedata root, as `xrAI -s` reads `$game_levels$` and writes `$game_spawn$`.
 ///
@@ -28,15 +32,17 @@ impl SpawnRootGamedata {
   /// The job progress key of a build's three stages: levels read, spawn built, spawn written.
   pub const PROGRESS_STAGES: &'static str = "stages";
 
-  /// Builds the spawn `request` asks for and writes it, stopping between stages where `job` is cancelled.
+  /// Builds the spawn `request` asks for and writes it, stopping between stages where `job` is cancelled. The game's
+  /// configs are read under `dialect`; where they do not read, as with includes not on disk, each section's class
+  /// comes from the table alone and the report says why.
   ///
   /// # Errors
   ///
   /// Returns an error when the name is no plain file name, the request asks for no level or one twice, the level list
-  /// does not read or lacks a level to build, the configs or a level's files do not read, an object's section has no
-  /// class, `SpawnRootBuilder::build` refuses, an unforced request finds the spawn present in any case of its name,
-  /// the job is cancelled, or the spawn cannot be written.
-  pub fn build(request: &SpawnRootRequest, job: &JobHandle) -> XrfResult<SpawnRootOutcome> {
+  /// does not read or lacks a level to build, a level's files do not read, an object's section has no class,
+  /// `SpawnRootBuilder::build` refuses, an unforced request finds the spawn present in any case of its name, the job is
+  /// cancelled, or the spawn cannot be written.
+  pub fn build(request: &SpawnRootRequest, dialect: &dyn LtxDialect, job: &JobHandle) -> XrfResult<SpawnRootOutcome> {
     if request.name.is_empty() || Path::new(&request.name).file_name() != Some(OsStr::new(&request.name)) {
       return Err(XrfError::new_invalid_error(format!(
         "The spawn's name '{}' is not a file name",
@@ -55,7 +61,11 @@ impl SpawnRootGamedata {
     let levels_root: PathBuf = request.get_levels_root();
     let listed: SpawnGameLevels = SpawnGameLevels::read_from_path(&request.gamedata.join(SpawnGameLevels::PATH))?;
     let selected: Vec<&SpawnGameLevel> = Self::select(&listed, request, &levels_root)?;
-    let classes: SpawnSectionClasses = SpawnSectionClasses::read_from_gamedata(&request.gamedata)?;
+    let (classes, unread): (SpawnSectionClasses, Option<XrfError>) =
+      match SpawnSectionClasses::read_from_gamedata(&request.gamedata, dialect) {
+        Ok(classes) => (classes, None),
+        Err(error) => (SpawnSectionClasses::default(), Some(error)),
+      };
     let files: Vec<SpawnLevelFiles> = selected
       .par_iter()
       .map(|level| SpawnLevelFiles::read(&levels_root.join(&level.name), &level.name, &classes))
@@ -92,7 +102,11 @@ impl SpawnRootGamedata {
       objects: build.spawn.header.objects_count,
       artefact_points: narrow_format_size(build.spawn.artefact_spawn.nodes.len(), "A spawn's artefact point count")?,
       patrols: narrow_format_size(build.spawn.patrols.patrols.len(), "A spawn's patrol count")?,
-      report: build.report,
+      report: Report::new(
+        iter::once(SpawnRootReport::get_configs(unread.as_ref()))
+          .chain(build.report.checks().iter().cloned())
+          .collect(),
+      ),
     })
   }
 
