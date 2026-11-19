@@ -5,7 +5,8 @@ use xrf_build_info::{BuildInfo, build_info};
 use xrf_output::OutputOptions;
 use xrf_rawdata::{ObjectDecompileReport, ObjectDecompileRequest, ObjectDecompiler};
 
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 /// Decompiles an OGF into the SDK editable object it was exported from, with a provenance sidecar beside it.
 #[derive(Default)]
@@ -16,19 +17,15 @@ impl GenericCommand for DecompileCommand {
     "decompile"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to the OGF or .dm to decompile")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about(
         "Decompile a skeleton or static OGF, or a .dm detail model, into an SDK .object, with a .object.xrf.json \
          provenance sidecar beside it",
-      )
-      .arg(
-        Arg::new("path")
-          .help("Path to the OGF or .dm to decompile")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("dest")
@@ -49,10 +46,7 @@ impl GenericCommand for DecompileCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let request: ObjectDecompileRequest = ObjectDecompileRequest {
-      source: matches
-        .get_one::<PathBuf>("path")
-        .expect("the path is required")
-        .clone(),
+      source: InputArgument::of(matches).clone(),
       destination: matches
         .get_one::<PathBuf>("dest")
         .expect("the destination is required")

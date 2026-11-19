@@ -7,7 +7,8 @@ use xrf_spawn::XRayByteOrder;
 use xrf_thm::{ThmBumpPatchReport, ThmBumpProcessor};
 use xrf_utils::format_path;
 
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct PatchBumpCommand;
@@ -17,17 +18,12 @@ impl GenericCommand for PatchBumpCommand {
     "patch-bump"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to thm file")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    command
-      .about("Repoint the bump texture reference of a THM file")
-      .arg(
-        Arg::new("path")
-          .help("Path to thm file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+    command.about("Repoint the bump texture reference of a THM file")
       .arg(
         Arg::new("dest")
           .help("Path to resulting thm file, defaults to in place rewrite of the source file")
@@ -57,9 +53,7 @@ impl GenericCommand for PatchBumpCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let to: Option<&String> = matches.get_one::<String>("to");
 

@@ -7,7 +7,8 @@ use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct PatchMotionRefsCommand;
@@ -17,17 +18,13 @@ impl GenericCommand for PatchMotionRefsCommand {
     "patch-motion-refs"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to ogf file")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Rewrite the motion refs of an OGF visual")
-      .arg(
-        Arg::new("path")
-          .help("Path to ogf file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path to resulting ogf file, defaults to in place rewrite of the source file")
@@ -53,9 +50,7 @@ impl GenericCommand for PatchMotionRefsCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let motion_refs: Vec<String> = matches
       .get_many::<String>("refs")

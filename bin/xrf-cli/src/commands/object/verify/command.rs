@@ -12,7 +12,8 @@ use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::format_path;
 
 use crate::commands::object::verify::report::ObjectVerifyReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 /// Compiles an SDK editable object in memory and checks the OGF against one it should stand in for, by what the
@@ -25,17 +26,13 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to the .object to compile")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Compile an SDK .object in memory and compare it with the OGF it should stand in for")
-      .arg(
-        Arg::new("path")
-          .help("Path to the .object to compile")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("ogf")
           .help("Path to the OGF the compile should stand in for, such as the one the object was exported to")
@@ -46,7 +43,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches.get_one::<PathBuf>("path").expect("the path is required");
+    let source: &PathBuf = InputArgument::of(matches);
     let reference: &PathBuf = matches.get_one::<PathBuf>("ogf").expect("the OGF is required");
     let output: OutputOptions = context.get_output().clone();
 

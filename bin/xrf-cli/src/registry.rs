@@ -54,17 +54,12 @@ mod tests {
   // todo: Move these domains' inputs to `InputArgument` and their positional selectors to named flags, then drop
   // the list so the rule below holds for every command.
   /// Domains still reading their input through `-p/--path`.
-  const NAMED_INPUT_DOMAINS: [&str; 15] = [
-    "dds",
+  const NAMED_INPUT_DOMAINS: [&str; 10] = [
     "dialog",
-    "externs",
     "gamedata",
     "gamemtl",
     "level",
     "ltx",
-    "object",
-    "ogf",
-    "omf",
     "particle",
     "spawn",
     "sprite",

@@ -16,7 +16,6 @@ use crate::core::command::command_testing::run_command;
 fn compile(source: &Path, destination: &Path, extra: &[&str]) -> CommandResult {
   let mut arguments: Vec<String> = vec![
     String::from("compile"),
-    String::from("--path"),
     source.display().to_string(),
     String::from("--dest"),
     destination.display().to_string(),
@@ -102,7 +101,6 @@ fn compiles_a_decompiled_detail_model_back_to_its_bytes_through_the_sidecar() ->
     &DecompileCommand,
     &[
       "decompile",
-      "--path",
       &model.display().to_string(),
       "--dest",
       &object.display().to_string(),

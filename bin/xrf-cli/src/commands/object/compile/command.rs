@@ -5,7 +5,8 @@ use xrf_build_info::{BuildInfo, build_info};
 use xrf_output::OutputOptions;
 use xrf_rawdata::{ObjectCompileReport, ObjectCompileRequest, ObjectCompiler, TangentMethod};
 
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 /// Compiles an SDK editable object into the OGF the engine loads, as the Actor Editor's export does, or into a detail
 /// model as the Level Editor's `EDetail` exports one.
@@ -17,19 +18,15 @@ impl GenericCommand for CompileCommand {
     "compile"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to the .object to compile")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about(
         "Compile an SDK .object into the OGF the engine loads (a skeleton with bones, else a static visual), or into a \
          .dm detail model where the destination is one",
-      )
-      .arg(
-        Arg::new("path")
-          .help("Path to the .object to compile")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("dest")
@@ -64,10 +61,7 @@ impl GenericCommand for CompileCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let request: ObjectCompileRequest = ObjectCompileRequest {
-      source: matches
-        .get_one::<PathBuf>("path")
-        .expect("the path is required")
-        .clone(),
+      source: InputArgument::of(matches).clone(),
       destination: matches
         .get_one::<PathBuf>("dest")
         .expect("the destination is required")

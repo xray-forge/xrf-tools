@@ -6,8 +6,8 @@ use xrf_output::OutputOptions;
 
 use crate::commands::ogf::fix::ogf_fixer::OgfFixer;
 use crate::commands::ogf::fix::report::OgfFixReport;
-use crate::core::arguments::JobsArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, JobsArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct FixCommand;
@@ -17,17 +17,13 @@ impl GenericCommand for FixCommand {
     "fix"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to an ogf file or a directory to sweep")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Rewrite OGF visuals into well-formed bytes, changing nothing the engine reads")
-      .arg(
-        Arg::new("path")
-          .help("Path to an ogf file or a directory to sweep")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path to the resulting ogf file, defaults to in place rewrite of the source file; not for a directory")
@@ -47,9 +43,7 @@ impl GenericCommand for FixCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let destination: Option<&Path> = matches.get_one::<PathBuf>("dest").map(PathBuf::as_path);
     let is_dry_run: bool = matches.get_flag("dry-run");
 

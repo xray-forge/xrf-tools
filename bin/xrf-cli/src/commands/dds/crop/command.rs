@@ -7,7 +7,8 @@ use xrf_texture::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 use xrf_utils::{OutputFiles, format_path};
 
 use super::report::DdsCropReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct CropCommand;
@@ -17,17 +18,13 @@ impl GenericCommand for CropCommand {
     "crop"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to the dds file to read the region from")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Crop a rectangular region out of a DDS file into a new DDS file")
-      .arg(
-        Arg::new("path")
-          .help("Path to the dds file to read the region from")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path of the dds file to write")
@@ -88,9 +85,7 @@ impl GenericCommand for CropCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid source path to be provided");
+    let source: &PathBuf = InputArgument::of(matches);
     let output_path: &PathBuf = matches
       .get_one::<PathBuf>("dest")
       .expect("Expected valid output path to be provided");

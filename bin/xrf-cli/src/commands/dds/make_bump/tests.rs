@@ -33,7 +33,6 @@ fn run(case: &str, arguments: &[&str]) -> CommandResult<(PathBuf, Value)> {
 
   let mut command: Vec<String> = vec![
     String::from("make-bump"),
-    String::from("-p"),
     source.display().to_string(),
     String::from("-d"),
     destination.display().to_string(),

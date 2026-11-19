@@ -28,7 +28,6 @@ fn check(root: &Path) -> (CommandResult, Option<Value>) {
     &ExportCommand,
     &[
       String::from("export"),
-      String::from("-p"),
       root.join("declarations").display().to_string(),
       String::from("-d"),
       root.join("externs.json").display().to_string(),
@@ -117,7 +116,6 @@ fn keeps_invalid_declarations_an_execution_failure_when_writing() -> XrfResult {
     &ExportCommand,
     &[
       String::from("export"),
-      String::from("-p"),
       root.join("declarations").display().to_string(),
       String::from("-d"),
       root.join("written.json").display().to_string(),

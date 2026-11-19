@@ -9,7 +9,8 @@ use xrf_utils::format_path;
 
 use super::report::DdsMakeBumpReport;
 use crate::commands::dds::dds_encode_arguments::DdsEncodeArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct MakeBumpCommand;
@@ -19,17 +20,13 @@ impl GenericCommand for MakeBumpCommand {
     "make-bump"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path of the height map the relief is read from, averaged across its colour channels")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map")
-      .arg(
-        Arg::new("path")
-          .help("Path of the height map the relief is read from, averaged across its colour channels")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path of the texture the pair belongs to, without the `_bump` suffix or an extension")
@@ -79,7 +76,7 @@ impl GenericCommand for MakeBumpCommand {
   /// A gloss too dark to show a specular response is reported rather than refused, exactly as the SDK reports it and
   /// keeps the files: a matte surface is a thing somebody may have meant.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let height: &PathBuf = matches.get_one("path").expect("Expected valid height path");
+    let height: &PathBuf = InputArgument::of(matches);
     let destination: &PathBuf = matches.get_one("dest").expect("Expected valid destination path");
     let output: OutputOptions = context.get_output().clone();
 

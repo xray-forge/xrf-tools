@@ -8,7 +8,8 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfFilterMotionsReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct FilterMotionsCommand;
@@ -18,17 +19,13 @@ impl GenericCommand for FilterMotionsCommand {
     "filter-motions"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Path to omf file")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Keep only the selected motions of an OMF file")
-      .arg(
-        Arg::new("path")
-          .help("Path to omf file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path to resulting omf file")
@@ -68,9 +65,7 @@ impl GenericCommand for FilterMotionsCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let destination: &PathBuf = matches
       .get_one::<PathBuf>("dest")

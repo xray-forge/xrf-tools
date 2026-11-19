@@ -12,7 +12,8 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_duration, format_path, format_portable_path};
 
 use crate::commands::omf::repack::{OmfRepackOutcome, OmfRepackStatistics, OmfRepackVerifyReport};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::host_walk::HostWalk;
 use crate::core::report::ReportVerdict;
 use crate::core::reports::FileConversionReport;
@@ -25,17 +26,13 @@ impl GenericCommand for RepackCommand {
     "repack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::Path("Omf file to repack, or with --verify an omf file or a directory of them")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Repack an OMF file, or verify that OMF files repack into the bytes they were read from")
-      .arg(
-        Arg::new("path")
-          .help("Omf file to repack, or with --verify an omf file or a directory of them")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Repacked omf file written")
@@ -54,9 +51,7 @@ impl GenericCommand for RepackCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     if matches.get_flag("verify") {
       return Self::verify(context, path);

@@ -22,7 +22,6 @@ fn verify(source: &Path, reference: &Path) -> CommandResult {
     &VerifyCommand,
     &[
       String::from("verify"),
-      String::from("--path"),
       source.display().to_string(),
       String::from("--ogf"),
       reference.display().to_string(),
