@@ -36,8 +36,11 @@ const KEY_LABELS: ReadonlyMap<string, string> = new Map([[" ", "Space"]]);
 
 const FUNCTION_KEY_PATTERN: RegExp = /^f([1-9]|1[0-9]|2[0-4])$/;
 
-/** A letter no Latin layout prints, Cyrillic or Greek; a symbol such as `!` or AZERTY's `&` reads as itself. */
-const NON_LATIN_LETTER_PATTERN: RegExp = /^(?![a-z])\p{L}$/u;
+/**
+ * A letter outside plain `a` to `z`, such as Cyrillic `п`, Greek `π` or German `ö`, read by its key's place; a symbol
+ * such as `!` or AZERTY's `&` reads as itself.
+ */
+const NON_ASCII_LETTER_PATTERN: RegExp = /^(?![a-z])\p{L}$/u;
 
 /** A letter key by its place on the keyboard, as `event.code` names it whatever the layout: `KeyG`. */
 const LETTER_CODE_PATTERN: RegExp = /^Key([A-Z])$/;
@@ -242,7 +245,7 @@ function toChordEventKey(event: KeyboardEvent): string {
 
   const character: string = event.key.toLowerCase();
 
-  if (!NON_LATIN_LETTER_PATTERN.test(character)) {
+  if (!NON_ASCII_LETTER_PATTERN.test(character)) {
     return character;
   }
 

@@ -54,7 +54,8 @@ export interface IEditorPopoverVectorRowProps extends BaseComponentProps {
 
 /**
  * A few numbers in a stacked row of a toolbar popover or panel, each typed as it is held, unclamped; the owner is told
- * once one is let go. Too many to share a row with the label, they stand under it, a colour's swatch first.
+ * once a typed one is let go, and on every move of a colour's picker. Too many to share a row with the label, they
+ * stand under it, a colour's swatch first.
  */
 export function EditorPopoverVectorRow({
   "data-testid": dataTestId = "editor-popover-vector-row",
