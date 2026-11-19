@@ -11,7 +11,7 @@ use xrf_utils::format_portable_path;
 
 use crate::commands::sprite::verify_equipment::SpriteVerifyEquipmentReport;
 use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
@@ -41,6 +41,10 @@ impl VerifyEquipmentCommand {
 impl GenericCommand for VerifyEquipmentCommand {
   fn operation(&self) -> &'static str {
     "verify-equipment"
+  }
+
+  fn input(&self) -> CommandInput {
+    CommandInput::None
   }
 
   fn declare(&self, command: Command) -> Command {

@@ -8,7 +8,7 @@ use xrf_utils::format_path;
 
 use super::report::SpriteDescriptionReport;
 use crate::core::arguments::LinkPolicyArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -17,6 +17,10 @@ pub(crate) struct PackDescriptionCommand;
 impl GenericCommand for PackDescriptionCommand {
   fn operation(&self) -> &'static str {
     "pack-description"
+  }
+
+  fn input(&self) -> CommandInput {
+    CommandInput::None
   }
 
   fn declare(&self, command: Command) -> Command {

@@ -15,11 +15,9 @@ pub(crate) trait GenericCommand: Sync {
   /// Operation token within this command's registered domain.
   fn operation(&self) -> &'static str;
 
-  // todo: Drop this default once every command states its input, so no command can leave the choice unmade.
-  /// What the command reads, declared as its positional argument before [`Self::declare`] adds the rest.
-  fn input(&self) -> CommandInput {
-    CommandInput::None
-  }
+  /// What the command reads, declared as its positional argument before [`Self::declare`] adds the rest; a command
+  /// reading no path says [`CommandInput::None`], so none leaves the choice unmade.
+  fn input(&self) -> CommandInput;
 
   /// Declares the command's about text and named arguments on `command`, which already carries its name and input.
   fn declare(&self, command: Command) -> Command;

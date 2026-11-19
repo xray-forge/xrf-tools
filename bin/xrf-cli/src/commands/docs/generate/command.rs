@@ -10,7 +10,7 @@ use xrf_utils::{StagedFile, format_path};
 use super::group_reference::GroupReference;
 use super::markdown_renderer::{GENERATED_HEADER, ReferenceMarkdownRenderer};
 use super::report::DocsGenerateReport;
-use crate::core::command::{CommandContext, CommandError, CommandGroup, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandError, CommandGroup, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub(crate) struct GenerateCommand;
@@ -18,6 +18,10 @@ pub(crate) struct GenerateCommand;
 impl GenericCommand for GenerateCommand {
   fn operation(&self) -> &'static str {
     "generate"
+  }
+
+  fn input(&self) -> CommandInput {
+    CommandInput::None
   }
 
   fn declare(&self, command: Command) -> Command {

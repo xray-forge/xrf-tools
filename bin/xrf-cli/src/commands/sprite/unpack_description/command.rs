@@ -8,7 +8,7 @@ use xrf_utils::format_path;
 
 use crate::commands::sprite::pack_description::report::SpriteDescriptionReport;
 use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -17,6 +17,10 @@ pub(crate) struct UnpackDescriptionCommand;
 impl GenericCommand for UnpackDescriptionCommand {
   fn operation(&self) -> &'static str {
     "unpack-description"
+  }
+
+  fn input(&self) -> CommandInput {
+    CommandInput::None
   }
 
   fn declare(&self, command: Command) -> Command {

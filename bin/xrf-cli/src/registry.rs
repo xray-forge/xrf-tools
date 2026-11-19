@@ -49,14 +49,10 @@ mod tests {
   use clap::{Arg, Command};
 
   use crate::core::arguments::InputArgument;
-  use crate::core::command::CommandGroup;
+  use crate::core::command::{CommandGroup, CommandInput};
 
-  // todo: Move these domains' inputs to `InputArgument` and their positional selectors to named flags, then drop
-  // the list so the rule below holds for every command.
-  /// Domains still reading their input through `-p/--path`.
-  const NAMED_INPUT_DOMAINS: [&str; 0] = [];
-
-  /// What a command reads is its one positional, and nothing names it `-p/--path`.
+  /// What a command reads is its one positional, present exactly when it states an input, and nothing names it
+  /// `-p/--path`.
   #[test]
   fn every_command_reads_its_input_positionally() {
     for group in CommandGroup::list_all() {
@@ -66,11 +62,11 @@ mod tests {
         let positionals: Vec<&Arg> = declared.get_positionals().collect();
 
         assert!(positionals.len() <= 1, "'{name}' declares more than one positional");
-
-        if NAMED_INPUT_DOMAINS.contains(&group.slug) {
-          continue;
-        }
-
+        assert_eq!(
+          positionals.is_empty(),
+          command.input() == CommandInput::None,
+          "'{name}' declares a positional its stated input does not account for"
+        );
         assert!(
           positionals
             .iter()
