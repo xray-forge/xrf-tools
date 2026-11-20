@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::ImageFormat;
 use xrf_output::OutputOptions;
-use xrf_texture::{DescriptionSpriteOptions, DescriptionSpriteResult, DescriptionSpriteUnpacker};
+use xrf_sprite::{DescriptionSpriteOptions, DescriptionSpriteResult, DescriptionSpriteUnpacker};
 use xrf_utils::format_path;
 
 use crate::commands::sprite::pack_description::report::SpriteDescriptionReport;

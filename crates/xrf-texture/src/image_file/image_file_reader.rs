@@ -38,7 +38,7 @@ impl ImageFileReader {
   /// # Errors
   ///
   /// Returns an error when the extension names no format the decoder knows, or the file cannot be read or decoded.
-  pub(crate) fn decode(path: &Path) -> ImageResult<DynamicImage> {
+  pub fn decode(path: &Path) -> ImageResult<DynamicImage> {
     let format: ImageFormat = ImageFormat::from_path(path)?;
 
     image::load_from_memory_with_format(&fs::read(path)?, format)

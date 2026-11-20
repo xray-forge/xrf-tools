@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_texture::EquipmentSlotOccupant;
+use xrf_sprite::EquipmentSlotOccupant;
 
 use crate::{EquipmentSheetLocation, EquipmentSpriteOpen};
 

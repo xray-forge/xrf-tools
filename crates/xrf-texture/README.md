@@ -1,32 +1,30 @@
 # xrf-texture
 
-X-Ray texture recipes and the operations that build them: textures from `.thm` descriptors, bump pairs, UI and
-inventory sprite sheets, and texture measurements.
+X-Ray texture recipes and the operations that build them: textures from `.thm` descriptors, bump pairs, and texture
+measurements, plus the image reading, fitting and writing they share.
 
-It sits above [xrf-dds](../xrf-dds/README.md), which reads and encodes DDS files, and below the CLI's `dds` and `sprite`
-commands and the desktop app's texture and sprite editors. For THM dependency resolution, use
-[xrf-material](../xrf-material/README.md).
+It sits above [xrf-dds](../xrf-dds/README.md), which reads and encodes DDS files, and below the CLI's `dds` commands,
+the desktop app's texture editor and [xrf-sprite](../xrf-sprite/README.md)'s sprite sheets. For THM dependency
+resolution, use [xrf-material](../xrf-material/README.md).
 
 ## Choose an operation
 
-| Operation                                                                                              | Does                                                                                             |
-| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `BuildTextureProcessor::build`                                                                         | Rebuilds a texture from a source image as its `.thm` says (the SDK's `DXTCompress`)              |
-| `BuildTextureRecipe::of`                                                                               | Reads a descriptor as a recipe                                                                   |
-| `GenerateBumpProcessor::generate`                                                                      | Produces a bump pair from a height map and gloss                                                 |
-| `CropTextureProcessor::crop`                                                                           | Extracts a DDS region, optionally fits it, writes PNG or DDS                                     |
-| `DescriptionSpritePacker::pack_xml_descriptions`, `DescriptionSpriteUnpacker::unpack_xml_descriptions` | Packs or unpacks sprite sheets an XML description lays out; both take `DescriptionSpriteOptions` |
-| `EquipmentSpritePacker::pack_sprites`, `EquipmentSpriteUnpacker::unpack_sprites`                       | Packs or unpacks the inventory icon sheet                                                        |
-| `EquipmentGridVerifier::find_overlaps`                                                                 | Finds overlapping inventory rectangles in resolved LTX                                           |
-| `TextureAlbedo::read`, `AlbedoVerdict`                                                                 | Measures a diffuse texture's albedo and judges it                                                |
-| `BumpAlignment::compare`, `BumpAlignmentVerdict`                                                       | Measures whether a bump belongs to its diffuse, and judges it                                    |
+| Operation                                        | Does                                                                                |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `BuildTextureProcessor::build`                   | Rebuilds a texture from a source image as its `.thm` says (the SDK's `DXTCompress`) |
+| `BuildTextureRecipe::of`                         | Reads a descriptor as a recipe                                                      |
+| `GenerateBumpProcessor::generate`                | Produces a bump pair from a height map and gloss                                    |
+| `CropTextureProcessor::crop`                     | Extracts a DDS region, optionally fits it, writes PNG or DDS                        |
+| `TextureAlbedo::read`, `AlbedoVerdict`           | Measures a diffuse texture's albedo and judges it                                   |
+| `BumpAlignment::compare`, `BumpAlignmentVerdict` | Measures whether a bump belongs to its diffuse, and judges it                       |
 
 General points:
 
 - Each operation takes an options value carrying its inputs, output paths and policy.
-- Resolve game configs with the intended LTX dialect before passing them to the equipment operations.
 - `ImageFileReader::read_rgba` reads authoring input (a height map, a gloss mask) as BMP, DDS, JPEG, PNG or TGA, chosen
   by extension. No other `image` codec is built.
+- `ImageFit` scales an image into a rectangle, letterboxed, and `ImageFileWriter` writes DDS or PNG; the sprite sheets
+  build on both.
 - `TextureEncodingFormat` and `TextureEncodingQuality` are the five formats and three effort levels the desktop app's
   editors offer; `to_candidate` and `to_quality` turn them into [xrf-dds](../xrf-dds/README.md)'s encoder inputs.
 
@@ -195,69 +193,11 @@ slopes misread stock Anomaly's aligned atlases.
   mipmap choices.
 - A region outside the source is refused before anything is written.
 
-## Inventory sprites
-
-The inventory sheet is a grid of 50-pixel cells. A section has an icon only when it declares `$inventory_icon = true`
-and whole `inv_grid_x`, `inv_grid_y`, `inv_grid_width` and `inv_grid_height` values, with extents of at least one cell.
-Grid fields alone are not enough, because variants inherit them from the sections that own the art.
-
-Check the layout before packing:
-
-```rust
-use xrf_ltx::Ltx;
-use xrf_texture::EquipmentGridVerifier;
-
-fn main() -> xrf_error::XrfResult {
-  let config = Ltx::read_from_str(
-    "[wpn_long]\n\
-     $inventory_icon = true\n\
-     inv_grid_x = 15\n\
-     inv_grid_y = 5\n\
-     inv_grid_width = 4\n\
-     inv_grid_height = 1\n\
-     [wpn_short]\n\
-     $inventory_icon = true\n\
-     inv_grid_x = 16\n\
-     inv_grid_y = 5\n\
-     inv_grid_width = 2\n\
-     inv_grid_height = 1\n",
-  )?;
-  let overlaps = EquipmentGridVerifier::find_overlaps(&config);
-
-  assert_eq!(overlaps.len(), 1);
-  assert_eq!((overlaps[0].first.as_str(), overlaps[0].second.as_str()), ("wpn_long", "wpn_short"));
-  assert_eq!((overlaps[0].cell, overlaps[0].overlapping_cells), ((16, 5), 2));
-
-  Ok(())
-}
-```
-
-- Identical rectangles are not reported; variants share a slot by design.
-- It checks rectangles, not whether the pixels show the right item.
-
-**Packing** reads each icon as `<section>.png` or `<section>.dds` from the source directory (or from
-`$inventory_icon_path`), fits it into its rectangle, and writes the whole sheet once at the end, so a cancelled run
-replaces nothing.
-
-- An unreadable icon is skipped with a warning, or fails the run when `is_strict` is set.
-- A slot claimed by two sections with different art is warned about; the last packed wins.
-
-**Unpacking** writes one `<section>.dds` per declared icon and skips an icon outside the sheet. It ignores
-`$inventory_icon_path`.
-
-**XML description sheets** use texture and sprite descriptors instead of inventory sections. With `is_strict` they fail
-where they would otherwise warn and skip: an unreadable sheet or sprite, or a sprite outside its sheet.
-
-**Output names.** Description packing and unpacking and equipment unpacking name files after content (sprite IDs,
-section names). They check every name before the first write, and write below their output through their options'
-`link_policy`, so a refused name leaves no partial output.
-
 ## Errors
 
-These are errors: unsupported recipes, missing texture parameters, invalid crop bounds, mismatched sprite sizes,
-refused names, and read or write failures.
+These are errors: unsupported recipes, missing texture parameters, invalid crop bounds, and read or write failures.
 
-Check results too: omissions, skipped counts and cancelled outcomes describe runs that returned `Ok`.
+Check results too: omissions and cancelled outcomes describe runs that returned `Ok`.
 
 The optional `typescript-bindings` feature derives frontend type metadata.
 
@@ -265,5 +205,5 @@ The optional `typescript-bindings` feature derives frontend type metadata.
 
 Run `cargo test --locked -p xrf-texture` from the repository root.
 
-Sources: the [public operations](src/lib.rs) and their options in [build](src/build), [bump](src/bump),
-[crop](src/crop), [description](src/description), and [equipment](src/equipment).
+Sources: the [public operations](src/lib.rs) and their options in [build](src/build), [bump](src/bump) and
+[crop](src/crop).

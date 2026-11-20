@@ -9,7 +9,7 @@ import { spriteEquipmentBulkRoutes } from "@xrf/ipc/commands/sprite-equipment-bu
 import { AssetSource, EAssetSource, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { EquipmentSpriteMetadata, EquipmentSpriteOpen } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
-import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-sprite";
 import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_texture::{DescriptionSpriteOptions, DescriptionSpriteResult};
+use xrf_sprite::{DescriptionSpriteOptions, DescriptionSpriteResult};
 
 /// What a texture description run wrote, and where it read and wrote it.
 #[derive(Debug, Serialize)]

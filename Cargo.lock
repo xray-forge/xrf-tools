@@ -8130,7 +8130,7 @@ dependencies = [
  "xrf-ltx",
  "xrf-ltx-project",
  "xrf-output",
- "xrf-texture",
+ "xrf-sprite",
  "xrf-utils",
  "xrf-vfs",
 ]
@@ -8365,6 +8365,7 @@ dependencies = [
  "xrf-report",
  "xrf-spawn",
  "xrf-spawn-builder",
+ "xrf-sprite",
  "xrf-test-utils",
  "xrf-texture",
  "xrf-thm",
@@ -9169,6 +9170,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-sprite"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "rayon",
+ "serde",
+ "specta",
+ "xrf-dds",
+ "xrf-error",
+ "xrf-extension",
+ "xrf-job",
+ "xrf-ltx",
+ "xrf-output",
+ "xrf-test-utils",
+ "xrf-texture",
+ "xrf-utils",
+ "xrf-vfs",
+ "xrf-xml",
+]
+
+[[package]]
 name = "xrf-test-utils"
 version = "0.1.0"
 dependencies = [
@@ -9188,14 +9210,11 @@ dependencies = [
  "xrf-error",
  "xrf-extension",
  "xrf-job",
- "xrf-ltx",
  "xrf-math",
  "xrf-output",
  "xrf-test-utils",
  "xrf-thm",
  "xrf-utils",
- "xrf-vfs",
- "xrf-xml",
 ]
 
 [[package]]

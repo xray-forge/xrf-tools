@@ -6,7 +6,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsFile, DdsMetadata, ImageFormat};
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_texture::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
+use xrf_sprite::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
 use xrf_utils::format_path;
 
 use super::report::SpriteEquipmentUnpackReport;

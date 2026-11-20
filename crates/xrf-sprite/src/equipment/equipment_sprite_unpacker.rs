@@ -5,7 +5,7 @@ use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath};
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, InventorySpriteDescriptor};
-use crate::image_file::ImageFileWriter;
+use xrf_texture::ImageFileWriter;
 
 pub struct EquipmentSpriteUnpacker {}
 
@@ -24,7 +24,7 @@ impl EquipmentSpriteUnpacker {
     destination.create_root()?;
 
     let unpacking: xrf_job::JobScope = options.job.enter(
-      crate::job_phases::TEXTURE_PHASE_UNPACK_SPRITES,
+      crate::job_phases::SPRITE_PHASE_UNPACK_EQUIPMENT,
       Some(sprites.len() as u64),
     );
 

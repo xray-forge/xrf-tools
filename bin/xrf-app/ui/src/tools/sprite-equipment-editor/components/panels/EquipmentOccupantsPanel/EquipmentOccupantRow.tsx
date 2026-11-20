@@ -1,4 +1,4 @@
-import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-sprite";
 import { Chip } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ListItemButton } from "@xrf/ui/list";

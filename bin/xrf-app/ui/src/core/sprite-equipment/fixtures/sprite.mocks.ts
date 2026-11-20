@@ -6,7 +6,7 @@ import {
   EquipmentSpriteOpen,
 } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
-import { EEquipmentSlotClaim, EquipmentSlotOccupant, EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
+import { EEquipmentSlotClaim, EquipmentSlotOccupant, EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-sprite";
 import { Nullable } from "@xrf/types";
 
 /**

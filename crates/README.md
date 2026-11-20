@@ -61,17 +61,18 @@ README is also its crate's rustdoc page.
 | [xrf-shaders](xrf-shaders/README.md)             | Parse shader scripts and resolve source imports                               |
 | [xrf-translation](xrf-translation/README.md)     | Import, edit, build, and verify translations                                  |
 | [xrf-typescript](xrf-typescript/README.md)       | Parse TypeScript and resolve project symbols                                  |
-| [xrf-xml](xrf-xml/README.md)                     | Parse XML, retain source ranges, and serialize new documents                  |
+| [xrf-xml](xrf-xml/README.md)                     | Parse XML, retain source ranges, and escape values written by hand            |
 
 ### Game data, assets, and verification
 
-| Crate                                            | Purpose                                                  |
-| ------------------------------------------------ | -------------------------------------------------------- |
-| [xrf-gamedata](xrf-gamedata/README.md)           | Validate assembled game data and asset references        |
-| [xrf-material](xrf-material/README.md)           | Resolve THM dependencies and shader alpha behavior       |
-| [xrf-object-visual](xrf-object-visual/README.md) | Compile SDK `.object` files into models a renderer draws |
-| [xrf-texture](xrf-texture/README.md)             | Build texture recipes, bump pairs, and UI sprite sheets  |
-| [xrf-visual](xrf-visual/README.md)               | Prepare OGF geometry and animation data for viewers      |
+| Crate                                            | Purpose                                                   |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| [xrf-gamedata](xrf-gamedata/README.md)           | Validate assembled game data and asset references         |
+| [xrf-material](xrf-material/README.md)           | Resolve THM dependencies and shader alpha behavior        |
+| [xrf-object-visual](xrf-object-visual/README.md) | Compile SDK `.object` files into models a renderer draws  |
+| [xrf-sprite](xrf-sprite/README.md)               | Pack, unpack and check UI and inventory sprite sheets     |
+| [xrf-texture](xrf-texture/README.md)             | Build texture recipes and bump pairs, read and fit images |
+| [xrf-visual](xrf-visual/README.md)               | Prepare OGF geometry and animation data for viewers       |
 
 ### Rendering
 

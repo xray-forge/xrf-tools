@@ -7,7 +7,7 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 /// Writes an image out as the texture file a caller asked for.
-pub(crate) struct ImageFileWriter;
+pub struct ImageFileWriter;
 
 impl ImageFileWriter {
   /// Mip chain written into a packed UI sprite sheet.
@@ -15,23 +15,23 @@ impl ImageFileWriter {
   /// None, following vanilla. The engine cannot use a chain here anyway, since the UI is authored on a 1024x768 canvas
   /// that is scaled up to the real resolution, so a sheet is magnified rather than minified and only level 0 is ever
   /// sampled.
-  pub(crate) const UI_MIPMAPS: DdsMipmaps = DdsMipmaps::Disabled;
+  pub const UI_MIPMAPS: DdsMipmaps = DdsMipmaps::Disabled;
 
   /// Number of mip levels [`Self::UI_MIPMAPS`] produces, for comparing against an existing sheet.
-  pub(crate) const UI_MIPMAP_LEVELS: u32 = 1;
+  pub const UI_MIPMAP_LEVELS: u32 = 1;
 
   /// Write an image as a dds file with the given format and mip chain.
   ///
   /// Dimensions do not have to be multiples of 4. The block compressor pads every mip level out to whole
   /// 4x4 blocks itself and records the unpadded size in the header, so the file keeps the exact
   /// dimensions the image was built with.
-  pub(crate) fn write_dds(path: &Path, image: &RgbaImage, format: DDSImageFormat, mipmaps: DdsMipmaps) -> XrfResult {
+  pub fn write_dds(path: &Path, image: &RgbaImage, format: DDSImageFormat, mipmaps: DdsMipmaps) -> XrfResult {
     DdsEncoding::new(format, Quality::Slow)
       .encode(&DdsMipChain::build(image, mipmaps)?)?
       .write_to_path(path)
   }
 
-  pub(crate) fn write_png(path: &Path, image: &RgbaImage) -> XrfResult {
+  pub fn write_png(path: &Path, image: &RgbaImage) -> XrfResult {
     image
       .save_with_format(path, ImageFormat::Png)
       .map_texture_processing_err()
@@ -44,7 +44,7 @@ impl ImageFileWriter {
   /// changes shape diverges from its pristine form and from the other resource repositories with nothing
   /// in the log to say so. One sheet can also be described by several description files, and packing only
   /// some of them would otherwise shrink it without a word.
-  pub(crate) fn warn_on_reshaped_dds(output: &OutputOptions, path: &Path, width: u32, height: u32, mipmap_levels: u32) {
+  pub fn warn_on_reshaped_dds(output: &OutputOptions, path: &Path, width: u32, height: u32, mipmap_levels: u32) {
     if !path.is_file() {
       return;
     }

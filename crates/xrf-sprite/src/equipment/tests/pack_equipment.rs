@@ -11,7 +11,7 @@ use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
 use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker, InventorySpriteDescriptor};
-use crate::image_file::ImageFileWriter;
+use xrf_texture::ImageFileWriter;
 
 struct CancelOnOutput {
   job: JobHandle,

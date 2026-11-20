@@ -6,7 +6,7 @@ use xrf_dds::ImageFormat;
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_texture::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
+use xrf_sprite::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
 use xrf_utils::format_path;
 
 use crate::core::arguments::{InputArgument, LtxDialectArgument};

@@ -64,6 +64,7 @@ members = [
   "crates/xrf-sound",
   "crates/xrf-spawn",
   "crates/xrf-spawn-builder",
+  "crates/xrf-sprite",
   "crates/xrf-test-utils",
   "crates/xrf-texture",
   "crates/xrf-thm",
@@ -195,6 +196,7 @@ xrf-skeleton = { path = "crates/xrf-skeleton" }
 xrf-sound = { path = "crates/xrf-sound" }
 xrf-spawn = { path = "crates/xrf-spawn" }
 xrf-spawn-builder = { path = "crates/xrf-spawn-builder" }
+xrf-sprite = { path = "crates/xrf-sprite" }
 xrf-test-utils = { path = "crates/xrf-test-utils" }
 xrf-texture = { path = "crates/xrf-texture" }
 xrf-thm = { path = "crates/xrf-thm" }

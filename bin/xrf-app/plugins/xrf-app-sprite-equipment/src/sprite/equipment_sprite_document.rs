@@ -10,7 +10,7 @@ use xrf_dltx::DltxDialect;
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
 use xrf_ltx_project::{LtxProject, LtxProjectOptions};
-use xrf_texture::EquipmentSlotOccupant;
+use xrf_sprite::EquipmentSlotOccupant;
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XraySearch};
 

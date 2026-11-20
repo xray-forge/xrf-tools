@@ -1,0 +1,32 @@
+[package]
+name = "xrf-sprite"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+image = { workspace = true }
+rayon = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+xrf-dds = { workspace = true }
+xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
+xrf-job = { workspace = true }
+xrf-ltx = { workspace = true }
+xrf-output = { workspace = true }
+xrf-texture = { workspace = true }
+xrf-utils = { workspace = true }
+xrf-vfs = { workspace = true }
+xrf-xml = { workspace = true }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
+
+[features]
+# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
+typescript-bindings = ["specta", "xrf-job/typescript-bindings"]
+
+[lints]
+workspace = true

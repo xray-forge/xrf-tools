@@ -1,4 +1,4 @@
-import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-sprite";
 import { alpha, Theme } from "@xrf/ui/theme/styles";
 
 /**

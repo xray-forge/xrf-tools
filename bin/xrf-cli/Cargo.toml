@@ -48,6 +48,7 @@ xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-export = { workspace = true }
+xrf-sprite = { workspace = true }
 xrf-texture = { workspace = true }
 xrf-translation = { workspace = true }
 xrf-utils = { workspace = true }

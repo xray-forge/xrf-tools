@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
-import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-sprite";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";

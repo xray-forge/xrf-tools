@@ -11,7 +11,7 @@ use xrf_dltx::DltxDialect;
 use xrf_job::JobProgress;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_texture::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
+use xrf_sprite::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
 
 use crate::ipc::sprite_equipment::SPRITE_EQUIPMENT_JOB_PACK;
 use crate::request::SpriteEquipmentPackRequest;

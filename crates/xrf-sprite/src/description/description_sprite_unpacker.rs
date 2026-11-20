@@ -12,7 +12,7 @@ use xrf_utils::{HostDestination, HostRelativePath, OutputFiles, format_path};
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
-use crate::image_file::ImageFileWriter;
+use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpriteUnpacker {}
 
@@ -39,7 +39,7 @@ impl DescriptionSpriteUnpacker {
     xrf_output::info!(options.output, "Unpacking for {} files", selected.len());
 
     let unpacking: xrf_job::JobScope = options.job.enter(
-      crate::job_phases::TEXTURE_PHASE_UNPACK_DESCRIPTIONS,
+      crate::job_phases::SPRITE_PHASE_UNPACK_DESCRIPTIONS,
       Some(selected.len() as u64),
     );
 
@@ -172,17 +172,17 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::DescriptionSpriteUnpacker;
-  use crate::image_file::ImageFileWriter;
   use crate::{DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor};
+  use xrf_texture::ImageFileWriter;
 
   fn options_for_missing_source(is_strict: bool) -> DescriptionSpriteOptions {
     let root: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|path| path.parent())
-      .expect("xrf-texture to be inside the workspace crates directory")
+      .expect("xrf-sprite to be inside the workspace crates directory")
       .join("target")
       .join("test-resources")
-      .join(format!("xrf-texture-missing-description-{}", std::process::id()));
+      .join(format!("xrf-sprite-missing-description-{}", std::process::id()));
 
     DescriptionSpriteOptions {
       job: Default::default(),

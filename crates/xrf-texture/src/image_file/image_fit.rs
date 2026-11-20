@@ -6,14 +6,14 @@ use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_utils::format_path;
 
 /// Makes an image exactly the size something else needs it.
-pub(crate) struct ImageFit;
+pub struct ImageFit;
 
 impl ImageFit {
   /// Scale an image to the given bounds and centre it on a transparent canvas of exactly that size.
   ///
   /// Scaling preserves the aspect ratio, so an image whose proportions differ from the bounds ends up
   /// letterboxed rather than distorted. An image that already matches the bounds is returned untouched.
-  pub(crate) fn fit_to_bounds(image: DynamicImage, width: u32, height: u32, source: &Path) -> XrfResult<DynamicImage> {
+  pub fn fit_to_bounds(image: DynamicImage, width: u32, height: u32, source: &Path) -> XrfResult<DynamicImage> {
     let image_width: u32 = image.width();
     let image_height: u32 = image.height();
 

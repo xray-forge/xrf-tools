@@ -2,7 +2,7 @@ import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { spriteEquipmentCommands } from "@xrf/ipc/commands/sprite-equipment";
 import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-sprite";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

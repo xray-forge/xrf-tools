@@ -6,6 +6,6 @@ mod image_fit;
 mod image_shape;
 
 pub use image_file_reader::ImageFileReader;
-pub(crate) use image_file_writer::ImageFileWriter;
-pub(crate) use image_fit::ImageFit;
+pub use image_file_writer::ImageFileWriter;
+pub use image_fit::ImageFit;
 pub use image_shape::ImageShape;

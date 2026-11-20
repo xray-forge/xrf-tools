@@ -4,7 +4,7 @@ import { flowResult } from "@wirestate/mobx";
 import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
 import { SessionScopeService } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
-import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-sprite";
 
 import { JobsService } from "@/core/jobs/services/jobs.service";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";

@@ -11,7 +11,7 @@ import {
   SpriteEquipmentPackRequest,
 } from "#/types/xrf-app-sprite-equipment";
 import { JobProgress } from "#/types/xrf-job";
-import { EquipmentSpritePackResult } from "#/types/xrf-texture";
+import { EquipmentSpritePackResult } from "#/types/xrf-sprite";
 
 /** The wire name of every command of the `sprite-equipment` plugin. */
 export enum ESpriteEquipmentCommand {

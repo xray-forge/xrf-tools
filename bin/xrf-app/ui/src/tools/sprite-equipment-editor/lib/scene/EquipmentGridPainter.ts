@@ -1,4 +1,4 @@
-import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-sprite";
 import { IPanZoomRect, IPanZoomSize, IPanZoomTransform, toViewportRect } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 

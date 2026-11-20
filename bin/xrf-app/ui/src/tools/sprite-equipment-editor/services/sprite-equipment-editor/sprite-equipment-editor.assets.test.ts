@@ -5,7 +5,7 @@ import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
 import { ESpriteEquipmentBulkRoute } from "@xrf/ipc/commands/sprite-equipment-bulk";
 import { mockInvoke, mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-sprite";
 import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";

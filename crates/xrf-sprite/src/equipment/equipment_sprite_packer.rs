@@ -14,7 +14,7 @@ use crate::equipment::{
   LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX, LTX_PATH_GAMEDATA_MARKER,
   LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
-use crate::image_file::{ImageFileReader, ImageFileWriter, ImageFit};
+use xrf_texture::{ImageFileReader, ImageFileWriter, ImageFit};
 
 pub struct EquipmentSpritePacker {}
 
@@ -33,7 +33,7 @@ impl EquipmentSpritePacker {
     let mut occupied_slots: HashMap<(u32, u32), (String, Vec<u8>)> = HashMap::new();
 
     let packing: xrf_job::JobScope = options.job.enter(
-      crate::job_phases::TEXTURE_PHASE_PACK_SPRITES,
+      crate::job_phases::SPRITE_PHASE_PACK_EQUIPMENT,
       Some(options.ltx.len() as u64),
     );
 

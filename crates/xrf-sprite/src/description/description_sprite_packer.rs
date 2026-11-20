@@ -10,7 +10,7 @@ use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
-use crate::image_file::ImageFileWriter;
+use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpritePacker {}
 
@@ -31,7 +31,7 @@ impl DescriptionSpritePacker {
     xrf_output::info!(options.output, "Packing for {} files", selected.len());
 
     let packing: xrf_job::JobScope = options.job.enter(
-      crate::job_phases::TEXTURE_PHASE_PACK_DESCRIPTIONS,
+      crate::job_phases::SPRITE_PHASE_PACK_DESCRIPTIONS,
       Some(selected.len() as u64),
     );
 

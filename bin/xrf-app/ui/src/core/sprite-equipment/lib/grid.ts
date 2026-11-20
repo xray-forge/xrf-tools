@@ -1,4 +1,4 @@
-import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-sprite";
 import { Nullable } from "@xrf/types";
 
 import { TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";

@@ -6,7 +6,7 @@ use xrf_error::XrfError;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_texture::{EquipmentGridOverlap, EquipmentGridVerifier};
+use xrf_sprite::{EquipmentGridOverlap, EquipmentGridVerifier};
 use xrf_utils::format_portable_path;
 
 use crate::commands::sprite::verify_equipment::SpriteVerifyEquipmentReport;

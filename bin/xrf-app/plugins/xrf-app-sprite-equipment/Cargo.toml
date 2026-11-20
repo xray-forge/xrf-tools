@@ -26,7 +26,7 @@ xrf-job = { workspace = true, features = ["rayon"] }
 xrf-ltx = { workspace = true }
 xrf-ltx-project = { workspace = true }
 xrf-output = { workspace = true }
-xrf-texture = { workspace = true }
+xrf-sprite = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 
@@ -44,7 +44,7 @@ typescript-bindings = [
   "xrf-ipc",
   "xrf-job/typescript-bindings",
   "xrf-ltx-project/typescript-bindings",
-  "xrf-texture/typescript-bindings",
+  "xrf-sprite/typescript-bindings",
   "xrf-vfs/typescript-bindings",
 ]
 

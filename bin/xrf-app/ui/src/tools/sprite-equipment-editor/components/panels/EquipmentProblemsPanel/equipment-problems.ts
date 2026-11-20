@@ -1,6 +1,6 @@
 import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-sprite";
 import { EXrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 import { IEditorProblem } from "@xrf/ui/editor/problems";

@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { AssetSource, SessionId } from "#/types/xrf-app-core";
-import { EquipmentSlotOccupant } from "#/types/xrf-texture";
+import { EquipmentSlotOccupant } from "#/types/xrf-sprite";
 import { XrayAsset, XrayRoots } from "#/types/xrf-vfs";
 
 /** Packing loose inventory icons into an equipment sprite sheet. */
