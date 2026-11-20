@@ -151,8 +151,8 @@ Editor quirks kept:
   fields under whichever it finds.
 - A way's links are keyed `link_wp_%4d_%4d`; the padding sorts them in their numbers' order, the order the editor
   appends them in. A number past four digits, which the editor's `sscanf` asserts on, is refused.
-  `EditableWayObject::check_links` refuses a link to its own point (which `CWayPoint::CreateLink` drops) or past the
-  way's points.
+  `EditableWayObject::check_links` refuses a link to its own point (which `CWayPoint::CreateLink` drops), past the
+  way's points, or from or to a point past 9999, whose key four digits cannot spell.
 - An entity's `[object_N_spawndata]` keeps its section (`name`) and flags (`fl`) apart, and its packet's numbered fields
   as stored; `xrf-rawdata` reads them as the entity's class.
 - `EditableShapeObject::get_scaled_elements` is `ApplyScale`, which the build gives an entity's attached shape. A unit

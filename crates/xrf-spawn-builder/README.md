@@ -11,6 +11,7 @@ since it works on every level of a game at once.
 use std::path::PathBuf;
 
 use xrf_job::JobHandle;
+use xrf_ltx::LtxStandardDialect;
 use xrf_spawn_builder::{SpawnRootGamedata, SpawnRootOptions, SpawnRootRequest};
 
 fn main() -> xrf_error::XrfResult {
@@ -23,7 +24,8 @@ fn main() -> xrf_error::XrfResult {
     options: SpawnRootOptions::default(),
     is_forced: false,
   };
-  let outcome = SpawnRootGamedata::build(&request, &JobHandle::inert())?;
+  // A mod built on DLTX patch files is read under `xrf_dltx::DltxDialect`, which the binaries pick.
+  let outcome = SpawnRootGamedata::build(&request, &LtxStandardDialect, &JobHandle::inert())?;
 
   println!("{}: {} objects on {} levels", outcome.path, outcome.objects, outcome.levels.len());
 

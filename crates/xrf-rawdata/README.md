@@ -606,8 +606,11 @@ was chosen for: a level of no light records no light inference. Object and scene
 
 `LevelSceneDecompiler::decompile_to_path`, unforced, refuses before reading the level when the scene or one of the
 level's objects exists (`LevelDecompileRequest::get_scene_outputs` and `get_object_outputs`), and after the decompile
-when a library copy or texture it writes exists. `LevelSceneDecompile::get_existing_object_paths` and
-`get_existing_texture_paths` tell a front-end what a write would replace.
+when a library copy or texture it writes exists, names compared without case.
+`LevelSceneDecompile::get_existing_object_paths` and `get_existing_texture_paths` tell a front-end what a write would
+replace. Forced, it checks every path against the link policy before it removes anything, then removes the earlier
+scene's stale part files (only those the editor reads as parts) and the level's stale objects whose sidecar marks them
+as a decompile's, leaving the SDK's own.
 
 ## Export a scene's game files
 
