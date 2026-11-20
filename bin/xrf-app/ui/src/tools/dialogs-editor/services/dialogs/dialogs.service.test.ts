@@ -19,7 +19,7 @@ describe("DialogsService", () => {
 
     mockIpcCommands({ [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => MOCK_DIALOGS_PROJECT) });
 
-    await service.openProject(createRoots(["C:\\game"]), "gamedata");
+    await service.open(createRoots(["C:\\game"]), "gamedata");
 
     // One request object rather than loose arguments, which is how every command with more than three is shaped.
     expect(mockInvoke).toHaveBeenCalledWith(EDialogsCommand.OPEN_PROJECT, {
@@ -46,7 +46,7 @@ describe("DialogsService", () => {
       })),
     });
 
-    await service.openProject(createRoots(["C:\\game"]), "gamedata");
+    await service.open(createRoots(["C:\\game"]), "gamedata");
 
     expect(service.languages).toEqual([]);
   });
@@ -56,7 +56,7 @@ describe("DialogsService", () => {
 
     mockIpcCommands({ [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => MOCK_DIALOGS_PROJECT) });
 
-    await service.openProject(createRoots(["C:\\game"]), "gamedata");
+    await service.open(createRoots(["C:\\game"]), "gamedata");
 
     expect(service.entries).toEqual([
       {

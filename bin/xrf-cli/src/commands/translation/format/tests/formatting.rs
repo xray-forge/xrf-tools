@@ -23,7 +23,6 @@ fn create_root(name: &str) -> XrfResult<PathBuf> {
 fn arguments(path: &Path, rest: &[&str]) -> Vec<String> {
   let mut arguments: Vec<String> = vec![
     String::from("format"),
-    String::from("--path"),
     path.display().to_string(),
     String::from("--silent"),
   ];

@@ -15,12 +15,12 @@ pub(crate) struct ExternCallableParser<'a> {
 
 impl<'a> ExternCallableParser<'a> {
   /// Create a callable parser for one declaration source file.
-  pub fn new(diagnostic: ExternDiagnostic<'a>) -> Self {
+  pub(crate) fn new(diagnostic: ExternDiagnostic<'a>) -> Self {
     Self { diagnostic }
   }
 
   /// Parse an inline arrow function declared by an extern.
-  pub fn parse_arrow(
+  pub(crate) fn parse_arrow(
     &self,
     arrow: &ArrowExpr,
     documentation: Option<ExternDocumentation>,
@@ -44,7 +44,7 @@ impl<'a> ExternCallableParser<'a> {
   }
 
   /// Parse a function type asserted on an extern value.
-  pub fn parse_function_type(
+  pub(crate) fn parse_function_type(
     &self,
     function_type: &TsFnType,
     documentation: Option<ExternDocumentation>,
@@ -85,7 +85,7 @@ impl<'a> ExternCallableParser<'a> {
   }
 
   /// Convert a callable contract resolved from another TypeScript source file.
-  pub fn convert_signature(
+  pub(crate) fn convert_signature(
     &self,
     signature: TypeScriptFunctionSignature,
     documentation: Option<ExternDocumentation>,

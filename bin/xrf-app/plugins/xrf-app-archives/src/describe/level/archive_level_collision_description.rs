@@ -3,8 +3,7 @@ use xrf_error::XrfResult;
 use xrf_level::LevelCformHeader;
 
 use crate::describe::description::ArchiveBounds;
-use crate::describe::source::ArchiveDescribeSource;
-use crate::describe::source::ArchiveEntryReader;
+use crate::describe::source::{ArchiveDescribeSource, ArchiveEntryReader};
 
 /// What a level's collision mesh weighs, from the 36 bytes that say so.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,7 +23,7 @@ impl ArchiveLevelCollisionDescription {
   /// # Errors
   ///
   /// Returns an error when the entry cannot be opened, or holds fewer bytes than the header occupies.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let mut reader: ArchiveEntryReader = source.open_entry(name)?;
     let size: u64 = reader.size();
     let header: LevelCformHeader = reader.read_leading()?;
@@ -33,7 +32,7 @@ impl ArchiveLevelCollisionDescription {
       version: header.version,
       vertices: header.vertex_count,
       faces: header.face_count,
-      bounds: ArchiveBounds::of(&header.aabb_min, &header.aabb_max),
+      bounds: ArchiveBounds::of(&header.bounds),
       size,
     })
   }

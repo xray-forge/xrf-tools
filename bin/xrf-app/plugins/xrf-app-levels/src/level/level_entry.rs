@@ -9,7 +9,7 @@ use crate::level::LevelSource;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelEntry {
+pub(crate) struct LevelEntry {
   /// The name the installation knows the level by, which is its directory under `levels`.
   pub name: String,
   /// Its engine identity, which is what opening it takes.
@@ -24,7 +24,7 @@ impl LevelEntry {
   /// # Errors
   ///
   /// Returns an error when `levels` cannot be listed.
-  pub fn list(search: &XraySearch) -> TauriResult<Vec<Self>> {
+  pub(crate) fn list(search: &XraySearch) -> TauriResult<Vec<Self>> {
     let levels: XrayLogicalPath =
       XrayLogicalPath::new(LevelSource::LEVELS_DIRECTORY).map_err(|error| format!("Failed to list levels: {error}"))?;
     let listing: XrayDirectoryListing = search

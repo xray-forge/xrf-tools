@@ -7,28 +7,25 @@ use xrf_texture::{DescriptionSpriteOptions, DescriptionSpriteResult, Description
 use xrf_utils::format_path;
 
 use crate::commands::sprite::pack_description::report::SpriteDescriptionReport;
-use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct UnpackDescriptionCommand;
+pub(crate) struct UnpackDescriptionCommand;
 
 impl GenericCommand for UnpackDescriptionCommand {
   fn operation(&self) -> &'static str {
     "unpack-description"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("XML file describing the sheets")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Unpack the sprites a texture description xml declares out of its sheets")
-      .arg(
-        Arg::new("description")
-          .help("Path to the XML file describing the sheets")
-          .long("description")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("base")
           .help("Folder the described sheets are read from")
@@ -54,15 +51,23 @@ impl GenericCommand for UnpackDescriptionCommand {
           .help("Fail on a sheet that cannot be read or a sprite outside its sheet instead of skipping it")
           .long("strict")
           .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("force")
+          .help(
+            "Overwrite sprites already in the destination, names compared without case; without it, one there is \
+             refused before any sprite is cut",
+          )
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
       );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let description: &PathBuf = matches
-      .get_one::<PathBuf>("description")
-      .expect("Expected valid path to be provided for texture description file or folder");
+    let description: &PathBuf = InputArgument::of(matches);
 
     let base: &PathBuf = matches
       .get_one::<PathBuf>("base")
@@ -95,6 +100,7 @@ impl GenericCommand for UnpackDescriptionCommand {
       files,
       is_strict: matches.get_flag("strict"),
       link_policy: LinkPolicyArgument::of(matches),
+      is_forced: matches.get_flag("force"),
     };
 
     let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)?;

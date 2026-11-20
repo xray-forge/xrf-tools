@@ -1,5 +1,5 @@
 use xrf_renderer_core::{
-  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
+  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineAsk, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -21,17 +21,17 @@ use crate::pass::level_passes::LevelPasses;
 /// then its lens, each over the image before it; the film's grain is the present's. Drawn where the view is lit, shows
 /// the finished frame, and turns one of them on.
 #[derive(Default)]
-pub struct CameraFeature {
+pub(crate) struct CameraFeature {
   /// What the camera draws this frame with, none where it draws nothing.
   frame: Option<CameraFrame>,
-  /// The stages' pipelines, asked for once it draws.
-  pipelines: Option<PipelineSet<[wgpu::RenderPipeline; CameraEffectsStage::COUNT]>>,
+  /// The stages' pipelines, asked for once it draws, made ahead as the renderer starts (`ImagePasses::new`).
+  pipelines: PipelineAsk<[wgpu::RenderPipeline; CameraEffectsStage::COUNT]>,
 }
 
 impl CameraFeature {
   /// Takes this frame's camera as `options` set it, looking through `view`; the stages' pipelines asked of the cache
   /// when it draws and the cache has changed since they were.
-  pub fn prepare(&mut self, passes: LevelPasses<'_>, options: &RenderViewOptions, view: &CameraView) {
+  pub(crate) fn prepare(&mut self, passes: LevelPasses<'_>, options: &RenderViewOptions, view: &CameraView) {
     let settings: &RenderCameraSettings = &options.features.camera;
     let is_drawn: bool = options.mode.is_lit
       && !options.mode.is_wireframe
@@ -43,13 +43,14 @@ impl CameraFeature {
     if is_drawn {
       let pass: &CameraEffectsPass = &passes.image.camera_effects;
 
-      if let Err(error) = PipelineSet::ask(&mut self.pipelines, passes.pipelines.cache, || {
-        pass.get_pipelines(passes.pipelines)
-      }) {
+      if let Err(error) = self
+        .pipelines
+        .ask(passes.pipelines.cache, || pass.get_pipelines(passes.pipelines))
+      {
         log::error!("Camera effects rejected, showing with the last ones: {error}");
       }
 
-      self.frame = self.pipelines.as_ref().map(|_| CameraFrame {
+      self.frame = self.pipelines.get().map(|_| CameraFrame {
         settings: *settings,
         view: *view,
       });
@@ -59,7 +60,7 @@ impl CameraFeature {
   /// Adds the camera over the image the resolve shows (`chain`), answering the image it leaves, none where it draws
   /// nothing: the distance and motion under each pixel, read from the drawn `depth` and `handles.motion`; the depth of
   /// field; the motion blur; and the lens.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
@@ -71,7 +72,7 @@ impl CameraFeature {
     }: ImageChain,
   ) -> Option<GraphTexture> {
     let CameraFrame { settings, view } = self.frame.as_ref()?;
-    let pipelines: &[wgpu::RenderPipeline; CameraEffectsStage::COUNT] = self.pipelines.as_deref()?;
+    let pipelines: &[wgpu::RenderPipeline; CameraEffectsStage::COUNT] = self.pipelines.get()?;
     let uniform: CameraEffectsUniform = CameraEffectsUniform::new(settings, view, (handles.size, size));
 
     // A switch on that draws nothing, the depth of field through a lens of parallel rays, leaves the image as it is.
@@ -94,7 +95,7 @@ impl CameraFeature {
         height.max(1),
         CameraEffectsPass::TARGET,
       ));
-      let parameters: CameraEffectsParameters = CameraEffectsParameters {
+      let parameters: CameraEffectsParameters<'_> = CameraEffectsParameters {
         camera_effects,
         source,
         beside,
@@ -187,11 +188,6 @@ impl CameraFeature {
 }
 
 impl ViewFeature for CameraFeature {
-  /// Its targets are the frame's transients.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

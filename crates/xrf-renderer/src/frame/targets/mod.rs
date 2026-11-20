@@ -1,6 +1,7 @@
 pub(crate) mod depth_pyramid;
 pub(crate) mod frame_texture;
 pub(crate) mod history;
+pub(crate) mod screen_tiles;
 pub(crate) mod texture_copy;
 pub(crate) mod texture_layer;
 pub(crate) mod view_target_handles;

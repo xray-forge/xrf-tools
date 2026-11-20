@@ -9,7 +9,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Exposure")]
-pub struct ExposureHead {
+pub(crate) struct ExposureHead {
   pub adapted: f32,
   pub used: f32,
   pub key: f32,

@@ -47,7 +47,7 @@ impl EnvironmentReadPass<'_> {
         kind,
         name: Self::stem_of(&file).to_owned(),
       };
-      let mut reader: EnvironmentSectionReader = self.reader(kind.get_subject(), &config);
+      let mut reader: EnvironmentSectionReader<'_> = self.reader(kind.get_subject(), &config);
 
       cycles.push(WeatherCycle::read(&mut reader, &id, config.get_ltx()));
     }
@@ -60,7 +60,7 @@ impl EnvironmentReadPass<'_> {
     &mut self,
     relative: &str,
     subject: &'static str,
-    read: impl Fn(&mut EnvironmentSectionReader, &str, &Section) -> T,
+    read: impl Fn(&mut EnvironmentSectionReader<'_>, &str, &Section) -> T,
   ) -> XrfResult<Vec<T>> {
     self.options.job.check_cancelled()?;
 
@@ -76,9 +76,9 @@ impl EnvironmentReadPass<'_> {
     &mut self,
     config: &EnvironmentConfig,
     subject: &'static str,
-    read: impl Fn(&mut EnvironmentSectionReader, &str, &Section) -> T,
+    read: impl Fn(&mut EnvironmentSectionReader<'_>, &str, &Section) -> T,
   ) -> Vec<T> {
-    let mut reader: EnvironmentSectionReader = self.reader(subject, config);
+    let mut reader: EnvironmentSectionReader<'_> = self.reader(subject, config);
 
     config
       .get_ltx()
@@ -118,7 +118,7 @@ impl EnvironmentReadPass<'_> {
       return Ok(None);
     };
 
-    let mut reader: EnvironmentSectionReader = self.reader("Thunderbolt settings", &config);
+    let mut reader: EnvironmentSectionReader<'_> = self.reader("Thunderbolt settings", &config);
 
     match config.get_ltx().section(section) {
       Some(found) => Ok(Some(ThunderboltSettingsKey::read(&mut reader, section, found))),
@@ -194,7 +194,7 @@ impl EnvironmentReadPass<'_> {
     let Some(config) = self.open(&path)? else {
       return Ok(None);
     };
-    let mut reader: EnvironmentSectionReader = self.reader("Sun position", &config);
+    let mut reader: EnvironmentSectionReader<'_> = self.reader("Sun position", &config);
 
     Ok(Some(SunTable::read(&mut reader, config.get_ltx())))
   }

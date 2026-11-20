@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::wallmarks::level_wallmark_slot::LevelWallmarkSlot;
 
@@ -85,7 +85,7 @@ impl LevelWallmarksFile {
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut slots: ChunkWriter = ChunkWriter::new();
 
-    slots.write_u32::<T>(to_format_size(self.slots.len(), "wallmark slots")?)?;
+    slots.write_u32::<T>(narrow_format_size(self.slots.len(), "wallmark slots")?)?;
 
     for slot in &self.slots {
       slot.write::<T>(&mut slots)?;

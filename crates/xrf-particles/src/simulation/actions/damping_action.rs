@@ -12,7 +12,7 @@ pub(crate) struct DampingAction {
 }
 
 impl DampingAction {
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let scale: Vec3 = Vec3::ONE - (Vec3::ONE - self.damping) * step.dt;
 
     for m in pool.get_particles_mut() {
@@ -28,7 +28,7 @@ impl DampingAction {
 impl From<&ParticleActionDamping> for DampingAction {
   fn from(action: &ParticleActionDamping) -> Self {
     Self {
-      damping: Vec3::from_array(action.damping.to_array()),
+      damping: Vec3::from(&action.damping),
       v_low_sqr: action.v_low_sqr,
       v_high_sqr: action.v_high_sqr,
     }

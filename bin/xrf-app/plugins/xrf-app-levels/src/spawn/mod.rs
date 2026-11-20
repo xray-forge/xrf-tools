@@ -6,6 +6,6 @@ mod level_spawn_object_details;
 mod level_spawn_release;
 mod level_spawn_render;
 
-pub use level_spawn_category::LevelSpawnCategory;
-pub use level_spawn_object_details::LevelSpawnObjectDetails;
-pub use level_spawn_release::LevelSpawnRelease;
+pub(crate) use level_spawn_category::LevelSpawnCategory;
+pub(crate) use level_spawn_object_details::LevelSpawnObjectDetails;
+pub(crate) use level_spawn_release::LevelSpawnRelease;

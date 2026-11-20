@@ -7,7 +7,7 @@ pub(crate) struct CopyVertexAction {
 }
 
 impl CopyVertexAction {
-  pub fn execute(&self, pool: &mut ParticlePool) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool) {
     if self.is_copying_position {
       for m in pool.get_particles_mut() {
         m.previous_position = m.position;

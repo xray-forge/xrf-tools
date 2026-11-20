@@ -7,6 +7,10 @@ use crate::WorldState;
 /// Ask a viewport's camera to reset or dolly.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "command_camera")]
-pub fn render_command_camera(world: State<'_, WorldState>, viewport: RenderViewportId, command: WorldCameraCommand) {
+pub(crate) fn render_command_camera(
+  world: State<'_, WorldState>,
+  viewport: RenderViewportId,
+  command: WorldCameraCommand,
+) {
   world.lock().command_camera(viewport, command);
 }

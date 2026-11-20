@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{AiNodePosition, Vector3d};
 
 /// One node of the AI map the level editor hands xrAI: its four neighbours, its plane and its packed position.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -13,12 +13,8 @@ pub struct BuildAimapNode {
   pub links: [u32; 4],
   /// The plane normal, compressed as [`Vector3d::from_compressed_normal`] reads it.
   pub plane: u16,
-  /// The cell along x, in patches from the world origin (`NodePosition::x`).
-  pub x: i16,
-  /// The height across the map's box, 0 at its floor and 65535 at its top.
-  pub y: u16,
-  /// The cell along z, in patches from the world origin.
-  pub z: i16,
+  /// The cell, and the height across the map's box.
+  pub position: AiNodePosition,
 }
 
 impl BuildAimapNode {
@@ -29,7 +25,7 @@ impl BuildAimapNode {
   pub const WIDE_LINK_SIZE: u64 = 4;
 
   /// Bytes a node occupies past its links: the plane and the position.
-  pub const TAIL_SIZE: u64 = 2 + 6;
+  pub const TAIL_SIZE: u64 = 2 + AiNodePosition::SERIALIZED_SIZE;
 
   /// The widest link a version-1 map holds, which is also its invalid one.
   pub const NARROW_LINK_MASK: u32 = 0x00FF_FFFF;
@@ -62,9 +58,7 @@ impl BuildAimapNode {
     Ok(Self {
       links,
       plane: reader.read_u16::<T>()?,
-      x: reader.read_i16::<T>()?,
-      y: reader.read_u16::<T>()?,
-      z: reader.read_i16::<T>()?,
+      position: reader.read_xr::<T, _>()?,
     })
   }
 
@@ -87,9 +81,7 @@ impl BuildAimapNode {
     }
 
     writer.write_u16::<T>(self.plane)?;
-    writer.write_i16::<T>(self.x)?;
-    writer.write_u16::<T>(self.y)?;
-    writer.write_i16::<T>(self.z)?;
+    writer.write_xr::<T, _>(&self.position)?;
 
     Ok(())
   }

@@ -132,11 +132,14 @@ describe("LevelWeatherPanel", () => {
     expect(weather.cycle.value?.name).toBe("default_clear");
   });
 
-  it("goes back to the weather from the keyframe set by hand", async () => {
-    const { getByRole, weather } = await renderPanel();
+  it("goes back to the weather from the keyframe set by hand, saying what it was seeded from meanwhile", async () => {
+    const { getByRole, getByTestId, weather } = await renderPanel();
 
     await userEvent.click(getByRole("button", { name: "Manual" }));
-    await userEvent.click(getByRole("button", { name: "Play the weather" }));
+
+    expect(getByTestId("level-weather-seed-note")).toHaveTextContent(/^Seeded from/);
+
+    await userEvent.click(getByRole("button", { name: "Weather" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.WEATHER);
   });
@@ -146,7 +149,7 @@ describe("LevelWeatherPanel", () => {
 
     await userEvent.click(getByRole("button", { name: "Play" }));
 
-    expect(weather.control.isPaused).toBe(false);
+    expect(weather.clock.control.isPaused).toBe(false);
     expect(getByRole("checkbox", { name: "Dynamic sun" })).not.toBeChecked();
   });
 
@@ -192,7 +195,7 @@ describe("LevelWeatherPanel", () => {
     expect(asked).toEqual(["effect fx_blowout"]);
 
     act(() =>
-      weather.noteReport(mockWorldWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
+      weather.clock.noteReport(mockWorldWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
     );
 
     await waitFor(() =>
@@ -209,7 +212,7 @@ describe("LevelWeatherPanel", () => {
     const { getByRole, getByTestId, weather } = await renderPanel();
 
     act(() =>
-      weather.noteReport(
+      weather.clock.noteReport(
         mockWorldWeatherReport({
           ambient: {
             effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4_000 },
@@ -256,7 +259,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(section()).toMatch(/Volumes\s*1.*Around the camera\s*0/);
 
-    act(() => weather.noteReport(mockWorldWeatherReport({ modifiers: 1, weight: 1 })));
+    act(() => weather.clock.noteReport(mockWorldWeatherReport({ modifiers: 1, weight: 1 })));
 
     await waitFor(() => expect(section()).toMatch(/Around the camera\s*1/));
   });

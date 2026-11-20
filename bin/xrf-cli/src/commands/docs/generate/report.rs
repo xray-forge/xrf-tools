@@ -16,7 +16,7 @@ use serde::Serialize;
 /// status here would only repeat.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DocsGenerateReport {
+pub(crate) struct DocsGenerateReport {
   directory: String,
   is_check: bool,
   pages: usize,
@@ -29,9 +29,9 @@ impl DocsGenerateReport {
   ///
   /// Each finding is the line the check printed - `missing:`, `outdated:` or `unexpected:` followed
   /// by the page name - so a consumer reading `result` alone knows which pages to regenerate.
-  pub fn checked(directory: &Path, pages: usize, stale: Vec<String>) -> Self {
+  pub(crate) fn checked(directory: &Path, pages: usize, stale: Vec<String>) -> Self {
     Self {
-      directory: xrf_utils::to_portable_path_string(directory),
+      directory: xrf_utils::format_portable_path(directory),
       is_check: true,
       pages,
       removed: Vec::new(),
@@ -43,9 +43,9 @@ impl DocsGenerateReport {
   ///
   /// `removed` is what a group rename leaves behind, reported because the write is the only moment
   /// anyone learns those pages existed.
-  pub fn written(directory: &Path, pages: usize, removed: Vec<String>) -> Self {
+  pub(crate) fn written(directory: &Path, pages: usize, removed: Vec<String>) -> Self {
     Self {
-      directory: xrf_utils::to_portable_path_string(directory),
+      directory: xrf_utils::format_portable_path(directory),
       is_check: false,
       pages,
       removed,

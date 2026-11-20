@@ -1,9 +1,16 @@
+use std::ops::Range;
+
 use image::RgbaImage;
+use rayon::prelude::*;
 
 use crate::mip::dds_mip_filter::DdsMipFilter;
 
 /// Channels a texture carries, which the passes below walk one at a time.
 const CHANNELS: usize = 4;
+
+/// Bytes the horizontally reduced rows of one slab may take. Reducing every source row at once would hold 268 MB for
+/// the first level of a 4096 square base.
+const SLAB_BYTES: usize = 32 << 20;
 
 /// One reduction of an image to a smaller size, with the windows each destination pixel reads prepared up front.
 ///
@@ -30,39 +37,114 @@ impl DdsMipResampler {
 
   /// Applies the reduction, one axis after the other.
   ///
-  /// The horizontal pass answers full-height rows that the vertical pass then reduces, and they are kept as `f64`
-  /// between the two so a value is rounded to a byte once, at the end, rather than at every axis.
+  /// Values stay `f64` between the passes and are rounded to a byte once, at the end. Destination rows go in slabs
+  /// whose source rows fit [`SLAB_BYTES`], spread over every worker; each value sums its window in order, so the split
+  /// never changes a byte.
   pub(crate) fn resample(&self, source: &RgbaImage) -> RgbaImage {
-    let width: usize = self.width as usize;
-    let mut rows: Vec<f64> = vec![0.0; width * source.height() as usize * CHANNELS];
-
-    for y in 0..source.height() as usize {
-      for (x, taps) in self.horizontal.iter().enumerate() {
-        for channel in 0..CHANNELS {
-          rows[(y * width + x) * CHANNELS + channel] =
-            taps.weigh(|sample| f64::from(source.get_pixel(sample as u32, y as u32).0[channel]));
-        }
-      }
-    }
-
+    let row_length: usize = self.width as usize * CHANNELS;
+    let source_row_length: usize = source.width() as usize * CHANNELS;
+    let slab_rows: usize = (SLAB_BYTES / (row_length * size_of::<f64>())).max(1);
     let mut destination: RgbaImage = RgbaImage::new(self.width, self.height);
+    let bytes: &mut [u8] = &mut destination;
+    let mut reduced: Vec<f64> = Vec::new();
+    let mut first: usize = 0;
 
-    for (y, taps) in self.vertical.iter().enumerate() {
-      for x in 0..width {
-        for channel in 0..CHANNELS {
-          destination.get_pixel_mut(x as u32, y as u32).0[channel] =
-            Self::to_byte(taps.weigh(|sample| rows[(sample * width + x) * CHANNELS + channel]));
-        }
-      }
+    while first < self.vertical.len() {
+      let slab: DdsMipSlab = self.next_slab(first, slab_rows);
+
+      reduced.resize(slab.sources.len() * row_length, 0.0);
+      reduced
+        .par_chunks_mut(row_length)
+        .zip(slab.sources.clone())
+        .for_each(|(values, row)| {
+          self.reduce_row(&source.as_raw()[row * source_row_length..][..source_row_length], values);
+        });
+      bytes[slab.rows.start * row_length..slab.rows.end * row_length]
+        .par_chunks_mut(row_length)
+        .zip(&self.vertical[slab.rows.clone()])
+        .for_each_init(
+          || vec![0.0; row_length],
+          |sums, (row, taps)| Self::reduce_column(taps, &reduced, slab.sources.start, sums, row),
+        );
+
+      first = slab.rows.end;
     }
 
     destination
   }
 
+  /// The slab from destination row `first`: the rows whose windows fit `slab_rows` source rows, at least one.
+  fn next_slab(&self, first: usize, slab_rows: usize) -> DdsMipSlab {
+    let mut sources: Range<usize> = self.vertical[first].span();
+    let mut last: usize = first + 1;
+
+    while let Some(taps) = self.vertical.get(last) {
+      let span: Range<usize> = taps.span();
+      let joined: Range<usize> = sources.start.min(span.start)..sources.end.max(span.end);
+
+      if joined.len() > slab_rows {
+        break;
+      }
+
+      sources = joined;
+      last += 1;
+    }
+
+    DdsMipSlab {
+      rows: first..last,
+      sources,
+    }
+  }
+
+  /// One source row reduced along the horizontal axis, a value per destination pixel and channel.
+  fn reduce_row(&self, source: &[u8], reduced: &mut [f64]) {
+    for (taps, values) in self.horizontal.iter().zip(reduced.as_chunks_mut::<CHANNELS>().0) {
+      let mut sums: [f64; CHANNELS] = [-0.0; CHANNELS];
+
+      for (weight, pixel) in taps
+        .weights
+        .iter()
+        .zip(source[taps.start * CHANNELS..].as_chunks::<CHANNELS>().0)
+      {
+        for (sum, channel) in sums.iter_mut().zip(pixel) {
+          *sum += weight * f64::from(*channel);
+        }
+      }
+
+      *values = sums;
+    }
+  }
+
+  /// One destination row from the reduced rows of `slab`, which starts at source row `slab_start`, rounded to bytes.
+  fn reduce_column(taps: &DdsMipTaps, slab: &[f64], slab_start: usize, sums: &mut [f64], row: &mut [u8]) {
+    let row_length: usize = row.len();
+
+    sums.fill(-0.0);
+
+    for (offset, weight) in taps.weights.iter().enumerate() {
+      let reduced: &[f64] = &slab[(taps.start + offset - slab_start) * row_length..][..row_length];
+
+      for (sum, value) in sums.iter_mut().zip(reduced) {
+        *sum += weight * value;
+      }
+    }
+
+    for (byte, sum) in row.iter_mut().zip(sums.iter()) {
+      *byte = Self::quantize_byte(*sum);
+    }
+  }
+
   /// Rounds a resampled value back into a byte, clamping the overshoot a kernel with negative lobes produces.
-  fn to_byte(value: f64) -> u8 {
+  fn quantize_byte(value: f64) -> u8 {
     value.round().clamp(0.0, f64::from(u8::MAX)) as u8
   }
+}
+
+/// Destination rows reduced together, and the source rows their vertical windows read.
+#[derive(Debug, PartialEq, Eq)]
+struct DdsMipSlab {
+  rows: Range<usize>,
+  sources: Range<usize>,
 }
 
 /// One destination pixel's window over a source axis.
@@ -124,22 +206,19 @@ impl DdsMipTaps {
     }
   }
 
-  /// The weighted sum of the window, reading each covered sample through `sample_at`.
-  fn weigh(&self, sample_at: impl Fn(usize) -> f64) -> f64 {
-    self
-      .weights
-      .iter()
-      .enumerate()
-      .map(|(offset, weight)| weight * sample_at(self.start + offset))
-      .sum()
+  /// The source samples the window covers.
+  fn span(&self) -> Range<usize> {
+    self.start..self.start + self.weights.len()
   }
 }
 
 #[cfg(test)]
 mod tests {
+  use std::ops::Range;
+
   use image::{Rgba, RgbaImage};
 
-  use super::DdsMipResampler;
+  use super::{DdsMipResampler, DdsMipSlab, DdsMipTaps};
   use crate::mip::dds_mip_filter::DdsMipFilter;
 
   /// A row of grey steps, opaque, so every figure below is one channel of arithmetic.
@@ -162,6 +241,31 @@ mod tests {
       .collect()
   }
 
+  // One sum per pixel and channel over the whole window: what the slabs must answer byte for byte.
+  fn reduced_directly(resampler: &DdsMipResampler, source: &RgbaImage) -> RgbaImage {
+    let weigh = |taps: &DdsMipTaps, sample_at: &dyn Fn(usize) -> f64| -> f64 {
+      taps
+        .weights
+        .iter()
+        .enumerate()
+        .map(|(offset, weight)| weight * sample_at(taps.start + offset))
+        .sum()
+    };
+
+    RgbaImage::from_fn(resampler.width, resampler.height, |x, y| {
+      let vertical: &DdsMipTaps = &resampler.vertical[y as usize];
+      let horizontal: &DdsMipTaps = &resampler.horizontal[x as usize];
+
+      Rgba(std::array::from_fn(|channel| {
+        DdsMipResampler::quantize_byte(weigh(vertical, &|row| {
+          weigh(horizontal, &|column| {
+            f64::from(source.get_pixel(column as u32, row as u32).0[channel])
+          })
+        }))
+      }))
+    })
+  }
+
   #[test]
   fn the_box_kernel_averages_the_pixels_a_destination_pixel_covers() {
     // Widened by the reduction, so halving reads two source pixels and reducing by four reads four.
@@ -177,12 +281,56 @@ mod tests {
   }
 
   #[test]
+  fn answers_every_pixel_as_one_sum_over_its_window_whatever_the_slabs() {
+    // Kernels with and without negative lobes, at sizes whose slabs hold a few rows each.
+    let byte = |value: u32| u8::try_from(value % 256).unwrap_or_default();
+    let source: RgbaImage = RgbaImage::from_fn(67, 45, |x, y| {
+      Rgba([
+        byte(x * 37 + y * 11),
+        byte(x * 5 + y * 71),
+        byte(x * y + 13),
+        byte((x * 3) ^ (y * 7)),
+      ])
+    });
+
+    for filter in [
+      DdsMipFilter::Box,
+      DdsMipFilter::Kaiser,
+      DdsMipFilter::Catrom,
+      DdsMipFilter::Point,
+    ] {
+      for destination in [(33, 22), (8, 5), (1, 1)] {
+        let resampler: DdsMipResampler = DdsMipResampler::new(source.dimensions(), destination, filter);
+
+        assert_eq!(
+          resampler.resample(&source),
+          reduced_directly(&resampler, &source),
+          "{} to {destination:?}",
+          filter.label()
+        );
+      }
+    }
+  }
+
+  #[test]
+  fn a_slab_holds_what_fits_and_at_least_one_row() {
+    let resampler: DdsMipResampler = DdsMipResampler::new((64, 64), (32, 32), DdsMipFilter::Box);
+    let slab = |rows: Range<usize>, sources: Range<usize>| DdsMipSlab { rows, sources };
+
+    // A halving box reads two source rows a destination row, so eight source rows hold four destination rows.
+    assert_eq!(resampler.next_slab(0, 8), slab(0..4, 0..8));
+    assert_eq!(resampler.next_slab(4, 8), slab(4..8, 8..16));
+    // A window wider than the slab is still taken, alone.
+    assert_eq!(resampler.next_slab(0, 1), slab(0..1, 0..2));
+  }
+
+  #[test]
   fn rounds_and_clamps_a_resampled_value_into_a_byte() {
     // Where a kernel with negative lobes lands: Catrom undershoots at a hard edge and overshoots after it, and both
     // are outside a byte before this. Halves round away from zero, which is what decides the middle grey.
-    assert_eq!(DdsMipResampler::to_byte(-12.5), 0);
-    assert_eq!(DdsMipResampler::to_byte(300.0), u8::MAX);
-    assert_eq!(DdsMipResampler::to_byte(127.5), 128);
-    assert_eq!(DdsMipResampler::to_byte(126.5), 127);
+    assert_eq!(DdsMipResampler::quantize_byte(-12.5), 0);
+    assert_eq!(DdsMipResampler::quantize_byte(300.0), u8::MAX);
+    assert_eq!(DdsMipResampler::quantize_byte(127.5), 128);
+    assert_eq!(DdsMipResampler::quantize_byte(126.5), 127);
   }
 }

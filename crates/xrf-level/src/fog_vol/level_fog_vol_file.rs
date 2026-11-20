@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::fog_vol::level_fog_volume::LevelFogVolume;
 
@@ -91,7 +91,7 @@ impl LevelFogVolFile {
   /// Returns an error when a count exceeds what the format's `u32` holds.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u16::<T>(self.version)?;
-    writer.write_u32::<T>(to_format_size(self.volumes.len(), "fog volumes")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.volumes.len(), "fog volumes")?)?;
 
     for volume in &self.volumes {
       volume.write::<T>(writer)?;

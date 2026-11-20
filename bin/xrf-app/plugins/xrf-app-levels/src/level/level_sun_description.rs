@@ -18,7 +18,7 @@ impl LevelSunDescription {
   pub fn of(light: Option<&LevelDynamicLight>) -> Option<Self> {
     light.map(|sun| Self {
       color: [sun.diffuse.r, sun.diffuse.g, sun.diffuse.b],
-      direction: sun.direction.clone(),
+      direction: sun.direction,
     })
   }
 }

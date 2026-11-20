@@ -1,15 +1,15 @@
-//! The level viewer's own files in the application's data: the views it exports, the screenshots and captures it
-//! takes of a viewport, a level map's and a cubemap's exported again, and the bursts of frames it measures.
+//! The level viewer's files in the application's data: exported views, viewport screenshots and captures, map and
+//! cubemap re-exports, measured frame bursts, and recorded videos.
 
 pub(crate) mod burst;
 mod capture;
 pub(crate) mod commands;
-pub(crate) mod cube;
+pub(crate) mod export;
 mod folder;
-pub(crate) mod map;
+pub(crate) mod recording;
 pub(crate) mod routes;
 
-pub use capture::{
+pub(crate) use capture::{
   LevelViewerReport, ScreenshotSaveRequest, ViewerAssembly, ViewerCaptureJob, ViewerDdsExport, ViewerImage,
 };
-pub use folder::LevelViewerFolder;
+pub(crate) use folder::LevelViewerFolder;

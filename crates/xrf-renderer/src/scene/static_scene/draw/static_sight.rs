@@ -12,7 +12,7 @@ impl StaticSight {
   const WATER: u32 = 1 << StaticSurfacePass::COUNT;
 
   /// Everything there is to see, past which a search stops.
-  pub const ALL: StaticSight = StaticSight(Self::WATER | (Self::WATER - 1));
+  pub const ALL: Self = Self(Self::WATER | (Self::WATER - 1));
 
   /// What a slot of a class whose surface takes part in surface `passes` (`StaticSurfacePass::mask_of`) brings into
   /// sight.
@@ -29,7 +29,7 @@ impl StaticSight {
   }
 
   pub fn has_pass(self, pass: StaticSurfacePass) -> bool {
-    self.0 & 1 << pass.get_index() != 0
+    self.0 & (1 << pass.get_index()) != 0
   }
 }
 

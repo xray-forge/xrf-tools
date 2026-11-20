@@ -5,7 +5,7 @@ use xrf_app_core::session::SessionId;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ConfigsReadSectionSchemeRequest {
+pub(crate) struct ConfigsReadSectionSchemeRequest {
   /// The open this read is addressed to; a read naming one closed is refused rather than answered.
   pub session_id: SessionId,
   /// Engine identity of the entry point the section belongs to.

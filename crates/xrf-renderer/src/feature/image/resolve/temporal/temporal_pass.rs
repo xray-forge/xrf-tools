@@ -7,7 +7,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 
 /// Resolves a viewport's jittered frame with its history into the next history, which is the frame shown.
-pub struct TemporalPass {
+pub(crate) struct TemporalPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
@@ -16,14 +16,14 @@ pub struct TemporalPass {
 
 impl TemporalPass {
   /// Its history's format: colour and the distance along the view, at half floats.
-  pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// How much each pixel flickers, which it keeps beside its history.
-  pub const FLICKER: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+  pub(crate) const FLICKER: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = TemporalParameters::create_layout(device);
@@ -43,7 +43,7 @@ impl TemporalPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout)
     }) {
@@ -52,12 +52,17 @@ impl TemporalPass {
   }
 
   /// The sampler the history is read through, which the parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Resolves this frame against its history into the history written, keeping each pixel's flicker beside it.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &TemporalParameters<'_>) {
+  pub(crate) fn record(
+    &self,
+    context: &mut RasterContext<'_>,
+    view: &ViewBinding,
+    parameters: &TemporalParameters<'_>,
+  ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();

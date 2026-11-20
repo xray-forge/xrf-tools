@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
+use xrf_renderer_core::RenderGpu;
+use xrf_test_utils::TestSkip;
+
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_libraries::GpuLibraries;
 use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
-use crate::contract::settings::gpu::render_gpu::RenderGpu;
 use crate::tests::support::test_bundle::checkout_dxc;
 
 /// A GPU no machine has.
@@ -22,13 +24,13 @@ fn draws_on_the_chosen_gpu_and_falls_back_to_the_automatic_one() {
     .map(GpuContext::probe)
     .find(|it| !it.gpus.is_empty())
   else {
-    eprintln!("Skipped: no hardware GPU");
+    TestSkip::report("no hardware GPU");
 
     return;
   };
   let RenderBackendAvailability { backend, gpus, .. } = availability;
   let dxc: Option<PathBuf> = checkout_dxc();
-  let libraries: GpuLibraries = GpuLibraries {
+  let libraries: GpuLibraries<'_> = GpuLibraries {
     dxc: dxc.as_deref(),
     dlss: None,
   };

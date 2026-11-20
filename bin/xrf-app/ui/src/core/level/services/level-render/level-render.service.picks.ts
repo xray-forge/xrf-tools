@@ -4,6 +4,7 @@ import { RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
 import { toLevelFocusDistance } from "@/core/level/lib/features/level-feature-options";
+import { LevelHoverPick } from "@/core/level/lib/pick/level-hover-pick";
 import {
   ELevelPick,
   ILevelPickParts,
@@ -46,8 +47,8 @@ export interface ILevelRenderPicksSources {
  * object, or the lens's focus; kept across the level's parts read anew, and let go with the scene they were asked of.
  */
 export class LevelRenderPicks {
-  /** The hover pick in flight, settled either way, which the next hover waits for; null while none is. */
-  private hovering: Nullable<Promise<void>> = null;
+  /** The pointer's picks, one in flight at a time. */
+  private readonly hovering: LevelHoverPick = new LevelHoverPick();
 
   /**
    * @param context - The viewport and the level open.
@@ -82,9 +83,8 @@ export class LevelRenderPicks {
   }
 
   /**
-   * Notes the level object under a point of the viewport as hovered, picking at once with one hover pick in flight at a
-   * time: a point arriving meanwhile waits for it and is picked next, and a newer one drops the point waiting, so the
-   * pointer is answered as fast as a pick comes back and never queues the renderer's readbacks.
+   * Notes the level object under a point of the viewport as hovered, with one hover pick in flight at a time
+   * ({@link LevelHoverPick}).
    *
    * @param point - Where, in css pixels from the viewport's top left corner; null for nothing hovered.
    */
@@ -96,33 +96,10 @@ export class LevelRenderPicks {
       return;
     }
 
-    if (this.hovering) {
-      yield* call(this.hovering);
-    }
-
     // The pick in flight may have outlived the viewport or the level it was asked of.
-    const viewport: Nullable<NativeViewport> = this.context.getViewport();
-
-    if (!viewport || !this.context.getLevel()) {
-      return;
-    }
-
-    const picking: Promise<Nullable<RenderLevelHit>> = viewport.pick({ x: point.x, y: point.y, isThrough: false });
-
-    const settled: Promise<void> = picking
-      .then(
-        () => undefined,
-        () => undefined
-      )
-      .then(() => {
-        if (this.hovering === settled) {
-          this.hovering = null;
-        }
-      });
-
-    this.hovering = settled;
-
-    const hit: Nullable<RenderLevelHit> = yield* call(picking);
+    const hit: Nullable<RenderLevelHit> = yield* this.hovering.pick(point, () =>
+      this.context.getLevel() ? this.context.getViewport() : null
+    );
     const pick: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.sources.loadService.objects) : null;
 
     this.sources.viewportService.noteHovered(pick?.kind === ELevelPick.OBJECT ? pick.object : null);
@@ -235,7 +212,7 @@ export class LevelRenderPicks {
     cancelFlow(this, "pick");
     cancelFlow(this, "focusAt");
     cancelFlow(this, "hover");
-    this.hovering = null;
+    this.hovering.reset();
     this.sources.viewportService.noteHovered(null);
   }
 

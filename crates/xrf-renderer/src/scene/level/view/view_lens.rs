@@ -20,11 +20,11 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 /// marches, the sky's directions, the lens flare), measures from it (the occlusion pyramid's rectangles, impostors'
 /// facets) or models its lens (the upscalers) is turned off; their sun is one cascade over the box they see, and their
 /// grass is planted out to its corners.
-pub struct ViewLens;
+pub(crate) struct ViewLens;
 
 impl ViewLens {
   /// `options` as `view`'s lens lets them be drawn: unchanged through a perspective.
-  pub fn fit<'a>(options: &'a RenderViewOptions, view: &CameraView) -> Cow<'a, RenderViewOptions> {
+  pub(crate) fn fit<'a>(options: &'a RenderViewOptions, view: &CameraView) -> Cow<'a, RenderViewOptions> {
     match view.get_orthographic_extent() {
       Some(extent) => Cow::Owned(Self::fit_parallel(options.clone(), extent)),
       None => Cow::Borrowed(options),

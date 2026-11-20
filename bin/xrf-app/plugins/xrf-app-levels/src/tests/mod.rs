@@ -1,23 +1,44 @@
 mod ambients;
 mod annotations;
+mod burst_sound;
+#[cfg(windows)]
+mod burst_video;
 mod burst_writer;
 mod console_defaults;
 mod cube_export;
 mod fixtures;
 mod lens_flares;
+mod level_build_run;
 mod level_entries;
 mod level_files;
 mod level_follow;
 mod level_map;
 mod level_objects;
 mod level_placements;
+#[cfg(windows)]
+mod level_recordings;
 mod level_source;
 mod level_start;
 mod level_viewer_folder;
 mod map_export;
+mod music_tracks;
 mod new_game;
 mod particles;
+#[cfg(windows)]
+mod record_resampler;
 mod render_reload;
+mod scene_follow;
+mod scene_helpers;
+mod scene_helpers_placement;
+mod scene_objects;
+mod scene_open;
+mod scene_problems;
+mod scene_render;
+mod scene_render_placement;
+mod scene_spawn_models;
+mod scene_surface_kinds;
+mod scene_tools;
+mod sound_emitters;
 mod surfaces;
 mod textures;
 mod thunderbolt_settings;

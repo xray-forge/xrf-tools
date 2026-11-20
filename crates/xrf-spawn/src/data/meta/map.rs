@@ -169,6 +169,10 @@ lazy_static! {
     "script_zone" => ClsId::ScriptZn,
     "search_light" => ClsId::OSearch,
     "shooting_target_1" => ClsId::ODstrS,
+    "sim_default_duty_2" => ClsId::AiStlS,
+    "sim_default_military_2" => ClsId::AiStlS,
+    "sim_default_military_3" => ClsId::AiStlS,
+    "sim_default_stalker_3" => ClsId::AiStlS,
     "sim_faction" => ClsId::ScriptZn, // S_FACTION in Clear Sky
     "smart_cover" => ClsId::SmrtCS,
     "smart_terrain" => ClsId::SmrtTrrn,
@@ -181,7 +185,11 @@ lazy_static! {
     "space_restrictor" => ClsId::SpcRsS,
     "specops_outfit" => ClsId::EStlk,
     "stalker" => ClsId::AiStlS,
+    "stalker_die_hard" => ClsId::AiStlS,
     "stalker_outfit" => ClsId::EStlk,
+    "stalker_sakharov" => ClsId::AiStlS,
+    "stalker_strelok" => ClsId::AiStlS,
+    "stalker_zombied" => ClsId::AiStlS,
     "stationary_mgun" => ClsId::WSTMGun,
     "svoboda_heavy_outfit" => ClsId::EStlk,
     "svoboda_light_outfit" => ClsId::EStlk,
@@ -286,6 +294,7 @@ lazy_static! {
     "zone_radioactive_average" => ClsId::ZRadio,
     "zone_radioactive_strong" => ClsId::ZRadio,
     "zone_radioactive_weak" => ClsId::ZRadio,
+    "zone_team_base" => ClsId::ZTeamBs,
     "zone_teleport" => ClsId::ZMbald,
     "zone_witches_galantine" => ClsId::ZsMBald,
     "zone_witches_galantine_average" => ClsId::ZsMBald,
@@ -589,7 +598,12 @@ lazy_static! {
     "zone_mine_steam_strong" => ClsId::ZsMBald,
     "zone_mine_steam_weak" => ClsId::ZsMBald,
     // CoC and Anomaly:
+    "agru_door" => ClsId::OPhysS, // O_PHYSIC in CoC
+    "ammo_12x76_dart" => ClsId::AmmoS, // AMMO
+    "ammo_7.62x54_7h14" => ClsId::AmmoS, // AMMO
+    "ammo_7.62x54_ap" => ClsId::AmmoS, // AMMO
     "decoder" => ClsId::IIAttch,
+    "flesh_weak" => ClsId::SmFlesh,
     "generator_dust_static" => ClsId::ZMbald,
     "generator_electra" => ClsId::ZMbald,
     "generator_torrid" => ClsId::ZTorrid,
@@ -616,6 +630,142 @@ lazy_static! {
     "zone_mosquito_bald_strong" => ClsId::ZsMBald,
     "zone_mosquito_bald_weak" => ClsId::ZsMBald,
     "zone_zhar" => ClsId::ZsMBald,
+    // Multiplayer, CoP's `configs/mp`, by the `class` each declares or inherits: a launcher's `W_AK74` and `W_GROZA`
+    // read one more byte than `W_PM`, `W_VAL` or `W_SVD`.
+    "mp_af_electra_flash" => ClsId::ScrptArt, // ARTEFACT
+    "mp_ammo_11.43x23_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_11.43x23_hydro" => ClsId::AmmoS, // AMMO
+    "mp_ammo_12x70_buck" => ClsId::AmmoS, // AMMO
+    "mp_ammo_12x76_zhekan" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.45x39_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.45x39_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.56x45_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_5.56x45_ss190" => ClsId::AmmoS, // AMMO
+    "mp_ammo_7.62x54_7h1" => ClsId::AmmoS, // AMMO
+    "mp_ammo_7.62x54_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x18_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x18_pmm" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_fmj" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_fmj_4mp5" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_pbp" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x19_pbp_4mp5" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x39_ap" => ClsId::AmmoS, // AMMO
+    "mp_ammo_9x39_pab9" => ClsId::AmmoS, // AMMO
+    "mp_ammo_gauss" => ClsId::AmmoS, // AMMO
+    "mp_ammo_m209" => ClsId::SM209, // AMMO
+    "mp_ammo_og-7b" => ClsId::SOG7B, // AMMO
+    "mp_ammo_pkm_100" => ClsId::AmmoS, // AMMO
+    "mp_ammo_vog-25" => ClsId::SVog25, // AMMO
+    "mp_antirad" => ClsId::SFood, // II_ANTIR
+    "mp_antirad_old" => ClsId::SFood, // II_ANTIR
+    "mp_bandage" => ClsId::SFood, // II_BANDG
+    "mp_detector_advanced" => ClsId::DetElit, // DET_ELIT
+    "mp_device_torch" => ClsId::TorchS, // TORCH_S
+    "mp_drug_coagulant" => ClsId::SFood, // II_FOOD
+    "mp_drug_radioprotector" => ClsId::SFood, // II_FOOD
+    "mp_energy_drink" => ClsId::SFood, // II_BOTTL
+    "mp_exo_outfit" => ClsId::EStlk, // EQU_EXO
+    "mp_explosive_barrel" => ClsId::SExplo, // II_EXPLO
+    "mp_explosive_fuelcan" => ClsId::SExplo, // II_EXPLO
+    "mp_explosive_tank" => ClsId::SExplo, // II_EXPLO
+    "mp_grenade_f1" => ClsId::GF1S, // G_F1
+    "mp_grenade_gd-05" => ClsId::GF1S, // G_F1
+    "mp_grenade_rgd5" => ClsId::GRgd5S, // G_RGD5
+    "mp_medkit" => ClsId::SFood, // II_MEDKI
+    "mp_medkit_army" => ClsId::SFood, // II_MEDKI
+    "mp_medkit_old" => ClsId::SFood, // S_MEDKI
+    "mp_medkit_scientic" => ClsId::SFood, // II_MEDKI
+    "mp_military_stalker_outfit" => ClsId::EStlk, // EQU_MLTR
+    "mp_scientific_outfit" => ClsId::EStlk, // EQU_SCIE
+    "mp_wood_stolb_fixed" => ClsId::ODstrS, // P_DSTRBL
+    "mp_wpn_abakan" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_addon_grenade_launcher" => ClsId::WpGLaun, // W_GLAUNC
+    "mp_wpn_addon_grenade_launcher_m203" => ClsId::WpGLaun, // W_GLAUNC
+    "mp_wpn_addon_scope" => ClsId::WpScope, // W_SCOPE
+    "mp_wpn_addon_scope_susat" => ClsId::WpScope, // W_SCOPE
+    "mp_wpn_addon_silencer" => ClsId::WpSilen, // W_SILENC
+    "mp_wpn_ak74" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_ak74u" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_beretta" => ClsId::WpPM, // W_PM
+    "mp_wpn_binoc" => ClsId::WpBinoc, // W_BINOC
+    "mp_wpn_bm16" => ClsId::WpBM16, // W_BM16
+    "mp_wpn_colt1911" => ClsId::WpPM, // W_PM
+    "mp_wpn_desert_eagle" => ClsId::WpPM, // W_PM
+    "mp_wpn_fake_missile" => ClsId::GFake, // G_FAKE
+    "mp_wpn_fake_missile1" => ClsId::GFake, // G_FAKE
+    "mp_wpn_fake_missile2" => ClsId::GFake, // G_FAKE
+    "mp_wpn_fn2000" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_fort" => ClsId::WpPM, // W_FORT
+    "mp_wpn_g36" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_gauss" => ClsId::WpSVD, // W_SVD
+    "mp_wpn_groza" => ClsId::WpGroza, // W_GROZA
+    "mp_wpn_hpsa" => ClsId::WpHPSA, // W_HPSA
+    "mp_wpn_knife" => ClsId::WpKnife, // W_KNIFE
+    "mp_wpn_l85" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_lr300" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_mp5" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_pb" => ClsId::WpPM, // W_PM
+    "mp_wpn_pkm" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_pm" => ClsId::WpPM, // W_PM
+    "mp_wpn_protecta" => ClsId::WpAshTG, // W_SHOTGN
+    "mp_wpn_rg-6" => ClsId::WpRG6, // W_RG6
+    "mp_wpn_rpg7" => ClsId::WpRPG7, // W_RPG7
+    "mp_wpn_rpg7_missile" => ClsId::GRpg7, // G_RPG7
+    "mp_wpn_sig220" => ClsId::WpPM, // W_PM
+    "mp_wpn_sig550" => ClsId::WpAk74, // W_AK74
+    "mp_wpn_spas12" => ClsId::WpAshTG, // W_SHOTGN
+    "mp_wpn_svd" => ClsId::WpSVD, // W_SVD
+    "mp_wpn_svu" => ClsId::WpSVD, // W_SVD
+    "mp_wpn_toz34" => ClsId::WpBM16, // W_BM16
+    "mp_wpn_usp" => ClsId::WpLR300, // W_USP45, read as any magazined weapon
+    "mp_wpn_val" => ClsId::WpVAL, // W_VAL
+    "mp_wpn_vintorez" => ClsId::WpVAL, // W_VAL
+    "mp_wpn_walther" => ClsId::WpPM, // W_PM
+    "mp_wpn_wincheaster1300" => ClsId::WpAshTG, // W_SHOTGN
+    "mp_zone_witches_galantine" => ClsId::ZsMBald, // Z_MBALD
+  };
+
+  /// Sections whose `class` Clear Sky's configs declare otherwise than Call of Pripyat's (`SECTION_TO_CLS_ID`), and
+  /// those only Clear Sky declares, by the `class` each inherits.
+  pub static ref CLEAR_SKY_SECTION_TO_CLS_ID: phf::Map<&'static str, ClsId> = phf_map! {
+    "agr_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_duty_base_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_secret_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_stalker_base_leader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "agr_stalker_base_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+    "boar_weak" => ClsId::SmBoarW, // gamedata-cs/configs/creatures/m_boar.ltx
+    "device_pda_fang" => ClsId::DPda, // gamedata-cs/configs/misc/quest_items.ltx
+    "esc_driver" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+    "esc_tech_stalkerbase" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+    "esc_trader_stalkerbase" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+    "flesh_up_aceg_scientific_outfit" => ClsId::DPda, // gamedata-cs/configs/misc/upgrade_items.ltx
+    "gar_bandit_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_fixer" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_leader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_minigame" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_senya" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_bandit_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_prisoner_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_prisoner_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_searcher_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_searcher_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "gar_digger_conc_camp_searcher_3" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+    "mar_csky_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_commander" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_scientist" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_tactic" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_tech" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "mar_csky_tutorial_man" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+    "sim_default_digger_0" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+    "sim_default_digger_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+    "sim_default_digger_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+    "sim_faction" => ClsId::SFaction, // gamedata-cs/configs/misc/simulation.ltx
+    "val_freedom_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_darkvalley.ltx
+    // `Z_MBALD` registers no script class, so its zone stores no `se_zone_anom` tail.
+    "zone_mine_field_no_damage" => ClsId::ZMbald, // gamedata-cs/configs/zones/zone_minefield.ltx
+    "zone_mine_field_strong" => ClsId::ZMbald, // gamedata-cs/configs/zones/zone_minefield.ltx
+    "zone_mine_thermal_firetube" => ClsId::ZsMBald, // gamedata-cs/configs/zones/zone_mine_thermal.ltx
   };
 
   pub static ref CLS_ID_TO_CLASS: EnumMap<ClsId, AlifeClass> = enum_map! {
@@ -655,6 +805,8 @@ lazy_static! {
     ClsId::PSkelet => AlifeClass::CseAlifePhSkeletonObject,
     ClsId::SActor => AlifeClass::SeActor,
     ClsId::SExplo => AlifeClass::CseAlifeItemExplosive,
+    // Call of Pripyat registers no `SFACTION`; Clear Sky's faction resolves by its dialect.
+    ClsId::SFaction => AlifeClass::Unknown,
     ClsId::SFood => AlifeClass::CseAlifeItem,
     ClsId::SInvBox => AlifeClass::CseAlifeInventoryBox,
     ClsId::SM209 => AlifeClass::CseAlifeItemAmmo,
@@ -713,6 +865,7 @@ lazy_static! {
     ClsId::ZNoGrav => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRadio => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRustyH => AlifeClass::CseAlifeZoneVisual,
+    ClsId::ZTeamBs => AlifeClass::CseAlifeTeamBaseZone,
     ClsId::ZTorrid => AlifeClass::CseAlifeTorridZone,
     ClsId::ZsAmeba => AlifeClass::CseAlifeZoneVisual,
     ClsId::ZsBFuzz => AlifeClass::CseAlifeZoneVisual,
@@ -727,11 +880,12 @@ lazy_static! {
 
 #[cfg(test)]
 mod tests {
+  use crate::data::alife::script_dialect::ScriptDialect;
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
+  use crate::data::meta::map::CLEAR_SKY_SECTION_TO_CLS_ID;
 
-  /// Multiplayer and Shadow of Chernobyl sections have no class to read, and a rocket's `CSE_Temporary` is no alife
-  /// object the simulation can hold.
+  // Groups, Shadow of Chernobyl sections and the spectator have no class; rockets are `CSE_Temporary`, no alife object.
   #[test]
   fn refuses_what_call_of_pripyat_creates_from_no_spawn() {
     for section in [
@@ -753,9 +907,65 @@ mod tests {
     }
   }
 
-  /// Every zone CLSID `xray-16/src/xrServerEntities/object_factory_register.cpp` registers, paired with the server
-  /// class it registers it to, but the multiplayer team base. No spawn in the mounted corpora declares a section for
-  /// most of them, so the registry is what records the engine's answer.
+  // Not by the single-player parent: `mp_wpn_mp5` is a `W_AK74` with a launcher's byte though `wpn_mp5` is not.
+  #[test]
+  fn maps_a_multiplayer_section_by_the_class_it_declares() {
+    let class = |section: &str| AlifeClass::from_cls_id(&ClsId::from_section(section).expect("a multiplayer section"));
+
+    assert_eq!(class("mp_wpn_mp5"), AlifeClass::CseAlifeItemWeaponMagazinedWGl);
+    assert_eq!(class("mp_wpn_vintorez"), AlifeClass::CseAlifeItemWeaponMagazined);
+    assert_eq!(class("mp_medkit"), AlifeClass::CseAlifeItem);
+    assert_eq!(class("mp_exo_outfit"), AlifeClass::CseAlifeItemCustomOutfit);
+  }
+
+  // Of these, only `sim_faction` names a Call of Pripyat section, as a space restrictor.
+  #[test]
+  fn resolves_every_clear_sky_section_under_its_own_dialect_alone() {
+    for (section, clsid) in CLEAR_SKY_SECTION_TO_CLS_ID.entries() {
+      let clear_sky: ClsId =
+        ClsId::from_dialect_section(section, ScriptDialect::ClearSky).expect("a Clear Sky section");
+
+      assert_eq!(&clear_sky, clsid, "{section}");
+      assert_ne!(
+        AlifeClass::from_dialect_cls_id(&clear_sky, ScriptDialect::ClearSky),
+        AlifeClass::Unknown,
+        "{section}"
+      );
+
+      match *section {
+        "sim_faction" => assert_eq!(
+          ClsId::from_dialect_section(section, ScriptDialect::CallOfPripyat).ok(),
+          Some(ClsId::ScriptZn)
+        ),
+        _ => assert!(
+          ClsId::from_dialect_section(section, ScriptDialect::CallOfPripyat).is_err(),
+          "{section}"
+        ),
+      }
+    }
+  }
+
+  #[test]
+  fn reads_a_section_both_games_declare_alike_under_either_dialect() {
+    for (section, clsid) in [
+      ("stalker_zombied", ClsId::AiStlS),
+      ("sim_default_stalker_3", ClsId::AiStlS),
+      ("stalker_sakharov", ClsId::AiStlS),
+      ("flesh_weak", ClsId::SmFlesh),
+      ("agru_door", ClsId::OPhysS),
+      ("ammo_7.62x54_7h14", ClsId::AmmoS),
+    ] {
+      for dialect in [ScriptDialect::ClearSky, ScriptDialect::CallOfPripyat] {
+        assert_eq!(
+          ClsId::from_dialect_section(section, dialect).ok(),
+          Some(clsid.clone()),
+          "{section} {dialect:?}"
+        );
+      }
+    }
+  }
+
+  // As `object_factory_register.cpp` registers them: no shipped spawn declares a section for most of these.
   #[test]
   fn maps_every_engine_zone_clsid_to_its_server_class() {
     for (cls_id, class) in [
@@ -778,6 +988,7 @@ mod tests {
       (ClsId::ZsAmeba, AlifeClass::CseAlifeZoneVisual),
       (ClsId::ZsRadio, AlifeClass::CseAlifeAnomalousZone),
       (ClsId::ZsNGrav, AlifeClass::CseAlifeAnomalousZone),
+      (ClsId::ZTeamBs, AlifeClass::CseAlifeTeamBaseZone),
     ] {
       assert_eq!(
         AlifeClass::from_cls_id(&cls_id),

@@ -14,8 +14,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::parts::LevelTextureReference;
-use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, PackedLevelParticles};
+use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, LevelTextureReference, PackedLevelParticles};
 use crate::report::LevelReport;
 use crate::weather::LevelWorldAmbients;
 
@@ -48,7 +47,7 @@ impl LevelParticlesPart {
   /// # Errors
   ///
   /// Returns why the library cannot be read; a level without `level.ps_static` or a spawn plants nothing of it.
-  pub fn pack(
+  pub(crate) fn pack(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,
@@ -59,7 +58,7 @@ impl LevelParticlesPart {
   }
 
   /// One system `level.ps_static` plants, lifted off the ground it stands on.
-  pub fn place_planted(placement: &LevelPsStaticPlacement) -> RenderParticlePlacement {
+  pub(crate) fn place_planted(placement: &LevelPsStaticPlacement) -> RenderParticlePlacement {
     let mut transform: [f32; 16] = placement.transform.values;
 
     // The `Fmatrix` rows are the columns of a column-major matrix; the translation is the last.
@@ -91,7 +90,7 @@ impl LevelParticlesPart {
     // Without the configs no zone names its particles; their reader has said why.
     match (LevelSpawnPart::get(current, search), sections) {
       (Ok(spawn), Some(sections)) => {
-        placements.extend(spawn.list_kept().filter_map(|it| Self::place_zone(it, sections)))
+        placements.extend(spawn.list_kept().filter_map(|it| Self::place_zone(it, sections)));
       }
       (Err(error), _) => LevelReport::missing_zone_particles(&current.source, &error),
       (Ok(_), None) => {}
@@ -171,7 +170,7 @@ impl LevelParticlesPart {
       _ => return None,
     };
 
-    let section: &Section = sections.section(&object.section)?;
+    let section: &Section = sections.section(&object.header.section)?;
     let read = |key: &str| {
       section
         .get(key)
@@ -186,7 +185,7 @@ impl LevelParticlesPart {
       read("enabling_particles"),
     ) {
       (true, Some(disabled), Some(enabling)) => RenderParticleSource::Campfire {
-        id: object.id,
+        id: object.header.id,
         idle,
         disabled,
         enabling,
@@ -196,11 +195,11 @@ impl LevelParticlesPart {
 
     Some(RenderParticlePlacement {
       source,
-      transform: VisualTransform::of_spawn(&object.position, &object.direction)
+      transform: VisualTransform::of_spawn(&object.header.position, &object.header.direction)
         .mirrored()
         .to_matrix(),
       motion: motion.and_then(AlifeObjectMotion::get_name).map(str::to_owned),
-      zone_sphere: ZoneSphere::of_custom_zone(zone, (&object.position, &object.direction)),
+      zone_sphere: ZoneSphere::of_custom_zone(zone, (&object.header.position, &object.header.direction)),
     })
   }
 

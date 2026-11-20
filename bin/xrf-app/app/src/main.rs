@@ -6,7 +6,6 @@ mod application;
 mod application_failure;
 mod ipc;
 mod plugins;
-mod preferences;
 mod window;
 
 use std::process::ExitCode;
@@ -14,7 +13,7 @@ use std::process::ExitCode;
 use xrf_app_core::logging::ProcessStart;
 
 fn main() -> ExitCode {
-  xrf_renderer::start_profiler();
+  xrf_profiler::start();
 
   ProcessStart::stamp();
 

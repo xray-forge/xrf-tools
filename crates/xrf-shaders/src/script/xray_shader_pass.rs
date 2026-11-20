@@ -3,7 +3,7 @@ use xrf_lua::XRayLuaMethodCall;
 use crate::script::{XRayShaderPassState, XRayShaderSampler};
 
 /// A literal vertex and pixel shader pair selected by `shader:begin`, and the state chained onto it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct XRayShaderPass {
   /// The function the pass was declared in, which is what decides when the engine compiles it.
   function: Option<String>,

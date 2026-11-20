@@ -27,8 +27,8 @@ export const ARCHIVES_UNPACKER_HELP: IToolHelp = {
   limitations: [
     "All or nothing: single files and directories cannot be picked here - the archives explorer is where " +
       "extraction is selective.",
-    "Existing files at the destination are overwritten without asking, and nothing already there is removed " +
-      "first, so an older unpack of the same archives is left mixed in with this one.",
+    "Files the unpack writes that the destination already holds are named and replaced only once you agree, and " +
+      "nothing else there is removed, so an older unpack of the same archives is left mixed in with this one.",
     "No progress and no cancellation. The first failure ends the run, and whatever reached disk before it " +
       "stays there.",
     "Every volume is read before anything is written, so a source directory holding no readable volume, or " +

@@ -86,8 +86,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       xrf_output::error!(self.options.output, "{}", finding.message());
     }
 
-    let checked_huds_count: u32 = Self::to_count(player_hud_sections.len())?;
-    let invalid_huds_count: u32 = Self::to_count(invalid_hands.len())?;
+    let checked_huds_count: u32 = Self::narrow_count(player_hud_sections.len())?;
+    let invalid_huds_count: u32 = Self::narrow_count(invalid_hands.len())?;
 
     xrf_output::info!(
       self.options.output,
@@ -103,7 +103,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     })
   }
 
-  fn to_count(count: usize) -> XrfResult<u32> {
+  fn narrow_count(count: usize) -> XrfResult<u32> {
     u32::try_from(count).map_err(|_| XrfError::new_verify_error("Player HUD count exceeds the supported result range"))
   }
 

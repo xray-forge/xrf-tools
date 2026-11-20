@@ -4,7 +4,7 @@ use crate::contract::view::output::render_debug_view::RenderDebugView;
 /// what a debug view shows of them in its place.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u32)]
-pub enum LightView {
+pub(crate) enum LightView {
   /// Their light.
   Light = 0,
   /// The sun the cascade it reads, from one, and how much of it reaches; the lamps nothing.
@@ -17,7 +17,7 @@ pub enum LightView {
 
 impl LightView {
   /// What the sun and the lamps draw for a debug view.
-  pub fn of(view: RenderDebugView) -> Self {
+  pub(crate) fn of(view: RenderDebugView) -> Self {
     match view {
       RenderDebugView::Cascades => Self::Cascades,
       RenderDebugView::LampsPerCluster => Self::LampsPerCluster,

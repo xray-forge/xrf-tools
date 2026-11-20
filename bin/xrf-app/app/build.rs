@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "edition 2024 makes `env::set_var` unsafe, and the build script sets `TAURI_CONFIG` on its one thread"
+)]
+
 use std::path::PathBuf;
 use std::{env, fs, io};
 
@@ -9,6 +14,9 @@ mod core_domains;
 #[macro_use]
 #[path = "../plugins/xrf-app-render/src/ipc/domains.rs"]
 mod render_domains;
+#[macro_use]
+#[path = "../plugins/xrf-app-audio/src/ipc/domains.rs"]
+mod audio_domains;
 #[macro_use]
 #[path = "../plugins/xrf-app-archives/src/ipc/domains.rs"]
 mod archives_domains;
@@ -59,6 +67,7 @@ fn main() {
 
   println!("cargo:rerun-if-changed=icons");
 
+  keep_delay_loads();
   link_dlss_runtime();
   add_dlss_resources();
 
@@ -67,7 +76,7 @@ fn main() {
       .codegen(tauri_build::CodegenContext::new())
       .windows_attributes(resolve_windows_attributes()),
   ))
-  .expect("failed to run tauri-build")
+  .expect("failed to run tauri-build");
 }
 
 /// The executable's own icon, which Explorer and shortcuts show, carries the build kind in its core colour.
@@ -79,6 +88,36 @@ fn resolve_windows_attributes() -> WindowsAttributes {
     BuildKind::Development => attributes.window_icon_path("icons/development/icon.ico"),
     BuildKind::Local => attributes.window_icon_path("icons/local/icon.ico"),
   }
+}
+
+/// Adds whichever delay-loads of `.cargo/config.toml` the build flags lack, so the app starts without Steam Audio or
+/// Media Foundation: Cargo drops that table's flags whenever `RUSTFLAGS` is set.
+fn keep_delay_loads() {
+  const DELAY_LOADS: [&str; 4] = ["phonon.dll", "mfplat.dll", "mfreadwrite.dll", "mf.dll"];
+
+  if env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
+    return;
+  }
+
+  let flags: String = env::var("CARGO_ENCODED_RUSTFLAGS").unwrap_or_default();
+  let missing: Vec<&str> = DELAY_LOADS
+    .into_iter()
+    .filter(|library| !flags.contains(&format!("/DELAYLOAD:{library}")))
+    .collect();
+
+  if missing.is_empty() {
+    return;
+  }
+
+  for library in missing {
+    println!("cargo:rustc-link-arg-bins=/DELAYLOAD:{library}");
+  }
+
+  if !flags.contains("delayimp.lib") {
+    println!("cargo:rustc-link-arg-bins=delayimp.lib");
+  }
+
+  println!("cargo:rustc-link-arg-bins=/IGNORE:4199");
 }
 
 /// Tauri links the C runtime's vcruntime statically, and NGX's library imports `wcsstr` from the DLL one: the linker

@@ -34,7 +34,7 @@ impl<'a> GamedataAssetSweep<'a> {
       .filter(|_| !self.options.job.is_cancelled())
       .map(|(index, item)| {
         // Held until the item is done: the slot releases its position when dropped.
-        let slot: OutputSlot = sequence.new_slot(index);
+        let slot: OutputSlot<'_> = sequence.new_slot(index);
 
         verify(&self.options.with_output(slot.get_output().clone()), item)
       })
@@ -46,13 +46,13 @@ impl<'a> GamedataAssetSweep<'a> {
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
 
     Ok(GamedataAssetSweepOutcome {
-      checked_count: Self::to_count(items.len())?,
-      invalid_count: Self::to_count(invalid_count)?,
+      checked_count: Self::narrow_count(items.len())?,
+      invalid_count: Self::narrow_count(invalid_count)?,
       findings,
     })
   }
 
-  fn to_count(count: usize) -> XrfResult<u32> {
+  fn narrow_count(count: usize) -> XrfResult<u32> {
     u32::try_from(count).map_err(|_| XrfError::new_verify_error("Item count exceeds the supported result range"))
   }
 }

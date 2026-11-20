@@ -1,11 +1,11 @@
 use std::borrow::Cow;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use specta::Types;
 use specta::datatype::{DataType, Field, Function, NamedReference, NamedReferenceType, Reference, Struct};
 use specta_typescript::{Error, Exporter, FrameworkExporter, define};
 use tauri_specta::{BuilderConfiguration, ErrorHandlingMode};
-use xrf_utils::to_camel_case;
+use xrf_utils::format_camel_case;
 
 use crate::collected::{CommandTypescript, PluginCommands, SpectaCommand};
 use crate::typescript::format::TypeScriptFormat;
@@ -25,11 +25,12 @@ impl CommandWrappers {
 
   /// The commands `config` declares, with their wrappers rendered.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics on a builder configured otherwise than the wrappers are rendered for.
-  pub fn render(config: &BuilderConfiguration) -> Result<PluginCommands, Error> {
-    Self::assert_supported(config);
+  /// When the builder is configured otherwise than the wrappers are rendered for, Specta cannot render one of its
+  /// types, or its exporter never reached the wrappers.
+  pub(crate) fn render(config: &BuilderConfiguration) -> Result<PluginCommands, Error> {
+    Self::assert_supported(config)?;
 
     let plugin: &str = config.plugin_name.unwrap_or_default();
     let functions: Arc<Vec<Function>> = Arc::new(config.commands.clone());
@@ -39,10 +40,10 @@ impl CommandWrappers {
       let functions: Arc<Vec<Function>> = Arc::clone(&functions);
       let rendered: Arc<Mutex<Option<(String, bool)>>> = Arc::clone(&rendered);
 
-      move |exporter: FrameworkExporter| {
+      move |exporter: FrameworkExporter<'_>| {
         let wrappers: (String, bool) = Self::render_object(&functions, &command_enum, &exporter)?;
 
-        *rendered.lock().expect("Rendered wrappers lock is poisoned") = Some(wrappers);
+        *rendered.lock().unwrap_or_else(PoisonError::into_inner) = Some(wrappers);
 
         Ok(Cow::Borrowed(""))
       }
@@ -53,9 +54,14 @@ impl CommandWrappers {
 
     let (wrappers, uses_channel): (String, bool) = rendered
       .lock()
-      .expect("Rendered wrappers lock is poisoned")
+      .unwrap_or_else(PoisonError::into_inner)
       .take()
-      .unwrap_or_else(|| panic!("Specta rendered no wrappers for the `{plugin}` plugin"));
+      .ok_or_else(|| {
+        Error::framework(
+          "Specta rendered no command wrappers",
+          format!("its exporter never reached the runtime of the `{plugin}` plugin"),
+        )
+      })?;
 
     Ok(PluginCommands {
       commands: functions.iter().map(SpectaCommand::from).collect(),
@@ -68,7 +74,7 @@ impl CommandWrappers {
   fn render_object(
     functions: &[Function],
     command_enum: &str,
-    exporter: &FrameworkExporter,
+    exporter: &FrameworkExporter<'_>,
   ) -> Result<(String, bool), Error> {
     let mut object = Struct::named();
     let mut uses_channel: bool = false;
@@ -78,7 +84,7 @@ impl CommandWrappers {
       let mut names: Vec<String> = Vec::with_capacity(function.args().len());
 
       for (name, data_type) in function.args() {
-        let name: String = to_camel_case(name);
+        let name: String = format_camel_case(name);
 
         uses_channel |= Self::channel_of(data_type, exporter.types).is_some();
         parameters.push(format!("{name}: {}", Self::render_type(data_type, exporter)?));
@@ -118,7 +124,7 @@ impl CommandWrappers {
 
   /// A type as a wrapper spells it: Tauri's channel as `Channel<Payload>`, anything else as Specta references it,
   /// which inlines a type without a name.
-  fn render_type(data_type: &DataType, exporter: &FrameworkExporter) -> Result<String, Error> {
+  fn render_type(data_type: &DataType, exporter: &FrameworkExporter<'_>) -> Result<String, Error> {
     if let Some(channel) = Self::channel_of(data_type, exporter.types) {
       let payload: String = match &channel.inner {
         NamedReferenceType::Reference { generics, .. } => match generics.first() {
@@ -162,18 +168,25 @@ impl CommandWrappers {
 
   /// Fails on a builder whose wrappers would need what is not rendered here: typed errors, serde phases, wide
   /// integers, events, semantic types or constants.
-  fn assert_supported(config: &BuilderConfiguration) {
-    let plugin: &str = config.plugin_name.unwrap_or_default();
+  fn assert_supported(config: &BuilderConfiguration) -> Result<(), Error> {
+    let is_supported: bool = config.error_handling == ErrorHandlingMode::Throw
+      && config.disable_serde_phases
+      && config.dangerously_cast_bigints_to_number
+      && config.semantic_types.is_none()
+      && config.events.is_empty()
+      && config.constants.is_empty();
 
-    assert!(
-      config.error_handling == ErrorHandlingMode::Throw
-        && config.disable_serde_phases
-        && config.dangerously_cast_bigints_to_number
-        && config.semantic_types.is_none()
-        && config.events.is_empty()
-        && config.constants.is_empty(),
-      "The `{plugin}` builder is configured otherwise than its wrappers are rendered for: it must throw on error, \
-       disable serde phases, cast big integers to numbers, and declare no events, semantic types or constants"
-    );
+    if is_supported {
+      return Ok(());
+    }
+
+    Err(Error::framework(
+      "A builder is configured otherwise than its wrappers are rendered for",
+      format!(
+        "the `{}` builder must throw on error, disable serde phases, cast big integers to numbers, and declare no \
+         events, semantic types or constants",
+        config.plugin_name.unwrap_or_default()
+      ),
+    ))
   }
 }

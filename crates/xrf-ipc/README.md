@@ -1,14 +1,19 @@
 # xrf-ipc
 
-Marks a constant for the frontend's generated bindings where it is declared, as `#[derive(specta::Type)]` marks a
-type, so no list of exported constants exists anywhere else. The marker records the constant in the binary;
+Marks a constant for the frontend's generated bindings where it is declared, the way `#[derive(specta::Type)]` marks a
+type, so no separate list of exported constants exists. The marker records the constant in the binary;
 [xrf-ipc-typescript](../xrf-ipc-typescript/README.md) reads every record and writes it into the TypeScript mirror.
 
 ## Export a constant
 
-`#[xrf_ipc::constant]` on a module-level `const` item keeps the item as written and registers an `IpcConstant`: the
-declaring module's path, the name, the `///` doc comment, a function serializing the value, and its type's Specta
-definition. `IpcConstant::list()` iterates every constant registered in the binary, in no particular order.
+`#[xrf_ipc::constant]` on a module-level `const` keeps the item as written and registers an `IpcConstant` holding:
+
+- the declaring module's path and the name;
+- the `///` doc comment;
+- a function serializing the value;
+- its type's Specta definition.
+
+`IpcConstant::list()` iterates every registered constant in the binary, in no particular order.
 
 ```rust
 /// Texels the sun's filter reaches each way at most.
@@ -25,36 +30,33 @@ fn main() {
 }
 ```
 
-Declared in `xrf-renderer`, that constant is generated into `core/ipc/types/xrf-renderer.ts` under its doc as
-`export const RENDER_MAX_SHADOW_FILTER: number = 3;`. The attribute's own rules and refusals are in
-[xrf-ipc-derive](../xrf-ipc-derive/README.md).
+Declared in `xrf-renderer`, that constant is generated into `packages/xrf-ipc/src/types/xrf-renderer.ts`, under its
+doc, as `export const RENDER_MAX_SHADOW_FILTER: number = 3;`. The attribute's own rules, including functions that
+compute a value, are in [xrf-ipc-derive](../xrf-ipc-derive/README.md).
 
-## Caller obligations
+## Requirements
 
-- Depend on `xrf-ipc` itself: the expansion names `::xrf_ipc`, and this crate re-exports `inventory` and `serde_json`
-  so a marking crate needs nothing else. Mark constants only while the crate emits bindings, with `xrf-ipc` an
-  optional dependency its `typescript-bindings` feature enables:
+- **Dependency.** Depend on `xrf-ipc` itself: the expansion names `::xrf_ipc`, and this crate re-exports `inventory` and
+  `serde_json`. Make it an optional dependency enabled by the crate's `typescript-bindings` feature, and mark constants
+  only under that feature:
 
   ```rust,ignore
   #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
   pub const RENDER_MAX_SHADOW_FILTER: u32 = 3;
   ```
 
-- A constant reaches the bindings only from a binary that links its crate with that feature on, as the app's
-  `typescript-bindings` feature does for every crate it mirrors.
-- Declare it in an `xrf_*` crate. Its bindings module is named after the crate, and generation fails on a constant
-  declared anywhere else.
-- Its type must implement `serde::Serialize` and `specta::Type`, the second as the crate's `typescript-bindings`
-  feature derives it. The value is what `serde_json` writes of it, an `f32` in its own shortest form. The generator takes
-  numbers, strings, booleans, objects and arrays, integers only up to ±(2^53−1), the most a JavaScript number holds
-  exactly; a non-finite float serializes as `null`, and a bare `null` is refused. An object or an array is typed by its
-  Specta definition, which also declares a named type no command carries:
-  `xrf_archive::ARCHIVE_READ_POLICY` is the frontend's only source of `ArchiveReadPolicy`.
+- **Linking.** A constant reaches the bindings only from a binary that links its crate with that feature on, as the
+  app's `typescript-bindings` feature does for every crate it mirrors.
+- **Location.** Declare it in an `xrf_*` crate: its bindings module is named after the crate, and generation fails for
+  a constant declared anywhere else.
+- **Type.** It must implement `serde::Serialize` and `specta::Type`. The value is what `serde_json` writes, an `f32` in
+  its own shortest form; an object or array is typed by its Specta definition, which also declares a type no command
+  carries (`xrf_archive::ARCHIVE_READ_POLICY` is the frontend's only source of `ArchiveReadPolicy`). The values
+  generation refuses, such as `null` or an integer a JavaScript number cannot hold exactly, are listed in
+  [xrf-ipc-typescript](../xrf-ipc-typescript/README.md#constants).
 
-`IpcConstant::serialize_value`, `define_type` and `enclosing_module` are public, and hidden from the docs, only because
-the expansion calls them: `serialize_value` goes through the text (`serde_json::to_value` would widen `0.1_f32` to
-`0.10000000149011612`), and the type is read off the value, as the serialization is, so the expansion never restates a
-type the item spelled.
+`IpcConstant::serialize_value`, `define_type` and `enclosing_module` are public but hidden from the docs: only the
+expansion calls them.
 
 ## Checks
 

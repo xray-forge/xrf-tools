@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeSmartCoverLoophole {
   pub name: String,
@@ -36,21 +36,21 @@ impl AlifeSmartCoverLoophole {
     for it in value.split(',').map(|it| it.trim()) {
       let partial: Vec<&str> = it.split(':').map(|it| it.trim()).collect::<Vec<&str>>();
 
-      if partial.len() == 2 {
-        loopholes.push(Self {
-          name: String::from(*partial.first().unwrap()),
-          enabled: match partial.last().unwrap().parse::<u8>() {
-            Ok(parsed) => parsed,
-            Err(_) => {
-              return Err(XrfError::new_parsing_error("Failed to parse loophole enabled status"));
-            }
-          },
-        })
-      } else {
+      let [name, enabled] = partial.as_slice() else {
         return Err(XrfError::new_parsing_error(
           "Invalid value provided for loopholes parsing, ':' separated values expected",
         ));
-      }
+      };
+
+      loopholes.push(Self {
+        name: String::from(*name),
+        enabled: match enabled.parse::<u8>() {
+          Ok(parsed) => parsed,
+          Err(_) => {
+            return Err(XrfError::new_parsing_error("Failed to parse loophole enabled status"));
+          }
+        },
+      });
     }
 
     Ok(loopholes)
@@ -84,8 +84,7 @@ mod tests {
     Ok(())
   }
 
-  /// Smart covers with no loopholes exist in the Call of Chernobyl and Anomaly spawns, and render as
-  /// an empty value that must read back as no loopholes rather than as one malformed entry.
+  // Call of Chernobyl and Anomaly ship smart covers with no loopholes: an empty value, not one malformed entry.
   #[test]
   fn test_empty_list_round_trip() -> XrfResult {
     let serialized: String = AlifeSmartCoverLoophole::list_to_string(&[]);

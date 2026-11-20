@@ -11,19 +11,12 @@
 const DOME_WIDTH: f32 = 10.0;
 const DOME_HEIGHT: f32 = 0.4;
 
-// `CLOUD_TILE0`, `CLOUD_SPEED0`, `CLOUD_TILE1` and `CLOUD_SPEED1` (`shared/cloudconfig.h`).
+// `CLOUD_TILE0` and `CLOUD_TILE1` (`shared/cloudconfig.h`); the layers' drift is `LightingUniform::cloud_drift`.
 const CLOUD_TILE_0: f32 = 0.7;
-const CLOUD_SPEED_0: f32 = 2.0 * 0.05;
 const CLOUD_TILE_1: f32 = 2.8;
-const CLOUD_SPEED_1: f32 = 2.0 * 0.025;
 
 // How sharply the clouds fade to the horizon, `pow(v.p.y, 25)` in `clouds.vs`.
 const CLOUD_FADE: f32 = 25.0;
-
-// The two layers' drift, `setHP(PI_DIV_4, 0)` and `setHP(PI_DIV_4 + PI_DIV_8, 0)` in `x` and `z`, through the byte
-// `RenderClouds` packs a direction into.
-const CLOUD_WIND_0: vec2<f32> = vec2<f32>(-0.7098039, 0.7019608);
-const CLOUD_WIND_1: vec2<f32> = vec2<f32>(-0.9294118, 0.3803922);
 
 // The sky as `RenderSky` draws it along a world direction: the cubes through the half box, times `sky_color`, on the
 // exposure's scale, written past the tonemap as vanilla's `sky2.ps` writes it, or through it as Anomaly's does.
@@ -64,10 +57,8 @@ fn sky_clouds_layer(state: Lighting, direction: vec3<f32>, clouds_0: texture_2d<
   let box: vec3<f32> = sky_box_direction(direction, state.sky_params.y);
   // The unit hemisphere point the dome's scale puts along the direction: `v.p`.
   let dome: vec3<f32> = normalize(vec3<f32>(box.x / DOME_WIDTH, box.y / DOME_HEIGHT, box.z / DOME_WIDTH));
-  // `timers.z`, the time a tenth as fast.
-  let drift: f32 = state.sky_params.z * 0.1;
-  let first: vec2<f32> = dome.xz * CLOUD_TILE_0 + CLOUD_WIND_0 * drift * CLOUD_SPEED_0;
-  let second: vec2<f32> = dome.xz * CLOUD_TILE_1 + CLOUD_WIND_1 * drift * CLOUD_SPEED_1;
+  let first: vec2<f32> = dome.xz * CLOUD_TILE_0 + state.cloud_drift.xy;
+  let second: vec2<f32> = dome.xz * CLOUD_TILE_1 + state.cloud_drift.zw;
   let texel: vec4<f32> = mix(
     textureSampleLevel(clouds_0, repeat, first, 0.0) + textureSampleLevel(clouds_0, repeat, second, 0.0),
     textureSampleLevel(clouds_1, repeat, first, 0.0) + textureSampleLevel(clouds_1, repeat, second, 0.0),

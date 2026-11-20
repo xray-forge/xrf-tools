@@ -12,6 +12,40 @@ use crate::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpacke
 const TWO: NonZeroUsize = NonZeroUsize::new(2).expect("a non-zero worker count");
 
 #[test]
+fn refuses_a_file_already_there_in_any_case_unless_forced() {
+  let directory: PathBuf = create_temporary_directory("existing");
+  let project: ArchiveProject = create_project(
+    &directory,
+    &[
+      Entry::stored("configs\\system.ltx", b"[section]"),
+      Entry::stored("configs\\game.ltx", b"[game]"),
+    ],
+  );
+  let out: PathBuf = directory.join("out");
+
+  fs::create_dir_all(&out).expect("the destination");
+  fs::write(out.join("System.LTX"), b"kept").expect("an earlier file");
+
+  let error: String = ArchiveUnpacker::extract_directory(&project, "configs", &out)
+    .expect_err("an earlier file is refused")
+    .to_string();
+
+  assert!(error.contains("System.LTX"), "{error}");
+  assert_eq!(fs::read(out.join("System.LTX")).expect("the earlier file"), b"kept");
+  assert!(!out.join("game.ltx").exists(), "a refusal writes nothing");
+
+  let forced: ArchiveExtractDirectoryResult = ArchiveUnpacker::extract_directory_opt(
+    &project,
+    "configs",
+    &out,
+    ArchiveExtractOptions::default().with_forced(true),
+  )
+  .expect("forced, it writes over");
+
+  assert_eq!(forced.extracted_count, 2);
+}
+
+#[test]
 fn extract_directory_writes_every_file_under_the_prefix() {
   let directory: PathBuf = create_temporary_directory("directory");
   let project: ArchiveProject = create_project(

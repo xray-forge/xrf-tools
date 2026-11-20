@@ -7,28 +7,25 @@ use xrf_texture::{DescriptionSpriteOptions, DescriptionSpritePacker, Description
 use xrf_utils::format_path;
 
 use super::report::SpriteDescriptionReport;
-use crate::core::arguments::LinkPolicyArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LinkPolicyArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct PackDescriptionCommand;
+pub(crate) struct PackDescriptionCommand;
 
 impl GenericCommand for PackDescriptionCommand {
   fn operation(&self) -> &'static str {
     "pack-description"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("XML file describing the sheets")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Pack the sprites a texture description xml declares into its sheets")
-      .arg(
-        Arg::new("description")
-          .help("Path to the XML file describing the sheets")
-          .long("description")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("base")
           .help("Folder the described sprites are read from")
@@ -60,9 +57,7 @@ impl GenericCommand for PackDescriptionCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let description: &PathBuf = matches
-      .get_one::<PathBuf>("description")
-      .expect("Expected valid path to be provided for texture description file or folder");
+    let description: &PathBuf = InputArgument::of(matches);
 
     let base: &PathBuf = matches
       .get_one::<PathBuf>("base")
@@ -95,6 +90,8 @@ impl GenericCommand for PackDescriptionCommand {
       files,
       is_strict: matches.get_flag("strict"),
       link_policy: LinkPolicyArgument::of(matches),
+      // Only unpacking reads it.
+      is_forced: false,
     };
 
     let result: DescriptionSpriteResult = DescriptionSpritePacker::pack_xml_descriptions(&options)?;

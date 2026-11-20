@@ -10,13 +10,13 @@ use crate::core::terminal::TerminalOutput;
 /// Every line goes to stderr, whatever stdout carries, so progress never lands in what a caller piped or in a
 /// `--json` document; `--silent` mutes it like any other informational line. Renders the deepest level, since that is
 /// the one actually moving, prefixed by the phases above it.
-pub struct TerminalProgressSink {
+pub(crate) struct TerminalProgressSink {
   output: OutputOptions,
 }
 
 impl TerminalProgressSink {
   /// Reports at the verbosity of `output`, into stderr rather than wherever `output` writes.
-  pub fn new(output: &OutputOptions) -> Self {
+  pub(crate) fn new(output: &OutputOptions) -> Self {
     Self {
       output: output.with_output(Arc::new(TerminalOutput::new(false))),
     }

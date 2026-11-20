@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use fxhash::FxBuildHasher;
 use indexmap::IndexMap;
+use rustc_hash::FxBuildHasher;
 
 use crate::ltx::Section;
 

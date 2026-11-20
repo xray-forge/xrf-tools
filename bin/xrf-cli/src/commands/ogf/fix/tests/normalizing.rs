@@ -45,7 +45,7 @@ fn normalizes_a_split_visual_in_place_and_names_what_it_dropped() -> XrfResult {
 
   fs::write(&file, fixtures::split_motion_ref()?)?;
 
-  let (verdict, result) = fix(&["--path", &argument(&file)]);
+  let (verdict, result) = fix(&[&argument(&file)]);
   let result: Value = result.expect("Expect a result to be deposited");
 
   verdict.expect("Expect the visual to be fixed");
@@ -76,11 +76,11 @@ fn leaves_a_visual_it_already_normalized_alone() -> XrfResult {
 
   fs::write(&file, fixtures::split_motion_ref()?)?;
 
-  fix(&["--path", &argument(&file)])
+  fix(&[&argument(&file)])
     .0
     .expect("Expect the first run to fix the visual");
 
-  let (verdict, result) = fix(&["--path", &argument(&file)]);
+  let (verdict, result) = fix(&[&argument(&file)]);
   let result: Value = result.expect("Expect a result to be deposited");
 
   verdict.expect("Expect the second run to succeed");
@@ -100,7 +100,7 @@ fn reports_a_dry_run_without_writing() -> XrfResult {
 
   fs::write(&file, fixtures::split_motion_ref()?)?;
 
-  let (verdict, result) = fix(&["--path", &argument(&file), "--dry-run"]);
+  let (verdict, result) = fix(&[&argument(&file), "--dry-run"]);
   let result: Value = result.expect("Expect a result to be deposited");
 
   verdict.expect("Expect a dry run to succeed");
@@ -126,7 +126,7 @@ fn sweeps_a_directory_and_fails_for_what_it_refused() -> XrfResult {
   fs::write(root.join("unexplained.ogf"), fixtures::unexplained_residue()?)?;
   fs::write(root.join("notes.txt"), b"not a visual")?;
 
-  let (verdict, result) = fix(&["--path", &argument(&root)]);
+  let (verdict, result) = fix(&[&argument(&root)]);
   let result: Value = result.expect("Expect a result to be deposited beside the failure");
   let error: String = verdict
     .expect_err("Expect the sweep to fail for the visual it refused")
@@ -173,7 +173,7 @@ fn writes_to_a_destination_and_leaves_the_source_alone() -> XrfResult {
 
   fs::write(&file, fixtures::split_motion_ref()?)?;
 
-  let (verdict, result) = fix(&["--path", &argument(&file), "--dest", &argument(&destination)]);
+  let (verdict, result) = fix(&[&argument(&file), "--dest", &argument(&destination)]);
   let result: Value = result.expect("Expect a result to be deposited");
 
   verdict.expect("Expect the visual to be fixed");
@@ -199,7 +199,7 @@ fn copies_a_well_formed_visual_to_a_destination() -> XrfResult {
 
   fs::write(&file, fixtures::well_formed()?)?;
 
-  let (verdict, result) = fix(&["--path", &argument(&file), "--dest", &argument(&destination)]);
+  let (verdict, result) = fix(&[&argument(&file), "--dest", &argument(&destination)]);
   let result: Value = result.expect("Expect a result to be deposited");
 
   verdict.expect("Expect the copy to succeed");
@@ -217,7 +217,7 @@ fn refuses_a_destination_for_a_directory() -> XrfResult {
 
   fs::write(root.join("clean.ogf"), fixtures::well_formed()?)?;
 
-  let (verdict, result) = fix(&["--path", &argument(&root), "--dest", &argument(&root.join("out.ogf"))]);
+  let (verdict, result) = fix(&[&argument(&root), "--dest", &argument(&root.join("out.ogf"))]);
   let error: String = verdict.expect_err("Expect the arguments to be refused").to_string();
 
   assert!(error.contains("Destination applies to a single ogf file"), "{error}");
@@ -233,7 +233,7 @@ fn refuses_a_directory_holding_no_visuals() -> XrfResult {
 
   fs::write(root.join("notes.txt"), b"not a visual")?;
 
-  let error: String = fix(&["--path", &argument(&root)])
+  let error: String = fix(&[&argument(&root)])
     .0
     .expect_err("Expect an empty sweep to be refused")
     .to_string();
@@ -252,7 +252,7 @@ fn keeps_the_source_when_the_write_fails() -> XrfResult {
   fs::write(&file, fixtures::split_motion_ref()?)?;
   StagingFaults::fail_next_write();
 
-  let (verdict, result) = fix(&["--path", &argument(&file)]);
+  let (verdict, result) = fix(&[&argument(&file)]);
   let result: Value = result.expect("Expect a result to be deposited beside the failure");
 
   verdict.expect_err("Expect the run to fail for the visual it could not write");

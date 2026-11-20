@@ -5,7 +5,7 @@ use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 /// frame draws them each frame, their triangles' corners and records and how many stand; the structure built over them,
 /// which the view's own top level holds beside the scene's where it traces its light, and the draw of them into the
 /// near sun cascades where those shadow the frame (`shaders/grass/card_shadow.wgsl`).
-pub struct GrassCards {
+pub(crate) struct GrassCards {
   pub vertices: wgpu::Buffer,
   pub triangles: wgpu::Buffer,
   pub count: wgpu::Buffer,
@@ -28,15 +28,25 @@ impl GrassCards {
   /// Bytes a triangle's corners and its record take.
   const VERTEX_BYTES: u64 = 36;
   const TRIANGLE_BYTES: u64 = 16;
-  /// The top-level instance's custom index (`SCENE_GRASS_CARDS`), past any of the scene's, and its mask, which a ray
-  /// leaves out by its own (`SCENE_MASK_SCENE`).
-  pub const INSTANCE: u32 = 0x00ff_ffff;
-  pub const MASK: u8 = 0x02;
+  /// The top-level instance's custom index (`SCENE_GRASS_CARDS`), past any of the scene's.
+  pub(crate) const INSTANCE: u32 = 0x00ff_ffff;
+  /// The instance mask's bit for shadow rays (`SCENE_MASK_CARD_SHADOWS`), set while the grass casts its shadows.
+  /// A surfaces' ray leaves this and `REFLECTION_MASK` out (`SCENE_MASK_SCENE`).
+  pub(crate) const SHADOW_MASK: u8 = 0x02;
+  /// The instance mask's bit for the water's reflected rays (`SCENE_MASK_CARD_REFLECTIONS`), set whenever the cards
+  /// are traced.
+  pub(crate) const REFLECTION_MASK: u8 = 0x04;
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
+  /// Metres from the eye past which only a share of the tufts stand as cards while they only cast the cascades'
+  /// shadows (`card_kept` in `shaders/grass/card_thinning.wgsl`); every far tuft cost three milliseconds over 150 m.
+  pub(crate) const THIN_FROM: f32 = 40.0;
+  /// A thinning distance past any tuft, for traced cards: finite, as the GPU flushes the largest float's reciprocal to
+  /// nought.
+  const NEVER_THINNED: f32 = 1.0e6;
 
   /// Cards holding `capacity` triangles at most, and the structure over them where the device traces rays.
-  pub fn new(device: &wgpu::Device, capacity: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, capacity: u32) -> Self {
     let is_traceable: bool = can_trace(device);
     let buffer = |label: &str, size: u64, usage: wgpu::BufferUsages| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
@@ -88,7 +98,7 @@ impl GrassCards {
 
   /// Triangles the cards hold, `current` held now and their tufts having last asked for `asked`: `ASKED_MARGIN` more
   /// than asked, as a power of two; grown at once and shrunk only once that falls to half the room.
-  pub fn get_capacity(current: u32, asked: u32) -> u32 {
+  pub(crate) fn get_capacity(current: u32, asked: u32) -> u32 {
     let wanted: u32 = ((asked as f32 * Self::ASKED_MARGIN) as u32)
       .next_power_of_two()
       .clamp(Self::LEAST_CAPACITY, Self::MOST_CAPACITY);
@@ -102,7 +112,7 @@ impl GrassCards {
 
   /// Metres from the eye within which the cards stand a tuft for `settings`, no further than `most` where it is given,
   /// and the last of them over which they fade.
-  pub fn get_reach(settings: &RenderGrassSettings, most: Option<f32>) -> (f32, f32) {
+  pub(crate) fn get_reach(settings: &RenderGrassSettings, most: Option<f32>) -> (f32, f32) {
     let reach: f32 = most
       .map_or(settings.shadow_radius, |most| settings.shadow_radius.min(most))
       .clamp(1.0, Self::MOST_REACH);
@@ -110,18 +120,36 @@ impl GrassCards {
     (reach, reach * Self::FADE_SHARE)
   }
 
+  /// Metres from the eye within which the traced cards stand every tuft whole, short of their fade: a water's ray
+  /// meets the grass as cards within it and walks the grass's layers past it.
+  pub(crate) fn get_whole_reach(settings: &RenderGrassSettings) -> f32 {
+    let (reach, fade): (f32, f32) = Self::get_reach(settings, None);
+
+    reach - fade
+  }
+
+  /// Metres from the eye past which only a share of the tufts stand as cards: `THIN_FROM` for the cascades alone, and
+  /// never while `is_traced`, so a reflection does not change its look as the eye comes nearer.
+  pub(crate) fn get_thin_from(is_traced: bool) -> f32 {
+    if is_traced {
+      Self::NEVER_THINNED
+    } else {
+      Self::THIN_FROM
+    }
+  }
+
   /// Slots each way from the eye's that `reach` spans: the eye stands up to half a slot off its slot's middle.
-  pub fn get_slots(reach: f32) -> u32 {
+  pub(crate) fn get_slots(reach: f32) -> u32 {
     (reach / 2.0) as u32 + 2
   }
 
   /// Ring cells about the eye's whose tufts may stand within `slots` of it.
-  pub fn get_window_cells(slots: u32) -> u32 {
+  pub(crate) fn get_window_cells(slots: u32) -> u32 {
     (slots * 2 + 1) * (slots * 2 + 1)
   }
 
   /// Every triangle of `capacity` the cards hold, those not standing this frame marked as none by their corners.
-  pub fn get_size(capacity: u32) -> wgpu::BlasTriangleGeometrySizeDescriptor {
+  pub(crate) fn get_size(capacity: u32) -> wgpu::BlasTriangleGeometrySizeDescriptor {
     wgpu::BlasTriangleGeometrySizeDescriptor {
       vertex_format: wgpu::VertexFormat::Float32x3,
       vertex_count: capacity * 3,
@@ -129,15 +157,5 @@ impl GrassCards {
       index_count: None,
       flags: wgpu::AccelerationStructureGeometryFlags::empty(),
     }
-  }
-}
-
-impl GrassCards {
-  /// Bytes its corners, records, count and draw take, its structure apart.
-  pub fn get_memory(&self) -> u64 {
-    [&self.vertices, &self.triangles, &self.count, &self.draw]
-      .into_iter()
-      .map(wgpu::Buffer::size)
-      .sum()
   }
 }

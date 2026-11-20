@@ -1,7 +1,7 @@
 /// What a frame's reflections are traced over besides their settings: the frame's count, what the last frame left them,
 /// whether the device traces rays, and whether the level is wet.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct ReflectionTraceFrame {
+pub(crate) struct ReflectionTraceFrame {
   pub frame: u32,
   /// Whether the last frame's reflections are there to carry.
   pub has_history: bool,

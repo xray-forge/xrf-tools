@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { EMPTY_SET } from "@xrf/collections";
 import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
@@ -18,8 +19,6 @@ import {
   toAuthoredIndex,
   toResolvedIndex,
 } from "./configs-index-rows";
-
-const NOTHING_EXPANDED: ReadonlySet<string> = new Set();
 
 /**
  * Everything the open document declares, as a jump list.
@@ -85,7 +84,7 @@ export function ConfigsSectionsPanel({
             ariaLabel={isList ? "Entries" : "Sections"}
             className={"h-full"}
             items={items}
-            expandedIds={NOTHING_EXPANDED}
+            expandedIds={EMPTY_SET}
             selectedId={null}
             onToggleExpanded={noop}
             onSelect={onSelect}

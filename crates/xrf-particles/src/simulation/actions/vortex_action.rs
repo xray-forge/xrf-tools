@@ -16,12 +16,12 @@ pub(crate) struct VortexAction {
 }
 
 impl VortexAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.center = matrix.transform_point3(self.center_local);
     self.axis = matrix.transform_vector3(self.axis_local);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let max_radius_sqr: f32 = self.max_radius * self.max_radius;
     let is_limited: bool = max_radius_sqr < ParticleActionStep::MAX_FLOAT;
@@ -48,8 +48,8 @@ impl VortexAction {
 
 impl From<&ParticleActionVortex> for VortexAction {
   fn from(action: &ParticleActionVortex) -> Self {
-    let center: Vec3 = Vec3::from_array(action.center.to_array());
-    let axis: Vec3 = Vec3::from_array(action.axis.to_array());
+    let center: Vec3 = Vec3::from(&action.center);
+    let axis: Vec3 = Vec3::from(&action.axis);
 
     Self {
       center_local: center,

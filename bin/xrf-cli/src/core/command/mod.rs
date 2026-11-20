@@ -4,11 +4,13 @@
 mod command_context;
 mod command_error;
 mod command_group;
+mod command_input;
 #[cfg(test)]
-pub mod command_testing;
+pub(crate) mod command_testing;
 mod generic_command;
 
-pub use command_context::CommandContext;
-pub use command_error::{CommandError, CommandResult};
-pub use command_group::CommandGroup;
-pub use generic_command::GenericCommand;
+pub(crate) use command_context::CommandContext;
+pub(crate) use command_error::{CommandError, CommandResult};
+pub(crate) use command_group::CommandGroup;
+pub(crate) use command_input::CommandInput;
+pub(crate) use generic_command::GenericCommand;

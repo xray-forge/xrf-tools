@@ -22,26 +22,26 @@ pub struct LevelVertexLayout {
 
 impl LevelVertexLayout {
   /// `D3DDECLUSAGE_POSITION`.
-  const USAGE_POSITION: u8 = 0;
+  pub(crate) const USAGE_POSITION: u8 = 0;
   /// `D3DDECLUSAGE_NORMAL`.
-  const USAGE_NORMAL: u8 = 3;
+  pub(crate) const USAGE_NORMAL: u8 = 3;
   /// `D3DDECLUSAGE_TEXCOORD`.
-  const USAGE_TEXCOORD: u8 = 5;
+  pub(crate) const USAGE_TEXCOORD: u8 = 5;
   /// `D3DDECLUSAGE_TANGENT`.
-  const USAGE_TANGENT: u8 = 6;
+  pub(crate) const USAGE_TANGENT: u8 = 6;
   /// `D3DDECLUSAGE_BINORMAL`.
-  const USAGE_BINORMAL: u8 = 7;
+  pub(crate) const USAGE_BINORMAL: u8 = 7;
   /// `D3DDECLUSAGE_COLOR`.
-  const USAGE_COLOR: u8 = 10;
+  pub(crate) const USAGE_COLOR: u8 = 10;
 
   /// `D3DDECLTYPE_FLOAT3`.
-  const KIND_FLOAT3: u8 = 2;
+  pub(crate) const KIND_FLOAT3: u8 = 2;
   /// `D3DDECLTYPE_D3DCOLOR`.
-  const KIND_D3DCOLOR: u8 = 4;
+  pub(crate) const KIND_D3DCOLOR: u8 = 4;
   /// `D3DDECLTYPE_SHORT2`.
-  const KIND_SHORT2: u8 = 6;
+  pub(crate) const KIND_SHORT2: u8 = 6;
   /// `D3DDECLTYPE_SHORT4`.
-  const KIND_SHORT4: u8 = 7;
+  pub(crate) const KIND_SHORT4: u8 = 7;
 
   /// Shorts a baked surface's base coordinate element holds, `SHORT2`.
   pub const BASE_COORDINATE_SHORTS: usize = 2;
@@ -69,9 +69,19 @@ impl LevelVertexLayout {
   /// Returns an error when the declaration names a type `D3DDECLTYPE` does not, carries no position, or stores an
   /// attribute in a type xrLC never writes it as - all of which would otherwise decode into plausible nonsense.
   pub fn of(buffer: &LevelGeomVertexBuffer) -> XrfResult<Self> {
-    let stride: u32 = buffer.get_vertex_size().ok_or_else(|| {
-      XrfError::new_invalid_error("Unexpected level vertex declaration naming a type D3DDECLTYPE does not")
-    })?;
+    Self::of_declaration(&buffer.declaration)
+  }
+
+  /// Reads a declaration into the offsets a decoder needs, as [`Self::of`] reads a buffer's.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::of`] does.
+  pub fn of_declaration(declaration: &[LevelGeomVertexElement]) -> XrfResult<Self> {
+    let stride: u32 = LevelGeomVertexElement::get_vertex_size(declaration, LevelGeomVertexBuffer::VERTEX_STREAM)
+      .ok_or_else(|| {
+        XrfError::new_invalid_error("Unexpected level vertex declaration naming a type D3DDECLTYPE does not")
+      })?;
 
     let mut layout: Self = Self {
       binormal: None,
@@ -85,7 +95,7 @@ impl LevelVertexLayout {
     };
     let mut has_position: bool = false;
 
-    for element in &buffer.declaration {
+    for element in declaration {
       if !element.is_fed_from(LevelGeomVertexBuffer::VERTEX_STREAM) {
         continue;
       }

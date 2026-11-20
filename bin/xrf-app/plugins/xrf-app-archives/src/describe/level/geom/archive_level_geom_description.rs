@@ -3,8 +3,7 @@ use xrf_error::XrfResult;
 use xrf_level::LevelGeomFile;
 
 use crate::describe::level::geom::ArchiveLevelGeomLayout;
-use crate::describe::source::ArchiveDescribeSource;
-use crate::describe::source::ArchiveEntryReader;
+use crate::describe::source::{ArchiveDescribeSource, ArchiveEntryReader};
 
 /// Everything the viewer says about a level's render geometry.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -34,7 +33,7 @@ impl ArchiveLevelGeomDescription {
   /// # Errors
   ///
   /// Returns an error when the entry cannot be opened, or is not render geometry this reader can walk.
-  pub fn read(source: &ArchiveDescribeSource, name: &str, is_detail: bool) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str, is_detail: bool) -> XrfResult<Self> {
     let mut reader: ArchiveEntryReader = source.open_entry(name)?;
     let size: u64 = reader.size();
     let file: LevelGeomFile = reader.read_container()?;

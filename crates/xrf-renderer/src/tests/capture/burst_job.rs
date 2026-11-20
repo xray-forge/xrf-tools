@@ -38,6 +38,33 @@ fn refuses_a_burst_that_reads_nothing_back_or_steps_by_no_time() {
   }
 }
 
+#[test]
+fn refuses_a_burst_drawn_past_the_latest_time() {
+  for burst in [
+    RenderBurst { at: 1e20, ..BURST },
+    RenderBurst { step: 1e17, ..BURST },
+    RenderBurst {
+      at: f64::MAX,
+      step: f32::MAX,
+      ..BURST
+    },
+  ] {
+    assert!(BurstJob::new(burst, channel().0).is_err(), "{burst:?}");
+  }
+
+  assert!(
+    BurstJob::new(
+      RenderBurst {
+        at: BurstJob::LATEST_SECONDS - 10.0,
+        step: 1.0,
+        ..BURST
+      },
+      channel().0
+    )
+    .is_ok()
+  );
+}
+
 // Its lead-in restarts the view and reads nothing back; each frame after is a step on, whatever it took to draw.
 #[test]
 fn draws_its_lead_in_then_its_frames_a_step_apart() {
@@ -56,6 +83,20 @@ fn draws_its_lead_in_then_its_frames_a_step_apart() {
 
   assert_eq!(job.get_kept_frame(), Some((0, None, 600.5)));
   assert_eq!(job.get_reference(), None);
+}
+
+#[test]
+fn keeps_its_time_to_the_millisecond_hours_into_a_level() {
+  let (job, _events) = start(RenderBurst {
+    at: 40_000.001,
+    lead_in: 0,
+    ..BURST
+  });
+  let Some((_, _, time)) = job.get_kept_frame() else {
+    panic!("its first frame is read back");
+  };
+
+  assert!((time - 40_000.001).abs() < 1e-6, "{time}");
 }
 
 // A frame read back but never copied out ends it: the frames after would no longer follow one another.

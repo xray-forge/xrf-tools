@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
 
@@ -16,9 +16,9 @@ pub struct AlifeObjectAnomalyZone {
   pub artefact_position_offset: u32,
 }
 
-impl ChunkReadWrite for AlifeObjectAnomalyZone {
+impl ChunkFieldReadWrite for AlifeObjectAnomalyZone {
   /// Read anomaly zone object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       offline_interactive_radius: reader.read_f32::<T>()?,
@@ -28,7 +28,7 @@ impl ChunkReadWrite for AlifeObjectAnomalyZone {
   }
 
   /// Write anomaly zone object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_f32::<T>(self.offline_interactive_radius)?;
     writer.write_u16::<T>(self.artefact_spawn_count)?;
@@ -40,8 +40,8 @@ impl ChunkReadWrite for AlifeObjectAnomalyZone {
 
 impl LtxImportExport for AlifeObjectAnomalyZone {
   /// Import anomaly zone object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -58,23 +58,17 @@ impl LtxImportExport for AlifeObjectAnomalyZone {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
       .set(
         "anomaly_zone.offline_interactive_radius",
-        self.offline_interactive_radius.to_string(),
+        self.offline_interactive_radius,
       )
-      .set(
-        "anomaly_zone.artefact_spawn_count",
-        self.artefact_spawn_count.to_string(),
-      )
-      .set(
-        "anomaly_zone.artefact_position_offset",
-        self.artefact_position_offset.to_string(),
-      );
+      .set("anomaly_zone.artefact_spawn_count", self.artefact_spawn_count)
+      .set("anomaly_zone.artefact_position_offset", self.artefact_position_offset);
 
     Ok(())
   }
@@ -89,7 +83,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -112,18 +106,21 @@ mod tests {
             direct_control: 4,
             level_vertex_id: 87,
             flags: 12,
-            custom_data: "".to_string(),
+            custom_data: String::new(),
             story_id: 6211,
             spawn_story_id: 143,
           },
           shape: vec![
-            Shape::Sphere((Vector3d::new(0.5, 0.5, 0.5), 1.0)),
-            Shape::Box((
-              Vector3d::new(4.1, 1.1, 32.1),
-              Vector3d::new(1.1, 2.2, 3.3),
-              Vector3d::new(4.0, 5.0, 1.4),
-              Vector3d::new(9.2, 8.3, 1.0),
-            )),
+            Shape::Sphere(Sphere {
+              center: Vector3d::new(0.5, 0.5, 0.5),
+              radius: 1.0,
+            }),
+            Shape::Box(Affine3d {
+              x_axis: Vector3d::new(4.1, 1.1, 32.1),
+              y_axis: Vector3d::new(1.1, 2.2, 3.3),
+              z_axis: Vector3d::new(4.0, 5.0, 1.4),
+              translation: Vector3d::new(9.2, 8.3, 1.0),
+            }),
           ],
           restrictor_type: 4,
         },
@@ -172,18 +169,21 @@ mod tests {
             direct_control: 40,
             level_vertex_id: 70,
             flags: 32,
-            custom_data: "".to_string(),
+            custom_data: String::new(),
             story_id: 523,
             spawn_story_id: 11,
           },
           shape: vec![
-            Shape::Sphere((Vector3d::new(0.5, 0.5, 0.5), 1.0)),
-            Shape::Box((
-              Vector3d::new(40.1, 1.1, 32.1),
-              Vector3d::new(1.1, 2.2, 30.3),
-              Vector3d::new(4.0, 50.0, 1.4),
-              Vector3d::new(90.2, 8.3, 1.0),
-            )),
+            Shape::Sphere(Sphere {
+              center: Vector3d::new(0.5, 0.5, 0.5),
+              radius: 1.0,
+            }),
+            Shape::Box(Affine3d {
+              x_axis: Vector3d::new(40.1, 1.1, 32.1),
+              y_axis: Vector3d::new(1.1, 2.2, 30.3),
+              z_axis: Vector3d::new(4.0, 50.0, 1.4),
+              translation: Vector3d::new(90.2, 8.3, 1.0),
+            }),
           ],
           restrictor_type: 4,
         },
@@ -220,18 +220,21 @@ mod tests {
             direct_control: 4,
             level_vertex_id: 87,
             flags: 12,
-            custom_data: "".to_string(),
+            custom_data: String::new(),
             story_id: 6211,
             spawn_story_id: 143,
           },
           shape: vec![
-            Shape::Sphere((Vector3d::new(0.5, 0.5, 0.5), 1.0)),
-            Shape::Box((
-              Vector3d::new(24.1, 10.1, 32.1),
-              Vector3d::new(21.1, 20.2, 13.3),
-              Vector3d::new(24.0, 50.0, 11.4),
-              Vector3d::new(29.2, 80.3, 11.0),
-            )),
+            Shape::Sphere(Sphere {
+              center: Vector3d::new(0.5, 0.5, 0.5),
+              radius: 1.0,
+            }),
+            Shape::Box(Affine3d {
+              x_axis: Vector3d::new(24.1, 10.1, 32.1),
+              y_axis: Vector3d::new(21.1, 20.2, 13.3),
+              z_axis: Vector3d::new(24.0, 50.0, 11.4),
+              translation: Vector3d::new(29.2, 80.3, 11.0),
+            }),
           ],
           restrictor_type: 4,
         },

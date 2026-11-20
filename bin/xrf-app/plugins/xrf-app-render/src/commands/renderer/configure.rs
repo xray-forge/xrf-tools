@@ -6,6 +6,6 @@ use crate::Renderer;
 /// Apply settings every native viewport draws with.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "configure")]
-pub fn render_configure(renderer: State<'_, Renderer>, settings: RenderSettings) {
+pub(crate) fn render_configure(renderer: State<'_, Renderer>, settings: RenderSettings) {
   renderer.configure(settings);
 }

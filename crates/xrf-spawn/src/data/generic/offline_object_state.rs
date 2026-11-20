@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::generic::script_to_string::ScriptToString;
 
@@ -11,7 +11,7 @@ use crate::data::generic::script_to_string::ScriptToString;
 /// was running. Neither class closes them with a save marker. A compiled spawn holds `nil` for both, which is what a
 /// new object starts with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OfflineObjectState {
   pub level_vertex_id: Option<u32>,
@@ -23,7 +23,7 @@ impl OfflineObjectState {
   const LEVEL_VERTEX: &'static str = "Offline state level vertex";
 
   /// Import the state kept under `prefix`.
-  pub fn import(section: &Section, prefix: &str) -> XrfResult<Self> {
+  pub fn import(section: &impl LtxSectionRead, prefix: &str) -> XrfResult<Self> {
     Ok(Self {
       level_vertex_id: ScriptToString::parse_id(
         &section.read_field::<String>(&format!("{prefix}.level_vertex_id"))?,
@@ -34,7 +34,7 @@ impl OfflineObjectState {
   }
 
   /// Export the state under `prefix`, each value as the string the script writes for it.
-  pub fn export(&self, section_name: &str, prefix: &str, ltx: &mut Ltx) {
+  pub fn export(&self, section_name: &str, prefix: &str, ltx: &mut impl LtxWrite) {
     ltx
       .with_section(section_name)
       .set(
@@ -48,9 +48,9 @@ impl OfflineObjectState {
   }
 }
 
-impl ChunkReadWrite for OfflineObjectState {
+impl ChunkFieldReadWrite for OfflineObjectState {
   /// Read the two strings the script class writes.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       level_vertex_id: ScriptToString::parse_id(&reader.read_w1251_string()?, Self::LEVEL_VERTEX)?,
       active_section: ScriptToString::parse_text(reader.read_w1251_string()?),
@@ -58,7 +58,7 @@ impl ChunkReadWrite for OfflineObjectState {
   }
 
   /// Write the two strings the script class reads.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&ScriptToString::format_id(self.level_vertex_id))?;
     writer.write_w1251_string(ScriptToString::format_text(self.active_section.as_deref()))?;
 
@@ -87,7 +87,6 @@ mod tests {
     Ok((writer.buffer, read))
   }
 
-  /// A compiled spawn's object has run no logic and stood nowhere yet, so both strings are `nil`.
   #[test]
   fn writes_nil_for_a_new_object() -> XrfResult {
     assert_eq!(
@@ -110,7 +109,7 @@ mod tests {
     Ok(())
   }
 
-  /// `tostring` never writes a vertex as `0012`, and reading it as 12 would write it back otherwise.
+  // `tostring` never writes `0012`, so reading it as 12 would not write back.
   #[test]
   fn refuses_a_vertex_it_would_not_write_back() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();

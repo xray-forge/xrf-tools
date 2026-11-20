@@ -13,6 +13,7 @@ use crate::host::world_ambient_effect::WorldAmbientEffect;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::level::ambient::ambient_systems::AmbientSystems;
 use crate::level::ambient::ambient_wind::AmbientWind;
+use crate::level::ambient::started_effect::StartedEffect;
 
 /// What the schedule's numbers are drawn from on every level open, so a driven capture plays the same effects.
 const SEED: u64 = 0x5EED_AB1E;
@@ -25,9 +26,9 @@ const FIRST_EFFECT_SEED: i32 = 1 << 24;
 /// where the camera stood plus its offset, stopped once its life time is up or the camera goes indoors, and gone once
 /// its particles have died; and the wind each effect brings. The scene plays each effect at an emitter of its own and
 /// tells when its particles have died.
-pub struct LevelAmbientEffects {
+pub(crate) struct LevelAmbientEffects {
   random: WeatherRandom,
-  /// `ambient_effect_next_time` and `ambient_effect_stop_time`, on the level's clock.
+  /// `ambient_effect_next_time` and `ambient_effect_stop_time`, on the engine's clock.
   next_time: Duration,
   stop_time: Duration,
   /// `ambient_particles`.
@@ -36,6 +37,8 @@ pub struct LevelAmbientEffects {
   /// Whether the next update is to play an effect at once, whatever plays or is waited for.
   is_forced: bool,
   wind: AmbientWind,
+  /// The effect started since the last take.
+  started: Option<StartedEffect>,
 }
 
 /// The effect playing: its emitter, the names it is reported by, and whether it was stopped.
@@ -56,15 +59,15 @@ impl Default for LevelAmbientEffects {
       played: 0,
       is_forced: false,
       wind: AmbientWind::default(),
+      started: None,
     }
   }
 }
 
 impl LevelAmbientEffects {
-  /// Lets an effect whose particles died go, blows the wind on, starts an effect when one is due, and stops it once its
-  /// time is up or indoors, in the order the engine takes them each frame, posting what the scene plays. `outdoors` is
-  /// where the camera stands outdoors, in engine space, none where it stands indoors; `now` is the level's clock.
-  pub fn update(
+  /// Moves the ambient effects and their wind on a frame in the engine's order, posting what the scene plays.
+  /// `outdoors` is the camera's position in engine space, none while indoors; `now` is the engine's clock.
+  pub(crate) fn update(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     mut systems: AmbientSystems<'_>,
@@ -116,18 +119,33 @@ impl LevelAmbientEffects {
   }
 
   /// The wind as it blows this frame.
-  pub fn get_gust(&self) -> AmbientGust {
+  pub(crate) fn get_gust(&self) -> AmbientGust {
     self.wind.get_gust()
   }
 
+  /// The effect started since the last take.
+  pub(crate) fn take_started(&mut self) -> Option<StartedEffect> {
+    self.started.take()
+  }
+
   /// Ends what plays at once and plays an effect on the next update, outdoors, without waiting.
-  pub fn play_now(&mut self) {
+  pub(crate) fn play_now(&mut self) {
     self.is_forced = true;
   }
 
-  /// Where they stand at a moment of the level's clock: what plays and how much of its life is left, and how long until
-  /// the next may start. Whether the camera stands indoors is the camera's estimate to fill; it is left outdoors.
-  pub fn report(&self, now: Duration) -> WorldAmbientReport {
+  /// Starts afresh, as at the level's first frame: what plays leaves the scene, the next effect is due at once, and the
+  /// random draws and the wind start over.
+  pub(crate) fn restart(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    emitters: &mut ProxyAllocator<ParticleEmitterProxy>,
+  ) {
+    self.release(updates, emitters);
+    *self = Self::default();
+  }
+
+  /// Where they stand at `now` on the engine's clock. `is_indoors` is left false for the camera's estimate to fill.
+  pub(crate) fn report(&self, now: Duration) -> WorldAmbientReport {
     WorldAmbientReport {
       effect: self.playing.as_ref().map(|playing| WorldAmbientEffectReport {
         name: playing.name.clone(),
@@ -140,12 +158,16 @@ impl LevelAmbientEffects {
       }),
       is_indoors: false,
       wait: self.next_time.saturating_sub(now),
-      played: self.played as u32,
+      played: self.played.cast_unsigned(),
     }
   }
 
   /// Takes the effect playing out of the scene, its particles with it.
-  pub fn release(&mut self, updates: &mut Vec<RenderSceneUpdate>, emitters: &mut ProxyAllocator<ParticleEmitterProxy>) {
+  pub(crate) fn release(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    emitters: &mut ProxyAllocator<ParticleEmitterProxy>,
+  ) {
     if let Some(playing) = self.playing.take() {
       emitters.free(playing.emitter);
       updates.push(RenderSceneUpdate::RemoveEmitter(playing.emitter));
@@ -193,6 +215,10 @@ impl LevelAmbientEffects {
     let offset: Vec3 = self.draw_offset(effect, systems.engine);
 
     self.played += 1;
+    self.started = Some(StartedEffect {
+      name: chosen.to_owned(),
+      position: eye + offset,
+    });
 
     // `CParticlesObject::Create`, then `play_at_pos`; an effect the library lacks plays nothing.
     let library: &ParticleLibrary = systems.library;

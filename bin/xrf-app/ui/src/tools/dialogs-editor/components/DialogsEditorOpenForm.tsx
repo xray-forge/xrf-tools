@@ -36,7 +36,7 @@ export function DialogsEditorOpenForm(): ReactElement {
 
   const onOpen = useCallback(() => {
     if (dialogs.value) {
-      void dialogsService.openProject(createRoots([dialogs.value]), mode);
+      void dialogsService.open(createRoots([dialogs.value]), mode);
     } else {
       log.info("Cannot open dialogs without a path");
     }

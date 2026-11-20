@@ -10,7 +10,7 @@ const REACH: f32 = 30.0;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "IndirectTrace")]
-pub struct IndirectTraceUniform {
+pub(crate) struct IndirectTraceUniform {
   /// What this frame turns each pixel's noise by, each way.
   pub noise: Vec2,
   /// The metres a ray reaches.
@@ -21,7 +21,7 @@ pub struct IndirectTraceUniform {
 
 impl IndirectTraceUniform {
   /// On the noise's `frame`, at the indirect light's `intensity`.
-  pub fn new(frame: u32, intensity: f32) -> Self {
+  pub(crate) fn new(frame: u32, intensity: f32) -> Self {
     let [x, y] = NoiseTurn::get_r2(frame, NoiseTurn::FRAMES);
 
     Self {

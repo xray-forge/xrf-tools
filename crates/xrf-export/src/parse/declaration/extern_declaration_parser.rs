@@ -25,17 +25,17 @@ pub(crate) struct ExternDeclarationParser<'a> {
 
 impl<'a> ExternDeclarationParser<'a> {
   /// The function a declaration calls, `xray16/lib`'s `extern`.
-  pub const CALLEE: &'static str = "extern";
+  pub(crate) const CALLEE: &'static str = "extern";
 
   /// Create a parser whose diagnostics and documentation refer to one source file.
-  pub fn new(
+  pub(crate) fn new(
     source_map: &'a SourceMap,
     comments: &'a dyn Comments,
     source_file: &'a Path,
     source_path: &'a str,
     symbol_resolver: &'a TypeScriptSymbolResolver,
   ) -> Self {
-    let diagnostic: ExternDiagnostic = ExternDiagnostic::new(source_map, source_path);
+    let diagnostic: ExternDiagnostic<'_> = ExternDiagnostic::new(source_map, source_path);
 
     Self {
       diagnostic,
@@ -45,7 +45,7 @@ impl<'a> ExternDeclarationParser<'a> {
   }
 
   /// Every top-level `extern(...)` call of `program`, in source order.
-  pub fn parse(&self, program: &Program) -> XrfResult<Vec<ExternStatement>> {
+  pub(crate) fn parse(&self, program: &Program) -> XrfResult<Vec<ExternStatement>> {
     let statements: Vec<&Stmt> = match program {
       Program::Module(module) => module
         .body
@@ -109,10 +109,10 @@ impl<'a> ExternDeclarationParser<'a> {
     };
 
     Ok(Some(ExternStatement {
-      externs,
-      is_table,
       key,
       location,
+      is_table,
+      externs,
     }))
   }
 

@@ -3,7 +3,7 @@ use crate::feature::tracing::scene_trace::requests::trace_request_handles::Trace
 /// A list of rays the scene pass traces, and the labels its two passes go by: the dispatch copied out of its head, then
 /// the trace.
 #[derive(Clone, Copy)]
-pub struct SceneTraceRequest {
+pub(crate) struct SceneTraceRequest {
   pub dispatch_label: &'static str,
   pub trace_label: &'static str,
   pub handles: TraceRequestHandles,

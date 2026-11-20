@@ -5,17 +5,17 @@ use crate::contract::feature::lighting::render_contact_shadow_settings::RenderCo
 
 /// Cascades the sun's shadow can be cut into at most: the sun reads their texels from one `vec4`.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAX_SHADOW_CASCADES: usize = 4;
+pub(crate) const RENDER_MAX_SHADOW_CASCADES: usize = 4;
 
 /// Texels the sun's shadow filter reaches each way at most: the widest the sun's pass has a pipeline for.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_MAX_SHADOW_FILTER: u32 = 3;
+pub(crate) const RENDER_MAX_SHADOW_FILTER: u32 = 3;
 
 /// Metres a cascade is across at least, whatever a setting asks: a width of nought would cut it into texels of nought.
-pub const RENDER_MIN_SHADOW_CASCADE_WIDTH: f32 = 1.0;
+pub(crate) const RENDER_MIN_SHADOW_CASCADE_WIDTH: f32 = 1.0;
 
 /// Metres a cascade is across at most, whatever a setting asks.
-pub const RENDER_MAX_SHADOW_CASCADE_WIDTH: f32 = 10_000.0;
+pub(crate) const RENDER_MAX_SHADOW_CASCADE_WIDTH: f32 = 10_000.0;
 
 /// The sun's shadow: cascades of maps, each a square of the level seen from the sun, drawn through the static draws
 /// and sampled by the sun's light. The engine's are three, 20, 40 and 160 metres across, at 2048 texels
@@ -31,7 +31,7 @@ pub struct RenderShadowSettings {
   /// Texels each cascade's map is across.
   #[setting(min = 256, max = 8192, recommended = [1024, 4096])]
   pub resolution: u32,
-  /// Texels the filter reaches from the one sampled, each way: zero for one comparison, one for a three by three.
+  /// Filter reach in texels each way: zero for the four around the point, one for a 3x3.
   #[setting(min = 0, max = RENDER_MAX_SHADOW_FILTER)]
   pub filter: u32,
   /// How far a point is moved along its normal before it is compared, in texels of its cascade.

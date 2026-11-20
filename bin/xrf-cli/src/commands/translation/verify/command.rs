@@ -10,43 +10,47 @@ use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use super::report::TranslationVerifyReport;
 use crate::core::arguments::XrayRootsArguments;
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandError, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct VerifyCommand;
+pub(crate) struct VerifyCommand;
 
 impl GenericCommand for VerifyCommand {
   fn operation(&self) -> &'static str {
     "verify"
   }
 
-  fn declare(&self, command: Command) -> Command {
-    XrayRootsArguments::declare(
-      command.about(
-        "Verify that translation sources build to tables the game loads as written, and are translated into every \
-         language",
-      ),
-      "Root holding translation sources, or one source file. Repeat to layer roots, highest priority first",
+  fn input(&self) -> CommandInput {
+    CommandInput::roots(
+      "Root holding translation sources, or one source file. Give several to layer them, highest priority first",
       "Limit to one logical subtree, such as translations",
     )
-    .arg(
-      Arg::new("language")
-        .help("Language to verify, or all of them")
-        .short('l')
-        .long("language")
-        .required(false)
-        .default_value("all")
-        .value_parser(value_parser!(String)),
-    )
-    .arg(
-      Arg::new("strict")
-        .help("Also answer with a check failure when any translation is missing")
-        .long("strict")
-        .required(false)
-        .action(ArgAction::SetTrue),
-    )
+  }
+
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about(
+        "Verify that translation sources build to tables the game loads as written, and are translated into every \
+         language",
+      )
+      .arg(
+        Arg::new("language")
+          .help("Language to verify, or all of them")
+          .short('l')
+          .long("language")
+          .required(false)
+          .default_value("all")
+          .value_parser(value_parser!(String)),
+      )
+      .arg(
+        Arg::new("strict")
+          .help("Also answer with a check failure when any translation is missing")
+          .long("strict")
+          .required(false)
+          .action(ArgAction::SetTrue),
+      )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {

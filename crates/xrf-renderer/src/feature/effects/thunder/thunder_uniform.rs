@@ -8,7 +8,7 @@ use crate::lighting::weather::render_thunderbolt_strike::RenderThunderboltStrike
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Thunder")]
-pub struct ThunderUniform {
+pub(crate) struct ThunderUniform {
   pub axes: [Vec4; 3],
   pub position: Vec4,
   pub shift: Vec4,
@@ -19,7 +19,7 @@ pub struct ThunderUniform {
 }
 
 impl ThunderUniform {
-  pub fn new(strike: &RenderThunderboltStrike) -> Self {
+  pub(crate) fn new(strike: &RenderThunderboltStrike) -> Self {
     let extent = |glow: &RenderThunderboltGlow| Vec4::new(glow.extent[0], glow.extent[1], glow.opacity, 0.0);
 
     Self {

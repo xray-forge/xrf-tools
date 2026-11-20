@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { EArchivesBulkRoute } from "@xrf/ipc/commands/archives-bulk";
-import { listMockBulkCalls, mockInvoke, mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
+import { listMockBulkCalls, mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
@@ -16,7 +16,6 @@ import { mockArchivesExplorer } from "@/tools/archives-explorer/fixtures/archive
 import { ArchivePreviewService } from "./archive-preview.service";
 
 const SESSION: string = "archives-session";
-const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
 const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
 const SOUND: ArchiveFileDescriptor = mockArchiveFileDescriptor({
@@ -29,7 +28,6 @@ const DESCRIPTOR: AudioDescriptor = {
   channels: 2,
   sampleRate: 44100,
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
-  mediaType: "audio/ogg",
 };
 
 function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivePreviewService {
@@ -41,12 +39,9 @@ describe("ArchivePreviewService audio preview", () => {
     mockIpcCommands({
       [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(DESCRIPTOR),
     });
-    mockIpcBulkRoutes({
-      [EArchivesBulkRoute.READ_ENTRY]: BYTES,
-    });
   });
 
-  it("does not describe or read a sound above the audio limit, including on retry", async () => {
+  it("does not describe a sound above the audio limit, including on retry", async () => {
     const sound = mockArchiveFileDescriptor({
       ...SOUND,
       sizeReal: mockArchiveReadPolicy().maximumAudioSize + 1,
@@ -63,7 +58,7 @@ describe("ArchivePreviewService audio preview", () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  it("describes and reads a sound exactly at the audio limit", async () => {
+  it("describes a sound exactly at the audio limit", async () => {
     const sound = mockArchiveFileDescriptor({
       ...SOUND,
       sizeReal: mockArchiveReadPolicy().maximumAudioSize,
@@ -73,10 +68,6 @@ describe("ArchivePreviewService audio preview", () => {
     await service.selectFile(sound);
 
     expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_AUDIO, {
-      sessionId: SESSION,
-      name: sound.name,
-    });
-    expect(listMockBulkCalls(EArchivesBulkRoute.READ_ENTRY)).toContainEqual({
       sessionId: SESSION,
       name: sound.name,
     });
@@ -96,32 +87,19 @@ describe("ArchivePreviewService audio preview", () => {
     expect(service.content.value?.kind).toBe("audio");
   });
 
-  it("describes and reads one file, of the same subject", async () => {
-    const service: ArchivePreviewService = mockService();
-
-    await service.selectFile(SOUND);
-
-    // The description and the bytes come from different commands, and nothing but this pairing stops a sound from
-    // being played with another file's numbers beside it.
-    const [describeArguments] = mockInvoke.mock.calls
-      .filter(([command]) => command === EArchivesCommand.DESCRIBE_AUDIO)
-      .map(([, args]) => args);
-    const [readArguments] = listMockBulkCalls(EArchivesBulkRoute.READ_ENTRY);
-
-    expect(describeArguments).toEqual(readArguments);
-  });
-
-  it("carries the engine parameters the archive stored, and the bytes beside them", async () => {
+  it("carries the engine parameters and where the sound is, but none of its bytes", async () => {
     const service: ArchivePreviewService = mockService();
 
     await service.selectFile(SOUND);
 
     const content = service.content.value?.kind === "audio" ? service.content.value : null;
 
-    // These come from the vorbis comment and are the reason the backend parses at all - the webview
-    // could play the bytes without any of it.
+    // The player opens the sound in the backend by the session and name the description was read by, so the numbers
+    // beside it always describe what plays; the page never holds the sound itself.
     expect(content?.descriptor.parameters).toEqual(DESCRIPTOR.parameters);
-    expect(Array.from(content?.bytes ?? [])).toEqual([0x4f, 0x67, 0x67, 0x53]);
+    expect(content?.sessionId).toBe(SESSION);
+    expect(content?.name).toBe(SOUND.name);
+    expect(listMockBulkCalls(EArchivesBulkRoute.READ_ENTRY)).toHaveLength(0);
   });
 
   it("keeps textures on the texture path", async () => {
@@ -141,34 +119,11 @@ describe("ArchivePreviewService audio preview", () => {
         throw new Error("not a playable sound");
       }),
     });
-    mockIpcBulkRoutes({
-      [EArchivesBulkRoute.READ_ENTRY]: BYTES,
-    });
 
     await service.selectFile(SOUND);
 
     expect(service.content.isLoading).toBe(false);
     expect(String(service.content.error)).toContain("not a playable sound");
-  });
-
-  it("reports a failed byte read even when the description succeeds", async () => {
-    const service: ArchivePreviewService = mockService();
-
-    mockIpcCommands({
-      [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(DESCRIPTOR),
-    });
-    mockIpcBulkRoutes({
-      [EArchivesBulkRoute.READ_ENTRY]: () => {
-        throw new Error("resolves to nothing in the open subject");
-      },
-    });
-
-    await service.selectFile(SOUND);
-
-    // Half a preview is not a preview: a described sound with no bytes has nothing to play.
-    expect(service.content.isLoading).toBe(false);
-    expect(service.content.value).toBeNull();
-    expect(String(service.content.error)).toContain("resolves to nothing");
   });
 
   it("retries the audio read rather than falling back to text", async () => {

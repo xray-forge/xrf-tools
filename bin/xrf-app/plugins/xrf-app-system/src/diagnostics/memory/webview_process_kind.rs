@@ -4,7 +4,7 @@ use serde::Serialize;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum WebviewProcessKind {
+pub(crate) enum WebviewProcessKind {
   /// The browser process, which owns the others.
   Browser,
   /// Runs the page and its workers: the script heaps and every array buffer.

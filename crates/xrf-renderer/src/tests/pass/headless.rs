@@ -75,7 +75,7 @@ fn draws_sky_over_ground_offscreen() {
   });
   let readback: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
     label: None,
-    size: (SIZE * SIZE * 4) as u64,
+    size: u64::from(SIZE * SIZE * 4),
     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
     mapped_at_creation: false,
   });

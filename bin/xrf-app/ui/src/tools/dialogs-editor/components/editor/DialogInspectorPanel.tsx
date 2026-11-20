@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
-import { Stack } from "@xrf/ui/material/stack";
+import { Stack } from "@xrf/ui/layout/stack";
 import { ReactElement, useMemo } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
@@ -78,7 +78,7 @@ export function DialogInspectorPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={isDialogRoot ? "Dialog" : "Phrase"}>
-      <EditorPanelSection title={"Details"} isFirst>
+      <EditorPanelSection title={"Details"}>
         <EditorPanelProperty label={"ID"} value={isDialogRoot ? dialog.id : phrase?.id} isMonospace />
 
         {isDialogRoot ? (

@@ -9,7 +9,7 @@ pub struct Condlist {
 }
 
 impl Condlist {
-  pub fn parse(value: &str) -> XrfResult<Condlist> {
+  pub fn parse(value: &str) -> XrfResult<Self> {
     let mut branches: Vec<CondlistBranch> = Vec::new();
     let mut branch_start: usize = 0;
 
@@ -27,7 +27,7 @@ impl Condlist {
       branch_start += raw_branch.len() + 1;
     }
 
-    Ok(Condlist { branches })
+    Ok(Self { branches })
   }
 }
 

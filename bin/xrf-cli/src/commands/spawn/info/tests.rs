@@ -1,0 +1,84 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use serde_json::{Value, json};
+use xrf_spawn::XRayByteOrder;
+use xrf_test_utils::GeneratedResources;
+
+use crate::commands::spawn::fixtures::{new_level_object, new_root_spawn, write_level_spawn_list};
+use crate::commands::spawn::info::InfoCommand;
+use crate::core::command::command_testing::run_command_for_result;
+use crate::core::command::{CommandError, CommandResult, GenericCommand};
+
+fn run(path: &Path) -> CommandResult<Option<Value>> {
+  run_command_for_result(
+    &InfoCommand,
+    &[
+      String::from(InfoCommand.operation()),
+      path.display().to_string(),
+      String::from("--silent"),
+      String::from("--json"),
+    ],
+  )
+}
+
+#[test]
+fn reports_a_root_spawn_as_its_kind() -> CommandResult {
+  let path: PathBuf = GeneratedResources::create_dir("spawn_info/root")?.join("all.spawn");
+
+  new_root_spawn().write_to_path::<XRayByteOrder, _>(&path)?;
+
+  let result: Value = run(&path)?.expect("a root spawn is reported");
+
+  assert_eq!(result["kind"], "root");
+  assert_eq!(result["guid"], "78e55023-10b1-426f-9247-bb680e5fe0b7");
+  assert_eq!(result["graph"]["version"], 10);
+
+  Ok(())
+}
+
+#[test]
+fn reports_a_level_spawn_list_by_section() -> CommandResult {
+  let path: PathBuf = GeneratedResources::create_dir("spawn_info/level")?.join("level.spawn");
+
+  write_level_spawn_list(
+    &path,
+    vec![
+      new_level_object(0, "graph_point", "fake_graph_point"),
+      new_level_object(1, "m_stalker", "esc_wolf"),
+      new_level_object(2, "graph_point", "fake_exit_point"),
+    ],
+  )?;
+
+  assert_eq!(
+    run(&path)?.expect("a level spawn list is reported"),
+    json!({
+      "kind": "level",
+      "sections": [
+        { "name": "graph_point", "objects": 2 },
+        { "name": "m_stalker", "objects": 1 },
+      ],
+    })
+  );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_file_of_neither_kind_naming_both() -> CommandResult {
+  let path: PathBuf = GeneratedResources::create_dir("spawn_info/neither")?.join("container.spawn");
+
+  // One chunk holding four bytes: a container, but neither a root's header nor a spawn packet.
+  fs::write(&path, [7, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4])?;
+
+  let error: CommandError = run(&path).expect_err("a file of neither kind is refused");
+
+  assert_eq!(error.exit_code(), 1);
+  assert!(
+    error.message().contains("Expected a root spawn") && error.message().contains("or a level's spawn list"),
+    "{}",
+    error.message()
+  );
+
+  Ok(())
+}

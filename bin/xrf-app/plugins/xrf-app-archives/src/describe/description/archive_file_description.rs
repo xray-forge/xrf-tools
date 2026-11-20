@@ -23,7 +23,7 @@ impl ArchiveFileDescription {
   ///
   /// Returns an error when the subject holds no such file, or when a describer that claimed the entry could not read
   /// it. A format nothing describes, and an entry too large to read whole, are answers rather than failures.
-  pub fn of(source: &ArchiveDescribeSource, name: &str, policy: &ArchiveReadPolicy) -> XrfResult<Self> {
+  pub fn of(source: &ArchiveDescribeSource<'_>, name: &str, policy: &ArchiveReadPolicy) -> XrfResult<Self> {
     let size: u64 = source
       .get_size_of(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not held by the open subject")))?;
@@ -63,7 +63,7 @@ impl ArchiveFileDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read.
   fn describe_container(
-    source: &ArchiveDescribeSource,
+    source: &ArchiveDescribeSource<'_>,
     name: &str,
     size: u64,
     weighed: u32,

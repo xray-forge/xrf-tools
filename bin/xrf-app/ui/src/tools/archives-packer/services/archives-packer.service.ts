@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
-import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { flowResult } from "@wirestate/mobx";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
@@ -31,13 +31,13 @@ export enum EPackerSection {
  * rendered editor around them.
  */
 @Injectable()
-export class ArchivesPackerService extends ArchiveConfigEditorService<ArchivePackConfig, ArchivePackResult> {
-  /** Which section of the configuration is open. */
-  @Observable()
-  public section: EPackerSection = EPackerSection.OUTPUT;
-
+export class ArchivesPackerService extends ArchiveConfigEditorService<
+  ArchivePackConfig,
+  ArchivePackResult,
+  EPackerSection
+> {
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
-    super(new Logger(__MODULE_NAME__), [ARCHIVES_JOB_PACK]);
+    super(new Logger(__MODULE_NAME__), [ARCHIVES_JOB_PACK], EPackerSection.OUTPUT);
   }
 
   /**
@@ -62,11 +62,6 @@ export class ArchivesPackerService extends ArchiveConfigEditorService<ArchivePac
 
       this.config = FALLBACK_PACK_CONFIG;
     }
-  }
-
-  @BoundAction()
-  public setSection(section: EPackerSection): void {
-    this.section = section;
   }
 
   /**

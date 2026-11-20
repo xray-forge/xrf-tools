@@ -2,4 +2,4 @@
 
 mod level_console_defaults;
 
-pub use level_console_defaults::LevelConsoleDefaults;
+pub(crate) use level_console_defaults::LevelConsoleDefaults;

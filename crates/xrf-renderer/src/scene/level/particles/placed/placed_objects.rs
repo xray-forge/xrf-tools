@@ -17,7 +17,7 @@ impl PlacedObjects {
     name: &str,
     transform: &Mat4,
     seed: i32,
-    context: &ParticleUpdateContext,
+    context: &ParticleUpdateContext<'_>,
     now: u64,
   ) {
     let slot: &mut Option<(ParticleObject, bool)> = &mut self.0[effect.get_index()];
@@ -27,7 +27,10 @@ impl PlacedObjects {
     }
 
     // Each effect a sequence of its own, so a campfire's effects do not repeat one another.
-    let Some(instance) = context.library.create(name, seed ^ ((effect.get_index() as i32) << 16)) else {
+    let Some(instance) = context
+      .library
+      .create(name, seed ^ ((effect.get_index() as u32).cast_signed() << 16))
+    else {
       return;
     };
     let mut object: ParticleObject = ParticleObject::new(instance);

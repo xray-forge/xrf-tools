@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { useForkRef } from "#/material/utils";
+import { useForkRef } from "#/react/fork-ref";
 import { cn, TREE } from "#/theme";
 import { LayoutList, useVirtualizer } from "#/virtualizer";
 
@@ -39,7 +39,7 @@ export interface IVirtualizedTreeIcons {
   leaf: ReactNode;
 }
 
-interface IVirtualizedTreeProps<T> extends BaseComponentProps {
+export interface IVirtualizedTreeProps<T> extends BaseComponentProps {
   items: ReadonlyArray<ITreeNode<T>>;
   expandedIds: ReadonlySet<string>;
   /** Where the keyboard stands. Moving it opens nothing, so it is safe to move on every arrow key. */

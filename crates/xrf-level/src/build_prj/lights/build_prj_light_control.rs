@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::build_prj::build_prj_name::BuildPrjName;
 
@@ -19,7 +19,8 @@ pub struct BuildPrjLightControl {
 
 impl BuildPrjLightControl {
   /// Bytes a layer occupies before its data: the name and the data's count.
-  pub const HEAD_SIZE: u64 = BuildPrjName::SHORT_SIZE as u64 + 4;
+  #[cfg(test)]
+  pub(crate) const HEAD_SIZE: u64 = BuildPrjName::SHORT_SIZE as u64 + 4;
 }
 
 impl ChunkReadWrite for BuildPrjLightControl {
@@ -38,7 +39,7 @@ impl ChunkReadWrite for BuildPrjLightControl {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.name.write(writer, BuildPrjName::SHORT_SIZE)?;
 
-    writer.write_u32::<T>(to_format_size(self.data.len(), "build project light control data")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.data.len(), "build project light control data")?)?;
 
     for value in &self.data {
       writer.write_u32::<T>(*value)?;

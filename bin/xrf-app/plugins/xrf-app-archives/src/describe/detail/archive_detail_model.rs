@@ -2,11 +2,9 @@ use serde::Serialize;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::DetailModel;
-use xrf_math::Vector3d;
 use xrf_vfs::XrayAssetType;
 
-use crate::describe::description::ArchiveBounds;
-use crate::describe::description::ArchiveReference;
+use crate::describe::description::{ArchiveBounds, ArchiveReference};
 use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about one detail object.
@@ -38,7 +36,7 @@ impl ArchiveDetailModel {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not a detail object this reader can
   /// walk - a mesh the payload does not account for, or an index count that is not whole triangles.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     Ok(Self::of(
       source,
       &DetailModel::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?,
@@ -46,7 +44,7 @@ impl ArchiveDetailModel {
   }
 
   /// One object as the viewer reads it, with the texture it names resolved.
-  pub fn of(source: &ArchiveDescribeSource, model: &DetailModel) -> Self {
+  pub fn of(source: &ArchiveDescribeSource<'_>, model: &DetailModel) -> Self {
     Self {
       shader: model.shader.clone(),
       texture: (!model.texture.is_empty())
@@ -57,9 +55,7 @@ impl ArchiveDetailModel {
       unnamed_flags: model.flags & !DetailModel::NO_WAVING,
       vertices: model.vertices.len(),
       triangles: model.get_triangles_count(),
-      bounds: model
-        .get_bounds()
-        .map(|(minimum, maximum): (Vector3d<f32>, Vector3d<f32>)| ArchiveBounds::of(&minimum, &maximum)),
+      bounds: model.get_bounds().as_ref().map(ArchiveBounds::of),
     }
   }
 }

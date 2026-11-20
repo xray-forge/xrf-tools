@@ -1,46 +1,15 @@
 use glam::Vec3;
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 
+use crate::helpers::HelperLinkLines;
 use crate::objects::{LevelObject, LevelObjectId, LevelObjectKindEntry, LevelObjectShape, LevelObjectsDescription};
 
 /// What each level object is drawn as among the helpers.
 struct HelperLook;
 
 impl HelperLook {
-  /// An arrowhead's barbs: metres at most, a share of the link at most, and their angle off the link.
-  const ARROW_LENGTH: f32 = 0.6;
-  const ARROW_SHARE: f32 = 0.25;
-  const ARROW_ANGLE: f32 = 0.45;
-
-  /// A link from `from` to `to` as its line and an arrowhead's two barbs at `to`, turned about the vertical; none for
-  /// a link of no length.
-  fn to_link(from: Vec3, to: Vec3) -> Vec<[[f32; 3]; 2]> {
-    let span: Vec3 = to - from;
-    let length: f32 = span.length();
-
-    if length <= f32::EPSILON {
-      return Vec::new();
-    }
-
-    let back: Vec3 = -span / length * (length * Self::ARROW_SHARE).min(Self::ARROW_LENGTH);
-    let barb = |angle: f32| -> [[f32; 3]; 2] {
-      let (sin, cos): (f32, f32) = angle.sin_cos();
-
-      [
-        to.to_array(),
-        (to + Vec3::new(back.x * cos - back.z * sin, back.y, back.x * sin + back.z * cos)).to_array(),
-      ]
-    };
-
-    vec![
-      [from.to_array(), to.to_array()],
-      barb(Self::ARROW_ANGLE),
-      barb(-Self::ARROW_ANGLE),
-    ]
-  }
-
   /// What `object` is drawn as, in its own space; none for an object drawing no helper.
-  fn to_shapes(object: &LevelObject) -> Vec<RenderHelperShape> {
+  fn list_shapes(object: &LevelObject) -> Vec<RenderHelperShape> {
     if let (LevelObjectId::Spawn { index }, Some(spawn)) = (object.id, &object.spawn)
       && object.kind.get_entry().is_drawn
       && spawn.visual.is_some()
@@ -53,17 +22,12 @@ impl HelperLook {
     }
 
     if let Some(patrol) = &object.patrol {
-      let origin: Vec3 = Vec3::new(object.transform.c.x, object.transform.c.y, object.transform.c.z);
-      let point = |index: u32| -> Option<Vec3> {
-        patrol
-          .points
-          .get(index as usize)
-          .map(|it| Vec3::new(it.x, it.y, it.z) - origin)
-      };
+      let origin: Vec3 = Vec3::from(&object.transform.c);
+      let point = |index: u32| -> Option<Vec3> { patrol.points.get(index as usize).map(|it| Vec3::from(it) - origin) };
       let ends: Vec<[[f32; 3]; 2]> = patrol
         .links
         .iter()
-        .filter_map(|link| Some(Self::to_link(point(link.from)?, point(link.to)?)))
+        .filter_map(|link| Some(HelperLinkLines::list(point(link.from)?, point(link.to)?)))
         .flatten()
         .collect();
 
@@ -89,7 +53,7 @@ impl From<&LevelObjectsDescription> for RenderLevelHelpers {
         .iter()
         .enumerate()
         .filter_map(|(index, object): (usize, &LevelObject)| {
-          let shapes: Vec<RenderHelperShape> = HelperLook::to_shapes(object);
+          let shapes: Vec<RenderHelperShape> = HelperLook::list_shapes(object);
           let entry: &LevelObjectKindEntry = object.kind.get_entry();
 
           (!shapes.is_empty()).then(|| RenderHelperObject {

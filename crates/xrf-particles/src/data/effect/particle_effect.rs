@@ -2,16 +2,16 @@ use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_math::Vector3d;
 use xrf_utils::assert_equal;
 
+use crate::data::actions::particle_action::ParticleAction;
 use crate::data::editor::particle_editor_action::ParticleEditorAction;
 use crate::data::effect::particle_effect_collision::ParticleEffectCollision;
 use crate::data::effect::particle_effect_editor_data::ParticleEffectEditorData;
 use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
 use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
-use crate::data::particle_action::ParticleAction;
 use crate::data::particle_description::ParticleDescription;
 use crate::data::particle_record_chunks::ParticleRecordChunks;
 
@@ -197,6 +197,13 @@ impl ChunkReadWrite for ParticleEffect {
     name_chunk_writer.write_w1251_string(&self.name)?;
     name_chunk_writer.flush_chunk_into::<T>(writer, Self::NAME_CHUNK_ID)?;
 
+    // The SDK's authorship record follows the name; the engine's own save, which keeps none, has no place for it.
+    if let Some(description) = &self.description {
+      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
+      description_chunk_writer.write_xr::<T, _>(description)?;
+      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
+    }
+
     let mut max_particles_chunk_writer: ChunkWriter = ChunkWriter::new();
     max_particles_chunk_writer.write_u32::<T>(self.max_particles)?;
     max_particles_chunk_writer.flush_chunk_into::<T>(writer, Self::MAX_PARTICLES_CHUNK_ID)?;
@@ -209,16 +216,17 @@ impl ChunkReadWrite for ParticleEffect {
     flags_chunk_writer.write_u32::<T>(self.flags)?;
     flags_chunk_writer.flush_chunk_into::<T>(writer, Self::FLAGS_CHUNK_ID)?;
 
-    if let Some(frame) = &self.frame {
-      let mut frame_chunk_writer: ChunkWriter = ChunkWriter::new();
-      frame_chunk_writer.write_xr::<T, _>(frame)?;
-      frame_chunk_writer.flush_chunk_into::<T>(writer, Self::FRAME_CHUNK_ID)?;
-    }
-
+    // `CPEDef::Save` writes the sprite ahead of the frame, against their ids.
     if let Some(sprite) = &self.sprite {
       let mut sprite_chunk_writer: ChunkWriter = ChunkWriter::new();
       sprite_chunk_writer.write_xr::<T, _>(sprite)?;
       sprite_chunk_writer.flush_chunk_into::<T>(writer, Self::SPRITE_CHUNK_ID)?;
+    }
+
+    if let Some(frame) = &self.frame {
+      let mut frame_chunk_writer: ChunkWriter = ChunkWriter::new();
+      frame_chunk_writer.write_xr::<T, _>(frame)?;
+      frame_chunk_writer.flush_chunk_into::<T>(writer, Self::FRAME_CHUNK_ID)?;
     }
 
     if let Some(time_limit) = self.time_limit {
@@ -239,12 +247,6 @@ impl ChunkReadWrite for ParticleEffect {
       velocity_scale_chunk_writer.flush_chunk_into::<T>(writer, Self::VELOCITY_SCALE_CHUNK_ID)?;
     }
 
-    if let Some(description) = &self.description {
-      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
-      description_chunk_writer.write_xr::<T, _>(description)?;
-      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
-    }
-
     if let Some(rotation) = &self.rotation {
       let mut rotation_chunk_writer: ChunkWriter = ChunkWriter::new();
       rotation_chunk_writer.write_xr::<T, Vector3d>(rotation)?;
@@ -263,8 +265,8 @@ impl ChunkReadWrite for ParticleEffect {
 
 impl LtxImportExport for ParticleEffect {
   /// Import particle effect data from provided path.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle effect section '{}' should be defined in ltx file ({})",
         section_name,
@@ -288,7 +290,7 @@ impl LtxImportExport for ParticleEffect {
 
       if ltx.has_section(&action_section_name) {
         actions.push(ParticleAction::import(&action_section_name, ltx)?);
-        action_index += 1
+        action_index += 1;
       } else {
         break;
       }
@@ -318,23 +320,23 @@ impl LtxImportExport for ParticleEffect {
   }
 
   /// Export particle effect data into provided path.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set("version", self.version.to_string())
+      .set("version", self.version)
       .set("name", &self.name)
-      .set("actions_count", self.actions.len().to_string())
-      .set("max_particles", self.max_particles.to_string())
-      .set("flags", self.flags.to_string())
-      .set_optional("time_limit", self.time_limit.map(|it| it.to_string()))
-      .set_optional("rotation", self.rotation.as_ref().map(|it| it.to_string()))
-      .set_optional("velocity_scale", self.velocity_scale.as_ref().map(|it| it.to_string()));
+      .set("actions_count", self.actions.len())
+      .set("max_particles", self.max_particles)
+      .set("flags", self.flags)
+      .set_optional("time_limit", self.time_limit)
+      .set_optional("rotation", self.rotation.as_ref())
+      .set_optional("velocity_scale", self.velocity_scale.as_ref());
 
     ParticleEffectSprite::export_optional(&Self::get_sprite_section(section_name), ltx, self.sprite.as_ref())?;
 
     for (index, action) in self.actions.iter().enumerate() {
-      action.export(&Self::get_action_section(section_name, index), ltx)?
+      action.export(&Self::get_action_section(section_name, index), ltx)?;
     }
 
     ParticleEffectFrame::export_optional(&Self::get_frame_section(section_name), ltx, self.frame.as_ref())?;
@@ -363,18 +365,18 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_math::Vector3d;
+  use xrf_math::{Vector2d, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
+  use crate::data::actions::particle_action::ParticleAction;
   use crate::data::actions::particle_action_copy_vertex::ParticleActionCopyVertex;
   use crate::data::actions::particle_action_damping::ParticleActionDamping;
+  use crate::data::actions::particle_action_type::ParticleActionType;
   use crate::data::effect::particle_effect::ParticleEffect;
   use crate::data::effect::particle_effect_collision::ParticleEffectCollision;
   use crate::data::effect::particle_effect_editor_data::ParticleEffectEditorData;
   use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
   use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
-  use crate::data::particle_action::ParticleAction;
-  use crate::data::particle_action_type::ParticleActionType;
   use crate::data::particle_description::ParticleDescription;
 
   #[test]
@@ -402,8 +404,8 @@ mod tests {
       ],
       flags: 140,
       frame: Some(ParticleEffectFrame {
-        texture_size: (450.0, 360.0),
-        reserved: (45.2, 51.2),
+        texture_size: Vector2d::new(450.0, 360.0),
+        reserved: Vector2d::new(45.2, 51.2),
         frame_dimension_x: 320,
         frame_count: 60,
         frame_speed: 29.7,
@@ -434,6 +436,16 @@ mod tests {
     original.write::<XRayByteOrder>(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 343);
+    // The SDK's order, which reading never checks and the shipped libraries keep: the description after the name, the
+    // sprite ahead of the frame, the rotation ahead of the editor data.
+    assert_eq!(
+      ChunkReader::from_bytes(&writer.buffer)?
+        .read_children()?
+        .iter()
+        .map(|chunk| chunk.id)
+        .collect::<Vec<u32>>(),
+      [1, 2, 35, 3, 4, 5, 7, 6, 8, 33, 34, 37, 36]
+    );
 
     let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
@@ -481,8 +493,8 @@ mod tests {
       ],
       flags: 140,
       frame: Some(ParticleEffectFrame {
-        texture_size: (451.0, 361.0),
-        reserved: (45.2, 51.2),
+        texture_size: Vector2d::new(451.0, 361.0),
+        reserved: Vector2d::new(45.2, 51.2),
         frame_dimension_x: 320,
         frame_count: 60,
         frame_speed: 29.7,
@@ -543,8 +555,8 @@ mod tests {
       ],
       flags: 150,
       frame: Some(ParticleEffectFrame {
-        texture_size: (460.0, 380.0),
-        reserved: (41.2, 42.2),
+        texture_size: Vector2d::new(460.0, 380.0),
+        reserved: Vector2d::new(41.2, 42.2),
         frame_dimension_x: 640,
         frame_count: 80,
         frame_speed: 29.7,

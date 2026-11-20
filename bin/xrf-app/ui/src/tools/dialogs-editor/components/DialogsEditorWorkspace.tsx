@@ -1,66 +1,102 @@
 import { useInjection } from "@wirestate/react";
-import { AsyncState } from "@xrf/async";
-import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
+import { formatCount } from "@xrf/format";
+import { DialogFinding, DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { EditorFileHeader } from "@xrf/ui/editor/file-header";
-import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
-import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { ErrorState } from "@xrf/ui/layout/error-state";
-import { ReactElement } from "react";
+import { EditorLayout } from "@xrf/ui/editor/layout";
+import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
+import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
+import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
+import { ReactElement, useCallback, useMemo } from "react";
 
-import { inline } from "@/lib/callbacks/inline";
-import { DialogViewService, IDialogSelection } from "@/tools/dialogs-editor/services/dialog-view";
+import { describeRoots } from "@/core/assets/lib/roots";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
+import { useToolBusy } from "@/core/shell/lifecycle";
+import { DialogViewService } from "@/tools/dialogs-editor/services/dialog-view";
+import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";
 
-import { DialogGraph } from "./editor/DialogGraph";
+import { DialogGraphView } from "./editor/DialogGraphView";
+import { DialogInspectorPanel } from "./editor/DialogInspectorPanel";
+import { DialogsEditorActions } from "./editor/DialogsEditorActions";
+import { DialogsProblemsPanel } from "./editor/DialogsProblemsPanel";
+import { DialogsTreeMenu } from "./editor/DialogsTreeMenu";
 
-/**
- * The centre of the editor: the graph, and nothing competing with it for room.
- */
 export function DialogsEditorWorkspace(): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
+
+  const dialogsService: DialogsService = useInjection(DialogsService);
   const viewService: DialogViewService = useInjection(DialogViewService);
 
-  const dialog: AsyncState<DialogDescriptor> = viewService.dialog;
-  const selection: Nullable<IDialogSelection> = viewService.selection;
+  const project: Nullable<DialogProjectDescriptor> = dialogsService.project.value;
+  const fileCount: number = Object.keys(project?.files ?? {}).length;
+  const dialogCount: number = dialogsService.entries.length;
 
-  if (!selection) {
-    return (
-      <EmptyState
-        title={"No dialog selected"}
-        description={"Pick one from the tree to see its phrases and where they lead."}
-      />
-    );
-  }
+  const findings: ReadonlyArray<DialogFinding> = useMemo(() => project?.findings ?? [], [project]);
+
+  const onClose = useCallback(async () => {
+    log.info("Closing dialogs");
+
+    await dialogsService.close();
+  }, [dialogsService, log]);
+
+  useToolBusy(dialogsService.project.isLoading);
+
+  useShellPanels(
+    () => [
+      {
+        icon: <AccountTreeIcon />,
+        id: "dialogs",
+        isOpenByDefault: true,
+        label: "Dialogs",
+        render: () => <DialogsTreeMenu />,
+        side: "left",
+      },
+      {
+        icon: <InfoOutlinedIcon />,
+        id: "inspector",
+        // Open by default: it shows what a graph node is too narrow to carry.
+        isOpenByDefault: true,
+        label: "Inspector",
+        render: () => <DialogInspectorPanel />,
+        side: "right",
+      },
+      {
+        icon: <ReportProblemIcon />,
+        id: "problems",
+        // Opened when there is something to read, as in the translations editor.
+        isOpenByDefault: findings.length > 0,
+        label: "Problems",
+        render: () => <DialogsProblemsPanel findings={findings} />,
+        side: "right",
+      },
+    ],
+    [findings]
+  );
+
+  useShellStatus([
+    `${formatCount(fileCount)} ${fileCount === 1 ? "file" : "files"}`,
+    `${formatCount(dialogCount)} dialogs`,
+    // Zero text keys beside real dialogs usually means a layout pointed at the wrong place.
+    project?.textKeys ? `${formatCount(project.textKeys)} text keys` : "no text",
+    // The language in force is state, so the status shows it rather than the toolbar action that changes it.
+    ...(viewService.resolvedLanguage ? [viewService.resolvedLanguage] : []),
+    ...(findings.length ? [`${formatCount(findings.length)} problems`] : []),
+  ]);
 
   return (
-    <div className={"flex min-h-0 min-w-0 grow flex-col"}>
-      <EditorFileHeader
-        data-testid={"dialog-header"}
-        name={selection.id}
-        caption={selection.logicalPath}
-        closeLabel={"Close dialog"}
-        closeDescription={"Clear the selection and close this dialog"}
-        onClose={viewService.clearSelection}
-      />
-
-      <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
-        {inline(() => {
-          if (dialog.value) {
-            return (
-              <DialogGraph
-                dialog={dialog.value}
-                selectedNodeId={viewService.inspectedNodeId}
-                onSelect={viewService.inspectNode}
-              />
-            );
-          }
-
-          if (dialog.isLoading) {
-            return <DelayedProgress label={"Reading dialog…"} />;
-          }
-
-          return <ErrorState title={"Could not read this dialog"} description={String(dialog.error)} />;
-        })}
-      </div>
-    </div>
+    <EditorLayout
+      toolbar={
+        <EditorToolbar
+          subtitle={project ? <EditorToolbarLocation location={{ path: describeRoots(project.roots) }} /> : null}
+          actions={<DialogsEditorActions />}
+          onBack={onClose}
+        />
+      }
+    >
+      <DialogGraphView />
+    </EditorLayout>
   );
 }

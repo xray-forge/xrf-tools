@@ -4,7 +4,7 @@ use xrf_gamemtl::{GameMtlFile, GameMtlVersion};
 /// What `gamemtl info` read out of a game material library.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GameMtlInfoReport {
+pub(crate) struct GameMtlInfoReport {
   version: u16,
   game: GameMtlVersion,
   materials: usize,
@@ -14,7 +14,7 @@ pub struct GameMtlInfoReport {
 }
 
 impl GameMtlInfoReport {
-  pub fn new(file: &GameMtlFile) -> Self {
+  pub(crate) fn new(file: &GameMtlFile) -> Self {
     Self {
       version: file.version,
       game: file.get_game_version(),

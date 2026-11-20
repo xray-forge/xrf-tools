@@ -1,4 +1,9 @@
-import { LEVEL_OBJECT_KINDS, LevelObject, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  LEVEL_OBJECT_KINDS,
+  LEVEL_SOUND_EMITTERS_HELPER_KIND,
+  LevelObject,
+  LevelObjectKindEntry,
+} from "@xrf/ipc/types/xrf-app-levels";
 import { RenderHelperOptions } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
@@ -62,7 +67,7 @@ export interface ILevelHelperTargets {
  * @param targets - The level objects the viewport singles out.
  * @param places - Each listed object's place in the listing by its key, by which the backend names its helper.
  * @returns What the renderer draws of the level's helpers: each kind by its place in the kind table, as the backend
- *   numbers them.
+ *   numbers them, and the sound emitters by the bit past the table's.
  */
 export function toLevelHelperRenderOptions(
   helpers: ILevelHelperOptions,
@@ -79,7 +84,7 @@ export function toLevelHelperRenderOptions(
     kinds: LEVEL_OBJECT_KINDS.reduce(
       (bits: number, entry: LevelObjectKindEntry, index: number) =>
         isLevelHelperOn(helpers, entry.kind) ? (bits | (1 << index)) >>> 0 : bits,
-      0
+      helpers.isEmitterShown ? (1 << LEVEL_SOUND_EMITTERS_HELPER_KIND) >>> 0 : 0
     ),
     occludedStrength: helpers.occludedStrength,
     selected: toLevelListingPlaces(targets.selected, places),

@@ -3,12 +3,12 @@ import { Maybe } from "@xrf/types";
 import { DarkModeIcon } from "@xrf/ui/icons/dark-mode";
 import { LightModeIcon } from "@xrf/ui/icons/light-mode";
 import { SettingsIcon } from "@xrf/ui/icons/settings";
-import { useColorScheme } from "@xrf/ui/material/styles";
 import { RailButton } from "@xrf/ui/shell/rail-button";
+import { useColorScheme } from "@xrf/ui/theme/styles";
 import { ReactElement, useCallback } from "react";
 
 import { ToolHelp } from "@/core/help/components/ToolHelp/ToolHelp";
-import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
+import { SettingsDialogService } from "@/core/settings-dialog/services/settings-dialog";
 import { ApplicationPanelStripe } from "@/core/shell/panels/ApplicationPanelStripe";
 import { IFrameSide } from "@/core/shell/panels/use-frame-sides";
 

@@ -85,6 +85,41 @@ fn the_direct_light_is_the_published_lobe() {
   }
 }
 
+// Zero roughness (a calm puddle) along the mirror direction would be GGX's zero over zero without a least alpha.
+#[test]
+fn a_smooth_surface_glints_finite_along_the_mirror() {
+  let cases: Vec<(Vec4, Vec4)> = [0.9_f32, 0.5, 0.2]
+    .iter()
+    .map(|facing| {
+      let to_eye: Vec3 = direction(*facing, 0.0);
+      let mirror: Vec3 = Vec3::new(-to_eye.x, -to_eye.y, to_eye.z);
+
+      (Vec4::new(*facing, 0.0, 0.04, white(*facing, 0.0)), mirror.extend(0.0))
+    })
+    .collect();
+  let body: String = format!(
+    "{DIRECT}
+  let sphere: SphereLight = sphere_light(second.xyz, 0.05, reflect(-to_eye, vec3<f32>(0.0, 0.0, 1.0)), first.y);
+  let widened: DirectLight =
+    direct_light(vec3<f32>(0.0, 0.0, 1.0), to_eye, second.xyz, sphere, first.y, vec3<f32>(first.z), first.w);
+
+  answer = vec3<f32>(light.specular.x, widened.specular.x, 0.0);"
+  );
+  let Some(answers) = run_gpu_probe("common/brdf", &body, &cases) else {
+    return;
+  };
+
+  for (answer, (case, _)) in answers.iter().zip(&cases) {
+    assert!(
+      answer.x.is_finite() && answer.x > 0.0 && answer.y.is_finite() && answer.y > 0.0,
+      "facing {}: point {} sphere {}",
+      case.x,
+      answer.x,
+      answer.y
+    );
+  }
+}
+
 // Under a uniform sky of radiance one, which lights a surface from each solid angle `dω` as a light of colour `dω/π`
 // would, a white metal's lobe reflects the sky whole at every roughness and view, the multiple scattering giving back
 // what one scattering loses on a rough lobe, and Lambert's cosine likewise: the white furnace.

@@ -1,3 +1,11 @@
+#![cfg_attr(
+  windows,
+  expect(
+    unsafe_code,
+    reason = "sets a window's DWM attribute through Win32, which has no safe binding"
+  )
+)]
+
 use tauri::Runtime;
 use tauri::webview::WebviewWindow;
 
@@ -17,12 +25,12 @@ impl WindowTransitions {
   const SYSTEM_SET: i32 = 0;
 
   /// Stops the animations of `window` until [`Self::enable`].
-  pub fn disable<R: Runtime>(window: &WebviewWindow<R>) {
+  pub(super) fn disable<R: Runtime>(window: &WebviewWindow<R>) {
     Self::force_disabled(window, Self::FORCED_OFF);
   }
 
   /// Lets `window` animate again.
-  pub fn enable<R: Runtime>(window: &WebviewWindow<R>) {
+  pub(super) fn enable<R: Runtime>(window: &WebviewWindow<R>) {
     Self::force_disabled(window, Self::SYSTEM_SET);
   }
 

@@ -14,5 +14,5 @@ mod tests;
 pub use crate::document::item::{LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 pub use crate::document::ltx_check::LtxCheck;
 pub use crate::document::ltx_document::LtxDocument;
-pub use crate::document::ltx_parser::LtxParser;
+pub(crate) use crate::document::ltx_parser::LtxParser;
 pub(crate) use crate::document::ltx_statement_writer::LtxStatementWriter;

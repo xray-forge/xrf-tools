@@ -6,7 +6,7 @@ use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
 /// What the exposure's passes read and write: the frame's high part, the exposure's state, and how it adapts.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct ExposureParameters {
+pub(crate) struct ExposureParameters {
   #[texture(d2, unfilterable)]
   pub high: GraphTexture,
   #[storage]

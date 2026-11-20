@@ -204,7 +204,7 @@ fn keys_stranded_above_a_config_s_first_header_are_a_finding_on_the_first_of_the
   ]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let reader: LtxRootReader = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
+  let reader: LtxRootReader<'_> = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
   let structure: LtxFileStructure = reader.read_structure("items.ltx", &[String::from("system.ltx")])?;
 
   let findings: Vec<LtxAnchoredFinding> = reader.read_file_findings(&structure);
@@ -228,7 +228,7 @@ fn an_entry_point_is_judged_for_stranding_keys_like_any_other_config() -> XrfRes
   let source: LtxMapSource = LtxMapSource::new(&[("system.ltx", "Tronex\n\n[wpn_base]\ncost = 100\n")]);
 
   let resolution: LtxResolution = source.resolve("system.ltx")?;
-  let reader: LtxRootReader = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
+  let reader: LtxRootReader<'_> = LtxRootReader::new("system.ltx", "ltx", &resolution, &source);
   let structure: LtxFileStructure = reader.read_structure("system.ltx", &[String::from("system.ltx")])?;
 
   let findings: Vec<LtxAnchoredFinding> = reader.read_file_findings(&structure);
@@ -252,7 +252,7 @@ fn a_list_config_is_not_judged_for_declaring_no_section() -> XrfResult {
   let source: LtxMapSource = LtxMapSource::new(&[("valid_item_sections.ltx", "af_ear\nbandage\n")]);
 
   let resolution: LtxResolution = source.resolve("valid_item_sections.ltx")?;
-  let reader: LtxRootReader = LtxRootReader::new("valid_item_sections.ltx", "ltx", &resolution, &source);
+  let reader: LtxRootReader<'_> = LtxRootReader::new("valid_item_sections.ltx", "ltx", &resolution, &source);
   let structure: LtxFileStructure =
     reader.read_structure("valid_item_sections.ltx", &[String::from("valid_item_sections.ltx")])?;
 

@@ -16,8 +16,13 @@ pub struct LevelCformMaterials {
 }
 
 impl LevelCformMaterials {
-  /// Reads the payload after a header one face at a time, keeping only each face's material: a form runs to millions of
-  /// faces, and nothing else of it is wanted.
+  /// Every material id a face can name.
+  const IDS: usize = LevelCformFace::MATERIAL_MASK as usize + 1;
+
+  /// Reads the payload after a header, keeping only each face's material.
+  ///
+  /// A level names a few dozen materials across millions of faces, so each face marks a table of every id rather than
+  /// paying a set lookup.
   ///
   /// # Errors
   ///
@@ -26,13 +31,22 @@ impl LevelCformMaterials {
     reader: &mut ChunkReader<D>,
     header: &LevelCformHeader,
   ) -> XrfResult<Self> {
-    reader.read_bytes(header.vertex_count as usize * LevelCformGeometry::VERTEX_SIZE)?;
+    reader.skip_bytes(header.vertex_count as usize * LevelCformGeometry::VERTEX_SIZE)?;
 
-    let mut ids: BTreeSet<u16> = BTreeSet::new();
+    let named: Box<[bool; Self::IDS]> =
+      reader.read_with(header.face_count as usize * LevelCformFace::SERIALIZED_SIZE, |faces| {
+        let mut named: Box<[bool; Self::IDS]> = Box::new([false; Self::IDS]);
 
-    for _ in 0..header.face_count {
-      ids.insert(reader.read_xr::<T, LevelCformFace>()?.material);
-    }
+        for face in faces.as_chunks::<{ LevelCformFace::SERIALIZED_SIZE }>().0 {
+          named[usize::from(LevelCformFace::read_material::<T>(face))] = true;
+        }
+
+        named
+      })?;
+
+    let ids: BTreeSet<u16> = (0..=LevelCformFace::MATERIAL_MASK as u16)
+      .filter(|&id| named[usize::from(id)])
+      .collect();
 
     Ok(Self { ids })
   }

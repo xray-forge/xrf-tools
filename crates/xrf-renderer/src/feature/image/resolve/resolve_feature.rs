@@ -16,7 +16,7 @@ use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
-use crate::frame::targets::frame_texture::FrameTexture;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::pass::view::view_motion::ViewMotion;
 
 mod resolve_feature_prepare;
@@ -30,7 +30,7 @@ type RayKey = ((u32, u32), DlssQuality, DlssRayPreset);
 
 /// How a view's frame becomes the image its viewport shows: the temporal resolve from the drawn size to the output's,
 /// then EASU's upscale or the box downscale to the viewport's, and RCAS's sharpening.
-pub struct ResolveFeature {
+pub(crate) struct ResolveFeature {
   jitter: TemporalJitter,
   /// Where this frame's samples sit within their pixels, and the phases the jitter's sequence repeats over.
   offset: Vec2,
@@ -48,9 +48,11 @@ pub struct ResolveFeature {
   is_light_physical: bool,
   /// The size the frame is resolved at, which a temporal resolve resolves into.
   resolved: (u32, u32),
-  /// The frame at the viewport's size while it is drawn or resolved at another: rescaled into the first, sharpened
-  /// into the second.
-  upscaled: Option<[FrameTexture; 2]>,
+  /// The viewport's size while the frame shown is apart from the frame drawn (`is_rescaled`), the size of the frame
+  /// graph textures the frame is rescaled and sharpened into.
+  shown_size: Option<(u32, u32)>,
+  /// Whether this frame may write the rescaled frame (`is_upscale_written`).
+  is_upscaled: bool,
   /// The stage rescaling what was resolved, or the frame, to the viewport's size where it is of another.
   rescale: Option<UpscaleStage>,
   /// Whether the frame shown is sharpened: drawn smaller than the viewport or resolved temporally, with a sharpness
@@ -96,7 +98,8 @@ impl Default for ResolveFeature {
       upscaling: RenderUpscalingSettings::default(),
       is_light_physical: false,
       resolved: (1, 1),
-      upscaled: None,
+      shown_size: None,
+      is_upscaled: false,
       rescale: None,
       is_sharpened: false,
       upscale: UpscaleUniform::default(),
@@ -129,7 +132,7 @@ impl ResolveFeature {
   /// the drawn size on a GPU that has DLSS where `dlss` gives it: jittered while it resolves frames temporally and
   /// shows the finished frame or one of FSR's debug views, which FSR resolves whatever the antialiasing; still
   /// otherwise.
-  pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, dlss: Option<&Dlss>) -> Vec2 {
+  pub(crate) fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, dlss: Option<&Dlss>) -> Vec2 {
     let has_dlss: bool = dlss.is_some();
     let view: RenderDebugView = options.mode.debug_view;
 
@@ -167,7 +170,7 @@ impl ResolveFeature {
   }
 
   /// The mip bias textures are read at while `temporal` resolves a frame `ratio` times smaller than its output a side.
-  pub fn get_bias(temporal: Option<RenderAntialiasing>, ratio: f32) -> f32 {
+  pub(crate) fn get_bias(temporal: Option<RenderAntialiasing>, ratio: f32) -> f32 {
     let lost: f32 = -ratio.max(1.0).log2();
 
     match temporal {
@@ -178,14 +181,14 @@ impl ResolveFeature {
   }
 
   /// The mip bias the surfaces' textures are read at this frame, as the last jitter decided it.
-  pub fn get_texture_bias(&self) -> f32 {
+  pub(crate) fn get_texture_bias(&self) -> f32 {
     self.texture_bias
   }
 
   /// Forgets the cameras a frame that was never submitted kept as the next frame's previous, the motion's and the
   /// jittered camera's, and resets the resolve, so the next frame reprojects nothing and resolves itself alone rather
   /// than over a history its motion no longer leads back to.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     self.motion_previous = None;
     self.view_projection_previous = None;
 
@@ -206,28 +209,20 @@ impl ResolveFeature {
     is_cut
   }
 
-  /// Starts again from nothing at the next frame: no history, made anew; the jitter's sequence from its first place;
-  /// no last frame's cameras; and the noise from its first turn. Its frames from then on follow from those alone.
-  pub fn restart(&mut self) {
-    self.resolve = None;
-    self.jitter = TemporalJitter::default();
-    self.motion_previous = None;
-    self.view_projection_previous = None;
-    self.prepared_at = None;
-    self.noise_frame = 0;
-    self.last_camera = None;
-    self.is_camera_cut = false;
+  /// Whether this frame's camera cut away from the last one's, as `next_motion` found it.
+  pub(crate) fn is_camera_cut(&self) -> bool {
+    self.is_camera_cut
   }
 
   /// Draws the next frames as a reference's `sample` of `samples`, unresolved; none resolves them again.
-  pub fn set_reference(&mut self, reference: Option<(u32, u32)>) {
+  pub(crate) fn set_reference(&mut self, reference: Option<(u32, u32)>) {
     self.reference = reference;
   }
 
   /// What this frame, seen through `view` and drawn by the `jittered` view projection, measures its motion and
   /// reprojects by, each last frame's taking this one's place: this frame's own on a first frame and where the camera
   /// cut away (`is_cut`), so nothing moves across a teleport. The cut is kept for the prepare, which resets the history.
-  pub fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
+  pub(crate) fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
     let current: Mat4 = view.get_view_projection();
 
     self.is_camera_cut = self.is_cut(view);
@@ -248,38 +243,51 @@ impl ResolveFeature {
   }
 
   /// Frames a temporal resolve gathered, or a reference's sample, which the screen-space effects turn their noise by.
-  pub fn get_noise_frame(&self) -> u32 {
+  #[cfg(test)]
+  pub(crate) fn get_noise_frame(&self) -> u32 {
     self.noise_frame
   }
 
   /// The reference's sample this frame is drawn as, which its noise turns by; none outside a reference.
-  pub fn get_reference_sample(&self) -> Option<u32> {
+  pub(crate) fn get_reference_sample(&self) -> Option<u32> {
     self.reference.map(|(sample, _)| sample)
   }
 
   /// The antialiasing asked for where it resolves temporally.
-  pub fn get_temporal(&self) -> Option<RenderAntialiasing> {
+  pub(crate) fn get_temporal(&self) -> Option<RenderAntialiasing> {
     self.temporal
   }
 
   /// Writes into `applied` what it resolves this frame at: the share of the output the scene is rendered at.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     applied.render_scale = self.upscaling.scale;
   }
 
   /// The size the frame is resolved at.
-  pub fn get_resolved(&self) -> (u32, u32) {
+  pub(crate) fn get_resolved(&self) -> (u32, u32) {
     self.resolved
   }
 
   /// Whether DLSS reconstructs rays as it resolves this frame.
-  pub fn is_ray_reconstructed(&self) -> bool {
+  pub(crate) fn is_ray_reconstructed(&self) -> bool {
     matches!(self.resolve, Some(Resolve::RayReconstruction(_)))
   }
 
   /// Whether the frame shown is one at the viewport's size apart from the frame as drawn, which the present reads.
-  pub fn is_rescaled(&self) -> bool {
-    self.upscaled.is_some()
+  pub(crate) fn is_rescaled(&self) -> bool {
+    self.shown_size.is_some()
+  }
+
+  /// Whether a frame drawn `render` texels across into a `viewport` writes the rescaled frame: where it is rescaled
+  /// (`rescale`), and where ray reconstruction resolves it at another size, since a frame it draws nothing for (before
+  /// its guides stand) leaves the frame at the drawn size for the rescale to take.
+  pub(crate) fn is_upscale_written(
+    rescale: Option<UpscaleStage>,
+    is_ray_reconstructed: bool,
+    render: (u32, u32),
+    viewport: (u32, u32),
+  ) -> bool {
+    rescale.is_some() || (is_ray_reconstructed && render != viewport)
   }
 
   /// The pass taking an image `source` texels across to the `viewport`'s size: up by EASU, down by the downsample;
@@ -293,31 +301,38 @@ impl ResolveFeature {
   }
 
   /// The size of the image shown, that of the frame as drawn (`drawn`) unless it is rescaled.
-  pub fn get_shown_size(&self, drawn: (u32, u32)) -> (u32, u32) {
-    self
-      .upscaled
-      .as_ref()
-      .map_or(drawn, |[upscaled, _]| upscaled.get_size())
+  pub(crate) fn get_shown_size(&self, drawn: (u32, u32)) -> (u32, u32) {
+    self.shown_size.unwrap_or(drawn)
   }
 }
 
 impl ViewFeature for ResolveFeature {
-  /// The temporal resolve's histories and FSR's targets, and the frame at the viewport's size.
-  fn get_memory(&self) -> u64 {
-    let upscaled: u64 = self.upscaled.iter().flatten().map(|texture| texture.get_memory()).sum();
-
-    self.resolve.as_ref().map_or(0, Resolve::get_memory) + upscaled
-  }
-
   fn release(&mut self) {
     self.resolve = None;
-    self.upscaled = None;
+    self.shown_size = None;
+    self.is_upscaled = false;
   }
 
   /// The resolve's history this frame wrote becomes the one the next reads.
   fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
     if let Some(resolve) = &mut self.resolve {
       resolve.swap();
+    }
+  }
+
+  /// Its motion restarted, it starts again from nothing at the next frame: no history, made anew; the jitter's
+  /// sequence from its first place; no last frame's cameras; and the noise from its first turn. Its frames from then on
+  /// follow from those alone. A cut it found itself (`is_cut`), and its prepare resets the history for it.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.resolve = None;
+      self.jitter = TemporalJitter::default();
+      self.motion_previous = None;
+      self.view_projection_previous = None;
+      self.prepared_at = None;
+      self.noise_frame = 0;
+      self.last_camera = None;
+      self.is_camera_cut = false;
     }
   }
 }

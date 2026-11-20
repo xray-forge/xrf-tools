@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 
 use crate::vfs::trace::{XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
 
@@ -19,7 +19,7 @@ pub struct XrayReadTrace {
 impl XrayReadTrace {
   /// Records one physical read of a logical path.
   pub fn record(&self, logical_path: &str, bytes: u64) {
-    let mut entries = self.entries.lock().expect("read trace lock is never poisoned");
+    let mut entries = self.entries.lock().unwrap_or_else(PoisonError::into_inner);
     let entry: &mut XrayReadTraceEntry = entries.entry(logical_path.to_owned()).or_default();
 
     entry.reads += 1;
@@ -29,7 +29,7 @@ impl XrayReadTrace {
 
   /// Paths read at least once.
   pub fn len(&self) -> usize {
-    self.entries.lock().expect("read trace lock is never poisoned").len()
+    self.entries.lock().unwrap_or_else(PoisonError::into_inner).len()
   }
 
   /// Whether nothing has been read yet.
@@ -42,7 +42,7 @@ impl XrayReadTrace {
     self
       .entries
       .lock()
-      .expect("read trace lock is never poisoned")
+      .unwrap_or_else(PoisonError::into_inner)
       .get(logical_path)
       .copied()
   }
@@ -52,7 +52,7 @@ impl XrayReadTrace {
   /// The list is capped because a full sweep touches tens of thousands of paths and a report carrying all of them is
   /// unreadable. `paths` is the untruncated count, so a reader can always tell the list is a slice.
   pub fn get_summary(&self, hottest: usize) -> XrayReadTraceSummary {
-    let entries = self.entries.lock().expect("read trace lock is never poisoned");
+    let entries = self.entries.lock().unwrap_or_else(PoisonError::into_inner);
 
     let mut ranked: Vec<(&String, &XrayReadTraceEntry)> = entries.iter().collect();
 

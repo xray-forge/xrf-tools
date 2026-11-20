@@ -4,7 +4,7 @@ use xrf_omf::OmfFile;
 /// One motion, joining what the parameters declare to what the motion data holds.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OmfMotionReport {
+pub(crate) struct OmfMotionReport {
   accrue: f32,
   falloff: f32,
   flags: u32,
@@ -17,7 +17,7 @@ pub struct OmfMotionReport {
 
 impl OmfMotionReport {
   /// Every motion the container holds, in its order.
-  pub fn list(file: &OmfFile) -> Vec<Self> {
+  pub(crate) fn list(file: &OmfFile) -> Vec<Self> {
     file
       .get_motions()
       .map(|(definition, motion)| Self {

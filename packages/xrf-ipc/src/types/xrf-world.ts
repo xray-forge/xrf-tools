@@ -103,13 +103,25 @@ export enum EWorldDragEndReason {
 /** Every `EWorldDragEndReason` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type WorldDragEndReason = `${EWorldDragEndReason}`;
 
+/** The mouse buttons a drag holds, by their `PointerEvent` roles: a left-handed mouse swaps the two sides. */
+export type WorldInputButtons = {
+  /** The main button, usually the left. */
+  main: boolean;
+  /** The secondary button, usually the right. */
+  secondary: boolean;
+  /** The auxiliary button, usually the wheel's press. */
+  auxiliary: boolean;
+};
+
 /** Every `kind` the `WorldInputEvent` union is told apart by, so a switch or a comparison names one. */
 export enum EWorldInputEvent {
-  /** A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one. */
+  /** A drag began: the main button alone once its press travelled past a click, any other as it went down. */
   DRAG_START = "dragStart",
+  /** Another button went down during the drag, or one of those it holds was let go while another stays held. */
+  DRAG_BUTTONS = "dragButtons",
   /** How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked. */
   DRAG_MOVE = "dragMove",
-  /** The drag is over. */
+  /** The drag is over: its last button was let go, or it was taken away. */
   DRAG_END = "dragEnd",
   /** Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner. */
   HOVER = "hover",
@@ -119,7 +131,7 @@ export enum EWorldInputEvent {
   KEY_DOWN = "keyDown",
   /** A key went up. */
   KEY_UP = "keyUp",
-  /** The secondary button asked for a menu, which the page withholds. */
+  /** The secondary button, let go without dragging, asked for a menu, which the page withholds. */
   CONTEXT_MENU = "contextMenu",
   /** Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it. */
   RELEASE_ALL = "releaseAll",
@@ -127,11 +139,13 @@ export enum EWorldInputEvent {
 
 /** What the person does over a viewport: the drags its page told from clicks, the hover, the wheel and the keys. */
 export type WorldInputEvent =
-  /** A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one. */
-  | { kind: "dragStart"; button: number; modifiers: WorldInputModifiers }
+  /** A drag began: the main button alone once its press travelled past a click, any other as it went down. */
+  | { kind: "dragStart"; buttons: WorldInputButtons; modifiers: WorldInputModifiers }
+  /** Another button went down during the drag, or one of those it holds was let go while another stays held. */
+  | { kind: "dragButtons"; buttons: WorldInputButtons }
   /** How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked. */
   | { kind: "dragMove"; dx: number | null; dy: number | null }
-  /** The drag is over. */
+  /** The drag is over: its last button was let go, or it was taken away. */
   | { kind: "dragEnd"; reason: WorldDragEndReason }
   /** Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner. */
   | { kind: "hover"; x: number | null; y: number | null }
@@ -141,7 +155,7 @@ export type WorldInputEvent =
   | { kind: "keyDown"; code: string }
   /** A key went up. */
   | { kind: "keyUp"; code: string }
-  /** The secondary button asked for a menu, which the page withholds. */
+  /** The secondary button, let go without dragging, asked for a menu, which the page withholds. */
   | { kind: "contextMenu" }
   /** Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it. */
   | { kind: "releaseAll" };
@@ -174,10 +188,191 @@ export type WorldModelPose = {
   hiddenBones: Array<number>;
 };
 
+/** Every `kind` the `WorldMusicCommand` union is told apart by, so a switch or a comparison names one. */
+export enum EWorldMusicCommand {
+  /** Back to the game's schedule: a track played by hand stops, and the next is picked as the game would. */
+  SCHEDULE = "schedule",
+  /** Plays one track by its entry's name from its start, and again each time it ends, until the schedule is asked back. */
+  PLAY = "play",
+  /** Plays the track playing from `position` milliseconds in. */
+  SEEK = "seek",
+}
+
+/** What a viewer asks of a level's music. */
+export type WorldMusicCommand =
+  /** Back to the game's schedule: a track played by hand stops, and the next is picked as the game would. */
+  | { kind: "schedule" }
+  /** Plays one track by its entry's name from its start, and again each time it ends, until the schedule is asked back. */
+  | { kind: "play"; track: string }
+  /** Plays the track playing from `position` milliseconds in. */
+  | { kind: "seek"; position: number };
+
 /** A drawable of a level's sector the packer left out, and why. */
 export type WorldSectorSkip = {
   sector: number;
   skip: SectorSkip;
+};
+
+/**
+ * How the host's acoustics shape a scene's sound: whether they run or the scene plays dry and why, the walls they
+ * trace, and the reverb they hear around the listener.
+ */
+export type WorldSoundAcousticsReport = {
+  /** Why the scene plays dry, placed by distance and panning alone; none while the acoustics run. */
+  failure: string | null;
+  /** The triangles the acoustics trace, none while the level's walls are built or where there are none. */
+  triangles: number | null;
+  /** Why the walls shape nothing though the acoustics run. */
+  geometryFailure: string | null;
+  /** The listener's reverb, each band's decay time in seconds (below 800 Hz, to 8 kHz, above). */
+  reverbTimes: [number | null, number | null, number | null];
+  /** How long the walls took to read and build, in milliseconds. */
+  buildMs: number | null;
+  /** How long the last simulation of the sounds' ways through the walls took, in milliseconds. */
+  directMs: number | null;
+  /** How long the last simulation of the reverb took, in milliseconds. */
+  reflectionsMs: number | null;
+};
+
+/** The volumes a level's sounds are heard at, which the viewer switches each on or off. */
+export enum EWorldSoundCategory {
+  MUSIC = "music",
+  /** Static sounds, the weather's channels, rain, thunder and ambient effects. */
+  AMBIENCE = "ambience",
+  /** Sounds at the world's objects: anomalies and campfires. */
+  WORLD = "world",
+}
+
+/** Every `EWorldSoundCategory` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type WorldSoundCategory = `${EWorldSoundCategory}`;
+
+/** One sound channel of the ambient playing and how long until its next sound. */
+export type WorldSoundChannelReport = {
+  /** The `sound_channels.ltx` section. */
+  channel: string;
+  /** Level time until its next sound. */
+  wait: number;
+};
+
+/** What plays a sound in a level. */
+export enum EWorldSoundKind {
+  /** One of the level's static sounds, `level.snd_static`. */
+  STATIC = "static",
+  /** One of the level's music tracks. */
+  MUSIC = "music",
+  /** A sound channel of the weather's ambient, around the camera. */
+  CHANNEL = "channel",
+  /** The sound an ambient effect plays where it starts. */
+  AMBIENT_EFFECT = "ambientEffect",
+  /** The rain's loop. */
+  RAIN = "rain",
+  /** A thunderbolt's strike. */
+  THUNDER = "thunder",
+  /** A zone's `idle_sound`, looped while its idle plays. */
+  ANOMALY = "anomaly",
+  /** A campfire's idle sound while lit, or its `disabled_sound` while out. */
+  CAMPFIRE = "campfire",
+}
+
+/** Every `EWorldSoundKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type WorldSoundKind = `${EWorldSoundKind}`;
+
+/**
+ * Where a level's music stands: the track playing, how far into it and how long it is, or how long until the next is
+ * picked, and whether a track was chosen by hand.
+ */
+export type WorldSoundMusicReport = {
+  /** The track playing, by its entry's name, none between tracks. */
+  track: string | null;
+  /** How far it has played. */
+  position: number;
+  /** How long it plays, nought between tracks. */
+  length: number;
+  /** Level time until the next pick, zero while a track plays. */
+  wait: number;
+  /** The track played by hand in place of the schedule, none while the schedule picks. */
+  chosen: string | null;
+  /** Every track the level has, by name, sorted. */
+  tracks: Array<string>;
+};
+
+/** A sound a scene could not play, and why: its file is missing, it cannot be decoded, or no voice was left for it. */
+export type WorldSoundRefusal = {
+  /** The sound's reference. */
+  sound: string;
+  /** What would have played it, none where the audio refused it by its sound alone. */
+  kind: WorldSoundKind | null;
+  reason: string;
+};
+
+/**
+ * What a viewport's scene plays and why: each sound and how it is heard, the music, the ambient's channels, and what
+ * could not play. The world fills what it schedules; the host's audio fills the gains and its own refusals.
+ */
+export type WorldSoundReport = {
+  /** Whether the scene is heard: its viewport, or another showing it, is the one listening. */
+  isAudible: boolean;
+  /** Where it is heard from, in engine space. */
+  listener: [number | null, number | null, number | null];
+  /** Game time of day the schedules read, in milliseconds. */
+  gameTime: number;
+  voices: Array<WorldSoundVoiceReport>;
+  music: WorldSoundMusicReport | null;
+  /** The ambient whose channels play, none while the weather names none. */
+  ambient: string | null;
+  channels: Array<WorldSoundChannelReport>;
+  refused: Array<WorldSoundRefusal>;
+  /** Voices realized on the device, and the engine's targets for them. */
+  realVoices: number;
+  targets: number;
+  /** The mixer's share of the device's period, as last measured. */
+  mixerLoad: number | null;
+  /** How the host's acoustics shape the scene, none until the audio has taken it. */
+  acoustics: WorldSoundAcousticsReport | null;
+};
+
+/**
+ * What of a viewport's level is heard while it listens: its sound at all, and each category. A sound switched off is
+ * silent and its schedule runs on.
+ */
+export type WorldSoundToggles = {
+  isHeard: boolean;
+  isMusic: boolean;
+  isAmbience: boolean;
+  isWorld: boolean;
+};
+
+/** One sound a scene plays and how it is heard. */
+export type WorldSoundVoiceReport = {
+  /** The emitter's id, stable while the same play goes on. */
+  id: number | null;
+  /** The sound's reference. */
+  sound: string;
+  kind: WorldSoundKind;
+  category: WorldSoundCategory;
+  /** The level object it plays for, by the id its helper carries; none for a sound of no object. */
+  object: number | null;
+  /** In engine space; from the listener for a 2D sound. */
+  position: [number | null, number | null, number | null];
+  is2d: boolean;
+  /** Metres from the listener; none for a 2D sound. */
+  distance: number | null;
+  /** Its linear gain after its volume, fade and distance, before walls, none until the audio has taken it. */
+  gain: number | null;
+  /** The share of it heard unobstructed by the level's walls, from 0 to 1, none until the audio has taken it. */
+  occlusion: number | null;
+  /** What the walls in its way let through in each band (below 800 Hz, to 8 kHz, above), from 0 to 1. */
+  transmission: [number | null, number | null, number | null] | null;
+  /** How much of it the listener's reverb hears. */
+  reverbSend: number | null;
+  /** Whether it reaches the ears through the HRTF rather than panned. */
+  isBinaural: boolean;
+  /** Whether it holds one of the engine's targets, so plays on the device, rather than only simulating. */
+  isReal: boolean;
+  /** Whether its sound is still being read. */
+  isLoading: boolean;
+  /** Times the audio started its voice over where its clock says, having starved or ended early. */
+  restarts: number;
 };
 
 /** How much geometry one shader table entry of a viewport's level draws, across the sectors resident. */
@@ -202,8 +397,8 @@ export type WorldSurfaceSpan = {
 };
 
 /**
- * What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
- * the ambient effects, and which groups of the spawned objects stream in.
+ * What of the level's world plays, rather than what is drawn of it: weather, campfires, ambient effects, spawned
+ * objects and sound.
  */
 export type WorldToggles = {
   /** Whether the weather's rain falls and wets surfaces. */
@@ -228,12 +423,19 @@ export type WorldToggles = {
    * those the viewer hides one by one.
    */
   hiddenSpawnObjects: Array<number>;
+  /** What of the level's sound is heard while the viewport listens. */
+  sound: WorldSoundToggles;
 };
 
 /** Every `kind` the `WorldViewportEvent` union is told apart by, so a switch or a comparison names one. */
 export enum EWorldViewportEvent {
   /** Where the camera stands, sent while it moves and once more after it stops. */
   CAMERA = "camera",
+  /**
+   * Whole steps of fly speed the wheel asked for while the secondary button flies the camera, positive faster. The
+   * page owns the speed setting and applies them.
+   */
+  FLY_SPEED = "flySpeed",
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
   WEATHER = "weather",
 }
@@ -242,6 +444,11 @@ export enum EWorldViewportEvent {
 export type WorldViewportEvent =
   /** Where the camera stands, sent while it moves and once more after it stops. */
   | { kind: "camera"; pose: WorldCameraPose }
+  /**
+   * Whole steps of fly speed the wheel asked for while the secondary button flies the camera, positive faster. The
+   * page owns the speed setting and applies them.
+   */
+  | { kind: "flySpeed"; steps: number }
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
   | { kind: "weather"; report: WorldWeatherReport | null };
 

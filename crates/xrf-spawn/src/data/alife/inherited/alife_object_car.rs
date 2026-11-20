@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -16,9 +16,9 @@ pub struct AlifeObjectCar {
   pub health: f32,
 }
 
-impl ChunkReadWrite for AlifeObjectCar {
+impl ChunkFieldReadWrite for AlifeObjectCar {
   /// Read car data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       skeleton: reader.read_xr::<T, _>()?,
@@ -27,7 +27,7 @@ impl ChunkReadWrite for AlifeObjectCar {
   }
 
   /// Write car data into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.skeleton)?;
     writer.write_f32::<T>(self.health)?;
@@ -38,8 +38,8 @@ impl ChunkReadWrite for AlifeObjectCar {
 
 impl LtxImportExport for AlifeObjectCar {
   /// Import car object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -55,13 +55,11 @@ impl LtxImportExport for AlifeObjectCar {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
     self.skeleton.export(section_name, ltx)?;
 
-    ltx
-      .with_section(section_name)
-      .set("car.health", self.health.to_string());
+    ltx.with_section(section_name).set("car.health", self.health);
 
     Ok(())
   }
@@ -83,7 +81,7 @@ mod tests {
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
 
-  /// Shaped like the version 128 cars in the Call of Chernobyl and Anomaly spawns.
+  // Shaped like the version 128 cars in the Call of Chernobyl and Anomaly spawns.
   fn new_mock(health: f32) -> AlifeObjectCar {
     AlifeObjectCar {
       base: AlifeObjectDynamicVisual {
@@ -135,8 +133,7 @@ mod tests {
     Ok(())
   }
 
-  /// The engine normalizes health above one by dividing it, and writes the divided value back.
-  /// Preserving the stored value verbatim is what keeps unpack into pack byte identical.
+  // The engine divides health above one; keeping the stored value keeps unpack and pack byte identical.
   #[test]
   fn test_read_write_preserves_health_above_one() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();

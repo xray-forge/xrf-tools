@@ -5,8 +5,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
+use xrf_utils::{assert_length, narrow_format_size};
 
 use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
 
@@ -27,7 +27,7 @@ impl ChunkReadWrite for SpawnArtefactSpawnsChunk {
   /// Read header chunk by position descriptor.
   /// Parses binary data into artefact spawns chunk representation object.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading artefacts spawns chunk: {} bytes", reader.read_bytes_remain());
+    log::debug!("Reading artefacts spawns chunk: {} bytes", reader.read_bytes_remain());
 
     let count: u32 = reader.read_u32::<T>()?;
     let mut nodes: Vec<ArtefactSpawnPoint> = reader.new_bounded_vec(
@@ -50,13 +50,13 @@ impl ChunkReadWrite for SpawnArtefactSpawnsChunk {
   /// Write artefact spawns into chunk writer.
   /// Writes artefact spawns data in binary format.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(self.nodes.len(), "artefact spawn nodes")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.nodes.len(), "artefact spawn nodes")?)?;
 
     for node in &self.nodes {
       node.write::<T>(writer)?;
     }
 
-    log::info!("Written artefact spawns chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written artefact spawns chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -66,21 +66,16 @@ impl FileImportExport for SpawnArtefactSpawnsChunk {
   /// Import artefact spawns data from provided path.
   /// Parse ltx files and populate spawn file.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("artefact_spawns.ltx"))?;
-    let mut nodes: Vec<ArtefactSpawnPoint> = Vec::with_capacity(ltx.len());
+    let nodes: Vec<ArtefactSpawnPoint> = LtxRecordReader::import_all(path.as_ref().join("artefact_spawns.ltx"))?;
 
-    for (name, _) in ltx.iter() {
-      nodes.push(ArtefactSpawnPoint::import(name, &ltx)?);
-    }
-
-    log::info!("Imported artefact spawns chunk");
+    log::debug!("Imported artefact spawns chunk");
 
     Ok(Self { nodes })
   }
 
   /// Export artefact spawns data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, spawn_point) in self.nodes.iter().enumerate() {
       spawn_point.export(&index.to_string(), &mut ltx)?;
@@ -88,7 +83,7 @@ impl FileImportExport for SpawnArtefactSpawnsChunk {
 
     ltx.write_to_path(path.as_ref().join("artefact_spawns.ltx"))?;
 
-    log::info!("Exported artefact spawns chunk");
+    log::debug!("Exported artefact spawns chunk");
 
     Ok(())
   }

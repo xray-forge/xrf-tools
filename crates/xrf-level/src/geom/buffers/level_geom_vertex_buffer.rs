@@ -19,21 +19,11 @@ impl LevelGeomVertexBuffer {
 
   /// Bytes one vertex occupies, measured wide: an element's offset and size both come from the file.
   pub fn get_vertex_size(&self) -> Option<u32> {
-    let mut size: u32 = 0;
-
-    for element in &self.declaration {
-      if !element.is_fed_from(Self::VERTEX_STREAM) {
-        continue;
-      }
-
-      size = size.max(u32::from(element.get_kind_size()?) + u32::from(element.offset));
-    }
-
-    Some(size)
+    LevelGeomVertexElement::get_vertex_size(&self.declaration, Self::VERTEX_STREAM)
   }
 
   /// Bytes of vertices the buffer carries, which is what a reader of its shape alone steps over.
   pub fn get_payload_size(&self) -> Option<u64> {
-    Some(self.vertex_count as u64 * self.get_vertex_size()? as u64)
+    Some(u64::from(self.vertex_count) * u64::from(self.get_vertex_size()?))
   }
 }

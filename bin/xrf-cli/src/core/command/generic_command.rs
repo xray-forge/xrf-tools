@@ -1,9 +1,9 @@
 use clap::{ArgMatches, Command};
 
-use crate::core::command::{CommandContext, CommandResult};
+use crate::core::command::{CommandContext, CommandInput, CommandResult};
 
 /// One CLI operation.
-pub trait GenericCommand: Sync {
+pub(crate) trait GenericCommand: Sync {
   /// A boxed command, as the domain groups register it.
   fn new_box() -> Box<Self>
   where
@@ -15,12 +15,16 @@ pub trait GenericCommand: Sync {
   /// Operation token within this command's registered domain.
   fn operation(&self) -> &'static str;
 
-  /// Declares the command's about text and arguments on `command`, which already carries its name.
+  /// What the command reads, declared as its positional argument before [`Self::declare`] adds the rest; a command
+  /// reading no path says [`CommandInput::None`], so none leaves the choice unmade.
+  fn input(&self) -> CommandInput;
+
+  /// Declares the command's about text and named arguments on `command`, which already carries its name and input.
   fn declare(&self, command: Command) -> Command;
 
   /// The command as the parser takes it, named for its operation.
   fn init(&self) -> Command {
-    self.declare(Command::new(self.operation()))
+    self.declare(self.input().declare(Command::new(self.operation())))
   }
 
   /// Runs the command.

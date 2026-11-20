@@ -6,11 +6,17 @@ import {
   TextureVocabulary,
 } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { EditorPanelEmpty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import {
+  EditorPopoverNote,
+  EditorPopoverNumberRow,
+  EditorPopoverSwitchRow,
+  EditorPopoverTextRow,
+} from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material/alert";
-import { Button } from "@xrf/ui/material/button";
-import { Stack } from "@xrf/ui/material/stack";
+import { Alert } from "@xrf/ui/feedback";
+import { Stack } from "@xrf/ui/layout/stack";
 import { ReactElement, useCallback } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
@@ -19,12 +25,13 @@ import { hasTextureFlag, withTextureFlag } from "@/tools/textures-editor/lib/tex
 import { withTextureType } from "@/tools/textures-editor/lib/texture-type-change";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
 
-import { TextureFlagField } from "./TextureFlagField";
-import { TextureNumberField } from "./TextureNumberField";
 import { TextureSelectField } from "./TextureSelectField";
-import { TextureTextField } from "./TextureTextField";
 
-/** Flags that belong with the fields a person changes to change how a surface looks. */
+/**
+ * Flags that belong with the fields a person changes to change how a surface looks.
+ *
+ * Labelled by SDK identifier (`flHasAlpha`, not "Has alpha"), the name `.thm` authors and other tools use.
+ */
 const PRIMARY_FLAG_LABELS: ReadonlyArray<string> = ["flDiffuseDetail", "flBumpDetail", "flHasAlpha", "flBinaryAlpha"];
 
 /**
@@ -72,25 +79,27 @@ export function TextureDescriptorPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Descriptor"}>
       {description.targets === null ? (
-        <Alert className={"mb-2"} severity={"info"}>
+        <EditorPopoverNote>
           This texture is served out of an archive, so there is no file to write. Fields can be read, not saved.
-        </Alert>
+        </EditorPopoverNote>
       ) : null}
 
       {isAuthoring ? (
-        <Alert className={"mb-2"} severity={"info"}>
+        <EditorPopoverNote>
           No .thm sits beside this texture. Saving writes one, starting from the defaults the SDK begins a new
           descriptor at.
-        </Alert>
+        </EditorPopoverNote>
       ) : null}
 
-      <EditorPanelSection title={"Primary"} caption={"What the engine reads at load time"} isFirst>
+      <EditorPanelSection title={"Primary"} caption={"What the engine reads at load time"}>
         <TextureSelectField
           data-testid={"texture-field-texture-type"}
           label={"Texture type"}
           entries={vocabulary.textureTypes}
           value={draft.textureType}
-          helperText={"LoadTHM skips a cube or bump map's descriptor whole; choosing a type applies the SDK's defaults"}
+          description={
+            "LoadTHM skips a cube or bump map's descriptor whole; choosing a type applies the SDK's defaults"
+          }
           onChange={(textureType: number) => onEdit(withTextureType(draft, textureType, vocabulary.typeChanges))}
         />
 
@@ -102,31 +111,31 @@ export function TextureDescriptorPanel({
           onChange={(bumpMode: number) => onEdit({ bumpMode })}
         />
 
-        <TextureTextField
+        <EditorPopoverTextRow
           data-testid={"texture-field-bump-name"}
           label={"Bump texture"}
           value={draft.bumpName}
-          helperText={"Taken verbatim; there is no _bump naming convention behind it"}
+          description={"Taken verbatim; there is no _bump naming convention behind it"}
           onChange={(bumpName: string) => onEdit({ bumpName })}
         />
 
-        <TextureTextField
+        <EditorPopoverTextRow
           data-testid={"texture-field-detail-name"}
           label={"Detail texture"}
           value={draft.detailName}
           onChange={(detailName: string) => onEdit({ detailName })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-detail-scale"}
           label={"Detail scale"}
           value={draft.detailScale}
           onChange={(detailScale: number) => onEdit({ detailScale })}
         />
 
-        <div className={"mt-2 flex flex-col"}>
+        <div className={"mt-1 flex flex-col"}>
           {primaryFlags.map((flag: TextureFlagEntry) => (
-            <TextureFlagField
+            <EditorPopoverSwitchRow
               key={flag.bit}
               data-testid={`texture-flag-${flag.label}`}
               label={flag.label}
@@ -162,54 +171,55 @@ export function TextureDescriptorPanel({
           label={"Material"}
           entries={vocabulary.materials}
           value={draft.material}
-          helperText={"Reaches the renderer through the descriptor manager, unlike the rest of this group"}
+          description={"Reaches the renderer through the descriptor manager, unlike the rest of this group"}
           onChange={(material: number) => onEdit({ material })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-material-weight"}
           label={"Material weight"}
           value={draft.materialWeight}
           onChange={(materialWeight: number) => onEdit({ materialWeight })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-virtual-height"}
           label={"Virtual height"}
           value={draft.virtualHeight}
-          helperText={"Not read at runtime; the bump generator reads it"}
+          description={"Not read at runtime; the bump generator reads it"}
           onChange={(virtualHeight: number) => onEdit({ virtualHeight })}
         />
 
-        <TextureTextField
+        <EditorPopoverTextRow
           data-testid={"texture-field-ext-normal-map"}
-          label={"External normal map"}
+          label={"Normal map"}
           value={draft.extNormalMapName}
+          description={"The external normal map the SDK names, in place of one generated from the bump"}
           onChange={(extNormalMapName: string) => onEdit({ extNormalMapName })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-fade-delay"}
           label={"Fade delay"}
           value={draft.fadeDelay}
           onChange={(fadeDelay: number) => onEdit({ fadeDelay })}
         />
 
-        <TextureNumberField
+        <EditorPopoverNumberRow
           data-testid={"texture-field-width"}
           label={"Width"}
           value={draft.width}
-          helperText={"From the DDS header; the descriptor's own copy is refreshed on save"}
+          description={"From the DDS header; the descriptor's own copy is refreshed on save"}
           isReadOnly
         />
 
-        <TextureNumberField data-testid={"texture-field-height"} label={"Height"} value={draft.height} isReadOnly />
+        <EditorPopoverNumberRow data-testid={"texture-field-height"} label={"Height"} value={draft.height} isReadOnly />
 
-        <div className={"mt-2 flex flex-col"}>
+        <div className={"mt-1 flex flex-col"}>
           {vocabulary.flags
             .filter((flag: TextureFlagEntry) => !PRIMARY_FLAG_LABELS.includes(flag.label))
             .map((flag: TextureFlagEntry) => (
-              <TextureFlagField
+              <EditorPopoverSwitchRow
                 key={flag.bit}
                 data-testid={`texture-flag-${flag.label}`}
                 label={flag.label}

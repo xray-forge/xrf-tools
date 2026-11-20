@@ -1,0 +1,202 @@
+import { describe, expect, it, jest } from "@jest/globals";
+import { fireEvent } from "@testing-library/react";
+import { ReactElement } from "react";
+
+import { EditorFilterInput } from "#/editor/filter-input";
+import { listItemButtonClasses } from "#/list";
+import { renderWithTheme } from "#/testing/render";
+
+import { EditorSearchMenu, IEditorSearchMenuHeading } from "./EditorSearchMenu";
+
+const ITEMS = [
+  { id: "first", name: "file alpha", detail: "first source" },
+  { id: "second", name: "file beta", detail: "second source" },
+  { id: "third", name: "file gamma", detail: "third source" },
+];
+
+function renderHeading(heading: IEditorSearchMenuHeading): ReactElement {
+  return (
+    <div>
+      <h2>{`${heading.title} (${heading.count})`}</h2>
+      <EditorFilterInput
+        ariaLabel={heading.ariaLabel}
+        query={heading.query}
+        placeholder={heading.placeholder}
+        onClear={heading.onClear}
+        onKeyDown={heading.onKeyDown}
+        onQueryChange={heading.onQueryChange}
+      />
+    </div>
+  );
+}
+
+function createMenu(onSelect: (item: (typeof ITEMS)[number]) => void, isActivationDisabled: boolean): ReactElement {
+  return (
+    <EditorSearchMenu
+      title={"Files"}
+      searchLabel={"Filter files"}
+      resultsLabel={"File results"}
+      renderHeading={renderHeading}
+      items={ITEMS}
+      toSearchText={(item) => item.name}
+      toRow={(item) => ({ id: item.id, label: item.name })}
+      isActivationDisabled={isActivationDisabled}
+      onSelect={onSelect}
+    />
+  );
+}
+
+describe("EditorSearchMenu", () => {
+  it("opens the original item through both keyboard and pointer activation", () => {
+    const onSelect = jest.fn();
+    const view = renderWithTheme(
+      <EditorSearchMenu
+        title={"Files"}
+        searchLabel={"Filter files"}
+        resultsLabel={"File results"}
+        renderHeading={renderHeading}
+        items={ITEMS}
+        toSearchText={(item) => item.name}
+        toRow={(item) => ({ id: item.id, label: item.name, description: item.detail })}
+        onSelect={onSelect}
+      >
+        <div>Default tree</div>
+      </EditorSearchMenu>
+    );
+    const input = view.getByRole("textbox", { name: "Filter files" });
+
+    fireEvent.change(input, { target: { value: "file" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+
+    expect(view.getByRole("button", { name: "file beta second source" })).toHaveClass(listItemButtonClasses.selected);
+    expect(view.queryByText("Default tree")).not.toBeInTheDocument();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelect.mock.calls[0][0]).toBe(ITEMS[1]);
+
+    fireEvent.click(view.getByText("file alpha"));
+
+    expect(onSelect.mock.calls[1][0]).toBe(ITEMS[0]);
+  });
+
+  it("reports capped and empty results and restores the default content when cleared", () => {
+    const view = renderWithTheme(
+      <EditorSearchMenu
+        title={"Files"}
+        searchLabel={"Filter files"}
+        resultsLabel={"File results"}
+        renderHeading={renderHeading}
+        items={ITEMS}
+        limit={2}
+        toSearchText={(item) => item.name}
+        toRow={(item) => ({ id: item.id, label: item.name })}
+        onSelect={jest.fn()}
+        header={<button>Extra filter</button>}
+      >
+        <div>Default tree</div>
+      </EditorSearchMenu>
+    );
+    const input = view.getByRole("textbox", { name: "Filter files" });
+
+    fireEvent.change(input, { target: { value: "file" } });
+
+    expect(view.getByText("Showing 2 of 3 matches")).toBeInTheDocument();
+    expect(view.getByRole("button", { name: "Extra filter" })).toBeInTheDocument();
+    // The heading counts what the menu lists, not what the limit lets through.
+    expect(view.getByRole("heading", { name: "Files (3)" })).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "missing" } });
+
+    expect(view.getByText("No files match missing.")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "" } });
+
+    expect(view.getByText("Default tree")).toBeInTheDocument();
+    expect(view.queryByRole("list", { name: "File results" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the highlight and Enter aligned when a filter reduces the dataset", () => {
+    const onSelect = jest.fn();
+
+    function renderMenu(items: typeof ITEMS): ReactElement {
+      return (
+        <EditorSearchMenu
+          title={"Files"}
+          searchLabel={"Filter files"}
+          resultsLabel={"File results"}
+          renderHeading={renderHeading}
+          items={items}
+          toSearchText={(item) => item.name}
+          toRow={(item) => ({ id: item.id, label: item.name })}
+          onSelect={onSelect}
+        />
+      );
+    }
+    const view = renderWithTheme(renderMenu(ITEMS));
+    const input = view.getByRole("textbox", { name: "Filter files" });
+
+    fireEvent.change(input, { target: { value: "file" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    view.rerender(<>{renderMenu([ITEMS[0], ITEMS[1]])}</>);
+
+    expect(view.getByRole("button", { name: "file beta" })).toHaveClass(listItemButtonClasses.selected);
+
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+
+    expect(view.getByRole("button", { name: "file alpha" })).toHaveClass(listItemButtonClasses.selected);
+
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelect.mock.calls[0][0]).toBe(ITEMS[0]);
+  });
+
+  it("keeps filtering and arrow navigation available while Enter activation is disabled", () => {
+    const onSelect = jest.fn();
+
+    const view = renderWithTheme(createMenu(onSelect, false));
+    const input = view.getByRole("textbox", { name: "Filter files" });
+
+    fireEvent.change(input, { target: { value: "file" } });
+    view.rerender(<>{createMenu(onSelect, true)}</>);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(view.getByRole("button", { name: "file beta" })).toHaveClass(listItemButtonClasses.selected);
+    expect(onSelect).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: "gamma" } });
+
+    expect(view.queryByText("file beta")).not.toBeInTheDocument();
+    expect(view.getByText("file gamma")).toBeInTheDocument();
+
+    view.rerender(<>{createMenu(onSelect, false)}</>);
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(ITEMS[2]);
+  });
+
+  it("disables pointer activation until the result lock is released", () => {
+    const onSelect = jest.fn();
+
+    const view = renderWithTheme(createMenu(onSelect, true));
+
+    fireEvent.change(view.getByRole("textbox", { name: "Filter files" }), { target: { value: "alpha" } });
+
+    const result = view.getByRole("button", { name: "file alpha" });
+
+    expect(result).toHaveAttribute("aria-disabled", "true");
+
+    fireEvent.click(result);
+
+    expect(onSelect).not.toHaveBeenCalled();
+
+    view.rerender(<>{createMenu(onSelect, false)}</>);
+    fireEvent.click(view.getByRole("button", { name: "file alpha" }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(ITEMS[0]);
+  });
+});

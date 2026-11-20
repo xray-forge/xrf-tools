@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{decode_string_from_base64, encode_string_to_base64};
 
 /// Generic ALife object abstraction data.
@@ -30,9 +30,9 @@ impl AlifeObjectAbstract {
   }
 }
 
-impl ChunkReadWrite for AlifeObjectAbstract {
-  /// Read generic ALife object base data from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// As `CSE_ALifeObject::STATE_Write` writes it.
+impl ChunkFieldReadWrite for AlifeObjectAbstract {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       game_vertex_id: reader.read_u16::<T>()?,
       distance: reader.read_f32::<T>()?,
@@ -45,8 +45,7 @@ impl ChunkReadWrite for AlifeObjectAbstract {
     })
   }
 
-  /// Write abstract object data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u16::<T>(self.game_vertex_id)?;
     writer.write_f32::<T>(self.distance)?;
     writer.write_u32::<T>(self.direct_control)?;
@@ -54,16 +53,14 @@ impl ChunkReadWrite for AlifeObjectAbstract {
     writer.write_u32::<T>(self.flags)?;
     writer.write_w1251_string(&self.custom_data)?;
     writer.write_u32::<T>(self.story_id)?;
-    writer.write_u32::<T>(self.spawn_story_id)?;
-
-    Ok(())
+    writer.write_u32::<T>(self.spawn_story_id)
   }
 }
 
 impl LtxImportExport for AlifeObjectAbstract {
   /// Import generic ALife object base data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -84,17 +81,17 @@ impl LtxImportExport for AlifeObjectAbstract {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("abstract.game_vertex_id", self.game_vertex_id.to_string())
-      .set("abstract.distance", self.distance.to_string())
-      .set("abstract.direct_control", self.direct_control.to_string())
-      .set("abstract.level_vertex_id", self.level_vertex_id.to_string())
-      .set("abstract.flags", self.flags.to_string())
+      .set("abstract.game_vertex_id", self.game_vertex_id)
+      .set("abstract.distance", self.distance)
+      .set("abstract.direct_control", self.direct_control)
+      .set("abstract.level_vertex_id", self.level_vertex_id)
+      .set("abstract.flags", self.flags)
       .set("abstract.custom_data", encode_string_to_base64(&self.custom_data))
-      .set("abstract.story_id", self.story_id.to_string())
-      .set("abstract.spawn_story_id", self.spawn_story_id.to_string());
+      .set("abstract.story_id", self.story_id)
+      .set("abstract.spawn_story_id", self.spawn_story_id);
 
     Ok(())
   }
@@ -108,7 +105,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -191,7 +188,7 @@ mod tests {
       direct_control: 421,
       level_vertex_id: 75486,
       flags: 6,
-      custom_data: String::from(""),
+      custom_data: String::new(),
       story_id: 2345,
       spawn_story_id: 255,
     };

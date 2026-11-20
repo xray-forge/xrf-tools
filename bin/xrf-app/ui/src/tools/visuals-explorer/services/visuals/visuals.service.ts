@@ -1,13 +1,14 @@
 import { inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { SelectedObjectDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 import { Logger } from "@xrf/logging";
 import { findLastSeparator } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { IVisualBoneControls } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualPose } from "@/core/visuals/lib/render";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
@@ -111,6 +112,14 @@ export class VisualsService extends VisualInspectionService {
   }
 
   /**
+   * @returns What the open SDK object holds beyond the model compiled from it, or null where a compiled model is open.
+   */
+  @Computed()
+  public get object(): Nullable<SelectedObjectDescription> {
+    return this.selected?.object ?? null;
+  }
+
+  /**
    * The open a retry repeats, or null before anything has been asked for.
    * Not observable: what offers the retry is the failure already on screen, so nothing renders this.
    */
@@ -164,9 +173,9 @@ export class VisualsService extends VisualInspectionService {
   }
 
   /**
-   * Open a loose visual from disk.
+   * Open a loose visual from disk: a compiled model, or an SDK object compiled as it opens.
    *
-   * @param path - Filesystem path of the `.ogf` file.
+   * @param path - Filesystem path of the `.ogf` or `.object` file.
    * @param assetRoot - A further tree its references are searched in, or null to search only its own.
    */
   @BoundAction()
@@ -191,7 +200,7 @@ export class VisualsService extends VisualInspectionService {
    * Open again whatever the last attempt asked for, or do nothing when nothing has been asked for yet.
    */
   @BoundAction()
-  public async retryOpen(): Promise<void> {
+  public async retry(): Promise<void> {
     const attempt: Nullable<IVisualOpenAttempt> = this.attempt;
 
     if (attempt) {
@@ -227,6 +236,6 @@ export class VisualsService extends VisualInspectionService {
 
     // Whatever the caller named, in the order it named them, and nothing else: a browsed session already carries the
     // extra root it was opened with, so there is no ambient set to fall in behind them.
-    await this.loadService.load(source, createRoots(roots, asset));
+    await this.loadService.open(source, createRoots(roots, asset));
   }
 }

@@ -2,10 +2,12 @@ import { describe, expect, it } from "@jest/globals";
 
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import {
+  LEVEL_MANUAL_WEATHER_CLOUDS_KEYS,
   LEVEL_MANUAL_WEATHER_FOG_KEYS,
   LEVEL_MANUAL_WEATHER_RAIN_KEYS,
   LEVEL_MANUAL_WEATHER_SKY_KEYS,
   LEVEL_MANUAL_WEATHER_SUN_KEYS,
+  LEVEL_MANUAL_WEATHER_THUNDER_KEYS,
   LEVEL_MANUAL_WEATHER_WATER_KEYS,
   LEVEL_MANUAL_WEATHER_WIND_KEYS,
 } from "@/core/level/lib/weather/level-manual-weather-groups";
@@ -16,8 +18,10 @@ describe("level manual weather groups", () => {
     const grouped: Array<keyof ILevelManualWeather> = [
       ...LEVEL_MANUAL_WEATHER_SUN_KEYS,
       ...LEVEL_MANUAL_WEATHER_SKY_KEYS,
+      ...LEVEL_MANUAL_WEATHER_CLOUDS_KEYS,
       ...LEVEL_MANUAL_WEATHER_FOG_KEYS,
       ...LEVEL_MANUAL_WEATHER_RAIN_KEYS,
+      ...LEVEL_MANUAL_WEATHER_THUNDER_KEYS,
       ...LEVEL_MANUAL_WEATHER_WIND_KEYS,
       ...LEVEL_MANUAL_WEATHER_WATER_KEYS,
     ];

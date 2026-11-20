@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
 use crate::data::alife::inherited::alife_object_visual::AlifeObjectVisual;
@@ -20,9 +20,9 @@ pub struct AlifeZoneVisual {
   pub last_spawn_time: LastSpawnTime,
 }
 
-impl ChunkReadWrite for AlifeZoneVisual {
+impl ChunkFieldReadWrite for AlifeZoneVisual {
   /// Read visual zone data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       visual: reader.read_xr::<T, _>()?,
@@ -33,7 +33,7 @@ impl ChunkReadWrite for AlifeZoneVisual {
   }
 
   /// Write visual zone data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.visual)?;
     writer.write_w1251_string(&self.idle_animation)?;
@@ -46,8 +46,8 @@ impl ChunkReadWrite for AlifeZoneVisual {
 
 impl LtxImportExport for AlifeZoneVisual {
   /// Import visual zone data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -69,7 +69,7 @@ impl LtxImportExport for AlifeZoneVisual {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
     self.visual.export(section_name, ltx)?;
 
@@ -87,7 +87,7 @@ impl LtxImportExport for AlifeZoneVisual {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -120,13 +120,16 @@ mod tests {
               spawn_story_id: 754,
             },
             shape: vec![
-              Shape::Sphere((Vector3d::new(53.5, 50.5, 11.5), 2.0)),
-              Shape::Box((
-                Vector3d::new(51.5, 71.1, 53.1),
-                Vector3d::new(51.1, 72.2, 53.3),
-                Vector3d::new(54.0, 75.0, 56.4),
-                Vector3d::new(59.2, 78.3, 53.0),
-              )),
+              Shape::Sphere(Sphere {
+                center: Vector3d::new(53.5, 50.5, 11.5),
+                radius: 2.0,
+              }),
+              Shape::Box(Affine3d {
+                x_axis: Vector3d::new(51.5, 71.1, 53.1),
+                y_axis: Vector3d::new(51.1, 72.2, 53.3),
+                z_axis: Vector3d::new(54.0, 75.0, 56.4),
+                translation: Vector3d::new(59.2, 78.3, 53.0),
+              }),
             ],
             restrictor_type: 2,
           },
@@ -144,8 +147,8 @@ mod tests {
         visual_name: String::from("name"),
         visual_flags: 65,
       },
-      idle_animation: String::from(""),
-      attack_animation: String::from(""),
+      idle_animation: String::new(),
+      attack_animation: String::new(),
       last_spawn_time: LastSpawnTime::Unset,
     };
 
@@ -189,13 +192,16 @@ mod tests {
               spawn_story_id: 101,
             },
             shape: vec![
-              Shape::Sphere((Vector3d::new(3.5, 0.5, 11.5), 1.0)),
-              Shape::Box((
-                Vector3d::new(1.5, 1.1, 3.1),
-                Vector3d::new(1.1, 2.2, 3.3),
-                Vector3d::new(4.0, 5.0, 6.4),
-                Vector3d::new(9.2, 8.3, 3.0),
-              )),
+              Shape::Sphere(Sphere {
+                center: Vector3d::new(3.5, 0.5, 11.5),
+                radius: 1.0,
+              }),
+              Shape::Box(Affine3d {
+                x_axis: Vector3d::new(1.5, 1.1, 3.1),
+                y_axis: Vector3d::new(1.1, 2.2, 3.3),
+                z_axis: Vector3d::new(4.0, 5.0, 6.4),
+                translation: Vector3d::new(9.2, 8.3, 3.0),
+              }),
             ],
             restrictor_type: 2,
           },

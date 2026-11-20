@@ -1,5 +1,5 @@
 use glam::Vec3;
-use xrf_level::{LevelDynamicLight, LevelEnvModifier, LevelFogVolume, LevelSndEnvFile};
+use xrf_level::{LevelDynamicLight, LevelFogVolume, LevelSndEnvFile};
 use xrf_math::{Matrix4x4, Vector3d};
 use xrf_visual::VisualTransform;
 
@@ -33,7 +33,7 @@ impl LevelObjectsDescription {
           index,
           kind: LevelObjectKind::StaticParticles,
           name: planted.effect.clone(),
-          space: PlacementSpace::at(Self::to_place(&planted.get_position())),
+          space: PlacementSpace::at(Self::get_place(&planted.get_position())),
           details: LevelPlacementDetails::Particles {
             effect: planted.effect.clone(),
           },
@@ -47,7 +47,7 @@ impl LevelObjectsDescription {
         index,
         kind: LevelObjectKind::StaticSounds,
         name: sound.sound.clone(),
-        space: PlacementSpace::at(Self::to_place(&sound.position)),
+        space: PlacementSpace::at(Self::get_place(&sound.position)),
         details: LevelPlacementDetails::Sound {
           sound: sound.sound.clone(),
           volume: sound.volume,
@@ -67,10 +67,10 @@ impl LevelObjectsDescription {
         .iter()
         .enumerate()
       {
-        let Some(corner_box) = Self::to_corner_box(corners) else {
+        let Some(corner_box) = Self::find_corner_box(corners) else {
           continue;
         };
-        let SoundEnvironmentPair { outer, inner } = Self::to_sound_environments(file, index);
+        let SoundEnvironmentPair { outer, inner } = SoundEnvironmentPair::of(file, index);
 
         objects.push(LevelObject::from(PlacementRecord {
           file: LevelPlacementFile::SoundEnvironments,
@@ -78,7 +78,7 @@ impl LevelObjectsDescription {
           kind: LevelObjectKind::SoundEnvironments,
           name: format!("{outer} / {inner}"),
           space: PlacementSpace {
-            transform: Self::to_renderer_place(corner_box.center),
+            transform: Self::get_renderer_place(corner_box.center),
             shapes: vec![LevelObjectShape::Box {
               axes: corner_box.axes,
               center: Vector3d::new(0.0, 0.0, 0.0),
@@ -99,7 +99,7 @@ impl LevelObjectsDescription {
         index,
         kind: LevelObjectKind::FogVolumes,
         name: volume.profile.clone(),
-        space: Self::to_fog_volume(volume),
+        space: Self::place_fog_volume(volume),
         details: LevelPlacementDetails::FogVolume {
           profile: volume.profile.clone(),
           obstacles: volume.obstacles.len() as u32,
@@ -118,13 +118,13 @@ impl LevelObjectsDescription {
         kind: LevelObjectKind::EnvModifiers,
         name: format!("modifier {index}"),
         space: PlacementSpace {
-          transform: Self::to_place(&modifier.position),
+          transform: Self::get_place(&modifier.position),
           shapes: vec![LevelObjectShape::Sphere {
             center: Vector3d::new(0.0, 0.0, 0.0),
             radius: modifier.radius,
           }],
         },
-        details: Self::to_env_modifier(modifier),
+        details: LevelPlacementDetails::from(modifier),
       }));
     }
 
@@ -142,7 +142,7 @@ impl LevelObjectsDescription {
         } else {
           point.profile.clone()
         },
-        space: PlacementSpace::at(Self::to_place(&point.position)),
+        space: PlacementSpace::at(Self::get_place(&point.position)),
         details: LevelPlacementDetails::RespawnPoint {
           role,
           team: point.team,
@@ -166,29 +166,18 @@ impl LevelObjectsDescription {
             LevelObjectId::Light { index: index as u32 },
             LevelObjectKind::Lights,
             format!("light {index}"),
-            Self::to_place(&light.position),
+            Self::get_place(&light.position),
           )
         }),
     );
   }
 
-  /// The environments outside and inside a sound box, by its first face's front and back, as the editor writes them.
-  fn to_sound_environments(file: &LevelSndEnvFile, index: usize) -> SoundEnvironmentPair {
-    let face = file.faces.get(index * Self::SOUND_BOX_FACES);
-    let name = |name: Option<&str>| name.unwrap_or("unnamed").to_owned();
-
-    SoundEnvironmentPair {
-      outer: name(face.and_then(|face| file.get_front_environment(face))),
-      inner: name(face.and_then(|face| file.get_back_environment(face))),
-    }
-  }
-
   /// A box from its eight corners in engine space: the two shortest edges from a corner, and the corner standing most
   /// squarely off both; `None` for corners spanning no box.
-  fn to_corner_box(corners: &[Vector3d]) -> Option<CornerBox> {
+  fn find_corner_box(corners: &[Vector3d]) -> Option<CornerBox> {
     let points: Vec<Vec3> = corners
       .iter()
-      .map(|corner| Self::to_vec3(&LevelObject::to_renderer_space(corner)))
+      .map(|corner| Vec3::from(LevelObject::convert_to_renderer_space(corner)))
       .collect();
     let first: Vec3 = *points.first()?;
     let mut spans: Vec<Vec3> = points.iter().skip(1).map(|point| *point - first).collect();
@@ -205,46 +194,31 @@ impl LevelObjectsDescription {
 
     (normal != Vec3::ZERO && c.length() > f32::EPSILON).then(|| CornerBox {
       center: points.iter().copied().sum::<Vec3>() / points.len() as f32,
-      axes: [a, b, c].map(|axis| Vector3d::new(axis.x, axis.y, axis.z)),
+      axes: [a, b, c].map(Vector3d::from),
     })
   }
 
   /// A fog volume: the unit cube its matrix stands, and each obstacle's cube cutting it, about the volume's centre.
-  fn to_fog_volume(volume: &LevelFogVolume) -> PlacementSpace {
-    let center: Vec3 = Self::to_vec3(&LevelObject::to_renderer_space(&Self::get_matrix_row(
+  fn place_fog_volume(volume: &LevelFogVolume) -> PlacementSpace {
+    let center: Vec3 = Vec3::from(LevelObject::convert_to_renderer_space(&Self::get_matrix_row(
       &volume.transform,
       3,
     )));
     let to_box = |matrix: &Matrix4x4| -> LevelObjectShape {
-      let at: Vec3 = Self::to_vec3(&LevelObject::to_renderer_space(&Self::get_matrix_row(matrix, 3)));
+      let at: Vec3 = Vec3::from(LevelObject::convert_to_renderer_space(&Self::get_matrix_row(matrix, 3)));
 
       LevelObjectShape::Box {
-        axes: [0, 1, 2].map(|row| LevelObject::to_renderer_space(&Self::get_matrix_row(matrix, row))),
-        center: Vector3d::new(at.x - center.x, at.y - center.y, at.z - center.z),
+        axes: [0, 1, 2].map(|row| LevelObject::convert_to_renderer_space(&Self::get_matrix_row(matrix, row))),
+        center: Vector3d::from(at - center),
       }
     };
 
     PlacementSpace {
-      transform: Self::to_renderer_place(center),
+      transform: Self::get_renderer_place(center),
       shapes: std::iter::once(&volume.transform)
         .chain(&volume.obstacles)
         .map(to_box)
         .collect(),
-    }
-  }
-
-  fn to_env_modifier(modifier: &LevelEnvModifier) -> LevelPlacementDetails {
-    let to_array = |vector: &Vector3d| [vector.x, vector.y, vector.z];
-
-    LevelPlacementDetails::EnvModifier {
-      power: modifier.power,
-      far_plane: modifier.far_plane,
-      fog_color: to_array(&modifier.fog_color),
-      fog_density: modifier.fog_density,
-      ambient: to_array(&modifier.ambient),
-      sky_color: to_array(&modifier.sky_color),
-      hemi_color: to_array(&modifier.hemi_color),
-      affects: modifier.get_used_parameters().into_iter().map(str::to_owned).collect(),
     }
   }
 
@@ -256,15 +230,11 @@ impl LevelObjectsDescription {
   }
 
   /// Unturned at a point already in renderer space.
-  fn to_renderer_place(center: Vec3) -> VisualTransform {
+  fn get_renderer_place(center: Vec3) -> VisualTransform {
     VisualTransform {
-      c: Vector3d::new(center.x, center.y, center.z),
-      ..Self::to_place(&Vector3d::new(0.0, 0.0, 0.0))
+      c: Vector3d::from(center),
+      ..Self::get_place(&Vector3d::new(0.0, 0.0, 0.0))
     }
-  }
-
-  fn to_vec3(vector: &Vector3d) -> Vec3 {
-    Vec3::new(vector.x, vector.y, vector.z)
   }
 }
 
@@ -325,4 +295,18 @@ struct CornerBox {
 struct SoundEnvironmentPair {
   outer: String,
   inner: String,
+}
+
+impl SoundEnvironmentPair {
+  /// The environments outside and inside box `index` of `file`: its first face's front and back, as the editor writes
+  /// them.
+  fn of(file: &LevelSndEnvFile, index: usize) -> Self {
+    let face = file.faces.get(index * LevelObjectsDescription::SOUND_BOX_FACES);
+    let name = |name: Option<&str>| name.unwrap_or("unnamed").to_owned();
+
+    Self {
+      outer: name(face.and_then(|face| file.get_front_environment(face))),
+      inner: name(face.and_then(|face| file.get_back_environment(face))),
+    }
+  }
 }

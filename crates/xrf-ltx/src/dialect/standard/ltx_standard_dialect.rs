@@ -7,14 +7,19 @@ use crate::source::LtxDocumentSource;
 
 /// Standard LTX: what the vanilla engine and OpenXRay load.
 ///
-/// Includes merge in read order, inheritance resolves eagerly against sections already declared, a duplicate section
-/// is refused, and a patch operation is refused because nothing here can evaluate one.
+/// Includes merge in read order, and inheritance resolves against sections already declared. Section names ignore
+/// case, so `[A]` after `[a]` is a refused duplicate. Patch operations are refused, since nothing here evaluates them.
 #[derive(Debug, Default)]
 pub struct LtxStandardDialect;
 
 impl LtxDialect for LtxStandardDialect {
   fn get_name(&self) -> &'static str {
     "ltx"
+  }
+
+  /// Yes, as in the engine's `CInifile` (`xr_ini.cpp`).
+  fn is_folding_section_names(&self) -> bool {
+    true
   }
 
   /// Nothing. Standard LTX has no notion of one config patching another, so every config stands on its own.

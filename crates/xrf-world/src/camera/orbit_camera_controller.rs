@@ -4,10 +4,13 @@ use std::time::Duration;
 use glam::Vec3;
 use xrf_renderer::CameraFrame;
 
+use crate::camera::wheel_delta::WheelDelta;
 use crate::contract::camera::world_camera::WorldCamera;
 use crate::contract::camera::world_camera_command::WorldCameraCommand;
 use crate::contract::camera::world_camera_pose::WorldCameraPose;
+use crate::contract::camera::world_input_buttons::WorldInputButtons;
 use crate::contract::camera::world_input_event::WorldInputEvent;
+use crate::contract::camera::world_input_modifiers::WorldInputModifiers;
 
 /// Keeps the camera off the poles, where turning around the target would flip it over.
 const POLE_MARGIN: f32 = 1e-4;
@@ -15,21 +18,42 @@ const POLE_MARGIN: f32 = 1e-4;
 /// What one wheel notch of a hundred units changes the distance by: a twentieth of it.
 const ZOOM_BASE: f32 = 0.95;
 
+/// What a pixel of a dollying drag multiplies the distance by: a hundred pixels, two fifths closer.
+const DOLLY_BASE: f32 = 0.995;
+
 /// How a drag moves an orbiting camera.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum OrbitDrag {
   Rotate,
   Pan,
+  Dolly,
 }
 
-/// A camera orbiting a target: the main button turns it around the target, the others pan, and the wheel dollies.
+impl OrbitDrag {
+  /// The main button alone rotates and every other drag pans, unless Alt picks the editor's own: Alt and the main
+  /// button rotate, Alt and the secondary dolly, Alt and the auxiliary pan.
+  fn of(buttons: WorldInputButtons, modifiers: WorldInputModifiers) -> Option<Self> {
+    Some(match (modifiers.alt_key, buttons) {
+      (true, WorldInputButtons::MAIN) => Self::Rotate,
+      (true, WorldInputButtons::SECONDARY) => Self::Dolly,
+      (true, WorldInputButtons::AUXILIARY) => Self::Pan,
+      (true, _) => return None,
+      (false, WorldInputButtons::MAIN) if !modifiers.shift_key && !modifiers.ctrl_key => Self::Rotate,
+      (false, _) => Self::Pan,
+    })
+  }
+}
+
+/// A camera orbiting a target, its drags mapped by `OrbitDrag`; the wheel dollies.
 #[derive(Clone, Debug)]
-pub struct OrbitCameraController {
+pub(crate) struct OrbitCameraController {
   description: WorldCamera,
   position: Vec3,
   target: Vec3,
   /// The viewport's height in CSS pixels, which a drag is measured against.
   height: f32,
+  /// The modifiers held as the drag began, which keep what it does while its buttons change.
+  modifiers: WorldInputModifiers,
   dragged: Option<OrbitDrag>,
 }
 
@@ -46,7 +70,7 @@ impl Default for OrbitCameraController {
 }
 
 impl OrbitCameraController {
-  pub fn new(description: WorldCamera) -> Self {
+  pub(crate) fn new(description: WorldCamera) -> Self {
     let (position, target) = description.get_start();
 
     Self {
@@ -54,12 +78,13 @@ impl OrbitCameraController {
       position: Vec3::from_array(position),
       target: Vec3::from_array(target),
       height: 1.0,
+      modifiers: WorldInputModifiers::default(),
       dragged: None,
     }
   }
 
   /// Takes a new description, answering whether the camera jumped to its start rather than keeping where it stands.
-  pub fn describe(&mut self, description: WorldCamera) -> bool {
+  pub(crate) fn describe(&mut self, description: WorldCamera) -> bool {
     let is_moved: bool = description.get_start() != self.description.get_start();
 
     self.description = description;
@@ -71,7 +96,7 @@ impl OrbitCameraController {
     is_moved
   }
 
-  pub fn command(&mut self, command: WorldCameraCommand) {
+  pub(crate) fn command(&mut self, command: WorldCameraCommand) {
     match command {
       WorldCameraCommand::Reset => self.reset(),
       WorldCameraCommand::Dolly { step } => self.dolly(step),
@@ -79,34 +104,29 @@ impl OrbitCameraController {
   }
 
   /// The viewport's height in CSS pixels, against which drags are measured.
-  pub fn resize(&mut self, height: f32) {
+  pub(crate) fn resize(&mut self, height: f32) {
     self.height = height.max(1.0);
   }
 
-  pub fn input(&mut self, event: &WorldInputEvent) {
+  pub(crate) fn input(&mut self, event: &WorldInputEvent) {
     match event {
-      WorldInputEvent::DragStart { button, modifiers } => {
-        self.dragged = Some(if *button == 0 && !modifiers.shift_key && !modifiers.ctrl_key {
-          OrbitDrag::Rotate
-        } else {
-          OrbitDrag::Pan
-        });
+      WorldInputEvent::DragStart { buttons, modifiers } => {
+        self.modifiers = *modifiers;
+        self.dragged = OrbitDrag::of(*buttons, *modifiers);
       }
+      WorldInputEvent::DragButtons { buttons } => self.dragged = OrbitDrag::of(*buttons, self.modifiers),
       WorldInputEvent::DragMove { dx, dy } => match self.dragged {
         Some(OrbitDrag::Rotate) => self.rotate(*dx, *dy),
         Some(OrbitDrag::Pan) => self.pan(*dx, *dy),
+        // Dragged right or up, it closes in.
+        Some(OrbitDrag::Dolly) => self.dolly(DOLLY_BASE.powf(*dx - *dy)),
         None => {}
       },
       WorldInputEvent::DragEnd { .. } | WorldInputEvent::ReleaseAll => self.dragged = None,
       WorldInputEvent::Wheel {
         delta_y, delta_mode, ..
       } => {
-        // A line or a page of wheel is worth what a browser scrolls for it, so every mouse dollies alike.
-        let pixels: f32 = match *delta_mode {
-          1 => *delta_y * 16.0,
-          2 => *delta_y * self.height,
-          _ => *delta_y,
-        };
+        let pixels: f32 = WheelDelta::get_pixels(*delta_y, *delta_mode, self.height);
         let scale: f32 = ZOOM_BASE.powf((pixels * 0.01).abs());
 
         self.dolly(if pixels > 0.0 { 1.0 / scale } else { scale });
@@ -118,13 +138,9 @@ impl OrbitCameraController {
     }
   }
 
-  pub fn update(&mut self, _delta: Duration) {}
+  pub(crate) fn update(&mut self, _delta: Duration) {}
 
-  pub fn get_description(&self) -> WorldCamera {
-    self.description
-  }
-
-  pub fn get_pose(&self) -> WorldCameraPose {
+  pub(crate) fn get_pose(&self) -> WorldCameraPose {
     WorldCameraPose {
       position: self.position.to_array(),
       target: self.target.to_array(),
@@ -132,7 +148,7 @@ impl OrbitCameraController {
   }
 
   /// Where it stands and what its lens is this frame.
-  pub fn get_frame(&self) -> CameraFrame {
+  pub(crate) fn get_frame(&self) -> CameraFrame {
     let (field_of_view, near, far) = self.description.get_lens();
 
     CameraFrame {

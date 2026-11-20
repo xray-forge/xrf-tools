@@ -16,7 +16,7 @@ const CORE_COLORS: Readonly<Record<XrfMarkCore, string>> = {
 interface IXrfMarkProps extends BaseComponentProps {
   /** The build the core is coloured for; the ink and geometry never change. */
   core: XrfMarkCore;
-  /** Rendered edge in pixels. The drawing is tuned for small sizes; see the note above. */
+  /** Rendered edge in pixels. The drawing is tuned for small sizes, the caption's 16 first. */
   size?: number;
   /** Names the mark for assistive technology. Omit where a label already sits beside it. */
   title?: string;

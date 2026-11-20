@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use xrf_error::XrfResult;
 
@@ -11,7 +11,7 @@ pub(crate) struct LtxListingCache {
 
 impl LtxListingCache {
   /// The names in `directory`, from `list` on the first request.
-  pub fn get_or_list(
+  pub(crate) fn get_or_list(
     &self,
     directory: &str,
     list: impl FnOnce() -> XrfResult<Vec<String>>,
@@ -28,7 +28,7 @@ impl LtxListingCache {
   }
 
   fn lock(&self) -> MutexGuard<'_, HashMap<String, Arc<[String]>>> {
-    self.listings.lock().expect("listing cache to not be poisoned")
+    self.listings.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }
 

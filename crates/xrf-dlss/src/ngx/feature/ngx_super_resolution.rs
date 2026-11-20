@@ -60,13 +60,15 @@ impl NgxSuperResolution {
       sdk,
       (device, queue),
       "DLSS cannot upscale to the output",
+      // SAFETY: `create` lends the SDK's parameters under NGX's lock and a fresh command list; `parameters` outlives
+      // the call.
       |commands, ngx, handle| unsafe {
-        NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint() as u32);
+        NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint().cast_unsigned());
 
         match commands {
-          NgxCommands::Vulkan(list) => NGX_VULKAN_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &mut parameters),
+          NgxCommands::Vulkan(list) => NGX_VULKAN_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &raw mut parameters),
           #[cfg(windows)]
-          NgxCommands::D3d12(list) => NGX_D3D12_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &mut parameters),
+          NgxCommands::D3d12(list) => NGX_D3D12_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &raw mut parameters),
         }
       },
     )?;
@@ -103,6 +105,7 @@ impl NgxSuperResolution {
     inputs: &DlssInputs<'_>,
   ) -> NVSDK_NGX_Result {
     // NGX reads these through pointers while it records, so they live until it is done.
+    // SAFETY: the inputs are Vulkan views of the device NGX runs on, borrowed past the evaluation.
     let (mut color, mut depth, mut motion, mut output) = unsafe {
       (
         NgxVulkanResource::of(inputs.color, adapter),
@@ -115,12 +118,12 @@ impl NgxSuperResolution {
     // SAFETY: the parameters are plain C data, whose null pointers and zeros NGX reads as the inputs left out.
     let mut parameters = NVSDK_NGX_VK_DLSS_Eval_Params {
       Feature: NVSDK_NGX_VK_Feature_Eval_Params {
-        pInColor: &mut color,
-        pInOutput: &mut output,
+        pInColor: &raw mut color,
+        pInOutput: &raw mut output,
         InSharpness: 0.0,
       },
-      pInDepth: &mut depth,
-      pInMotionVectors: &mut motion,
+      pInDepth: &raw mut depth,
+      pInMotionVectors: &raw mut motion,
       InJitterOffsetX: inputs.jitter[0],
       InJitterOffsetY: inputs.jitter[1],
       InRenderSubrectDimensions: NVSDK_NGX_Dimensions {
@@ -142,7 +145,9 @@ impl NgxSuperResolution {
       ..unsafe { std::mem::zeroed() }
     };
 
-    unsafe { NGX_VULKAN_EVALUATE_DLSS_EXT(list, handle, sdk.parameters, &mut parameters) }
+    // SAFETY: `evaluate` lends the feature's handle, the SDK's parameters under NGX's lock and a fresh command list,
+    // and every resource the parameters point at lives until the call returns.
+    unsafe { NGX_VULKAN_EVALUATE_DLSS_EXT(list, handle, sdk.parameters, &raw mut parameters) }
   }
 
   /// NGX's upscale of `inputs` recorded into a D3D12 command list.
@@ -154,6 +159,8 @@ impl NgxSuperResolution {
   ) -> NVSDK_NGX_Result {
     let origin = NVSDK_NGX_Coordinates { X: 0, Y: 0 };
 
+    // SAFETY: as on Vulkan: zeroed is "left out" for the C struct, the inputs are D3D12 textures alive past the call,
+    // and `evaluate` lends the handle, the parameters under NGX's lock and a fresh command list.
     unsafe {
       let mut parameters = NVSDK_NGX_D3D12_DLSS_Eval_Params {
         Feature: NVSDK_NGX_D3D12_Feature_Eval_Params {
@@ -184,7 +191,7 @@ impl NgxSuperResolution {
         ..std::mem::zeroed()
       };
 
-      NGX_D3D12_EVALUATE_DLSS_EXT(list, handle, sdk.parameters, &mut parameters)
+      NGX_D3D12_EVALUATE_DLSS_EXT(list, handle, sdk.parameters, &raw mut parameters)
     }
   }
 }

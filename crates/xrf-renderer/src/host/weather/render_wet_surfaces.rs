@@ -1,5 +1,5 @@
 /// What rain wets surfaces with, as `CBlender_rain` binds it.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RenderWetSurfaces {
   /// `s_water`, a volume of rippling normals, a slice a moment.
   pub splash: String,

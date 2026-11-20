@@ -2,19 +2,22 @@ use std::io::Write;
 
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_test_utils::GeneratedResources;
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_file::{LevelCformFile, LevelCformHeader};
+use crate::cform::level_cform_geometry::LevelCformGeometry;
 
 fn sample() -> LevelCformHeader {
   LevelCformHeader {
     version: 4,
     vertex_count: 420_690,
     face_count: 810_223,
-    aabb_min: Vector3d::new(-600.0, -20.5, -615.0),
-    aabb_max: Vector3d::new(600.0, 80.25, 585.0),
+    bounds: Aabb {
+      min: Vector3d::new(-600.0, -20.5, -615.0),
+      max: Vector3d::new(600.0, 80.25, 585.0),
+    },
   }
 }
 
@@ -43,14 +46,81 @@ fn test_read_write() -> XrfResult {
 }
 
 #[test]
+fn writes_a_form_back_byte_for_byte_its_header_derived_from_its_geometry() -> XrfResult {
+  let geometry: LevelCformGeometry = LevelCformGeometry::new(
+    vec![
+      Vector3d::new(0.0, -1.0, 0.0),
+      Vector3d::new(2.0, 0.0, 0.0),
+      Vector3d::new(0.0, 3.0, 1.0),
+    ],
+    vec![LevelCformFace {
+      vertices: [0, 2, 1],
+      material: 0x2ABC,
+      is_shadow_suppressed: true,
+      is_wallmark_suppressed: false,
+      sector: 513,
+    }],
+  )?;
+  let file: LevelCformFile = LevelCformFile {
+    header: LevelCformHeader::of(&geometry)?,
+  };
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  assert_eq!(
+    file.header,
+    LevelCformHeader {
+      version: LevelCformHeader::CURRENT_VERSION,
+      vertex_count: 3,
+      face_count: 1,
+      bounds: Aabb {
+        min: Vector3d::new(0.0, -1.0, 0.0),
+        max: Vector3d::new(2.0, 3.0, 1.0),
+      },
+    }
+  );
+
+  file.write_with_geometry::<XRayByteOrder>(&geometry, &mut writer)?;
+
+  let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let (read, read_geometry) = LevelCformFile::read_with_geometry_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let mut again: ChunkWriter = ChunkWriter::new();
+
+  assert_eq!((read.clone(), read_geometry.clone()), (file, geometry));
+  read.write_with_geometry::<XRayByteOrder>(&read_geometry, &mut again)?;
+  assert_eq!(again.flush_raw_into_buffer()?, bytes);
+  assert_eq!(bytes.len(), LevelCformHeader::SIZE as usize + 3 * 12 + 16);
+
+  Ok(())
+}
+
+#[test]
+fn refuses_to_write_a_header_counting_other_than_its_geometry() -> XrfResult {
+  let geometry: LevelCformGeometry = LevelCformGeometry::new(vec![Vector3d::new(0.0, 0.0, 0.0)], Vec::new())?;
+  let mut header: LevelCformHeader = LevelCformHeader::of(&geometry)?;
+
+  header.face_count = 1;
+
+  assert!(
+    LevelCformFile { header }
+      .write_with_geometry::<XRayByteOrder>(&geometry, &mut ChunkWriter::new())
+      .is_err()
+  );
+  assert!(LevelCformHeader::of(&LevelCformGeometry::new(Vec::new(), Vec::new())?).is_err());
+
+  Ok(())
+}
+
+#[test]
 fn reads_the_vertices_and_faces_the_header_counts() -> XrfResult {
   let mut writer: ChunkWriter = ChunkWriter::new();
   let header: LevelCformHeader = LevelCformHeader {
     version: 4,
     vertex_count: 3,
     face_count: 1,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(1.0, 0.0, 1.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(1.0, 0.0, 1.0),
+    },
   };
 
   header.write::<XRayByteOrder>(&mut writer)?;
@@ -91,8 +161,10 @@ fn a_face_naming_a_vertex_past_the_count_is_an_error() -> XrfResult {
     version: 4,
     vertex_count: 1,
     face_count: 1,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(0.0, 0.0, 0.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(0.0, 0.0, 0.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)?;
 
@@ -117,8 +189,10 @@ fn new_form(vertices: &[[f32; 3]], faces: &[[u32; 3]]) -> XrfResult<Vec<u8>> {
     version: 4,
     vertex_count: vertices.len() as u32,
     face_count: faces.len() as u32,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(0.0, 0.0, 0.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(0.0, 0.0, 0.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)?;
 
@@ -178,8 +252,10 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
     version: 4,
     vertex_count: 3,
     face_count: 3,
-    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
-    aabb_max: Vector3d::new(1.0, 0.0, 1.0),
+    bounds: Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(1.0, 0.0, 1.0),
+    },
   }
   .write::<XRayByteOrder>(&mut writer)?;
 
@@ -201,6 +277,37 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
 
   assert_eq!(file.header.face_count, 3);
   assert_eq!(materials.get_ids().iter().copied().collect::<Vec<u16>>(), [5, 9]);
+
+  Ok(())
+}
+
+// A file's window seeks past the vertices rather than lending them, so both sources are read.
+#[test]
+fn reads_the_edge_material_ids_from_memory_and_from_a_file() -> XrfResult {
+  let vertices: Vec<[f32; 3]> = vec![[0.0, 0.0, 0.0]; 5];
+  let mut bytes: Vec<u8> = new_form(&vertices, &[[0, 1, 2], [2, 3, 4], [4, 0, 1]])?;
+  let faces: usize = bytes.len() - 3 * LevelCformFace::SERIALIZED_SIZE;
+
+  for (face, packed) in [0xFFFF_u32 << 16, 0x3FFF | (0xFFFF << 16), 0x3FFF].iter().enumerate() {
+    let at: usize = faces + face * LevelCformFace::SERIALIZED_SIZE + 12;
+
+    bytes[at..at + 4].copy_from_slice(&packed.to_le_bytes());
+  }
+
+  let path = GeneratedResources::write("cform/edge_materials.cform", &bytes)?;
+  let from_file = LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_file(
+    std::fs::File::open(&path)?,
+  )?)?;
+  let from_memory =
+    LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)?;
+
+  std::fs::remove_file(path)?;
+
+  assert_eq!(
+    from_memory.1.get_ids().iter().copied().collect::<Vec<u16>>(),
+    [0, 0x3FFF]
+  );
+  assert_eq!(from_file, from_memory);
 
   Ok(())
 }

@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Tooltip } from "#/material/tooltip";
+import { Tooltip } from "#/overlay";
 import { cn } from "#/theme";
 
 /**

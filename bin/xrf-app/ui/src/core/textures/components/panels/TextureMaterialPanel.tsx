@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
 import { ReactElement } from "react";
 
 import {
@@ -57,7 +57,7 @@ export function TextureMaterialPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Material"}>
-      <EditorPanelSection title={"Declaration"} isFirst>
+      <EditorPanelSection title={"Declaration"}>
         <EditorPanelProperty label={"Texture"} value={description.reference} isMonospace />
 
         <EditorPanelProperty

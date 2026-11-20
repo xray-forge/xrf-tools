@@ -9,7 +9,7 @@ use crate::{XrayAssetContainer, XrayAssetSource, XraySourceKind};
 
 /// In-memory archive stand-in that avoids large volume fixtures.
 #[derive(Debug)]
-pub struct FakeArchiveSource {
+pub(crate) struct FakeArchiveSource {
   label: String,
   root: PathBuf,
   entries: HashMap<String, Vec<u8>>,
@@ -17,7 +17,7 @@ pub struct FakeArchiveSource {
 }
 
 impl FakeArchiveSource {
-  pub fn new(label: &str, entries: &[&str]) -> Self {
+  pub(crate) fn new(label: &str, entries: &[&str]) -> Self {
     Self {
       // Keys are normalized at construction, as a real archive source derives them: a header keeps a name as authored, so
       // only the canonical form can answer a lookup or a prefix scope.
@@ -40,7 +40,7 @@ impl FakeArchiveSource {
   ///
   /// A real directory source derives these while indexing; a double is the only way to exercise reporting on a filesystem
   /// that cannot hold two paths differing only by case.
-  pub fn with_collision(mut self, collision: crate::XrayPathCollision) -> Self {
+  pub(crate) fn with_collision(mut self, collision: crate::XrayPathCollision) -> Self {
     self.collisions.push(collision);
 
     self
@@ -101,7 +101,7 @@ impl XrayAssetSource for FakeArchiveSource {
   }
 }
 
-pub fn directory(name: &str, files: &[&str]) -> PathBuf {
+pub(crate) fn directory(name: &str, files: &[&str]) -> PathBuf {
   let root: PathBuf = GeneratedResources::create_dir(&format!("xray_vfs/{name}")).expect("test tree is creatable");
 
   for file in files {

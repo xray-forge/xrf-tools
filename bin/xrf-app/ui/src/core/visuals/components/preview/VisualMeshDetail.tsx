@@ -1,9 +1,9 @@
 import { formatPercent } from "@xrf/format";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TuneIcon } from "@xrf/ui/icons/tune";
-import { Slider } from "@xrf/ui/material/slider";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 interface IVisualMeshDetailProps extends BaseComponentProps {
@@ -25,14 +25,7 @@ export function VisualMeshDetail({
   onChange,
 }: IVisualMeshDetailProps): ReactElement {
   // Quality increases to the right, while the stored collapse fraction decreases.
-  const onSlideDetail = useCallback(
-    (_: Event, value: number | Array<number>) => {
-      if (typeof value === "number") {
-        onChange(1 - value / 100);
-      }
-    },
-    [onChange]
-  );
+  const onChangeQuality = useCallback((quality: number) => onChange(1 - quality / 100), [onChange]);
 
   return (
     <EditorPopoverAction
@@ -45,22 +38,18 @@ export function VisualMeshDetail({
       isDisabled={!hasDetailLevels}
       isActive={detail !== 0 && hasDetailLevels}
     >
-      <div className={"w-toolbar-slider px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Mesh detail
-        </Typography>
-
-        <Slider
-          aria-label={"Mesh detail"}
-          size={"small"}
+      <EditorPopoverContent label={"Mesh detail"}>
+        <EditorPopoverSliderRow
+          label={"Quality"}
+          description={"How much of each submesh's collapse chain is kept, the full mesh at 100%."}
+          value={Math.round((1 - detail) * 100)}
           min={0}
           max={100}
-          value={Math.round((1 - detail) * 100)}
-          valueLabelDisplay={"auto"}
-          valueLabelFormat={(value: number) => `${value}%`}
-          onChange={onSlideDetail}
+          step={1}
+          format={(value: number) => `${value}%`}
+          onChange={onChangeQuality}
         />
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

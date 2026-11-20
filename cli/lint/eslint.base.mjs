@@ -1,13 +1,66 @@
-import { fixupConfigRules } from "@eslint/compat";
 import jsPlugin from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
-import importPlugin from "eslint-plugin-import";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
+import importXPlugin, { flatConfigs as importXConfigs } from "eslint-plugin-import-x";
 import jestPlugin from "eslint-plugin-jest";
-import jsdocPlugin from "eslint-plugin-jsdoc";
+import { configs as jsdocConfigs } from "eslint-plugin-jsdoc";
 import sortKeysFixPlugin from "eslint-plugin-sort-keys-fix";
 import unusedImportsPlugin from "eslint-plugin-unused-imports";
 import globals from "globals";
-import tsPlugin from "typescript-eslint";
+import { configs as tsConfigs } from "typescript-eslint";
+
+/**
+ * Layer failing on an import cycle among `files`, following the member's path aliases through its `tsconfig`. A
+ * type-only import is no edge, since nothing of it runs.
+ *
+ * @param {object} options - What the cycle check covers.
+ * @param {Array<string>} options.files - Globs whose modules may not reach themselves again.
+ * @param {Array<string>} [options.ignores] - Globs left out, such as tests.
+ * @param {string} options.project - The `tsconfig` declaring the aliases.
+ * @returns {import("eslint").Linter.Config} The layer.
+ */
+export function createImportCycleLayer({ files, ignores = [], project }) {
+  return {
+    files,
+    ignores,
+    plugins: { "import-x": importXPlugin },
+    settings: {
+      // Which extensions it parses and with what; without them no TypeScript module is followed.
+      ...importXConfigs.typescript.settings,
+      "import-x/resolver-next": [createTypeScriptImportResolver({ project })],
+    },
+    rules: {
+      "import-x/no-cycle": ["error", { ignoreExternal: true }],
+    },
+  };
+}
+
+/**
+ * Layer failing on an import that crosses one of `zones`, the import resolved through the member's `tsconfig`, so a path
+ * alias and a relative path landing in the same module are held to the same boundary.
+ *
+ * @param {object} options - What the boundaries cover.
+ * @param {Array<string>} options.files - Globs it lints.
+ * @param {string} options.project - The `tsconfig` declaring the aliases.
+ * @param {string} options.basePath - The directory the zones' paths start at.
+ * @param {Array<{ target: string, from: string, except?: Array<string>, message: string }>} options.zones - Each says
+ *   that modules under `target` may not import from under `from`, but for its `except` paths, which are relative to
+ *   `from`.
+ * @returns {import("eslint").Linter.Config} The layer.
+ */
+export function createRestrictedPathsLayer({ files, project, basePath, zones }) {
+  return {
+    files,
+    plugins: { "import-x": importXPlugin },
+    settings: {
+      ...importXConfigs.typescript.settings,
+      "import-x/resolver-next": [createTypeScriptImportResolver({ project })],
+    },
+    rules: {
+      "import-x/no-restricted-paths": ["error", { basePath, zones }],
+    },
+  };
+}
 
 /**
  * Flat configuration every TypeScript member of the workspace is linted with.
@@ -22,11 +75,11 @@ export function createEslintConfig(rootDir, ...layers) {
       ignores: ["target/**", "dist/**"],
     },
     jsPlugin.configs.recommended,
-    ...tsPlugin.configs.recommended,
-    // Adapt the retained ESLint 9 plugins until their releases support ESLint 10 directly.
-    ...fixupConfigRules([importPlugin.flatConfigs.recommended, importPlugin.flatConfigs.typescript]),
+    ...tsConfigs.recommended,
+    importXConfigs.recommended,
+    importXConfigs.typescript,
     jestPlugin.configs["flat/style"],
-    jsdocPlugin.configs["flat/recommended"],
+    jsdocConfigs["flat/recommended"],
     {
       files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],
       languageOptions: {
@@ -107,9 +160,9 @@ export function createEslintConfig(rootDir, ...layers) {
         "eol-last": ["error", "always"],
         "func-call-spacing": ["error", "never"],
         "function-paren-newline": "off",
-        "import/default": "off",
-        "import/no-unresolved": "off",
-        "import/order": [
+        "import-x/default": "off",
+        "import-x/no-unresolved": "off",
+        "import-x/order": [
           "error",
           {
             alphabetize: { caseInsensitive: true, order: "asc" },

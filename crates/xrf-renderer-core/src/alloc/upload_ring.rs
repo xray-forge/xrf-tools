@@ -93,6 +93,11 @@ impl UploadRing {
     self.staging.clear();
   }
 
+  /// Drops what a frame that never executed pushed, so the next frame starts empty.
+  pub fn discard(&mut self) {
+    self.staging.clear();
+  }
+
   fn create_buffer(
     device: &wgpu::Device,
     label: &'static str,

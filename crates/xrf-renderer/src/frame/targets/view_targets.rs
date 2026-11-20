@@ -5,7 +5,7 @@ use crate::frame::targets::view_target_handles::ViewTargetHandles;
 /// One viewport's G-buffer, depth, light and scene, sized to its rectangle and made again when that changes; the
 /// targets each frame writes afresh (the ambient occlusion, the haze, the distortion, the high part and the bloom) are
 /// its graph's, their formats and sizes here.
-pub struct ViewTargets {
+pub(crate) struct ViewTargets {
   pub width: u32,
   pub height: u32,
   /// Albedo, then gloss.
@@ -30,39 +30,39 @@ pub struct ViewTargets {
 }
 
 impl ViewTargets {
-  pub const ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-  pub const NORMAL: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
-  pub const MATERIAL: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-  pub const MOTION: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
-  pub const RELIEF: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
-  pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
-  pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const OCCLUSION: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
-  pub const HAZE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const DISTORTION: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const NORMAL: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  pub(crate) const MATERIAL: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const MOTION: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  pub(crate) const RELIEF: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
+  pub(crate) const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+  pub(crate) const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const OCCLUSION: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
+  pub(crate) const HAZE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const DISTORTION: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// The colour a helper marks a spawned model's pixels in, sRGB, with one in alpha where it marks them; made for a
   /// frame only while a model is marked.
-  pub const MARKS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const MARKS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// Eight bits a channel, as the engine's `A8R8G8B8` targets, so each stage of the bloom clamps to one as there.
-  pub const HIGH: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-  pub const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const HIGH: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// `BLOOM_size_X` and `BLOOM_size_Y`, whatever the frame's size.
-  pub const BLOOM_SIZE: (u32, u32) = (256, 256);
+  pub(crate) const BLOOM_SIZE: (u32, u32) = (256, 256);
   /// What the distortion target holds where nothing distorts it, `(127, 127, 0, 127)` as the engine clears it.
-  pub const NEUTRAL_DISTORTION: f64 = 127.0 / 255.0;
+  pub(crate) const NEUTRAL_DISTORTION: f64 = 127.0 / 255.0;
   /// The distortion target cleared to nothing distorting, as each frame starts it.
-  pub const DISTORTION_CLEAR: wgpu::Color = wgpu::Color {
+  pub(crate) const DISTORTION_CLEAR: wgpu::Color = wgpu::Color {
     r: Self::NEUTRAL_DISTORTION,
     g: Self::NEUTRAL_DISTORTION,
     b: 0.0,
     a: Self::NEUTRAL_DISTORTION,
   };
   /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
-  pub const HAZE_SIZE: (u32, u32) = (64, 32);
+  pub(crate) const HAZE_SIZE: (u32, u32) = (64, 32);
 
   /// Clears the frame's distortion target to nothing distorting, before anything draws into it.
-  pub fn add_distortion_clear(graph: &mut FrameGraph<'_>, handles: ViewTargetHandles) {
+  pub(crate) fn add_distortion_clear(graph: &mut FrameGraph<'_>, handles: ViewTargetHandles) {
     graph
       .add_raster_pass("distortion clear")
       .color(GraphColorAttachment::new(
@@ -74,12 +74,12 @@ impl ViewTargets {
 
   /// The G-buffer's colour targets in the order a G-buffer pass holds them and its draws write them: albedo, normal,
   /// material, motion and relief, the relief left unwritten.
-  pub fn get_gbuffer_targets() -> [Option<wgpu::ColorTargetState>; 5] {
+  pub(crate) fn get_gbuffer_targets() -> [Option<wgpu::ColorTargetState>; 5] {
     Self::get_gbuffer_targets_writing(wgpu::ColorWrites::empty())
   }
 
   /// The same for draws that march the relief, which they write.
-  pub fn get_marching_gbuffer_targets() -> [Option<wgpu::ColorTargetState>; 5] {
+  pub(crate) fn get_marching_gbuffer_targets() -> [Option<wgpu::ColorTargetState>; 5] {
     Self::get_gbuffer_targets_writing(wgpu::ColorWrites::ALL)
   }
 
@@ -99,7 +99,7 @@ impl ViewTargets {
   }
 
   /// A depth target of the view's, which the reflections keep a frame's of in turn and the water copies.
-  pub fn create_depth(device: &wgpu::Device, (width, height): (u32, u32)) -> wgpu::TextureView {
+  pub(crate) fn create_depth(device: &wgpu::Device, (width, height): (u32, u32)) -> wgpu::TextureView {
     device
       .create_texture(&wgpu::TextureDescriptor {
         label: Some("depth"),
@@ -120,7 +120,7 @@ impl ViewTargets {
       .create_view(&Default::default())
   }
 
-  pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
     let create_with = |label: &str, format: wgpu::TextureFormat, usage: wgpu::TextureUsages| -> wgpu::TextureView {
       device
         .create_texture(&wgpu::TextureDescriptor {
@@ -176,7 +176,7 @@ impl ViewTargets {
     }
   }
 
-  pub fn is_sized(&self, width: u32, height: u32) -> bool {
+  pub(crate) fn is_sized(&self, width: u32, height: u32) -> bool {
     self.width == width && self.height == height
   }
 }

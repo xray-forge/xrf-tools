@@ -7,12 +7,16 @@ rust-version.workspace = true
 
 [dependencies]
 ogg = "0.9.2"
-symphonia = { version = "0.6.1", default-features = false, features = ["vorbis"] }
+symphonia = { workspace = true }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 byteorder = { workspace = true }
 serde = { workspace = true }
 xrf-chunk = { workspace = true }
+
+[features]
+# Exports the Vorbis sounds this crate's tests decode, so a dependant tests against the same streams.
+fixtures = []
 
 [lints]
 workspace = true

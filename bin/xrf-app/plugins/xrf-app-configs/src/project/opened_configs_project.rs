@@ -13,7 +13,7 @@ use crate::project::{ConfigsProject, ConfigsProjectDescriptor};
 
 /// How a configs project is assembled over the shared asset roots and listed, with what it read: what an open commits,
 /// and what a commit's follow reads again.
-pub struct OpenedConfigsProject;
+pub(crate) struct OpenedConfigsProject;
 
 impl OpenedConfigsProject {
   /// Assembles the project over `search`, recording what it reads, and lists what it holds.
@@ -21,7 +21,7 @@ impl OpenedConfigsProject {
   /// # Errors
   ///
   /// Returns an error when the project cannot be assembled, or a config it holds cannot be read.
-  pub fn read(
+  pub(crate) fn read(
     search: &XraySearch,
     roots: XrayRoots,
     prefix: Option<String>,
@@ -69,7 +69,7 @@ impl OpenedConfigsProject {
   /// # Errors
   ///
   /// As [`Self::read`], or when the roots cannot be searched.
-  pub fn derive(
+  pub(crate) fn derive(
     current: &SessionSnapshot<ConfigsProject>,
     assets: &AssetMountState,
   ) -> TauriResult<SessionDerived<ConfigsProject>> {

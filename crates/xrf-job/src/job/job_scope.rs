@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use crate::job::JobState;
-use crate::job::LevelState;
+use crate::job::{JobState, LevelState};
 
 /// A level of a job, entered until this is dropped.
 pub struct JobScope {
@@ -26,7 +25,7 @@ impl JobScope {
   }
 
   /// Enter a level inside this one.
-  pub fn enter(&self, id: impl Into<String>, total: Option<u64>) -> JobScope {
+  pub fn enter(&self, id: impl Into<String>, total: Option<u64>) -> Self {
     JobState::enter(&self.state, id, total)
   }
 

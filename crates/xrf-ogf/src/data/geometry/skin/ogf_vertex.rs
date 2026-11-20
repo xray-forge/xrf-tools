@@ -1,0 +1,343 @@
+use byteorder::{ByteOrder, WriteBytesExt};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter};
+use xrf_error::{XrfError, XrfResult};
+use xrf_math::Vector3d;
+
+use crate::data::geometry::skin::ogf_vertex_link::OgfVertexLink;
+use crate::data::geometry::skin::ogf_vertex_links::OgfVertexLinks;
+
+/// One vertex of an OGF visual, with its skinning links resolved.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OgfVertex {
+  pub position: Vector3d,
+  pub normal: Vector3d,
+  pub tangent: Vector3d,
+  pub binormal: Vector3d,
+  pub texture_u: f32,
+  pub texture_v: f32,
+  pub links: OgfVertexLinks,
+}
+
+impl OgfVertex {
+  /// Bytes of geometry every format shares: four vectors and a uv pair.
+  pub const GEOMETRY_SIZE: usize = 3 * 4 * 4 + 2 * 4;
+
+  /// Bytes of the four vectors alone, which every format stores contiguously.
+  const VECTORS_SIZE: usize = 4 * 3 * 4;
+  const UV_SIZE: usize = 2 * 4;
+
+  /// Read one vertex out of an already sized slice.
+  pub fn read_from_slice<T: ByteOrder>(vertex: &[u8], links_count: usize) -> Self {
+    debug_assert!(
+      (1..=OgfVertexLinks::CAPACITY).contains(&links_count),
+      "a vertex is linked to one to four bones"
+    );
+
+    if links_count == 1 {
+      let link: OgfVertexLink = OgfVertexLink {
+        bone: T::read_u32(&vertex[Self::GEOMETRY_SIZE..Self::GEOMETRY_SIZE + 4]) as u16,
+        weight: 1.0,
+      };
+
+      return Self::read_geometry::<T>(
+        &vertex[..Self::VECTORS_SIZE],
+        &vertex[Self::VECTORS_SIZE..],
+        OgfVertexLinks::from([link]),
+      );
+    }
+
+    let bones_size: usize = links_count * 2;
+    let weights_offset: usize = bones_size + Self::VECTORS_SIZE;
+    let uv_offset: usize = weights_offset + (links_count - 1) * 4;
+
+    let mut stored: [f32; OgfVertexLinks::CAPACITY - 1] = [0.0; OgfVertexLinks::CAPACITY - 1];
+    let stored: &mut [f32] = &mut stored[..links_count - 1];
+
+    for (index, weight) in stored.iter_mut().enumerate() {
+      let offset: usize = weights_offset + index * 4;
+
+      *weight = T::read_f32(&vertex[offset..offset + 4]);
+    }
+
+    // Two links are the engine's lerp, whose one stored weight belongs to the second bone, leaving the remainder to the
+    // first. Three and four store a weight per bone but the last, which takes whatever the stored ones did not claim.
+    let mut links: [OgfVertexLink; OgfVertexLinks::CAPACITY] = [OgfVertexLink::default(); OgfVertexLinks::CAPACITY];
+    let links: &mut [OgfVertexLink] = &mut links[..links_count];
+
+    match links_count {
+      2 => {
+        links[0].weight = 1.0 - stored[0];
+        links[1].weight = stored[0];
+      }
+      _ => {
+        for (link, weight) in links.iter_mut().zip(stored.iter()) {
+          link.weight = *weight;
+        }
+
+        links[links_count - 1].weight = 1.0 - stored.iter().sum::<f32>();
+      }
+    }
+
+    for (index, link) in links.iter_mut().enumerate() {
+      link.bone = T::read_u16(&vertex[index * 2..index * 2 + 2]);
+    }
+
+    Self::read_geometry::<T>(
+      &vertex[bones_size..bones_size + Self::VECTORS_SIZE],
+      &vertex[uv_offset..uv_offset + Self::UV_SIZE],
+      OgfVertexLinks::from_slice(links),
+    )
+  }
+
+  /// Writes the vertex in the skin layout of its link count, as `CExportSkeleton::SSplit::Save` does. One link: the
+  /// four vectors, the texture coordinate, the bone as a `u32`. More: the bones as `u16`s, the four vectors, the
+  /// weights but the last (two links store the second's), the texture coordinate.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the vertex carries no link or more than four, or the writer refuses the bytes.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let links: &[OgfVertexLink] = &self.links;
+
+    if links.is_empty() || links.len() > OgfVertexLinks::CAPACITY {
+      return Err(XrfError::new_invalid_error(format!(
+        "A skinned vertex carries one to {} links, not {}",
+        OgfVertexLinks::CAPACITY,
+        links.len()
+      )));
+    }
+
+    if let [link] = links {
+      self.write_vectors::<T>(writer)?;
+      self.write_texture_coordinate::<T>(writer)?;
+      writer.write_u32::<T>(u32::from(link.bone))?;
+
+      return Ok(());
+    }
+
+    for link in links {
+      writer.write_u16::<T>(link.bone)?;
+    }
+
+    self.write_vectors::<T>(writer)?;
+
+    match links {
+      [_, second] => writer.write_f32::<T>(second.weight)?,
+      _ => {
+        for link in &links[..links.len() - 1] {
+          writer.write_f32::<T>(link.weight)?;
+        }
+      }
+    }
+
+    self.write_texture_coordinate::<T>(writer)
+  }
+
+  fn write_vectors<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    for vector in [&self.position, &self.normal, &self.tangent, &self.binormal] {
+      vector.write::<T>(writer)?;
+    }
+
+    Ok(())
+  }
+
+  fn write_texture_coordinate<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32::<T>(self.texture_u)?;
+    writer.write_f32::<T>(self.texture_v)?;
+
+    Ok(())
+  }
+
+  fn read_geometry<T: ByteOrder>(vectors: &[u8], uv: &[u8], links: OgfVertexLinks) -> Self {
+    let vector = |offset: usize| Vector3d {
+      x: T::read_f32(&vectors[offset..offset + 4]),
+      y: T::read_f32(&vectors[offset + 4..offset + 8]),
+      z: T::read_f32(&vectors[offset + 8..offset + 12]),
+    };
+
+    Self {
+      position: vector(0),
+      normal: vector(12),
+      tangent: vector(24),
+      binormal: vector(36),
+      texture_u: T::read_f32(&uv[0..4]),
+      texture_v: T::read_f32(&uv[4..8]),
+      links,
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use xrf_chunk::XRayByteOrder;
+
+  use super::OgfVertex;
+
+  /// The four vectors, which every format stores contiguously: position, normal, tangent, binormal.
+  fn vector_bytes() -> Vec<u8> {
+    let floats: [f32; 12] = [
+      1.0, 2.0, 3.0, // position
+      0.0, 1.0, 0.0, // normal
+      1.0, 0.0, 0.0, // tangent
+      0.0, 0.0, 1.0, // binormal
+    ];
+
+    floats.iter().flat_map(|it| it.to_le_bytes()).collect()
+  }
+
+  fn uv_bytes() -> Vec<u8> {
+    [0.25f32, 0.75].iter().flat_map(|it| it.to_le_bytes()).collect()
+  }
+
+  /// One link stores the uv pair directly after the vectors; see `vertBoned1W`.
+  fn geometry_bytes() -> Vec<u8> {
+    let mut bytes: Vec<u8> = vector_bytes();
+
+    bytes.extend(uv_bytes());
+
+    bytes
+  }
+
+  /// A multi-link vertex, laid out as `vertBoned2W` through `vertBoned4W` do: bones, the four vectors,
+  /// one fewer weight than bones, then the uv pair.
+  fn linked_vertex_bytes(bones: &[u16], weights: &[f32]) -> Vec<u8> {
+    assert_eq!(weights.len() + 1, bones.len(), "one weight is implied by the others");
+
+    let mut bytes: Vec<u8> = Vec::new();
+
+    for bone in bones {
+      bytes.extend_from_slice(&bone.to_le_bytes());
+    }
+
+    bytes.extend(vector_bytes());
+
+    for weight in weights {
+      bytes.extend_from_slice(&weight.to_le_bytes());
+    }
+
+    bytes.extend(uv_bytes());
+
+    bytes
+  }
+
+  fn assert_geometry(vertex: &OgfVertex) {
+    assert_eq!(
+      (vertex.position.x, vertex.position.y, vertex.position.z),
+      (1.0, 2.0, 3.0)
+    );
+    assert_eq!((vertex.normal.x, vertex.normal.y, vertex.normal.z), (0.0, 1.0, 0.0));
+    assert_eq!((vertex.tangent.x, vertex.tangent.y, vertex.tangent.z), (1.0, 0.0, 0.0));
+    assert_eq!(
+      (vertex.binormal.x, vertex.binormal.y, vertex.binormal.z),
+      (0.0, 0.0, 1.0)
+    );
+    assert_eq!((vertex.texture_u, vertex.texture_v), (0.25, 0.75));
+  }
+
+  #[test]
+  fn reads_a_single_link_vertex() {
+    // One link stores its bone as a u32 after the geometry, and carries no stored weight.
+    let mut bytes: Vec<u8> = geometry_bytes();
+    bytes.extend_from_slice(&7u32.to_le_bytes());
+
+    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 1);
+
+    assert_geometry(&vertex);
+    assert_eq!(vertex.links.len(), 1);
+    assert_eq!(vertex.links[0].bone, 7);
+    assert_eq!(
+      vertex.links[0].weight, 1.0,
+      "Expect a lone link to own the whole weight"
+    );
+  }
+
+  #[test]
+  fn gives_a_two_link_vertexs_stored_weight_to_its_second_bone() {
+    // `vertBoned2W` is blended as `lerp(P0, P1, w)`, so the stored weight is the second bone's and the first takes the
+    // remainder - the opposite of the three and four link layouts. Reading it the uniform way still sums to one, which
+    // is why this asserts which bone got which weight rather than the total.
+    let bytes: Vec<u8> = linked_vertex_bytes(&[3, 9], &[0.25]);
+
+    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 2);
+
+    assert_geometry(&vertex);
+    assert_eq!(vertex.links.len(), 2);
+    assert_eq!((vertex.links[0].bone, vertex.links[0].weight), (3, 0.75));
+    assert_eq!((vertex.links[1].bone, vertex.links[1].weight), (9, 0.25));
+  }
+
+  #[test]
+  fn reads_a_four_link_vertex_with_weights_summing_to_one() {
+    let bytes: Vec<u8> = linked_vertex_bytes(&[1, 2, 3, 4], &[0.1, 0.2, 0.3]);
+
+    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 4);
+
+    assert_geometry(&vertex);
+    assert_eq!(
+      vertex.links.iter().map(|it| it.bone).collect::<Vec<u16>>(),
+      vec![1, 2, 3, 4]
+    );
+    assert!(
+      (vertex.links.iter().map(|it| it.weight).sum::<f32>() - 1.0).abs() < 1e-6,
+      "Expect weights to sum to one, got {:?}",
+      vertex.links.iter().map(|it| it.weight).collect::<Vec<f32>>()
+    );
+    assert!((vertex.links[3].weight - 0.4).abs() < 1e-6);
+  }
+
+  #[test]
+  fn reads_a_three_link_vertex() {
+    let bytes: Vec<u8> = linked_vertex_bytes(&[5, 6, 7], &[0.5, 0.25]);
+
+    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 3);
+
+    assert_geometry(&vertex);
+    assert_eq!(
+      vertex.links.iter().map(|it| it.bone).collect::<Vec<u16>>(),
+      vec![5, 6, 7]
+    );
+    assert!((vertex.links[2].weight - 0.25).abs() < 1e-6);
+  }
+
+  #[test]
+  fn matches_the_engine_vertex_sizes() {
+    // Sizes of `vertBoned1W` through `vertBoned4W` in `xrCore/Animation/Bone.hpp`, which are
+    // `#pragma pack(2)` and so have no padding. A layout whose fields are ordered differently but whose
+    // total is right reads plausible garbage, so the sizes alone are not enough - see the vector
+    // assertions above - but a wrong total desynchronises every following vertex.
+    assert_eq!(geometry_bytes().len() + 4, 60, "vertBoned1W");
+    assert_eq!(linked_vertex_bytes(&[0, 0], &[0.0]).len(), 64, "vertBoned2W");
+    assert_eq!(linked_vertex_bytes(&[0; 3], &[0.0; 2]).len(), 70, "vertBoned3W");
+    assert_eq!(linked_vertex_bytes(&[0; 4], &[0.0; 3]).len(), 76, "vertBoned4W");
+  }
+
+  #[test]
+  fn reads_the_position_rather_than_a_later_vector_for_every_link_count() {
+    // The regression this guards: multi-link layouts place their weights after the binormal, not before
+    // the vectors. Reading them the other way put `position` where the engine keeps `normal`, so every
+    // multi-link model measured as a unit cube and rendered as noise.
+    for (links, bytes) in [
+      (1usize, {
+        let mut bytes: Vec<u8> = geometry_bytes();
+        bytes.extend_from_slice(&7u32.to_le_bytes());
+        bytes
+      }),
+      (2, linked_vertex_bytes(&[0, 0], &[0.5])),
+      (3, linked_vertex_bytes(&[0; 3], &[0.5, 0.25])),
+      (4, linked_vertex_bytes(&[0; 4], &[0.4, 0.3, 0.2])),
+    ] {
+      let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, links);
+
+      assert_eq!(
+        (vertex.position.x, vertex.position.y, vertex.position.z),
+        (1.0, 2.0, 3.0),
+        "Expect {links} link position to be read from the first vector"
+      );
+      assert_eq!(
+        (vertex.texture_u, vertex.texture_v),
+        (0.25, 0.75),
+        "Expect {links} link uv to be read from the trailing pair"
+      );
+    }
+  }
+}

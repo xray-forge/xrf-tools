@@ -32,7 +32,7 @@ fn other() -> Vec<WeatherPlayedKeyframe> {
     .collect()
 }
 
-fn to_times(pair: &WeatherPair) -> Vec<f32> {
+fn list_times(pair: &WeatherPair) -> Vec<f32> {
   pair
     .get()
     .map_or_else(Vec::new, |pair| pair.iter().map(|it| it.time).collect())
@@ -44,13 +44,13 @@ fn selects_the_pair_around_the_time_on_a_forced_start_and_moves_on_only_past_the
   let mut pair: WeatherPair = WeatherPair::default();
 
   pair.advance(&cycle, 30_000.0);
-  assert_eq!(to_times(&pair), [21_600.0, 43_200.0]);
+  assert_eq!(list_times(&pair), [21_600.0, 43_200.0]);
 
   pair.advance(&cycle, 43_200.0);
-  assert_eq!(to_times(&pair), [21_600.0, 43_200.0]);
+  assert_eq!(list_times(&pair), [21_600.0, 43_200.0]);
 
   pair.advance(&cycle, 43_201.0);
-  assert_eq!(to_times(&pair), [43_200.0, 75_600.0]);
+  assert_eq!(list_times(&pair), [43_200.0, 75_600.0]);
 }
 
 // `SetWeather(name, false)`: the pair being blended stays, and the next keyframe comes from the weather playing then.
@@ -62,7 +62,7 @@ fn keeps_blending_its_pair_when_the_weather_changes_under_it_taking_the_next_fro
   pair.advance(&cycle, 30_000.0);
   pair.advance(&other, 40_000.0);
 
-  assert_eq!(to_times(&pair), [21_600.0, 43_200.0]);
+  assert_eq!(list_times(&pair), [21_600.0, 43_200.0]);
   assert_eq!(
     pair.get().unwrap()[1].descriptor.fog_distance,
     cycle[2].descriptor.fog_distance
@@ -70,7 +70,7 @@ fn keeps_blending_its_pair_when_the_weather_changes_under_it_taking_the_next_fro
 
   pair.advance(&other, 43_300.0);
 
-  assert_eq!(to_times(&pair), [43_200.0, 46_800.0]);
+  assert_eq!(list_times(&pair), [43_200.0, 46_800.0]);
   assert_eq!(pair.get().unwrap()[1].descriptor.fog_distance, 1.0);
 }
 
@@ -80,13 +80,13 @@ fn moves_on_across_midnight_only_once_the_time_is_between_the_two() {
   let mut pair: WeatherPair = WeatherPair::default();
 
   pair.advance(&cycle, 80_000.0);
-  assert_eq!(to_times(&pair), [75_600.0, 0.0]);
+  assert_eq!(list_times(&pair), [75_600.0, 0.0]);
 
   pair.advance(&cycle, 86_000.0);
-  assert_eq!(to_times(&pair), [75_600.0, 0.0]);
+  assert_eq!(list_times(&pair), [75_600.0, 0.0]);
 
   pair.advance(&cycle, 100.0);
-  assert_eq!(to_times(&pair), [0.0, 21_600.0]);
+  assert_eq!(list_times(&pair), [0.0, 21_600.0]);
 }
 
 #[test]

@@ -8,6 +8,6 @@ mod storage;
 #[cfg(test)]
 mod tests;
 
-pub use description::PathDescription;
-pub use reveal::PathReveal;
-pub use storage::{AppStorageKind, AppStorageUsage};
+pub(crate) use description::PathDescription;
+pub(crate) use reveal::PathReveal;
+pub(crate) use storage::{AppStorageKind, AppStorageUsage};

@@ -1,10 +1,10 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
+import { CircularProgress } from "#/feedback";
 import { CenteredColumn } from "#/layout/centered-column";
-import { CircularProgress } from "#/material/progress";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IDelayedProgressProps extends BaseComponentProps {
   /** Describes the pending read both visibly and to assistive technology. */

@@ -4,14 +4,12 @@ use std::sync::Arc;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, AssetSource, AssetTextureDescriptor};
 use xrf_chunk::XRayByteOrder;
-use xrf_material::{
-  XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope,
-};
+use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayRoots, XraySearch};
-use xrf_visual::{VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker};
+use xrf_visual::{VisualDependencies, VisualMotions, VisualPackage, VisualPacker, VisualSurfaces};
 
-use crate::SelectedVisualDescription;
+use crate::{SelectedObject, SelectedObjectDescription, SelectedVisualDescription};
 
 /// One opened model: the visual packed for the renderer, what posing needs of it, and its description, made once at
 /// the open and shared by every answer.
@@ -23,8 +21,8 @@ pub struct SelectedVisual {
 }
 
 impl SelectedVisual {
-  /// Reads the visual `source` names within `roots`, centred on it where it is a file, through a fresh search, and
-  /// resolves every reference it declares.
+  /// Reads the visual `source` names, through a fresh search of `roots` centred on it where it is a file, and resolves
+  /// every reference it declares; an SDK `.object` is compiled first.
   ///
   /// # Errors
   ///
@@ -32,16 +30,27 @@ impl SelectedVisual {
   pub fn read(assets: &AssetMountState, source: AssetSource, roots: XrayRoots) -> TauriResult<Self> {
     let roots: XrayRoots = roots.centred_on(source.physical_path());
     let search: XraySearch = assets.search_fresh(&roots)?;
-    // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs no
-    // second read of a file that may sit inside a volume.
-    let file: Arc<OgfFile> = Self::read_file(&source, &search)?;
-    let package: VisualPackage = VisualPacker::pack(&file);
+    // One parse feeds the package and the posing skeleton, sparing a second read of a file that may sit in a volume.
+    let (package, motions, object): (VisualPackage, Option<VisualMotions>, Option<SelectedObjectDescription>) =
+      if SelectedObject::is_object(&source) {
+        let (visual, object) = SelectedObject::read(&source, &search)?;
+
+        (visual.package, visual.motions, Some(object))
+      } else {
+        let file: Arc<OgfFile> = Self::read_file(&source, &search)?;
+
+        (VisualPacker::pack(&file), VisualMotions::of(&file), None)
+      };
     let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, &search);
     let description: SelectedVisualDescription = SelectedVisualDescription {
       textures: Self::describe_textures(&search, &dependencies),
       materials: Self::describe_materials(&search, &dependencies),
-      surfaces: Self::describe_surfaces(&search, &package.description),
+      surfaces: VisualSurfaces::describe(
+        &XraySurfaceResolver::open(&search, XrayTextureScope::shared()),
+        &package.description,
+      ),
       textures_ltx: XrayMaterialResolver::find_textures_ltx(&search),
+      object,
       description: package.description.clone(),
       dependencies,
       source,
@@ -50,7 +59,7 @@ impl SelectedVisual {
 
     Ok(Self {
       description: Arc::new(description),
-      motions: VisualMotions::of(&file),
+      motions,
       package,
     })
   }
@@ -127,21 +136,5 @@ impl SelectedVisual {
     }
 
     described
-  }
-
-  /// Describes how the renderer draws each submesh of the model, in the order the model declares them.
-  fn describe_surfaces(search: &XraySearch, description: &VisualDescription) -> Vec<XraySurfaceDescriptor> {
-    let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, XrayTextureScope::shared());
-
-    description
-      .submeshes
-      .iter()
-      .map(|submesh| {
-        // A submesh dresses with the one texture it names, which is the list the engine compiles its shader against.
-        let textures: Vec<String> = submesh.texture_name.clone().into_iter().collect();
-
-        resolver.describe(submesh.shader_name.as_deref().unwrap_or_default(), &textures)
-      })
-      .collect()
   }
 }

@@ -1,7 +1,9 @@
 import { formatCount } from "@xrf/format";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { ICopiedText, useCopiedText } from "@xrf/react/copied-text";
 import { Nullable } from "@xrf/types";
+import { Button, IconButton } from "@xrf/ui/button";
 import { CheckCircleOutlineOutlinedIcon as CheckCircleOutlineIcon } from "@xrf/ui/icons/check-circle-outline-outlined";
 import { ContentCopyIcon } from "@xrf/ui/icons/content-copy";
 import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "@xrf/ui/icons/error-outline-outlined";
@@ -10,19 +12,16 @@ import { ExpandMoreIcon } from "@xrf/ui/icons/expand-more";
 import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
 import { TerminalIcon } from "@xrf/ui/icons/terminal";
 import { WarningAmberIcon } from "@xrf/ui/icons/warning-amber";
-import { Box } from "@xrf/ui/material/box";
-import { Button } from "@xrf/ui/material/button";
-import { IconButton } from "@xrf/ui/material/icon-button";
-import { Tooltip } from "@xrf/ui/material/tooltip";
-import { Typography } from "@xrf/ui/material/typography";
+import { Box } from "@xrf/ui/layout/stack";
+import { Tooltip } from "@xrf/ui/overlay";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { format } from "date-fns";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
 
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panels/notifications/notification-list";
-import { ICopiedText, useCopiedText } from "@/lib/react/use-copied-text";
 import { TOOL_CATALOG } from "@/ToolCatalog";
 
 /** Lines of `details` shown inline before the rest has to be asked for. */

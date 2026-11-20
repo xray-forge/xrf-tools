@@ -1,37 +1,33 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfInfoReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct InfoCommand;
+pub(crate) struct InfoCommand;
 
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {
     "info"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to the OMF file")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    command.about("Print what an OMF file holds").arg(
-      Arg::new("path")
-        .help("Path to the OMF file")
-        .short('p')
-        .long("path")
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    )
+    command.about("Print what an OMF file holds")
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let output: OutputOptions = context.get_output().clone();
 

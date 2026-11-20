@@ -1,0 +1,44 @@
+import { describe, expect, it, jest } from "@jest/globals";
+import { fireEvent } from "@testing-library/react";
+
+import { renderWithTheme } from "#/testing/render";
+
+import { FrameSlider } from "./FrameSlider";
+
+describe("FrameSlider", () => {
+  it("spans the frames a timeline holds, counting the first as zero", () => {
+    const { getByRole } = renderWithTheme(
+      <FrameSlider ariaLabel={"Motion frame"} frameCount={51} frame={20} onSeek={jest.fn()} />
+    );
+    const input: HTMLElement = getByRole("slider", { name: "Motion frame" });
+
+    expect(input).toHaveAttribute("min", "0");
+    // Fifty-one frames are numbered zero to fifty, and a slider reaching 51 would offer a frame nothing baked.
+    expect(input).toHaveAttribute("max", "50");
+    expect(input).toHaveValue("20");
+  });
+
+  it("has nothing to move while nothing is posed", () => {
+    const { getByRole } = renderWithTheme(
+      <FrameSlider ariaLabel={"Motion frame"} frameCount={0} frame={0} onSeek={jest.fn()} />
+    );
+
+    expect(getByRole("slider", { name: "Motion frame" })).toBeDisabled();
+  });
+
+  it("reports the frame it was moved to", () => {
+    const seeks: Array<number> = [];
+    const { getByRole } = renderWithTheme(
+      <FrameSlider
+        ariaLabel={"Motion frame"}
+        frameCount={51}
+        frame={20}
+        onSeek={(frame: number) => seeks.push(frame)}
+      />
+    );
+
+    fireEvent.change(getByRole("slider", { name: "Motion frame" }), { target: { value: "34" } });
+
+    expect(seeks).toEqual([34]);
+  });
+});

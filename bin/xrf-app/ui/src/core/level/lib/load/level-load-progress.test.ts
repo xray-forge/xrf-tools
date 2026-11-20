@@ -23,4 +23,8 @@ describe("describeLevelLoad", () => {
   it("says what is still read beside the sectors once they and their textures are all in", () => {
     expect(describeLevelLoad(mockLoad({}))).toBe("Reading spawned objects, grass, lights and particles");
   });
+
+  it("says what the caller names once the sectors and textures are all in", () => {
+    expect(describeLevelLoad(mockLoad({}), "Compiling the scene's objects")).toBe("Compiling the scene's objects");
+  });
 });

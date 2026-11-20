@@ -8,27 +8,24 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfFilterMotionsReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct FilterMotionsCommand;
+pub(crate) struct FilterMotionsCommand;
 
 impl GenericCommand for FilterMotionsCommand {
   fn operation(&self) -> &'static str {
     "filter-motions"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to omf file")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Keep only the selected motions of an OMF file")
-      .arg(
-        Arg::new("path")
-          .help("Path to omf file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path to resulting omf file")
@@ -39,17 +36,17 @@ impl GenericCommand for FilterMotionsCommand {
       )
       .arg(
         Arg::new("keep")
-          .help("Exact motion names to keep")
+          .help("Exact motion name to keep. Repeat to keep several")
           .short('k')
           .long("keep")
-          .num_args(1..)
+          .action(ArgAction::Append)
           .value_parser(value_parser!(String)),
       )
       .arg(
         Arg::new("keep-prefix")
-          .help("Keep motions whose name starts with provided prefix")
+          .help("Keep motions whose name starts with this prefix. Repeat to keep several")
           .long("keep-prefix")
-          .num_args(1..)
+          .action(ArgAction::Append)
           .value_parser(value_parser!(String)),
       )
       // Either filter alone selects, and both together keep what either matches.
@@ -68,9 +65,7 @@ impl GenericCommand for FilterMotionsCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let destination: &PathBuf = matches
       .get_one::<PathBuf>("dest")

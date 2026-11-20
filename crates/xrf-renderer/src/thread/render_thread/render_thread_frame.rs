@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use xrf_dlss::Dlss;
 use xrf_renderer_core::{GraphOwner, GraphPassTime, GraphTaggedTime};
 
+use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailability;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -14,9 +15,10 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::world::feedback::render_scene_feedback::RenderSceneFeedback;
 use crate::host::world::render_scene_frame::RenderSceneFrame;
 use crate::host::world::render_scene_id::RenderSceneId;
-use crate::host::world::render_view_frame::RenderViewFrame;
-use crate::host::world::render_view_input::RenderViewInput;
 use crate::host::world::render_world::RenderWorld;
+use crate::host::world::view::render_view_burst::RenderViewBurst;
+use crate::host::world::view::render_view_frame::RenderViewFrame;
+use crate::host::world::view::render_view_input::RenderViewInput;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
@@ -26,13 +28,11 @@ use crate::viewport::render_viewport::RenderViewport;
 use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
 
-use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
-
 impl RenderThread {
-  /// One frame: the world advanced to the frames' clock, the shaders reloaded where they changed, the scenes fed what
-  /// the world posted (whether or not any window can be drawn, so no post is lost), each viewport shown the scene it
-  /// asks for, the scenes no one needs let go, the textures kept, every window drawn, then the reports.
-  pub(super) fn frame(&mut self) {
+  /// Runs one frame and returns whether the windows were presented; without a GPU, a window or a graph nothing is.
+  ///
+  /// The scenes take what the world posted even when no window can be drawn, so no post is lost.
+  pub(super) fn frame(&mut self) -> bool {
     profiling::scope!("frame");
 
     let now: Instant = Instant::now();
@@ -55,16 +55,20 @@ impl RenderThread {
     }
 
     let Some((mut encoder, span)) = self.begin_frame_work(delta) else {
-      return;
+      return false;
     };
-    let live: HashSet<RenderSceneId> = self.ingest_scenes(scene_frames, &mut encoder, clock);
+    let live: HashSet<RenderSceneId> = self.ingest_scenes(scene_frames, &mut encoder);
 
     self.show_asked_scenes();
     self.retain_scenes(&live);
     self.keep_textures(now);
-    self.draw_windows(now.elapsed(), span, encoder);
+
+    let is_presented: bool = self.draw_windows(now.elapsed(), span, encoder);
+
     self.report_viewports(now);
     self.save_level_pipelines();
+
+    is_presented
   }
 
   /// The time the frame begun at `wall` is drawn at, and how far that is from the last frame's: the time a burst draws
@@ -75,7 +79,7 @@ impl RenderThread {
       let time: Duration = viewport.get_burst()?.get_time()?;
       let scene: &LevelScene = self.scenes.get(&viewport.get_shown_scene()?)?;
 
-      Some(scene.get_instant(time))
+      scene.get_instant(time)
     });
     let now: Instant = paced.unwrap_or(own);
     let delta: Duration = now.saturating_duration_since(self.drawn_at);
@@ -121,6 +125,17 @@ impl RenderThread {
           .map(|scene| Arc::clone(&scene.source) as Arc<dyn RenderAssetSource>),
         is_clouded: viewport.get_options().show.is_clouded,
       };
+      let burst: Option<RenderViewBurst> =
+        viewport
+          .get_burst()
+          .filter(|burst| burst.get_time().is_some())
+          .map(|burst| {
+            if burst.is_starting() {
+              RenderViewBurst::Starting
+            } else {
+              RenderViewBurst::Drawing
+            }
+          });
       let frame: RenderViewFrame = world.advance_view(
         viewport.get_id(),
         RenderViewInput {
@@ -129,6 +144,7 @@ impl RenderThread {
           height: viewport.get_css_height(),
           options: viewport.get_options(),
           skies: &mut skies,
+          burst,
         },
       );
 
@@ -167,14 +183,14 @@ impl RenderThread {
     Some((encoder, span))
   }
 
-  /// Feeds each scene what the world posted for it, making it where it is new, opening at `now` on the frames' clock; a
-  /// scene keeps its acceleration structures only while a viewport traces rays in it
-  /// (`RenderViewOptions::is_scene_traced`). Answers the scenes the world still holds.
+  /// Feeds each scene what the world posted, making new ones (`RenderSceneFrame::opened`); returns the scenes the world
+  /// still holds.
+  ///
+  /// A scene keeps its acceleration structures only while a viewport traces it (`RenderViewOptions::is_scene_traced`).
   fn ingest_scenes(
     &mut self,
     mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame>,
     encoder: &mut FrameEncoder,
-    now: Instant,
   ) -> HashSet<RenderSceneId> {
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
     let traced: HashSet<RenderSceneId> = self
@@ -195,7 +211,7 @@ impl RenderThread {
           &gpu.view_layout,
           Arc::clone(&frame.source),
           &self.workers,
-          now,
+          frame.opened,
         )
       });
 
@@ -271,7 +287,7 @@ impl RenderThread {
   }
 
   /// Lets a scene the world let go (`live` holds the ones it keeps) go once no viewport shows it.
-  fn retain_scenes(&mut self, live: &HashSet<RenderSceneId>) {
+  pub(super) fn retain_scenes(&mut self, live: &HashSet<RenderSceneId>) {
     let shown: HashSet<RenderSceneId> = self
       .viewports
       .values()
@@ -285,26 +301,11 @@ impl RenderThread {
   /// Keeps the textures: every `TEXTURE_SWEEP` those no scene samples let go, then the uploads streamed and the
   /// weather's textures brought up.
   fn keep_textures(&mut self, now: Instant) {
+    self.sweep_textures(now);
+
     let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return;
     };
-
-    if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
-      profiling::scope!("texture sweep");
-
-      self.textures_swept = now;
-
-      let sampled: HashSet<u32> = self.scenes.values().flat_map(LevelScene::list_texture_slots).collect();
-      let environments: HashSet<u32> = self
-        .scenes
-        .values()
-        .flat_map(LevelScene::list_environment_slots)
-        .collect();
-
-      gpu.textures.retain(&sampled);
-      gpu.textures.retain_environments(&environments);
-    }
-
     let is_opening: bool = self.scenes.values().any(|scene| !scene.is_ready(&gpu.textures));
 
     profiling::scope!("texture uploads");
@@ -318,6 +319,31 @@ impl RenderThread {
     gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
   }
 
+  /// Frees the textures no scene samples, at most every `TEXTURE_SWEEP`.
+  pub(super) fn sweep_textures(&mut self, now: Instant) {
+    let Some(RunningGpu { gpu, .. }) = &mut self.running else {
+      return;
+    };
+
+    if now.duration_since(self.textures_swept) < TEXTURE_SWEEP {
+      return;
+    }
+
+    profiling::scope!("texture sweep");
+
+    self.textures_swept = now;
+
+    let sampled: HashSet<u32> = self.scenes.values().flat_map(LevelScene::list_texture_slots).collect();
+    let environments: HashSet<u32> = self
+      .scenes
+      .values()
+      .flat_map(LevelScene::list_environment_slots)
+      .collect();
+
+    gpu.textures.retain(&sampled);
+    gpu.textures.retain_environments(&environments);
+  }
+
   /// Delivers what earlier frames' reads asked for, without waiting on this frame's work, and reports each viewport:
   /// its readbacks answered, its frame with the device, DLSS, the allocator's totals and the graph, and its scene's
   /// load.
@@ -327,7 +353,7 @@ impl RenderThread {
     };
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
     let (dlss, ray_reconstruction): (RenderDlssAvailability, RenderDlssAvailability) =
-      match (Dlss::IS_BUILT, &gpu.context.dlss) {
+      match (Dlss::IS_BUILT, gpu.context.dlss.get()) {
         (false, _) => (RenderDlssAvailability::Unbuilt, RenderDlssAvailability::Unbuilt),
         (true, Some(dlss)) => (
           RenderDlssAvailability::Available,
@@ -347,18 +373,22 @@ impl RenderThread {
       ray_reconstruction,
     };
 
-    let allocator: Option<&GpuMemory> = Self::read_allocator_report(
-      &mut self.allocator_report,
-      &gpu.context.adapter,
-      &gpu.context.device,
-      now,
-    );
+    // The windows' own passes belong to every viewport, so they go to each viewport reporting, not only the first.
+    // Only a due report reads the allocator, which lists every allocation.
+    let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
+    let allocator: Option<&GpuMemory> = if is_any_due {
+      Self::read_allocator_report(
+        &mut self.allocator_report,
+        &gpu.context.adapter,
+        &gpu.context.device,
+        now,
+      )
+    } else {
+      None
+    };
 
     profiling::scope!("frame report");
 
-    // The windows' own passes, composition and captures, are every viewport's: taken once a round any report is due in,
-    // and handed to each viewport reporting, rather than to whichever reports first.
-    let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
     let composition: Vec<GraphPassTime> = if is_any_due {
       runtime.timer.take(GraphOwner::Frame)
     } else {

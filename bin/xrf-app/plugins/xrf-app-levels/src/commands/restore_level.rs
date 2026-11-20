@@ -9,7 +9,7 @@ use crate::level::{SelectedLevel, SelectedLevelDescription, SelectedLevels};
 /// page attaches to it, or reads it again after a commit derived it anew. Its parts are read by their own queries.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_level")]
-pub async fn levels_restore_level(
+pub(crate) async fn levels_restore_level(
   levels: State<'_, SelectedLevels>,
   window: InvokingWindow,
   tool: String,

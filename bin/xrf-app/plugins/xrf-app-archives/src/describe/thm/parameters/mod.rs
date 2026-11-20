@@ -3,4 +3,4 @@
 mod archive_thm_flag;
 mod archive_thm_parameters;
 
-pub use archive_thm_parameters::ArchiveThmParameters;
+pub(crate) use archive_thm_parameters::ArchiveThmParameters;

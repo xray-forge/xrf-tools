@@ -2,32 +2,31 @@ use xrf_app_core::session::{SessionId, SessionPart};
 use xrf_renderer::{LevelPart, LevelParts};
 
 use crate::parts::{
-  LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart, LevelLightsPart,
-  LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisualsPart,
-  LevelSurfacesPart, LevelWeatherPart,
+  LevelAiMapPart, LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelGraphPart,
+  LevelHemiPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelPlacementsPart, LevelSectionsPart,
+  LevelSpawnPart, LevelSpawnVisualsPart, LevelSurfacesPart, LevelWeatherPart,
 };
+use crate::sound::LevelSoundFilesPart;
 
 /// How a level's session parts feed the scene the renderer draws it as: the scene each session shares, the parts whose
 /// going stale streams it afresh, and the renderer's parts read again for the rest.
-pub struct LevelRenderParts;
+pub(crate) struct LevelRenderParts;
 
 impl LevelRenderParts {
   /// The parts a level's scene is built from, whose going stale streams it afresh rather than reloading packages
   /// (`SessionChange::is_view_renewed`): its sectors are packed from its geometry and drawn with its surfaces, which no
   /// package reload replaces. Textures alone keep the scene, a file come or gone being loaded afresh by the texture
   /// watcher.
-  pub const VIEW_PARTS: &'static [&'static str] = &[LevelGeometryPart::NAME, LevelSurfacesPart::NAME];
+  pub(crate) const VIEW_PARTS: &'static [&'static str] = &[LevelGeometryPart::NAME, LevelSurfacesPart::NAME];
 
   /// What every source of a session's level shares its scene by, whichever of its snapshots it draws.
-  pub fn to_scene_key(session_id: SessionId) -> String {
+  pub(crate) fn format_scene_key(session_id: SessionId) -> String {
     format!("level {session_id}")
   }
 
-  /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
-  /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
-  /// surfaces (`VIEW_PARTS`); the graph feeds nothing drawn, the map and the textures' list are the page's, and
-  /// the start only matters where a viewer first stands.
-  pub fn to_reload(stale_parts: &[&str]) -> LevelParts {
+  /// The renderer parts to reload when `stale_parts` went stale: each one read from any of them. Sectors stream afresh
+  /// instead (`VIEW_PARTS`); the map and texture list are the page's, and the start matters only on first show.
+  pub(crate) fn select_reload(stale_parts: &[&str]) -> LevelParts {
     LevelPart::ALL
       .into_iter()
       .filter(|part| {
@@ -38,8 +37,8 @@ impl LevelRenderParts {
       .collect()
   }
 
-  /// The session parts the renderer's read of `part` is built from, as `LevelRenderSource` reads it. The sectors
-  /// stream afresh on theirs instead (`VIEW_PARTS`), and the helpers are read again with the spawn.
+  /// The session parts `LevelRenderSource` reads `part` from; sectors have none (`VIEW_PARTS`). Helpers include the
+  /// sound emitters, whose files' distances size their spheres; weather reads its rain, thunder and ambient sounds.
   fn list_read_from(part: LevelPart) -> &'static [&'static str] {
     match part {
       LevelPart::Spawn => &[
@@ -62,10 +61,22 @@ impl LevelRenderParts {
         LevelHemiPart::NAME,
         LevelParticlesPart::NAME,
       ],
-      LevelPart::Weather => &[LevelEnvironmentPart::NAME, LevelWeatherPart::NAME],
+      LevelPart::Weather => &[
+        LevelEnvironmentPart::NAME,
+        LevelWeatherPart::NAME,
+        LevelSoundFilesPart::NAME,
+      ],
       LevelPart::Motions => &[LevelObjectMotionsPart::NAME],
       LevelPart::Grass => &[LevelDetailsPart::NAME],
-      LevelPart::Sectors | LevelPart::Helpers => &[],
+      LevelPart::AiMap => &[LevelAiMapPart::NAME],
+      LevelPart::Helpers => &[
+        LevelSpawnPart::NAME,
+        LevelGraphPart::NAME,
+        LevelPlacementsPart::NAME,
+        LevelSectionsPart::NAME,
+        LevelSoundFilesPart::NAME,
+      ],
+      LevelPart::Sectors => &[],
     }
   }
 }

@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
+import { ToggleButton, ToggleButtonGroup } from "#/button";
 import { BaseComponentProps } from "#/element-types";
-import { ToggleButton, ToggleButtonGroup } from "#/material/toggle-button";
 
 import { EStatMeasure } from "./stat-measure";
 

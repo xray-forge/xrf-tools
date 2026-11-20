@@ -19,6 +19,7 @@ import {
 import { AssetTextureDescriptor, SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
 import { ArchiveReadResult, ArchiveSharedPayload } from "#/types/xrf-archive";
 import { ArchiveStatistics } from "#/types/xrf-archive-stats";
+import { AudioTransportId } from "#/types/xrf-audio";
 import { JobProgress } from "#/types/xrf-job";
 import {
   ArchiveExtractDirectoryResult,
@@ -48,6 +49,7 @@ export enum EArchivesCommand {
   DESCRIBE_AUDIO = "plugin:archives|describe_audio",
   DESCRIBE_TEXTURE = "plugin:archives|describe_texture",
   DESCRIBE_IMAGE = "plugin:archives|describe_image",
+  OPEN_AUDIO_PREVIEW = "plugin:archives|open_audio_preview",
   DEFAULT_PACK_CONFIG = "plugin:archives|default_pack_config",
   EXPORT_PACK_CONFIG = "plugin:archives|export_pack_config",
   IMPORT_PACK_CONFIG = "plugin:archives|import_pack_config",
@@ -72,7 +74,10 @@ export const archivesCommands = {
   /** What the open subject holds, broken down by extension, folder, size, and where its files come from. */
   describeStatistics: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<ArchiveStatistics>>(EArchivesCommand.DESCRIBE_STATISTICS, { sessionId }),
-  /** Write every file the open subject holds under one directory into a destination root. */
+  /**
+   * Write every file the open subject holds under one directory into a destination root; refused before writing where
+   * a file it writes is already there, unless forced.
+   */
   extractDirectory: (request: ArchivesExtractRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveExtractDirectoryResult>(EArchivesCommand.EXTRACT_DIRECTORY, { request, jobId, progress }),
   /** Write one file of the open subject to a path the user chose. */
@@ -124,6 +129,12 @@ export const archivesCommands = {
    */
   describeImage: (sessionId: SessionId, name: string) =>
     __TAURI_INVOKE<SessionSnapshot<ImageDescriptor>>(EArchivesCommand.DESCRIBE_IMAGE, { sessionId, name }),
+  /**
+   * Open a sound of the open subject as a preview the invoking window's page plays through the application's audio,
+   * stopped at its start.
+   */
+  openAudioPreview: (sessionId: SessionId, name: string) =>
+    __TAURI_INVOKE<AudioTransportId>(EArchivesCommand.OPEN_AUDIO_PREVIEW, { sessionId, name }),
   /** Hand back a packing configuration with nothing chosen yet. */
   defaultPackConfig: () => __TAURI_INVOKE<ArchivePackConfig>(EArchivesCommand.DEFAULT_PACK_CONFIG),
   /** Write the selection rules of a configuration out as a packing configuration file. */
@@ -155,7 +166,10 @@ export const archivesCommands = {
   /** Publishes added and modified entries as patch volumes. */
   patchArchives: (request: ArchivesPatchRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchivePatchResult>(EArchivesCommand.PATCH_ARCHIVES, { request, jobId, progress }),
-  /** Unpack every archive of a directory into a destination tree, reporting progress and stopping on request. */
+  /**
+   * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request; refused
+   * before writing where a file it writes is already there, unless forced.
+   */
   unpackDirectory: (request: ArchivesUnpackRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveUnpackResult>(EArchivesCommand.UNPACK_DIRECTORY, { request, jobId, progress }),
 };
@@ -195,6 +209,10 @@ export interface IArchivesCommandSignatures {
     ["sessionId", "name"]
   >;
   [EArchivesCommand.DESCRIBE_IMAGE]: IIpcCommandSignature<typeof archivesCommands.describeImage, ["sessionId", "name"]>;
+  [EArchivesCommand.OPEN_AUDIO_PREVIEW]: IIpcCommandSignature<
+    typeof archivesCommands.openAudioPreview,
+    ["sessionId", "name"]
+  >;
   [EArchivesCommand.DEFAULT_PACK_CONFIG]: IIpcCommandSignature<typeof archivesCommands.defaultPackConfig, []>;
   [EArchivesCommand.EXPORT_PACK_CONFIG]: IIpcCommandSignature<
     typeof archivesCommands.exportPackConfig,

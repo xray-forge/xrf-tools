@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use glam::{Vec2, Vec3, Vec4};
 use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{GraphDeclaration, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightVolumetric, LightsDescription};
@@ -13,6 +13,7 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::world::render_motion_pose::RenderMotionPose;
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::asks::light_in_view::{LightFades, LightInView};
@@ -76,7 +77,7 @@ const MONOLITH_PART_INTENSITY: f32 = 0.2;
 /// A level's local lights: read once on a loader thread, moved by their motions, and each frame the nearest in a view
 /// written out into its `LightsFeature` in its view space, animated as the engine animates them, for the lights pass to
 /// bin and accumulate; and the shadow faces they cast, cached in an atlas.
-pub struct LevelLights {
+pub(crate) struct LevelLights {
   /// The level's lights, each reached by the handle it was added under.
   lights: ProxyStore<LightDescription>,
   /// Those a motion carries, which move each frame.
@@ -93,7 +94,7 @@ pub struct LevelLights {
 }
 
 impl LevelLights {
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       lights: ProxyStore::new(),
       moving: Vec::new(),
@@ -106,17 +107,17 @@ impl LevelLights {
   }
 
   /// The texture slots the projectors sample.
-  pub fn get_projectors(&self) -> &[u32] {
+  pub(crate) fn get_projectors(&self) -> &[u32] {
     &self.projectors
   }
 
   /// Where the level's campfires burn, lit or out, by `x` and `z`.
-  pub fn get_fires(&self) -> &[Vec2] {
+  pub(crate) fn get_fires(&self) -> &[Vec2] {
     &self.fires
   }
 
   /// Takes a level's lights in place of any it held, asking for every projector they name.
-  pub fn add_lights(
+  pub(crate) fn add_lights(
     &mut self,
     lights: LightsDescription,
     textures: &mut TextureCache,
@@ -158,7 +159,7 @@ impl LevelLights {
   /// the shadowed ones out of view the eye stands near, kept ready, each faded as far as its campfire's share in
   /// `campfire_shares` lets it show: what the view asks of them, which the scene settles with every other view's
   /// (`settle`) before the view writes its lights (`write`).
-  pub fn pick(&self, frame: LightsFrame, campfire_shares: &HashMap<u16, f32>) -> LightAsks {
+  pub(crate) fn pick(&self, frame: LightsFrame, campfire_shares: &HashMap<u16, f32>) -> LightAsks {
     let (mut in_view, mut ready): (Vec<LightInView>, Vec<LightInView>) = if frame.settings.is_enabled {
       let mut in_view: Vec<LightInView> = self.collect_in_view(&frame, campfire_shares);
 
@@ -185,7 +186,7 @@ impl LevelLights {
   /// faces are drawn with: every casting view's shadowed lights in view marked seen first, so a full atlas makes room
   /// from none of them; then each casting view's nearest lights its records hold ask for faces, then the nearest it
   /// keeps ready out of view, over the `statics` they cast from.
-  pub fn settle(&mut self, views: &[&LightAsks], statics: &StaticScene) {
+  pub(crate) fn settle(&mut self, views: &[&LightAsks], statics: &StaticScene) {
     for asks in views.iter().filter(|asks| asks.frame.is_shadowing()) {
       for it in &asks.in_view {
         if self.lights.get(it.handle).is_some_and(|light| light.is_shadowed) {
@@ -206,7 +207,7 @@ impl LevelLights {
       let sway: ShadowSway<'_> = ShadowSway {
         amplitude: frame.sway_amplitude,
         reach: statics.get_sway_reach(),
-        time: frame.sway_time,
+        time: frame.time,
         places: statics.list_swaying(),
       };
 
@@ -282,7 +283,7 @@ impl LevelLights {
         }
 
         let fades: LightFades = if is_shadowing && light.is_shadowed {
-          Self::to_shadow_fades(light, &basis, eye, lod)
+          LightFades::of(light, &basis, eye, lod)
         } else {
           LightFades::WHOLE
         };
@@ -302,21 +303,21 @@ impl LevelLights {
   }
 
   /// Starts a scene's frame: stands each light its motion carries.
-  pub fn begin_frame(&mut self, motions: &HashMap<String, (Mat4, Vec3)>) {
+  pub(crate) fn begin_frame(&mut self, motions: &HashMap<String, RenderMotionPose>) {
     self.move_lights(motions);
   }
 
   /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
   /// one whose motion is still read stays where its zone spawned.
-  fn move_lights(&mut self, motions: &HashMap<String, (Mat4, Vec3)>) {
+  fn move_lights(&mut self, motions: &HashMap<String, RenderMotionPose>) {
     for handle in &self.moving {
       let Some(motion) = self.lights.get(*handle).and_then(|light| light.motion.clone()) else {
         continue;
       };
-      let Some((transform, _)) = motions.get(&motion.name) else {
+      let Some(pose) = motions.get(&motion.name) else {
         continue;
       };
-      let at: Vec3 = transform.w_axis.truncate();
+      let at: Vec3 = pose.transform.w_axis.truncate();
 
       // Lights stand in renderer space, which mirrors the engine's z.
       if let Some(light) = self.lights.get_mut(*handle) {
@@ -326,13 +327,13 @@ impl LevelLights {
   }
 
   /// Ends what every view of the scene asked of the shadows this frame: offers `scheduler` the faces wanting a draw.
-  pub fn offer_shadows(&mut self, scheduler: &mut PeriodicScheduler) {
+  pub(crate) fn offer_shadows(&mut self, scheduler: &mut PeriodicScheduler) {
     self.shadows.finish(scheduler);
   }
 
   /// Readies the faces `scheduler` granted, which `add_shadow_passes` then draws before the lights read them; then
   /// opens the next frame's asking.
-  pub fn commit_shadows(
+  pub(crate) fn commit_shadows(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -344,13 +345,13 @@ impl LevelLights {
   }
 
   /// Forgets the faces this frame drew, where its frame was not submitted.
-  pub fn abandon_shadows(&mut self) {
+  pub(crate) fn abandon_shadows(&mut self) {
     self.shadows.abandon_frame();
   }
 
   /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied, what the drawable `kinds`
   /// cast over those casting from them.
-  pub fn add_shadow_passes<'a>(
+  pub(crate) fn add_shadow_passes<'a>(
     &'a self,
     declaration: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
@@ -359,7 +360,7 @@ impl LevelLights {
     self.shadows.add_passes(declaration, record, kinds);
   }
 
-  pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {
+  pub(crate) fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {
     self.shadows.get_atlas()
   }
 }

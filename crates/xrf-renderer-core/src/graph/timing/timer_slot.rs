@@ -15,8 +15,8 @@ pub(crate) struct TimerSlot {
 
 impl TimerSlot {
   /// Nothing copied, a copy recorded but not submitted, a map asked for, a map done.
-  pub const IDLE: u8 = 0;
-  pub const RECORDED: u8 = 1;
-  pub const MAPPING: u8 = 2;
-  pub const MAPPED: u8 = 3;
+  pub(super) const IDLE: u8 = 0;
+  pub(super) const RECORDED: u8 = 1;
+  pub(super) const MAPPING: u8 = 2;
+  pub(super) const MAPPED: u8 = 3;
 }

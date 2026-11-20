@@ -46,16 +46,18 @@ beforeEach(() => {
 
 describe("LevelOcclusionAction", () => {
   it("sets the screen occlusion back to the settings and the baked one back to whole", async () => {
-    const { getByRole, view } = await renderOpenAction(({ view }) => {
+    const { getByRole, queryByRole, view } = await renderOpenAction(({ view }) => {
       view.setFeatures({ ...view.features, ambientOcclusion: { radius: 2 } });
       view.setHemiStrength(0.5);
     });
 
-    await userEvent.click(getByRole("button", { name: "Set the ambient occlusion back to the settings" }));
-    await userEvent.click(getByRole("button", { name: "Reset to the game's" }));
+    await userEvent.click(getByRole("button", { name: "Ambient occlusion: Back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Baked light: Reset to the game's" }));
 
     expect(view.features.ambientOcclusion).toEqual({});
     expect(view.hemiStrength).toBe(1);
+    expect(queryByRole("button", { name: "Ambient occlusion: Back to the settings" })).toBeNull();
+    expect(queryByRole("button", { name: "Baked light: Reset to the game's" })).toBeNull();
   });
 
   it("switches the view to VBAO, its strengths settable only then", async () => {
@@ -110,7 +112,7 @@ describe("LevelOcclusionAction", () => {
       "GTAO occlusion over 1.00 m, 3 × 3 steps, indirect light, baked at 100%"
     );
 
-    await userEvent.click(getByRole("button", { name: "Set the indirect light back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Indirect light: Back to the settings" }));
 
     expect(view.features.indirectLight).toEqual({});
   });

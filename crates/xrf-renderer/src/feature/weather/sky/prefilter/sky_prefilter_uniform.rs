@@ -6,14 +6,14 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "SkyPrefilter")]
-pub struct SkyPrefilterUniform {
+pub(crate) struct SkyPrefilterUniform {
   pub level: Vec4,
   pub shape: Vec4,
 }
 
 impl SkyPrefilterUniform {
   /// Mip `level` of `levels`, `size` texels a side over a first mip `first` a side, sampling `samples` directions.
-  pub fn new(level: u32, levels: u32, size: u32, first: u32, samples: u32) -> Self {
+  pub(crate) fn new(level: u32, levels: u32, size: u32, first: u32, samples: u32) -> Self {
     Self {
       level: Vec4::new(
         level as f32,

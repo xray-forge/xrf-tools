@@ -28,7 +28,7 @@ impl StagedFile {
   ///
   /// Returns an IO error when the staged file cannot be created, written, synced, or moved into place.
   pub fn write(path: &Path, contents: &[u8]) -> IoResult<()> {
-    Self::stage(path, &Self::to_sibling(path, "tmp")?, contents)?.publish()
+    Self::stage(path, &Self::name_sibling(path, "tmp")?, contents)?.publish()
   }
 
   /// Writes a file as [`Self::write`] does, creating the directories above it where they are missing.
@@ -44,7 +44,7 @@ impl StagedFile {
     Self::write(path, contents)
   }
 
-  /// Writes and syncs `contents` at `staged`, a name from [`Self::to_sibling`], to replace `target` once published; a
+  /// Writes and syncs `contents` at `staged`, a name from [`Self::name_sibling`], to replace `target` once published; a
   /// replacement inherits `target`'s permissions.
   ///
   /// # Errors
@@ -88,7 +88,7 @@ impl StagedFile {
   /// # Errors
   ///
   /// Returns an invalid-input error when `path` names no file in a directory.
-  pub fn to_sibling(path: &Path, purpose: &str) -> IoResult<PathBuf> {
+  pub fn name_sibling(path: &Path, purpose: &str) -> IoResult<PathBuf> {
     let parent: &Path = path.parent().ok_or_else(|| {
       IoError::new(
         ErrorKind::InvalidInput,

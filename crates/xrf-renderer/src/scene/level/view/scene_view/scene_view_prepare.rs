@@ -1,7 +1,8 @@
 use std::time::Instant;
 
-use glam::Vec4;
+use glam::{Mat4, Vec4};
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode;
 use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
@@ -15,6 +16,7 @@ use crate::feature::image::present::present_inputs::PresentInputs;
 use crate::feature::scene::drawable::draw::drawable_kind_source::DrawableKindSource;
 use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
 use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
+use crate::feature::scene::grass::slots::grass_slot_value::GrassSlotValue;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::sun_trace::sun_trace_feature::SunTraceFeature;
 use crate::feature::view::overhead_windows::OverheadWindows;
@@ -23,7 +25,9 @@ use crate::feature::weather::fog::fog_feature::FogFeature;
 use crate::feature::weather::water::water_frame::WaterFrame;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::feature::weather::wet::puddles::surface_window::SurfaceWindow;
+use crate::feature::weather::wet::wet_clock::WetClock;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::level_prepare::LevelPrepare;
@@ -32,6 +36,9 @@ use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
+use crate::scene::level::view::view_time::ViewTime;
+use crate::scene::static_scene::draw::static_sight::StaticSight;
+use crate::scene::texture::texture_cache::TextureCache;
 
 impl SceneView {
   /// The units the weather drives: the shadows' maps, the effects laid over the lit frame (whose flares give the sky its
@@ -45,7 +52,7 @@ impl SceneView {
     now: Instant,
   ) -> LightingFrame {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
-    let time: f32 = level.time;
+    let time: ViewTime = level.time;
     let size: Option<(u32, u32)> = self.targets.as_ref().map(|targets| (targets.width, targets.height));
 
     self.features.shadows.prepare(
@@ -61,7 +68,7 @@ impl SceneView {
       options,
       WaterFrame {
         targets: self.targets.as_ref(),
-        is_in_view: level.sight.is_water(),
+        tiles: Self::get_water_tiles(scene, frame, level),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
         rain: lighting.rain.map_or(0.0, |rain| rain.density),
@@ -76,11 +83,20 @@ impl SceneView {
     let falling: Option<RainUniform> = self.features.rain.prepare(frame, level.gust, time, windows);
 
     self.features.rain.follow_display(self.shared.display);
+    // The wet surfaces' splashes, flow and ripples run on the rain's clock while it falls; their drift on the view's.
+    let wet_clock: WetClock = WetClock {
+      splashes: match falling {
+        Some(_) => self.features.rain.get_clock(),
+        None => time.now.get_seconds(),
+      },
+      view: time,
+    };
+
     self.features.wet.prepare(
       frame,
       &level.wetness,
       falling.as_ref(),
-      time,
+      wet_clock,
       windows,
       self.shared.resolve.noise_frame,
     );
@@ -96,7 +112,7 @@ impl SceneView {
     self.features.water.follow_rings(rings);
     self.features.wet.follow_rings(rings);
 
-    let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(frame, &self.shared, time);
+    let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(frame, &self.shared, time.now);
 
     self
       .features
@@ -117,17 +133,18 @@ impl SceneView {
     level: &LevelPrepare,
   ) -> LightAsks {
     let (device, options, lighting, view) = (frame.device, frame.options, frame.lighting, frame.view);
-    let time: f32 = level.time;
+    let time: ViewTime = level.time;
 
     self
       .features
       .statics
-      .prepare(&scene.statics, options, view, frame.drawn);
+      .prepare(device, &scene.statics, options, view, frame.drawn);
 
-    let is_traced: bool =
-      options.is_light_traced() && frame.passes.tracing.scene_trace.is_traced() && scene.trace.is_some();
+    let is_scene_traced: bool = frame.passes.tracing.scene_trace.is_traced() && scene.trace.is_some();
+    let is_traced: bool = options.is_light_traced() && is_scene_traced;
     // The sun's cascades shadow the frame where they are asked for and the sun is not traced in their place.
-    let is_sun_traced: bool = is_traced && SunTraceFeature::is_asked(options, self.shared.resolve);
+    let is_sun_traced: bool =
+      is_traced && SunTraceFeature::is_asked(options, &self.shared.lighting, self.shared.resolve);
     let is_cascaded: bool = options.features.shadows.get_cascade_count() > 0 && !is_sun_traced;
 
     let grass: GrassViewFrame<'_> = GrassViewFrame {
@@ -145,6 +162,8 @@ impl SceneView {
         &self.features.wet,
       ),
       is_traced,
+      // The water readies before the scene, in the weather's units.
+      is_reflected: is_scene_traced && self.features.water.is_fully_traced(),
       cascade_reach: is_cascaded
         .then(|| {
           options
@@ -153,14 +172,19 @@ impl SceneView {
             .get_reach(options.features.grass.shadow_cascades)
         })
         .flatten(),
+      slot_value: GrassSlotValue::of(options.mode.debug_view),
     };
 
     self
       .features
       .grass
       .prepare(device, scene.grass.get_level(), &options.features.grass, &grass);
+    self
+      .features
+      .water
+      .follow_grass_cards(self.features.grass.get_trace_uniform().card_reach);
 
-    let (sway_amplitude, sway_time): (f32, f32) = self.features.wind.get_sway();
+    let sway_amplitude: f32 = self.features.wind.get_sway_amplitude();
     let frame_lights: LightsFrame = LightsFrame {
       camera: *view,
       settings: options.features.lights,
@@ -170,7 +194,6 @@ impl SceneView {
         self.features.statics.get_cull().glod_end,
       ),
       sway_amplitude,
-      sway_time,
       casters: self.features.grass.get_light_casters(),
       is_physical: options.is_light_physical(),
       is_specular_linear: options.is_specular_linear(),
@@ -180,7 +203,7 @@ impl SceneView {
       light_scale: lighting_frame.light_units.local
         * lighting_frame.light_units.light_gain
         * lighting_frame.exposure.pre_exposure.current,
-      time,
+      time: time.now,
     };
     let lights: LightAsks = scene.lights.pick(frame_lights, &scene.campfire_shares);
 
@@ -190,7 +213,7 @@ impl SceneView {
     // never with parallax.
     self.shared.switches = Vec4::new(
       1.0,
-      options.mode.is_bumped as u32 as f32,
+      u32::from(options.mode.is_bumped) as f32,
       options.features.hemi_strength,
       0.0,
     );
@@ -213,16 +236,19 @@ impl SceneView {
       .features
       .reflections
       .prepare(frame, self.shared.resolve, &self.features.wet);
-    let trace_instances: Vec<DrawableTraceInstance> =
+    let trace_instances: Vec<DrawableTraceInstance<'_>> =
       DrawableKindSource::list(&self.features.grass, scene, frame.passes)
         .iter()
         .filter_map(DrawableKindSource::get_trace_instance)
         .collect();
 
-    self
-      .features
-      .view_trace
-      .prepare(frame, &mut *encoder, scene.trace.as_ref(), &trace_instances);
+    self.features.view_trace.prepare(
+      frame,
+      &mut *encoder,
+      scene.trace.as_ref(),
+      self.features.wind.get_sway_amplitude(),
+      &trace_instances,
+    );
     self
       .features
       .composited
@@ -281,32 +307,80 @@ impl SceneView {
     }
   }
 
-  /// Whether the water, a particle, the enhanced rain's splashes or a distorting surface of the scene moves what is seen
-  /// through the frame, once every unit knows what it draws.
-  pub(super) fn is_distorting(&self, options: &RenderViewOptions) -> bool {
-    let water: &RenderWaterSettings = &options.features.water;
-    let features: &SceneFeatures = &self.features;
-    // Where water draws this frame; the enhanced water refracts what is behind it itself and writes no distortion.
-    let is_water_distorting: bool =
-      features.water.is_drawn() && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
+  /// Screen tiles the bounding spheres of the visible water cover; empty where no water is in sight.
+  fn get_water_tiles(scene: &LevelScene, frame: &ViewPrepare<'_>, level: &LevelPrepare) -> ScreenTiles {
+    let mut tiles: ScreenTiles = ScreenTiles::default();
 
-    !options.mode.is_wireframe
-      && (is_water_distorting
-        || features.particles.is_distorting()
-        || features.rain.is_distorting()
-        || features.composited.is_distorting())
+    if level.sight.is_water() {
+      let (frustum, view_projection): (CameraFrustum, Mat4) =
+        (frame.view.get_frustum(), frame.view.get_view_projection());
+
+      for sphere in scene.statics.list_seen_spheres(&frustum, StaticSight::is_water) {
+        tiles.cover_sphere(view_projection, sphere);
+      }
+    }
+
+    tiles
   }
 
-  /// Notes what the window pass reads, once every other unit knows what it draws: whether the frame distorts
-  /// (`is_distorting`), which bloom it lays over the frame, the sky debanding, its noise turning with `time`, and the
-  /// film's grain, drawn for `noise_frame`.
+  /// Screen tiles the frame's distortion touches: the whole screen for water or rain splashes, which keep no bound,
+  /// otherwise the particles' and distorting surfaces' tiles.
+  pub(super) fn get_distortion_tiles(&self, options: &RenderViewOptions) -> ScreenTiles {
+    let features: &SceneFeatures = &self.features;
+
+    if options.mode.is_wireframe {
+      return ScreenTiles::default();
+    }
+
+    if self.is_water_distorting(options) || features.rain.is_distorting() {
+      return ScreenTiles::new_whole();
+    }
+
+    let mut tiles: ScreenTiles = *features.particles.get_distortion_tiles();
+
+    tiles.cover_tiles(features.composited.get_distortion_tiles());
+
+    tiles
+  }
+
+  /// Whether the distortion may blur toward the engine's bloom, which then must be built: true for water, or for a
+  /// particle or surface whose map has blue or is not yet loaded. The enhanced rain's splashes write no blue.
+  pub(super) fn is_distortion_blurring(
+    &self,
+    scene: &LevelScene,
+    options: &RenderViewOptions,
+    textures: &TextureCache,
+  ) -> bool {
+    let features: &SceneFeatures = &self.features;
+
+    if options.mode.is_wireframe {
+      return false;
+    }
+
+    self.is_water_distorting(options)
+      || features.particles.is_blurring(textures)
+      || (!features.composited.get_distortion_tiles().is_empty()
+        && scene.statics.surfaces.is_distortion_blurring(textures))
+  }
+
+  /// Whether water draws distortion this frame; the enhanced water refracts by itself and writes none.
+  fn is_water_distorting(&self, options: &RenderViewOptions) -> bool {
+    let water: &RenderWaterSettings = &options.features.water;
+
+    self.features.water.is_drawn()
+      && water.is_distorted
+      && water.mode != RenderWaterMode::Enhanced
+      && options.mode.is_lit
+  }
+
+  /// Prepares the window pass's inputs, after every other unit: the `distortion` tiles, the bloom, and the film grain
+  /// for `noise_frame`.
   pub(super) fn prepare_present(
     &mut self,
     options: &RenderViewOptions,
     output: RenderRect,
-    time: f32,
     noise_frame: u32,
-    is_distorting: bool,
+    distortion: ScreenTiles,
   ) {
     if self.targets.is_none() {
       return;
@@ -318,17 +392,18 @@ impl SceneView {
       is_occluded: self.stages.lighting.is_occluded(),
       is_indirect: self.stages.lighting.is_indirect(),
       reflection_ratio: features.reflections.get_trace().map(ReflectionTrace::get_ratio),
-      is_distorting,
+      distortion,
       selection_color: features.overlays.get_selection_color(),
       marks: features.helpers.get_present_marks(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
+      is_engine_built: features.bloom.is_engine_built(),
       grass_reach: features.grass.get_cascade_reach(),
       light: self.shared.lighting.get_light_encoding(),
       display: self.shared.display,
       grain_frame: noise_frame,
     };
 
-    self.features.present.prepare(options, output, inputs, time);
+    self.features.present.prepare(options, output, inputs);
   }
 }

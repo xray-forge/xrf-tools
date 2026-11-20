@@ -11,3 +11,16 @@ pub struct LtxStructureParseError {
   pub column: u32,
   pub message: String,
 }
+
+impl LtxStructureParseError {
+  /// The record for where the parser stopped, as `XrfError::LtxParse` reports it.
+  ///
+  /// Positions saturate rather than wrap, so an absurd position never names a wrong line.
+  pub(crate) fn new(line: usize, column: usize, message: String) -> Self {
+    Self {
+      column: u32::try_from(column).unwrap_or(u32::MAX),
+      line: u32::try_from(line).unwrap_or(u32::MAX),
+      message,
+    }
+  }
+}

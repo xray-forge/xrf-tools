@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command};
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
@@ -9,27 +9,24 @@ use xrf_utils::format_path;
 use super::archive_entry_selection::ArchiveEntrySelection;
 use super::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use super::report::ArchiveListReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct ListCommand;
+pub(crate) struct ListCommand;
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {
     "list"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("List the merged entries in an X-Ray archive volume or volume set")
-      .arg(
-        Arg::new("path")
-          .help("Path to an archive volume or a directory containing volumes")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("files")
           .help("List files only, excluding directory records")
@@ -47,9 +44,7 @@ impl GenericCommand for ListCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
-    let path: &PathBuf = matches
-      .get_one("path")
-      .expect("Expected an archive path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
@@ -58,7 +53,7 @@ impl GenericCommand for ListCommand {
     // Derived over the whole table once, whatever the selection: a filtered listing still says what each of its
     // entries shares with entries it left out.
     let shared: Vec<ArchiveSharedPayload> = project.list_shared_payloads();
-    let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
+    let shared: ArchiveSharedPayloadIndex<'_> = ArchiveSharedPayloadIndex::new(&shared);
 
     for entry in &entries {
       if context.is_verbose() {
@@ -101,7 +96,7 @@ mod tests {
     assert!(
       ListCommand
         .init()
-        .try_get_matches_from(["list", "--path", "archive.db", "--files", "--directories"])
+        .try_get_matches_from(["list", "archive.db", "--files", "--directories"])
         .is_err()
     );
   }

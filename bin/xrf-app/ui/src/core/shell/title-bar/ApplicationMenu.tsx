@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
-import { ButtonBase } from "@xrf/ui/material/button-base";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { ButtonBase } from "@xrf/ui/button";
+import { Tooltip } from "@xrf/ui/overlay";
 import { IMenubarMenu, Menubar } from "@xrf/ui/shell/menubar";
 import { MenuGlyph } from "@xrf/ui/shell/window-controls";
 import { cn } from "@xrf/ui/theme";

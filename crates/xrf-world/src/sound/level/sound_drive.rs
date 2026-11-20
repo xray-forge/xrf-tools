@@ -1,0 +1,34 @@
+use std::time::Instant;
+
+use glam::Vec3;
+use xrf_renderer::{RenderSceneId, RenderViewBurst};
+
+use crate::contract::sound::world_sound_toggles::WorldSoundToggles;
+use crate::sound::weather::rain_frame::RainFrame;
+use crate::sound::weather::thunder_sound::ThunderSound;
+use crate::weather::weather_ambients::WeatherAmbients;
+
+/// What the viewport a scene is heard by gives its sound for a frame: one drawing a burst of the scene, else the
+/// listening viewport where it shows the scene, else the one driving it.
+#[derive(Clone, Copy)]
+pub(crate) struct SoundDrive<'a> {
+  pub scene: RenderSceneId,
+  /// The frame's moment, which strikes are stamped by.
+  pub at: Instant,
+  /// Whether the scene is heard.
+  pub is_audible: bool,
+  /// The camera, in engine space: where it stands, where it looks, which way is up.
+  pub eye: Vec3,
+  pub forward: Vec3,
+  pub up: Vec3,
+  /// Milliseconds of the day the viewport's weather stands at.
+  pub game_time: u32,
+  pub toggles: WorldSoundToggles,
+  /// The ambients its weather plays between, none while nothing plays.
+  pub ambients: Option<&'a WeatherAmbients>,
+  pub rain: RainFrame,
+  /// The strikes the viewport's weather thundered with since its last frame.
+  pub thunder: &'a [ThunderSound],
+  /// The burst the viewport draws the scene's frame at, none on the frames' clock.
+  pub burst: Option<RenderViewBurst>,
+}

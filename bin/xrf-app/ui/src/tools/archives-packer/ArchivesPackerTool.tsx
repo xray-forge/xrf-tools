@@ -1,57 +1,57 @@
-import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
-import { EditorLayout } from "@xrf/ui/editor/layout";
+import { EditorTextAction } from "@xrf/ui/editor/text-action";
+import { SwitchFormRow } from "@xrf/ui/form/switch-row";
+import { ArchiveIcon } from "@xrf/ui/icons/archive";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { SettingsIcon } from "@xrf/ui/icons/settings";
+import { TitleIcon } from "@xrf/ui/icons/title";
 import { TuneIcon } from "@xrf/ui/icons/tune";
-import { Alert } from "@xrf/ui/material/alert";
-import { Divider } from "@xrf/ui/material/divider";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
-import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
-import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { ArchiveConfigEditorLayout } from "@/core/archive/components/config-editor/ArchiveConfigEditorLayout";
+import { ArchiveConfigHeaderSection } from "@/core/archive/components/config-editor/ArchiveConfigHeaderSection";
+import { ArchiveConfigOptionsSection } from "@/core/archive/components/config-editor/ArchiveConfigOptionsSection";
+import { ArchiveConfigOutputSection } from "@/core/archive/components/config-editor/ArchiveConfigOutputSection";
+import { IArchiveConfigSection } from "@/core/archive/components/config-editor/ArchiveConfigSectionsMenu";
+import { ArchiveConfigToolbarActions } from "@/core/archive/components/config-editor/ArchiveConfigToolbarActions";
+import { useArchiveConfigEditorShell } from "@/core/archive/components/config-editor/use-archive-config-editor-shell";
+import {
+  IArchiveRunConfirmation,
+  useArchiveRunConfirmation,
+} from "@/core/archive/components/config-editor/use-archive-run-confirmation";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
-import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
-import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { useToolLifecycle } from "@/core/shell/lifecycle";
-import { IPathField, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ArchivesPackerService, EPackerSection } from "@/tools/archives-packer/services/archives-packer.service";
 
-import { PackerSectionsMenu } from "./components/PackerSectionsMenu";
-import { PackerToolbarActions } from "./components/PackerToolbarActions";
 import { ArchivesPackResult, PackerConfirmSummary } from "./components/packing";
-import {
-  PackerHeaderSection,
-  PackerOptionsSection,
-  PackerOutputSection,
-  PackerSelectionSection,
-} from "./components/sections";
+import { PackerSelectionSection } from "./components/sections";
 
-/** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
-const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
-  { name: "Packing configuration", extensions: [...ARCHIVE_CONFIG_EXTENSIONS] },
+const SECTIONS: ReadonlyArray<IArchiveConfigSection<EPackerSection>> = [
+  {
+    id: EPackerSection.OUTPUT,
+    label: "Source and output",
+    description: "Where it comes from and lands",
+    icon: <FolderIcon />,
+  },
+  { id: EPackerSection.SELECTION, label: "Selection", description: "What goes in", icon: <TuneIcon /> },
+  { id: EPackerSection.HEADER, label: "Header", description: "Where it mounts", icon: <TitleIcon /> },
+  { id: EPackerSection.OPTIONS, label: "Options", description: "How it is written", icon: <SettingsIcon /> },
 ];
 
 export function ArchivesPackerTool(): ReactElement {
   const packerService: ArchivesPackerService = useInjection(ArchivesPackerService);
 
-  const [isConfirming, setIsConfirming] = useState<boolean>(false);
-
-  /** Whether the user agreed to replace the volumes the destination already holds. Asked again per confirmation. */
-  const [isForced, setIsForced] = useState<boolean>(false);
+  const confirmation: IArchiveRunConfirmation<"pack"> = useArchiveRunConfirmation();
 
   const config: Nullable<ArchivePackConfig> = packerService.config;
-  const job: Nullable<IJobState> = packerService.operation.job;
 
   const isBusy: boolean = packerService.isBusy;
-  const isPacking: boolean = Boolean(job);
+  const isPacking: boolean = Boolean(packerService.operation.job);
 
   const source: IPathField = usePathField({
     tool: EToolId.ARCHIVES_PACKER,
@@ -85,172 +85,143 @@ export function ArchivesPackerTool(): ReactElement {
     };
   }, [config, source.value, destination.value, packerService.volumeSizeBytes]);
 
-  const onImport = useCallback(async () => {
-    const selected: Nullable<string> = (await open({
-      title: "Import packing configuration",
-      filters: IMPORT_CONFIG_FILTERS,
-    })) as Nullable<string>;
-
-    if (selected) {
-      await packerService.importConfig(selected);
-    }
-  }, [packerService]);
-
-  const onExport = useCallback(async () => {
-    const selected: Nullable<string> = await save({
-      title: "Export packing configuration",
-      filters: ARCHIVE_CONFIG_EXPORT_FILTERS,
-    });
-
-    if (selected) {
-      await packerService.exportConfig(withArchiveConfigExtension(selected));
-    }
-  }, [packerService]);
-
   /** Opens the confirmation and asks what the destination already holds, so the summary can say so. */
   const onConfirmPack = useCallback(() => {
     if (!resolved) {
       return;
     }
 
-    setIsForced(false);
-    setIsConfirming(true);
+    confirmation.open("pack");
 
     void packerService.checkDestination(resolved);
-  }, [packerService, resolved]);
+  }, [confirmation, packerService, resolved]);
 
   const onPack = useCallback(async () => {
     if (!resolved) {
       return;
     }
 
-    setIsConfirming(false);
+    confirmation.close();
 
     source.commit();
     destination.commit();
 
-    await packerService.pack(resolved, isForced);
-  }, [destination, packerService, resolved, isForced, source]);
+    await packerService.pack(resolved, confirmation.isForced);
+  }, [confirmation, destination, packerService, resolved, source]);
 
   useEffect(() => {
     packerService.resetResult();
   }, [source.value, destination.value, packerService]);
 
-  // Drawn by the shell beside every other tool's navigation, rather than as a column of this
-  // tool's own. The menu reads the open section from the service, so this registers once.
-  useShellPanels(
-    () => [
-      {
-        icon: <TuneIcon />,
-        id: "packer-sections",
-        isOpenByDefault: true,
-        label: "Configuration",
-        render: () => <PackerSectionsMenu />,
-        side: "left",
-      },
-    ],
-    []
-  );
-
-  useShellStatus([
-    packerService.configName ?? "no configuration",
-    ...(packerService.isDirty ? ["unsaved changes"] : []),
-    ...(packerService.operation.result ? [`${packerService.operation.result.volumes.length} volume(s)`] : []),
-  ]);
-
-  useToolLifecycle({
+  useArchiveConfigEditorShell({
+    editor: packerService,
+    panelId: "packer-sections",
+    sections: SECTIONS,
     isBusy: isBusy || isPacking,
-    dirtyCount: packerService.isDirty ? 1 : 0,
-    save: null,
+    resultStatus: packerService.operation.result ? [`${packerService.operation.result.volumes.length} volume(s)`] : [],
   });
 
   if (!config) {
     return <ToolLoader />;
   }
 
+  const isPackDisabled: boolean = isBusy || isPacking || !resolved || Boolean(packerService.volumeSizeError);
+
   return (
-    <EditorLayout
-      toolbar={
-        <EditorToolbar
-          subtitle={packerService.configName ?? "New configuration"}
-          actions={
-            <PackerToolbarActions
-              isBusy={isBusy || isPacking}
-              isPackDisabled={isBusy || isPacking || !resolved || Boolean(packerService.volumeSizeError)}
-              onImport={() => void onImport()}
-              onExport={() => void onExport()}
-              onPack={onConfirmPack}
-            />
-          }
-        />
+    <ArchiveConfigEditorLayout
+      editor={packerService}
+      actions={
+        <ArchiveConfigToolbarActions
+          editor={packerService}
+          noun={"packing configuration"}
+          exportDescription={"Export these rules as a packing configuration"}
+          isBusy={isBusy || isPacking}
+        >
+          <EditorTextAction
+            label={"Pack"}
+            description={isPackDisabled ? "Choose a source and an output first" : "Write the volumes"}
+            icon={<ArchiveIcon />}
+            isDisabled={isPackDisabled}
+            variant={"contained"}
+            onClick={onConfirmPack}
+          />
+        </ArchiveConfigToolbarActions>
+      }
+      result={packerService.operation.result ? <ArchivesPackResult result={packerService.operation.result} /> : null}
+      confirmation={
+        resolved ? (
+          <ConfirmDialog
+            isOpen={confirmation.run !== null}
+            isDestructive={true}
+            isConfirmDisabled={packerService.publishedVolumes.length > 0 && !confirmation.isForced}
+            maxWidth={"sm"}
+            title={"Pack archives?"}
+            description={
+              <PackerConfirmSummary
+                config={resolved}
+                publishedVolumes={packerService.publishedVolumes}
+                isForced={confirmation.isForced}
+                onForceChange={confirmation.setIsForced}
+              />
+            }
+            confirmLabel={"Pack"}
+            onConfirm={() => void onPack()}
+            onClose={confirmation.close}
+          />
+        ) : null
       }
     >
-      <div className={"min-w-0 grow overflow-y-auto p-6"}>
-        <Stack className={"max-w-reading"} spacing={2}>
-          {packerService.error ? <Alert severity={"error"}>{packerService.error}</Alert> : null}
+      {packerService.section === EPackerSection.OUTPUT ? (
+        <ArchiveConfigOutputSection
+          editor={packerService}
+          config={config}
+          fieldId={"packer"}
+          destination={destination}
+          destinationDescription={"Directory the volumes are written into, overwriting volumes of the same name"}
+          nameLabel={"Name"}
+          nameDescription={"Base name of the volumes: one volume is <name>.db, several are <name>.db0 and up"}
+          namePlaceholder={"gamedata"}
+          isDisabled={isBusy}
+        >
+          <PathFormRow
+            isDisabled={isBusy}
+            label={"Source"}
+            description={"Directory to pack. Every rule below is relative to it"}
+            field={source}
+          />
+        </ArchiveConfigOutputSection>
+      ) : null}
 
-          {job ? <JobProgressView job={job} onCancel={packerService.operation.cancel} /> : null}
+      {packerService.section === EPackerSection.SELECTION ? (
+        <PackerSelectionSection config={config} isDisabled={isBusy} onChange={packerService.patchConfig} />
+      ) : null}
 
-          {packerService.section === EPackerSection.OUTPUT ? (
-            <PackerOutputSection
-              config={config}
-              source={source}
-              destination={destination}
-              isDisabled={isBusy}
-              onChange={packerService.patchConfig}
-            />
-          ) : null}
-
-          {packerService.section === EPackerSection.SELECTION ? (
-            <PackerSelectionSection config={config} isDisabled={isBusy} onChange={packerService.patchConfig} />
-          ) : null}
-
-          {packerService.section === EPackerSection.HEADER ? (
-            <PackerHeaderSection config={config} isDisabled={isBusy} onChange={packerService.patchConfig} />
-          ) : null}
-
-          {packerService.section === EPackerSection.OPTIONS ? (
-            <PackerOptionsSection
-              config={config}
-              maxVolumeSizeMegabytes={packerService.maxVolumeSizeMegabytes}
-              volumeSize={packerService.volumeSize}
-              volumeSizeError={packerService.volumeSizeError}
-              isDisabled={isBusy}
-              onVolumeSizeChange={packerService.setVolumeSize}
-              onChange={packerService.patchConfig}
-            />
-          ) : null}
-
-          {packerService.operation.result ? (
-            <>
-              <Divider />
-              <Typography variant={"subtitle2"}>Last run</Typography>
-              <ArchivesPackResult result={packerService.operation.result} />
-            </>
-          ) : null}
-        </Stack>
-      </div>
-
-      {resolved ? (
-        <ConfirmDialog
-          isOpen={isConfirming}
-          isDestructive={true}
-          isConfirmDisabled={packerService.publishedVolumes.length > 0 && !isForced}
-          maxWidth={"sm"}
-          title={"Pack archives?"}
-          description={
-            <PackerConfirmSummary
-              config={resolved}
-              publishedVolumes={packerService.publishedVolumes}
-              isForced={isForced}
-              onForceChange={setIsForced}
-            />
+      {packerService.section === EPackerSection.HEADER ? (
+        <ArchiveConfigHeaderSection
+          editor={packerService}
+          config={config}
+          fieldId={"packer"}
+          entryPointDescription={"Where the engine mounts the contents. A packed gamedata tree wants the default"}
+          missingEntryPointWarning={
+            "Without an entry point the engine treats these volumes as encrypted Shadow of Chernobyl archives. Set " +
+            "one, or switch the extension to xdb under Options."
           }
-          confirmLabel={"Pack"}
-          onConfirm={() => void onPack()}
-          onClose={() => setIsConfirming(false)}
+          isDisabled={isBusy}
         />
       ) : null}
-    </EditorLayout>
+
+      {packerService.section === EPackerSection.OPTIONS ? (
+        <ArchiveConfigOptionsSection editor={packerService} config={config} fieldId={"packer"} isDisabled={isBusy}>
+          <SwitchFormRow
+            id={"packer-skip-list"}
+            label={"Skip editor leftovers"}
+            description={"Drops the sources and intermediates a game build never reads, as xrCompress does"}
+            isChecked={config.isWithSkipList}
+            isDisabled={isBusy}
+            onChange={(isWithSkipList: boolean) => packerService.patchConfig({ isWithSkipList })}
+          />
+        </ArchiveConfigOptionsSection>
+      ) : null}
+    </ArchiveConfigEditorLayout>
   );
 }

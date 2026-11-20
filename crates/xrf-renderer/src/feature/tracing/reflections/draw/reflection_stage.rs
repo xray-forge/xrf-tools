@@ -1,6 +1,6 @@
 /// The reflection denoiser's stages, each a fragment entry point of `frame/reflections.wgsl`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ReflectionStage {
+pub(crate) enum ReflectionStage {
   Reproject,
   Average,
   Prefilter,
@@ -11,7 +11,7 @@ pub enum ReflectionStage {
 
 impl ReflectionStage {
   /// The stage's entry point.
-  pub const fn get_entry(self) -> &'static str {
+  pub(crate) const fn get_entry(self) -> &'static str {
     match self {
       Self::Reproject => "fs_reproject",
       Self::Average => "fs_average",

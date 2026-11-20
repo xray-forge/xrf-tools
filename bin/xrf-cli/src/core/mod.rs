@@ -7,10 +7,10 @@
 //! - `reports` - report shapes more than one command answers with.
 //! - `terminal` - what reaches a person at the terminal.
 
-pub mod arguments;
-pub mod command;
-pub mod host_walk;
-pub mod logging;
-pub mod report;
-pub mod reports;
-pub mod terminal;
+pub(crate) mod arguments;
+pub(crate) mod command;
+pub(crate) mod host_walk;
+pub(crate) mod logging;
+pub(crate) mod report;
+pub(crate) mod reports;
+pub(crate) mod terminal;

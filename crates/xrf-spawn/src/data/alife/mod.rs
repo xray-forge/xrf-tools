@@ -1,7 +1,14 @@
+pub(crate) mod alife_built_fields;
 pub(crate) mod alife_object;
 pub(crate) mod alife_object_inherited;
 pub(crate) mod alife_packets_read_write;
+pub(crate) mod alife_state_read_write;
 pub(crate) mod inherited;
+pub(crate) mod script_dialect;
+pub(crate) mod spawn_layout;
 pub(crate) mod spawn_level_arrival;
 pub(crate) mod spawn_level_objects;
+pub(crate) mod spawn_packet;
+pub(crate) mod spawn_packet_header;
 pub(crate) mod spawn_skipped_object;
+pub(crate) mod zeroed_update_fields;

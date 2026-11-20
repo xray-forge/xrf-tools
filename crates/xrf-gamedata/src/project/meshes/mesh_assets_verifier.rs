@@ -344,7 +344,7 @@ impl<'a> MeshAssetsVerifier<'a> {
         && let Some(index) = indices
           .iter()
           .take_while(|_| !self.options.job.is_cancelled())
-          .find(|index| **index as u32 >= vertex_count)
+          .find(|index| u32::from(**index) >= vertex_count)
       {
         findings.push(Self::new_mesh_finding(
           GamedataVerificationRule::MeshesValidation,
@@ -598,6 +598,14 @@ impl<'a> MeshAssetsVerifier<'a> {
       OgfResidueCause::OverstatedMotionRefs { declared } => format!(
         "Mesh motion refs chunk declares {declared} bytes, more than the file holds, and the engine reads its \
          references from what is there"
+      ),
+      OgfResidueCause::OverstatedLods { declared } => format!(
+        "Mesh LODs chunk declares {declared} bytes, more than the file holds, and the engine reads its line from what \
+         is there"
+      ),
+      OgfResidueCause::UnreadTrailingChunk { id } => format!(
+        "Mesh carries {ignored} bytes the engine never reads after its last chunk, headed by id {id:#010x}, which no \
+         loader asks for"
       ),
     };
 

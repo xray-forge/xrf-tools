@@ -1,5 +1,7 @@
 //! What reading LTX costs, stage by stage.
 
+#![expect(clippy::print_stdout, reason = "the bench says on the console which inputs it ran")]
+
 use std::hint::black_box;
 use std::path::{Path, PathBuf};
 use std::{env, fs};

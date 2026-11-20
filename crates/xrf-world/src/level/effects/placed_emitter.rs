@@ -8,7 +8,7 @@ use xrf_visual::ZoneSphere;
 /// One placement of a level's particles: the emitter the scene plays its effects at, what it plays and where it stands
 /// this frame, which effects the world has the scene play there, and for a campfire whether it was lit when last
 /// placed.
-pub struct PlacedEmitter {
+pub(crate) struct PlacedEmitter {
   pub handle: ProxyHandle<ParticleEmitterProxy>,
   /// What it plays, shared so a frame reads it while it posts.
   pub source: Arc<RenderParticleSource>,
@@ -23,7 +23,7 @@ pub struct PlacedEmitter {
 }
 
 impl PlacedEmitter {
-  pub fn new(
+  pub(crate) fn new(
     handle: ProxyHandle<ParticleEmitterProxy>,
     source: RenderParticleSource,
     transform: Mat4,
@@ -42,7 +42,7 @@ impl PlacedEmitter {
   }
 
   /// Has the scene play an effect here unless it already does, as a zone makes its idle object only once.
-  pub fn play(&mut self, updates: &mut Vec<RenderSceneUpdate>, effect: PlacedEffect, name: &str) {
+  pub(crate) fn play(&mut self, updates: &mut Vec<RenderSceneUpdate>, effect: PlacedEffect, name: &str) {
     if !std::mem::replace(&mut self.played[effect.get_index()], true) {
       updates.push(RenderSceneUpdate::PlayEffect {
         handle: self.handle,
@@ -53,7 +53,7 @@ impl PlacedEmitter {
   }
 
   /// Has the scene stop an effect at once, its particles gone with it: `Stop(FALSE)`, then `Destroy`.
-  pub fn stop(&mut self, updates: &mut Vec<RenderSceneUpdate>, effect: PlacedEffect) {
+  pub(crate) fn stop(&mut self, updates: &mut Vec<RenderSceneUpdate>, effect: PlacedEffect) {
     if std::mem::replace(&mut self.played[effect.get_index()], false) {
       updates.push(RenderSceneUpdate::StopEffect {
         handle: self.handle,
@@ -65,7 +65,7 @@ impl PlacedEmitter {
 
   /// Has the scene move an effect's sources at a velocity where it stands, as `CZoneCampfire::shedule_Update` carries
   /// its idle particles by the wind.
-  pub fn carry(&self, updates: &mut Vec<RenderSceneUpdate>, effect: PlacedEffect, velocity: Vec3) {
+  pub(crate) fn carry(&self, updates: &mut Vec<RenderSceneUpdate>, effect: PlacedEffect, velocity: Vec3) {
     if self.played[effect.get_index()] {
       updates.push(RenderSceneUpdate::CarryEffect {
         handle: self.handle,
@@ -77,7 +77,7 @@ impl PlacedEmitter {
 
   /// Moves it and everything playing at it (`CCustomZone::OnMove`, `UpdateParent`), their sources taking on its
   /// velocity.
-  pub fn move_to(&mut self, updates: &mut Vec<RenderSceneUpdate>, transform: Mat4, velocity: Vec3) {
+  pub(crate) fn move_to(&mut self, updates: &mut Vec<RenderSceneUpdate>, transform: Mat4, velocity: Vec3) {
     self.transform = transform;
     updates.push(RenderSceneUpdate::MoveEmitter {
       handle: self.handle,

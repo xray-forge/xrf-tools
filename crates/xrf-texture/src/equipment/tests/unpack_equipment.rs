@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use image::{Rgba, RgbaImage};
 use xrf_dds::ImageFormat;
 use xrf_error::XrfError;
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, LtxSectionWrite};
 use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
@@ -30,7 +30,7 @@ fn options_for(root: &Path, sections: &[&str]) -> EquipmentSpriteUnpackOptions {
     ltx
       .with_section(*section)
       .set("$inventory_icon", "true")
-      .set("inv_grid_x", index.to_string())
+      .set("inv_grid_x", index)
       .set("inv_grid_y", "0")
       .set("inv_grid_width", "1")
       .set("inv_grid_height", "1");

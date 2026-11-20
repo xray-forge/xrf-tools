@@ -1,0 +1,168 @@
+use xrf_error::{XrfError, XrfResult};
+use xrf_level::DetailModel;
+use xrf_ogf::{OgfFile, OgfVertexData};
+
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
+use crate::object::decompile::geometry::source::collapsed_mapping::CollapsedMapping;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
+
+/// One OGF visual read back as the surface it was compiled from: its texture and engine shader, and its full-detail
+/// triangles. The export writes one child per surface (`CExportSkeleton::SSplit`), merging surfaces that share both; a
+/// level's visual stores its vertices in `level.geom` instead.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct OgfSurface {
+  pub(crate) texture: String,
+  pub(crate) shader: String,
+  /// The compiler shader and game material: the editor's defaults, unless a level's visual was dressed from what the
+  /// level shows of them.
+  pub(crate) dress: SurfaceDress,
+  pub(crate) triangles: Vec<[OgfCorner; 3]>,
+}
+
+impl OgfSurface {
+  /// Every child of `file` that draws geometry, depth first, as the export wrote them: a skeleton's skinned children,
+  /// or a static visual's own geometry and its hierarchy's children.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a child whose vertex layout is not decoded or stores no normal or texture coordinate, and for
+  /// an index past its child's vertices.
+  pub(crate) fn collect(file: &OgfFile) -> XrfResult<Vec<Self>> {
+    let mut surfaces: Vec<Self> = Vec::new();
+
+    Self::collect_into(file, &mut surfaces)?;
+
+    Ok(surfaces)
+  }
+
+  fn collect_into(file: &OgfFile, surfaces: &mut Vec<Self>) -> XrfResult {
+    if let (Some(texture), Some(geometry)) = (&file.texture, &file.geometry) {
+      let corners: Vec<OgfCorner> = match &geometry.vertices {
+        Some(OgfVertexData::Skinned(vertices)) => vertices.iter().map(OgfCorner::from).collect(),
+        Some(OgfVertexData::Static(vertices)) => vertices.iter().map(OgfCorner::try_from).collect::<XrfResult<_>>()?,
+        None => {
+          return Err(XrfError::new_not_implemented_error(
+            "An OGF child's vertex layout is not decoded",
+          ));
+        }
+      };
+
+      let indices: &[u16] = Self::get_full_detail_indices(file, geometry.indices.as_deref().unwrap_or_default())?;
+
+      surfaces.push(Self {
+        texture: texture.texture_name.clone(),
+        shader: texture.shader_name.clone(),
+        dress: SurfaceDress::default(),
+        triangles: Self::list_triangles(&corners, indices)?,
+      });
+    }
+
+    for child in file.children.iter().flat_map(|children| &children.nested) {
+      Self::collect_into(child, surfaces)?;
+    }
+
+    Ok(())
+  }
+
+  /// A level visual's surface: its full-detail triangles over the vertices `level.geom` stores for it, their normals a
+  /// byte a component, and a triangle whose stored base coordinates collapsed to a point given a span again
+  /// ([`CollapsedMapping`]).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an index past the visual's vertices.
+  pub(crate) fn of_level(geometry: &LevelVisualGeometry) -> XrfResult<Self> {
+    let corners: Vec<OgfCorner> = geometry.vertices.iter().map(OgfCorner::from).collect();
+
+    Ok(Self {
+      texture: geometry.texture.clone(),
+      shader: geometry.shader.clone(),
+      dress: geometry.dress.clone(),
+      triangles: Self::list_triangles(&corners, &geometry.indices)?
+        .into_iter()
+        .map(CollapsedMapping::spread)
+        .collect(),
+    })
+  }
+
+  /// A detail model's surface: its triangles over its vertices, which store a position and a texture coordinate and no
+  /// normal.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an index past the model's vertices.
+  pub(crate) fn of_detail(model: &DetailModel) -> XrfResult<Self> {
+    let corners: Vec<OgfCorner> = model.vertices.iter().map(OgfCorner::from).collect();
+
+    Ok(Self {
+      texture: model.texture.clone(),
+      shader: model.shader.clone(),
+      dress: SurfaceDress::default(),
+      triangles: Self::list_triangles(&corners, &model.indices)?,
+    })
+  }
+
+  /// The same surface with each triangle halved through the middle of its longest edge, winding kept: the area it covers
+  /// is the same, in twice the faces over one more point. A triangle and its mirror halve alike, as they share their
+  /// longest edge, so they still fold into two-sided faces.
+  pub(crate) fn halve(&self) -> Self {
+    let length = |first: &OgfCorner, second: &OgfCorner| (&first.position - &second.position).length();
+
+    Self {
+      triangles: self
+        .triangles
+        .iter()
+        .flat_map(|triangle| {
+          let longest: usize = (0..3)
+            .max_by(|first, second| {
+              let edge = |start: &usize| length(&triangle[*start], &triangle[(*start + 1) % 3]);
+
+              edge(first).total_cmp(&edge(second))
+            })
+            .unwrap_or(0);
+          let [start, end, opposite] = [0, 1, 2].map(|offset| triangle[(longest + offset) % 3]);
+          let middle: OgfCorner = start.interpolate(&end);
+
+          [[start, middle, opposite], [middle, end, opposite]]
+        })
+        .collect(),
+      ..self.clone()
+    }
+  }
+
+  /// The triangles `indices` make of `corners`, three a triangle.
+  fn list_triangles(corners: &[OgfCorner], indices: &[u16]) -> XrfResult<Vec<[OgfCorner; 3]>> {
+    let corner = |index: u16| -> XrfResult<OgfCorner> {
+      corners.get(usize::from(index)).copied().ok_or_else(|| {
+        XrfError::new_invalid_error(format!("Index {index} is past its visual's {} vertices", corners.len()))
+      })
+    };
+
+    indices
+      .as_chunks::<3>()
+      .0
+      .iter()
+      .map(|[a, b, c]| Ok([corner(*a)?, corner(*b)?, corner(*c)?]))
+      .collect()
+  }
+
+  /// The indices of the most detailed sliding window where the child is progressive, `FProgressive`'s window 0, which
+  /// is every triangle the export wrote; all of them otherwise.
+  fn get_full_detail_indices<'a>(file: &OgfFile, indices: &'a [u16]) -> XrfResult<&'a [u16]> {
+    let Some(window) = file.swi_data.as_ref().and_then(|swi| swi.windows.first()) else {
+      return Ok(indices);
+    };
+
+    let start: usize = usize::try_from(window.offset)
+      .map_err(|_| XrfError::new_invalid_error("A sliding window's offset is past the platform's range"))?;
+    let end: usize = start + usize::from(window.num_tris) * 3;
+
+    indices.get(start..end).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "The full-detail sliding window reaches index {end}, past the child's {} indices",
+        indices.len()
+      ))
+    })
+  }
+}

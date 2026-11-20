@@ -6,8 +6,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter};
+use xrf_utils::{assert_length, narrow_format_size};
 
 use crate::data::patrols::patrol::Patrol;
 
@@ -27,7 +27,7 @@ impl SpawnPatrolsChunk {
 impl ChunkReadWrite for SpawnPatrolsChunk {
   /// Read patrols list from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading patrols chunk, bytes {}", reader.read_bytes_remain());
+    log::debug!("Reading patrols chunk, bytes {}", reader.read_bytes_remain());
 
     let mut meta_reader: ChunkReader<D> = reader.read_child_by_index(Self::META_NESTED_CHUNK_ID)?;
     let mut data_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_NESTED_CHUNK_ID)?;
@@ -49,7 +49,7 @@ impl ChunkReadWrite for SpawnPatrolsChunk {
     let mut meta_writer: ChunkWriter = ChunkWriter::new();
     let mut data_writer: ChunkWriter = ChunkWriter::new();
 
-    meta_writer.write_u32::<T>(to_format_size(self.patrols.len(), "spawn patrols")?)?;
+    meta_writer.write_u32::<T>(narrow_format_size(self.patrols.len(), "spawn patrols")?)?;
     data_writer.write_xr_list::<T, _>(&self.patrols)?;
 
     writer.write_all(
@@ -63,7 +63,7 @@ impl ChunkReadWrite for SpawnPatrolsChunk {
         .as_slice(),
     )?;
 
-    log::info!("Written patrols chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written patrols chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -87,16 +87,16 @@ impl FileImportExport for SpawnPatrolsChunk {
       )?);
     }
 
-    log::info!("Imported patrols chunk");
+    log::debug!("Imported patrols chunk");
 
     Ok(Self { patrols })
   }
 
   /// Export patrols data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut patrols_ltx: Ltx = Ltx::new();
-    let mut patrol_points_ltx: Ltx = Ltx::new();
-    let mut patrol_links_ltx: Ltx = Ltx::new();
+    let mut patrols_ltx: LtxRecordWriter = LtxRecordWriter::new();
+    let mut patrol_points_ltx: LtxRecordWriter = LtxRecordWriter::new();
+    let mut patrol_links_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for patrol in &self.patrols {
       patrol.export(
@@ -111,7 +111,7 @@ impl FileImportExport for SpawnPatrolsChunk {
     patrol_points_ltx.write_to_path(path.as_ref().join("patrol_points.ltx"))?;
     patrol_links_ltx.write_to_path(path.as_ref().join("patrol_links.ltx"))?;
 
-    log::info!("Exported patrols chunk");
+    log::debug!("Exported patrols chunk");
 
     Ok(())
   }

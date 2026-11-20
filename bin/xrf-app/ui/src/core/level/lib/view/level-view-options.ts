@@ -74,6 +74,14 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isSpawnedLamps: boolean;
   /** Draws the spawned objects a new game releases too, each with its group. */
   isSpawnedReleased: boolean;
+  /** Plays the level's sound while its viewport is the one heard; switched off, it is silent and its schedules run on. */
+  isSoundHeard: boolean;
+  /** Plays the level's music. */
+  isMusicHeard: boolean;
+  /** Plays the level's static sounds and its weather's channels, rain, thunder and ambient-effect sounds. */
+  isAmbienceHeard: boolean;
+  /** Plays the sounds at the world's objects: anomalies and campfires. */
+  isWorldHeard: boolean;
 }
 
 /** The baked hemisphere occlusion applied whole, as the engine applies it. */
@@ -81,6 +89,7 @@ export const DEFAULT_LEVEL_HEMI_STRENGTH: number = 1;
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   ...DEFAULT_LEVEL_SURFACE_OPTIONS,
+  isAmbienceHeard: true,
   isAmbientEffectPlayed: true,
   isAntialiased: true,
   isAxesVisible: false,
@@ -95,6 +104,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isLamplit: true,
   isLensFlared: true,
   isMetered: false,
+  isMusicHeard: true,
   isOccluded: true,
   isOcclusionCulled: true,
   isParallaxed: true,
@@ -103,12 +113,14 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isShadowed: true,
   isSkyHazed: true,
   isSkyVisible: true,
+  isSoundHeard: true,
   isSpawnedItems: true,
   isSpawnedLamps: true,
   isSpawnedProps: true,
   isSpawnedReleased: false,
   isSpawnedWeapons: true,
   isWindy: true,
+  isWorldHeard: true,
   isStatsVisible: true,
   isSunMarked: false,
   isSunShafted: true,

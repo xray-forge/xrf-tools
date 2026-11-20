@@ -6,6 +6,6 @@ use crate::SpawnFiles;
 /// Close the spawns `session_ids` name, committed or opening; a closed one answers no read.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "close_file")]
-pub fn spawn_close_file(files: State<'_, SpawnFiles>, session_ids: Vec<SessionId>) {
+pub(crate) fn spawn_close_file(files: State<'_, SpawnFiles>, session_ids: Vec<SessionId>) {
   files.close(&session_ids);
 }

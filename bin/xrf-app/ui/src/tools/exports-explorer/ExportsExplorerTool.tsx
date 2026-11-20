@@ -4,12 +4,18 @@ import { ReactElement } from "react";
 import { SessionTool } from "@/core/session/components/SessionTool";
 import { ExportsService } from "@/tools/exports-explorer/services/exports.service";
 
-import { ExportsOpenForm } from "./components/ExportsOpenForm";
-import { ExportsEditor } from "./components/viewer/ExportsEditor";
+import { ExportsExplorerOpenForm } from "./components/ExportsExplorerOpenForm";
+import { ExportsExplorerWorkspace } from "./components/ExportsExplorerWorkspace";
 
 /** Picker until a project is open, viewer once it is. */
 export function ExportsExplorerTool(): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
-  return <SessionTool root={exportsService.project} openForm={<ExportsOpenForm />} workspace={<ExportsEditor />} />;
+  return (
+    <SessionTool
+      root={exportsService.project}
+      openForm={<ExportsExplorerOpenForm />}
+      workspace={<ExportsExplorerWorkspace />}
+    />
+  );
 }

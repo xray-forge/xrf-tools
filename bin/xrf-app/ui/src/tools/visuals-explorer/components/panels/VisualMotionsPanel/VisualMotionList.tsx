@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Tooltip } from "@xrf/ui/overlay";
 import { cn } from "@xrf/ui/theme";
 import { ITreeNode, IUseTreeState, useTreeState, VirtualizedTree } from "@xrf/ui/tree";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";

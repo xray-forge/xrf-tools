@@ -20,7 +20,7 @@ impl VorbisIdentification {
       ));
     }
 
-    let mut reader: VorbisPacketReader = VorbisPacketReader::new(&packet[Self::MAGIC.len()..]);
+    let mut reader: VorbisPacketReader<'_> = VorbisPacketReader::new(&packet[Self::MAGIC.len()..]);
     let version: u32 = reader.read_u32("Vorbis version")?;
 
     if version != 0 {

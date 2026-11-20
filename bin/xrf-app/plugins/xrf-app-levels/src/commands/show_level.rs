@@ -18,9 +18,11 @@ use crate::report::LevelReport;
 /// it is made on the pool, after the ticket that keeps a level asked for later from being replaced by this one.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "show_level")]
-// Tauri injects each managed state as an argument of its own.
-#[allow(clippy::too_many_arguments)]
-pub async fn levels_show_level(
+#[expect(
+  clippy::too_many_arguments,
+  reason = "Tauri injects each managed state as an argument of its own"
+)]
+pub(crate) async fn levels_show_level(
   shows: State<'_, ViewportShows>,
   shown: State<'_, ShownLevels>,
   reloads: State<'_, TextureReloads>,

@@ -3,15 +3,13 @@ use xrf_engine_target::XrayEngine;
 use xrf_environment::{LevelWeather, SunPosition, ThunderboltCollection};
 use xrf_level::LevelEnvModifier;
 
-use crate::weather::EnvironmentCycleEntry;
-use crate::weather::LevelWeatherCycle;
-use crate::weather::LevelWeatherTexture;
+use crate::weather::{EnvironmentCycleEntry, LevelWeatherCycle, LevelWeatherTexture};
 
 /// Everything a viewer plays the open level's weather from, as its engine loads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelWeatherDescription {
+pub(crate) struct LevelWeatherDescription {
   pub engine: XrayEngine,
   /// What the level's `weathers` resolves to.
   pub weather: LevelWeather,

@@ -6,14 +6,14 @@ use rayon::prelude::*;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
-use xrf_level::{LevelCformTracer, LevelLight, LevelLightsChunk, LevelLightsFile};
-use xrf_math::Vector3d;
+use xrf_geometry::BvhTracer;
+use xrf_level::{LevelLight, LevelLightsChunk, LevelLightsFile};
+use xrf_math::{Sphere, Vector3d};
 use xrf_vfs::XraySearch;
-use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
+use xrf_visual::{HemiEstimator, VisualTransform};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::parts::{LevelCollisionPart, LevelSpawnPart};
-use crate::parts::{LevelSpawn, LevelSpawnObjectHemi, NamedSpawnVisual};
+use crate::parts::{LevelCollisionPart, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnPart, NamedSpawnVisual};
 use crate::report::LevelReport;
 use crate::spawn::LevelSpawnCategory;
 
@@ -33,14 +33,14 @@ impl SessionPart for LevelHemiPart {
 
 impl LevelHemiPart {
   /// The compiled lights, whose point lights light the level's dynamic objects (`CLight_DB::LoadHemi`).
-  pub const LIGHTS_FILE: &'static str = "build.lights";
+  pub(crate) const LIGHTS_FILE: &'static str = "build.lights";
 
   /// The open level's estimator, built the first time anything asks and kept.
   ///
   /// # Errors
   ///
   /// Returns why the collision form cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
     current.parts.get_or_record::<Self>(search, |search| {
       Self::read(current, search).inspect_err(|error| LevelReport::missing_hemi(&current.source, error))
     })
@@ -48,10 +48,10 @@ impl LevelHemiPart {
 
   /// The cube of every spawned object the viewer draws standing as one of `spheres`' visuals, where it stands, in
   /// renderer space.
-  pub fn estimate_spawn(
+  pub(crate) fn estimate_spawn(
     estimator: &HemiEstimator,
     spawn: &LevelSpawn,
-    spheres: &HashMap<&str, &VisualSphere>,
+    spheres: &HashMap<&str, &Sphere>,
   ) -> Vec<LevelSpawnObjectHemi> {
     spawn
       .objects
@@ -59,10 +59,10 @@ impl LevelHemiPart {
       .enumerate()
       .filter_map(|(index, object)| {
         let (_, visual) = LevelSpawnCategory::get_drawn_visual(object)?;
-        let sphere: &VisualSphere = spheres.get(visual)?;
+        let sphere: &Sphere = spheres.get(visual)?;
         // The visual's sphere is in renderer space, and so is where the object stands it; the form is the engine's.
         let centre: Vector3d =
-          VisualTransform::of_spawn(&object.position, &object.direction).apply_to_point(&sphere.center);
+          VisualTransform::of_spawn(&object.header.position, &object.header.direction).apply_to_point(&sphere.center);
         let estimate = estimator.estimate(&Vector3d::new(centre.x, centre.y, -centre.z), sphere.radius);
 
         Some(LevelSpawnObjectHemi {
@@ -75,7 +75,7 @@ impl LevelHemiPart {
   }
 
   /// How the level lights each object standing as one of the visuals read, none where its spawn cannot be read.
-  pub fn estimate_visuals(
+  pub(crate) fn estimate_visuals(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     estimator: &HemiEstimator,
@@ -84,7 +84,7 @@ impl LevelHemiPart {
     let Ok(spawn) = LevelSpawnPart::get(current, search) else {
       return Vec::new();
     };
-    let spheres: HashMap<&str, &VisualSphere> = read
+    let spheres: HashMap<&str, &Sphere> = read
       .iter()
       .map(|NamedSpawnVisual { name, visual }| (*name, &visual.package.description.declared_bounds.bounding_sphere))
       .collect();
@@ -94,7 +94,7 @@ impl LevelHemiPart {
 
   fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
     let started: Instant = Instant::now();
-    let tracer: Arc<LevelCformTracer> = LevelCollisionPart::get(current, search)?;
+    let tracer: Arc<BvhTracer> = LevelCollisionPart::get(current, search)?;
     let estimator: HemiEstimator = HemiEstimator::new(tracer, &Self::read_lights(&current.source, search));
 
     LevelReport::hemi(&current.source, estimator.get_light_count(), started);

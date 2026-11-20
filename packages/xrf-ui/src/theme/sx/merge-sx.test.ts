@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { SxProps, Theme } from "#/material/styles";
+import { SxProps, Theme } from "#/theme/styles";
 
 import { mergeSx } from "./merge-sx";
 

@@ -2,7 +2,7 @@ use tauri::{AppHandle, Monitor, PhysicalRect, Runtime};
 
 /// The part of one monitor a window may occupy, with the taskbar and its kind already excluded.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MonitorWorkArea {
+pub(crate) struct MonitorWorkArea {
   pub x: i32,
   pub y: i32,
   pub width: u32,
@@ -12,7 +12,7 @@ pub struct MonitorWorkArea {
 
 impl MonitorWorkArea {
   /// The work areas of every monitor attached to the desktop, none where they cannot be read.
-  pub fn list<R: Runtime>(application: &AppHandle<R>) -> Vec<Self> {
+  pub(crate) fn list<R: Runtime>(application: &AppHandle<R>) -> Vec<Self> {
     match application.available_monitors() {
       Ok(monitors) => monitors.iter().map(Self::from).collect(),
       Err(error) => {

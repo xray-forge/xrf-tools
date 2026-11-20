@@ -1,0 +1,60 @@
+use std::sync::Arc;
+use std::sync::mpsc::SyncSender;
+use std::time::Duration;
+
+use xrf_audio_scene::AudioSceneMailbox;
+use xrf_error::XrfResult;
+
+use crate::acoustics::audio_spatialization::AudioSpatialization;
+use crate::control::audio_refusal::AudioRefusal;
+use crate::control::server::audio_gains::AudioGains;
+use crate::control::transport::audio_transport::AudioTransport;
+use crate::control::transport::audio_transport_command::AudioTransportCommand;
+use crate::control::transport::audio_transport_id::AudioTransportId;
+use crate::control::transport::audio_transport_state::AudioTransportState;
+use crate::mixer::tap::audio_tap::AudioTap;
+use crate::scene::host::audio_asset_source::AudioAssetSource;
+use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::scene::report::audio_scene_report::AudioSceneReport;
+
+/// What an [`crate::AudioServer`] sends its control thread; a request with an `answer` is waited on.
+pub(crate) enum ControlRequest {
+  SetGains(AudioGains),
+  OpenTransport {
+    id: AudioTransportId,
+    transport: Box<AudioTransport>,
+  },
+  SteerTransport {
+    id: AudioTransportId,
+    command: AudioTransportCommand,
+    answer: SyncSender<XrfResult<()>>,
+  },
+  DescribeTransport {
+    id: AudioTransportId,
+    answer: SyncSender<Option<AudioTransportState>>,
+  },
+  /// Sends the transport's state again on the next tick, whether or not it changed.
+  ResendTransport(AudioTransportId),
+  CloseTransport(AudioTransportId),
+  /// Plays a scene whose frames come through `mailbox`, its sounds read from `assets`, shaped by `geometry` where the
+  /// host has it.
+  OpenScene {
+    mailbox: AudioSceneMailbox,
+    assets: Arc<dyn AudioAssetSource>,
+    geometry: Option<Arc<dyn AudioSceneGeometry>>,
+  },
+  /// Places sounds for headphones or speakers from the next tick.
+  SetSpatialization(AudioSpatialization),
+  /// How the scene the host names `scene` plays, none for a scene not open.
+  DescribeScene {
+    scene: u32,
+    answer: SyncSender<Option<AudioSceneReport>>,
+  },
+  /// Taps the mix before the master through a ring holding `length` of it.
+  OpenTap {
+    length: Duration,
+    answer: SyncSender<Result<AudioTap, AudioRefusal>>,
+  },
+  /// Closes every transport and scene and ends the thread.
+  ShutDown,
+}

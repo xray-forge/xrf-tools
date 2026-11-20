@@ -7,17 +7,17 @@ use xrf_vfs::{XrayPathCollision, XrayShadowingEntry};
 /// for an installation and `archive verify` for a volume set, and the same fact reported in two shapes is the
 /// per-command drift the reporting contract removes. The reported shapes are [`XrayPathCollision`] and the override
 /// listing, deposited as they stand.
-pub struct SourceReachability;
+pub(crate) struct SourceReachability;
 
 impl SourceReachability {
   /// How many entries of a listing the console prints before it counts the rest.
-  pub const PRINT_LIMIT: usize = 40;
+  pub(crate) const PRINT_LIMIT: usize = 40;
 
   /// Warns about files a source holds but cannot reach, printing at most [`Self::PRINT_LIMIT`] of them.
   ///
   /// Always reported rather than behind a flag: unlike an override, which is how a patch is meant to work, an
   /// unreachable file is an authoring mistake nobody asked to see because nobody knew about it.
-  pub fn print_collisions(output: &OutputOptions, collisions: &[XrayPathCollision]) {
+  pub(crate) fn print_collisions(output: &OutputOptions, collisions: &[XrayPathCollision]) {
     if collisions.is_empty() {
       return;
     }
@@ -49,7 +49,7 @@ impl SourceReachability {
 
   /// Reports the engine paths a set of sources answers with more than one copy, printing at most
   /// [`Self::PRINT_LIMIT`] of them.
-  pub fn print_overrides(output: &OutputOptions, overrides: &[XrayShadowingEntry]) {
+  pub(crate) fn print_overrides(output: &OutputOptions, overrides: &[XrayShadowingEntry]) {
     if overrides.is_empty() {
       return;
     }

@@ -17,6 +17,7 @@ use crate::feature::image::resolve::resolve_feature::ResolveFeature;
 use crate::feature::image::resolve::temporal::temporal_parameters::TemporalParameters;
 use crate::feature::image::resolve::temporal::temporal_resolve::TemporalResolve;
 use crate::feature::image::resolve::upscale::upscale_parameters::UpscaleParameters;
+use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
 use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::feature::tracing::ray_guides::ray_guide_inputs::RayGuideInputs;
@@ -38,7 +39,7 @@ impl ResolveFeature {
   /// Copies the frame as it stands before the water, the composited surfaces and the particles draw, once for all that
   /// read it: the temporal resolve's reactive weight is what the rest change of it, and the `readers` besides. None
   /// where nothing reads it.
-  pub fn add_before_water(
+  pub(crate) fn add_before_water(
     &self,
     graph: &mut FrameGraph<'_>,
     handles: ViewTargetHandles,
@@ -61,7 +62,7 @@ impl ResolveFeature {
 
   /// Copies the frame once its transparent layers, the rain last, drew, before the flares, the fog and the bloom, into
   /// the `guides` ray reconstruction reads it by against the frame before them (`before_water`).
-  pub fn add_transparency_guide(
+  pub(crate) fn add_transparency_guide(
     graph: &mut FrameGraph<'_>,
     handles: ViewTargetHandles,
     guides: &mut Option<RayGuides>,
@@ -85,7 +86,7 @@ impl ResolveFeature {
   /// What the temporal resolve's reactive weight compares the finished frame with, the frame as it stood before the
   /// water and the blended surfaces drew: TAA reads the frame's copy `before_water`, answered; FSR copies it into its
   /// own target, which its passes read.
-  pub fn add_reactive_passes<'a>(
+  pub(crate) fn add_reactive_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     scene: GraphTexture,
@@ -108,7 +109,7 @@ impl ResolveFeature {
   /// Adds the guides DLSS ray reconstruction reads, where it resolves this frame, at the drawn size: worked out from
   /// the G-buffer and `inputs`, the record's stand-ins for the reflections' trace and the indirect light's hit
   /// distances where they are not drawn, after combine.
-  pub fn add_guide_passes<'a>(
+  pub(crate) fn add_guide_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     ViewRecord {
@@ -139,7 +140,6 @@ impl ResolveFeature {
       specular_albedo: create("ray guides specular albedo", RayGuidesPass::SPECULAR_ALBEDO),
       normals: create("ray guides normals", RayGuidesPass::NORMALS),
       hit_distance: create("ray guides hit distance", RayGuidesPass::HIT_DISTANCE),
-      bias: create("ray guides bias", RayGuidesPass::BIAS),
       transparency: None,
       diffuse_hit_distance: None,
     };
@@ -165,7 +165,6 @@ impl ResolveFeature {
       .color(clear(guides.specular_albedo))
       .color(clear(guides.normals))
       .color(clear(guides.hit_distance))
-      .color(clear(guides.bias))
       .color(clear(diffuse_hit_distance))
       .color(clear(guides.diffuse_albedo))
       .record(move |context| passes.tracing.ray_guides.record(context, view, &parameters));
@@ -181,7 +180,7 @@ impl ResolveFeature {
   /// drawn size, the temporal resolve; then, at the viewport's, the upscale where nothing upscaled it and the
   /// sharpening. Answers the frame at the drawn size and the image the viewport shows, which the layers after the
   /// resolve are laid over.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -195,12 +194,19 @@ impl ResolveFeature {
     opaque: Option<GraphTexture>,
     guides: Option<RayGuides>,
   ) -> ImageChain {
-    let upscaled: Option<[GraphTexture; 2]> = self.upscaled.as_ref().map(|[upscaled, sharpened]| {
-      [
-        bindings.import_view(&mut *graph, "upscaled", &upscaled.view),
-        bindings.import_view(&mut *graph, "sharpened", &sharpened.view),
-      ]
-    });
+    // The frames at the viewport's size are read within this frame alone, so the graph pools them.
+    let mut shown_texture = |label: &'static str, is_written: bool| {
+      self.shown_size.filter(|_| is_written).map(|(width, height)| {
+        graph.create_texture(GraphTextureDescriptor::new_2d(
+          label,
+          width,
+          height,
+          UpscalePass::FORMAT,
+        ))
+      })
+    };
+    let upscaled: Option<GraphTexture> = shown_texture("upscaled", self.is_upscaled);
+    let sharpened: Option<GraphTexture> = shown_texture("sharpened", self.is_sharpened);
     let upscale: UniformBinding<UpscaleUniform> = runtime.push_uniform(&self.upscale);
     let resolved: Option<GraphTexture> = match &self.resolve {
       Some(Resolve::Fsr { targets, uniform }) => {
@@ -253,7 +259,7 @@ impl ResolveFeature {
         let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.get_written().view);
         let flickered: GraphTexture =
           bindings.import_view(&mut *graph, "temporal flicker", &flicker.get_written().view);
-        let parameters: TemporalParameters = TemporalParameters {
+        let parameters: TemporalParameters<'_> = TemporalParameters {
           frame,
           depth_target: handles.depth,
           history: bindings.import_view(&mut *graph, "temporal history", &history.get_read().view),
@@ -289,7 +295,7 @@ impl ResolveFeature {
       (rescale, _) => rescale,
     };
     let (frame, mut shown): (GraphTexture, Option<GraphTexture>) = match (rescale, upscaled, resolved) {
-      (Some(stage), Some([upscaled, _]), resolved) => {
+      (Some(stage), Some(upscaled), resolved) => {
         let parameters: UpscaleParameters = UpscaleParameters {
           source: resolved.unwrap_or(frame),
           upscale,
@@ -306,13 +312,13 @@ impl ResolveFeature {
 
         (frame, Some(upscaled))
       }
-      (_, Some(_), Some(resolved)) => (frame, Some(resolved)),
-      (_, None, Some(resolved)) => (resolved, None),
+      (_, _, Some(resolved)) if self.is_rescaled() => (frame, Some(resolved)),
+      (_, _, Some(resolved)) => (resolved, None),
       _ => (frame, None),
     };
 
     // The sharpening reads what this frame wrote: the upscaled or resolved image, else the frame at the viewport's size.
-    if let (true, Some([_, sharpened])) = (self.is_sharpened, upscaled) {
+    if let (true, Some(sharpened)) = (self.is_sharpened, sharpened) {
       let parameters: UpscaleParameters = UpscaleParameters {
         source: shown.unwrap_or(frame),
         upscale,
@@ -379,9 +385,11 @@ impl ResolveFeature {
           pre_exposure,
         };
 
-        match resolve.upscaler.record(context.get_encoder(), &inputs) {
-          Ok(commands) => context.hand_over(commands),
-          Err(error) => log::error!("{error}"),
+        if let Some(commands) = resolve
+          .evaluation
+          .keep(resolve.upscaler.record(context.get_encoder(), &inputs))
+        {
+          context.hand_over(commands);
         }
       });
 
@@ -402,6 +410,7 @@ impl ResolveFeature {
     // FSR's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
+    let frame_time: Duration = self.frame_time;
     let pre_exposure: f32 = self.pre_exposure.current;
 
     let mut pass = graph
@@ -414,7 +423,6 @@ impl ResolveFeature {
       .texture(guides.specular_albedo, GraphTextureAccess::Sampled)
       .texture(guides.normals, GraphTextureAccess::Sampled)
       .texture(guides.hit_distance, GraphTextureAccess::Sampled)
-      .texture(guides.bias, GraphTextureAccess::Sampled)
       .texture(output, GraphTextureAccess::StorageReadWrite);
 
     if let Some(diffuse) = guides.diffuse_hit_distance {
@@ -443,7 +451,6 @@ impl ResolveFeature {
         diffuse_hit_distance: guides
           .diffuse_hit_distance
           .map(|diffuse| context.get_texture(diffuse).view),
-        bias_current_color: Some(context.get_texture(guides.bias).view),
         transparency: guides
           .transparency
           .map(|[before, after]| (context.get_texture(before).view, context.get_texture(after).view)),
@@ -453,12 +460,15 @@ impl ResolveFeature {
         render,
         output: context.get_texture(output).view,
         is_reset,
+        frame_time,
         pre_exposure,
       };
 
-      match resolve.reconstructor.record(context.get_encoder(), &inputs) {
-        Ok(commands) => context.hand_over(commands),
-        Err(error) => log::error!("{error}"),
+      if let Some(commands) = resolve
+        .evaluation
+        .keep(resolve.reconstructor.record(context.get_encoder(), &inputs))
+      {
+        context.hand_over(commands);
       }
     });
 

@@ -1,8 +1,11 @@
 mod bloom;
 mod camera_lens;
-mod debanding;
 mod display_transform;
 mod enhanced_bloom;
 mod exposure_readback;
+mod exposure_restart;
 mod fsr;
+mod image_corrections;
+mod ngx_evaluation;
+mod rcas;
 mod temporal;

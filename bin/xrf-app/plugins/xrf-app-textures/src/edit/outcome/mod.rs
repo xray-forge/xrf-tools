@@ -5,7 +5,7 @@ mod texture_build_outcome;
 mod texture_make_bump_outcome;
 mod texture_save_outcome;
 
-pub use texture_build_omission_report::TextureBuildOmissionReport;
-pub use texture_build_outcome::TextureBuildOutcome;
-pub use texture_make_bump_outcome::TextureMakeBumpOutcome;
-pub use texture_save_outcome::TextureSaveOutcome;
+pub(crate) use texture_build_omission_report::TextureBuildOmissionReport;
+pub(crate) use texture_build_outcome::TextureBuildOutcome;
+pub(crate) use texture_make_bump_outcome::TextureMakeBumpOutcome;
+pub(crate) use texture_save_outcome::TextureSaveOutcome;

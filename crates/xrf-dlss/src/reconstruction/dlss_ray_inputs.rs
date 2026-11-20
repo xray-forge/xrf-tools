@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use glam::Mat4;
 
 /// What a view's frame gives DLSS ray reconstruction to denoise and upscale: what super resolution takes, and the
@@ -21,9 +23,6 @@ pub struct DlssRayInputs<'a> {
   pub specular_hit_distance: &'a wgpu::TextureView,
   /// How far each surface's indirect light ray went before it met what lights it, in metres, where that is traced.
   pub diffuse_hit_distance: Option<&'a wgpu::TextureView>,
-  /// How far each pixel is reconstructed from this frame rather than the history, from nothing to one, where its look
-  /// changes in place from frame to frame (a puddle's ripples): none to leave every pixel to the network.
-  pub bias_current_color: Option<&'a wgpu::TextureView>,
   /// The frame before and after its transparent layers drew (water, glass, particles, rain), at the render size, so
   /// the network tells them from what it reconstructs: none to leave them in the frame.
   pub transparency: Option<(&'a wgpu::TextureView, &'a wgpu::TextureView)>,
@@ -38,6 +37,8 @@ pub struct DlssRayInputs<'a> {
   pub output: &'a wgpu::TextureView,
   /// Whether the frames before are forgotten: the first frame, or one after a cut.
   pub is_reset: bool,
+  /// The time since the frame before, which DLSS reads the motion's speed by when it weighs how much to denoise.
+  pub frame_time: Duration,
   /// The scale the frame's colour was written at, which DLSS divides out so a history kept at the last frame's scale
   /// still matches it; one for colour written as it is.
   pub pre_exposure: f32,
@@ -58,7 +59,6 @@ impl DlssRayInputs<'_> {
     ];
 
     views.extend(self.diffuse_hit_distance);
-    views.extend(self.bias_current_color);
     views.extend(
       self
         .transparency

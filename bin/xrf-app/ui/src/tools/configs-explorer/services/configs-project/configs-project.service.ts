@@ -6,7 +6,7 @@ import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
 /**

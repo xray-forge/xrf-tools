@@ -61,7 +61,7 @@ fn vs_model_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_inde
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let normal_world: vec3<f32> = normalize(rotation * out.normal);
   let facing: f32 = dot(out.normal, lighting.to_sun.xyz);
-  let sun: f32 = sun_shadow(shadow_maps, shadows, world, normal_world, facing);
+  let sun: f32 = sun_shadow(shadow_maps, shadow_compare, shadows, world, normal_world, facing);
 
   out.light = out.sky * max(0.0, normal_world.y) * lighting.forward_hemi.rgb + lighting.forward_ambient.rgb
     + sun * lighting.forward_sun.rgb * saturate(facing);

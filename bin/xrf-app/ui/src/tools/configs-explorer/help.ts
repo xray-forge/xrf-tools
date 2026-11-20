@@ -15,6 +15,8 @@ export const CONFIGS_EXPLORER_HELP: IToolHelp = {
     "Toggle `Resolved` to read what the config's entry point comes to, with the origin of every value beside it. " +
       "Click a line in either view to select its section; `Scheme` then says what judges that section and how it " +
       "measures up, and `Problems` lists everything wrong with the whole root.",
+    "Open `Find` to see every config that writes a section, a field or a value - declarations and patches, archived " +
+      "configs included. Each row opens its config at the line; the target button finds the selected section.",
   ],
   nuances: [
     "The dialect belongs to the open, not to a toolbar toggle. Everything read in a session was resolved under it, " +
@@ -34,6 +36,10 @@ export const CONFIGS_EXPLORER_HELP: IToolHelp = {
       "of sections and most of what a person opens they only read. Verifying a whole tree is the configs verifier.",
     "A finding opens the config it names at its line, which is often not the config on screen - a section is judged " +
       "in the resolution it lands in, and reported where it is written.",
+    "`Find` lists what each config writes, not what the engine ends up with: several configs can write one field, and " +
+      "the Resolved view names the one that wins. Names match whole, field names in their exact case and section " +
+      "names as the dialect reads them - in any case under DLTX. An answer holds the first 500 matches and says how " +
+      "many there were.",
   ],
   limitations: [
     "View only. A config editor is separate work; nothing here writes.",

@@ -1,6 +1,6 @@
-use byteorder::{ByteOrder, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 
 use crate::constants::NIL;
@@ -8,7 +8,7 @@ use crate::data::generic::time::Time;
 
 /// Trailing spawn time a fork's script class appends after the engine server class payload.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value")]
 pub enum LastSpawnTime {
   /// The script class wrote nothing past the engine payload.
@@ -42,10 +42,10 @@ impl LastSpawnTime {
   }
 }
 
-impl ChunkReadWrite for LastSpawnTime {
-  /// Read the trailing spawn time from whatever budget the object chunk has left.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    if reader.read_bytes_remain() == 0 {
+impl ChunkFieldReadWrite for LastSpawnTime {
+  /// Read the trailing spawn time from whatever budget the object chunk has left; a flag other than 0 or 1 is refused.
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    if reader.is_ended() {
       return Ok(Self::Absent);
     }
 
@@ -56,13 +56,13 @@ impl ChunkReadWrite for LastSpawnTime {
   }
 
   /// Write the trailing spawn time back exactly as it was stored.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
       Self::Absent => {}
       Self::Unset => writer.write_u8(0)?,
       Self::Set(time) => {
         writer.write_u8(1)?;
-        time.write::<T>(writer)?;
+        writer.write_xr::<T, _>(time)?;
       }
     }
 

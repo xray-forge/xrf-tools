@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { KeyboardEvent, ReactElement, RefObject } from "react";
 
 import { ICatalogGroupFilter } from "@/core/launcher/lib";

@@ -2,12 +2,12 @@ import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@x
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FormRow } from "@xrf/ui/form/row";
-import { MenuItem } from "@xrf/ui/material/menu";
-import { Stack } from "@xrf/ui/material/stack";
-import { TextField } from "@xrf/ui/material/text-field";
+import { TextField } from "@xrf/ui/input";
+import { Stack } from "@xrf/ui/layout/stack";
+import { MenuItem } from "@xrf/ui/menu";
 import { ChangeEvent, ReactElement, useId } from "react";
 
-import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";
+import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib/volume-options";
 
 type ArchiveVolumeOptions = Pick<ArchivePackConfig, "mode" | "volumeExtension">;
 

@@ -101,7 +101,7 @@ impl<T: ChunkDataSource> Iterator for ChunkSizePackedIterator<'_, T> {
     if let Err(error) = self
       .reader
       .data
-      .set_seek(SeekFrom::Current((size - CHUNK_SIZE_FIELD_SIZE) as i64))
+      .set_seek(SeekFrom::Current((size - CHUNK_SIZE_FIELD_SIZE).cast_signed()))
     {
       return self.fail(error.into());
     }
@@ -125,7 +125,7 @@ mod tests {
 
   #[test]
   fn test_iterate_empty() -> XrfResult {
-    // A chunk declaring no payload, since a reader cannot be opened over an empty source.
+    // An empty chunk, since a reader cannot be opened over an empty source.
     let mut chunk_reader: ChunkReader<InMemoryChunkDataSource> =
       ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
@@ -201,7 +201,7 @@ mod tests {
       vec.push(it?);
     }
 
-    // Records are numbered from where the walk starts, so the second record of the payload is this walk's first.
+    // Ids count from where the walk starts.
     assert_eq!(vec.len(), 1, "Expected count to be 1");
     assert_eq!(vec[0].id, 0, "Expected [0] id to be 0");
     assert_eq!(vec[0].size, 12, "Expected [0] size to be 12");

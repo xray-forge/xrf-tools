@@ -7,7 +7,7 @@ use crate::frame::targets::history::History;
 /// TAA's state: its colour and distance history at the viewport's size and how much each pixel flickers beside it, made
 /// for the drawn size `render`, the last resolved frame's view projection without its jitter and its view, and what it
 /// moves its history by this frame.
-pub struct TemporalResolve {
+pub(crate) struct TemporalResolve {
   pub history: History<FrameTexture>,
   pub flicker: History<FrameTexture>,
   pub render: (u32, u32),

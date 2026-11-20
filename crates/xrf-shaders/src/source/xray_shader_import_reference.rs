@@ -6,13 +6,13 @@ use xrf_utils::format_path;
 use crate::source::ShaderRenderer;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct XRayShaderImportReference {
+pub(crate) struct XRayShaderImportReference {
   line_number: usize,
   path: String,
 }
 
 impl XRayShaderImportReference {
-  pub fn parse_all(path: &Path, renderer: ShaderRenderer, source: &[u8]) -> XrfResult<Vec<Self>> {
+  pub(crate) fn parse_all(path: &Path, renderer: ShaderRenderer, source: &[u8]) -> XrfResult<Vec<Self>> {
     match renderer {
       ShaderRenderer::DirectX11 => Self::parse_directx11(path, source),
       ShaderRenderer::OpenGl => Self::parse_open_gl(path, source),
@@ -108,15 +108,15 @@ impl XRayShaderImportReference {
     })
   }
 
-  pub fn line_number(&self) -> usize {
+  pub(crate) fn line_number(&self) -> usize {
     self.line_number
   }
 
-  pub fn path(&self) -> &str {
+  pub(crate) fn path(&self) -> &str {
     &self.path
   }
 
-  pub fn into_path(self) -> String {
+  pub(crate) fn into_path(self) -> String {
     self.path
   }
 }

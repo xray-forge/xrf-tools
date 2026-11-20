@@ -26,9 +26,9 @@ impl TypeScriptItemRenderer {
     {
       let mut emitter = Emitter {
         cfg: Config::default().with_minify(true),
-        cm: source_map.clone(),
+        cm: Lrc::clone(source_map),
         comments: None,
-        wr: JsWriter::new(source_map.clone(), "\n", &mut buffer, None),
+        wr: JsWriter::new(Lrc::clone(source_map), "\n", &mut buffer, None),
       };
 
       emitter

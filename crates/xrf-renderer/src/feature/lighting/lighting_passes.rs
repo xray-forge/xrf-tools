@@ -1,40 +1,23 @@
 use xrf_error::XrfResult;
 
-use crate::feature::lighting::ambient_occlusion::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_pass::AmbientOcclusionPass;
-use crate::feature::lighting::ambient_occlusion::ambient_occlusion_uniform::AmbientOcclusionUniform;
-use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
 use crate::feature::lighting::bitmask::vbao::vbao_pass::VbaoPass;
-use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
-use crate::feature::lighting::combine::combine_parameters::CombineParameters;
 use crate::feature::lighting::combine::combine_pass::CombinePass;
-use crate::feature::lighting::contact_shadows::contact_shadow_parameters::ContactShadowParameters;
 use crate::feature::lighting::contact_shadows::contact_shadow_pass::ContactShadowPass;
-use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactShadowUniform;
-use crate::feature::lighting::lights::contact::light_contact_parameters::LightContactParameters;
-use crate::feature::lighting::lights::lights_parameters::LightsParameters;
 use crate::feature::lighting::lights::lights_pass::LightsPass;
-use crate::feature::lighting::lights::lights_uniform::LightsUniform;
-use crate::feature::lighting::lights::tracing::light_trace_uniform::LightTraceUniform;
-use crate::feature::lighting::lights::tracing::light_tracing_parameters::LightTracingParameters;
-use crate::feature::lighting::lights::visibility::light_binning_parameters::LightBinningParameters;
-use crate::feature::lighting::lights::visibility::light_shadowing_parameters::LightShadowingParameters;
-use crate::feature::lighting::lights::visibility::light_visibility_parameters::LightVisibilityParameters;
-use crate::feature::lighting::shadows::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
-use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::feature::lighting::shadows::static_shadow_pass::StaticShadowPass;
-use crate::feature::lighting::sun::sun_parameters::SunParameters;
 use crate::feature::lighting::sun::sun_pass::SunPass;
 use crate::feature::lighting::tables::brdf_table::BrdfTable;
 use crate::feature::lighting::tables::material_table::MaterialTable;
 use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
+#[cfg(test)]
 use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes lighting the G-buffer and shadowing it: the static scene's shadow draws, the sun and its contact
 /// shadows, the local lights, the screen's occlusion and the bitmask search, the combine, and the tables every lit pass
 /// reads.
-pub struct LightingPasses {
+pub(crate) struct LightingPasses {
   pub shadow: StaticShadowPass,
   pub sun: SunPass,
   pub contact_shadows: ContactShadowPass,
@@ -52,7 +35,7 @@ impl LightingPasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source,
       queue,
@@ -87,7 +70,7 @@ impl LightingPasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.shadow.refresh(source);
     self.sun.refresh(source);
     self.contact_shadows.refresh(source);
@@ -102,7 +85,27 @@ impl LightingPasses {
   /// # Errors
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  #[cfg(test)]
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+    use crate::feature::lighting::ambient_occlusion::ambient_occlusion_parameters::AmbientOcclusionParameters;
+    use crate::feature::lighting::ambient_occlusion::ambient_occlusion_uniform::AmbientOcclusionUniform;
+    use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
+    use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
+    use crate::feature::lighting::combine::combine_parameters::CombineParameters;
+    use crate::feature::lighting::contact_shadows::contact_shadow_parameters::ContactShadowParameters;
+    use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactShadowUniform;
+    use crate::feature::lighting::lights::contact::light_contact_parameters::LightContactParameters;
+    use crate::feature::lighting::lights::lights_parameters::LightsParameters;
+    use crate::feature::lighting::lights::lights_uniform::LightsUniform;
+    use crate::feature::lighting::lights::tracing::light_trace_uniform::LightTraceUniform;
+    use crate::feature::lighting::lights::tracing::light_tracing_parameters::LightTracingParameters;
+    use crate::feature::lighting::lights::visibility::light_binning_parameters::LightBinningParameters;
+    use crate::feature::lighting::lights::visibility::light_shadowing_parameters::LightShadowingParameters;
+    use crate::feature::lighting::lights::visibility::light_visibility_parameters::LightVisibilityParameters;
+    use crate::feature::lighting::shadows::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
+    use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
+    use crate::feature::lighting::sun::sun_parameters::SunParameters;
+
     modules
       .declare::<ShadowUniform>()
       .declare::<ContactShadowUniform>()

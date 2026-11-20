@@ -9,7 +9,7 @@ use crate::browse::ArchiveSubjects;
 /// What the open subject holds, broken down by extension, folder, size, and where its files come from.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_statistics")]
-pub async fn archives_describe_statistics(
+pub(crate) async fn archives_describe_statistics(
   session_id: SessionId,
   execution: State<'_, ExecutionState>,
   subjects: State<'_, ArchiveSubjects>,

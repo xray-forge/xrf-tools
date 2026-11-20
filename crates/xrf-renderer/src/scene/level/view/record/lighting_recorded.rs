@@ -10,7 +10,7 @@ use crate::feature::weather::sky::sky_parameters::SkyParameters;
 /// the transparent layers left of it, the depth the water's surface is resolved by, and the last frame's scene the
 /// reflections keep.
 #[derive(Clone, Copy)]
-pub struct LightingRecorded<'a> {
+pub(crate) struct LightingRecorded<'a> {
   pub indirect_light: Option<GraphTexture>,
   pub reflections: Option<ReflectionsRecorded>,
   pub sky: Option<SkyParameters<'a>>,

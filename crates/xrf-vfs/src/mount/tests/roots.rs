@@ -102,7 +102,7 @@ fn a_root_that_is_not_there_is_an_empty_step_reported_as_skipped() {
 
   let spec: XrayRoots = XrayRoots::new([
     XrayRoot::new(absent.clone(), XrayMountMode::Installation),
-    XrayRoot::new(present.clone(), XrayMountMode::Directory),
+    XrayRoot::new(present, XrayMountMode::Directory),
   ]);
   let search: XraySearch = open(&spec);
 

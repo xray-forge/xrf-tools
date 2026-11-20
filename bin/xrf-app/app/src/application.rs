@@ -24,7 +24,7 @@ use crate::window::MainWindow;
 
 /// Assemble the application from its plugins and hand control to Tauri, logging from the moment its configuration
 /// names where; a failure before any window is said aloud and ends the process with failure.
-pub fn run() -> ExitCode {
+pub(crate) fn run() -> ExitCode {
   let context = tauri::generate_context!();
 
   // Recorded by this binary's build script, so it describes the binary rather than whichever crate reads it.
@@ -50,8 +50,7 @@ pub fn run() -> ExitCode {
   let builder: Builder<Wry> = Builder::default()
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_shell::init())
-    .plugin(tauri_plugin_store::Builder::default().build());
+    .plugin(tauri_plugin_shell::init());
 
   log::info!("Registering domain plugins");
 
@@ -81,16 +80,16 @@ pub fn run() -> ExitCode {
   ExitCode::SUCCESS
 }
 
-/// The domain plugins over the state every one's setup builds on, managed before any of them: which build is running,
-/// the pool, the asset state every setup hands the sessions a commit moves along, the scopes every session's handles
-/// are released by, where the application writes and its caches, the windows viewports, close approvals and reveals
-/// address, and the jobs. A window that goes releases every scope its pages held.
+/// The domain plugins over the shared state their setups build on: the build, pool, asset state, session scopes,
+/// directories and cache, window registries and jobs, all managed before any plugin, and the store plugin the
+/// preferences open through, registered first. A destroyed window releases every scope its pages held.
 fn assemble<R: Runtime>(
   builder: Builder<R>,
   build: BuildInfo,
   execution: ExecutionState,
   directories: AppDirectories,
 ) -> Builder<R> {
+  let builder: Builder<R> = builder.plugin(tauri_plugin_store::Builder::default().build());
   // Closed documents are dropped on the pool, so neither a command nor the event loop waits for a level to go.
   let scopes: SessionScopes = SessionScopes::new(execution.get_pool());
   // Every client's cache in one, where the application has a data directory to keep it in.
@@ -128,6 +127,7 @@ mod tests {
   use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
   use tauri::{App, Manager};
   use xrf_app_archives::ArchiveSubjects;
+  use xrf_app_audio::{AudioFocus, AudioSettingsStore, PreviewTransports};
   use xrf_app_configs::ConfigsProjects;
   use xrf_app_core::assets::AssetMountState;
   use xrf_app_core::directories::AppDirectories;
@@ -137,7 +137,7 @@ mod tests {
   use xrf_app_core::window::{WindowCloseApprovals, WindowHandles, WindowReveals};
   use xrf_app_dialogs::DialogProjects;
   use xrf_app_exports::ExportsProjects;
-  use xrf_app_levels::{SelectedLevels, ShownLevels};
+  use xrf_app_levels::{SelectedLevels, SelectedScenes, ShownLevels, ShownScenes};
   use xrf_app_render::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState};
   use xrf_app_spawn::SpawnFiles;
   use xrf_app_sprite_equipment::EquipmentSprites;
@@ -175,8 +175,14 @@ mod tests {
     assert!(application.try_state::<ViewportShows>().is_some());
     assert!(application.try_state::<RenderViewports>().is_some());
     assert!(application.try_state::<TextureReloads>().is_some());
+    assert!(application.try_state::<xrf_audio::AudioServer>().is_some());
+    assert!(application.try_state::<AudioFocus>().is_some());
+    assert!(application.try_state::<AudioSettingsStore>().is_some());
+    assert!(application.try_state::<PreviewTransports>().is_some());
     assert!(application.try_state::<SelectedLevels>().is_some());
+    assert!(application.try_state::<SelectedScenes>().is_some());
     assert!(application.try_state::<ShownLevels>().is_some());
+    assert!(application.try_state::<ShownScenes>().is_some());
     assert!(application.try_state::<VisualModels>().is_some());
     assert!(application.try_state::<VisualPoses>().is_some());
     assert!(application.try_state::<VisualBrowses>().is_some());
@@ -192,5 +198,6 @@ mod tests {
     assert!(application.try_state::<MachineProbeState>().is_some());
 
     application.state::<RenderViewports>().shut_down();
+    application.state::<PreviewTransports>().shut_down();
   }
 }

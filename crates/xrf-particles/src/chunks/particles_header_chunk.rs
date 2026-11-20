@@ -4,10 +4,10 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, META_TYPE_FIELD, Section};
+use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, format_path};
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticlesHeaderChunk {
   pub version: u16,
@@ -78,12 +78,12 @@ impl FileImportExport for ParticlesHeaderChunk {
   /// Export header data into provided path.
   /// Creates ltx file config with header chunk description.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     ltx
       .with_section("header")
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set("version", self.version.to_string());
+      .set("version", self.version);
 
     ltx.write_to_path(path.as_ref().join("header.ltx"))?;
 

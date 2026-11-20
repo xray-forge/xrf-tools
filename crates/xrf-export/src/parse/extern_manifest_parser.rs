@@ -7,7 +7,7 @@ use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_typescript::{TypeScriptSource, TypeScriptSymbolResolver};
-use xrf_utils::{format_path, to_portable_path_string};
+use xrf_utils::{format_path, format_portable_path};
 
 use crate::manifest::{ExternExport, ExternManifest};
 use crate::parse::declaration::{ExternDeclarationParser, ExternStatement};
@@ -203,6 +203,6 @@ impl ExternManifestParser {
       ))
     })?;
 
-    Ok(to_portable_path_string(relative))
+    Ok(format_portable_path(relative))
   }
 }

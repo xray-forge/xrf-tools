@@ -1,7 +1,7 @@
 import { RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
+import { IEditorProblem } from "@xrf/ui/editor/problems";
 
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
-import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 
 import { ELevelProblemRule } from "./level-problem-rule";
 

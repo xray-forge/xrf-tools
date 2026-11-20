@@ -64,6 +64,7 @@ fn weather(effects: &[&str]) -> WorldLevelWeather {
         effects: effects.iter().map(|it| String::from(*it)).collect(),
         least_period: Duration::from_secs(10),
         most_period: Duration::from_secs(20),
+        ..WorldAmbient::default()
       },
     )]),
     ambient_effects: effects
@@ -140,7 +141,7 @@ impl AmbientScene {
       Duration::from_millis(now),
     );
 
-    let context: ParticleUpdateContext = ParticleUpdateContext {
+    let context: ParticleUpdateContext<'_> = ParticleUpdateContext {
       library: &self.library,
       rules: &self.rules,
       collider: None,
@@ -202,6 +203,33 @@ impl AmbientScene {
     }
   }
 
+  fn restart(&mut self) {
+    let mut updates: Vec<RenderSceneUpdate> = Vec::new();
+
+    self.effects.restart(&mut updates, &mut self.allocator);
+
+    for update in updates {
+      match update {
+        RenderSceneUpdate::RemoveEmitter(handle) => {
+          self.emitters.remove(&handle);
+        }
+        _ => panic!("A restart only takes emitters out"),
+      }
+    }
+  }
+
+  fn get_playing_effect(&self) -> Option<(String, i32)> {
+    self.emitters.values().find_map(|emitter| {
+      let (object, _) = emitter.object.as_ref()?;
+      let name: String = match object.get_instance() {
+        ParticleInstance::Effect(effect) => effect.get_definition().name.clone(),
+        ParticleInstance::Group(_) => String::new(),
+      };
+
+      Some((name, emitter.seed))
+    })
+  }
+
   /// The effect playing in the scene, if any.
   fn get_playing(&self) -> Option<&ParticleObject> {
     self
@@ -216,7 +244,7 @@ fn list_starts(engine: XrayEngine, names: &[&str], span: u64) -> Vec<(u64, Strin
   let particles: Vec<String> = names.iter().map(|name| format!("nature\\{name}")).collect();
   let mut scene: AmbientScene = AmbientScene::new(engine, &particles.iter().map(String::as_str).collect::<Vec<_>>());
   let (weather, ambients) = (weather(names), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -286,7 +314,7 @@ fn the_same_level_plays_the_same_effects_at_the_same_moments() {
 fn an_effect_stops_once_its_life_is_up_and_goes_once_it_has_died() {
   let mut scene: AmbientScene = AmbientScene::new(XrayEngine::Vanilla, &["nature\\fog"]);
   let (weather, ambients) = (weather(&["fog"]), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -306,7 +334,7 @@ fn an_effect_stops_once_its_life_is_up_and_goes_once_it_has_died() {
 fn indoors_no_effect_starts_and_one_playing_stops() {
   let mut scene: AmbientScene = AmbientScene::new(XrayEngine::Vanilla, &["nature\\fog"]);
   let (weather, ambients) = (weather(&["fog"]), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -341,7 +369,7 @@ fn an_ambient_without_effects_plays_none() {
 fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   let mut scene: AmbientScene = AmbientScene::new(XrayEngine::Vanilla, &["nature\\fog", "nature\\leaves"]);
   let (weather, ambients) = (weather(&["fog", "leaves"]), day());
-  let frame: AmbientFrame = AmbientFrame {
+  let frame: AmbientFrame<'_> = AmbientFrame {
     ambients: &ambients,
     level: &weather,
   };
@@ -376,4 +404,41 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   scene.effects.play_now();
   scene.update(frame, None, 700);
   assert!(scene.get_playing().is_none());
+}
+
+// A burst's first frame restarts the effects: the first effect plays again at once with its first seed.
+#[test]
+fn a_restart_ends_what_plays_and_plays_on_as_from_the_first_frame() {
+  let names: [&str; 3] = ["fog", "leaves", "vortex"];
+  let particles: Vec<String> = names.iter().map(|name| format!("nature\\{name}")).collect();
+  let mut scene: AmbientScene = AmbientScene::new(
+    XrayEngine::Extended,
+    &particles.iter().map(String::as_str).collect::<Vec<_>>(),
+  );
+  let (weather, ambients) = (weather(&names), day());
+  let frame: AmbientFrame<'_> = AmbientFrame {
+    ambients: &ambients,
+    level: &weather,
+  };
+
+  scene.update(frame, Some(OUTDOORS), 1);
+
+  let first: (String, i32) = scene.get_playing_effect().expect("an effect plays at once");
+
+  for now in (51..45_000).step_by(50) {
+    scene.update(frame, Some(OUTDOORS), now);
+  }
+
+  assert!(
+    scene.effects.report(Duration::from_secs(45)).played > 1,
+    "effects played on"
+  );
+
+  scene.restart();
+
+  assert!(scene.get_playing().is_none(), "what played left the scene");
+
+  scene.update(frame, Some(OUTDOORS), 45_001);
+
+  assert_eq!(scene.get_playing_effect(), Some(first));
 }

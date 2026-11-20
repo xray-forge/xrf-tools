@@ -5,7 +5,7 @@ use crate::contract::settings::gpu::render_gpu_description::RenderGpuDescription
 
 /// Whether the renderer can draw with a backend on this machine: the GPUs it can use, or why it cannot draw.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderBackendAvailability {
   pub backend: RenderBackend,

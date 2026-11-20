@@ -1,9 +1,9 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Aabb;
 
 use crate::data::lod::ogf_lod_facet::OgfLodFacet;
-use crate::data::shape::ogf_box::OgfBox;
 
 /// The impostor of a `MT_LOD` visual, `OGF_LODDEF2`: eight facets looking at the trees it stands for from eight
 /// sides, in the level's own space.
@@ -21,7 +21,7 @@ impl OgfLodDefinitionChunk {
 
   /// `FLOD::Load`'s correction to the visual's screen area: how much of its bounding sphere's disc a band of its
   /// middle extent covers, which is how much of a tree's sphere the impostor's facets fill.
-  pub fn get_lod_factor(bounding_box: &OgfBox, radius: f32) -> f32 {
+  pub fn get_lod_factor(bounding_box: &Aabb, radius: f32) -> f32 {
     let mut extents: [f32; 3] = [
       (bounding_box.max.x - bounding_box.min.x) / 2.0,
       (bounding_box.max.y - bounding_box.min.y) / 2.0,
@@ -31,8 +31,11 @@ impl OgfLodDefinitionChunk {
     extents.sort_by(f32::total_cmp);
 
     let middle: f32 = extents[1].min(radius);
-    let band: f32 =
-      4.0 * (0.5 * (radius * radius * (middle / radius).asin() + middle * (radius * radius - middle * middle).sqrt()));
+    let band: f32 = 4.0
+      * f32::midpoint(
+        radius * radius * (middle / radius).asin(),
+        middle * (radius * radius - middle * middle).sqrt(),
+      );
 
     band / (std::f32::consts::PI * radius * radius)
   }
@@ -71,13 +74,12 @@ impl ChunkReadWrite for OgfLodDefinitionChunk {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Aabb, Vector2d, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::level::ogf_lod_definition_chunk::OgfLodDefinitionChunk;
   use crate::data::lod::ogf_lod_facet::OgfLodFacet;
   use crate::data::lod::ogf_lod_vertex::OgfLodVertex;
-  use crate::data::shape::ogf_box::OgfBox;
 
   /// A unit square in the plane `z = depth`, wound so its triangles face `+z`.
   fn facet(depth: f32) -> OgfLodFacet {
@@ -85,7 +87,8 @@ mod tests {
       position: Vector3d::new(x, y, depth),
       rgb_hemi: 0x4d00_0000,
       sun: 16,
-      texture_coordinate: (x, y),
+      texture_coordinate: Vector2d::new(x, y),
+      padding: [0; OgfLodVertex::PADDING],
     };
 
     OgfLodFacet {
@@ -138,13 +141,13 @@ mod tests {
 
   #[test]
   fn test_lod_factor_is_the_share_of_the_disc_the_middle_extent_covers() {
-    let bounding_box: OgfBox = OgfBox {
+    let bounding_box: Aabb = Aabb {
       max: Vector3d::new(1.0, 2.0, 1.0),
       min: Vector3d::new(-1.0, -2.0, -1.0),
     };
     let radius: f32 = 2.0;
     // Half extents 1, 1 and 2: the middle is 1. The band two across a disc of radius two.
-    let expected: f32 = 4.0 * (0.5 * (4.0 * (0.5f32).asin() + 3.0f32.sqrt())) / (std::f32::consts::PI * 4.0);
+    let expected: f32 = 4.0 * f32::midpoint(4.0 * (0.5f32).asin(), 3.0f32.sqrt()) / (std::f32::consts::PI * 4.0);
 
     assert!((OgfLodDefinitionChunk::get_lod_factor(&bounding_box, radius) - expected).abs() < 1e-6);
   }

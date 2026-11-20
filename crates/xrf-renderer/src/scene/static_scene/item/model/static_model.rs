@@ -52,7 +52,7 @@ impl StaticModel {
       };
       let vertex_base: u32 = (words.len() / StaticLayout::STRIDE as usize) as u32;
       let index_base: u32 = indices.len() as u32;
-      let level: VisualDrawRange = Self::to_level(geometry, detail);
+      let level: VisualDrawRange = Self::pick_level(geometry, detail);
       let stored: Vec<u16> = read_pods(&package.buffer, &geometry.indices);
       let packed: Vec<u32> = StaticVertexWords::pack_model_words(geometry, &package.buffer);
       let vertices: usize = packed.len() / StaticLayout::STRIDE as usize;
@@ -79,7 +79,7 @@ impl StaticModel {
       parts.push(StaticModelPart {
         indices: (index_base, level.count),
         clusters: if !is_skinned {
-          Self::to_clusters(
+          Self::list_clusters(
             geometry,
             &package.buffer,
             (level.start, level.count),
@@ -87,7 +87,7 @@ impl StaticModel {
             sphere,
           )
         } else {
-          Self::to_reaching_clusters(level.count, index_base, sphere)
+          Self::list_reaching_clusters(level.count, index_base, sphere)
         },
         surface: SectorSurface {
           shader_id: color_id,
@@ -104,10 +104,7 @@ impl StaticModel {
       indices,
       parts,
       sphere,
-      bounds: [
-        Vec3::new(declared_box.min.x, declared_box.min.y, declared_box.min.z),
-        Vec3::new(declared_box.max.x, declared_box.max.y, declared_box.max.z),
-      ],
+      bounds: [Vec3::from(&declared_box.min), Vec3::from(&declared_box.max)],
       skin: is_skinned.then_some(StaticModelSkin {
         links,
         bones: package.description.bones.len() as u32,
@@ -116,14 +113,14 @@ impl StaticModel {
   }
 
   /// The level `detail` picks down a geometry's collapse chain, as the viewers pick it: rounded to the nearest.
-  fn to_level(geometry: &VisualGeometry, detail: f32) -> VisualDrawRange {
+  fn pick_level(geometry: &VisualGeometry, detail: f32) -> VisualDrawRange {
     let coarsest: usize = geometry.detail_levels.len().saturating_sub(1);
     let chosen: usize = (detail.clamp(0.0, 1.0) * coarsest as f32).round() as usize;
 
     geometry
       .detail_levels
       .get(chosen)
-      .cloned()
+      .copied()
       .unwrap_or_else(|| geometry.get_default_level())
   }
 
@@ -160,7 +157,7 @@ impl StaticModel {
 
   /// The clusters a geometry drawn as stored was cut into for its level, their first index moved to where the level's
   /// indices now start; the level cut anew where its own are not found.
-  fn to_clusters(
+  fn list_clusters(
     geometry: &VisualGeometry,
     buffer: &[u8],
     (start, count): (u32, u32),
@@ -168,7 +165,7 @@ impl StaticModel {
     sphere: Vec4,
   ) -> Vec<(u32, u32, Vec4)> {
     let Some(clusters) = &geometry.clusters else {
-      return Self::to_reaching_clusters(count, base, sphere);
+      return Self::list_reaching_clusters(count, base, sphere);
     };
     let ranges: Vec<[u32; 4]> = read_pods(buffer, &clusters.ranges);
     let spheres: Vec<Vec4> = read_pods(buffer, &clusters.spheres);
@@ -184,12 +181,12 @@ impl StaticModel {
         .collect();
     }
 
-    Self::to_reaching_clusters(count, base, sphere)
+    Self::list_reaching_clusters(count, base, sphere)
   }
 
   /// A level's indices cut into clusters in order, each culled by the model's whole sphere widened: what a geometry
   /// that moves, or was never cut, is drawn by.
-  fn to_reaching_clusters(count: u32, base: u32, sphere: Vec4) -> Vec<(u32, u32, Vec4)> {
+  fn list_reaching_clusters(count: u32, base: u32, sphere: Vec4) -> Vec<(u32, u32, Vec4)> {
     let reach: Vec4 = sphere.truncate().extend(sphere.w * SKINNED_REACH);
     let triangles: u32 = count / 3;
 

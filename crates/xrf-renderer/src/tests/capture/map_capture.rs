@@ -33,7 +33,7 @@ fn zaton(width: u32, height: u32, supersampling: u32) -> RenderMapCapture {
 }
 
 /// Where an engine-space point lands in a tile's drawing, in its pixels from the top left.
-fn to_tile_pixel(tile: &MapTile, point: Vec3) -> (f32, f32) {
+fn get_tile_pixel(tile: &MapTile, point: Vec3) -> (f32, f32) {
   let view: CameraView = tile.get_view();
   let clip: Vec4 = view.get_view_projection() * EngineSpace::mirror(point).extend(1.0);
   let (width, height): (u32, u32) = tile.get_drawn_size();
@@ -104,8 +104,8 @@ fn draws_the_map_north_up_with_its_corners_on_the_area_corners() -> XrfResult {
   let tile: &MapTile = &plan.tiles[0];
   let margin: f32 = RENDER_MAP_TILE_MARGIN as f32;
   // One map pixel a metre, so the area's corners are the placed pixels' corners, past the margin.
-  let (left, top): (f32, f32) = to_tile_pixel(tile, Vec3::new(-600.0, 0.0, 585.0));
-  let (right, bottom): (f32, f32) = to_tile_pixel(tile, Vec3::new(600.0, 0.0, -615.0));
+  let (left, top): (f32, f32) = get_tile_pixel(tile, Vec3::new(-600.0, 0.0, 585.0));
+  let (right, bottom): (f32, f32) = get_tile_pixel(tile, Vec3::new(600.0, 0.0, -615.0));
 
   assert!(
     (left - margin).abs() < 1e-2 && (top - margin).abs() < 1e-2,
@@ -127,8 +127,8 @@ fn meets_neighbouring_tiles_on_the_same_ground() -> XrfResult {
   // The ground under the first tile's last column and the second's first, which must be one map pixel apart.
   let seam: Vec3 = Vec3::new(-600.0 + 2048.0 * 1200.0 / 4096.0, 0.0, 0.0);
 
-  assert!((to_tile_pixel(first, seam).0 - margin - 2048.0).abs() < 1e-2);
-  assert!((to_tile_pixel(second, seam).0 - margin).abs() < 1e-2);
+  assert!((get_tile_pixel(first, seam).0 - margin - 2048.0).abs() < 1e-2);
+  assert!((get_tile_pixel(second, seam).0 - margin).abs() < 1e-2);
 
   Ok(())
 }
@@ -251,11 +251,14 @@ fn draws_a_tile_as_the_engine_draws_its_map_through_the_lens_of_its_view() -> Xr
   options.features.antialiasing = RenderAntialiasing::Dlss;
   options.output.upscaling.scale = RenderScale::Quality;
   options.output.output_scale = 0.5;
+  options.features.camera.is_aberrated = true;
+  options.features.camera.is_grained = true;
 
   let look: RenderViewOptions = MapCaptureLook::apply(&options, tile);
 
-  // The map's own look: no fog, particles or bloom, drawn at the tile's own pixels.
   assert!(!look.show.is_fogged && !look.show.is_particled && !look.features.bloom.is_enabled);
+  assert_eq!(look.features.camera, options.features.camera.without_effects());
+  assert!(!look.features.camera.is_aberrated && !look.features.camera.is_grained);
   assert!(!look.features.grass.is_enabled);
   assert_eq!(look.output.upscaling.scale, RenderScale::Native);
   assert_eq!(look.output.output_scale, 1.0);

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use xrf_math::Vector3d;
+use xrf_math::{Affine3d, Sphere, Vector3d};
 use xrf_renderer::{RenderHelperIcon, RenderHelperShape, RenderLevelHelpers};
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
   AlifeObjectInherited, AlifeObjectItem, AlifeObjectPhysic, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, ClsId,
-  Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
+  Patrol, PatrolLink, PatrolPoint, PhysicsClosingState, Shape, SpawnLevelGraph, SpawnLevelGraphPoint,
 };
 
 use crate::objects::{
@@ -39,7 +39,7 @@ fn new_physic(visual: &str, story_id: u32) -> AlifeObjectInherited {
     physic_type: 0,
     mass: 10.0,
     fixed_bones: String::new(),
-    update_state: None,
+    update_state: PhysicsClosingState::Unset,
   }))
 }
 
@@ -125,7 +125,16 @@ fn get_index(object: &LevelObject) -> u32 {
 fn new_graph() -> SpawnLevelGraph {
   SpawnLevelGraph {
     levels: Vec::new(),
-    points: vec![(12, Vector3d::new(1.0, 2.0, 3.0)), (13, Vector3d::new(4.0, 5.0, 6.0))],
+    points: vec![
+      SpawnLevelGraphPoint {
+        game_vertex_id: 12,
+        level_point: Vector3d::new(1.0, 2.0, 3.0),
+      },
+      SpawnLevelGraphPoint {
+        game_vertex_id: 13,
+        level_point: Vector3d::new(4.0, 5.0, 6.0),
+      },
+    ],
     patrols: vec![Patrol {
       name: String::from("zat_walk"),
       points: (0..3)
@@ -388,19 +397,25 @@ fn keeps_a_volumes_shapes_in_its_own_renderer_space_and_whom_it_restricts() {
       "keep_in",
       "space_restrictor",
       ClsId::SpcRsS,
-      new_restrictor(vec![Shape::Sphere((Vector3d::new(1.0, 2.0, 3.0), 4.0))], 4),
+      new_restrictor(
+        vec![Shape::Sphere(Sphere {
+          center: Vector3d::new(1.0, 2.0, 3.0),
+          radius: 4.0,
+        })],
+        4,
+      ),
     ),
     new_object(
       "keep_out",
       "space_restrictor",
       ClsId::SpcRsS,
       new_restrictor(
-        vec![Shape::Box((
-          Vector3d::new(2.0, 0.0, 0.0),
-          Vector3d::new(0.0, 2.0, 0.0),
-          Vector3d::new(0.0, 0.0, 2.0),
-          Vector3d::new(0.0, 0.0, 5.0),
-        ))],
+        vec![Shape::Box(Affine3d {
+          x_axis: Vector3d::new(2.0, 0.0, 0.0),
+          y_axis: Vector3d::new(0.0, 2.0, 0.0),
+          z_axis: Vector3d::new(0.0, 0.0, 2.0),
+          translation: Vector3d::new(0.0, 0.0, 5.0),
+        })],
         1,
       ),
     ),

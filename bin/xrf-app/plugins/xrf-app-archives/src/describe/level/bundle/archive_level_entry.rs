@@ -5,7 +5,7 @@ use crate::describe::level::bundle::ArchiveLevelShader;
 
 /// What one row of the table holds, in the three shapes the renderer distinguishes.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ArchiveLevelEntry {
   // An empty name, which the renderer skips. Every shipped level has exactly one, at row zero.

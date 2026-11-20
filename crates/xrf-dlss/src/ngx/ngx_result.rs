@@ -19,7 +19,10 @@ impl NgxResult {
   }
 
   /// NGX's reason for a failed result, as its headers explain it.
-  #[allow(non_upper_case_globals)]
+  #[expect(
+    non_upper_case_globals,
+    reason = "matches on the result constants under bindgen's C names"
+  )]
   fn describe(result: NVSDK_NGX_Result) -> &'static str {
     match result {
       NVSDK_NGX_Result_NVSDK_NGX_Result_FAIL_FeatureNotSupported => {

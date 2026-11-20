@@ -10,21 +10,23 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
+glam = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-xrf-math = { workspace = true }
+xrf-geometry = { workspace = true }
+xrf-math = { workspace = true, features = ["glam"] }
 xrf-ogf = { workspace = true }
 xrf-omf = { workspace = true }
 xrf-skeleton = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-level = { workspace = true }
+xrf-material = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
-xrf-particles = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.

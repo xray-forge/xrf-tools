@@ -15,6 +15,25 @@ const DOWN: Vec3 = Vec3::new(0.0, -1.0, 0.0);
 /// A level standing four hundred metres either way along the light from the origin.
 const SPAN: Option<(f32, f32)> = Some((-400.0, 400.0));
 
+const LEVEL: [Vec4; 4] = [
+  Vec4::new(-150.0, 0.0, -120.0, 90.0),
+  Vec4::new(180.0, 10.0, -60.0, 120.0),
+  Vec4::new(60.0, 40.0, 240.0, 100.0),
+  Vec4::new(-220.0, -10.0, 200.0, 80.0),
+];
+
+// As `StaticScene::get_span` measures a level.
+fn get_span(sectors: &[Vec4], light: Vec3) -> Option<(f32, f32)> {
+  sectors
+    .iter()
+    .map(|sphere| {
+      let along: f32 = sphere.truncate().dot(light);
+
+      (along - sphere.w, along + sphere.w)
+    })
+    .reduce(|(nearest, farthest), (near, far)| (nearest.min(near), farthest.max(far)))
+}
+
 /// A camera at a point looking at another, the up axis taken as `y` unless it looks along it.
 fn create_camera(position: Vec3, target: Vec3) -> CameraView {
   let direction: Vec3 = (target - position).normalize();
@@ -68,6 +87,15 @@ fn fit_first(camera: &CameraView, light: Vec3, width: f32) -> SunCascade {
   let mut cascade: SunCascade = SunCascade::default();
 
   cascade.fit(camera, &mut rays, light, width, 2048, SPAN);
+
+  cascade
+}
+
+fn fit_over(camera: &CameraView, light: Vec3, width: f32, sectors: &[Vec4]) -> SunCascade {
+  let mut rays: SunViewRays = SunViewRays::new(camera);
+  let mut cascade: SunCascade = SunCascade::default();
+
+  cascade.fit(camera, &mut rays, light, width, 2048, get_span(sectors, light));
 
   cascade
 }
@@ -206,20 +234,65 @@ fn sun_cascade_is_held_by_its_map_through_a_walk_but_not_a_sharp_turn() {
   assert!(!fit_first(&create_camera(position, position - Vec3::Z), DOWN, 160.0).is_held_by(&drawn));
 }
 
-// A running clock turns the sun a little every frame: a map waits for its turn through a turn moving a caster at the
-// reach half a texel, and draws at once past it.
+// A running clock turns the sun a little every frame; each side measures the level along its own light, so the turn
+// moves the level's span too.
 #[test]
 fn sun_cascade_is_held_by_its_map_through_a_clocks_turn_but_not_a_seek() {
   let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
   let light: Vec3 = Vec3::new(0.3, -1.0, 0.2).normalize();
   let turned = |angle: f32| glam::Quat::from_rotation_z(angle) * light;
-  let drawn: SunCascade = fit_first(&camera, light, 160.0);
-  // Half a texel of 160 m at 2048 across, over the level's four hundred metres towards the sun.
-  let limit: f32 = 0.5 * 160.0 / 2048.0 / 400.0;
+  let drawn: SunCascade = fit_over(&camera, light, 160.0, &LEVEL);
+  let (nearest, _) = get_span(&LEVEL, light).unwrap_or_default();
+  // Half a texel of 160 m at 2048, over the map's reach towards the sun: the level's nearest plus a sixteenth width.
+  let limit: f32 = 0.5 * 160.0 / 2048.0 / (-nearest + 160.0 / 16.0);
 
-  assert!(fit_first(&camera, turned(limit * 0.5), 160.0).is_held_by(&drawn));
-  assert!(!fit_first(&camera, turned(limit * 2.0), 160.0).is_held_by(&drawn));
-  assert!(!fit_first(&camera, turned(0.01), 160.0).is_held_by(&drawn));
+  assert_ne!(get_span(&LEVEL, turned(limit * 0.5)), get_span(&LEVEL, light));
+  assert!(fit_over(&camera, turned(limit * 0.5), 160.0, &LEVEL).is_held_by(&drawn));
+  assert!(!fit_over(&camera, turned(limit * 2.0), 160.0, &LEVEL).is_held_by(&drawn));
+  assert!(!fit_over(&camera, turned(0.01), 160.0, &LEVEL).is_held_by(&drawn));
+}
+
+// A two-metre caster whose sunward side stands `past` metres beyond the level's nearest along `light`.
+fn create_level_with_caster(light: Vec3, past: f32) -> (Vec<Vec4>, Vec3) {
+  let (nearest, _) = get_span(&LEVEL, light).unwrap_or_default();
+  let ground: Vec3 = Vec3::new(0.0, 0.0, 40.0);
+  let side: Vec3 = ground + light * (nearest - past - ground.dot(light));
+
+  ([LEVEL.as_slice(), &[(side + light).extend(1.0)]].concat(), side)
+}
+
+// A map reaches a sixteenth of its width past the level's nearest towards the sun.
+#[test]
+fn sun_cascade_is_held_by_its_map_while_a_caster_stands_within_its_depth() {
+  let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
+  let light: Vec3 = Vec3::new(0.3, -1.0, 0.2).normalize();
+  let drawn: SunCascade = fit_over(&camera, light, 160.0, &LEVEL);
+  let (within, inside) = create_level_with_caster(light, 5.0);
+  let (beyond, outside) = create_level_with_caster(light, 15.0);
+
+  assert!(is_inside(&drawn, inside));
+  assert!(fit_over(&camera, light, 160.0, &within).is_held_by(&drawn));
+  assert!(!is_inside(&drawn, outside));
+  assert!(!fit_over(&camera, light, 160.0, &beyond).is_held_by(&drawn));
+}
+
+// A map nearing its limits has its next drawn ahead of time.
+#[test]
+fn sun_cascade_is_held_within_a_share_of_its_map_for_less_of_a_turn_and_of_the_level() {
+  let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
+  let light: Vec3 = Vec3::new(0.3, -1.0, 0.2).normalize();
+  let drawn: SunCascade = fit_over(&camera, light, 160.0, &LEVEL);
+  let (nearest, _) = get_span(&LEVEL, light).unwrap_or_default();
+  let limit: f32 = 0.5 * 160.0 / 2048.0 / (-nearest + 160.0 / 16.0);
+  let turned: SunCascade = fit_over(&camera, glam::Quat::from_rotation_z(limit * 0.6) * light, 160.0, &LEVEL);
+  let (level, _) = create_level_with_caster(light, 6.0);
+  let grown: SunCascade = fit_over(&camera, light, 160.0, &level);
+
+  for fit in [turned, grown] {
+    assert!(fit.is_held_by(&drawn));
+    assert!(fit.is_held_within(&drawn, 0.9));
+    assert!(!fit.is_held_within(&drawn, 0.5));
+  }
 }
 
 // A low sun's caster far across the level shadows the ground the camera looks at, however far off it stands.
@@ -271,12 +344,12 @@ fn sun_cascade_is_not_held_by_a_map_drawn_at_other_settings() {
 
 /// Where a point lands on a map `resolution` texels across drawn by `view` into the rows from `first`: its texel's
 /// column and row, and its depth.
-fn to_texel(view: &CameraView, point: Vec3, (first, rows): (u32, u32), resolution: u32) -> Vec3 {
+fn get_texel(view: &CameraView, point: Vec3, (first, rows): (u32, u32), resolution: u32) -> Vec3 {
   let clip: Vec4 = view.get_view_projection() * point.extend(1.0);
   let ndc: Vec3 = clip.truncate() / clip.w;
 
   Vec3::new(
-    (ndc.x + 1.0) / 2.0 * resolution as f32,
+    (ndc.x * 0.5 + 0.5) * resolution as f32,
     first as f32 + (1.0 - ndc.y) / 2.0 * rows as f32,
     ndc.z,
   )
@@ -296,13 +369,13 @@ fn sun_cascade_rows_land_where_the_whole_map_s_would() {
 
     for (across, down) in [(-60.0, -70.0), (10.0, 0.0), (75.0, 40.0), (-20.0, 79.0)] {
       let point: Vec3 = center + right * across - up * down;
-      let whole: Vec3 = to_texel(&cascade.view, point, (0, 2048), 2048);
+      let whole: Vec3 = get_texel(&cascade.view, point, (0, 2048), 2048);
 
       if whole.y < first as f32 || whole.y >= last as f32 {
         continue;
       }
 
-      let banded: Vec3 = to_texel(&band, point, (first, last - first), 2048);
+      let banded: Vec3 = get_texel(&band, point, (first, last - first), 2048);
 
       assert!(whole.distance(banded) < 1e-2, "{whole} against {banded}");
       tested += 1;

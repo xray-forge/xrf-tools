@@ -3,9 +3,9 @@ import { ChangeEvent, ReactElement } from "react";
 
 import { EditableList, EditableListItem } from "#/form/editable-list";
 import { FormRow } from "#/form/row";
-import { TextField } from "#/material/text-field";
+import { TextField } from "#/input";
 
-interface IStringListFormRowProps {
+export interface IStringListFormRowProps {
   label: string;
   description?: string;
   values: Array<string>;

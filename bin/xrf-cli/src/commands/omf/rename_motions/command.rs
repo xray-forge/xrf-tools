@@ -10,27 +10,24 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfRenameMotionsReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct RenameMotionsCommand;
+pub(crate) struct RenameMotionsCommand;
 
 impl GenericCommand for RenameMotionsCommand {
   fn operation(&self) -> &'static str {
     "rename-motions"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to omf file")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Rename the motions of an OMF file")
-      .arg(
-        Arg::new("path")
-          .help("Path to omf file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path to resulting omf file")
@@ -62,9 +59,7 @@ impl GenericCommand for RenameMotionsCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let map_path: &PathBuf = matches
       .get_one::<PathBuf>("map")

@@ -10,7 +10,7 @@ import {
   PANEL_ACTIVE_QUERY,
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panels/panel-messages";
-import { EArchivePanelId } from "@/tools/archives-explorer/components/editor/archive-panels";
+import { EArchivePanelId } from "@/tools/archives-explorer/components/explorer/archive-panels";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
 
 /**

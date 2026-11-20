@@ -1,9 +1,9 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -24,15 +24,15 @@ impl ScaledDirection {
   }
 }
 
-impl ChunkReadWrite for ScaledDirection {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl ChunkFieldReadWrite for ScaledDirection {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       direction: reader.read_u16::<T>()?,
       magnitude: reader.read_f32::<T>()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u16::<T>(self.direction)?;
     writer.write_f32::<T>(self.magnitude)?;
 
@@ -96,7 +96,7 @@ mod tests {
     Ok(())
   }
 
-  /// 126 in the low bits is the compressed normal straight along y.
+  // 126 in the low bits is the compressed normal straight along y.
   #[test]
   fn reads_the_vector_the_engine_decompresses() {
     let vector: Vector3d = ScaledDirection {

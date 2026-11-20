@@ -7,7 +7,7 @@ use crate::lighting::wind::render_wind::RenderWind;
 /// What one frame's rain falls by: the weather's rainfall and the drops it is drawn with, the wind and its strength,
 /// where its cover stands, where the enhanced drops' square stands from the eye, and the splash model's indices.
 #[derive(Clone, Copy, Debug)]
-pub struct RainFrame<'a> {
+pub(crate) struct RainFrame<'a> {
   pub rain: &'a RenderRainfall,
   pub drops: RenderRainDropsMode,
   pub wind: RenderWind,

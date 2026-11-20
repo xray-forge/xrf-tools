@@ -11,21 +11,21 @@ use crate::scene::static_scene::static_scene::StaticScene;
 
 impl StaticScene {
   /// The sector and shader table entry of a picked impostor.
-  pub fn resolve_impostor_pick(&self, impostor: u32) -> Option<(u32, u16)> {
+  pub(crate) fn resolve_impostor_pick(&self, impostor: u32) -> Option<(u32, u16)> {
     self
       .sectors
       .as_slice()
       .iter()
-      .find(|sector| StaticSpans::contains(&sector.spans.impostors, impostor))
+      .find(|sector| StaticSpans::contains(sector.spans.impostors.as_ref(), impostor))
       .and_then(|sector| {
-        let local: u32 = impostor - StaticSpans::get_offset(&sector.spans.impostors);
+        let local: u32 = impostor - StaticSpans::get_offset(sector.spans.impostors.as_ref());
 
         Some((sector.sector, *sector.impostor_shaders.get(local as usize)?))
       })
   }
 
   /// What a pick's cluster and place were part of: its slot's part, and the place's instance where it is a mesh's.
-  pub fn resolve_pick(&self, cluster: u32, place: u32) -> Option<(StaticSlotInfo, Option<u32>)> {
+  pub(crate) fn resolve_pick(&self, cluster: u32, place: u32) -> Option<(StaticSlotInfo, Option<u32>)> {
     let (spans, slot_infos, cluster_slots): (&StaticSpans, &[StaticSlotInfo], &[u32]) = self
       .sectors
       .as_slice()
@@ -44,35 +44,36 @@ impl StaticScene {
           model.cluster_slots.as_slice(),
         )
       }))
-      .find(|(spans, _, _)| StaticSpans::contains(&spans.clusters, cluster))?;
-    let local: u32 = cluster - StaticSpans::get_offset(&spans.clusters);
+      .find(|(spans, _, _)| StaticSpans::contains(spans.clusters.as_ref(), cluster))?;
+    let local: u32 = cluster - StaticSpans::get_offset(spans.clusters.as_ref());
     let info: StaticSlotInfo = *slot_infos.get(*cluster_slots.get(local as usize)? as usize)?;
 
     Some((info, info.mesh.map(|_| place.saturating_sub(info.first_place))))
   }
 
   /// The spawned object a picked place is, where it is one.
-  pub fn resolve_spawn_pick(&self, place: u32) -> Option<u32> {
+  pub(crate) fn resolve_spawn_pick(&self, place: u32) -> Option<u32> {
     self.objects.find_at(place).map(|object| object.object)
   }
 
   /// Whether a spawned object stands in the scene.
-  pub fn has_object(&self, object: u32) -> bool {
+  #[cfg(test)]
+  pub(crate) fn has_object(&self, object: u32) -> bool {
     self.objects.contains(object)
   }
 
   /// A spawned object's bounding sphere in renderer space, while it stands in the scene.
-  pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
+  pub(crate) fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
     self.objects.find(object).map(|object| object.sphere)
   }
 
   /// The place a spawned object stands at, which its drawn clusters carry, while it stands in the scene.
-  pub fn get_object_place(&self, object: u32) -> Option<u32> {
+  pub(crate) fn get_object_place(&self, object: u32) -> Option<u32> {
     self.objects.find(object).map(|object| object.place.get_offset())
   }
 
   /// A spawned object's box as it stands, while it stands in the scene.
-  pub fn get_object_box(&self, object: u32) -> Option<StaticObjectBox> {
+  pub(crate) fn get_object_box(&self, object: u32) -> Option<StaticObjectBox> {
     let object: &StaticObjectProxy = self.objects.find(object)?;
     let [min, max]: [Vec3; 2] = self.models.get(object.model)?.bounds;
 
@@ -85,7 +86,7 @@ impl StaticScene {
 
   /// What a selection marks, once what it names is in the scene: a spawned object's place; a mesh's place; or the
   /// runs of clusters drawing a sector's baked geometry of one shader table entry.
-  pub fn resolve_selection(&self, target: &RenderSelectionTarget) -> Option<StaticSelection> {
+  pub(crate) fn resolve_selection(&self, target: &RenderSelectionTarget) -> Option<StaticSelection> {
     match *target {
       RenderSelectionTarget::Spawn { object } => Some(StaticSelection {
         place: Some(self.objects.find(object)?.place.get_offset()),
@@ -110,7 +111,7 @@ impl StaticScene {
       }
       RenderSelectionTarget::Surface { sector, shader_id, .. } => {
         let proxy: &StaticSectorProxy = self.find_sector(sector)?;
-        let first: u32 = StaticSpans::get_offset(&proxy.spans.clusters);
+        let first: u32 = StaticSpans::get_offset(proxy.spans.clusters.as_ref());
         let mut runs: Vec<[u32; 2]> = Vec::new();
 
         for (local, slot) in proxy.cluster_slots.iter().enumerate() {

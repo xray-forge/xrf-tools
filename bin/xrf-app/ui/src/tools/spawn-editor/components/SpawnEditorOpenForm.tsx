@@ -8,7 +8,7 @@ import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 export function SpawnEditorOpenForm({
   "data-testid": dataTestId = "spawn-editor-open-form",
@@ -17,9 +17,9 @@ export function SpawnEditorOpenForm({
 }: BaseComponentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
-  const isLoading: boolean = spawnFileService.isOpening;
+  const isLoading: boolean = spawnEditorService.isOpening;
 
   const spawn: IPathField = usePathField({
     tool: EToolId.SPAWN_EDITOR,
@@ -31,11 +31,11 @@ export function SpawnEditorOpenForm({
 
   const onOpen = useCallback(() => {
     if (spawn.value) {
-      spawnFileService.openFile(spawn.value);
+      spawnEditorService.open(spawn.value);
     } else {
       log.info("Cannot parse spawn file without path");
     }
-  }, [log, spawnFileService, spawn.value]);
+  }, [log, spawnEditorService, spawn.value]);
 
   return (
     <PickerForm
@@ -46,7 +46,7 @@ export function SpawnEditorOpenForm({
       isSubmitDisabled={!spawn.isValid}
       title={"Open spawn file"}
       description={"Reads the file into the editor. Nothing is written until you save."}
-      error={spawnFileService.chunks.header.error ? String(spawnFileService.chunks.header.error) : undefined}
+      error={spawnEditorService.chunks.header.error ? String(spawnEditorService.chunks.header.error) : undefined}
       submitLabel={"Open"}
       onSubmit={onOpen}
     >

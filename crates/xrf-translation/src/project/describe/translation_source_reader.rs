@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::json::translation_json_reader::TranslationJsonReader;
@@ -91,7 +91,7 @@ impl TranslationSourceReader {
 
     let source: TranslationSource = TranslationSource::new(
       logical_path,
-      asset.to_physical_path().as_deref().map(to_portable_path_string),
+      asset.to_physical_path().as_deref().map(format_portable_path),
     );
     let file: &mut TranslationFile = descriptor
       .files

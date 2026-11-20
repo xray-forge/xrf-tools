@@ -10,21 +10,21 @@ use crate::contract::viewport::render_rect::RenderRect;
 
 /// How a level map is drawn: its tiles row by row from its top left, after a metering view of the whole.
 #[derive(Clone, Debug, PartialEq)]
-pub struct MapTilePlan {
+pub(crate) struct MapTilePlan {
   pub capture: RenderMapCapture,
   pub tiles: Vec<MapTile>,
 }
 
 impl MapTilePlan {
   /// The most pixels the metering view spans on its longer side.
-  pub const METER: u32 = 512;
+  pub(crate) const METER: u32 = 512;
 
   /// Plans `capture` for a device whose textures are at most `most_texture` pixels a side.
   ///
   /// # Errors
   ///
   /// Returns an error for an area or heights spanning nothing, or a map, supersampling or tile past what is drawn.
-  pub fn new(capture: RenderMapCapture, most_texture: u32) -> XrfResult<Self> {
+  pub(crate) fn new(capture: RenderMapCapture, most_texture: u32) -> XrfResult<Self> {
     let RenderMapCapture {
       min_x,
       min_z,
@@ -53,15 +53,13 @@ impl MapTilePlan {
 
     if width == 0 || height == 0 || width > RENDER_MAP_MOST_PIXELS || height > RENDER_MAP_MOST_PIXELS {
       return Err(XrfError::new_invalid_error(format!(
-        "A map must be 1 to {} pixels a side, not {width} by {height}",
-        RENDER_MAP_MOST_PIXELS
+        "A map must be 1 to {RENDER_MAP_MOST_PIXELS} pixels a side, not {width} by {height}"
       )));
     }
 
     if supersampling == 0 || supersampling > RENDER_MAP_MOST_SUPERSAMPLING {
       return Err(XrfError::new_invalid_error(format!(
-        "A map is drawn 1 to {} times over, not {supersampling}",
-        RENDER_MAP_MOST_SUPERSAMPLING
+        "A map is drawn 1 to {RENDER_MAP_MOST_SUPERSAMPLING} times over, not {supersampling}"
       )));
     }
 
@@ -81,8 +79,8 @@ impl MapTilePlan {
     for y in (0..height).step_by(RENDER_MAP_TILE as usize) {
       for x in (0..width).step_by(RENDER_MAP_TILE as usize) {
         let placed: RenderRect = RenderRect {
-          x: x as i32,
-          y: y as i32,
+          x: x.cast_signed(),
+          y: y.cast_signed(),
           width: RENDER_MAP_TILE.min(width - x),
           height: RENDER_MAP_TILE.min(height - y),
         };
@@ -107,7 +105,7 @@ impl MapTilePlan {
   }
 
   /// The view its exposure is metered over first: the whole area, at most `METER` pixels, with no margin.
-  pub fn get_meter(&self) -> MapTile {
+  pub(crate) fn get_meter(&self) -> MapTile {
     let RenderMapCapture {
       min_x,
       min_z,

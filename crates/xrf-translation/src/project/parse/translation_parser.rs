@@ -134,7 +134,7 @@ impl TranslationParser {
 
     // The declared language is supplied as the directory name, because that is the slot a string table carries its
     // language in, and it decides the code page the bytes are read in.
-    let identity: TranslationIdentity = TranslationIdentity {
+    let identity: TranslationIdentity<'_> = TranslationIdentity {
       file_name: asset.get_logical_path().file_name(),
       directory_name: Some(language),
     };

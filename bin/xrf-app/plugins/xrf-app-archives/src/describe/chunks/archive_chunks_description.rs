@@ -3,8 +3,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::describe::chunks::archive_chunk_node::ArchiveChunkNode;
-use crate::describe::source::ArchiveEntryContainer;
-use crate::describe::source::ArchiveEntryReader;
+use crate::describe::source::{ArchiveEntryContainer, ArchiveEntryReader};
 
 /// The container a file is, for a file nothing here reads.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

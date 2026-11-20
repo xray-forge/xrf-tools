@@ -3,8 +3,7 @@ use xrf_engine_target::XrayEngineResolution;
 use xrf_vfs::XrayRoots;
 use xrf_visual::{SectorOutline, VisualBounds};
 
-use crate::level::LevelSource;
-use crate::level::LevelSunDescription;
+use crate::level::{LevelSource, LevelSunDescription};
 
 /// What the viewer is showing, paired with where it came from: the level itself, its root. What is read of it from
 /// other files - where it starts, its map, its surfaces and their textures - each has a query of its own

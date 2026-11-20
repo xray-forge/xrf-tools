@@ -38,7 +38,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     expect(service.transition).toBe(EWorldWeatherTransition.CUT);
 
-    service.noteReport(mockWorldWeatherReport({ time: 50_000 }));
+    service.clock.noteReport(mockWorldWeatherReport({ time: 50_000 }));
     service.setSource(ELevelWeatherSource.MANUAL);
 
     expect(service.manual).toEqual(toLevelManualWeather(mockWorldWeatherReport({ time: 50_000 }).current));
@@ -64,7 +64,7 @@ describe("LevelWeatherService, set by hand", () => {
     const service: LevelWeatherService = createLevelWeatherService();
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
-    service.noteReport(
+    service.clock.noteReport(
       mockWorldWeatherReport({
         current: { ...mockWorldWeatherReport().current, skyTexture: "sky\\sky_night" },
       })
@@ -73,12 +73,18 @@ describe("LevelWeatherService, set by hand", () => {
     service.resetManual(["skyTexture"]);
 
     expect(service.source).toBe(ELevelWeatherSource.WEATHER);
+    expect(service.isManualResettable(["skyTexture"])).toBe(false);
 
     service.editManual({ skyTexture: "sky\\sky_noon", rainDensity: 0.5 });
+
+    expect(service.isManualResettable(["skyTexture"])).toBe(true);
+
     service.resetManual(["skyTexture"]);
 
     expect(service.manual?.skyTexture).toBe("sky\\sky_night");
     expect(service.manual?.rainDensity).toBe(0.5);
+    expect(service.isManualResettable(["skyTexture"])).toBe(false);
+    expect(service.isManualResettable(["skyTexture", "rainDensity"])).toBe(true);
     expect(
       readLevelWeatherMemory(toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value))?.seed?.weather?.skyTexture
     ).toBe("sky\\sky_night");
@@ -92,7 +98,7 @@ describe("LevelWeatherService, set by hand", () => {
     const service: LevelWeatherService = createLevelWeatherService();
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
-    service.noteReport(
+    service.clock.noteReport(
       mockWorldWeatherReport({
         current: {
           ...mockWorldWeatherReport().current,
@@ -137,8 +143,8 @@ describe("LevelWeatherService, set by hand", () => {
     const shown: Array<ILevelManualWeather> = [];
     const stop: () => void = autorun(() => void shown.push(service.shown));
 
-    service.noteReport(mockWorldWeatherReport());
-    service.noteReport(mockWorldWeatherReport());
+    service.clock.noteReport(mockWorldWeatherReport());
+    service.clock.noteReport(mockWorldWeatherReport());
 
     expect(shown).toHaveLength(2);
 
@@ -146,7 +152,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     const seen: number = shown.length;
 
-    service.noteReport(mockWorldWeatherReport({ time: 50_000 }));
+    service.clock.noteReport(mockWorldWeatherReport({ time: 50_000 }));
     stop();
 
     expect(shown).toHaveLength(seen);
@@ -155,12 +161,12 @@ describe("LevelWeatherService, set by hand", () => {
   it("hears the clock from the renderer, and stands where it was sent", () => {
     const service: LevelWeatherService = createLevelWeatherService();
 
-    service.noteReport(mockWorldWeatherReport({ time: 50_000 }));
+    service.clock.noteReport(mockWorldWeatherReport({ time: 50_000 }));
 
-    expect(service.time).toBe(50_000);
+    expect(service.clock.time).toBe(50_000);
 
-    service.seekTo(3_600);
+    service.clock.seekTo(3_600);
 
-    expect(service.time).toBe(3_600);
+    expect(service.clock.time).toBe(3_600);
   });
 });

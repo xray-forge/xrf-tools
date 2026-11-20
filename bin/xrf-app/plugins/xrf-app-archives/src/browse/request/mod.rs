@@ -2,4 +2,4 @@
 
 mod archives_extract_request;
 
-pub use archives_extract_request::ArchivesExtractRequest;
+pub(crate) use archives_extract_request::ArchivesExtractRequest;

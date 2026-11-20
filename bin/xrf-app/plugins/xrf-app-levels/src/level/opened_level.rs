@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
@@ -6,15 +7,15 @@ use xrf_app_core::session::{SessionDerived, SessionParts, SessionSnapshot};
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_engine_target::XrayEngineResolution;
 use xrf_level::LevelGeomSource;
-use xrf_ltx::{Ltx, LtxDialect};
+use xrf_ltx::{Ltx, LtxDialect, LtxResolution};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 use xrf_visual::SectorOutline;
 
 use crate::level::{LevelBundle, LevelConfigs, LevelSource, SelectedLevel};
 use crate::parts::{
-  LevelGeometryPart, LevelMapPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelStart, LevelStartPart,
-  LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
+  LevelGeometryPart, LevelMapDescription, LevelMapPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelStart,
+  LevelStartPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
 };
 use crate::report::LevelReport;
 
@@ -26,13 +27,15 @@ impl OpenedLevel {
   /// Reads the level `source` names through `search`, recording what the level itself is read from as its inputs and
   /// keeping its geometry, surfaces, textures, map, spawn, the sections it names and where it starts as parts with their
   /// own; `engine` decides the engine its configs are read as, through the same recording search.
-  pub fn read(
+  pub(crate) fn read(
     search: XraySearch,
     source: LevelSource,
     roots: XrayRoots,
     dialect: Arc<dyn LtxDialect>,
     engine: impl FnOnce(&XraySearch, &XrayRoots) -> XrayEngineResolution,
   ) -> TauriResult<SessionDerived<SelectedLevel>> {
+    profiling::scope!("level open");
+
     let inputs: XrayInputRecord = XrayInputRecord::new();
     let search: XraySearch = search.with_recording(&inputs);
     let configs: LevelConfigs = LevelConfigs {
@@ -59,7 +62,7 @@ impl OpenedLevel {
   }
 
   /// The open level read again over the source, roots and dialect it was opened with, as the engine it was read as.
-  pub fn derive(
+  pub(crate) fn derive(
     current: &SessionSnapshot<SelectedLevel>,
     assets: &AssetMountState,
   ) -> TauriResult<SessionDerived<SelectedLevel>> {
@@ -90,50 +93,94 @@ impl OpenedLevel {
     let spawn_inputs: XrayInputRecord = XrayInputRecord::new();
     let sections_inputs: XrayInputRecord = XrayInputRecord::new();
     let start_inputs: XrayInputRecord = XrayInputRecord::new();
-    // The spawn, what stands over the places it has an actor at, and the configs' sections it names are read beside the
-    // level rather than after it: the renderer's first texture asks whether the configs reduce it.
-    let ((bundle, geometry), (spawn, open, sections)) = rayon::join(
+    // Two parallel lines of reads: the level and its geometry, then its surfaces and textures; and the spawn, then its
+    // start places, beside the game's configs. The configs are the longest read, so they start at once rather than
+    // after the spawn; the renderer's first texture needs them, so they are read with the level, not after it.
+    let ((dressed, geometry), (spawn, open, sections)) = rayon::join(
       || {
-        (
-          LevelBundle::read(source, search),
-          LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs)),
-        )
+        let (bundle, geometry) = rayon::join(
+          || {
+            profiling::scope!("level bundle");
+
+            LevelBundle::read(source, search)
+          },
+          || {
+            profiling::scope!("level geometry");
+
+            LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs))
+          },
+        );
+        let dressed: TauriResult<(LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>)> =
+          bundle.map(|bundle| {
+            profiling::scope!("level surfaces and textures");
+
+            let surfaces: Vec<XraySurfaceDescriptor> =
+              LevelSurfacesPart::resolve(&bundle.level, &search.clone().with_recording(&surfaces_inputs), &scope);
+
+            // Textures resolve over the surfaces, so the surfaces' inputs invalidate them too.
+            textures_inputs.extend_from(&surfaces_inputs);
+
+            let textures: Vec<LevelTextureReference> = LevelTexturesPart::resolve(
+              &bundle.level,
+              &surfaces,
+              &search.clone().with_recording(&textures_inputs),
+              &scope,
+            );
+
+            (bundle, surfaces, textures)
+          });
+
+        (dressed, geometry)
       },
       || {
-        let spawn: TauriResult<Arc<LevelSpawn>> =
-          LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs));
+        let (spawned, (resolved, read_in)) = rayon::join(
+          || -> (TauriResult<Arc<LevelSpawn>>, Vec<bool>) {
+            let spawn: TauriResult<Arc<LevelSpawn>> = {
+              profiling::scope!("level spawn");
 
-        // Where the level starts is decided over its spawn, and the sections are those the spawn names.
-        start_inputs.extend_from(&spawn_inputs);
+              LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs))
+            };
+
+            // The start is found over the spawn, so its inputs invalidate it too.
+            start_inputs.extend_from(&spawn_inputs);
+
+            let open: Vec<bool> = spawn.as_deref().map_or_else(
+              |_| Vec::new(),
+              |found| {
+                profiling::scope!("level start");
+
+                LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), found)
+              },
+            );
+
+            (spawn, open)
+          },
+          || -> (TauriResult<Arc<LtxResolution>>, Duration) {
+            profiling::scope!("level configs");
+
+            let started: Instant = Instant::now();
+            let resolved: TauriResult<Arc<LtxResolution>> =
+              LevelSectionsPart::resolve(source, &search.clone().with_recording(&sections_inputs), configs);
+
+            (resolved, started.elapsed())
+          },
+        );
+        let (spawn, open) = spawned;
+
+        // The sections kept are those the spawn names.
         sections_inputs.extend_from(&spawn_inputs);
 
-        let open: Vec<bool> = spawn.as_deref().map_or_else(
-          |_| Vec::new(),
-          |spawn| LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), spawn),
-        );
-
-        let sections: Option<TauriResult<Arc<Ltx>>> = spawn.as_deref().ok().map(|spawn| {
-          LevelSectionsPart::read(source, &search.clone().with_recording(&sections_inputs), configs, spawn)
-        });
+        let sections: Option<TauriResult<Arc<Ltx>>> = spawn
+          .as_deref()
+          .ok()
+          .map(|found| resolved.map(|resolved| LevelSectionsPart::keep(source, &resolved, read_in, found)));
 
         (spawn, open, sections)
       },
     );
-    let bundle: LevelBundle = bundle?;
+    let (bundle, surfaces, textures): (LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>) = dressed?;
     // A level without its geometry draws nothing, so it does not open; one that loses it later keeps its part's failure.
     let geometry: Arc<LevelGeomSource<InMemoryChunkDataSource>> = Arc::new(geometry?);
-    let surfaces: Vec<XraySurfaceDescriptor> =
-      LevelSurfacesPart::resolve(&bundle.level, &search.clone().with_recording(&surfaces_inputs), &scope);
-
-    // The textures are resolved over the surfaces, so what moves the surfaces moves them too.
-    textures_inputs.extend_from(&surfaces_inputs);
-
-    let textures: Vec<LevelTextureReference> = LevelTexturesPart::resolve(
-      &bundle.level,
-      &surfaces,
-      &search.clone().with_recording(&textures_inputs),
-      &scope,
-    );
     let outlines: Vec<SectorOutline> = bundle
       .level
       .get_sectors()
@@ -155,11 +202,13 @@ impl OpenedLevel {
     parts = LevelGeometryPart::with(parts, geometry, geometry_inputs);
     parts = LevelSurfacesPart::with(parts, Arc::new(surfaces), surfaces_inputs);
     parts = LevelTexturesPart::with(parts, Arc::new(textures), textures_inputs);
-    parts = LevelMapPart::with(
-      parts,
-      LevelMapPart::read(source, &search.clone().with_recording(&map_inputs)),
-      map_inputs,
-    );
+    let map: Option<LevelMapDescription> = {
+      profiling::scope!("level map");
+
+      LevelMapPart::read(source, &search.clone().with_recording(&map_inputs))
+    };
+
+    parts = LevelMapPart::with(parts, map, map_inputs);
 
     if let Some(sections) = sections {
       parts = LevelSectionsPart::with(parts, sections, sections_inputs);

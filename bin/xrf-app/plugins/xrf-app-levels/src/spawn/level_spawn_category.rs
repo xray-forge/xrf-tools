@@ -60,11 +60,17 @@ impl LevelSpawnCategory {
       | AlifeObjectInherited::CseAlifeObjectClimable(_)
       | AlifeObjectInherited::CseAlifeGraphPoint(_)
       | AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
+      | AlifeObjectInherited::CseAlifeTeamBaseZone(_)
       | AlifeObjectInherited::SeSmartCover(_)
       | AlifeObjectInherited::CseAlifeAnomalousZone(_)
       | AlifeObjectInherited::CseAlifeTorridZone(_)
       | AlifeObjectInherited::SeSmartTerrain(_)
-      | AlifeObjectInherited::SeLevelChanger(_) => None,
+      | AlifeObjectInherited::SeLevelChanger(_)
+      | AlifeObjectInherited::ClearSkySeActor(_)
+      | AlifeObjectInherited::ClearSkySeStalker(_)
+      | AlifeObjectInherited::ClearSkySeMonster(_)
+      | AlifeObjectInherited::ClearSkySeSmartTerrain(_)
+      | AlifeObjectInherited::ClearSkySeSimFaction(_) => None,
     }
   }
 

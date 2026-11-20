@@ -7,6 +7,7 @@ import {
   ArchiveOverrideReport,
   ArchiveResolution,
   ARCHIVES_JOB_EXTRACT,
+  ArchivesExtractRequest,
   ArchiveSubject,
   ArchiveWorldEntry,
   EArchiveSubject,
@@ -17,12 +18,15 @@ import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { XrayPathCollision, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
 
-import { IArchiveEntry, listSubjectEntries } from "@/core/archive/lib";
-import { describeRoots } from "@/core/assets/lib";
+import { IArchiveEntry } from "@/core/archive/lib/entry";
+import { listSubjectEntries } from "@/core/archive/lib/subject";
+import { describeRoots } from "@/core/assets/lib/roots";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { describeExtractOutcome } from "@/tools/archives-explorer/lib/describe-extract-outcome";
 
@@ -133,7 +137,7 @@ export class ArchivesService {
   }
 
   @BoundAction()
-  public async closeSubject(): Promise<void> {
+  public async close(): Promise<void> {
     if (await flowResult(this.subject.close())) {
       this.forgetReports();
     }
@@ -165,21 +169,26 @@ export class ArchivesService {
   /**
    * Extracts files beneath a directory into a destination root. An empty prefix extracts the whole tree.
    *
-   * @param prefix - Engine directory prefix; an empty string selects the tree root.
-   * @param destination - Output directory path.
+   * @param extract - The engine directory prefix, an empty string for the tree root; the output directory; and whether
+   *   files already there are replaced, which the backend refuses otherwise.
+   * @returns How the run ended, or null where none started.
    */
   @ExclusiveFlow("extraction")
-  public *extractDirectory(prefix: string, destination: string): TFlow {
+  public *extractDirectory(
+    extract: Omit<ArchivesExtractRequest, "sessionId">
+  ): TFlow<Nullable<TCommandCompletion<ArchiveExtractDirectoryResult>>> {
     // One write at a time over the open subject, whichever kind runs.
     if (this.isWriting) {
-      return;
+      return null;
     }
+
+    const { prefix, destination } = extract;
 
     this.log.info("Extracting directory:", prefix || "<root>", destination);
 
-    const request = { sessionId: this.requireSubjectSession(), prefix, destination };
+    const request: ArchivesExtractRequest = { ...extract, sessionId: this.requireSubjectSession() };
 
-    yield* this.extraction.run({
+    return yield* this.extraction.run({
       kind: ARCHIVES_JOB_EXTRACT,
       invoke: (id: string, progress) => archivesCommands.extractDirectory(request, id, progress),
       describe: (outcome: IJobOutcome<ArchiveExtractDirectoryResult>): IJobNotice =>

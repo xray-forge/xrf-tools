@@ -1,5 +1,7 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
+use xrf_renderer_core::{
+  ComputeContext, ComputePipelineDescription, FrameGraph, GraphBindings, GraphTexture, PassParameters, PipelineSet,
+};
 
 use crate::feature::scene::pyramid::cover_pyramid::CoverPyramid;
 use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
@@ -12,7 +14,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Reduces a viewport's depth into a pyramid, a dispatch a level: to the farthest under each texel, or the nearest; and
 /// a rain cover into a pyramid of both.
-pub struct DepthPyramidPass {
+pub(crate) struct DepthPyramidPass {
   /// Reading the depth, then a level: the viewport's, then the cover's.
   layouts: [wgpu::BindGroupLayout; 4],
   /// Reducing the depth into the first level, then a level into the next: the farthest's pair, the nearest's, then the
@@ -24,7 +26,7 @@ impl DepthPyramidPass {
   /// Invocations a reduction workgroup runs a side, as `shaders/frame/pyramid.wgsl` declares them.
   pub(crate) const WORKGROUP: u32 = 8;
 
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layouts: [wgpu::BindGroupLayout; 4] = [
@@ -42,7 +44,7 @@ impl DepthPyramidPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
@@ -51,9 +53,48 @@ impl DepthPyramidPass {
     }
   }
 
+  /// Declares the compute pass `name` reducing the frame's `depth`, as it stands then, into `pyramid`, level by level,
+  /// keeping the depth `reduction` names; each level is its own graph resource.
+  pub(crate) fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    name: &'static str,
+    (pyramid, depth): (&'a DepthPyramid, GraphTexture),
+    reduction: PyramidReduction,
+  ) {
+    let label: &'static str = match reduction {
+      PyramidReduction::Farthest => "depth pyramid level",
+      PyramidReduction::Nearest => "nearest depth level",
+    };
+    let level_views: Vec<GraphTexture> = pyramid
+      .level_views
+      .iter()
+      .map(|view| bindings.import_view(&mut *graph, label, view))
+      .collect();
+    let first: PyramidDepthParameters = PyramidDepthParameters {
+      source_depth: depth,
+      target_level: level_views[0],
+    };
+    let levels: Vec<PyramidLevelParameters> = level_views
+      .windows(2)
+      .map(|pair| PyramidLevelParameters {
+        source_level: pair[0],
+        target_level: pair[1],
+      })
+      .collect();
+
+    levels
+      .iter()
+      .fold(graph.add_compute_pass(name).parameters(&first), |builder, level| {
+        builder.parameters(level)
+      })
+      .record(move |context| self.record(context, pyramid, &first, &levels, reduction));
+  }
+
   /// Reduces the depth into the first level, then each level into the next, a dispatch each, keeping the depth
   /// `reduction` names.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut ComputeContext<'_>,
     pyramid: &DepthPyramid,
@@ -79,7 +120,7 @@ impl DepthPyramidPass {
   }
 
   /// Reduces a rain cover into its pyramid's first level, then each level into the next, a dispatch each.
-  pub fn record_cover(
+  pub(crate) fn record_cover(
     &self,
     context: &mut ComputeContext<'_>,
     pyramid: &CoverPyramid,

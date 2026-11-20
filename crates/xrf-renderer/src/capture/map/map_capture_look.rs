@@ -16,11 +16,11 @@ const SUN_CASCADE_RESOLUTION: u32 = 4096;
 /// differ from one tile to the next.
 ///
 /// What its parallel rays cannot draw is left out by the lens itself (`ViewLens`), as for any view drawn through them.
-pub struct MapCaptureLook;
+pub(crate) struct MapCaptureLook;
 
 impl MapCaptureLook {
   /// The options a tile is drawn with, from the viewport's `options`.
-  pub fn apply(options: &RenderViewOptions, tile: &MapTile) -> RenderViewOptions {
+  pub(crate) fn apply(options: &RenderViewOptions, tile: &MapTile) -> RenderViewOptions {
     let mut look: RenderViewOptions = options.clone();
     let show: &mut RenderShowFlags = &mut look.show;
 
@@ -33,9 +33,10 @@ impl MapCaptureLook {
 
     // An experiment: the grass planted over the whole tile, its tufts alike from edge to edge.
     features.grass.is_enabled = tile.is_grassed;
-    // The bloom's blur reaches past a tile's margin, so neighbouring tiles would not meet.
+    // Bloom reaches past a tile's margin and camera effects are per tile, so neighbouring tiles would not meet.
     features.bloom.is_enabled = false;
     features.enhanced_bloom.mode = RenderBloomMode::Engine;
+    features.camera = features.camera.without_effects();
     features.shadows.resolution = SUN_CASCADE_RESOLUTION;
 
     look.output.upscaling.scale = RenderScale::Native;
@@ -46,7 +47,7 @@ impl MapCaptureLook {
   }
 
   /// The options the metering view is drawn with: a tile's, its exposure adapting fast.
-  pub fn apply_metering(options: &RenderViewOptions, tile: &MapTile) -> RenderViewOptions {
+  pub(crate) fn apply_metering(options: &RenderViewOptions, tile: &MapTile) -> RenderViewOptions {
     let mut look: RenderViewOptions = Self::apply(options, tile);
 
     look.features.exposure.adaptation = METERING_ADAPTATION;
@@ -55,7 +56,7 @@ impl MapCaptureLook {
   }
 
   /// The lighting a tile is drawn under: nothing falling, striking or swaying, so neighbouring tiles meet.
-  pub fn apply_lighting(lighting: &RenderLighting) -> RenderLighting {
+  pub(crate) fn apply_lighting(lighting: &RenderLighting) -> RenderLighting {
     RenderLighting {
       rain: None,
       thunderbolt: None,

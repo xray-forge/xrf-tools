@@ -1,3 +1,4 @@
+use glam::Mat4;
 use xrf_renderer_core::{
   FrameGraph, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphDeclaration,
   GraphDepthAttachment, GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue,
@@ -18,6 +19,7 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::jitter_guard::JitterGuard;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::level_scene::LevelScene;
@@ -32,21 +34,21 @@ use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 /// order, the strictly sorted ones back to front, the enhanced glass, the distorting surfaces' special pass and the
 /// selected ones' mark.
 #[derive(Default)]
-pub struct CompositedFeature {
+pub(crate) struct CompositedFeature {
   /// The sorted clusters in view, back to front, as `(cluster, place)` entries, and the runs of them alike in layout.
   sorted: Option<wgpu::Buffer>,
   sorted_count: u32,
   sorted_runs: Vec<(StaticLayout, u32, u32)>,
   /// What the enhanced glass draws with, where it draws.
   glass: Option<GlassUniform>,
-  /// Whether a distorting surface of the scene is in sight of a lit view.
-  is_distorting: bool,
+  /// The tiles of the frame the distorting surfaces in sight of a lit view may touch, by the spheres about them.
+  distortion_tiles: ScreenTiles,
 }
 
 impl CompositedFeature {
-  /// Takes this frame's composited surfaces through the camera, with what of the `scene` is in `sight`: the sorted list
-  /// written through `encoder`, whether the enhanced glass draws, and whether a distorting surface may.
-  pub fn prepare(
+  /// Prepares this frame's composited surfaces of the `scene` in `sight`: writes their sorted list through `encoder`,
+  /// and settles whether the enhanced glass draws and which tiles a distorting surface may touch.
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device, view, options, ..
@@ -56,8 +58,19 @@ impl CompositedFeature {
     sight: &StaticSight,
   ) {
     self.prepare_sorted(scene, device, encoder, view);
-    self.is_distorting =
-      options.mode.is_lit && !options.mode.is_wireframe && sight.has_pass(StaticSurfacePass::Distortion);
+    self.distortion_tiles = ScreenTiles::default();
+
+    if options.mode.is_lit && !options.mode.is_wireframe && sight.has_pass(StaticSurfacePass::Distortion) {
+      let (frustum, view_projection): (CameraFrustum, Mat4) = (view.get_frustum(), view.get_view_projection());
+
+      for sphere in scene
+        .statics
+        .list_seen_spheres(&frustum, |sight| sight.has_pass(StaticSurfacePass::Distortion))
+      {
+        self.distortion_tiles.cover_sphere(view_projection, sphere);
+      }
+    }
+
     self.glass = (options.features.glass.is_enhanced()
       && options.mode.is_lit
       && !options.mode.is_wireframe
@@ -137,13 +150,13 @@ impl CompositedFeature {
     encoder.write_buffer(buffer, 0, bytes);
   }
 
-  /// Whether a distorting surface of the scene is in sight of a lit, solid view.
-  pub fn is_distorting(&self) -> bool {
-    self.is_distorting
+  /// The tiles of the frame a distorting surface of the scene in sight of a lit, solid view may touch.
+  pub(crate) fn get_distortion_tiles(&self) -> &ScreenTiles {
+    &self.distortion_tiles
   }
 
   /// Adds the blended, added and multiplied surfaces in the cull's order, over the lit scene.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
@@ -180,7 +193,7 @@ impl CompositedFeature {
   /// unsorted forward passes; the enhanced glass over the frame copied just before it, which it refracts; and the
   /// distorting surfaces' special pass, a window's glass bending what is behind it, into the distortion target the
   /// water and the particles wrote, as the engine draws `mapDistort` after every forward pass.
-  pub fn add_after_particles<'a>(
+  pub(crate) fn add_after_particles<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -267,13 +280,14 @@ impl CompositedFeature {
           passes.effects.glass.record_copy(context, &copied, dispatch);
         });
 
-      let parameters: GlassParameters = GlassParameters {
+      let parameters: GlassParameters<'_> = GlassParameters {
         lighting: lit.lighting,
         exposure: StorageValue::new(lit.exposure),
         material_lut: lit.material_lut,
         lut_sampler: lit.lut_sampler,
         shadow_maps: lit.shadow_maps,
         shadows: lit.shadows,
+        shadow_compare: lit.shadow_compare,
         glass: runtime.push_uniform(&glass),
         glass_scene: copy,
         scene_sampler: passes.effects.glass.get_scene_sampler(),
@@ -297,7 +311,7 @@ impl CompositedFeature {
       });
     }
 
-    if self.is_distorting {
+    if !self.distortion_tiles.is_empty() {
       let args: Vec<GraphBuffer> = draw.args.clone();
       let pass = graph
         .add_raster_pass("composited distortion")
@@ -324,7 +338,7 @@ impl CompositedFeature {
   }
 
   /// Adds the selected surfaces' mark into the material target, where the present outlines the selection.
-  pub fn add_selection_passes<'a>(
+  pub(crate) fn add_selection_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
@@ -363,11 +377,6 @@ impl CompositedFeature {
 }
 
 impl ViewFeature for CompositedFeature {
-  /// The sorted list's buffer, grown to the most sorted clusters seen in view.
-  fn get_memory(&self) -> u64 {
-    self.sorted.as_ref().map_or(0, wgpu::Buffer::size)
-  }
-
   fn release(&mut self) {
     self.sorted = None;
     self.sorted_count = 0;

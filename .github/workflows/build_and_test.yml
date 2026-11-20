@@ -255,6 +255,9 @@ jobs:
 
       - uses: ./.github/actions/pinned-toolchain
 
+      - name: Install the ALSA headers xrf-audio's device layer builds against
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libasound2-dev
+
       - uses: Swatinem/rust-cache@v2
         with:
           cache-workspace-crates: true

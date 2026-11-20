@@ -4,7 +4,7 @@ use xrf_build_info::{BuildInfo, BuildKind};
 /// The binary a run came from, as far as comparing two runs needs it; the rest of its identity is `--version`'s.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommandBuild {
+pub(crate) struct CommandBuild {
   version: &'static str,
   kind: BuildKind,
   #[serde(skip_serializing_if = "Option::is_none")]

@@ -9,9 +9,12 @@ use xrf_utils::format_path;
 use crate::geom::buffers::level_geom_index_buffer::LevelGeomIndexBuffer;
 use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
 use crate::geom::level_geom_file::LevelGeomFile;
+use crate::geom::level_vertex_range::LevelVertexRange;
 use crate::geom::vertex::level_vertex::LevelVertex;
+use crate::geom::vertex::level_vertex_bytes::LevelVertexBytes;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 use crate::geom::vertex::level_vertex_payload::LevelVertexPayload;
+use crate::level::visuals::level_visual::LevelVisual;
 
 /// A level's render geometry with its payloads still where they were, able to serve any range a visual names.
 pub struct LevelGeomSource<D: ChunkDataSource> {
@@ -63,12 +66,19 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   pub fn open_from_chunk<T: ByteOrder, S: ChunkDataSource>(
     reader: &mut ChunkReader<S>,
   ) -> XrfResult<LevelGeomSource<S>> {
-    let chunks: Vec<ChunkReader<S>> = reader.read_children()?;
+    LevelGeomSource::open_from_children::<T>(&reader.read_children()?)
+  }
 
-    Ok(LevelGeomSource {
-      file: LevelGeomFile::read_from_children::<T, _>(&chunks)?,
-      indices: ChunkReader::find_required_by_id(&chunks, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?,
-      vertices: ChunkReader::find_required_by_id(&chunks, LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID)?,
+  /// Opens render geometry from children already read from it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a required chunk is absent or the geometry's shape cannot be read.
+  pub fn open_from_children<T: ByteOrder>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+    Ok(Self {
+      file: LevelGeomFile::read_from_children::<T, _>(chunks)?,
+      indices: ChunkReader::find_required_by_id(chunks, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?,
+      vertices: ChunkReader::find_required_by_id(chunks, LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID)?,
     })
   }
 
@@ -84,9 +94,13 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// Returns an error when the buffer does not exist, the range reaches past its vertices, or its declaration is
   /// one xrLC does not write.
   pub fn read_vertices<T: ByteOrder>(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<LevelVertex>> {
-    let payload: LevelVertexPayload = self.read_vertex_payload(buffer, base, count)?;
+    let range: LevelVertexRange = self.locate_vertices(buffer, base, count)?;
 
-    Ok(payload.vertices().map(|vertex| vertex.decode::<T>()).collect())
+    Self::read_payload_with(&self.vertices, range.offset, range.size, "vertices", |bytes| {
+      LevelVertexBytes::each(&range.layout, bytes)
+        .map(|vertex| vertex.decode::<T>())
+        .collect()
+    })
   }
 
   /// Reads one visual's vertices as they are stored, with the declaration that says where each attribute sits.
@@ -96,6 +110,19 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// Returns an error when the buffer does not exist, the range reaches past its vertices, or its declaration is
   /// one xrLC does not write.
   pub fn read_vertex_payload(&self, buffer: u32, base: u32, count: u32) -> XrfResult<LevelVertexPayload> {
+    let range: LevelVertexRange = self.locate_vertices(buffer, base, count)?;
+    let bytes: Vec<u8> = Self::read_payload_with(&self.vertices, range.offset, range.size, "vertices", <[u8]>::to_vec)?;
+
+    Ok(LevelVertexPayload::new(range.layout, bytes))
+  }
+
+  /// Where one visual's vertices sit in their buffer, and the declaration they were stored in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the buffer does not exist, the range reaches past its vertices, or its declaration is
+  /// one xrLC does not write.
+  fn locate_vertices(&self, buffer: u32, base: u32, count: u32) -> XrfResult<LevelVertexRange> {
     let declared: &LevelGeomVertexBuffer = self
       .file
       .vertex_buffers
@@ -106,14 +133,11 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
 
     let layout: LevelVertexLayout = LevelVertexLayout::of(declared)?;
 
-    let bytes: Vec<u8> = Self::read_payload(
-      &self.vertices,
-      declared.payload_offset + u64::from(base) * u64::from(layout.get_stride()),
-      count as usize * layout.get_stride() as usize,
-      "vertices",
-    )?;
-
-    Ok(LevelVertexPayload::new(layout, bytes))
+    Ok(LevelVertexRange {
+      offset: declared.payload_offset + u64::from(base) * u64::from(layout.get_stride()),
+      size: count as usize * layout.get_stride() as usize,
+      layout,
+    })
   }
 
   /// Reads one visual's indices.
@@ -130,26 +154,57 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
 
     Self::require_range("index", buffer, base, count, declared.index_count)?;
 
-    let payload: Vec<u8> = Self::read_payload(
+    Self::read_payload_with(
       &self.indices,
       declared.payload_offset + u64::from(base) * LevelGeomIndexBuffer::INDEX_SIZE,
       count as usize * LevelGeomIndexBuffer::INDEX_SIZE as usize,
       "indices",
-    )?;
-
-    Ok(
-      payload
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|index| T::read_u16(index))
-        .collect(),
+      |bytes| {
+        bytes
+          .as_chunks::<2>()
+          .0
+          .iter()
+          .map(|index| T::read_u16(index))
+          .collect()
+      },
     )
   }
 
-  /// Takes the bytes of one payload that a range covers, leaving the chunk where it was.
-  fn read_payload(reader: &ChunkReader<D>, offset: u64, size: usize, what: &str) -> XrfResult<Vec<u8>> {
-    reader.data.read_at(offset, size).map_err(|error| {
+  /// Reads the indices `visual` draws at full detail: its index range, cut to its first slide window when progressive
+  /// ([`LevelVisual::get_full_detail_window`]). `None` for a visual drawing nothing from the buffers.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the indices or the window cannot be read, or the window reaches past the indices.
+  pub fn read_full_detail_indices<T: ByteOrder>(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<u16>>> {
+    let Some(container) = &visual.geometry else {
+      return Ok(None);
+    };
+    let indices: Vec<u16> =
+      self.read_indices::<T>(container.index_buffer_id, container.index_base, container.index_count)?;
+    let Some(window) = visual.get_full_detail_window(&self.file)? else {
+      return Ok(Some(indices));
+    };
+    let start: usize = window.offset as usize;
+    let end: usize = start + usize::from(window.triangles) * 3;
+
+    indices.get(start..end).map(|run| Some(run.to_vec())).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "A visual's full-detail window [{start}..{end}) reaches past its {} indices",
+        indices.len()
+      ))
+    })
+  }
+
+  /// Hands the bytes of one payload that a range covers to `visit`, leaving the chunk where it was.
+  fn read_payload_with<R>(
+    reader: &ChunkReader<D>,
+    offset: u64,
+    size: usize,
+    what: &str,
+    visit: impl FnOnce(&[u8]) -> R,
+  ) -> XrfResult<R> {
+    reader.data.read_at_with(offset, size, visit).map_err(|error| {
       XrfError::new_read_error(format!(
         "Level render geometry {what} were not read at offset {offset}: {error}"
       ))

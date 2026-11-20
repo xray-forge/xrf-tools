@@ -1,12 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount, formatNumber } from "@xrf/format";
+import { Button } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
+import { NumberField } from "@xrf/ui/form/number-field";
 import { FormRow } from "@xrf/ui/form/row";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { LEVEL_CAPTURE_SETTLE_FRAMES } from "@/tools/level-viewer/lib/capture/level-capture";
@@ -22,8 +23,10 @@ import {
   toLevelMapTileCount,
 } from "@/tools/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
-
-import { LevelViewerMapNumberField } from "./LevelViewerMapNumberField";
+/** Metres to a tenth, dropping a trailing `.0`. */
+function formatMetres(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}
 
 interface ILevelViewerMapParametersProps extends BaseComponentProps {
   parameters: ILevelMapParameters;
@@ -146,10 +149,34 @@ export function LevelViewerMapParameters({
 
       <FormRow label={"Area, metres"} isGroup={true}>
         <div className={"grid grid-cols-4 gap-2"}>
-          <LevelViewerMapNumberField label={"Least x"} value={rect.minX} isDisabled={!isCustom} onCommit={onMinX} />
-          <LevelViewerMapNumberField label={"Least z"} value={rect.minZ} isDisabled={!isCustom} onCommit={onMinZ} />
-          <LevelViewerMapNumberField label={"Most x"} value={rect.maxX} isDisabled={!isCustom} onCommit={onMaxX} />
-          <LevelViewerMapNumberField label={"Most z"} value={rect.maxZ} isDisabled={!isCustom} onCommit={onMaxZ} />
+          <NumberField
+            format={formatMetres}
+            label={"Least x"}
+            value={rect.minX}
+            isDisabled={!isCustom}
+            onCommit={onMinX}
+          />
+          <NumberField
+            format={formatMetres}
+            label={"Least z"}
+            value={rect.minZ}
+            isDisabled={!isCustom}
+            onCommit={onMinZ}
+          />
+          <NumberField
+            format={formatMetres}
+            label={"Most x"}
+            value={rect.maxX}
+            isDisabled={!isCustom}
+            onCommit={onMaxX}
+          />
+          <NumberField
+            format={formatMetres}
+            label={"Most z"}
+            value={rect.maxZ}
+            isDisabled={!isCustom}
+            onCommit={onMaxZ}
+          />
         </div>
         <Button className={"self-start"} size={"small"} onClick={onFromView}>
           From current view
@@ -162,8 +189,8 @@ export function LevelViewerMapParameters({
         isGroup={true}
       >
         <div className={"grid grid-cols-4 gap-2"}>
-          <LevelViewerMapNumberField label={"Bottom"} value={bottom} onCommit={onBottom} />
-          <LevelViewerMapNumberField label={"Top"} value={top} onCommit={onTop} />
+          <NumberField format={formatMetres} label={"Bottom"} value={bottom} onCommit={onBottom} />
+          <NumberField format={formatMetres} label={"Top"} value={top} onCommit={onTop} />
           <Button size={"small"} onClick={onFromCamera}>
             Top at camera
           </Button>

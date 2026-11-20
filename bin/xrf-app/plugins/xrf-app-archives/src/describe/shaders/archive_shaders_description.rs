@@ -8,7 +8,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the blender library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveShadersDescription {
   pub library: ArchiveShadersLibrary,
@@ -22,7 +22,7 @@ impl ArchiveShadersDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, when they carry no blender chunk, or when the library
   /// defines one shader name twice - which the engine refuses too.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: ShaderLibraryFile = ShaderLibraryFile::read_from_bytes(source.read_bytes(name)?)?;
 
     let blenders: Vec<ArchiveShadersBlender> = ArchiveShadersBlender::of_all(source, file.blenders());

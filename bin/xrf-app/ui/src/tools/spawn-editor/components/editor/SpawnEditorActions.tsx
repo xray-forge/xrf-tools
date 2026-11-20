@@ -1,4 +1,3 @@
-import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
@@ -10,7 +9,8 @@ import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { askToOpenDirectory, askToSave } from "@/core/path/native-dialog";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 /**
  * Commands that act on the open spawn file.
@@ -20,29 +20,27 @@ export function SpawnEditorActions({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
   const [exportPath, setExportPath] = useState<Nullable<string>>(null);
 
-  const isBusy: boolean = spawnFileService.isBusy;
+  const isBusy: boolean = spawnEditorService.isBusy;
 
   const onSave = useCallback(async () => {
-    // The save dialog asks about overwriting an existing file itself, so there is no second prompt here.
-    const path: Nullable<string> = await dialog.save({
+    // The save dialog already asked about overwriting, so its answer is the force.
+    const path: Nullable<string> = await askToSave({
       title: "Save spawn file",
+      start: spawnEditorService.path,
       filters: SPAWN_FILE_FILTERS,
     });
 
     if (path) {
-      await spawnFileService.saveFile(path);
+      await spawnEditorService.saveFile(path, true);
     }
-  }, [spawnFileService]);
+  }, [spawnEditorService]);
 
   const onPickExportPath = useCallback(async () => {
-    const path: Nullable<string> = (await dialog.open({
-      title: "Export spawn file",
-      directory: true,
-    })) as Nullable<string>;
+    const path: Nullable<string> = await askToOpenDirectory({ title: "Export spawn file" });
 
     if (path) {
       setExportPath(path);
@@ -54,10 +52,11 @@ export function SpawnEditorActions({
 
     setExportPath(null);
 
+    // The confirmation said what is replaced, so it is the force.
     if (path) {
-      void spawnFileService.saveUnpackedDirectory(path);
+      void spawnEditorService.saveUnpackedDirectory(path, true);
     }
-  }, [exportPath, spawnFileService]);
+  }, [exportPath, spawnEditorService]);
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex items-center", className)}>

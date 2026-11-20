@@ -1,8 +1,7 @@
-import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 
 import { withSupportedExtension } from "@/core/path/extension";
-import { toFormatFilters } from "@/core/path/file-filters";
+import { IFileFilter, toFormatFilters } from "@/core/path/file-filters";
 
 /**
  * Formats an archive configuration can be written as, in the order a save dialog offers them.
@@ -10,7 +9,7 @@ import { toFormatFilters } from "@/core/path/file-filters";
 export const ARCHIVE_CONFIG_EXTENSIONS: ReadonlyArray<EXrayExtension> = [EXrayExtension.LTX, EXrayExtension.JSON];
 
 /** Filters the save dialog offers, one entry per format. */
-export const ARCHIVE_CONFIG_EXPORT_FILTERS: Array<DialogFilter> = toFormatFilters(
+export const ARCHIVE_CONFIG_EXPORT_FILTERS: Array<IFileFilter> = toFormatFilters(
   ARCHIVE_CONFIG_EXTENSIONS,
   (format: EXrayExtension) => format
 );

@@ -7,6 +7,7 @@ import { FlagIcon } from "@xrf/ui/icons/flag";
 import { GroupsIcon } from "@xrf/ui/icons/groups";
 import { HubIcon } from "@xrf/ui/icons/hub";
 import { LightbulbIcon } from "@xrf/ui/icons/lightbulb";
+import { MyLocationIcon } from "@xrf/ui/icons/my-location";
 import { PersonIcon } from "@xrf/ui/icons/person";
 import { PetsIcon } from "@xrf/ui/icons/pets";
 import { PlaceIcon } from "@xrf/ui/icons/place";
@@ -36,6 +37,7 @@ export const LEVEL_KIND_ICONS: Readonly<Record<RenderHelperIcon, typeof Lightbul
   [ERenderHelperIcon.PATROL_POINT]: PlaceIcon,
   [ERenderHelperIcon.GRAPH_POINT]: HubIcon,
   [ERenderHelperIcon.RESPAWN_POINT]: RestartAltIcon,
+  [ERenderHelperIcon.SPAWN_POINT]: MyLocationIcon,
 };
 
 interface ILevelKindIconProps extends BaseComponentProps {

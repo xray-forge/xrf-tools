@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkLine, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::{assert_length, to_format_size};
+use xrf_utils::{assert_length, narrow_format_size};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SkeletonMotionMark {
@@ -46,7 +46,10 @@ impl ChunkReadWrite for SkeletonMotionMark {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_line(&self.name, &self.terminator)?;
-    writer.write_u32::<T>(to_format_size(self.intervals.len(), "skeleton motion mark intervals")?)?;
+    writer.write_u32::<T>(narrow_format_size(
+      self.intervals.len(),
+      "skeleton motion mark intervals",
+    )?)?;
 
     for (from, to) in &self.intervals {
       writer.write_f32::<T>(*from)?;

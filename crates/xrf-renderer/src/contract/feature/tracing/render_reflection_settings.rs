@@ -62,9 +62,17 @@ pub struct RenderReflectionSettings {
   /// its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; a device
   /// without ray queries reflects the sky.
   pub is_traced: bool,
-  /// Frames a pixel the screen does not answer waits between its traced rays, the last answer held between.
-  #[setting(min = 1, max = 8, recommended = [1, 4])]
+  /// Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. Every
+  /// interval trades how soon a reflection refreshes against the rays traced a frame, none advised over another.
+  #[setting(min = 1, max = 8)]
   pub trace_interval: u32,
+  /// Whether, while traced, the water traces every pixel every frame, hitting grass cards within their reach, with the
+  /// screen answering only plants beyond them.
+  ///
+  /// This reflects what the screen cannot show (a cable's lit side, a pipe's underside, reed blades) at a ray per water
+  /// pixel per frame plus a frame-sized request list. Off, the screen answers first and the trace takes its misses on
+  /// its turns.
+  pub is_water_fully_traced: bool,
 }
 
 impl Default for RenderReflectionSettings {
@@ -90,6 +98,7 @@ impl Default for RenderReflectionSettings {
       water_steps: Self::WATER_STEPS,
       is_traced: false,
       trace_interval: Self::TRACE_INTERVAL,
+      is_water_fully_traced: false,
     }
   }
 }

@@ -11,7 +11,7 @@ use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUn
 /// what the view plants with; and this frame's puddle sites and where they stand, which no tuft is planted in.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct GrassBuildParameters {
+pub(crate) struct GrassBuildParameters {
   #[storage]
   pub keys: StorageArrayMut<u32>,
   #[storage]

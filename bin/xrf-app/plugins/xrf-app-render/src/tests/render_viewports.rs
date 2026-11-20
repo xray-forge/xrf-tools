@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "implements the renderer's unsafe window-host contract for a hidden test window"
+)]
+
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};

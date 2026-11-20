@@ -4,7 +4,7 @@ use xrf_renderer_core::GraphTexture;
 /// read as the scene. What is laid over the resolved image (the camera, the enhanced streaks) is shown in its place,
 /// and stands for the frame as drawn too where nothing rescaled it, so no history carries it.
 #[derive(Clone, Copy)]
-pub struct ImageChain {
+pub(crate) struct ImageChain {
   /// The frame at the drawn size: the resolved frame, or what was laid over it.
   pub resolved: GraphTexture,
   /// The image the viewport shows.
@@ -17,7 +17,7 @@ pub struct ImageChain {
 
 impl ImageChain {
   /// The chain with `layer` laid over what it shows, where one was drawn; as it was otherwise.
-  pub fn lay(self, layer: Option<GraphTexture>) -> Self {
+  pub(crate) fn lay(self, layer: Option<GraphTexture>) -> Self {
     let Some(layer) = layer else {
       return self;
     };

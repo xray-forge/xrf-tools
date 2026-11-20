@@ -33,7 +33,7 @@ impl TextureReloads {
       .iter()
       .map(AsRef::as_ref)
       .filter(|path| !self.watcher.is_watched(path))
-      .filter_map(TextureWatcher::to_texture_name)
+      .filter_map(TextureWatcher::find_texture_name)
       .collect();
 
     self.renderer.reload_textures(names);

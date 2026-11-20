@@ -7,7 +7,7 @@ use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::build::pipeline_source::PipelineSource;
 
 /// FSR 1 over a frame drawn smaller than its viewport: EASU upscales it, RCAS sharpens the upscaled frame.
-pub struct UpscalePass {
+pub(crate) struct UpscalePass {
   layout: wgpu::BindGroupLayout,
   /// One a stage, at its index.
   pipelines: PipelineSet<[wgpu::RenderPipeline; UpscaleStage::COUNT]>,
@@ -15,12 +15,12 @@ pub struct UpscalePass {
 
 impl UpscalePass {
   /// The upscaled and the sharpened frame's format.
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = UpscaleParameters::create_layout(device);
@@ -33,7 +33,7 @@ impl UpscalePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layout))
@@ -43,7 +43,7 @@ impl UpscalePass {
   }
 
   /// Draws a stage into the target the pass draws into.
-  pub fn record(&self, context: &mut RasterContext<'_>, stage: UpscaleStage, parameters: &UpscaleParameters) {
+  pub(crate) fn record(&self, context: &mut RasterContext<'_>, stage: UpscaleStage, parameters: &UpscaleParameters) {
     context.get_pass().set_pipeline(&self.pipelines[stage.get_index()]);
     context.bind(parameters);
     context.get_pass().draw(0..3, 0..1);

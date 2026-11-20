@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
-use xrf_ogf::{OgfBox, OgfHeaderChunk, OgfKinematicsChunk, OgfSphere};
+use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_ogf::{OgfHeaderChunk, OgfKinematicsChunk};
 use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 
@@ -22,9 +22,6 @@ pub(super) const SPLIT_REF: &str = "actors\\stalker_scenario_animation";
 
 /// Where the declared chunk size cuts that fifth reference, leaving `actors\st` inside the chunk.
 const SPLIT_AT: usize = 9;
-
-/// Bytes both fragments of the split reference add up to, terminator included.
-pub(super) const SPLIT_SIZE: usize = 34;
 
 fn raw_chunk(id: u32, payload: &[u8]) -> Vec<u8> {
   let mut bytes: Vec<u8> = Vec::with_capacity(8 + payload.len());
@@ -43,12 +40,12 @@ fn header_bytes() -> XrfResult<Vec<u8>> {
     version: 4,
     model_type: 3,
     shader_id: 0,
-    bounding_box: OgfBox {
+    bounding_box: Aabb {
       min: Vector3d::new(0.0, 0.0, 0.0),
       max: Vector3d::new(1.0, 1.0, 1.0),
     },
-    bounding_sphere: OgfSphere {
-      position: Vector3d::new(0.0, 0.0, 0.0),
+    bounding_sphere: Sphere {
+      center: Vector3d::new(0.0, 0.0, 0.0),
       radius: 1.0,
     },
   })?;
@@ -97,11 +94,13 @@ pub(super) fn split_motion_ref() -> XrfResult<Vec<u8>> {
   Ok(bytes)
 }
 
-/// Trailing bytes long enough to be a header and belonging to nothing, which the reader refuses.
+/// Trailing bytes headed as a user data chunk, which the engine opens, cut short: the reader refuses them.
 pub(super) fn unexplained_residue() -> XrfResult<Vec<u8>> {
   let mut bytes: Vec<u8> = well_formed()?;
 
-  bytes.extend_from_slice(b"alker_scenario_animation\0");
+  bytes.extend_from_slice(&17u32.to_le_bytes());
+  bytes.extend_from_slice(&4343u32.to_le_bytes());
+  bytes.extend_from_slice(b"[collide]");
 
   Ok(bytes)
 }

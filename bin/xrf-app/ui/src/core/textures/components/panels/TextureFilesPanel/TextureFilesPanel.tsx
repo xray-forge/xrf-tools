@@ -33,8 +33,8 @@ export function TextureFilesPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Files"}>
-      {selectBoundTextureFiles(description).map((file: ITextureFile, index: number) => (
-        <EditorPanelSection key={file.label} title={file.label} isFirst={index === 0}>
+      {selectBoundTextureFiles(description).map((file: ITextureFile) => (
+        <EditorPanelSection key={file.label} title={file.label}>
           {file.asset ? (
             <AssetTextureDetails asset={file.asset} descriptor={file.descriptor} />
           ) : (

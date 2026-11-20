@@ -1,7 +1,7 @@
+import { EditorPopoverVectorRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import {
   describeLevelManualWeatherKey,
@@ -33,12 +33,12 @@ export function LevelManualWeatherVectorField({
   onEdit,
 }: ILevelManualWeatherVectorFieldProps): ReactElement {
   return (
-    <LevelWeatherVectorField
+    <EditorPopoverVectorRow
       data-testid={dataTestId}
       id={id}
       className={className}
       label={LEVEL_MANUAL_WEATHER_LABELS[field]}
-      hint={describeLevelManualWeatherKey(field)}
+      description={describeLevelManualWeatherKey(field)}
       value={manual[field]}
       isColor={isColor}
       onChange={(values: Array<number>) => onEdit(toLevelManualWeatherVectorPatch(field, values))}

@@ -2,7 +2,8 @@
 
 Visuals in the XRF desktop application: OGF models opened with their motions, each a session of its own, browsed by
 folder, and shown in a viewport through `xrf-app-render`'s units. The visual format is `xrf-ogf`, and `xrf-visual`
-packs a model for the renderer.
+packs a model for the renderer. An SDK `.object` opens as the model it compiles to through `xrf-object-visual`, which
+also describes how each submesh of any model draws.
 
 ## Layout
 

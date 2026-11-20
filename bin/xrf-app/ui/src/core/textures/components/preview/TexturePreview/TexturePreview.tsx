@@ -8,10 +8,11 @@ import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { ErrorState } from "@xrf/ui/layout/error-state";
 import { PanZoomController } from "@xrf/ui/media/image-viewport";
+import { PreviewFrame } from "@xrf/ui/media/preview-frame";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useEffect, useState } from "react";
 
-import { describeTextureShape } from "@/core/assets/lib";
+import { describeTextureShape } from "@/core/assets/lib/texture-shape";
 import { TextureSurface } from "@/core/textures/components/preview/TextureSurface";
 import {
   describeTexturePreviewGap,
@@ -24,7 +25,6 @@ import { TextureSelectionService } from "@/core/textures/services/texture-select
 import { TextureViewService } from "@/core/textures/services/texture-view";
 
 import { TextureImagePane } from "./TextureImagePane";
-import { TexturePreviewFrame } from "./TexturePreviewFrame";
 
 /** One texture is shown at a time, so its url lives under a fixed key and displaces the last one. */
 const TEXTURE_PREVIEW_ASSET_KEY: string = "texture-preview";
@@ -96,9 +96,9 @@ export function TexturePreview({
 
   if (isReading || !description) {
     return (
-      <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={"Reading…"}>
+      <PreviewFrame data-testid={dataTestId} id={id} className={className} caption={"Reading…"}>
         <DelayedProgress label={"Reading texture…"} />
-      </TexturePreviewFrame>
+      </PreviewFrame>
     );
   }
 
@@ -107,13 +107,13 @@ export function TexturePreview({
 
   if (isImage && selectionService.preview.error) {
     return (
-      <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption}>
+      <PreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption}>
         <ErrorState
           title={"Could not show this texture"}
           description={selectionService.preview.error.message}
           onRetry={selectionService.retry}
         />
-      </TexturePreviewFrame>
+      </PreviewFrame>
     );
   }
 
@@ -166,7 +166,7 @@ export function TexturePreview({
   }
 
   return (
-    <TexturePreviewFrame
+    <PreviewFrame
       data-testid={dataTestId}
       id={id}
       className={className}
@@ -175,6 +175,6 @@ export function TexturePreview({
       isCheckered={!gap}
     >
       {gap ? <EmptyState title={gap.title} description={gap.description} /> : <TextureSurface />}
-    </TexturePreviewFrame>
+    </PreviewFrame>
   );
 }

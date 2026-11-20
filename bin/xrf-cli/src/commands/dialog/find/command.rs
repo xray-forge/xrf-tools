@@ -4,24 +4,26 @@ use xrf_output::OutputOptions;
 
 use super::report::DialogFindReport;
 use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 const INFO_ARGUMENT: &str = "info";
 const FUNCTOR_ARGUMENT: &str = "functor";
 
 #[derive(Default)]
-pub struct FindCommand;
+pub(crate) struct FindCommand;
 
 impl GenericCommand for FindCommand {
   fn operation(&self) -> &'static str {
     "find"
   }
 
+  fn input(&self) -> CommandInput {
+    DialogProjectOpening::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    DialogProjectOpening::declare_roots(
-      command
-        .about("Find every dialog and phrase naming an info portion or a script function, and what each does with it"),
-    )
+    command
+      .about("Find every dialog and phrase naming an info portion or a script function, and what each does with it")
       .arg(
         Arg::new(INFO_ARGUMENT)
           .help("Info portion to find where dialogs check, give or take it. Repeat to find several")

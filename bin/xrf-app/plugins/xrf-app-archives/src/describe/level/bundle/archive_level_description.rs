@@ -6,13 +6,12 @@ use xrf_shaders::ShaderLibraryFile;
 use xrf_vfs::XrayAssetType;
 
 use crate::describe::description::ArchiveReference;
-use crate::describe::level::bundle::ArchiveLevelBundle;
-use crate::describe::level::bundle::ArchiveLevelSurface;
+use crate::describe::level::bundle::{ArchiveLevelBundle, ArchiveLevelSurface};
 use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about a compiled level bundle.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelDescription {
   pub bundle: ArchiveLevelBundle,
@@ -26,7 +25,7 @@ impl ArchiveLevelDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not a level bundle - which a file named
   /// `level` that is something else will be.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     // The engine loads the blender library from the root of whatever tree is open.
@@ -49,7 +48,7 @@ impl ArchiveLevelDescription {
   }
 
   /// The blender library of the subject being browsed, or `None` when it holds none or cannot read the one it holds.
-  fn read_library(source: &ArchiveDescribeSource, entry: &str) -> Option<ShaderLibraryFile> {
+  fn read_library(source: &ArchiveDescribeSource<'_>, entry: &str) -> Option<ShaderLibraryFile> {
     ShaderLibraryFile::read_from_bytes(source.read_bytes(entry).ok()?).ok()
   }
 }

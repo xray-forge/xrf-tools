@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 
 use xrf_job::JobHandle;
 
@@ -40,7 +40,7 @@ impl GamedataCheckSchedule {
   where
     F: FnOnce(&mut BTreeMap<usize, GamedataVerificationType>),
   {
-    let mut running = self.running.lock().expect("check schedule is never poisoned");
+    let mut running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
 
     change(&mut running);
 

@@ -2,13 +2,14 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use wgpu::util::StagingBelt;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
   ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphDeclaration, GraphOwner, GraphReport,
 };
 
-use wgpu::util::StagingBelt;
-
+use super::RenderThread;
+use crate::capture::record::record_shot::RecordShot;
 use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
@@ -42,8 +43,6 @@ use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_frame::WindowFrame;
 use crate::window::window_passes::WindowPasses;
 use crate::window::window_viewport::WindowViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
@@ -101,10 +100,12 @@ impl RenderThread {
       let format: wgpu::TextureFormat = target.format;
 
       if let Err(error) = gpu.ensure_grid(&self.shaders, format) {
-        log::error!("Viewport cannot be drawn: {error}");
+        self.frame_failures.fail("Viewport cannot be drawn", &error);
 
         continue;
       }
+
+      self.frame_failures.succeed("Viewport cannot be drawn");
 
       let Some(window) = gpu.windows.get_mut(key) else {
         continue;
@@ -140,6 +141,7 @@ impl RenderThread {
             key: *key,
             target,
             is_shown: false,
+            is_copyable: window.is_copyable(),
             drawn,
             clear: wgpu::Color::TRANSPARENT,
             is_backdrop_painted: false,
@@ -183,18 +185,15 @@ impl RenderThread {
             window.get_backdrop_slot(),
             &backdrop,
           )
-          .inspect_err(|error| {
-            self
-              .composition_failures
-              .fail("The page's backdrop cannot be drawn", error)
-          })
-          .inspect(|()| self.composition_failures.succeed("The page's backdrop cannot be drawn"))
+          .inspect_err(|error| self.frame_failures.fail("The page's backdrop cannot be drawn", error))
+          .inspect(|()| self.frame_failures.succeed("The page's backdrop cannot be drawn"))
           .is_ok();
 
       windows.push(WindowFrame {
         key: *key,
         target,
         is_shown: true,
+        is_copyable: window.is_copyable(),
         drawn,
         clear: backdrop.get_clear(),
         is_backdrop_painted,
@@ -206,29 +205,33 @@ impl RenderThread {
     windows
   }
 
-  /// Draws every window's viewports: `update` is what the frame spent before any window, `span` the GPU's milliseconds
-  /// on the latest frame read back, where one came back. The running GPU is taken out for the frame, so each phase is a
-  /// method of the thread's own.
-  pub(super) fn draw_windows(&mut self, update: Duration, span: Option<f32>, mut encoder: FrameEncoder) {
+  /// Draws every window's viewports and returns whether they were presented, which paces the next frame.
+  ///
+  /// `update` is the frame's time before any window; `span` the GPU milliseconds of the latest frame read back.
+  pub(super) fn draw_windows(&mut self, update: Duration, span: Option<f32>, mut encoder: FrameEncoder) -> bool {
     let windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
 
     self.answer_unseen_picks(&windows);
 
     let Some(mut running) = self.running.take() else {
-      return;
+      return false;
     };
 
     // With nothing to draw into, what the scenes took in still goes up.
-    if windows.is_empty() {
+    let is_presented: bool = if windows.is_empty() {
       let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
       running.gpu.context.queue.submit([commands]);
       running.belt = Some(belt);
+
+      false
     } else {
-      self.draw_frame(&mut running, update, span, windows, encoder);
-    }
+      self.draw_frame(&mut running, update, span, windows, encoder)
+    };
 
     self.running = Some(running);
+
+    is_presented
   }
 
   /// Answers the picks of every viewport no window draws this frame, laid out nowhere or in a window with no image:
@@ -246,9 +249,7 @@ impl RenderThread {
     }
   }
 
-  /// The frame proper, over windows to draw into: the views readied, the periodic work committed, the composition's
-  /// pipelines readied, the captures and bursts' frames taken, the graph recorded and executed, the frame submitted,
-  /// each view's frame ended and each window presented.
+  /// Prepares, records, submits and presents the frame into `windows`; returns false where the frame was abandoned.
   fn draw_frame(
     &mut self,
     running: &mut RunningGpu,
@@ -256,7 +257,7 @@ impl RenderThread {
     span: Option<f32>,
     mut windows: Vec<WindowFrame>,
     mut encoder: FrameEncoder,
-  ) {
+  ) -> bool {
     let started: Instant = Instant::now();
     let mut phases: FramePhases = FramePhases {
       update,
@@ -272,6 +273,7 @@ impl RenderThread {
       captures: self.take_captures(device, &windows),
       shots: self.take_capture_shots(device, &windows),
       bursts: self.take_burst_shots(device, &windows, &frames),
+      records: self.take_record_shots(device, &frames, started),
     };
     let composing: Instant = Instant::now();
 
@@ -292,11 +294,16 @@ impl RenderThread {
     self.retry_captures(retried);
 
     let executed: ExecutedGraph = match recorded {
-      Ok(executed) => executed,
-      Err(error) => {
-        self.abandon_frame(running, encoder, frames, &recorders, copies.captures, &error);
+      Ok(executed) => {
+        self.frame_failures.succeed(Self::UNDRAWN_FRAME);
+        self.frame_failures.succeed(Self::UNSUBMITTED_UPLOADS);
 
-        return;
+        executed
+      }
+      Err(error) => {
+        self.abandon_frame(running, encoder, frames, &recorders, copies, &error);
+
+        return false;
       }
     };
     let waited: Duration = windows.iter().map(|window| window.acquire).sum();
@@ -309,6 +316,8 @@ impl RenderThread {
     self.present_windows(&running.gpu.context.queue, windows, phases, cpu, span, &groups);
 
     profiling::finish_frame!();
+
+    true
   }
 
   /// Grants the frame's periodic work: each scene's light faces offered as every view of it asked for them, under the
@@ -362,9 +371,8 @@ impl RenderThread {
     }
   }
 
-  /// Readies the present's and the overlays' pipelines for what this frame presents into: each window's target, and
-  /// the captures' own where the frame draws a screenshot, a capture's shot or a burst's frame apart (`copies`). A
-  /// pipeline that cannot be built is logged here, and what it would present is left undrawn.
+  /// Prepares the present and overlay pipelines for every target this frame presents into: windows, `copies` and
+  /// recordings. A pipeline that fails to build is logged and its target left undrawn.
   fn prepare_composition(&mut self, gpu: &mut GpuState, windows: &[WindowFrame], copies: &FrameCopies) {
     let is_drawn_apart: bool = copies.captures.iter().any(|copy| copy.capture.is_screenshot())
       || !copies.shots.is_empty()
@@ -373,6 +381,9 @@ impl RenderThread {
       .iter()
       .map(|window| window.target)
       .chain(is_drawn_apart.then_some(DisplayTarget::CAPTURE))
+      .chain((!copies.records.is_empty()).then_some(DisplayTarget {
+        format: RecordShot::FORMAT,
+      }))
       .collect();
 
     for DisplayTarget { format } in targets {
@@ -384,10 +395,8 @@ impl RenderThread {
         },
         format,
       ) {
-        Ok(()) => self.composition_failures.succeed("Level viewport cannot be presented"),
-        Err(error) => self
-          .composition_failures
-          .fail("Level viewport cannot be presented", &error),
+        Ok(()) => self.frame_failures.succeed("Level viewport cannot be presented"),
+        Err(error) => self.frame_failures.fail("Level viewport cannot be presented", &error),
       }
 
       match gpu.overlay.prepare(
@@ -398,8 +407,8 @@ impl RenderThread {
         },
         format,
       ) {
-        Ok(()) => self.composition_failures.succeed("Level overlays cannot be drawn"),
-        Err(error) => self.composition_failures.fail("Level overlays cannot be drawn", &error),
+        Ok(()) => self.frame_failures.succeed("Level overlays cannot be drawn"),
+        Err(error) => self.frame_failures.fail("Level overlays cannot be drawn", &error),
       }
     }
   }
@@ -425,6 +434,7 @@ impl RenderThread {
       captures,
       shots,
       bursts,
+      records,
     } = copies;
 
     // Each window's image as the composition draws into it, once acquired.
@@ -432,6 +442,7 @@ impl RenderThread {
     let mut graph: FrameGraph<'_> = FrameGraph::new();
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
     let mut outputs: HashMap<RenderViewportId, SceneOutput> = HashMap::with_capacity(frames.len());
+    let mut is_resized: bool = false;
 
     for ReadiedView {
       viewport: id, frame, ..
@@ -448,6 +459,7 @@ impl RenderThread {
       };
 
       graph.begin_owner(viewport.get_graph_owner());
+      is_resized |= view.is_resized();
 
       let output: Option<SceneOutput> = view.record(
         scene,
@@ -571,11 +583,22 @@ impl RenderThread {
       );
     }
 
+    for copy in records.iter() {
+      Self::declare_record_shot(
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
+        gpu,
+        &self.viewports,
+        copy.viewport,
+        &copy.shot,
+        outputs.get(&copy.viewport),
+      );
+    }
+
     let graph_report: &mut Option<(Instant, GraphReport)> = &mut self.graph_report;
     #[cfg(debug_assertions)]
     let jitter_guard: &mut JitterGuard = &mut self.jitter_guard;
 
-    graph.compile(&self.settings.graph.to_options()).and_then(|compiled| {
+    let executed: XrfResult<ExecutedGraph> = graph.compile(&self.settings.graph.to_options()).and_then(|compiled| {
       if graph_report
         .as_ref()
         .is_none_or(|(described, _)| started.duration_since(*described) >= FrameStatistics::REPORT_INTERVAL)
@@ -588,7 +611,15 @@ impl RenderThread {
       }
 
       compiled.execute((&gpu.context.device, &gpu.context.queue), runtime, &bindings)
-    })
+    });
+
+    // One graph draws every viewport, so after a resize its unused resources are freed now rather than frames later,
+    // which a window drag can slow to a few a second.
+    if is_resized {
+      runtime.forget_unused();
+    }
+
+    executed
   }
 
   /// A viewport as its window composes it: its picture from the frame it left (`output`) and its overlays over it, or
@@ -604,7 +635,7 @@ impl RenderThread {
 
     Some(ComposedView {
       binding: viewport.get_binding()?,
-      present: output.map(|output| Self::to_present_parameters(gpu, output)),
+      present: output.map(|output| Self::get_present_parameters(gpu, output)),
       overlays: output
         .zip(level.and_then(SceneView::get_overlays))
         .map(|(output, overlays)| ComposedOverlays {
@@ -622,7 +653,7 @@ impl RenderThread {
   }
 
   /// What the present pass reads of a viewport's frame (`output`).
-  pub(super) fn to_present_parameters<'a>(gpu: &'a GpuState, output: &SceneOutput) -> PresentParameters<'a> {
+  pub(super) fn get_present_parameters<'a>(gpu: &'a GpuState, output: &SceneOutput) -> PresentParameters<'a> {
     PresentParameters {
       scene: output.scene,
       depth_target: output.targets.depth,

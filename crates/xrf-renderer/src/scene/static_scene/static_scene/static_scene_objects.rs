@@ -36,7 +36,7 @@ impl StaticScene {
   ///
   /// Returns an error for a handle that holds an object already, a model no longer in the scene, or when a buffer would
   /// outgrow what the device allows; the scene is left as it was.
-  pub fn add_object(
+  pub(crate) fn add_object(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -59,7 +59,7 @@ impl StaticScene {
     let slots: Vec<(u32, u32, StaticBatch, u32)> = proxy.slots.clone();
     let (sphere, vertex_start, skin): (Vec4, u32, Option<(u32, u32)>) = (proxy.sphere, proxy.vertex_start, proxy.skin);
     let matrix: Mat4 = place.transform;
-    let scale: f32 = Self::to_scale(&matrix);
+    let scale: f32 = Self::get_scale(&matrix);
     let placed: Vec4 = matrix.transform_point3(sphere.truncate()).extend(sphere.w * scale);
     let mut capacities: [u32; StaticBatch::LIST_COUNT] = [0; StaticBatch::LIST_COUNT];
 
@@ -151,7 +151,7 @@ impl StaticScene {
   }
 
   /// Takes a spawned object out of the scene: its place, bone matrices and rows; false for one already gone.
-  pub fn remove_object(&mut self, handle: ProxyHandle<StaticObjectProxy>) -> bool {
+  pub(crate) fn remove_object(&mut self, handle: ProxyHandle<StaticObjectProxy>) -> bool {
     let Some(object) = self.objects.remove(handle) else {
       return false;
     };
@@ -244,7 +244,7 @@ impl StaticScene {
     let instances: usize = (group.instance_count as usize).min(transforms.len() / 16);
     // Traced at its whole detail, unswayed: a reflection shows neither the coarser bands nor the sway's centimetres.
     let mut traced: Option<StaticTraceGroup> = class.is_deferred().then(|| StaticTraceGroup {
-      geometry: StaticTraceGeometry {
+      geometry: writer.put_densities(StaticTraceGeometry {
         layout,
         first_index: base.index_start + bands[0].0,
         index_count: bands[0].1,
@@ -252,7 +252,8 @@ impl StaticScene {
         vertex_count: geometry.vertex_count,
         surface,
         is_cut_out: class == StaticClass::CutOut,
-      },
+        first_density: 0,
+      }),
       first_place: writer.places.len() as u32,
       transforms: Vec::with_capacity(instances),
     });
@@ -264,7 +265,7 @@ impl StaticScene {
 
     for instance in 0..instances {
       let matrix: Mat4 = Mat4::from_cols_slice(&transforms[instance * 16..][..16]);
-      let scale: f32 = Self::to_scale(&matrix);
+      let scale: f32 = Self::get_scale(&matrix);
       let (hemi_scale, hemi_bias): (f32, f32) = (
         hemi.get(instance * 2).copied().unwrap_or(1.0),
         hemi.get(instance * 2 + 1).copied().unwrap_or(0.0),
@@ -283,7 +284,7 @@ impl StaticScene {
         .unwrap_or(StaticRow::NO_LOD);
 
       if let Some(traced) = &mut traced {
-        traced.transforms.push(StaticTraceGroup::to_transform(&matrix));
+        traced.transforms.push(StaticTraceGroup::pack_transform(&matrix));
       }
 
       if !sight.is_empty() {

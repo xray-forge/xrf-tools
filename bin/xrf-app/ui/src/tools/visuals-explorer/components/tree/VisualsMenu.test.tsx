@@ -6,7 +6,7 @@ import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -40,7 +40,7 @@ async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderRe
     VisualsService,
   ]);
 
-  await container.get(VisualsBrowseService).openRoot("C:\\gamedata");
+  await container.get(VisualsBrowseService).open("C:\\gamedata");
 
   return { container, render: renderWithProviders(<VisualsMenu />, { container }) };
 }

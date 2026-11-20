@@ -1,6 +1,6 @@
 /// The camera effects' stages, by the pipeline each draws with.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CameraEffectsStage {
+pub(crate) enum CameraEffectsStage {
   /// The distance and the motion under each shown pixel, read from the drawn frame.
   Inputs,
   /// The longest motion over each block of eight pixels.
@@ -26,7 +26,7 @@ pub enum CameraEffectsStage {
 }
 
 impl CameraEffectsStage {
-  pub const ALL: [Self; 11] = [
+  pub(crate) const ALL: [Self; 11] = [
     Self::Inputs,
     Self::MotionReduce,
     Self::MotionTiles,
@@ -39,15 +39,15 @@ impl CameraEffectsStage {
     Self::FocusCombine,
     Self::Lens,
   ];
-  pub const COUNT: usize = Self::ALL.len();
+  pub(crate) const COUNT: usize = Self::ALL.len();
 
   /// Its place among the stages, which its pipeline is kept at.
-  pub const fn get_index(self) -> usize {
+  pub(crate) const fn get_index(self) -> usize {
     self as usize
   }
 
   /// The pass it is added as.
-  pub const fn get_pass(self) -> &'static str {
+  pub(crate) const fn get_pass(self) -> &'static str {
     match self {
       Self::Inputs => "camera inputs",
       Self::MotionReduce => "camera motion reduce",
@@ -64,7 +64,7 @@ impl CameraEffectsStage {
   }
 
   /// Its fragment entry in `frame/camera_effects`.
-  pub const fn get_fragment(self) -> &'static str {
+  pub(crate) const fn get_fragment(self) -> &'static str {
     match self {
       Self::Inputs => "fs_inputs",
       Self::MotionReduce => "fs_motion_reduce",

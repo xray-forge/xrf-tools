@@ -10,7 +10,7 @@ use xrf_job::ExecutionPlan;
 /// something else in the one document both concepts could appear in.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommandExecution {
+pub(crate) struct CommandExecution {
   workers: NonZeroUsize,
 }
 

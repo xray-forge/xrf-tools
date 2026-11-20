@@ -1,6 +1,8 @@
 mod helper_icons;
 mod helpers;
+mod level_time;
 mod level_wetness;
+mod light_shadow_tiles;
 mod overhead_map;
 mod overlays;
 mod puddle_fill;

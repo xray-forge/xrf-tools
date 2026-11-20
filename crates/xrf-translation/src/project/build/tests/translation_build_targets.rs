@@ -204,7 +204,7 @@ fn builds_report_one_row_per_language() -> XrfResult {
 
   GeneratedResources::write(&format!("{test_root}/source/st_a.json"), SOURCE_JSON)?;
 
-  let mut all = options(output_root.clone());
+  let mut all = options(output_root);
 
   all.language = TranslationLanguage::All;
 
@@ -247,7 +247,7 @@ fn builds_reject_output_inside_any_source_root() -> XrfResult {
   GeneratedResources::write(&format!("{test_root}/other/common.json"), SOURCE_JSON)?;
 
   let layered: XrayRoots = XrayRoots::new([
-    xrf_vfs::XrayRoot::new(other_root.clone(), XrayMountMode::Directory),
+    xrf_vfs::XrayRoot::new(other_root, XrayMountMode::Directory),
     xrf_vfs::XrayRoot::new(source_root.clone(), XrayMountMode::Directory),
   ]);
 

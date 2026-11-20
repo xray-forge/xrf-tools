@@ -11,7 +11,7 @@ use crate::commands::archive::info::archive_volume_report::ArchiveVolumeReport;
 /// valid Unicode and a report describes a run rather than addressing one.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveInfoReport {
+pub(crate) struct ArchiveInfoReport {
   directories: usize,
   files: usize,
   root: String,
@@ -21,12 +21,12 @@ pub struct ArchiveInfoReport {
 }
 
 impl ArchiveInfoReport {
-  pub fn new(project: &ArchiveProject) -> Self {
+  pub(crate) fn new(project: &ArchiveProject) -> Self {
     Self {
       directories: project.count_directories(),
       files: project.count_files(),
-      root: xrf_utils::to_portable_path_string(&project.root),
-      size_compressed: project.get_compressed_size(),
+      root: xrf_utils::format_portable_path(&project.root),
+      size_compressed: project.sum_compressed_size(),
       size_real: project.get_real_size(),
       volumes: project.archives.iter().map(ArchiveVolumeReport::new).collect(),
     }

@@ -3,5 +3,5 @@
 mod path_description;
 mod path_kind;
 
-pub use path_description::PathDescription;
-pub use path_kind::PathKind;
+pub(crate) use path_description::PathDescription;
+pub(super) use path_kind::PathKind;

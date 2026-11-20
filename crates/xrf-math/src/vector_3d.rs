@@ -1,14 +1,14 @@
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Display)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "camelCase")]
 #[display("{x},{y},{z}")]
 pub struct Vector3d<T = f32> {
@@ -22,6 +22,7 @@ impl Vector3d<f32> {
   pub const X: Self = Self::new(1.0, 0.0, 0.0);
   pub const Y: Self = Self::new(0.0, 1.0, 0.0);
   pub const Z: Self = Self::new(0.0, 0.0, 1.0);
+  pub const ONE: Self = Self::new(1.0, 1.0, 1.0);
 
   pub const fn new(x: f32, y: f32, z: f32) -> Self {
     Self { x, y, z }
@@ -62,6 +63,66 @@ impl Vector3d<f32> {
     if length > 0.0 { self / length } else { Self::ZERO }
   }
 
+  /// `Fvector::similar`: every component strictly within `epsilon` of `other`'s.
+  pub fn similar(&self, other: &Self, epsilon: f32) -> bool {
+    (self.x - other.x).abs() < epsilon && (self.y - other.y).abs() < epsilon && (self.z - other.z).abs() < epsilon
+  }
+
+  /// `Fvector::normalize`, in the engine's order: each component times `sqrt(1 / (x * x + y * y + z * z))`. A zero
+  /// vector comes out of it NaN, as the engine's does.
+  pub fn normalize(&self) -> Self {
+    let scale: f32 = (1.0 / self.length_squared()).sqrt();
+
+    Self::new(self.x * scale, self.y * scale, self.z * scale)
+  }
+
+  /// `Fvector::normalize_safe`: [`Self::normalize`] where the square length is a normal float, else as it is.
+  pub fn normalize_safe(&self) -> Self {
+    if self.length_squared() > f32::MIN_POSITIVE {
+      self.normalize()
+    } else {
+      *self
+    }
+  }
+
+  /// The engine's `exact_normalize`, in double precision. A very short vector is first divided by its largest
+  /// component; a zero one comes out straight up.
+  pub fn exact_normalize(&self) -> Self {
+    let square: f64 = f64::from(self.length_squared());
+
+    if square > f64::from(1.192_092_9e-5_f32) {
+      let scale: f64 = 1.0 / square.sqrt();
+
+      return Self::new(
+        (f64::from(self.x) * scale) as f32,
+        (f64::from(self.y) * scale) as f32,
+        (f64::from(self.z) * scale) as f32,
+      );
+    }
+
+    let [x, y, z] = self.to_array().map(f64::from);
+    let [ax, ay, az] = [x.abs(), y.abs(), z.abs()];
+
+    if ay > ax && ay >= az {
+      let (x, z) = (x / ay, z / ay);
+      let scale: f64 = 1.0 / (x * x + z * z + 1.0).sqrt();
+
+      Self::new((x * scale) as f32, scale.copysign(y) as f32, (z * scale) as f32)
+    } else if (ay > ax && az > ay) || (ay <= ax && az > ax) {
+      let (x, y) = (x / az, y / az);
+      let scale: f64 = 1.0 / (x * x + y * y + 1.0).sqrt();
+
+      Self::new((x * scale) as f32, (y * scale) as f32, scale.copysign(z) as f32)
+    } else if ax > 0.0 {
+      let (y, z) = (y / ax, z / ax);
+      let scale: f64 = 1.0 / (y * y + z * z + 1.0).sqrt();
+
+      Self::new(scale.copysign(x) as f32, (y * scale) as f32, (z * scale) as f32)
+    } else {
+      Self::new(0.0, 1.0, 0.0)
+    }
+  }
+
   /// The smaller of each pair of components, which is how a box's lower corner grows to take in a point.
   pub fn min(&self, other: &Self) -> Self {
     Self::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z))
@@ -77,15 +138,18 @@ impl Vector3d<f32> {
     &(self + other) * 0.5
   }
 
-  pub fn to_array(&self) -> [f32; 3] {
+  pub fn to_array(self) -> [f32; 3] {
     [self.x, self.y, self.z]
   }
 
-  /// The unit direction a 16-bit compressed normal names, `pvDecompress` (`xrCore/_compressed_normal.cpp`).
+  /// The unit direction a 16-bit compressed normal names, `pvDecompress`, as a level AI node packs its plane normal.
   ///
-  /// The top three bits are the signs of x, y and z; the remaining thirteen are a point on the triangle
-  /// (0,0)-(0,126)-(126,0) folded into a rectangle, six bits of x above seven of y. A level AI node packs its plane
-  /// normal this way. Computed in `f32` as the engine's lookup table is, so a decoded normal matches what it uses.
+  /// The top three bits are the signs of x, y and z; the other thirteen are a point on the triangle
+  /// (0,0)-(0,126)-(126,0) folded into a rectangle, six bits of x above seven of y.
+  ///
+  /// Matches SDK 0.7's xrCore bit for bit, as every plane value's round trip through its xrAI confirms: the table's
+  /// `1 / sqrt` at extended precision stored as a float, each component that float times its bits in single precision,
+  /// and a sign bit forced on rather than negated, so the folded edge's z of -1 stays negative.
   pub fn from_compressed_normal(packed: u16) -> Self {
     let mut x: i32 = i32::from((packed & 0x1F80) >> 7);
     let mut y: i32 = i32::from(packed & 0x007F);
@@ -96,14 +160,36 @@ impl Vector3d<f32> {
     }
 
     let z: i32 = 126 - x - y;
-    let (x, y, z): (f32, f32, f32) = (x as f32, y as f32, z as f32);
-    let adjustment: f32 = 1.0 / (x * x + y * y + z * z).sqrt();
+    let (xd, yd, zd): (f64, f64, f64) = (f64::from(x), f64::from(y), f64::from(z));
+    let adjustment: f32 = (1.0 / (zd * zd + yd * yd + xd * xd).sqrt()) as f32;
+    let component = |bits: i32, sign: u16| {
+      let value: f32 = bits as f32 * adjustment;
 
-    Self::new(
-      if packed & 0x8000 == 0 { x } else { -x } * adjustment,
-      if packed & 0x4000 == 0 { y } else { -y } * adjustment,
-      if packed & 0x2000 == 0 { z } else { -z } * adjustment,
-    )
+      if packed & sign == 0 { value } else { -value.abs() }
+    };
+
+    Self::new(component(x, 0x8000), component(y, 0x4000), component(z, 0x2000))
+  }
+
+  /// The 16-bit compressed normal of this direction, `pvCompress`, in the layout [`Self::from_compressed_normal`]
+  /// reads: x and y floored to 126ths of the direction's projection. Need not be unit length.
+  ///
+  /// In single precision as SDK 0.7's xrCore computes it, the sum taken `(z + y) + x`: the order decides which side of
+  /// a whole 126th a component lands on.
+  pub fn to_compressed_normal(self) -> u16 {
+    let signs: u16 = (u16::from(self.x.is_sign_negative()) << 15)
+      | (u16::from(self.y.is_sign_negative()) << 14)
+      | (u16::from(self.z.is_sign_negative()) << 13);
+    let (x, y, z): (f32, f32, f32) = (self.x.abs(), self.y.abs(), self.z.abs());
+    let scale: f32 = 126.0 / (z + y + x);
+    let (mut x_bits, mut y_bits): (i32, i32) = ((x * scale).floor() as i32, (y * scale).floor() as i32);
+
+    if x_bits >= 64 {
+      x_bits = 127 - x_bits;
+      y_bits = 127 - y_bits;
+    }
+
+    signs | (((x_bits << 7) | y_bits) as u16 & 0x1FFF)
   }
 }
 
@@ -121,7 +207,7 @@ impl Add for &Vector3d<f32> {
   }
 }
 
-impl AddAssign<&Vector3d<f32>> for Vector3d<f32> {
+impl AddAssign<&Self> for Vector3d<f32> {
   fn add_assign(&mut self, other: &Self) {
     self.x += other.x;
     self.y += other.y;
@@ -161,29 +247,22 @@ impl Neg for &Vector3d<f32> {
   }
 }
 
-impl ChunkReadWrite for Vector3d<f32> {
-  /// Read vector coordinates from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Ok(Self {
-      x: reader.read_f32::<T>()?,
-      y: reader.read_f32::<T>()?,
-      z: reader.read_f32::<T>()?,
-    })
+/// An `Fvector`, `w_vec3`: three floats as one value.
+impl ChunkFieldReadWrite for Vector3d<f32> {
+  #[inline]
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    Ok(Self::from(reader.read_vector3::<T>()?))
   }
 
-  /// Write vector coordinates into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.x)?;
-    writer.write_f32::<T>(self.y)?;
-    writer.write_f32::<T>(self.z)?;
-
-    Ok(())
+  #[inline]
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_vector3::<T>(self.to_array())
   }
 }
 
 impl From<(f32, f32, f32)> for Vector3d<f32> {
   fn from(value: (f32, f32, f32)) -> Self {
-    Vector3d::new(value.0, value.1, value.2)
+    Self::new(value.0, value.1, value.2)
   }
 }
 
@@ -199,19 +278,17 @@ impl FromStr for Vector3d<f32> {
       ));
     }
 
+    let parse = |part: &str, axis: &str| {
+      part
+        .trim()
+        .parse::<f32>()
+        .map_err(|_| XrfError::new_parsing_error(format!("Failed to parse vector {axis} value '{}'", part.trim())))
+    };
+
     Ok(Self {
-      x: parts[0]
-        .trim()
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector X value")))?,
-      y: parts[1]
-        .trim()
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector Y value")))?,
-      z: parts[2]
-        .trim()
-        .parse::<f32>()
-        .or(Err(XrfError::new_parsing_error("Failed to parse vector Z value")))?,
+      x: parse(parts[0], "X")?,
+      y: parse(parts[1], "Y")?,
+      z: parse(parts[2], "Z")?,
     })
   }
 }
@@ -330,6 +407,27 @@ mod tests {
       "Unexpected normal {folded}"
     );
     assert_eq!(folded.y, 0.0);
+  }
+
+  // With x and y summing to 127 the unfolded z is -1, which the engine's `set_negative` keeps negative.
+  #[test]
+  fn keeps_the_folded_edge_negative_under_its_sign_bit() {
+    let unsigned: Vector3d = Vector3d::from_compressed_normal(127);
+    let signed: Vector3d = Vector3d::from_compressed_normal(0x2000 | 127);
+
+    assert!(unsigned.z < 0.0, "{unsigned}");
+    assert_eq!(signed, unsigned);
+  }
+
+  #[test]
+  fn compresses_a_normal_as_the_engine_does() {
+    assert_eq!(Vector3d::new(0.0, 0.0, 1.0).to_compressed_normal(), 0);
+    assert_eq!(Vector3d::new(0.0, 1.0, 0.0).to_compressed_normal(), 126);
+    assert_eq!(Vector3d::new(0.0, -1.0, 0.0).to_compressed_normal(), 0x4000 | 126);
+    // Past x's 63 the point folds: (64, 0, 62) packs as x 63 and y 127.
+    assert_eq!(Vector3d::new(64.0, 0.0, 62.0).to_compressed_normal(), (63 << 7) | 127);
+    // A negative zero keeps its sign bit, as `negative` reads it.
+    assert_eq!(Vector3d::new(-0.0, 1.0, 0.0).to_compressed_normal(), 0x8000 | 126);
   }
 
   #[test]

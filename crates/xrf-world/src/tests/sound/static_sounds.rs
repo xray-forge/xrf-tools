@@ -1,0 +1,167 @@
+// A level's static sounds against `SStaticSound::Update`.
+
+use std::time::Duration;
+
+use xrf_engine_target::XrayEngine;
+
+use crate::host::sound::level::world_static_sound::WorldStaticSound;
+use crate::sound::emitters::live_emitter::LiveEmitter;
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::schedule::static_sounds::StaticSounds;
+use crate::tests::sound::{found, missing, seconds};
+
+fn record(active: [u32; 2], play: [u32; 2], pause: [u32; 2]) -> WorldStaticSound {
+  WorldStaticSound {
+    sound: found("ambient\\water", 4),
+    object: Some(12),
+    position: [1.0, 2.0, 3.0],
+    volume: 0.5,
+    frequency: 1.0,
+    active,
+    play,
+    pause,
+  }
+}
+
+fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<LiveEmitter> {
+  emitters.iter_playing(now).cloned().collect()
+}
+
+#[test]
+fn loops_one_with_no_pause_for_ever_as_one_play() {
+  let mut sounds: StaticSounds = StaticSounds::new(vec![record([0, 0], [0, 0], [0, 0])]);
+  let mut emitters: SoundEmitters = SoundEmitters::default();
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 0, Duration::ZERO);
+
+  let first: Vec<LiveEmitter> = playing(&emitters, Duration::ZERO);
+
+  assert_eq!(first.len(), 1);
+  assert!(first[0].emitter.is_looped);
+  assert_eq!(first[0].object, Some(12));
+  assert_eq!(first[0].emitter.position, [1.0, 2.0, 3.0]);
+  assert_eq!(first[0].emitter.volume, 0.5);
+
+  for second in 1..100 {
+    sounds.update(&mut emitters, XrayEngine::Vanilla, 0, seconds(second));
+  }
+
+  assert_eq!(
+    playing(&emitters, seconds(99)).first().map(|it| it.emitter.id),
+    Some(first[0].emitter.id)
+  );
+}
+
+// The gap from start to start is the sound's four seconds plus the drawn pause.
+#[test]
+fn plays_one_through_and_waits_a_drawn_pause_after() {
+  let mut sounds: StaticSounds = StaticSounds::new(vec![record([0, 0], [0, 0], [2000, 3000])]);
+  let mut emitters: SoundEmitters = SoundEmitters::default();
+  let mut starts: Vec<Duration> = Vec::new();
+
+  for tick in 0..2000 {
+    let now: Duration = Duration::from_millis(tick * 10);
+
+    sounds.update(&mut emitters, XrayEngine::Vanilla, 0, now);
+    emitters.retire(now);
+
+    for live in emitters.iter_playing(now) {
+      assert!(!live.emitter.is_looped);
+
+      if !starts.contains(&live.emitter.start) {
+        starts.push(live.emitter.start);
+      }
+    }
+  }
+
+  assert!(starts.len() >= 2, "{starts:?}");
+
+  for pair in starts.windows(2) {
+    let gap: Duration = pair[1] - pair[0];
+
+    assert!(gap >= seconds(6) && gap <= Duration::from_millis(7010), "{gap:?}");
+  }
+}
+
+#[test]
+fn loops_one_until_its_drawn_stop_and_fades_it_out() {
+  let mut sounds: StaticSounds = StaticSounds::new(vec![record([0, 0], [1000, 1000], [5000, 5000])]);
+  let mut emitters: SoundEmitters = SoundEmitters::default();
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 0, Duration::ZERO);
+
+  let id: u64 = playing(&emitters, Duration::ZERO)[0].emitter.id;
+
+  assert!(playing(&emitters, Duration::ZERO)[0].emitter.is_looped);
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 0, seconds(1));
+
+  assert_eq!(playing(&emitters, seconds(1))[0].emitter.stop, Some(seconds(1)));
+  assert!(emitters.is_playing(id, Duration::from_millis(1099)));
+  assert!(!emitters.is_playing(id, Duration::from_millis(1100)));
+
+  // Not played again until the pause after the stop has passed.
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 0, seconds(5));
+  emitters.retire(seconds(5));
+
+  assert!(playing(&emitters, seconds(5)).is_empty());
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 0, seconds(6));
+
+  assert_eq!(playing(&emitters, seconds(6)).len(), 1);
+}
+
+#[test]
+fn follows_its_active_window_of_the_day() {
+  let mut sounds: StaticSounds = StaticSounds::new(vec![record([1000, 2000], [0, 0], [0, 0])]);
+  let mut emitters: SoundEmitters = SoundEmitters::default();
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 500, Duration::ZERO);
+
+  assert!(playing(&emitters, Duration::ZERO).is_empty());
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 1500, seconds(1));
+
+  assert_eq!(playing(&emitters, seconds(1)).len(), 1);
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 2000, seconds(2));
+
+  assert_eq!(playing(&emitters, seconds(2))[0].emitter.stop, Some(seconds(2)));
+}
+
+// An infinite or NaN frequency is no speed at all, so the sound plays at its own.
+#[test]
+fn plays_one_slowed_past_any_clock_without_an_end() {
+  for (frequency, end) in [
+    (1e-30, Duration::MAX),
+    (f32::MIN_POSITIVE / 2.0, Duration::MAX),
+    (f32::INFINITY, seconds(4)),
+    (f32::NAN, seconds(4)),
+  ] {
+    let mut sounds: StaticSounds = StaticSounds::new(vec![WorldStaticSound {
+      frequency,
+      ..record([0, 0], [0, 0], [2000, 3000])
+    }]);
+    let mut emitters: SoundEmitters = SoundEmitters::default();
+
+    sounds.update(&mut emitters, XrayEngine::Vanilla, 0, Duration::ZERO);
+
+    let live: Vec<LiveEmitter> = playing(&emitters, Duration::ZERO);
+
+    assert_eq!(live.len(), 1, "frequency {frequency}");
+    assert_eq!(live[0].end, Some(end), "frequency {frequency}");
+  }
+}
+
+#[test]
+fn plays_nothing_for_a_missing_file() {
+  let mut sounds: StaticSounds = StaticSounds::new(vec![WorldStaticSound {
+    sound: missing("ambient\\gone"),
+    ..record([0, 0], [0, 0], [0, 0])
+  }]);
+  let mut emitters: SoundEmitters = SoundEmitters::default();
+
+  sounds.update(&mut emitters, XrayEngine::Vanilla, 0, Duration::ZERO);
+
+  assert!(playing(&emitters, Duration::ZERO).is_empty());
+}

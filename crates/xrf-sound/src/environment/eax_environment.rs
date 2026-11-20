@@ -128,7 +128,7 @@ impl From<EaxEnvironment> for u32 {
       named => EaxEnvironment::NAMED
         .iter()
         .position(|candidate| *candidate == named)
-        .and_then(|index| u32::try_from(index).ok())
+        .and_then(|index| Self::try_from(index).ok())
         .expect("every named room is in the numbering"),
     }
   }

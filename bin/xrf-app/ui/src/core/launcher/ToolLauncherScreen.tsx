@@ -8,7 +8,7 @@ import { NavigateFunction, useNavigate } from "react-router-dom";
 import { PRODUCT_NAME } from "@/core/configs";
 import { IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 import { useSearchFocusTarget } from "@/core/search/lib";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 
 import { IToolLauncherCatalogSearch, ToolLauncherCatalog } from "./components/ToolLauncherCatalog";

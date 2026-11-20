@@ -14,7 +14,7 @@ use crate::scene::level::particles::particle_blend::ParticleBlend;
 /// them after combine: each run of quads with its effect's equation, tested against the scene's depth without writing
 /// it and reading it to fade where they meet it; then the distorting effects' quads into the distortion target, as
 /// `mapDistort` draws their `l_special` passes.
-pub struct ParticlePass {
+pub(crate) struct ParticlePass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
@@ -34,7 +34,7 @@ impl ParticlePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -68,7 +68,7 @@ impl ParticlePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout, &self.texture_layout)
     }) {
@@ -77,12 +77,12 @@ impl ParticlePass {
   }
 
   /// The sampler its draws read a sprite through where its surface clamps, which their parameters bind.
-  pub fn get_clamped_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_clamped_sampler(&self) -> &wgpu::Sampler {
     &self.clamped_sampler
   }
 
   /// Draws every batch into the scene the pass draws into, each blended as its own.
-  pub fn record_colour(
+  pub(crate) fn record_colour(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
@@ -94,12 +94,12 @@ impl ParticlePass {
 
     for batch in batches {
       pass.set_pipeline(&self.pipelines.colour[batch.blend.get_index()]);
-      pass.draw(Self::to_vertices(batch.first..batch.first + batch.count), 0..1);
+      pass.draw(Self::get_vertices(batch.first..batch.first + batch.count), 0..1);
     }
   }
 
   /// Draws the distorting sprites' runs into the distortion target the pass draws into.
-  pub fn record_distortion(
+  pub(crate) fn record_distortion(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
@@ -111,7 +111,7 @@ impl ParticlePass {
     pass.set_pipeline(&self.pipelines.distortion);
 
     for run in runs {
-      pass.draw(Self::to_vertices(run.clone()), 0..1);
+      pass.draw(Self::get_vertices(run.clone()), 0..1);
     }
   }
 
@@ -131,7 +131,7 @@ impl ParticlePass {
   }
 
   /// The vertices drawing a run of quads, six a quad as `QuadIB` indexes them.
-  fn to_vertices(quads: Range<u32>) -> Range<u32> {
+  fn get_vertices(quads: Range<u32>) -> Range<u32> {
     quads.start * 6..quads.end * 6
   }
 

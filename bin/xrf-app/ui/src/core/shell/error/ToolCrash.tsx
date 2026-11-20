@@ -1,12 +1,12 @@
+import { IErrorBoundaryFallbackProps } from "@xrf/react/error-boundary";
+import { Button } from "@xrf/ui/button";
+import { Accordion, AccordionDetails, AccordionSummary } from "@xrf/ui/disclosure";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { ExpandMoreIcon } from "@xrf/ui/icons/expand-more";
-import { Accordion, AccordionDetails, AccordionSummary } from "@xrf/ui/material/accordion";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
-import { IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 
 /**

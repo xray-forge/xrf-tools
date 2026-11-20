@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IEmptyListingProps extends BaseComponentProps {
   /** What is absent, and why, in one line. */

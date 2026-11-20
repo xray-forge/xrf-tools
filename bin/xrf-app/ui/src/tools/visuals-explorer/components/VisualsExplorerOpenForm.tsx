@@ -6,8 +6,8 @@ import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
-import { useAssetRootField } from "@/core/assets/lib";
-import { OGF_FILE_FILTERS } from "@/core/path/file-filters";
+import { useAssetRootField } from "@/core/assets/lib/use-asset-root-field";
+import { VISUAL_SOURCE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
@@ -52,8 +52,8 @@ export function VisualsExplorerOpenForm({
   const visual: IPathField = usePathField({
     tool: EToolId.VISUALS_EXPLORER,
     id: "visual",
-    title: "Select ogf visual",
-    filters: OGF_FILE_FILTERS,
+    title: "Select ogf visual or SDK object",
+    filters: VISUAL_SOURCE_FILE_FILTERS,
     isDisabled: isLoading,
   });
 
@@ -83,7 +83,7 @@ export function VisualsExplorerOpenForm({
       await visualsService.close();
 
       // A root that did not open leaves the picker up, saying why.
-      if (!(await browseService.openRoot(field.value, assetRoot.value))) {
+      if (!(await browseService.open(field.value, assetRoot.value))) {
         return;
       }
     } else {
@@ -104,7 +104,7 @@ export function VisualsExplorerOpenForm({
       description={
         mode === EVisualOpenMode.FOLDER
           ? "Lists every visual under the root, archives included. Nothing is written."
-          : "Reads the model and shows its bind pose. Nothing is written."
+          : "Reads the model, or compiles an SDK object, and shows its bind pose. Nothing is written."
       }
       error={
         visualsService.visual.error?.message ??
@@ -133,7 +133,12 @@ export function VisualsExplorerOpenForm({
           field={root}
         />
       ) : (
-        <PathFormRow label={"Visual file"} description={"Ogf model to preview"} isDisabled={isLoading} field={visual} />
+        <PathFormRow
+          label={"Visual file"}
+          description={"Ogf model, or SDK .object to compile"}
+          isDisabled={isLoading}
+          field={visual}
+        />
       )}
 
       <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />

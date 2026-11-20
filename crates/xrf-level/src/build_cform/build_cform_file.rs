@@ -2,11 +2,13 @@ use std::fs::File;
 use std::path::Path;
 
 use byteorder::ByteOrder;
+use glam::Vec3;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
-use xrf_utils::{format_path, to_format_size};
+use xrf_geometry::{BvhTracer, Triangle};
+use xrf_math::{Aabb, Vector3d};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::build_cform::build_cform_face::BuildCformFace;
 use crate::build_cform::build_cform_raycast_face::BuildCformRaycastFace;
@@ -20,8 +22,7 @@ pub struct BuildCformFile {
   /// The header's version, `CFORM_CURRENT_VERSION`, which both compilers reading the file assert.
   pub version: u32,
   /// The compiled scene's box, which xrAI takes as the level's.
-  pub aabb_min: Vector3d<f32>,
-  pub aabb_max: Vector3d<f32>,
+  pub bounds: Aabb,
   pub vertices: Vec<Vector3d<f32>>,
   pub faces: Vec<BuildCformFace>,
   /// One per face, at the face's index.
@@ -128,8 +129,7 @@ impl BuildCformFile {
 
     let file: Self = Self {
       version: header.version,
-      aabb_min: header.aabb_min,
-      aabb_max: header.aabb_max,
+      bounds: header.bounds,
       vertices,
       faces,
       raycast_faces: ChunkReader::find_required_by_id(&chunks, Self::RAYCAST_FACES_CHUNK_ID)?.read_xr_records::<T, _>(
@@ -156,10 +156,9 @@ impl BuildCformFile {
 
     LevelCformHeader {
       version: self.version,
-      vertex_count: to_format_size(self.vertices.len(), "build collision form vertices")?,
-      face_count: to_format_size(self.faces.len(), "build collision form faces")?,
-      aabb_min: self.aabb_min.clone(),
-      aabb_max: self.aabb_max.clone(),
+      vertex_count: narrow_format_size(self.vertices.len(), "build collision form vertices")?,
+      face_count: narrow_format_size(self.faces.len(), "build collision form faces")?,
+      bounds: self.bounds,
     }
     .write::<T>(&mut geometry)?;
 
@@ -182,6 +181,21 @@ impl BuildCformFile {
     raycast_faces.flush_chunk_into::<T>(&mut writer.buffer, Self::RAYCAST_FACES_CHUNK_ID)?;
 
     Ok(())
+  }
+
+  /// The form's faces in a tracer for ray and box queries, the model the light and AI compilers query (`RCAST_Model`).
+  /// Each face is named by its index here, which is its raycast record's.
+  pub fn build_tracer(&self) -> BvhTracer {
+    BvhTracer::of_triangles(self.get_triangles())
+  }
+
+  /// The form's faces as triangles, in its order, for a tracer of another kind ([`xrf_geometry::XrlcTracer`]).
+  pub fn get_triangles(&self) -> Vec<Triangle> {
+    self
+      .faces
+      .iter()
+      .map(|face| Triangle::new(face.vertices.map(|index| Vec3::from(&self.vertices[index as usize]))))
+      .collect()
   }
 
   /// Refuses a face naming a vertex the form does not hold, and raycast records that are not one per face, which is

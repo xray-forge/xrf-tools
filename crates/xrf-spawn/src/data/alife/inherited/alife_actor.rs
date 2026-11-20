@@ -1,13 +1,15 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
-#[cfg(test)]
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
+#[cfg(any(test, feature = "mocks"))]
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
+use crate::data::alife::spawn_layout::SpawnLayout;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,7 +26,7 @@ impl AlifeActor {
   const SCRIPT_CLASS: &'static str = "se_actor";
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeActor {
   /// An actor at `position` as a new game places one, with no body saved.
   pub fn new_mock(position: Vector3d) -> Self {
@@ -36,35 +38,44 @@ impl AlifeActor {
 }
 
 impl AlifePacketsReadWrite for AlifeActor {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read actor data from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectActor::read::<T, _>(spawn, update)?,
-      start_position_filled: ScriptSaveMarker::read::<T, _, _>(spawn, Self::SCRIPT_CLASS, |reader| {
-        Ok(reader.read_u8()?)
-      })?,
+      base: AlifeObjectActor::read::<T, _, _>(spawn, update, layout)?,
+      start_position_filled: ScriptSaveMarker::read_or_constructed::<T, _, _>(
+        spawn,
+        Self::SCRIPT_CLASS,
+        || 0,
+        |reader| reader.read_u8(),
+      )?,
     })
   }
 
   /// Write actor data into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
-    ScriptSaveMarker::write::<T>(spawn, Self::SCRIPT_CLASS, |writer| {
-      writer.write_u8(self.start_position_filled)?;
-
-      Ok(())
+    ScriptSaveMarker::write::<T, _>(spawn, Self::SCRIPT_CLASS, |writer| {
+      writer.write_u8(self.start_position_filled)
     })
   }
-}
 
-impl LtxImportExport for AlifeActor {
   /// Import actor data from ltx file section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -73,18 +84,18 @@ impl LtxImportExport for AlifeActor {
     })?;
 
     Ok(Self {
-      base: AlifeObjectActor::import(section_name, ltx)?,
+      base: AlifeObjectActor::import(section_name, ltx, layout)?,
       start_position_filled: section.read_field("actor.start_position_filled")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
 
     ltx
       .with_section(section_name)
-      .set("actor.start_position_filled", self.start_position_filled.to_string());
+      .set("actor.start_position_filled", self.start_position_filled);
 
     Ok(())
   }
@@ -94,11 +105,12 @@ impl LtxImportExport for AlifeActor {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_actor::AlifeActor;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeActor {
     let mut actor: AlifeActor = AlifeActor::new_mock(Vector3d::new(256.24, 19.81, 550.82));
@@ -108,11 +120,11 @@ mod tests {
     actor
   }
 
-  /// The script class's byte and the marker counting it close the spawn packet; it adds nothing to the update.
+  // The script class's byte and its marker close the spawn packet; the update gains nothing.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeActor = new_object();
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>()?;
+    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61, original));
 
@@ -124,9 +136,12 @@ mod tests {
     let original: AlifeActor = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeActor::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeActor::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

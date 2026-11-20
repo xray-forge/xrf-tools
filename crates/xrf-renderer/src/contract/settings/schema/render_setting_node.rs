@@ -8,7 +8,11 @@ use crate::contract::settings::schema::render_setting_field::RenderSettingField;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(untagged)]
-pub enum RenderSettingNode {
+pub(crate) enum RenderSettingNode {
   Field(RenderSettingField),
+  #[expect(
+    clippy::use_self,
+    reason = "Specta's derive copies the type where `Self` names another"
+  )]
   Group(BTreeMap<String, RenderSettingNode>),
 }

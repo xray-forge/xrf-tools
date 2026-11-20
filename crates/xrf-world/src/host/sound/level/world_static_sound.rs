@@ -1,0 +1,19 @@
+use crate::host::sound::world_sound::WorldSound;
+
+/// One of a level's static sounds, `SStaticSound` (`level.snd_static`), in engine space. Its windows are
+/// `[from, to]` milliseconds, both nought for none.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WorldStaticSound {
+  pub sound: WorldSound,
+  /// The level object it is, by the id its helper carries; none where the level's objects could not be listed.
+  pub object: Option<u32>,
+  pub position: [f32; 3],
+  pub volume: f32,
+  pub frequency: f32,
+  /// Game time of day it plays within, `m_ActiveTime`.
+  pub active: [u32; 2],
+  /// How long a looped play lasts, drawn between the two, `m_PlayTime`; nought plays the sound through once.
+  pub play: [u32; 2],
+  /// How long it waits between plays, `m_PauseTime`; nought loops it forever.
+  pub pause: [u32; 2],
+}

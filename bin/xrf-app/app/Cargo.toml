@@ -16,13 +16,13 @@ tauri-build = { version = "2.6.3", features = [
 [dependencies]
 log = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 tauri = { workspace = true }
 tauri-plugin-dialog = "2.7.3"
 tauri-plugin-fs = "2.5.2"
 tauri-plugin-shell = "2.3.6"
-tauri-plugin-store = "2.4.5"
+tauri-plugin-store = { workspace = true }
 xrf-app-archives = { workspace = true }
+xrf-app-audio = { workspace = true }
 xrf-app-configs = { workspace = true }
 xrf-app-core = { workspace = true }
 xrf-app-dialogs = { workspace = true }
@@ -40,6 +40,7 @@ xrf-build-info = { workspace = true }
 xrf-env-flags = { workspace = true }
 xrf-ipc-typescript = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
+xrf-profiler = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-utils = { workspace = true }
 
@@ -49,21 +50,27 @@ windows = { workspace = true, features = ["Win32_UI_WindowsAndMessaging"] }
 
 [dev-dependencies]
 # The mock runtime, which dispatches a command the way a webview would without one.
+serde_json = { workspace = true }
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
+xrf-audio = { workspace = true }
+xrf-error = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
-# Zones, GPU zones and frame marks for a Tracy capture; built with the `tracy` profile.
-tracy = ["xrf-renderer/tracy"]
+# Every crate's zones, the renderer's GPU zones and frame marks for a Tracy capture; built with the `tracy` profile.
+tracy = ["xrf-profiler/tracy", "xrf-renderer/tracy"]
+# Every allocation in the capture too, with its call stack: for finding what holds memory, never for timing.
+tracy-memory = ["tracy", "xrf-profiler/tracy-memory"]
 # Upscales with NVIDIA DLSS on Vulkan and D3D12, built against its SDK as DEVELOPMENT.md sets it up.
 dlss = ["xrf-renderer/dlss"]
 # Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
 typescript-bindings = [
   "xrf-ipc-typescript",
   "xrf-app-archives/typescript-bindings",
+  "xrf-app-audio/typescript-bindings",
   "xrf-app-configs/typescript-bindings",
   "xrf-app-core/typescript-bindings",
   "xrf-app-dialogs/typescript-bindings",

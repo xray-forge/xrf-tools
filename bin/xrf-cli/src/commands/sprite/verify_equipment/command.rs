@@ -1,21 +1,21 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_texture::{EquipmentGridOverlap, EquipmentGridVerifier};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 use crate::commands::sprite::verify_equipment::SpriteVerifyEquipmentReport;
-use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
-pub struct VerifyEquipmentCommand;
+pub(crate) struct VerifyEquipmentCommand;
 
 impl VerifyEquipmentCommand {
   /// The one check this command runs: no two sections' icon rects cover a common cell.
@@ -26,7 +26,7 @@ impl VerifyEquipmentCommand {
   const RULE_LTX: &'static str = "equipment.ltx";
 
   /// What two overlapping rects are found as: the pair is the subject, the cells they share the message.
-  fn to_finding(overlap: &EquipmentGridOverlap) -> Finding {
+  fn describe_finding(overlap: &EquipmentGridOverlap) -> Finding {
     Finding::new(
       RuleId::of_static(Self::RULE_OVERLAP),
       Some(format!("{} / {}", overlap.first, overlap.second)),
@@ -43,18 +43,12 @@ impl GenericCommand for VerifyEquipmentCommand {
     "verify-equipment"
   }
 
-  fn declare(&self, command: Command) -> Command {
-    let command: Command = command
-      .about("Check an equipment sprite's inventory icon grid rects for overlaps")
-      .arg(
-        Arg::new("system-ltx")
-          .help("Path to system ltx file or root folder with ltx files")
-          .long("system-ltx")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      );
+  fn input(&self) -> CommandInput {
+    CommandInput::path("System ltx file, or a root folder of ltx files")
+  }
 
-    LtxDialectArgument::declare(command)
+  fn declare(&self, command: Command) -> Command {
+    LtxDialectArgument::declare(command.about("Check an equipment sprite's inventory icon grid rects for overlaps"))
   }
 
   /// Report inventory icon rects that overlap, exiting non zero when any are found.
@@ -63,9 +57,7 @@ impl GenericCommand for VerifyEquipmentCommand {
   /// A rect widened into a neighbour's cells packs without complaint and silently overwrites it,
   /// so this is the check that has to run before widening or moving an icon.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("system-ltx")
-      .expect("Expected valid path to system ltx to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let output: OutputOptions = context.get_output().clone();
     let started_at: Instant = Instant::now();
@@ -76,12 +68,12 @@ impl GenericCommand for VerifyEquipmentCommand {
     {
       Ok(ltx) => EquipmentGridVerifier::find_overlaps(&ltx)
         .iter()
-        .map(Self::to_finding)
+        .map(Self::describe_finding)
         .collect(),
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => vec![Finding::new(
         RuleId::of_static(Self::RULE_LTX),
-        Some(to_portable_path_string(path)),
+        Some(format_portable_path(path)),
         error.to_string(),
       )],
     };

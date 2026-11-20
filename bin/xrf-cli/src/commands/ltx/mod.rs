@@ -1,3 +1,4 @@
+pub(crate) mod find;
 pub(crate) mod format;
 pub(crate) mod inspect;
 pub(crate) mod list;

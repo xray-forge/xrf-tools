@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use specta::Types;
 use specta::datatype::DataType;
+use xrf_error::{XrfError, XrfResult};
 use xrf_ipc::IpcConstant;
 
 use crate::input::TypeModules;
@@ -16,10 +17,10 @@ impl CollectedConstants {
   /// Collects every constant linked into the binary, registering each one's type into `types` with the named types
   /// that one references, so a type only a constant carries is declared like one a command carries.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics on a constant no workspace crate declares, and on two of one name in one module.
-  pub(crate) fn collect(type_modules: &TypeModules, types: &mut Types) -> Self {
+  /// On a constant no workspace crate declares, and on two of one name in one module.
+  pub(crate) fn collect(type_modules: &TypeModules, types: &mut Types) -> XrfResult<Self> {
     Self::of(IpcConstant::list(), type_modules, types)
   }
 
@@ -28,16 +29,16 @@ impl CollectedConstants {
     constants: impl IntoIterator<Item = &'static IpcConstant>,
     type_modules: &TypeModules,
     types: &mut Types,
-  ) -> Self {
+  ) -> XrfResult<Self> {
     let mut modules: BTreeMap<String, Vec<(&IpcConstant, DataType)>> = BTreeMap::new();
 
     for constant in constants {
-      let module: String = type_modules.module_of(constant.module_path).unwrap_or_else(|| {
-        panic!(
+      let module: String = type_modules.module_of(constant.module_path).ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
           "Constant `{}` is declared in `{}`, outside the workspace, and has no module to live in",
           constant.name, constant.module_path
-        )
-      });
+        ))
+      })?;
 
       modules
         .entry(module)
@@ -49,17 +50,18 @@ impl CollectedConstants {
       constants.sort_by_key(|(constant, _)| constant.name);
 
       for pair in constants.windows(2) {
-        let ((first, _), (second, _)) = (&pair[0], &pair[1]);
-
-        assert_ne!(
-          first.name, second.name,
-          "Constant `{}` is exported twice into {module}, from `{}` and `{}`",
-          first.name, first.module_path, second.module_path
-        );
+        if let [(first, _), (second, _)] = pair
+          && first.name == second.name
+        {
+          return Err(XrfError::new_invalid_error(format!(
+            "Constant `{}` is exported twice into {module}, from `{}` and `{}`",
+            first.name, first.module_path, second.module_path
+          )));
+        }
       }
     }
 
-    Self { modules }
+    Ok(Self { modules })
   }
 
   /// Every module holding a constant.
@@ -103,8 +105,15 @@ mod tests {
   };
 
   #[test]
-  #[should_panic(expected = "Constant `LIMIT` is exported twice into xrf-fixture")]
   fn refuses_two_constants_of_one_name_in_one_module() {
-    CollectedConstants::of([&FIRST, &SECOND], &TypeModules::default(), &mut Types::default());
+    let error: String = CollectedConstants::of([&FIRST, &SECOND], &TypeModules::default(), &mut Types::default())
+      .err()
+      .map(|error| error.to_string())
+      .unwrap_or_default();
+
+    assert!(
+      error.contains("Constant `LIMIT` is exported twice into xrf-fixture"),
+      "{error}"
+    );
   }
 }

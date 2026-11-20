@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, Section};
+use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnHeaderChunk {
   pub version: u32,
@@ -20,13 +20,16 @@ pub struct SpawnHeaderChunk {
 
 impl SpawnHeaderChunk {
   pub const CHUNK_ID: u32 = 0;
+
+  /// The header's file in a root spawn's unpacked folder, which is what tells that folder from a level list's.
+  pub const UNPACKED_FILE_NAME: &'static str = "header.ltx";
 }
 
 impl ChunkReadWrite for SpawnHeaderChunk {
   /// Read header chunk by position descriptor.
   /// Parses binary data into header chunk representation object.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Parsing header chunk, {} bytes", reader.read_bytes_remain());
+    log::debug!("Parsing header chunk, {} bytes", reader.read_bytes_remain());
 
     let header: Self = Self {
       version: reader.read_u32::<T>()?,
@@ -50,7 +53,7 @@ impl ChunkReadWrite for SpawnHeaderChunk {
     writer.write_u32::<T>(self.objects_count)?;
     writer.write_u32::<T>(self.levels_count)?;
 
-    log::info!("Written header chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written header chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -60,36 +63,40 @@ impl FileImportExport for SpawnHeaderChunk {
   /// Import header data from provided path.
   /// Parse ltx files and populate spawn file.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("header.ltx"))?;
+    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join(Self::UNPACKED_FILE_NAME))?;
     let section: &Section = ltx
       .section("header")
       .expect("Patrol section 'header' should be defined in ltx file");
 
-    Ok(Self {
+    let header: Self = Self {
       version: section.read_field("version")?,
       guid: section.read_field("guid")?,
       graph_guid: section.read_field("graph_guid")?,
       objects_count: section.read_field("objects")?,
       levels_count: section.read_field("level_count")?,
-    })
+    };
+
+    log::debug!("Imported header chunk");
+
+    Ok(header)
   }
 
   /// Export header data into provided path.
   /// Creates ltx file config with header chunk description.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     ltx
       .with_section("header")
-      .set("version", self.version.to_string())
-      .set("guid", self.guid.to_string())
-      .set("graph_guid", self.graph_guid.to_string())
-      .set("objects", self.objects_count.to_string())
-      .set("level_count", self.levels_count.to_string());
+      .set("version", self.version)
+      .set("guid", self.guid)
+      .set("graph_guid", self.graph_guid)
+      .set("objects", self.objects_count)
+      .set("level_count", self.levels_count);
 
-    ltx.write_to_path(path.as_ref().join("header.ltx"))?;
+    ltx.write_to_path(path.as_ref().join(Self::UNPACKED_FILE_NAME))?;
 
-    log::info!("Exported header chunk");
+    log::debug!("Exported header chunk");
 
     Ok(())
   }
@@ -112,8 +119,7 @@ mod tests {
 
   #[test]
   fn test_read_empty() -> XrfResult {
-    // A container holding one child that declares no payload: id 0, size 0. Reading a spawn header out of that must
-    // fail rather than hand back a default-shaped one.
+    // One child of id 0 and size 0: the read must fail rather than answer a default header.
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     let original: XrfResult<SpawnHeaderChunk> = SpawnHeaderChunk::read::<XRayByteOrder, _>(&mut reader);

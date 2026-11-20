@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { IKeybindCommand } from "@/core/commands";
-import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
+import { ROOT_KEYBIND_COMMANDS } from "@/core/container/root-commands";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IToolDescriptor } from "@/core/routing/tool";
 import { TOOL_CATALOG } from "@/ToolCatalog";
@@ -9,20 +9,23 @@ import { TOOL_CATALOG } from "@/ToolCatalog";
 import { findChordConflicts, IChordConflict } from "./keymap";
 
 describe("the command catalog", () => {
-  it("declares each command id once, so two owners cannot answer to one id", () => {
-    const owners: Map<string, Array<string>> = new Map();
+  it("defines each command id once, so two definitions cannot answer to one id", () => {
+    // A domain's command listed by every tool that shows the domain is one definition reached from several tools.
+    const definitions: Map<string, Set<IKeybindCommand>> = new Map();
 
-    for (const tool of TOOL_CATALOG.tools) {
-      for (const command of tool.keybindCommands ?? []) {
-        owners.set(command.id, [...(owners.get(command.id) ?? []), tool.id]);
-      }
+    for (const command of [
+      ...ROOT_KEYBIND_COMMANDS,
+      ...LAUNCHER_KEYBIND_COMMANDS,
+      ...TOOL_CATALOG.tools.flatMap((tool: IToolDescriptor) => tool.keybindCommands ?? []),
+    ]) {
+      definitions.set(command.id, (definitions.get(command.id) ?? new Set()).add(command));
     }
 
-    const shared: Array<[string, Array<string>]> = [...owners.entries()].filter(
-      ([, tools]: [string, Array<string>]) => new Set(tools).size > 1
-    );
+    const redefined: Array<string> = [...definitions.entries()]
+      .filter(([, commands]: [string, Set<IKeybindCommand>]) => commands.size > 1)
+      .map(([id]: [string, Set<IKeybindCommand>]) => id);
 
-    expect(shared).toEqual([]);
+    expect(redefined).toEqual([]);
   });
 
   it("binds no chord to two commands reachable at once", () => {

@@ -11,7 +11,7 @@ use crate::scene::level::view::record::lighting_handles::LightingHandles;
 /// surfaces sample, the view's targets and static scene as the graph holds them, the cull's parameters the views of
 /// its own cull by, the lighting every lit pass binds, and the stand-ins an optional product falls back to.
 #[derive(Clone, Copy)]
-pub struct ViewRecord<'a> {
+pub(crate) struct ViewRecord<'a> {
   pub passes: LevelPasses<'a>,
   pub view: &'a ViewBinding,
   pub textures: &'a wgpu::BindGroup,

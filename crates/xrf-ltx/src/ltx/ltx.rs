@@ -1,15 +1,17 @@
+use std::borrow::Cow;
 use std::ops::{Index, IndexMut};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::binding::LtxSectionWrite;
 use crate::dialect::LtxProvenance;
 use crate::document::LtxCheck;
 use crate::ltx::{LtxInheritConvertor, LtxSections, Section, SectionEntry, SectionSetter};
-use crate::syntax::ROOT_SECTION;
+use crate::syntax::{ROOT_SECTION, fold_section_name};
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Ltx {
   pub(crate) includes: Vec<String>,
   pub(crate) skipped_checks: Vec<LtxCheck>,
@@ -70,19 +72,27 @@ impl Ltx {
     self.entry(ROOT_SECTION.into()).or_insert_with(Default::default)
   }
 
-  /// Get a immutable section
+  /// The section named `name` in any case, as the engine looks sections up.
   pub fn section(&self, name: &str) -> Option<&Section> {
-    self.sections.get(name)
+    self.sections.get(self.get_stored_name(name).as_ref())
   }
 
-  /// Check whether ltx has section with name.
   pub fn has_section(&self, name: &str) -> bool {
-    self.sections.contains_key(name)
+    self.section(name).is_some()
+  }
+
+  /// The key `name` is held under: itself when a section was built in code so, otherwise its lowercase form.
+  pub(crate) fn get_stored_name<'n>(&self, name: &'n str) -> Cow<'n, str> {
+    if self.sections.contains_key(name) {
+      Cow::Borrowed(name)
+    } else {
+      fold_section_name(name)
+    }
   }
 
   /// Sets the source path on sections without an origin, preserving included sections' origins.
   pub(crate) fn set_section_origins(&mut self, origin: &Arc<str>) {
-    for (_, section) in self.sections.iter_mut() {
+    for (_, section) in &mut self.sections {
       if section.origin.is_none() {
         section.origin = Some(Arc::clone(origin));
       }
@@ -94,9 +104,11 @@ impl Ltx {
     self.sections.insert(name, section);
   }
 
-  /// Get a mutable section
+  /// The section named `name` in any case, mutably.
   pub fn section_mut(&mut self, name: &str) -> Option<&mut Section> {
-    self.sections.get_mut(name)
+    let stored: Cow<'_, str> = self.get_stored_name(name);
+
+    self.sections.get_mut(stored.as_ref())
   }
 
   pub fn entry(&mut self, name: String) -> SectionEntry<'_> {
@@ -116,19 +128,13 @@ impl Ltx {
     self.skipped_checks.contains(&check)
   }
 
-  pub(crate) fn skip_check(&mut self, check: LtxCheck) {
-    if !self.is_check_skipped(check) {
-      self.skipped_checks.push(check);
-    }
-  }
-
   pub fn get_included(&self) -> &Vec<String> {
     &self.includes
   }
 
   /// Clear all entries
   pub fn clear(&mut self) {
-    self.sections.clear()
+    self.sections.clear();
   }
 
   /// Iterate with sections
@@ -146,7 +152,7 @@ impl Ltx {
 
   /// Get the first value from the sections with key
   pub fn get_from(&self, section: &str, key: &str) -> Option<&str> {
-    self.sections.get(section).and_then(|section| section.get(key))
+    self.section(section).and_then(|section| section.get(key))
   }
 
   /// Get the first value from the sections with key, return the default value if it does not exist
@@ -158,14 +164,16 @@ impl Ltx {
   pub fn shrink_to_fit(&mut self) {
     self.sections.shrink_to_fit();
 
-    for (_, section) in self.sections.iter_mut() {
+    for (_, section) in &mut self.sections {
       section.shrink_to_fit();
     }
   }
 
-  /// Delete the first section with key, return the properties if it exists
+  /// Delete the section named `section` in any case, as [`Self::section`] finds it, returning it where it existed.
   pub fn delete(&mut self, section: &str) -> Option<Section> {
-    self.sections.shift_remove(section)
+    let stored: String = self.get_stored_name(section).into_owned();
+
+    self.sections.shift_remove(&stored)
   }
 
   /// Delete the key from the section, return the value if key exists or None
@@ -229,7 +237,7 @@ impl<'q> Index<&'q str> for Ltx {
   fn index<'a>(&'a self, index: &'q str) -> &'a Section {
     match self.section(index) {
       Some(section) => section,
-      None => panic!("Section '{}' does not exist", index),
+      None => panic!("Section '{index}' does not exist"),
     }
   }
 }
@@ -238,7 +246,7 @@ impl<'q> IndexMut<&'q str> for Ltx {
   fn index_mut<'a>(&'a mut self, index: &'q str) -> &'a mut Section {
     match self.section_mut(index) {
       Some(section) => section,
-      None => panic!("Section '{}' does not exist", index),
+      None => panic!("Section '{index}' does not exist"),
     }
   }
 }
@@ -247,6 +255,7 @@ impl<'q> IndexMut<&'q str> for Ltx {
 mod test {
   use xrf_error::{XrfError, XrfResult};
 
+  use crate::binding::LtxSectionWrite;
   use crate::ltx::{Ltx, Section};
   use crate::syntax::ROOT_SECTION;
 
@@ -582,7 +591,8 @@ Stuff = Other
     let ltx: Ltx = Ltx::read_from_str(input).unwrap();
     assert_eq!(
       ltx.get_from("section name", "Key").unwrap(),
-      "\"Value   # This is not a comment"
+      "\"Value   # This is not a comment ; at all\"",
+      "a `;` inside the line's first quotes is the value's, as the engine reads it"
     );
   }
 
@@ -639,7 +649,7 @@ Key = 'Value   # This is not a comment ; at all'
     assert!(sec1.contains_key(&key1));
     let key2: String = "key2".into();
     assert!(sec1.contains_key(&key2));
-    let val1: String = "".into();
+    let val1: String = String::new();
     assert_eq!(sec1[&key1], val1);
     let val2: String = "val2".into();
     assert_eq!(sec1[&key2], val2);
@@ -761,7 +771,7 @@ a3 = n3
     let ltx: Ltx = Ltx::read_from_str(input).unwrap();
     let section: &Section = ltx.section("s").unwrap();
     let keys: Vec<&str> = section.iter().map(|(k, _)| k).collect();
-    assert_eq!(keys, vec!["x2", "xb", "a3"])
+    assert_eq!(keys, vec!["x2", "xb", "a3"]);
   }
 
   #[test]

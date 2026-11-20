@@ -1,22 +1,17 @@
 # xrf-archive-stats
 
-Summarizes file counts, sizes, compression, and source contributions for X-Ray archive volumes and mounted game data.
-Both entry points return `ArchiveStatistics`:
+Summarizes what a set of game files holds: counts, sizes, extensions, folders, compression, and which source each file
+comes from.
 
-- `of_volumes` takes an open `ArchiveProject` from [xrf-archive](../xrf-archive/README.md), whose volumes have been
-  merged into one name table.
-- `of_world` takes a resolved listing from [xrf-vfs](../xrf-vfs/README.md). This **mounted world** can contain loose
-  files, archived files, or both, with one winning file per engine path and the copies it overrides.
+It has two entry points, both returning an `ArchiveStatistics` report:
 
-The crate sits above both `xrf-archive` and `xrf-vfs`, as `xrf-pack` does: the same breakdown is asked of a volume set,
-whose name table records a stored size per entry, and of a mounted world, which answers loose files and archived
-entries through one lookup and records no stored size. Putting the shared arithmetic in either crate would give one of
-them knowledge of the other's subject.
+| Entry point  | Input                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `of_volumes` | An open `ArchiveProject` from [xrf-archive](../xrf-archive/README.md): merged archive files |
+| `of_world`   | A listing from [xrf-vfs](../xrf-vfs/README.md): loose and archived files, as the game sees  |
 
-The two constructors are the whole interface: each returns the full report, so there is no per-question call and no way
-to compute half a report over an installation-sized listing. Statistics use metadata already held by the caller.
-Computing a report performs no file I/O and does not validate payload contents. Opening sources belongs to the crates
-above; packing and extraction belong to [xrf-pack](../xrf-pack/README.md).
+A report is computed from metadata the caller already holds. It reads no files and does not validate payloads. Packing
+and extraction belong to [xrf-pack](../xrf-pack/README.md).
 
 ## Summarize a volume set
 
@@ -41,42 +36,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Replace `game/db` with a volume file or a directory containing volumes; relative paths resolve from the process's
-working directory. `ArchiveProject::new` discovers volumes recursively. Opening can fail; computing the statistics
-returns the report directly.
+`game/db` is a volume file or a directory of volumes, searched recursively.
 
-File totals and breakdowns describe the merged name table's winners. Displaced copies retained in `project.shadowed`
-are counted separately in `origins.hidden`. Volume-set names remain as authored; use a mounted world when the report
-must follow engine path normalization and installation priority.
+- Totals and breakdowns describe the files that win the merge.
+- Copies displaced by a later volume (`project.shadowed`) are counted only in `origins.hidden`.
+- Names stay as authored. Use a mounted world when the report must follow the engine's path rules and install order.
 
 ## Summarize a mounted world
 
-Call `ArchiveStatistics::of_world(&entries, &mounts, &sources)` after resolving and listing the sources with an
-`XraySearch`. Keep all three arguments from the same search:
+List the files with an `XraySearch`, then pass three of its answers to `of_world`:
 
-| Argument  | Contents                                                                                                           |
-| --------- | ------------------------------------------------------------------------------------------------------------------ |
-| `entries` | A slice of winning file entries implementing `ArchiveWorldStatisticsEntry`, each retaining the copies it overrides |
-| `mounts`  | Mount names, as returned by `XraySearch::list_roots`; their count becomes `overview.sources`                       |
-| `sources` | Loose-root and individual-volume paths in search priority order, as returned by `XraySearch::list_containers`      |
+| Argument  | Source                        | Contents                                                       |
+| --------- | ----------------------------- | -------------------------------------------------------------- |
+| `entries` | `list_shadowing_entries`      | One winning file per engine path, with the copies it overrides |
+| `mounts`  | `XraySearch::list_roots`      | Mount names; their count becomes `overview.sources`            |
+| `sources` | `XraySearch::list_containers` | Loose roots and individual volumes, in search priority order   |
 
-A mount can hold several volumes, so `overview.sources` need not equal `origins.sources.len()`. The collector does
-not resolve conflicts or deduplicate entries: supply one winner per engine path. A single loose gamedata directory
-uses this same entry point; its winners contribute to `origins.loose`.
+Take all three from the same search. The collector borrows your entries through two traits instead of copying them:
 
-Implement the traits on the entry type your application already retains:
-
-- `ArchiveStatisticsEntry` supplies the name and unpacked byte size. Keep the default `get_size_compressed() -> None`
-  for world entries, including archived winners, because the world listing does not record stored sizes.
-- `ArchiveWorldStatisticsEntry` adds the winner's `XrayAssetContainer` and an iterator over hidden containers and
-  their own unpacked sizes. A hidden copy can differ in size from its winner.
-
-Supply files only to `of_world`, including files rather than directories in each hidden-copy iterator. World origins
-count every supplied entry, while the common breakdown skips entries marked as directories. `of_volumes` already
-handles directory descriptors and uses the crate's `ArchiveStatisticsEntry` implementation for `ArchiveFileDescriptor`.
-
-These traits let the collector borrow the existing listing without cloning it into a second entry model. Here they are
-implemented over the VFS's own shadowing listing:
+- `ArchiveStatisticsEntry` gives the name and unpacked size. Keep its default `get_size_compressed() -> None`: a world
+  listing records no stored sizes.
+- `ArchiveWorldStatisticsEntry` adds the winner's container and its hidden copies, each with its own size.
+- `of_volumes` needs neither: the crate implements `ArchiveStatisticsEntry` for `ArchiveFileDescriptor` and handles
+  directory descriptors itself.
 
 ```rust,no_run
 use xrf_archive_stats::{ArchiveStatistics, ArchiveStatisticsEntry, ArchiveWorldStatisticsEntry};
@@ -119,100 +101,99 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-The [world tests](src/tests/world.rs) implement the traits over a smaller entry type.
+Things the collector leaves to you:
+
+- Supply one winner per engine path. It does not resolve conflicts or remove duplicates.
+- Supply files only, in the entries and in each hidden-copy list. World origins count every entry, directories
+  included.
+- A mount can hold several volumes, so `overview.sources` need not equal `origins.sources.len()`.
+
+A single loose `gamedata` directory goes through `of_world` too; its files count under `origins.loose`.
 
 ## Read the report
 
-Sizes are `u64` byte counts. `ArchiveMeasure` pairs a file count with its total unpacked size (`size_real`). Directory
-entries are excluded from file totals, size statistics, and breakdowns; `overview.directories` reports their count
-separately.
+All sizes are `u64` byte counts. `ArchiveMeasure` pairs a file count with its unpacked size (`size_real`).
 
-| Field         | Meaning and ordering                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------- |
-| `overview`    | Winning file totals, source and directory counts, empty-file count, largest file, mean, and median size |
-| `extensions`  | One row per extension spelling, ordered by unpacked bytes descending, then extension                    |
-| `folders`     | One row per top-level folder, ordered by unpacked bytes descending, then folder                         |
-| `sizes`       | Nonempty size bands in ascending order                                                                  |
-| `largest`     | At most twenty files, ordered by unpacked size descending                                               |
-| `compression` | Stored and unpacked totals and the count stored uncompressed, when entries supply stored sizes          |
-| `volumes`     | Per-volume metadata in merge order for a volume set; `None` for a world                                 |
-| `origins`     | Winning loose and archived totals, hidden-copy totals, and contributions by source for either subject   |
+| Field         | Contents                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| `overview`    | File totals, source and directory counts, empty files, largest file, mean and median size |
+| `extensions`  | One row per extension spelling, largest unpacked total first                              |
+| `folders`     | One row per top-level folder, largest unpacked total first; `folder: None` is the root    |
+| `sizes`       | Nonempty size bands, smallest first                                                       |
+| `largest`     | Up to twenty files, largest first                                                         |
+| `compression` | Stored and unpacked totals, and how many files are stored uncompressed                    |
+| `volumes`     | Per-volume metadata in merge order; `None` for a world                                    |
+| `origins`     | Loose, archived and hidden totals, and what each source contributes                       |
 
-Extension, folder, and size-band measures each sum to `overview.total`. Hidden copies are excluded from those
-breakdowns. `largest` is a sample: equal-size ordering and which tied files fit the twenty-entry limit depend on input
-order, which is unspecified for a volume set's name table.
+Rows with equal totals are ordered by name.
 
-The mean uses integer division. For an even file count, the median is the upper middle size, not the average of the
-two middle sizes. Largest, mean, and median sizes are zero when there are no files. Zero-length files still count as
-files and have their own size band.
+### Totals
 
-Size bands include `from` and exclude `to`; `to: None` marks the open-ended final band. Boundaries are defined by
-[`ArchiveSizeBand::FLOORS`](src/report/archive_size_band.rs). Folder grouping stops at the first path segment;
-`folder: None` holds files at the root.
+- Extension, folder and size-band rows each sum to `overview.total`. Directories and hidden copies are left out of
+  them; `overview.directories` counts directories.
+- The mean uses integer division. With an even count, the median is the upper middle size.
+- Largest, mean and median are zero when there are no files. Empty files still count and have their own size band.
+- A size band includes `from` and excludes `to`; `to: None` is the open-ended last band. The boundaries are
+  [`ArchiveSizeBand::FLOORS`](src/report/archive_size_band.rs).
+- `largest` is a sample: among files of equal size, which ones make the cut depends on input order.
 
-### Extension spelling
+### Extensions
 
-Extensions come from the last path segment and retain their supplied spelling, so `dds` and `DDS` form separate rows
-when both occur. Recognition through [xrf-extension](../xrf-extension/README.md) ignores case: both can have
-`is_declared: true`. That flag identifies vocabulary membership, not whether a payload is valid or previewable.
+- An extension keeps its spelling, so `dds` and `DDS` are separate rows.
+- `is_declared` says the extension is one [xrf-extension](../xrf-extension/README.md) knows, ignoring case. It does not
+  say the payload is valid.
+- Names with no extension, a leading dot only (`.gitignore`), or a trailing dot share the `extension: None` row.
 
-Unknown spellings keep their own rows. Names without an extension, names whose only dot is the leading dot (such as
-`.gitignore`), and names ending in a dot share the `extension: None` row, whose `is_declared` is false. Both slash
-styles are accepted when splitting paths; the collector does not otherwise normalize names.
+### Compression
 
-### Compression and volume totals
+- `compression` is `None` when no entry supplies a stored size: an empty volume set, or a world. Unavailable is not
+  zero; do not substitute unpacked sizes.
+- `stored_uncompressed` counts files whose stored and unpacked sizes match, empty files included.
+- If a custom entry type mixes known and unknown stored sizes, mixed extension and folder rows report none, and the
+  overall total compares the known stored sizes against all unpacked bytes.
+- Stored sizes are per entry. They leave out archive headers and tables and can count a shared payload twice, so they
+  are not the archive files' size on disk or a forecast of repacking savings.
 
-`of_volumes` measures stored sizes from winning file descriptors. `stored_uncompressed` counts files whose stored
-and unpacked sizes match, including zero-byte files. Compression is `None` when no file supplies a stored size, such
-as an empty volume set or world entries using the trait's default. An unavailable value is distinct from a measured
-zero.
+### Volumes
 
-World entries using the trait defaults report `compression: None` and no stored sizes in extension, folder, or
-largest-file rows. Do not substitute unpacked sizes for unavailable stored sizes. If a custom implementation mixes
-`Some` and `None`, extension and folder stored totals become unavailable for mixed groups, but the overall compression
-total still sums the supplied stored sizes against all unpacked bytes. That partial total cannot describe the whole
-world's compression.
+A volume row copies the volume's own metadata before merging. Its `entries` include directories and files a later
+volume overrides, so volume totals need not match the overview. `modified_at` is the file's modification time in Unix
+milliseconds, when known.
 
-Volume rows copy each volume's metadata before merging: `entries` includes directory entries and files later
-overridden by another volume. Their totals therefore need not equal the winning-file overview. `modified_at`, when
-available, is the volume file's modification time in Unix milliseconds.
+## Read source contributions
 
-Stored-size totals describe payload sizes per entry. They exclude archive headers and tables and can count shared
-payloads more than once; they are not the physical sizes of the archive files or a forecast of repacking savings.
+`origins` splits the winning files into `loose` and `archived`, and counts displaced copies in `hidden` at each copy's
+own size. Three copies hidden behind one path count three times.
 
-## Interpret source contributions
+Each `origins.sources` row is a loose root or a single volume:
 
-Both entry points populate `origins`. Its `loose` and `archived` measures divide the winning files by container kind;
-`hidden` counts displaced copies separately, using each copy's own size. Several hidden copies of one path count
-separately, so `hidden.files` is not the number of paths with overrides.
+- `wins` — the source's files that stay visible.
+- `hides` — the source's own copies hidden by a higher-priority source.
+- `is_loose` — whether its counted copies were loose; `false` for a source with none.
 
-Each `origins.sources` row names a loose root or an individual volume:
+For example, a 1,000-byte loose `configs/system.ltx` overriding a 7,000-byte archived copy gives:
 
-- `wins` measures that source's files which remain visible.
-- `hides` measures that source's own copies hidden by higher-priority sources, not files it hides elsewhere.
-- `is_loose` is derived from the containers encountered for that source. A source with no counted copies defaults to
-  false, so this flag alone cannot classify an empty source.
+- `overview`: one file, 1,000 bytes;
+- the loose source: one `wins` entry;
+- the archive: one `hides` entry of 7,000 bytes, also counted in `origins.hidden`.
 
-For example, if a 1,000-byte loose `configs/system.ltx` overrides a 7,000-byte archived copy, the overview counts one
-file and 1,000 bytes. The loose source gains one `wins` entry; the archive source gains one `hides` entry measured at
-7,000 bytes. `origins.hidden` also gains one copy and 7,000 bytes.
+Source order:
 
-Volume-set source rows use reverse merge order: later volumes win and appear first. World source rows preserve the
-supplied `sources` order, including sources that contribute nothing. Sources encountered in entries but absent from
-that list are appended in lexical order; that fallback does not establish their search priority. Supply each source
-once, with the same path spelling used by its containers.
+- A volume set lists later volumes first, since they win.
+- A world keeps the `sources` order you passed, including sources that contribute nothing. Sources missing from that
+  list are appended alphabetically, which says nothing about their priority. Pass each source once, spelled as its
+  containers spell it.
 
-The report counts the winners and hidden copies its input retains. It does not independently discover unreachable
-names or collisions within a source; use the VFS collision APIs for those findings.
+The report does not look for unreachable names or collisions within a source; the VFS collision listing does.
 
-## Cost and checks
+## Cost
 
-The common breakdowns share a pass over winning entries. Origins are collected in a separate pass over winners and
-hidden copies. The collector retains and sorts one size per winning file for the median; the largest-files list is
-bounded at twenty. No payload bytes are read during either calculation.
+Two passes over the entries and one sorted size per winning file, for the median. No payload is read.
 
-Report types implement `Serialize` with camelCase field names. The optional `typescript-bindings` feature adds Specta
-type metadata for frontend binding generation.
+Report types serialize with camelCase field names. The `typescript-bindings` feature adds Specta metadata for the
+frontend bindings.
+
+## Checks
 
 From the repository root:
 
@@ -221,7 +202,7 @@ cargo test --locked -p xrf-archive-stats
 cargo doc --locked -p xrf-archive-stats --no-deps
 ```
 
-The README is the crate documentation, so its Rust examples are checked as doctests. See the
-[report entry points](src/report/archive_statistics.rs), [entry traits](src/collect/archive_statistics_entry.rs),
-[breakdown collector](src/collect/archive_statistics_collector.rs), and
-[origins collector](src/collect/archive_origins_collector.rs).
+Sources: the [report entry points](src/report/archive_statistics.rs), the
+[entry traits](src/collect/archive_statistics_entry.rs), the
+[breakdown collector](src/collect/archive_statistics_collector.rs), the
+[origins collector](src/collect/archive_origins_collector.rs), and the [world tests](src/tests/world.rs).

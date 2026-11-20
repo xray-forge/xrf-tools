@@ -4,13 +4,13 @@ import { Nullable } from "@xrf/types";
 import { createElement } from "react";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
-import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
+import { ROOT_KEYBIND_COMMANDS } from "@/core/container/root-commands";
 import { IKeybinding, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { EToolGroupId, EToolId, EToolStatus, IToolDescriptor } from "@/core/routing/tool";
 import { createToolDescriptor } from "@/core/routing/tool-descriptor";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
 import { clearLocalStorage, getLocalStorageValue, KEYBINDS_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use xrf_error::{XrfError, XrfResult};
 use xrf_xml::{XmlElementSpan, XmlSourceDocument};
 
@@ -28,7 +26,8 @@ impl TranslationXmlReader {
   ///
   /// Returns an IO error when the file cannot be read, an encoding error when its bytes do not decode, and a parsing
   /// error when the document is malformed beyond what the engine accepts.
-  pub(crate) fn read(path: &Path) -> XrfResult<Vec<(String, String)>> {
+  #[cfg(test)]
+  pub(crate) fn read(path: &std::path::Path) -> XrfResult<Vec<(String, String)>> {
     Self::parse_decoded(DecodedTranslation::read(path)?)
   }
 
@@ -41,7 +40,7 @@ impl TranslationXmlReader {
   ///
   /// Returns an encoding error when the bytes do not decode, and a parsing error when the document is malformed beyond
   /// what the engine accepts.
-  pub(crate) fn parse(identity: TranslationIdentity, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
+  pub(crate) fn parse(identity: TranslationIdentity<'_>, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
     Self::parse_decoded(DecodedTranslation::decode(identity, data)?)
   }
 
@@ -57,7 +56,7 @@ impl TranslationXmlReader {
   ///
   /// Returns an encoding error when the bytes do not decode, a parsing error when the document is malformed, and an
   /// invalid error when its root is not `string_table`.
-  pub(crate) fn parse_required(identity: TranslationIdentity, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
+  pub(crate) fn parse_required(identity: TranslationIdentity<'_>, data: &[u8]) -> XrfResult<Vec<(String, String)>> {
     let decoded: DecodedTranslation = DecodedTranslation::decode(identity, data)?;
     let document: XmlSourceDocument = XmlSourceDocument::parse(decoded.text)?;
     let root: &XmlElementSpan = document.root();

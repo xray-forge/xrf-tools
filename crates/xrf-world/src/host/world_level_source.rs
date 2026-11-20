@@ -2,11 +2,13 @@ use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer::{
-  RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderMotion,
-  RenderSpawnModels,
+  RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderMotion, RenderSpawnModels,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
+use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
+use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 use crate::host::world_level_weather::WorldLevelWeather;
 
 /// An open level as the world plays it: the application reads its parts on demand, on the renderer's loader threads,
@@ -85,6 +87,16 @@ pub trait WorldLevelSource: RenderLevelSource {
   /// Returns an error when the library or the collision form cannot be read.
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>>;
 
+  /// The level's AI map, which the debug views show over the ground, called from a loader thread as the level opens and
+  /// again for a next source that reloads it; none for a level without one or a source with no level.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the map is there and cannot be read.
+  fn read_ai_map(&self) -> XrfResult<Option<RenderLevelAiMap>> {
+    Ok(None)
+  }
+
   /// The level's particle systems, planted and played by its zones, called from a loader thread as the level opens and
   /// again for a next source that reloads them; none for a source with no level.
   ///
@@ -113,5 +125,20 @@ pub trait WorldLevelSource: RenderLevelSource {
     Err(XrfError::new_not_found_error(format!(
       "No object motion '{name}' to play"
     )))
+  }
+
+  /// The level's static sounds and music tracks, each sound's file read for what the engine reads of it, called from
+  /// a loader thread as the level opens; none for a source with no level.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the level's sounds cannot be read.
+  fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
+    Ok(WorldLevelSounds::default())
+  }
+
+  /// Where the scene's sound frames go, asked once as its level starts playing; none for a source that is not heard.
+  fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {
+    None
   }
 }

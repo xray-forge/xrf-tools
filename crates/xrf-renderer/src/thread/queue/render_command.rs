@@ -6,6 +6,7 @@ use xrf_error::XrfResult;
 
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::capture_event::CaptureEvent;
+use crate::capture::record::record_event::RecordEvent;
 use crate::contract::capture::render_burst::RenderBurst;
 use crate::contract::capture::render_capture::RenderCapture;
 use crate::contract::capture::render_cube_capture::RenderCubeCapture;
@@ -19,11 +20,13 @@ use crate::contract::report::load::render_load_report::RenderLoadReport;
 use crate::contract::report::texture::render_texture_report::RenderTextureReport;
 use crate::contract::settings::render_settings::RenderSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_hold_id::RenderHoldId;
 use crate::contract::viewport::render_pick::RenderPick;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::contract::viewport::render_viewport_layout::RenderViewportLayout;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_window_host::RenderWindowHost;
+use crate::host::world::render_scene_id::RenderSceneId;
 
 /// What the render thread is told, through a [`crate::RenderQueue`]; it is the only one touching the GPU.
 pub enum RenderCommand {
@@ -34,6 +37,14 @@ pub enum RenderCommand {
   },
   Detach {
     id: RenderViewportId,
+  },
+  /// Starts the GPU if needed and keeps it until released, so a tool whose viewports come and go never waits for it.
+  Hold {
+    id: RenderHoldId,
+  },
+  /// Releases a hold; the GPU stops a few seconds after the last hold and viewport.
+  Release {
+    id: RenderHoldId,
   },
   Layout {
     id: RenderViewportId,
@@ -46,10 +57,11 @@ pub enum RenderCommand {
     id: RenderViewportId,
     options: Box<RenderViewOptions>,
   },
-  /// Replaces what a viewport draws over its frame.
+  /// Replaces a viewport's overlays, at once or from the first frame it shows `scene`.
   Overlays {
     id: RenderViewportId,
     overlays: Vec<RenderOverlay>,
+    scene: Option<RenderSceneId>,
   },
   /// Marks what of a viewport's level is selected, or nothing for `None`.
   Selection {
@@ -128,6 +140,18 @@ pub enum RenderCommand {
     id: RenderViewportId,
     burst: RenderBurst,
     events: Sender<BurstEvent>,
+  },
+  /// Records a viewport's presented frames at up to 60 a second, scaled to `size` pixels, sending each to `events`.
+  /// Dropping the receiver stops it at its next frame.
+  Record {
+    id: RenderViewportId,
+    size: (u32, u32),
+    events: Sender<RecordEvent>,
+  },
+  /// Stops a viewport's recording at once; an idle viewport sends no frame whose failed send would end it, and would
+  /// otherwise block every other long job.
+  StopRecord {
+    id: RenderViewportId,
   },
   /// Draws every scene's frames `step` apart on its clock from the next on, however long each takes; none at the time
   /// each is drawn.

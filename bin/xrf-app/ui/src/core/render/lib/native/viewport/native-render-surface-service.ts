@@ -1,4 +1,4 @@
-import { OnDeactivation } from "@wirestate/core";
+import { OnDeactivation, OnDeprovision, OnProvision } from "@wirestate/core";
 import { Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
 import { RenderAppliedReport, RenderFrameReport, RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
@@ -8,14 +8,17 @@ import { Nullable } from "@xrf/types";
 
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/contract/native-frame-report";
+import { NativeRendererHold } from "@/core/render/lib/native/viewport/native-renderer-hold";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
+import { followListening } from "@/core/render/lib/native/viewport/native-viewport-listening";
 import { INativeViewportClick, NativeViewportTarget } from "@/core/render/lib/native/viewport/native-viewport-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /**
- * A service owning one native viewport: attached where a view hands it an element, told everything through reactions
- * while attached, and let go when the view or the tool goes.
+ * A service owning one native viewport: attached where a view hands it an element, kept current through reactions, and
+ * let go when the view or the tool goes. It holds the renderer while its tool is open, so the GPU is started before a
+ * view asks and stays started between views.
  */
 export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   public abstract readonly log: Logger;
@@ -38,6 +41,13 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   protected viewport: Nullable<NativeViewport> = null;
 
+  /**
+   * Whether the viewport is revealed by its first frame, whatever it drew. A service attaching before what it shows is
+   * drawn answers false and calls `reveal` once it is, so the page never shows the empty viewport's grid.
+   */
+  protected readonly isRevealedByAnyFrame: boolean = true;
+
+  private readonly hold: NativeRendererHold = new NativeRendererHold(new Logger(__MODULE_NAME__));
   private target: Nullable<NativeViewportTarget> = null;
   private readonly reactions: Array<() => void> = [];
   /** Shows asked, so one replaced since neither hands its scene on nor fails. */
@@ -75,9 +85,13 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
         this.log.warn("A native viewport command failed:", command, error);
       },
       onFailed: (message: string): void => this.fail(message),
+      onFlySpeed: (steps: number): void => this.onFlySpeed(steps),
       onFrame: (report: RenderFrameReport): void => {
         // A viewport reports only frames it drew, so by its first the window holds the page's backdrop.
-        this.target?.openHole();
+        if (this.isRevealedByAnyFrame) {
+          this.reveal();
+        }
+
         runInAction(() => {
           this.frame = report;
         });
@@ -92,7 +106,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       onHover: (point: Nullable<IRenderViewPoint>) => this.onHover(point),
     });
     this.onAttached(container);
-    this.reactions.push(...this.start(viewport));
+    this.reactions.push(followListening(viewport, container), ...this.start(viewport));
   }
 
   /** Stops drawing and closes the element's hole. */
@@ -118,6 +132,18 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   @OnDeactivation()
   public dispose(): void {
     this.detach();
+  }
+
+  /** Holds the renderer as the tool opens, before any view asks for the viewport. */
+  @OnProvision()
+  public holdRenderer(): void {
+    this.hold.take();
+  }
+
+  /** Lets the renderer go as the tool is left. */
+  @OnDeprovision()
+  public releaseRenderer(): void {
+    this.hold.release();
   }
 
   /**
@@ -163,6 +189,14 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    * @param _point - Where, in css pixels from the viewport's top left corner; null once it leaves or a press takes it.
    */
   protected onHover(_point: Nullable<IRenderViewPoint>): void {}
+
+  /**
+   * Called with the speed steps the fly camera asked for, its wheel turned while the secondary button flies it; the
+   * speed is the subclass's to change.
+   *
+   * @param _steps - Whole steps, positive faster.
+   */
+  protected onFlySpeed(_steps: number): void {}
 
   /** Called before the viewport goes. */
   protected onDetached(): void {}
@@ -210,6 +244,14 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   /** Forgets what the subclass told the viewport, which went with it. */
   protected release(): void {}
+
+  /**
+   * Shows the viewport through the page once it has drawn, taking off the page's backgrounds over it. Calling it again
+   * does nothing.
+   */
+  protected reveal(): void {
+    this.target?.openHole();
+  }
 
   private fail(message: string): void {
     this.log.error("The native viewport cannot be drawn:", message);

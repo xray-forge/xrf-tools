@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 
@@ -15,9 +15,9 @@ pub struct AlifeObjectDynamicVisual {
   pub visual_flags: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectDynamicVisual {
+impl ChunkFieldReadWrite for AlifeObjectDynamicVisual {
   /// Read visual object data from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       visual_name: reader.read_w1251_string()?,
@@ -26,7 +26,7 @@ impl ChunkReadWrite for AlifeObjectDynamicVisual {
   }
 
   /// Write visual ALife object data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_w1251_string(&self.visual_name)?;
     writer.write_u8(self.visual_flags)?;
@@ -37,8 +37,8 @@ impl ChunkReadWrite for AlifeObjectDynamicVisual {
 
 impl LtxImportExport for AlifeObjectDynamicVisual {
   /// Import visual object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -54,13 +54,13 @@ impl LtxImportExport for AlifeObjectDynamicVisual {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
       .set("dynamic_visual.visual_name", &self.visual_name)
-      .set("dynamic_visual.visual_flags", self.visual_flags.to_string());
+      .set("dynamic_visual.visual_flags", self.visual_flags);
 
     Ok(())
   }

@@ -1,15 +1,20 @@
 import { ERenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
+import { Optional } from "@xrf/types";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverChoiceRow } from "@xrf/ui/editor/popover-row";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TonalityIcon } from "@xrf/ui/icons/tonality";
 import { ReactElement, useCallback } from "react";
 
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RENDER_CONTACT_SHADOW_SETTINGS } from "@/core/render/lib/features/lighting/render-contact-shadow-choices";
 import {
@@ -34,7 +39,8 @@ export function LevelShadowAction({
   className,
 }: BaseComponentProps): ReactElement {
   const { isOn, toggle } = useLevelViewToggle("isShadowed");
-  const { state, set, setNested, reset } = useLevelFeature("shadows");
+  const { state, set, setNested } = useLevelFeature("shadows");
+  const onReset: Optional<() => void> = useLevelFeatureReset("shadows");
   const { drawn } = useLevelRenderFeatures();
   const shadows: TRenderShadowSettings = state.value;
   const widest: number = shadows.cascades.at(-1) ?? 0;
@@ -65,17 +71,19 @@ export function LevelShadowAction({
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
       toggleLabel={"Sun shadows"}
+      resetLabel={LEVEL_SETTINGS_RESET_LABEL}
       onToggle={toggle}
+      onReset={onReset}
     >
-      <RenderValueChoice
+      <EditorPopoverChoiceRow
         label={RENDER_SHADOW_SETTINGS.cascades.label}
         options={RENDER_SHADOW_CASCADE_OPTIONS}
         value={String(shadows.cascades.length)}
         onChange={(count: string) => set({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
       />
 
-      <RenderValueChoice
-        label={RENDER_SHADOW_SETTINGS.resolution.label}
+      <EditorPopoverChoiceRow
+        label={RENDER_SHADOW_SETTINGS.resolution.entryLabel ?? RENDER_SHADOW_SETTINGS.resolution.label}
         options={RENDER_SHADOW_RESOLUTION_OPTIONS}
         value={String(shadows.resolution)}
         onChange={(resolution: string) => set({ resolution: Number(resolution) })}
@@ -89,15 +97,15 @@ export function LevelShadowAction({
         onSet={set}
       />
 
-      <RenderSettingEntries
-        settings={RENDER_CONTACT_SHADOW_SETTINGS}
-        names={["mode", "length", "intensity", "thickness", "steps", "isFullResolution", "lights"]}
-        group={shadows.contact}
-        features={drawn}
-        onSet={onSetContact}
-      />
-
-      <LevelSettingsResetButton onReset={reset} />
+      <EditorPopoverGroupSection label={"Contact shadows"}>
+        <RenderSettingEntries
+          settings={RENDER_CONTACT_SHADOW_SETTINGS}
+          names={["mode", "length", "intensity", "thickness", "steps", "isFullResolution", "lights"]}
+          group={shadows.contact}
+          features={drawn}
+          onSet={onSetContact}
+        />
+      </EditorPopoverGroupSection>
     </EditorPopoverToggle>
   );
 }

@@ -1,0 +1,93 @@
+import {
+  ArchiveDescribeScope,
+  ArchiveShadersBlender,
+  ArchiveShadersDescription,
+} from "@xrf/ipc/types/xrf-app-archives";
+import { filterByName } from "@xrf/search";
+import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
+import { Typography } from "@xrf/ui/typography";
+import { ReactElement, useMemo, useState } from "react";
+
+import { ArchiveShadersBlenderRow } from "./ArchiveShadersBlenderRow";
+
+interface IArchiveShadersDescriptionViewProps extends BaseComponentProps {
+  description: ArchiveShadersDescription;
+  scope: ArchiveDescribeScope;
+}
+
+/**
+ * The blender library: what a shader name a mesh or a level declares resolves to.
+ */
+export function ArchiveShadersDescriptionView({
+  "data-testid": dataTestId = "archive-shaders-description-view",
+  id,
+  className,
+  description,
+  scope,
+}: IArchiveShadersDescriptionViewProps): ReactElement {
+  const [filter, setFilter] = useState<string>("");
+
+  const { library, blenders } = description;
+
+  const matched: Array<ArchiveShadersBlender> = useMemo(
+    () => filterByName(blenders, filter, (blender: ArchiveShadersBlender) => blender.name),
+    [blenders, filter]
+  );
+
+  return (
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
+      <EditorPanelSection title={"Library"}>
+        <EditorPanelProperty
+          isInline
+          label={"Blenders"}
+          value={`${library.blenders}`}
+          caption={`Across ${library.classes} ${library.classes === 1 ? "class" : "classes"}, each deciding which passes are compiled`}
+        />
+
+        <EditorPanelProperty
+          isInline
+          label={"Textures"}
+          value={`${library.textures}`}
+          caption={
+            library.absentTextures
+              ? `${library.absentTextures} not held by what is open; slots the renderer fills are not counted`
+              : "Bound by name; slots the renderer fills are not counted"
+          }
+        />
+
+        <EditorPanelProperty
+          isInline
+          label={"Read"}
+          value={"Blender chunk only"}
+          caption={"The shader script list, the constant table and the matrix table name no surface and are skipped"}
+        />
+      </EditorPanelSection>
+
+      <EditorPanelSection
+        title={filter.trim() ? `Blenders (${matched.length} of ${blenders.length})` : `Blenders (${blenders.length})`}
+        caption={"In name order, which is how a shader name is looked up"}
+      >
+        <EditorFilterInput
+          className={"mb-2"}
+          ariaLabel={"Filter blenders"}
+          query={filter}
+          placeholder={"Filter blenders"}
+          onQueryChange={setFilter}
+        />
+
+        {matched.length ? (
+          matched.map((blender: ArchiveShadersBlender) => (
+            <ArchiveShadersBlenderRow key={blender.name} blender={blender} scope={scope} />
+          ))
+        ) : (
+          <Typography className={"text-text-disabled"} variant={"body2"}>
+            No blender of this library is named that.
+          </Typography>
+        )}
+      </EditorPanelSection>
+    </ReadingColumn>
+  );
+}

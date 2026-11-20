@@ -14,7 +14,7 @@ pub(crate) struct GraphPassDeclaration {
 }
 
 impl GraphPassDeclaration {
-  pub fn new(name: &'static str) -> Self {
+  pub(super) fn new(name: &'static str) -> Self {
     Self {
       name,
       textures: Vec::new(),
@@ -25,7 +25,7 @@ impl GraphPassDeclaration {
   }
 
   /// Adds the pass to the graph, recording what it does.
-  pub fn declare<'a>(self, graph: &mut FrameGraph<'a>, work: GraphPassWork<'a>) {
+  pub(super) fn declare<'a>(self, graph: &mut FrameGraph<'a>, work: GraphPassWork<'a>) {
     let group: usize = graph.groups.len() - 1;
     let owner: GraphOwner = graph.owner;
 

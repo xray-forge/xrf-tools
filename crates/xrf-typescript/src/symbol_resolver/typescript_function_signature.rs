@@ -4,7 +4,7 @@ use crate::swc_common::SourceMap;
 use crate::swc_ecma_ast::{ArrowExpr, Function, Pat, TsTypeAnn};
 
 /// The TypeScript signature of a resolved callable symbol.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeScriptFunctionSignature {
   pub params: Vec<TypeScriptFunctionParameter>,
   pub returns: String,

@@ -4,7 +4,7 @@ use xrf_visual::DetailsPackage;
 use crate::parts::LevelTextureReference;
 
 /// A level's grass, packed and dressed.
-pub struct PackedLevelDetails {
+pub(crate) struct PackedLevelDetails {
   pub package: DetailsPackage,
   pub surfaces: Vec<XraySurfaceDescriptor>,
   pub textures: Vec<LevelTextureReference>,

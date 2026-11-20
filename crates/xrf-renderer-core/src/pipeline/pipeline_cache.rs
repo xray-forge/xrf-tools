@@ -1,6 +1,11 @@
+#![expect(
+  unsafe_code,
+  reason = "restores the driver's pipeline cache from bytes wgpu cannot fully validate"
+)]
+
 use std::collections::HashMap;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, PoisonError};
 
 use xrf_error::{XrfError, XrfResult};
 
@@ -77,11 +82,11 @@ impl PipelineCache {
       .driver
       .as_ref()
       .and_then(wgpu::PipelineCache::get_data)
-      .map(|data| Self::to_checked(&data))
+      .map(|data| Self::prepend_checksum(&data))
   }
 
   /// The driver's data behind its checksum.
-  pub(crate) fn to_checked(data: &[u8]) -> Vec<u8> {
+  pub(crate) fn prepend_checksum(data: &[u8]) -> Vec<u8> {
     let mut checked: Vec<u8> = Vec::with_capacity(data.len() + 4);
 
     checked.extend_from_slice(&crc32fast::hash(data).to_le_bytes());
@@ -90,7 +95,7 @@ impl PipelineCache {
     checked
   }
 
-  /// The driver's data behind a checksum `to_checked` wrote, where the checksum holds.
+  /// The driver's data behind a checksum `prepend_checksum` wrote, where the checksum holds.
   pub(crate) fn read_checked(data: &[u8]) -> Option<&[u8]> {
     let (checksum, data): (&[u8; 4], &[u8]) = data.split_first_chunk::<4>()?;
 
@@ -104,7 +109,8 @@ impl PipelineCache {
 
   /// Pipelines held, render and compute.
   pub fn get_pipeline_count(&self) -> usize {
-    self.render.lock().expect("pipeline cache lock").len() + self.compute.lock().expect("pipeline cache lock").len()
+    self.render.lock().unwrap_or_else(PoisonError::into_inner).len()
+      + self.compute.lock().unwrap_or_else(PoisonError::into_inner).len()
   }
 
   /// The render pipeline `description` describes, made once.
@@ -118,7 +124,12 @@ impl PipelineCache {
     source: &dyn ShaderSource,
     description: &RenderPipelineDescription,
   ) -> XrfResult<wgpu::RenderPipeline> {
-    if let Some(pipeline) = self.render.lock().expect("pipeline cache lock").get(description) {
+    if let Some(pipeline) = self
+      .render
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .get(description)
+    {
       return Ok(pipeline.clone());
     }
 
@@ -165,7 +176,7 @@ impl PipelineCache {
     self
       .render
       .lock()
-      .expect("pipeline cache lock")
+      .unwrap_or_else(PoisonError::into_inner)
       .insert(description.clone(), pipeline.clone());
 
     Ok(pipeline)
@@ -182,7 +193,12 @@ impl PipelineCache {
     source: &dyn ShaderSource,
     description: &ComputePipelineDescription,
   ) -> XrfResult<wgpu::ComputePipeline> {
-    if let Some(pipeline) = self.compute.lock().expect("pipeline cache lock").get(description) {
+    if let Some(pipeline) = self
+      .compute
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .get(description)
+    {
       return Ok(pipeline.clone());
     }
 
@@ -207,7 +223,7 @@ impl PipelineCache {
     self
       .compute
       .lock()
-      .expect("pipeline cache lock")
+      .unwrap_or_else(PoisonError::into_inner)
       .insert(description.clone(), pipeline.clone());
 
     Ok(pipeline)
@@ -238,25 +254,29 @@ impl PipelineCache {
 
   /// Forgets a module and every pipeline made from it, so the next ask composes it afresh.
   pub fn invalidate_module(&self, module: &str) {
-    self.modules.lock().expect("pipeline cache lock").remove(module);
+    self
+      .modules
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .remove(module);
     self
       .render
       .lock()
-      .expect("pipeline cache lock")
+      .unwrap_or_else(PoisonError::into_inner)
       .retain(|description, _| description.module != module);
     self
       .compute
       .lock()
-      .expect("pipeline cache lock")
+      .unwrap_or_else(PoisonError::into_inner)
       .retain(|description, _| description.module != module);
     self.generation.fetch_add(1, Ordering::AcqRel);
   }
 
   /// Forgets every module and pipeline.
   pub fn invalidate_all(&self) {
-    self.modules.lock().expect("pipeline cache lock").clear();
-    self.render.lock().expect("pipeline cache lock").clear();
-    self.compute.lock().expect("pipeline cache lock").clear();
+    self.modules.lock().unwrap_or_else(PoisonError::into_inner).clear();
+    self.render.lock().unwrap_or_else(PoisonError::into_inner).clear();
+    self.compute.lock().unwrap_or_else(PoisonError::into_inner).clear();
     self.generation.fetch_add(1, Ordering::AcqRel);
   }
 
@@ -271,7 +291,7 @@ impl PipelineCache {
     source: &dyn ShaderSource,
     module: &'static str,
   ) -> XrfResult<wgpu::ShaderModule> {
-    if let Some(compiled) = self.modules.lock().expect("pipeline cache lock").get(module) {
+    if let Some(compiled) = self.modules.lock().unwrap_or_else(PoisonError::into_inner).get(module) {
       return Ok(compiled.clone());
     }
 
@@ -302,7 +322,7 @@ impl PipelineCache {
     self
       .modules
       .lock()
-      .expect("pipeline cache lock")
+      .unwrap_or_else(PoisonError::into_inner)
       .insert(module, compiled.clone());
 
     Ok(compiled)

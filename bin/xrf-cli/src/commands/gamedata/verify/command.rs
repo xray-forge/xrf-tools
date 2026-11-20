@@ -9,8 +9,8 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::GamedataVerifyReport;
-use crate::core::arguments::{EngineTargetArgument, JobsArgument, LtxDialectArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{EngineTargetArgument, InputArgument, JobsArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 use crate::core::terminal::CliJob;
 
@@ -18,31 +18,26 @@ use crate::core::terminal::CliJob;
 const HOTTEST_READ_PATHS_REPORTED: usize = 25;
 
 #[derive(Default)]
-pub struct VerifyCommand;
+pub(crate) struct VerifyCommand;
 
 impl GenericCommand for VerifyCommand {
   fn operation(&self) -> &'static str {
     "verify"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to the assembled gamedata root")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Verify an assembled gamedata tree")
-      .arg(
-        Arg::new("path")
-          .help("Path to the assembled gamedata root")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("ignore")
           .help("Root entries to skip, replacing the defaults. Repeat to skip several")
           .short('i')
           .long("ignore")
           .action(ArgAction::Append)
-          .num_args(1..)
           .default_values(GamedataProjectReadOptions::DEFAULT_IGNORED)
           .value_parser(value_parser!(String)),
       )
@@ -52,7 +47,6 @@ impl GenericCommand for VerifyCommand {
           .long("checks")
           .action(ArgAction::Append)
           .value_delimiter(',')
-          .num_args(1..)
           .value_parser(value_parser!(GamedataVerificationType)),
       )
       .arg(
@@ -72,10 +66,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let root: PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected a gamedata root to be provided")
-      .clone();
+    let root: PathBuf = InputArgument::of(matches).clone();
 
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
@@ -149,10 +140,13 @@ impl GenericCommand for VerifyCommand {
 
 #[cfg(test)]
 mod tests {
+  use std::path::PathBuf;
+
   use clap::ArgMatches;
   use xrf_gamedata::GamedataVerificationType;
 
   use super::VerifyCommand;
+  use crate::core::arguments::InputArgument;
   use crate::core::command::GenericCommand;
 
   fn checks(arguments: &[&str]) -> Vec<GamedataVerificationType> {
@@ -171,13 +165,26 @@ mod tests {
     let expected: Vec<GamedataVerificationType> =
       vec![GamedataVerificationType::Ltx, GamedataVerificationType::Animations];
 
+    assert_eq!(checks(&["verify", "root", "--checks", "ltx,animations"]), expected);
     assert_eq!(
-      checks(&["verify", "-p", "root", "--checks", "ltx,animations"]),
+      checks(&["verify", "root", "--checks", "ltx", "--checks", "animations"]),
       expected
     );
+  }
+
+  /// A set-valued option takes one member per flag, so the input written after it stays the input rather than
+  /// becoming another member.
+  #[test]
+  fn keeps_the_input_written_after_a_set_valued_option() {
+    let matches: ArgMatches = VerifyCommand
+      .init()
+      .try_get_matches_from(["verify", "--ignore", ".git", "--checks", "ltx", "root"])
+      .unwrap();
+
+    assert_eq!(InputArgument::of(&matches), &PathBuf::from("root"));
     assert_eq!(
-      checks(&["verify", "-p", "root", "--checks", "ltx", "--checks", "animations"]),
-      expected
+      matches.get_many::<String>("ignore").unwrap().collect::<Vec<_>>(),
+      vec![".git"]
     );
   }
 }

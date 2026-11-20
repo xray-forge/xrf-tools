@@ -1,12 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable, Optional } from "@xrf/types";
+import { IconButton } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ClearIcon } from "@xrf/ui/icons/clear";
 import { SearchIcon } from "@xrf/ui/icons/search";
-import { IconButton } from "@xrf/ui/material/icon-button";
-import { InputAdornment } from "@xrf/ui/material/input";
-import { TextField } from "@xrf/ui/material/text-field";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { InputAdornment, TextField } from "@xrf/ui/input";
+import { Tooltip } from "@xrf/ui/overlay";
 import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 

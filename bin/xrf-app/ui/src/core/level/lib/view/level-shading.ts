@@ -29,6 +29,12 @@ export enum ELevelShading {
   LUMINANCE = "luminance",
   HEMI = "hemi",
   SUN = "sun",
+  DETAIL_SUN = "detailSun",
+  DETAIL_HEMI = "detailHemi",
+  DETAIL_LIGHT = "detailLight",
+  AI_HIGH_COVER = "aiHighCover",
+  AI_LOW_COVER = "aiLowCover",
+  AI_LINKS = "aiLinks",
   MATERIAL = "material",
   DEPTH = "depth",
   LIGHT = "light",
@@ -45,13 +51,13 @@ export enum ELevelShading {
   FSR_FRAME_SHARE = "fsrFrameShare",
 }
 
-/** One shading as the toolbar offers it. */
+/** One shading as it is offered to choose. */
 export interface ILevelShadingChoice {
   value: ELevelShading;
   label: string;
-  /** The heading it is listed under. */
-  section: "Frame" | "Surfaces" | "Light" | "Temporal";
-  /** One line on what it shows. */
+  /** The heading it is listed under: `Frame` for the frame's own looks, the others for the targets it is built from. */
+  section: "Frame" | "Surfaces" | "Light" | "AI map" | "Temporal";
+  /** One line on what it shows and how to read its colours. */
   description: string;
   /** The surfaces' colour it draws with. */
   surfaceColor: RenderSurfaceColor;
@@ -70,7 +76,7 @@ const FSR_SHADINGS: ReadonlySet<ELevelShading> = new Set([
 
 /**
  * Every shading, in the order offered: the frame's three looks and its overdraw, the surfaces' targets, the light's,
- * then what the frame carries over from the last one.
+ * the AI map's nodes, then what the frame carries over from the last one.
  */
 export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
   [
@@ -189,6 +195,27 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
     },
     {
       section: "Light",
+      label: "Detail slot sun",
+      description: "The sun each 2 m grass slot stores, its 16 steps as greys; dim elsewhere.",
+      value: ELevelShading.DETAIL_SUN,
+      debugView: ERenderDebugView.DETAIL_SUN,
+    },
+    {
+      section: "Light",
+      label: "Detail slot hemisphere",
+      description: "How much sky each 2 m grass slot stores, its 16 steps as greys; dim elsewhere.",
+      value: ELevelShading.DETAIL_HEMI,
+      debugView: ERenderDebugView.DETAIL_HEMI,
+    },
+    {
+      section: "Light",
+      label: "Detail slot lamps",
+      description: "The lamps' light each 2 m grass slot stores, as its colour; dim elsewhere.",
+      value: ELevelShading.DETAIL_LIGHT,
+      debugView: ERenderDebugView.DETAIL_LIGHT,
+    },
+    {
+      section: "Light",
       label: "Accumulated light",
       description: "The light the sun and the lamps add up to, before the surfaces' colour.",
       value: ELevelShading.LIGHT,
@@ -250,6 +277,27 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
       description: "The scene's brightness in stops from middle grey: grey at it, blue below, green to red above.",
       value: ELevelShading.LUMINANCE,
       debugView: ERenderDebugView.LUMINANCE,
+    },
+    {
+      section: "AI map",
+      label: "High cover",
+      description: "Each AI node's cover from standing height, its four directions' mean: black covered, white open.",
+      value: ELevelShading.AI_HIGH_COVER,
+      debugView: ERenderDebugView.AI_HIGH_COVER,
+    },
+    {
+      section: "AI map",
+      label: "Low cover",
+      description: "Each AI node's cover from crouching height, its four directions' mean: black covered, white open.",
+      value: ELevelShading.AI_LOW_COVER,
+      debugView: ERenderDebugView.AI_LOW_COVER,
+    },
+    {
+      section: "AI map",
+      label: "Missing links",
+      description: "How many neighbours each AI node lacks: green none, yellow, orange, red, dark red for all four.",
+      value: ELevelShading.AI_LINKS,
+      debugView: ERenderDebugView.AI_LINKS,
     },
     {
       section: "Temporal",

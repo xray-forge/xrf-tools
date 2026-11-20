@@ -1,23 +1,38 @@
-import { ReactElement, ReactNode } from "react";
+import { Optional } from "@xrf/types";
+import { ReactElement, ReactNode, useId } from "react";
 
+import { EditorIconAction } from "#/editor/icon-action";
+import { EditorPopoverNote } from "#/editor/popover-row";
 import { BaseComponentProps } from "#/element-types";
-import { CheckboxFormRow } from "#/form/checkbox-row";
+import { Checkbox } from "#/form/control";
+import { RestartAltIcon } from "#/icons/restart-alt";
+import { Tooltip } from "#/overlay";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
-  /** Names the toggle heading the section. */
+  /** Names the section, and the toggle heading it where it has one. */
   label: string;
-  /** What it does, or why it cannot be turned on. */
+  /** What it does, read on hovering its name; while it cannot be turned on, why, said under it. */
   description?: string;
-  isOn: boolean;
+  /** What the mode the toggle stands at draws, said under its heading whatever it stands at. */
+  note?: string;
+  isOn?: boolean;
   isDisabled?: boolean;
-  onToggle: () => void;
-  /** The toggle's settings, if it has any. */
+  /** Turns the section over from a box before its name; a section with none is a titled run of rows. */
+  onToggle?: () => void;
+  /** What acts on the section as a whole, icon actions at the end of its heading, before its reset. */
+  actions?: ReactNode;
+  /** Sets the section's settings back, from a button at the end of its heading; none while nothing is to set back. */
+  onReset?: () => void;
+  /** What the reset sets them back to, its tooltip. */
+  resetLabel?: string;
+  /** The section's settings, if it has any, each an `EditorPopoverRow`. */
   children?: ReactNode;
 }
 
 /**
- * One toggle of an `EditorPopoverGroup`, with its settings under it, set apart from the one before.
+ * One headed section of a toolbar popover's settings, ruled off from the section before.
  */
 export function EditorPopoverGroupSection({
   "data-testid": dataTestId = "editor-popover-group-section",
@@ -25,29 +40,79 @@ export function EditorPopoverGroupSection({
   className,
   label,
   description,
-  isOn,
+  note,
+  isOn = false,
   isDisabled = false,
   onToggle,
+  actions,
+  onReset,
+  resetLabel = "Reset",
   children,
 }: IEditorPopoverGroupSectionProps): ReactElement {
+  const controlId: string = useId();
+  const labelId: string = `${controlId}-label`;
+  const descriptionId: Optional<string> = description ? `${controlId}-description` : undefined;
+
   return (
     <div
       data-testid={dataTestId}
+      aria-labelledby={labelId}
       id={id}
+      role={"group"}
       className={cn(
-        "flex flex-col gap-2 border-t border-divider pt-2 first-of-type:border-t-0 first-of-type:pt-0",
+        "flex flex-col border-t border-divider pt-1.5 first-of-type:border-t-0 first-of-type:pt-0",
         className
       )}
     >
-      <CheckboxFormRow
-        label={label}
-        description={description}
-        isChecked={isOn}
-        isDisabled={isDisabled}
-        onChange={onToggle}
-      />
+      <div className={"flex min-h-8 items-center gap-1"}>
+        {onToggle ? (
+          <Checkbox
+            id={controlId}
+            // The box's own inset, taken back so it starts at the popover's edge.
+            className={"-ml-1 p-0.5"}
+            size={"small"}
+            checked={isOn}
+            disabled={isDisabled}
+            slotProps={{ input: { "aria-labelledby": labelId, "aria-describedby": descriptionId } }}
+            onChange={onToggle}
+          />
+        ) : null}
 
-      {children}
+        <Tooltip describeChild title={isDisabled ? "" : (description ?? "")} placement={"top-start"}>
+          <Typography
+            id={labelId}
+            className={"min-w-0 flex-1 truncate"}
+            component={onToggle ? "label" : "h3"}
+            htmlFor={onToggle ? controlId : undefined}
+            variant={"subtitle2"}
+          >
+            {label}
+          </Typography>
+        </Tooltip>
+
+        {actions}
+
+        {onReset ? (
+          <EditorIconAction
+            label={`${label}: ${resetLabel}`}
+            description={resetLabel}
+            icon={<RestartAltIcon />}
+            onClick={onReset}
+          />
+        ) : null}
+      </div>
+
+      {description && isDisabled ? (
+        <EditorPopoverNote id={descriptionId}>{description}</EditorPopoverNote>
+      ) : description ? (
+        <span id={descriptionId} className={"sr-only"}>
+          {description}
+        </span>
+      ) : null}
+
+      {note ? <EditorPopoverNote>{note}</EditorPopoverNote> : null}
+
+      {children ? <div className={"flex flex-col pb-1"}>{children}</div> : null}
     </div>
   );
 }

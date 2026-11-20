@@ -19,12 +19,14 @@ pub enum RenderHelperIcon {
   PatrolPoint,
   GraphPoint,
   RespawnPoint,
+  /// A spawn point known only by its section, before any game config is read.
+  SpawnPoint,
 }
 
 /// One icon's row of the icon table: the icon, and the Material icon it is drawn from, by its `@mui/icons-material`
 /// module name.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderHelperIconEntry {
   pub icon: RenderHelperIcon,
@@ -47,6 +49,7 @@ pub const RENDER_HELPER_ICONS: &[RenderHelperIconEntry] = &[
   RenderHelperIconEntry::new(RenderHelperIcon::PatrolPoint, "Place"),
   RenderHelperIconEntry::new(RenderHelperIcon::GraphPoint, "Hub"),
   RenderHelperIconEntry::new(RenderHelperIcon::RespawnPoint, "RestartAlt"),
+  RenderHelperIconEntry::new(RenderHelperIcon::SpawnPoint, "MyLocation"),
 ];
 
 impl RenderHelperIconEntry {
@@ -84,6 +87,7 @@ impl RenderHelperIcon {
       Self::PatrolPoint => "patrolPoint",
       Self::GraphPoint => "graphPoint",
       Self::RespawnPoint => "respawnPoint",
+      Self::SpawnPoint => "spawnPoint",
     }
   }
 

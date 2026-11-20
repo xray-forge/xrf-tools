@@ -14,7 +14,7 @@ import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { createRoots, describeRoots } from "@/core/assets/lib";
+import { createRoots, describeRoots } from "@/core/assets/lib/roots";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { ISessionRootOpening, SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";

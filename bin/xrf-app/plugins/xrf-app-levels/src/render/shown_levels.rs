@@ -3,25 +3,44 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_audio::AudioServer;
 
 use crate::level::SelectedLevel;
-use crate::render::LevelRenderSource;
+use crate::render::{LevelAudio, LevelRenderSource};
 
 /// The source each level session is drawn from, while anything draws it: every viewport showing a snapshot shares
 /// one, and a commit moving the session moves its scene onto the next. A clone holds the same sources.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ShownLevels {
   sources: Arc<Mutex<HashMap<SessionId, Weak<LevelRenderSource>>>>,
+  audio: LevelAudio,
 }
 
 impl ShownLevels {
+  pub fn new(audio: AudioServer) -> Self {
+    Self {
+      sources: Arc::default(),
+      audio: LevelAudio::new(audio),
+    }
+  }
+
+  pub fn get_audio(&self) -> &LevelAudio {
+    &self.audio
+  }
+
+  /// A new source drawing `level`, sharing no resolved textures with an earlier one.
+  pub fn build_source(
+    &self,
+    level: Arc<SessionSnapshot<SelectedLevel>>,
+    assets: &AssetMountState,
+  ) -> LevelRenderSource {
+    LevelRenderSource::new(level, AssetMountState::clone(assets), self.audio.clone())
+  }
+
   /// The source drawing `level`: the one drawing it already, else one following the session's source onto it, keeping
   /// the textures that one resolved, else a new one. A new source may resolve the level's surfaces, so it is built
   /// outside the lock, which a commit's follow waits on; where another show placed one for the same snapshot meanwhile,
   /// that one is answered, so viewports still share one source.
-  ///
-  /// A source already past `level` answers instead: a show that took its snapshot before a commit and lands after the
-  /// commit's follow draws what the follow drew, never the older snapshot over it.
   pub fn get_source(
     &self,
     level: Arc<SessionSnapshot<SelectedLevel>>,
@@ -37,7 +56,7 @@ impl ShownLevels {
 
     let built: Arc<LevelRenderSource> = Arc::new(match shown {
       Some(shown) => shown.follow(level),
-      None => LevelRenderSource::new(level, AssetMountState::clone(assets)),
+      None => self.build_source(level, assets),
     });
     let mut sources: MutexGuard<'_, HashMap<SessionId, Weak<LevelRenderSource>>> = self.lock();
 

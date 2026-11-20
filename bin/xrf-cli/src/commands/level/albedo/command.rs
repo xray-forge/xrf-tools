@@ -11,14 +11,18 @@ use super::report::{LevelAlbedoReport, LevelAlbedoSummary};
 use crate::commands::level::albedo::albedo_texture::AlbedoOutcome;
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct AlbedoCommand;
+pub(crate) struct AlbedoCommand;
 
 impl GenericCommand for AlbedoCommand {
   fn operation(&self) -> &'static str {
     "albedo"
+  }
+
+  fn input(&self) -> CommandInput {
+    LevelSelection::input()
   }
 
   fn declare(&self, command: Command) -> Command {
@@ -107,7 +111,7 @@ impl AlbedoCommand {
         AlbedoOutcome::Missing => xrf_output::warning!(output, "{}: no root holds it", texture.reference),
         AlbedoOutcome::Unread { reason } => xrf_output::warning!(output, "{}: {}", texture.reference, reason),
         AlbedoOutcome::Empty => {
-          xrf_output::verbose!(output, "{}: its alpha test keeps no texel", texture.reference)
+          xrf_output::verbose!(output, "{}: its alpha test keeps no texel", texture.reference);
         }
       }
     }

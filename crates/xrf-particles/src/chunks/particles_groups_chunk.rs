@@ -5,8 +5,8 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, META_TYPE_FIELD};
-use xrf_utils::{format_path, to_format_size};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordWriter, META_TYPE_FIELD};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::data::group::particle_group::ParticleGroup;
 
@@ -85,8 +85,9 @@ impl ChunkReadWrite for ParticlesGroupsChunk {
       let mut group_writer: ChunkWriter = ChunkWriter::new();
 
       group_writer.write_xr::<T, _>(group)?;
-      writer
-        .write_all(&group_writer.flush_chunk_into_buffer::<T>(to_format_size(index, "particle group chunk id")?)?)?;
+      writer.write_all(
+        &group_writer.flush_chunk_into_buffer::<T>(narrow_format_size(index, "particle group chunk id")?)?,
+      )?;
     }
 
     log::info!("Written groups chunk, {} bytes", writer.bytes_written());
@@ -118,13 +119,13 @@ impl FileImportExport for ParticlesGroupsChunk {
 
   /// Export particles groups data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut particles_effects_ltx: Ltx = Ltx::new();
+    let mut particles_groups_ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for group in &self.groups {
-      group.export(&group.name, &mut particles_effects_ltx)?;
+      group.export(&group.name, &mut particles_groups_ltx)?;
     }
 
-    particles_effects_ltx.write_to_path(path.as_ref().join("groups.ltx"))?;
+    particles_groups_ltx.write_to_path(path.as_ref().join("groups.ltx"))?;
 
     log::info!("Exported groups chunk");
 

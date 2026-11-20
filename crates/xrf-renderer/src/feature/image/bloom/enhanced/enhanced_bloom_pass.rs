@@ -9,7 +9,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// The enhanced bloom, in place of the engine's: the finished scene blurred to half its size, its bright parts and
 /// self-lit surfaces built from that, halved six times and doubled back with each halving added, then tonemapped into
 /// what the present screens over the frame. Its pipelines come from the pipeline cache, one a stage.
-pub struct EnhancedBloomPass {
+pub(crate) struct EnhancedBloomPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   /// `smp_rtlinear`: filtered, clamped to the edge.
@@ -18,16 +18,16 @@ pub struct EnhancedBloomPass {
 
 impl EnhancedBloomPass {
   /// The half-size blur's targets: eight bits a channel, as the engine's blur targets are.
-  pub const BLURRED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const BLURRED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// Every other target: half floats, as the engine's bloom targets are.
-  pub const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   const MODULE: &'static str = "frame/enhanced_bloom";
 
-  pub const BLUR_PASSES: [&'static str; 2] = ["enhanced bloom blur across", "enhanced bloom blur down"];
-  pub const BUILD_PASS: &'static str = "enhanced bloom build";
+  pub(crate) const BLUR_PASSES: [&'static str; 2] = ["enhanced bloom blur across", "enhanced bloom blur down"];
+  pub(crate) const BUILD_PASS: &'static str = "enhanced bloom build";
   /// Each halving, by the size it draws: the first blurs at half the frame's size, the last draws a sixty-fourth.
-  pub const HALVE_PASSES: [&'static str; 6] = [
+  pub(crate) const HALVE_PASSES: [&'static str; 6] = [
     "enhanced bloom down 2",
     "enhanced bloom down 4",
     "enhanced bloom down 8",
@@ -36,16 +36,16 @@ impl EnhancedBloomPass {
     "enhanced bloom down 64",
   ];
   /// Each doubling, by the size it draws, from the thirty-second back to half the frame's size.
-  pub const DOUBLE_PASSES: [&'static str; 5] = [
+  pub(crate) const DOUBLE_PASSES: [&'static str; 5] = [
     "enhanced bloom up 32",
     "enhanced bloom up 16",
     "enhanced bloom up 8",
     "enhanced bloom up 4",
     "enhanced bloom up 2",
   ];
-  pub const FINISH_PASS: &'static str = "enhanced bloom finish";
+  pub(crate) const FINISH_PASS: &'static str = "enhanced bloom finish";
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       layout: EnhancedBloomParameters::create_layout(device),
       view_layout: view_layout.clone(),
@@ -60,7 +60,7 @@ impl EnhancedBloomPass {
 
   /// Its pipelines, one a stage at the stage's index: a triangle over the target, the view's bind group then the
   /// stage's, into the half-size blur's format or the bloom's.
-  pub fn describe_pipelines(&self) -> [RenderPipelineDescription; EnhancedBloomStage::COUNT] {
+  pub(crate) fn describe_pipelines(&self) -> [RenderPipelineDescription; EnhancedBloomStage::COUNT] {
     let describe = |label: &'static str, fragment: &'static str, format: wgpu::TextureFormat| {
       RenderPipelineDescription::new(label, Self::MODULE, "vs_fullscreen")
         .with_fragment(fragment)
@@ -82,7 +82,7 @@ impl EnhancedBloomPass {
   /// # Errors
   ///
   /// Returns the first stage's error where a module cannot be composed or wgpu refuses it.
-  pub fn get_pipelines(
+  pub(crate) fn get_pipelines(
     &self,
     source: PipelineSource<'_>,
   ) -> XrfResult<[wgpu::RenderPipeline; EnhancedBloomStage::COUNT]> {
@@ -94,12 +94,12 @@ impl EnhancedBloomPass {
   }
 
   /// The sampler its stages read with, which their parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Draws one of its stages with the stage's `pipeline` into the target the pass draws into.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

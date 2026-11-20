@@ -2,12 +2,13 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
+import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 export interface IDetailSectionProps extends BaseComponentProps {
   title: string;
-  /** One sentence on what the section answers, and what it deliberately does not. */
-  description: string;
+  /** One sentence on what the section answers, and what it deliberately does not. Omit where the title says it. */
+  description?: string;
   /** What the section currently amounts to, stated opposite the title: a total, a ratio, a count. */
   fact?: Nullable<string>;
   /** A control belonging to this section, such as which measurement its rows are ordered by. */
@@ -29,9 +30,11 @@ export function DetailSection({
   action,
   children,
 }: IDetailSectionProps): ReactElement {
+  const hasDetail: boolean = Boolean(description || action);
+
   return (
     <div data-testid={dataTestId} className={className} id={id}>
-      <div className={"flex items-baseline justify-between gap-2"}>
+      <div className={cn("flex items-baseline justify-between gap-2", children && !hasDetail ? "mb-2" : null)}>
         <Typography className={"text-text-primary"} variant={"subtitle2"}>
           {title}
         </Typography>
@@ -43,17 +46,17 @@ export function DetailSection({
         ) : null}
       </div>
 
-      <div
-        className={
-          children ? "mb-2 flex items-center justify-between gap-2" : "flex items-center justify-between gap-2"
-        }
-      >
-        <Typography className={"text-text-secondary"} variant={"caption"}>
-          {description}
-        </Typography>
+      {hasDetail ? (
+        <div className={cn("flex items-center justify-between gap-2", children ? "mb-2" : null)}>
+          {description ? (
+            <Typography className={"text-text-secondary"} variant={"caption"}>
+              {description}
+            </Typography>
+          ) : null}
 
-        {action ? <div className={"shrink-0"}>{action}</div> : null}
-      </div>
+          {action ? <div className={"shrink-0"}>{action}</div> : null}
+        </div>
+      ) : null}
 
       {children}
     </div>

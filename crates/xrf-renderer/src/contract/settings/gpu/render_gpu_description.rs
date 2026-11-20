@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
-
-use crate::contract::settings::gpu::render_gpu::RenderGpu;
+use xrf_renderer_core::RenderGpu;
 
 /// A GPU a backend can draw on: its identity, its name and its driver.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderGpuDescription {
   pub gpu: RenderGpu,

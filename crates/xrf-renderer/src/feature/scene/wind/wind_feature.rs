@@ -3,30 +3,32 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::lighting::wind::foliage_motion::FoliageMotion;
 use crate::lighting::wind::foliage_wind::FoliageWind;
+use crate::scene::level::view::view_time::ViewTime;
 
 /// The sway amplitude the shadows are redrawn at while the enhanced foliage motion blows: its largest move a metre of
 /// reach, a tall crown's trunk swing over its height.
 const FOLIAGE_SHADOW_AMPLITUDE: f32 = 0.02;
 
-/// How the wind moves the view's trees and grass: the enhanced foliage motion stepped from frame to frame, the trees'
-/// sway following the last frame's, which every static draw reads, and the amplitude and time the shadows sway by.
+/// How the wind moves the view's trees and grass: the enhanced foliage motion, the trees' sway every static draw reads,
+/// and the amplitude the shadows sway by.
 #[derive(Default)]
-pub struct WindFeature {
+pub(crate) struct WindFeature {
   foliage: FoliageWind,
   values: FoliageWindValues,
   uniform: WindUniform,
   /// The last frame's sway, which this frame's follows.
   last: Option<WindUniform>,
-  /// The wind's amplitude and the time the trees sway by: what has still shadows drawn again.
-  sway: (f32, f32),
+  /// The wind's amplitude, which decides when still shadows are drawn again.
+  sway_amplitude: f32,
 }
 
 impl WindFeature {
   /// Steps the foliage motion to `time` in the weather's wind and rain, and takes this frame's sway.
-  pub fn prepare(&mut self, options: &RenderViewOptions, lighting: &RenderLighting, time: f32) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, lighting: &RenderLighting, time: ViewTime) {
     let settings: RenderFoliageSettings = options.features.grass.foliage;
     let foliage: FoliageWindValues = self.foliage.advance(
       time,
@@ -35,7 +37,7 @@ impl WindFeature {
       FoliageMotion::of(lighting.trees.is_some()),
       lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)),
     );
-    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref(), time)
+    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref(), time.now)
       .following(self.last.as_ref())
       .with_foliage(&foliage);
 
@@ -44,42 +46,37 @@ impl WindFeature {
     self.uniform = wind;
     // The enhanced motion moves a tree by more than the engine's lean for a given reach, so its shadows redraw at the
     // enhanced reach whenever it blows.
-    self.sway = (
-      if settings.is_enhanced() && foliage.wind.z > 0.0 {
-        FOLIAGE_SHADOW_AMPLITUDE
-      } else {
-        wind.get_amplitude()
-      },
-      time,
-    );
-  }
-
-  /// Starts the foliage's drift and the trees' sway again from nothing, as at a view's first frame.
-  pub fn restart(&mut self) {
-    *self = Self::default();
+    self.sway_amplitude = if settings.is_enhanced() && foliage.wind.z > 0.0 {
+      FOLIAGE_SHADOW_AMPLITUDE
+    } else {
+      wind.get_amplitude()
+    };
   }
 
   /// How the trees sway this frame, which every static draw reads.
-  pub fn get_uniform(&self) -> &WindUniform {
+  pub(crate) fn get_uniform(&self) -> &WindUniform {
     &self.uniform
   }
 
   /// What the foliage motion reads this frame, which the grass takes as the trees do.
-  pub fn get_values(&self) -> &FoliageWindValues {
+  pub(crate) fn get_values(&self) -> &FoliageWindValues {
     &self.values
   }
 
-  /// The wind's amplitude and the time the trees sway by.
-  pub fn get_sway(&self) -> (f32, f32) {
-    self.sway
+  /// The wind's amplitude, which a tree's reach is multiplied by to give how far it leans.
+  pub(crate) fn get_sway_amplitude(&self) -> f32 {
+    self.sway_amplitude
   }
 }
 
 impl ViewFeature for WindFeature {
-  /// Nothing: the wind is values a frame.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
+
+  /// A motion restart starts the foliage's drift and the trees' sway over, as at a view's first frame; a cut leaves
+  /// them, as they follow the time, not the camera.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      *self = Self::default();
+    }
+  }
 }

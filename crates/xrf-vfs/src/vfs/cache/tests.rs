@@ -89,7 +89,7 @@ fn counts_one_miss_then_one_hit_for_two_reads_of_one_key() {
 #[test]
 fn keeps_kinds_the_policy_excludes_out() {
   let cache: XrayAssetCache = cache();
-  // Verification retains motions only, so a visual flows through and is not kept.
+  // Verification retains motions and configs alone, so a visual flows through and is not kept.
   cache.insert(
     key::<Parsed>("a.ogf"),
     XrayAssetType::Ogf,
@@ -366,7 +366,7 @@ fn lets_every_requester_of_an_excluded_kind_load_for_itself() {
   let loads: AtomicUsize = AtomicUsize::new(0);
   let start: Barrier = Barrier::new(2);
 
-  // Verification retains motions only, so nothing would be published for a waiter to find. Coordinating these would
+  // Verification retains no visual, so nothing would be published for a waiter to find. Coordinating these would
   // turn the second read's miss into a hit and make the counters depend on the schedule, which is the opposite of what
   // the coordination is for.
   thread::scope(|threads| {

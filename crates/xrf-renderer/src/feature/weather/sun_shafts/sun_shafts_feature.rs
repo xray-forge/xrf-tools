@@ -16,7 +16,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// The sun's shafts, marched at half size through its shadow while the weather shafts it, and the composite that adds
 /// them, the shadowed lights' shafts or the enhanced volume's froxels in their place over the scene and its high part.
 #[derive(Default)]
-pub struct SunShaftsFeature {
+pub(crate) struct SunShaftsFeature {
   /// Whether the sun's shafts are marched this frame: a lit view showing them, the weather shafting the sun, and its
   /// cascades drawn.
   is_shafted: bool,
@@ -28,7 +28,7 @@ pub struct SunShaftsFeature {
 
 impl SunShaftsFeature {
   /// Takes this frame's shafts.
-  pub fn prepare(&mut self, options: &RenderViewOptions, lighting: &RenderLighting) {
+  pub(crate) fn prepare(&mut self, options: &RenderViewOptions, lighting: &RenderLighting) {
     self.is_shafted = options.mode.is_lit
       && options.show.is_sun_shafted
       && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
@@ -40,7 +40,7 @@ impl SunShaftsFeature {
   /// lights' shafts or the froxels (`shafts`); nothing where none of them is drawn. At the authored levels the
   /// composite writes the frame over from a copy of it, the shafts added to its display values: the frame as the
   /// reflections copied it for the next frame (`copied`), which stands as the composite finds it, or one of its own.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration {
       graph,
@@ -79,7 +79,7 @@ impl SunShaftsFeature {
       uniform: runtime.push_uniform(&FroxelUniform::default()),
       integrated: no_froxels,
     });
-    let march: SunShaftsParameters = SunShaftsParameters {
+    let march: SunShaftsParameters<'_> = SunShaftsParameters {
       depth_target: handles.depth,
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
@@ -92,7 +92,7 @@ impl SunShaftsFeature {
       froxel_integrated: no_froxels,
       froxel_sampler: passes.weather.froxels.get_sampler(),
     };
-    let mut parameters: SunShaftsParameters = SunShaftsParameters {
+    let mut parameters: SunShaftsParameters<'_> = SunShaftsParameters {
       light_volumes: light_volumes.unwrap_or(empty),
       froxel_integrated,
       ..march
@@ -118,7 +118,7 @@ impl SunShaftsFeature {
           passes
             .weather
             .sun_shafts
-            .record(context, view, &march, SunShaftsDraw::March)
+            .record(context, view, &march, SunShaftsDraw::March);
         });
     }
 
@@ -153,10 +153,5 @@ impl SunShaftsFeature {
 }
 
 impl ViewFeature for SunShaftsFeature {
-  /// Its targets are the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

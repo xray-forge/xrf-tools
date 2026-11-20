@@ -1,16 +1,18 @@
 use crate::camera::camera_view::CameraView;
+use crate::feature::scene::grass::slots::grass_slot_value::GrassSlotValue;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
+use crate::scene::level::view::view_time::ViewTime;
 
 /// What a view's grass plants and draws by this frame beside its settings: the camera, the static cull's discard, the
 /// wind, the puddles no tuft is planted in, and how its cards cast shadows.
 #[derive(Clone, Copy)]
-pub struct GrassViewFrame<'a> {
+pub(crate) struct GrassViewFrame<'a> {
   pub camera: &'a CameraView,
   /// `r_ssaDISCARD` as the static cull compares it.
   pub discard_below: f32,
-  /// Seconds the wind blows by.
-  pub time: f32,
+  /// The level's clock as the view reads it, which the wind blows by.
+  pub time: ViewTime,
   /// Whether the weather blows the wind at all.
   pub is_windy: bool,
   /// The wind's strength, `wind_strength_factor`.
@@ -20,6 +22,10 @@ pub struct GrassViewFrame<'a> {
   pub puddles: (&'a wgpu::TextureView, GrassPuddlesUniform),
   /// Whether the view traces its light, which traces the cards' shadows.
   pub is_traced: bool,
+  /// Whether the view's water traces every pixel's reflected ray, which meets the cards whether or not they shadow.
+  pub is_reflected: bool,
   /// How far the sun's cascades reach where they draw the cards, none where they do not.
   pub cascade_reach: Option<f32>,
+  /// The slots' light value the view's debug view shows over the ground, none where it shows none.
+  pub slot_value: Option<GrassSlotValue>,
 }

@@ -1,9 +1,10 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { readPageScriptHeapDetail, TMemoryDetailSource, useMemoryUsageSegment } from "@/core/diagnostics/lib";
 import { ApplicationStatusSegment } from "@/core/shell/status-bar/ApplicationStatusSegment";
+import { readPageScriptHeapDetail, TMemoryDetailSource } from "@/core/shell/status-bar/memory-detail-source";
 import { IShellStatusSegment } from "@/core/shell/status-bar/shell-status-segment";
+import { useMemoryUsageSegment } from "@/core/shell/status-bar/use-memory-usage-segment";
 
 const SOURCES: ReadonlyArray<TMemoryDetailSource> = [readPageScriptHeapDetail];
 

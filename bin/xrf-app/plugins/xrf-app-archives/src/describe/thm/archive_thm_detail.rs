@@ -22,7 +22,7 @@ impl ArchiveThmDetail {
   ///
   /// `usage` is [`ThmFile::used_detail_usage`](xrf_thm::ThmFile::used_detail_usage)'s answer rather than a second
   /// reading of the flag word: which flags make an association live is engine behavior, and `xrf-thm` owns it.
-  pub fn of(source: &ArchiveDescribeSource, detail: &ThmDetailChunk, usage: Option<ThmDetailUsage>) -> Self {
+  pub fn of(source: &ArchiveDescribeSource<'_>, detail: &ThmDetailChunk, usage: Option<ThmDetailUsage>) -> Self {
     Self {
       scale: detail.scale,
       texture: (!detail.name.is_empty()).then(|| ArchiveReference::resolve(source, XrayAssetType::Dds, &detail.name)),

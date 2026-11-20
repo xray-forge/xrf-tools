@@ -173,7 +173,6 @@ fn refuses_a_search_naming_nothing_to_find() -> CommandResult {
   let root: PathBuf = create_drinks_tree("find_no_query")?;
   let arguments: Vec<String> = vec![
     String::from("find"),
-    String::from("--path"),
     root.display().to_string(),
     String::from("--silent"),
   ];

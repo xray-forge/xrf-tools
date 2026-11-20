@@ -113,6 +113,7 @@ impl SceneView {
           .map_or(passes.lighting.sun.get_unshadowed(), |maps| &maps.view),
       ),
       shadows: runtime.push_uniform(self.features.shadows.get_values()),
+      shadow_compare: passes.lighting.sun.get_compare(),
     }
   }
 
@@ -291,7 +292,7 @@ impl SceneView {
     }
 
     // The scene's trace, which RTAO, the reflections and the water trace their rays through.
-    let traced: Option<TracedScene> = self.features.view_trace.add_scene_trace(
+    let traced: Option<TracedScene<'_>> = self.features.view_trace.add_scene_trace(
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
@@ -319,8 +320,20 @@ impl SceneView {
       .features
       .statics
       .add_overdraw_pass(&mut *graph, record, handles.light);
+    self.features.grass.add_slot_light(
+      GraphDeclaration::new(graph, bindings, runtime),
+      record,
+      scene.grass.get_level(),
+      handles.light,
+    );
+    self.stages.scene.add_ai_map(
+      GraphDeclaration::new(graph, bindings, runtime),
+      record,
+      scene.ai_map.as_ref(),
+      handles.light,
+    );
     let surroundings: &SurroundingsCube = &self.features.surroundings;
-    let sky: Option<SkyParameters> = self.features.sky.add_passes(
+    let sky: Option<SkyParameters<'_>> = self.features.sky.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       record,
       surroundings.is_active().then_some(surroundings),
@@ -357,10 +370,17 @@ impl SceneView {
         traced,
       );
 
+      // The sky as drawn: its textures smoothed where they band, while the debanding is enhanced.
+      let drawn: SkyParameters<'_> =
+        self
+          .features
+          .sky
+          .add_drawn_sky(GraphDeclaration::new(graph, bindings, runtime), record.passes, sky);
+
       self.stages.lighting.add_combine(
         GraphDeclaration::new(graph, bindings, runtime),
         record,
-        sky,
+        drawn,
         CombineInputs {
           indirect_light,
           reflections: reflections.map(|reflections| reflections.radiance),

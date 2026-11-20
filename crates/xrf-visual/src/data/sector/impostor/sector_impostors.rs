@@ -6,7 +6,7 @@ use crate::data::visual::geometry::visual_section::VisualSection;
 /// The impostors of a sector's `MT_LOD` visuals: what the engine draws in place of a clump of trees seen from far
 /// enough away, each eight facets looking at it from eight sides, in renderer space.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SectorImpostors {
   /// Runs of impostors a surface each, in impostor order.

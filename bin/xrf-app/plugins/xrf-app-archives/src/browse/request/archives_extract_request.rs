@@ -7,10 +7,12 @@ use xrf_app_core::session::SessionId;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ArchivesExtractRequest {
+pub(crate) struct ArchivesExtractRequest {
   pub session_id: SessionId,
   /// Directory inside the opened tree to extract. An empty prefix means everything.
   pub prefix: String,
   /// Directory to write the contents into.
   pub destination: PathBuf,
+  /// Whether files the run writes may replace those already there; unforced, the run refuses before writing.
+  pub is_forced: bool,
 }

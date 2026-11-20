@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
 use crate::data::alife::inherited::alife_object_motion::AlifeObjectMotion;
@@ -17,9 +17,9 @@ pub struct AlifeObjectTorridZone {
   pub last_spawn_time: LastSpawnTime,
 }
 
-impl ChunkReadWrite for AlifeObjectTorridZone {
+impl ChunkFieldReadWrite for AlifeObjectTorridZone {
   /// Read zone object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       motion: reader.read_xr::<T, _>()?,
@@ -28,7 +28,7 @@ impl ChunkReadWrite for AlifeObjectTorridZone {
   }
 
   /// Write zone object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.motion)?;
     writer.write_xr::<T, _>(&self.last_spawn_time)?;
@@ -39,8 +39,8 @@ impl ChunkReadWrite for AlifeObjectTorridZone {
 
 impl LtxImportExport for AlifeObjectTorridZone {
   /// Import torrid zone object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -58,7 +58,7 @@ impl LtxImportExport for AlifeObjectTorridZone {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
     self.motion.export(section_name, ltx)?;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { IconButton } from "@xrf/ui/button";
 import { RefreshIcon } from "@xrf/ui/icons/refresh";
-import { IconButton } from "@xrf/ui/material/icon-button";
 
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { renderWithProviders } from "@/fixtures/utils/render";

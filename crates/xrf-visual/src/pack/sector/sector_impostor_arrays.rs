@@ -35,10 +35,10 @@ impl SectorImpostorArrays {
     &mut self,
     visual: &LevelVisual,
     definition: &OgfLodDefinitionChunk,
-    surfaces: &SectorSurfaceTable,
+    surfaces: &SectorSurfaceTable<'_>,
   ) {
     let radius: f32 = visual.header.bounding_sphere.radius;
-    let center: Vector3d = convert_vector(&visual.header.bounding_sphere.position);
+    let center: Vector3d = convert_vector(&visual.header.bounding_sphere.center);
 
     self.spheres.extend_from_slice(&[center.x, center.y, center.z, radius]);
     self.factors.push(OgfLodDefinitionChunk::get_lod_factor(
@@ -88,8 +88,8 @@ impl SectorImpostorArrays {
       position.x,
       position.y,
       position.z,
-      corner.texture_coordinate.0,
-      corner.texture_coordinate.1,
+      corner.texture_coordinate.x,
+      corner.texture_coordinate.y,
       f32::from((corner.rgb_hemi >> Self::ALPHA_SHIFT) as u8) / Self::BYTE_SCALE,
       f32::from(corner.sun) / Self::BYTE_SCALE,
       0.0,

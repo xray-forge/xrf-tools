@@ -26,7 +26,7 @@ fn ray_visibility(toward: vec3<f32>) -> f32 {
     return select(0.0, 1.0, depth <= 0.0);
   }
 
-  return sun_shadow(shadow_maps, shadows, camera.position.xyz, flares.sun.xyz, 1.0);
+  return sun_shadow(shadow_maps, shadow_compare, shadows, camera.position.xyz, flares.sun.xyz, 1.0);
 }
 
 @compute @workgroup_size(1)

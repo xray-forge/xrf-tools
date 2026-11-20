@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_smart_zone::AlifeSmartZone;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
@@ -48,21 +48,41 @@ impl AlifeSmartTerrain {
   }
 }
 
-impl ChunkReadWrite for AlifeSmartTerrain {
+impl ChunkFieldReadWrite for AlifeSmartTerrain {
   /// Read ALife smart terrain data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let base: AlifeSmartZone = AlifeSmartZone::read::<T, _>(reader)?;
-    let object: Self = ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
-      Ok(Self {
-        base,
-        arriving_objects_count: reader.read_u8()?,
-        object_job_descriptors_count: reader.read_u8()?,
-        dead_objects_infos_count: reader.read_u8()?,
-        smart_terrain_actor_control: reader.read_u8()?,
-        respawn_point: reader.read_u8()?,
-        staying_objects_count: reader.read_u8()?,
-      })
-    })?;
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let base: AlifeSmartZone = reader.read_xr::<T, AlifeSmartZone>()?;
+    let [
+      arriving_objects_count,
+      object_job_descriptors_count,
+      dead_objects_infos_count,
+      smart_terrain_actor_control,
+      respawn_point,
+      staying_objects_count,
+    ] = ScriptSaveMarker::read_or_constructed::<T, _, _>(
+      reader,
+      Self::SCRIPT_CLASS,
+      || [0; 6],
+      |reader| {
+        Ok([
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+          reader.read_u8()?,
+        ])
+      },
+    )?;
+    let object: Self = Self {
+      base,
+      arriving_objects_count,
+      object_job_descriptors_count,
+      dead_objects_infos_count,
+      smart_terrain_actor_control,
+      respawn_point,
+      staying_objects_count,
+    };
 
     object.assert_compiled_state()?;
 
@@ -70,12 +90,12 @@ impl ChunkReadWrite for AlifeSmartTerrain {
   }
 
   /// Write smart terrain data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     self.assert_compiled_state()?;
 
     writer.write_xr::<T, _>(&self.base)?;
 
-    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.arriving_objects_count)?;
       writer.write_u8(self.object_job_descriptors_count)?;
       writer.write_u8(self.dead_objects_infos_count)?;
@@ -90,8 +110,8 @@ impl ChunkReadWrite for AlifeSmartTerrain {
 
 impl LtxImportExport for AlifeSmartTerrain {
   /// Import ALife smart terrain data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -111,23 +131,17 @@ impl LtxImportExport for AlifeSmartTerrain {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
-      .set("arriving_objects_count", self.arriving_objects_count.to_string())
-      .set(
-        "object_job_descriptors_count",
-        self.object_job_descriptors_count.to_string(),
-      )
-      .set("dead_objects_infos_count", self.dead_objects_infos_count.to_string())
-      .set(
-        "smart_terrain_actor_control",
-        self.smart_terrain_actor_control.to_string(),
-      )
-      .set("respawn_point", self.respawn_point.to_string())
-      .set("staying_objects_count", self.staying_objects_count.to_string());
+      .set("arriving_objects_count", self.arriving_objects_count)
+      .set("object_job_descriptors_count", self.object_job_descriptors_count)
+      .set("dead_objects_infos_count", self.dead_objects_infos_count)
+      .set("smart_terrain_actor_control", self.smart_terrain_actor_control)
+      .set("respawn_point", self.respawn_point)
+      .set("staying_objects_count", self.staying_objects_count);
 
     Ok(())
   }
@@ -137,7 +151,7 @@ impl LtxImportExport for AlifeSmartTerrain {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -161,13 +175,16 @@ mod tests {
             spawn_story_id: 25,
           },
           shape: vec![
-            Shape::Sphere((Vector3d::new(3.5, -2.5, 11.5), 1.0)),
-            Shape::Box((
-              Vector3d::new(1.5, 1.1, 73.1),
-              Vector3d::new(5.1, 2.2, 3.3),
-              Vector3d::new(4.0, 6.0, 2.4),
-              Vector3d::new(9.2, 4.3, 3.0),
-            )),
+            Shape::Sphere(Sphere {
+              center: Vector3d::new(3.5, -2.5, 11.5),
+              radius: 1.0,
+            }),
+            Shape::Box(Affine3d {
+              x_axis: Vector3d::new(1.5, 1.1, 73.1),
+              y_axis: Vector3d::new(5.1, 2.2, 3.3),
+              z_axis: Vector3d::new(4.0, 6.0, 2.4),
+              translation: Vector3d::new(9.2, 4.3, 3.0),
+            }),
           ],
           restrictor_type: 2,
         },
@@ -208,7 +225,7 @@ mod tests {
     Ok(())
   }
 
-  /// A count with nothing behind it would be read by the game as the start of a list, so it is not written.
+  // The game would read a count with nothing behind it as the start of a list.
   #[test]
   fn refuses_to_write_simulation_state_it_cannot_carry() {
     let mut terrain: AlifeSmartTerrain = new_terrain();

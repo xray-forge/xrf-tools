@@ -1,8 +1,8 @@
+import { IUseRankedSearch, useRankedSearch } from "@xrf/react/ranked-search";
 import { Nullable } from "@xrf/types";
 import { useCallback, useMemo, useState } from "react";
 
 import { EToolGroupId, EToolStatus, IToolDescriptor, IToolGroup } from "@/core/routing/tool";
-import { IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 
 import {
   getCatalogEntries,

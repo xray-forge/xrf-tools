@@ -40,6 +40,6 @@ export function describeTranslationBuildOutcome(
   return {
     details: output,
     severity: ENotificationSeverity.SUCCESS,
-    title: `Built ${result?.files ?? 0} string table(s) from ${result?.sources ?? 0} source(s)`,
+    title: `Built ${formatCount(result?.files ?? 0)} string table(s) from ${formatCount(result?.sources ?? 0)} source(s)`,
   };
 }

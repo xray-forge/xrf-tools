@@ -6,7 +6,7 @@ use crate::feature::weather::wet::wet_uniform::WetUniform;
 /// enhanced wetting's wet surface (a texel of nothing for the engine's), and the settings.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct WetApplyParameters {
+pub(crate) struct WetApplyParameters {
   #[texture(d2, depth)]
   pub depth_target: GraphTexture,
   #[texture(d2, unfilterable)]

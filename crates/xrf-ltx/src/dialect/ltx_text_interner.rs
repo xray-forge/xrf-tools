@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use fxhash::FxBuildHasher;
+use rustc_hash::FxBuildHasher;
 
 /// One allocation per distinct piece of text, for the span of resolving one root.
 ///

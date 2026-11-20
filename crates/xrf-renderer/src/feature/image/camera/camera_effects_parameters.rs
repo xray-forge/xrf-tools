@@ -7,7 +7,7 @@ use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 /// the inputs stage reads, over the drawn texels under each pixel.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct CameraEffectsParameters<'a> {
+pub(crate) struct CameraEffectsParameters<'a> {
   #[uniform]
   pub camera_effects: UniformBinding<CameraEffectsUniform>,
   #[texture(d2, float)]

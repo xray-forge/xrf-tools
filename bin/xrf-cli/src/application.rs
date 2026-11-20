@@ -19,7 +19,7 @@ use crate::core::report::{CommandEnvelope, ReportingOptions};
 /// ends with exactly one final stderr line, printed unconditionally so `--silent` can never hide
 /// that a run failed, and never on stdout so it cannot corrupt a piped document; commands themselves
 /// report finding details and never exit.
-pub fn run() -> ExitCode {
+pub(crate) fn run() -> ExitCode {
   let build: BuildInfo = build_info!();
   let groups: Vec<CommandGroup> = CommandGroup::list_all();
 
@@ -87,7 +87,11 @@ pub fn run() -> ExitCode {
   // A pool that cannot start is the command failing to run, not the command failing: it is reported
   // as an execution error and the command never sees it.
   let outcome: CommandResult = plan
-    .install(|| command.execute(arguments, &mut context))
+    .install(|| {
+      profiling::scope!("command", &format!("{domain} {operation}"));
+
+      command.execute(arguments, &mut context)
+    })
     .unwrap_or_else(|error| Err(CommandError::Execution(error)));
   let duration: Duration = started_at.elapsed();
 
@@ -113,6 +117,10 @@ pub fn run() -> ExitCode {
 
   match result {
     Ok(()) => ExitCode::SUCCESS,
+    #[expect(
+      clippy::print_stderr,
+      reason = "the report was not published, so stderr is all that is left to say why"
+    )]
     Err(error) => {
       eprintln!("{error}");
 

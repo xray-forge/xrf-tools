@@ -4,7 +4,7 @@ use xrf_ltx::LtxKeyOperation;
 
 /// One field line as the engine records it, with everything needed to rank it against another.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DltxItem {
+pub(crate) struct DltxItem {
   /// Field name with its case as authored. The engine lowercases section names and never key names.
   pub key: Arc<str>,
   /// Value as authored, or `None` for a bare key. A deletion carries no value: the engine discards whatever was
@@ -22,7 +22,7 @@ pub struct DltxItem {
 
 impl DltxItem {
   /// The value a resolved field would take, treating a bare key as empty.
-  pub fn to_resolved_value(&self, empty: &Arc<str>) -> Arc<str> {
+  pub(crate) fn to_resolved_value(&self, empty: &Arc<str>) -> Arc<str> {
     self.value.clone().unwrap_or_else(|| Arc::clone(empty))
   }
 }

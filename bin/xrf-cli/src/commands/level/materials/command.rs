@@ -3,22 +3,26 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfError;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
-  LevelCformFile, LevelCformGeometry, LevelCformTracer, LevelFile, LevelGeomFile, LevelGeomSource,
-  LevelSurfaceMaterials, LevelVisualsChunk,
+  LevelCformFile, LevelCformGeometry, LevelFile, LevelGeomFile, LevelGeomSource, LevelSurfaceMaterials,
+  LevelVisualsChunk,
 };
 use xrf_output::OutputOptions;
 
 use super::report::LevelMaterialsReport;
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct MaterialsCommand;
+pub(crate) struct MaterialsCommand;
 
 impl GenericCommand for MaterialsCommand {
   fn operation(&self) -> &'static str {
     "materials"
+  }
+
+  fn input(&self) -> CommandInput {
+    LevelSelection::input()
   }
 
   fn declare(&self, command: Command) -> Command {
@@ -61,7 +65,7 @@ impl GenericCommand for MaterialsCommand {
     let library: Option<GameMtlFile> = Self::read_library(&assets, &output);
 
     let survey: LevelSurfaceMaterials =
-      LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &LevelCformTracer::new(&collision));
+      LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &collision);
     let report: LevelMaterialsReport =
       LevelMaterialsReport::new(assets.describe(), &survey, level.shaders.as_ref(), library.as_ref());
 

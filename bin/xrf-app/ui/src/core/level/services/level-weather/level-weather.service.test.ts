@@ -190,14 +190,14 @@ describe("LevelWeatherService", () => {
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
     await service.selectCycle("default_rain");
-    service.setFactor(5_000);
-    service.setPlaying(true);
-    service.seekTo(7_200);
+    service.clock.setFactor(5_000);
+    service.clock.setPlaying(true);
+    service.clock.seekTo(7_200);
 
     expect(service.cycle.value?.name).toBe("default_rain");
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_rain" });
     expect(service.transition).toBe(EWorldWeatherTransition.FADE);
-    expect(service.control).toEqual({ factor: 1000, isDynamicSun: false, isPaused: false });
+    expect(service.clock.control).toEqual({ factor: 1000, isDynamicSun: false, isPaused: false });
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value))).toEqual({
       base: null,
       control: { factor: 1000, isDynamicSun: false, isPaused: false },
@@ -210,17 +210,17 @@ describe("LevelWeatherService", () => {
     });
 
     // The clock heard back is remembered as the level closes.
-    service.noteReport(mockWorldWeatherReport({ time: 9_000, weight: 0.25 }));
+    service.clock.noteReport(mockWorldWeatherReport({ time: 9_000, weight: 0.25 }));
     await mockOpenLevelWeather(service, null);
 
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value))?.time).toBe(9_000);
-    expect(service.control.isPaused).toBe(true);
+    expect(service.clock.control.isPaused).toBe(true);
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.cycle.value?.name).toBe("default_rain");
-    expect(service.time).toBe(9_000);
-    expect(service.control.factor).toBe(1000);
+    expect(service.clock.time).toBe(9_000);
+    expect(service.clock.control.factor).toBe(1000);
   });
 
   it("holds the clock, cuts to a borrowed cycle not remembered, and back to what it held", async () => {
@@ -236,25 +236,25 @@ describe("LevelWeatherService", () => {
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
     await service.selectCycle("default_rain");
-    service.setPlaying(true);
+    service.clock.setPlaying(true);
 
     const held: ILevelWeatherHold = service.hold();
 
-    expect(service.control.isPaused).toBe(true);
+    expect(service.clock.control.isPaused).toBe(true);
     expect(readLevelWeatherMemory(key)?.control.isPaused).toBe(false);
 
     await service.cutTo("map");
 
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "map" });
     expect(service.transition).toBe(EWorldWeatherTransition.CUT);
-    expect(service.control.isPaused).toBe(true);
+    expect(service.clock.control.isPaused).toBe(true);
     expect(readLevelWeatherMemory(key)?.cycle).toBe("default_rain");
 
     await service.release(held);
 
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_rain" });
     expect(service.transition).toBe(EWorldWeatherTransition.CUT);
-    expect(service.control.isPaused).toBe(false);
+    expect(service.clock.control.isPaused).toBe(false);
     expect(readLevelWeatherMemory(key)?.control.isPaused).toBe(false);
   });
 
@@ -451,7 +451,7 @@ describe("LevelWeatherService", () => {
     // The remembered keyframe set by hand lights it, cut in.
     expect(toWeatherKeyframe(service.weather)?.rainDensity).toBe(0.3);
     expect(service.transition).toBe(EWorldWeatherTransition.CUT);
-    expect(service.time).toBe(600);
+    expect(service.clock.time).toBe(600);
   });
 
   it("opens the weather of a level as the level opens, with no viewport to play it, and forgets it as it closes", async () => {

@@ -1,15 +1,22 @@
 import { useInjection } from "@wirestate/react";
+import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
-import { ReactElement, useCallback, useEffect } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { TranslationsVerifierService } from "@/tools/translations-verifier/services/translations-verifier.service";
 
 import { TranslationsVerifyResult } from "./components/TranslationsVerifyResult";
+
+interface ITranslationsVerifyRequest {
+  sources: string;
+  /** One language, or every language. */
+  language: ETranslationLanguage;
+}
 
 export function TranslationsVerifierTool(): ReactElement {
   const verifierService: TranslationsVerifierService = useInjection(TranslationsVerifierService);
@@ -31,24 +38,22 @@ export function TranslationsVerifierTool(): ReactElement {
     isDisabled: isRunning,
   });
 
-  const sourcesPath: Nullable<string> = sources.value;
+  const request: Nullable<ITranslationsVerifyRequest> = useMemo(
+    () => (sources.value ? { sources: sources.value, language } : null),
+    [language, sources.value]
+  );
 
-  const onVerify = useCallback(async () => {
-    if (!sourcesPath) {
-      return;
-    }
-
-    await verifierService.verify(sourcesPath, language);
-  }, [language, sourcesPath, verifierService]);
-
-  // A different tree or language invalidates whatever the previous run reported.
-  useEffect(() => {
-    verifierService.operation.reset();
-  }, [sourcesPath, language, verifierService]);
+  const onVerify = useCallback(
+    async (submitted: ITranslationsVerifyRequest) => {
+      await verifierService.verify(submitted.sources, submitted.language);
+    },
+    [verifierService]
+  );
 
   return (
     <JobPickerForm
       operation={verifierService.operation}
+      request={request}
       isSubmitDisabled={!sources.isValid}
       title={"Verify translations"}
       description={"Checks every JSON source for ids a language has no text for. Nothing is written."}

@@ -7,22 +7,20 @@ use crate::preview::descriptor::AudioSourceParameters;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AudioDescriptor {
+pub(crate) struct AudioDescriptor {
   /// Absent when the bytes carry no readable stream header.
   pub channels: Option<u16>,
   /// Absent when the bytes carry no readable stream header.
   pub sample_rate: Option<u32>,
   /// Absent for a sound carrying no recognized X-Ray comment, where the engine uses its own defaults.
   pub parameters: Option<AudioSourceParameters>,
-  /// What to hand the bytes over as, taken from the extension rather than from the content.
-  pub media_type: String,
 }
 
 impl AudioDescriptor {
-  /// What the engine would read out of a sound's bytes, handed over as `media_type`.
-  pub fn of(name: &str, bytes: &[u8], media_type: &str) -> Self {
+  /// What the engine would read out of a sound's bytes.
+  pub(crate) fn of(name: &str, bytes: &[u8]) -> Self {
     // A sound that cannot be parsed is still worth playing: plenty of ogg in a mod was not produced by the x-ray tools,
-    // and refusing to describe it would take the playable bytes down with the description.
+    // and refusing to describe it would take its preview down with the description.
     let sound: Option<SoundFile> = match SoundFile::read_from_bytes(bytes) {
       Ok(sound) => Some(sound),
       Err(error) => {
@@ -39,7 +37,6 @@ impl AudioDescriptor {
         SoundMetadata::XRay { parameters, .. } => Some(AudioSourceParameters::from(parameters)),
         SoundMetadata::EngineDefaults => None,
       }),
-      media_type: media_type.to_owned(),
     }
   }
 }

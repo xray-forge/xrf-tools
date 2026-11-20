@@ -1,0 +1,312 @@
+use xrf_editable_level::{EditableSceneObject, EditableWallmarkTool};
+use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface, EditableVMapKind};
+use xrf_error::{XrfError, XrfResult};
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+use xrf_geometry::FaceArea;
+use xrf_level::BuildPrjFace;
+use xrf_math::{Matrix4x4, Vector2d, Vector3d};
+
+use crate::level::build::level_build_sectors::LevelBuildSectors;
+use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
+use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
+
+/// The static geometry a build hands xrLC, in world space with a smoothing group per face: the static objects' as
+/// `SceneBuilder::BuildMesh` gathers it, and the wall marks' as `ESceneWallmarkTool::ExportStatic` does.
+#[derive(Default)]
+pub(crate) struct LevelBuildGeometry {
+  pub(crate) vertices: Vec<Vector3d>,
+  pub(crate) faces: Vec<BuildPrjFace>,
+  pub(crate) smoothing_groups: Vec<u32>,
+  /// Faces of surfaces the build leaves out: occluders, breakables and ladders, which other exports take.
+  pub(crate) skipped_faces: usize,
+  /// Faces of no area left out: the objects', which the Build drops, and the wall marks', which xrLC would stop on.
+  pub(crate) invalid_faces: usize,
+}
+
+impl LevelBuildGeometry {
+  /// The compiler shader of a wall mark's faces, the wall mark tool's `COMPILER_SHADER`.
+  const WALLMARK_COMPILER_SHADER: &'static str = "def_shaders\\def_vertex_ghost_no_shadow";
+
+  /// `D3DFVF_TEXCOUNT_MASK` and its shift, which say how many texture coordinate sets a surface's corners carry.
+  const TEXTURE_COUNT_MASK: u32 = 0xF00;
+  const TEXTURE_COUNT_SHIFT: u32 = 8;
+
+  /// Adds the faces of each mesh of `object`, placed by `placed`, in the sector naming the mesh.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, as the Build stops, for a surface the object lacks, naming no texture, of a missing or dynamic
+  /// game material, or of other than one texture coordinate set; or a mesh whose faces name points or maps it lacks.
+  pub(crate) fn add_object(
+    &mut self,
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    sectors: &LevelBuildSectors,
+    tables: &mut LevelBuildTables,
+    game_materials: &GameMtlFile,
+  ) -> XrfResult {
+    self.add_meshes(
+      placed,
+      object,
+      &placed.object.transform.to_matrix(),
+      |mesh| sectors.find(&placed.object.name, &mesh.name),
+      tables,
+      game_materials,
+    )
+  }
+
+  /// A multi-use model of `object` as `BuildMUObject` builds it for its first placement `placed`: its meshes in its own
+  /// space, every face in the sector of the placement's first mesh, which it returns.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`Self::add_object`] does.
+  pub(crate) fn add_model(
+    &mut self,
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    sectors: &LevelBuildSectors,
+    tables: &mut LevelBuildTables,
+    game_materials: &GameMtlFile,
+  ) -> XrfResult<u16> {
+    let sector: u16 = Self::get_model_sector(placed, object, sectors);
+
+    self.add_meshes(placed, object, &Matrix4x4::IDENTITY, |_| sector, tables, game_materials)?;
+
+    Ok(sector)
+  }
+
+  /// The sector a placement of a multi-use model stands in: the one naming its first mesh (`PortalUtils.FindSector`
+  /// of `FirstMesh`), else the default.
+  pub(crate) fn get_model_sector(
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    sectors: &LevelBuildSectors,
+  ) -> u16 {
+    let first: &str = object
+      .meshes
+      .iter()
+      .flatten()
+      .next()
+      .map(|mesh| mesh.name.as_str())
+      .unwrap_or_default();
+
+    sectors.find(&placed.object.name, first)
+  }
+
+  /// Adds the faces of each mesh of `object` placed by `matrix`, each in the sector `sector_of` gives it.
+  fn add_meshes(
+    &mut self,
+    placed: &EditableSceneObject,
+    object: &EditableObjectFile,
+    matrix: &Matrix4x4,
+    sector_of: impl Fn(&EditableMesh) -> u16,
+    tables: &mut LevelBuildTables,
+    game_materials: &GameMtlFile,
+  ) -> XrfResult {
+    let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
+
+    for mesh in object.meshes.iter().flatten() {
+      let sector: u16 = sector_of(mesh);
+      let offset: u32 = u32::try_from(self.vertices.len())
+        .map_err(|_| XrfError::new_invalid_error("A build holds more vertices than its u32 indices number"))?;
+      let uvs: Vec<[Vector2d; 3]> = MeshCorners::without_normals(mesh).read_faces(|corner| {
+        Ok(
+          corner
+            .entries
+            .iter()
+            .find(|entry| entry.vmap.kind == EditableVMapKind::Uv)
+            .and_then(|entry| match entry.values {
+              [u, v, ..] => Some(Vector2d::new(*u, *v)),
+              _ => None,
+            })
+            .unwrap_or(Vector2d::ZERO),
+        )
+      })?;
+
+      self
+        .vertices
+        .extend(mesh.points.iter().map(|point| matrix.transform_point(point)));
+
+      for surface_faces in &mesh.surface_faces {
+        let surface: &EditableSurface = surfaces
+          .iter()
+          .find(|surface| surface.name == surface_faces.surface)
+          .ok_or_else(|| {
+            XrfError::new_invalid_error(format!(
+              "Object '{}' mesh '{}' names surface '{}' it does not hold",
+              placed.reference, mesh.name, surface_faces.surface
+            ))
+          })?;
+
+        // Its faces go to `level.hom` instead.
+        if surface.game_material == LevelOccluderConversion::OCCLUDER_GAME_MATERIAL {
+          self.skipped_faces += surface_faces.faces.len();
+          continue;
+        }
+
+        // Registered before the game material is looked at, as `BuildMesh` does, so a breakable or climbable surface's
+        // material is in the tables though its faces are not.
+        let material: u16 = tables.get_material(
+          &surface.shader,
+          Some(&surface.compiler_shader),
+          &surface.texture,
+          sector,
+        )?;
+        let game_material: &GameMtlMaterial = game_materials
+          .find_material_by_name(&surface.game_material)
+          .ok_or_else(|| {
+            XrfError::new_invalid_error(format!(
+              "Surface '{}' of '{}' contains undefined game material '{}'",
+              surface.name, placed.reference, surface.game_material
+            ))
+          })?;
+
+        if game_material.flags & (GameMtlMaterial::FLAG_BREAKABLE | GameMtlMaterial::FLAG_CLIMABLE) != 0 {
+          self.skipped_faces += surface_faces.faces.len();
+          continue;
+        }
+
+        if game_material.flags & GameMtlMaterial::FLAG_DYNAMIC != 0 {
+          return Err(XrfError::new_invalid_error(format!(
+            "Surface '{}' of '{}' contains non-static game material '{}'",
+            surface.name, placed.reference, surface.game_material
+          )));
+        }
+
+        if (surface.fvf & Self::TEXTURE_COUNT_MASK) >> Self::TEXTURE_COUNT_SHIFT != 1 {
+          return Err(XrfError::new_invalid_error(format!(
+            "Surface '{}' of '{}' contains more than 1 texture refs",
+            surface.name, placed.reference
+          )));
+        }
+
+        for face in &surface_faces.faces {
+          self.add_face(
+            mesh,
+            *face as usize,
+            offset,
+            &uvs,
+            material,
+            game_material.id,
+            surface.is_two_sided(),
+          )?;
+        }
+      }
+    }
+
+    Ok(())
+  }
+
+  /// Adds one face of `mesh`, and its back where its surface is two-sided; a face of no area is counted and left out.
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "the face's mesh, its place in the build and what dresses it"
+  )]
+  fn add_face(
+    &mut self,
+    mesh: &EditableMesh,
+    face: usize,
+    offset: u32,
+    uvs: &[[Vector2d; 3]],
+    material: u16,
+    game_material: u32,
+    is_two_sided: bool,
+  ) -> XrfResult {
+    let corners = &mesh
+      .faces
+      .get(face)
+      .ok_or_else(|| XrfError::new_invalid_error(format!("Mesh '{}' names face {face}", mesh.name)))?
+      .corners;
+    let points: [u32; 3] = corners.each_ref().map(|corner| corner.point);
+
+    if !FaceArea::is_enough(&points.map(|point| mesh.points[point as usize])) {
+      self.invalid_faces += 1;
+      return Ok(());
+    }
+
+    let smoothing: u32 = mesh
+      .smoothing_groups
+      .as_ref()
+      .and_then(|groups| groups.get(face).copied())
+      .unwrap_or(EditableMesh::FLAT_FACE_SMOOTHING);
+    let uv: [Vector2d; 3] = uvs[face];
+
+    self.faces.push(BuildPrjFace {
+      vertices: points.map(|point| point + offset),
+      texture_coordinates: uv,
+      material,
+      material_padding: 0,
+      game_material,
+    });
+    self
+      .smoothing_groups
+      .push(smoothing & !EditableMesh::BACK_FACE_SMOOTHING_FLAG);
+
+    if is_two_sided {
+      self.faces.push(BuildPrjFace {
+        vertices: [points[2], points[1], points[0]].map(|point| point + offset),
+        texture_coordinates: [uv[2], uv[1], uv[0]],
+        material,
+        material_padding: 0,
+        game_material,
+      });
+      self
+        .smoothing_groups
+        .push(smoothing | EditableMesh::BACK_FACE_SMOOTHING_FLAG);
+    }
+
+    Ok(())
+  }
+
+  /// Adds every wall mark's triangles, each mark in the sector its bounds lie in, every corner a vertex of its own and
+  /// the game material and smoothing the editor leaves unset zero.
+  ///
+  /// A triangle of no area is counted and left out, where the editor writes it: xrLC refuses it (`Face::Verify`) and
+  /// stops the build on seven. Vanilla `jupiter`'s `level.wallmarks` holds seven, which stay in the game's wall marks.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a table outgrows its indices.
+  pub(crate) fn add_wallmarks(
+    &mut self,
+    tool: &EditableWallmarkTool,
+    sectors: &LevelBuildSectors,
+    tables: &mut LevelBuildTables,
+  ) -> XrfResult {
+    for slot in &tool.slots {
+      for mark in &slot.marks {
+        let sector: u16 = sectors.calculate(&mark.bounds.center, mark.bounds.radius);
+        let material: u16 = tables.get_material(
+          &slot.shader,
+          Some(Self::WALLMARK_COMPILER_SHADER),
+          &slot.texture,
+          sector,
+        )?;
+
+        for triangle in mark.vertices.as_chunks::<3>().0 {
+          if !FaceArea::is_enough(&triangle.each_ref().map(|vertex| vertex.position)) {
+            self.invalid_faces += 1;
+            continue;
+          }
+
+          let first: u32 = u32::try_from(self.vertices.len())
+            .map_err(|_| XrfError::new_invalid_error("A build holds more vertices than its u32 indices number"))?;
+
+          self.vertices.extend(triangle.iter().map(|vertex| vertex.position));
+          self.faces.push(BuildPrjFace {
+            vertices: [first, first + 1, first + 2],
+            texture_coordinates: [0, 1, 2].map(|corner| Vector2d::new(triangle[corner].u, triangle[corner].v)),
+            material,
+            material_padding: 0,
+            game_material: 0,
+          });
+          self.smoothing_groups.push(0);
+        }
+      }
+    }
+
+    Ok(())
+  }
+}

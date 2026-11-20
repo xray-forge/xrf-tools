@@ -109,7 +109,7 @@ mod tests {
     let mut found: Vec<String> = Vec::new();
 
     for_each_identifier(&without_comments_and_strings(source), |_, _, identifier| {
-      found.push(identifier.to_owned())
+      found.push(identifier.to_owned());
     });
 
     found

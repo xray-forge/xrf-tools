@@ -12,11 +12,11 @@ pub(crate) struct SinkAction {
 }
 
 impl SinkAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.position.transform_from(&self.position_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool) {
     for index in (0..pool.len()).rev() {
       let position = pool.get_particles()[index].position;
 

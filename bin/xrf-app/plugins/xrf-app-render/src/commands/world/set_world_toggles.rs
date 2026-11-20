@@ -8,6 +8,10 @@ use crate::WorldState;
 /// which spawn groups stream in.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "set_world_toggles")]
-pub fn render_set_world_toggles(world: State<'_, WorldState>, viewport: RenderViewportId, toggles: WorldToggles) {
+pub(crate) fn render_set_world_toggles(
+  world: State<'_, WorldState>,
+  viewport: RenderViewportId,
+  toggles: WorldToggles,
+) {
   world.lock().set_toggles(viewport, toggles);
 }

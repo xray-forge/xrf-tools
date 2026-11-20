@@ -18,7 +18,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// reflection reprojected, an eighth-size average taken, filtered across the surface and resolved over time into the
 /// view's history, which combine reads. A ray the screen does not answer is listed for the scene pass
 /// (`SceneTracePass`), which traces such rays alone against the level's static geometry.
-pub struct ReflectionPass {
+pub(crate) struct ReflectionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
@@ -52,25 +52,25 @@ struct ReflectionPipelines {
 
 impl ReflectionPass {
   /// Each traced pixel's surface: its world normal packed, its roughness, its depth and its frame texel packed.
-  pub const GUIDED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+  pub(crate) const GUIDED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
   /// What the trace writes: what is reflected, then the ray's length in metres, below none where nothing is traced.
-  pub const TRACED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const TRACED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// How each ray ended, a reason's number over 255 (`common/reflection_end.wgsl`), which the ends view colours.
-  pub const ENDS: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub(crate) const ENDS: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
   /// The reprojected history, then how many frames it holds; and its variance.
-  pub const REPROJECTED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const VARIANCE: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub(crate) const REPROJECTED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const VARIANCE: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
   /// The eighth-size average, and the prefiltered reflection, then its variance.
-  pub const AVERAGE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const PREFILTERED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const AVERAGE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const PREFILTERED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Traced pixels a side each texel of the average stands for.
-  pub const AVERAGE_RATIO: u32 = 8;
+  pub(crate) const AVERAGE_RATIO: u32 = 8;
   /// Traced pixels a side each workgroup of the budgeted trace takes (`BUDGET_TILE`).
-  pub const BUDGET_TILE: u32 = 16;
+  pub(crate) const BUDGET_TILE: u32 = 16;
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     queue: &wgpu::Queue,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
@@ -134,7 +134,7 @@ impl ReflectionPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(
         source,
@@ -150,28 +150,28 @@ impl ReflectionPass {
   }
 
   /// The texel a stage reads where no history or stage before it is bound.
-  pub fn get_empty(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_empty(&self) -> &wgpu::TextureView {
     &self.empty
   }
 
   /// The texel combine and the debug view read where nothing is traced.
-  pub fn get_untraced(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_untraced(&self) -> &wgpu::TextureView {
     &self.untraced
   }
 
   /// The texel the ends view reads while nothing is traced.
-  pub fn get_no_ends(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_no_ends(&self) -> &wgpu::TextureView {
     &self.no_ends
   }
 
   /// The history's bilinear sampler.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Traces every reflecting pixel's ray over the screen into the targets the pass draws into, listing in `requests`
   /// those it leaves to the scene pass.
-  pub fn record_trace(
+  pub(crate) fn record_trace(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
@@ -192,7 +192,7 @@ impl ReflectionPass {
 
   /// Traces under ray budgets into the `outputs`' targets, `size` traced pixels across, listing in their requests the
   /// rays it leaves to the scene pass.
-  pub fn record_trace_budgeted(
+  pub(crate) fn record_trace_budgeted(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
@@ -214,7 +214,7 @@ impl ReflectionPass {
   }
 
   /// Draws one of the denoiser's stages into the targets the pass draws into.
-  pub fn record_stage(
+  pub(crate) fn record_stage(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

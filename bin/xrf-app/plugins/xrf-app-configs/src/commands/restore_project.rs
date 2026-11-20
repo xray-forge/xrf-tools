@@ -11,7 +11,7 @@ use crate::project::{ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects};
 /// reload.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_project")]
-pub async fn configs_restore_project(
+pub(crate) async fn configs_restore_project(
   projects: State<'_, ConfigsProjects>,
   window: InvokingWindow,
   tool: String,

@@ -46,7 +46,7 @@ fn faces(plan: &CapturePlan) -> Vec<CubeFace> {
 
 /// The engine-space direction a face sees through the point `(u, v)` of its picture, each from -1 to 1, `u` right
 /// and `v` down.
-fn to_direction(face: &CubeFace, u: f32, v: f32) -> Vec3 {
+fn get_direction(face: &CubeFace, u: f32, v: f32) -> Vec3 {
   let inverse: Mat4 = face.get_view().get_view_projection().inverse();
   let point: Vec4 = inverse * Vec4::new(u, -v, 0.5, 1.0);
 
@@ -69,7 +69,7 @@ fn faces_look_down_the_engine_axes_as_a_cube_texture_lays_them() -> XrfResult {
 
   for (face, expected) in faces(&plan).iter().zip(expected) {
     for (u, v) in [(0.0, 0.0), (0.9, 0.0), (0.0, 0.9), (-0.5, 0.7)] {
-      let seen: Vec3 = to_direction(face, u, v);
+      let seen: Vec3 = get_direction(face, u, v);
 
       assert!(
         seen.abs_diff_eq(expected(u, v).normalize(), 1e-4),
@@ -183,7 +183,7 @@ fn refuses_a_face_drawn_at_another_size() -> XrfResult {
 }
 
 #[test]
-fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_a_tile_with_its_coverage() -> XrfResult {
+fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_camera_and_a_tile_with_its_coverage() -> XrfResult {
   let face: CaptureShot = CapturePlan::new_cube(cube(256, 1), &camera(), f32::INFINITY, 8192)?.shots[0];
   let tile: CaptureShot = CaptureShot::Tile(
     MapTilePlan::new(
@@ -207,10 +207,18 @@ fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_a_tile_with_its_cover
   let mut options: RenderViewOptions = RenderViewOptions::default();
 
   options.output.upscaling.scale = RenderScale::Quality;
+  options.features.camera.is_vignetted = true;
+  options.features.camera.is_defocused = true;
 
   let look: RenderViewOptions = face.apply_look(&options);
 
   assert!(look.show.is_sky_visible && look.show.is_fogged && !look.show.is_lens_flared);
+  // Per-face vignette and focus would break the seams.
+  assert!(!look.features.camera.is_vignetted && !look.features.camera.is_defocused);
+  assert_eq!(
+    look.features.camera.vignette_strength,
+    options.features.camera.vignette_strength
+  );
   assert_eq!(look.features.grass.is_enabled, options.features.grass.is_enabled);
   assert_eq!(look.output.upscaling.scale, RenderScale::Native);
   assert!(

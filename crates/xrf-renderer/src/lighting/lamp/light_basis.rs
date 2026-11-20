@@ -10,7 +10,7 @@ const SHADOWED_FADE: f32 = 0.5;
 
 /// Where a light stands and the axes it lights along: a spot's `compute_xf_spot` basis, a point's facing down `-z`.
 #[derive(Clone, Copy, Debug)]
-pub struct LightBasis {
+pub(crate) struct LightBasis {
   pub position: Vec3,
   pub direction: Vec3,
   pub right: Vec3,
@@ -20,8 +20,8 @@ pub struct LightBasis {
 impl LightBasis {
   /// The direction, and the right the lamp gives made square to it through the up they make, or the world's up where
   /// it gives none. Crossed in the renderer's mirrored space, the engine's cross products turn their sign.
-  pub fn of(light: &LightDescription) -> Self {
-    let position: Vec3 = Vec3::from(light.position.to_array());
+  pub(crate) fn of(light: &LightDescription) -> Self {
+    let position: Vec3 = Vec3::from(&light.position);
 
     if !matches!(light.kind, LightKind::Spot) {
       return Self {
@@ -32,8 +32,8 @@ impl LightBasis {
       };
     }
 
-    let direction: Vec3 = Vec3::from(light.direction.to_array()).normalize_or(Vec3::NEG_Z);
-    let given: Vec3 = Vec3::from(light.right.to_array());
+    let direction: Vec3 = Vec3::from(&light.direction).normalize_or(Vec3::NEG_Z);
+    let given: Vec3 = Vec3::from(&light.right);
     let (right, up): (Vec3, Vec3) = if given.length_squared() > EPS {
       let up: Vec3 = -direction.cross(given.normalize()).normalize_or(Vec3::Y);
 
@@ -60,7 +60,7 @@ impl LightBasis {
 
   /// The least sphere around all a light reaches, as far as its range strays, which it is culled and binned by: a
   /// point's range; a narrow spot's the one through its apex and its rim, a wide one's its rim's.
-  pub fn get_bound(&self, light: &LightDescription) -> Vec4 {
+  pub(crate) fn get_bound(&self, light: &LightDescription) -> Vec4 {
     let reach: f32 = light.range + light.range_jitter;
 
     if !matches!(light.kind, LightKind::Spot) || light.cone >= std::f32::consts::PI {
@@ -82,7 +82,7 @@ impl LightBasis {
 
   /// `light::spatial_move`'s sphere, which the engine fades a shadowed light and sizes its maps by: a point's range; a
   /// spot's past its cone, wider than it reaches.
-  pub fn get_spatial_sphere(&self, light: &LightDescription) -> Vec4 {
+  pub(crate) fn get_spatial_sphere(&self, light: &LightDescription) -> Vec4 {
     if !matches!(light.kind, LightKind::Spot) {
       return self.position.extend(light.range);
     }
@@ -101,7 +101,7 @@ impl LightBasis {
 
   /// `light::spatial_move` for an `OMNIPART`, one face of a shadowed point: its range over root two across, standing
   /// that far along the face.
-  pub fn get_face_sphere(&self, light: &LightDescription, direction: Vec3) -> Vec4 {
+  pub(crate) fn get_face_sphere(&self, light: &LightDescription, direction: Vec3) -> Vec4 {
     let radius: f32 = light.range * std::f32::consts::FRAC_1_SQRT_2;
 
     (self.position + direction * radius).extend(radius)
@@ -109,7 +109,7 @@ impl LightBasis {
 
   /// `light::get_LOD`: how far a shadowed light has faded, by its sphere's share of the screen, one whole and zero
   /// gone, against the progressive meshes' own `start` and `end` thresholds.
-  pub fn to_light_lod(sphere: Vec4, eye: Vec3, start: f32, end: f32) -> f32 {
+  pub(crate) fn get_light_lod(sphere: Vec4, eye: Vec3, start: f32, end: f32) -> f32 {
     // `EPS` added to the squared distance, so a camera inside the light divides by no zero.
     let area: f32 = SHADOWED_FADE * sphere.w / (eye.distance_squared(sphere.truncate()) + EPS);
 
@@ -121,7 +121,7 @@ impl LightBasis {
   }
 
   /// `(mean + luminance) / 2`, which `compute_xf_spot` sizes a brighter light's maps larger by.
-  pub fn to_light_intensity(color: Vec3) -> f32 {
-    (color.element_sum() / 3.0 + color.dot(Vec3::new(0.2125, 0.7154, 0.0721))) / 2.0
+  pub(crate) fn get_light_intensity(color: Vec3) -> f32 {
+    f32::midpoint(color.element_sum() / 3.0, color.dot(Vec3::new(0.2125, 0.7154, 0.0721)))
   }
 }

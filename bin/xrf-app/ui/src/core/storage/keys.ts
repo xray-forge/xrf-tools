@@ -20,8 +20,6 @@ export const CATALOG_VIEW_STORAGE_KEY: string = buildStorageKey(EStorageNamespac
 export const APP_CACHE_POLICY_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "app-cache-policy");
 /** Whether IPC payloads are weighed. */
 export const IPC_PROFILING_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "ipc-profiling");
-/** How loud playback is. */
-export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "media-volume");
 /** Frames a second a viewport is allowed to draw. */
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
 /** Which engine each game root is read as where it was told rather than left to detection, by root, as JSON. */
@@ -55,6 +53,21 @@ export const LEVEL_HELPERS_STORAGE_KEY: string = buildStorageKey(EStorageNamespa
 export const LEVEL_LOOK_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-look");
 /** How each level's weather was last played, by level, as JSON. */
 export const LEVEL_WEATHER_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-weather");
+/** Which helpers the level editor draws over a scene's objects, by tool, as JSON. */
+export const LEVEL_EDITOR_HELPERS_STORAGE_KEY: string = buildStorageKey(
+  EStorageNamespace.PREFERENCE,
+  "level-editor-helpers"
+);
+/** Whether the level editor draws the surfaces the game never draws, kept for collision or shadows alone. */
+export const LEVEL_EDITOR_COLLISION_STORAGE_KEY: string = buildStorageKey(
+  EStorageNamespace.PREFERENCE,
+  "level-editor-collision"
+);
+/** Whether the level editor draws the surfaces dressed in the SDK's marker textures, which a player never sees. */
+export const LEVEL_EDITOR_EDITOR_ONLY_STORAGE_KEY: string = buildStorageKey(
+  EStorageNamespace.PREFERENCE,
+  "level-editor-editor-only"
+);
 
 /** Chords a person bound themselves, as one command id to chords map. */
 export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");

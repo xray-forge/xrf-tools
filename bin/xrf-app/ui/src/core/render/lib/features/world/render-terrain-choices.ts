@@ -58,7 +58,7 @@ function isEngineTiling(terrain: TRenderTerrainSettings): boolean {
   return terrain.tiling === ERenderTerrainTiling.ENGINE;
 }
 
-/** How each terrain setting is set, in the settings and the Shading popover alike. */
+/** How each terrain setting is set, in the settings and the Relief popover alike. */
 export const RENDER_TERRAIN_SETTINGS: TRenderSettings<TRenderTerrainSettings> = {
   rotation: {
     control: ERenderSettingControl.SLIDER,

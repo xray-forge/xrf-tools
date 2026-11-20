@@ -26,15 +26,15 @@ impl SessionPart for LevelStartPart {
 
 impl LevelStartPart {
   /// Metres an actor's eye stands above the ground under it.
-  pub const ACTOR_EYE_HEIGHT: f32 = 1.7;
+  pub(crate) const ACTOR_EYE_HEIGHT: f32 = 1.7;
 
   /// The store with `start` kept as the level's start part, decided from `inputs` as the level opened.
-  pub fn with(parts: SessionParts, start: Option<LevelStart>, inputs: XrayInputRecord) -> SessionParts {
+  pub(crate) fn with(parts: SessionParts, start: Option<LevelStart>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(start, inputs)
   }
 
   /// Where the open level opens, decided the first time anything asks and kept; `None` leaves it to the viewer.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelStart> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelStart> {
     current.parts.get_or_record::<Self>(search, |search| {
       let spawn = LevelSpawnPart::get(current, search).ok();
       let open: Vec<bool> = spawn
@@ -51,7 +51,7 @@ impl LevelStartPart {
 
   /// Whether nothing of the collision form stands over each eye `list_eyes` lists of `spawn`; every one for a level
   /// without a readable form, which covers nothing.
-  pub fn find_open(source: &LevelSource, search: &XraySearch, spawn: &LevelSpawn) -> Vec<bool> {
+  pub(crate) fn find_open(source: &LevelSource, search: &XraySearch, spawn: &LevelSpawn) -> Vec<bool> {
     let eyes: Vec<Vector3d> = Self::list_eyes(spawn);
 
     source
@@ -62,7 +62,7 @@ impl LevelStartPart {
       .and_then(|bytes| {
         LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, &eyes)
           .inspect_err(|error| {
-            LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCformFile::FILE_NAME, error))
+            LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCformFile::FILE_NAME, error));
           })
           .ok()
       })
@@ -70,38 +70,47 @@ impl LevelStartPart {
   }
 
   /// The eyes a level may open at, in the engine's space: where each of its arrivals and its actor's spawn stand.
-  pub fn list_eyes(spawn: &LevelSpawn) -> Vec<Vector3d> {
+  pub(crate) fn list_eyes(spawn: &LevelSpawn) -> Vec<Vector3d> {
     Self::list_candidates(spawn).map(|(eye, _, _)| eye).collect()
   }
 
   /// The start of a level: of the eyes `list_eyes` lists, the one nearest its centre that `open` says is under the open
   /// sky; none of them leaves it to the viewer.
-  pub fn resolve(spawn: Option<&LevelSpawn>, bounds: Option<&VisualBounds>, open: &[bool]) -> Option<LevelStart> {
-    let (x, z): (f32, f32) = Self::to_engine_centre(bounds?);
+  pub(crate) fn resolve(
+    spawn: Option<&LevelSpawn>,
+    bounds: Option<&VisualBounds>,
+    open: &[bool],
+  ) -> Option<LevelStart> {
+    let (x, z): (f32, f32) = Self::get_engine_centre(bounds?);
 
     Self::list_candidates(spawn?)
       .zip(open)
       .filter_map(|(candidate, is_open)| is_open.then_some(candidate))
-      .min_by(|(left, _, _), (right, _, _)| Self::to_distance(left, x, z).total_cmp(&Self::to_distance(right, x, z)))
-      .map(|(eye, heading, origin)| Self::to_start(&eye, heading, origin))
+      .min_by(|(left, _, _), (right, _, _)| Self::get_distance(left, x, z).total_cmp(&Self::get_distance(right, x, z)))
+      .map(|(eye, heading, origin)| LevelStart::of(&eye, heading, origin))
   }
 
   /// Each arrival, then the actor's spawn, as an eye, a heading and what it is.
   fn list_candidates(spawn: &LevelSpawn) -> impl Iterator<Item = (Vector3d, f32, LevelStartOrigin)> {
     let arrivals = spawn.arrivals.iter().map(|arrival| {
       (
-        Self::to_eye(&arrival.position),
+        Self::get_eye(&arrival.position),
         arrival.angles.y,
         LevelStartOrigin::Arrival,
       )
     });
     let actors = spawn
       .list_kept()
-      .filter(|object| matches!(object.inherited, AlifeObjectInherited::SeActor(_)))
+      .filter(|object| {
+        matches!(
+          object.inherited,
+          AlifeObjectInherited::SeActor(_) | AlifeObjectInherited::ClearSkySeActor(_)
+        )
+      })
       .map(|actor| {
         (
-          Self::to_eye(&actor.position),
-          actor.direction.y,
+          Self::get_eye(&actor.header.position),
+          actor.header.direction.y,
           LevelStartOrigin::Actor,
         )
       });
@@ -110,33 +119,23 @@ impl LevelStartPart {
   }
 
   /// An actor's eye above a place, in the engine's space.
-  fn to_eye(position: &Vector3d) -> Vector3d {
+  fn get_eye(position: &Vector3d) -> Vector3d {
     Vector3d::new(position.x, position.y + Self::ACTOR_EYE_HEIGHT, position.z)
   }
 
-  /// An eye in the renderer's space, turned to a heading as `CActor::MoveActor` turns it: the forward axis of `setHP`
-  /// of the heading.
-  fn to_start(eye: &Vector3d, heading: f32, origin: LevelStartOrigin) -> LevelStart {
-    LevelStart {
-      direction: convert_vector(&Vector3d::new(-heading.sin(), 0.0, heading.cos())),
-      origin,
-      position: convert_vector(eye),
-    }
-  }
-
   /// The middle of an extent in the renderer's space, as the engine's x and z: the conversion is its own inverse.
-  fn to_engine_centre(bounds: &VisualBounds) -> (f32, f32) {
+  fn get_engine_centre(bounds: &VisualBounds) -> (f32, f32) {
     let VisualBounds { bounding_box, .. } = bounds;
     let centre: Vector3d = convert_vector(&Vector3d::new(
-      (bounding_box.min.x + bounding_box.max.x) / 2.0,
-      (bounding_box.min.y + bounding_box.max.y) / 2.0,
-      (bounding_box.min.z + bounding_box.max.z) / 2.0,
+      f32::midpoint(bounding_box.min.x, bounding_box.max.x),
+      f32::midpoint(bounding_box.min.y, bounding_box.max.y),
+      f32::midpoint(bounding_box.min.z, bounding_box.max.z),
     ));
 
     (centre.x, centre.z)
   }
 
-  fn to_distance(position: &Vector3d, x: f32, z: f32) -> f32 {
+  fn get_distance(position: &Vector3d, x: f32, z: f32) -> f32 {
     (position.x - x).powi(2) + (position.z - z).powi(2)
   }
 }

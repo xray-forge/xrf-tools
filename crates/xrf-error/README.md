@@ -1,8 +1,12 @@
 # xrf-error
 
-The error and result types every XRF crate and binary shares: `XrfError`, one enum of failure kinds, and
-`XrfResult<T = ()>`, an alias for `Result<T, XrfError>`. Format crates, the CLI and the desktop app's commands all
-return them, so a failure keeps its kind from the reader that found it to the surface that reports it.
+The error and result types every XRF crate and binary shares:
+
+- `XrfError`, one enum of failure kinds;
+- `XrfResult<T = ()>`, an alias for `Result<T, XrfError>`.
+
+Format crates, the CLI and the desktop app's commands all return them, so a failure keeps its kind from the reader that
+found it to the surface that reports it.
 
 ## Return a typed error
 
@@ -60,9 +64,9 @@ Match on the variant when behavior depends on the cause; the `Display` text is f
 | `Unexpected`            | An internal state that should not occur                                         |
 | `Serde`, `Generic`      | Converted from `serde_json` and boxed `dyn Error` failures                      |
 
-`Cancelled` is control flow, not a failure: it lets a cancellation check compose with `?` and stop a parallel iterator.
-An operation catches its own `Cancelled` and reports what it completed, so one reaching a caller means a missed catch.
-See [xrf-job](../xrf-job/README.md) for cancellation.
+`Cancelled` is control flow, not a failure. It lets a cancellation check use `?` and stop a parallel iterator. An
+operation catches its own `Cancelled` and reports what it completed, so a `Cancelled` reaching a caller means a missed
+catch. See [xrf-job](../xrf-job/README.md) for cancellation.
 
 ## Conversions
 
@@ -78,13 +82,16 @@ See [xrf-job](../xrf-job/README.md) for cancellation.
 Any other error needs an explicit `map_err` to the variant that describes it. Wrapping everything as `Invalid` loses
 distinctions callers act on, such as a missing file (`Io` with `ErrorKind::NotFound`) against an unreadable one.
 
-## Boundaries and checks
+## Errors versus findings
 
-`XrfError` does not serialize. A boundary - an IPC command, a CLI report - carries one as its `Display` text, and what
-a surface reports about the data it judged is that domain's own finding type (`xrf_ltx::LtxFinding`,
-`xrf_environment::EnvironmentFinding`), never an error. A config that breaks its scheme is such a finding; `LtxScheme`
-is a scheme file that cannot be read as a declaration. The crate does not log errors, choose exit codes, or decide how a
-UI shows them.
+- `XrfError` does not serialize. An IPC command or CLI report carries it as its `Display` text.
+- A problem in the data being judged is a finding, not an error: each domain has its own finding type
+  (`xrf_ltx::LtxFinding`, `xrf_environment::EnvironmentFinding`). A config that breaks its scheme is a finding;
+  `LtxScheme` means the scheme file itself cannot be read.
+- The crate does not log errors, choose exit codes, or decide how a UI shows them.
 
-Run `cargo test --locked -p xrf-error` from the repository root. See the [variants, constructors and conversions](src/xrf_error.rs)
-and the [result alias](src/xrf_result.rs).
+## Checks
+
+Run `cargo test --locked -p xrf-error` from the repository root.
+
+Sources: the [variants, constructors and conversions](src/xrf_error.rs) and the [result alias](src/xrf_result.rs).

@@ -1,0 +1,422 @@
+use std::path::PathBuf;
+
+use xrf_chunk::{ChunkLayout, XRayByteOrder};
+use xrf_editable_object::{EditableBone, EditableDescription, EditableMotion, EditableObjectFile, EditableTimeWidth};
+use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
+use xrf_level::DetailModel;
+use xrf_ogf::{OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfModelType};
+use xrf_utils::{StagedFile, format_path};
+
+use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
+use crate::object::compile::tangent_method::TangentMethod;
+use crate::object::decompile::geometry::repeated_faces::RepeatedFaces;
+use crate::object::decompile::geometry::smoothing_inference::SmoothingInference;
+use crate::object::decompile::geometry::source::bone_influences::BoneInfluences;
+use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
+use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
+use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
+use crate::object::decompile::geometry::two_sided_pairs::TwoSidedPairs;
+use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
+use crate::object::decompile::mesh::assembled_mesh::AssembledMesh;
+use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
+use crate::object::decompile::mesh::mesh_kind::MeshKind;
+use crate::object::decompile::object_decompile::ObjectDecompile;
+use crate::object::decompile::object_decompile_report::ObjectDecompileReport;
+use crate::object::decompile::object_decompile_request::ObjectDecompileRequest;
+use crate::object::decompile::object_inference::ObjectInference;
+use crate::object::decompile::skeleton::bone_converter::BoneConverter;
+use crate::object::decompile::skeleton::converted_motions::ConvertedMotions;
+use crate::object::decompile::skeleton::motion_converter::MotionConverter;
+use crate::object::detail_parameters::DetailParameters;
+use crate::provenance::object_provenance::ObjectProvenance;
+use crate::provenance::sidecar::Sidecar;
+
+/// Turns an OGF the Actor Editor exported back into the editable object it was exported from, as near as the OGF
+/// allows: see the crate's documentation for what is recovered and what inferred.
+pub struct ObjectDecompiler;
+
+impl ObjectDecompiler {
+  /// The least points and faces a mesh holds for the Level Editor to load it (`CDB::MODEL::build`).
+  const EDITOR_LEAST_POINTS: usize = 4;
+  const EDITOR_LEAST_FACES: usize = 2;
+
+  /// What every decompiled object infers, since no OGF stores it.
+  const INFERRED: [ObjectInference; 6] = [
+    ObjectInference::SurfaceNames,
+    ObjectInference::SurfaceCompilerShaders,
+    ObjectInference::SurfaceGameMaterials,
+    ObjectInference::MeshName,
+    ObjectInference::Smoothing,
+    ObjectInference::TwoSidedSurfaces,
+  ];
+
+  /// Decompiles the OGF or `.dm` `request` names into its destination `.object`, with an [`ObjectProvenance`] sidecar
+  /// beside it. An existing object or sidecar is refused before the source is read unless the request is forced.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the object or sidecar exists unforced, the source does not read or decompile (see
+  /// [`Self::decompile`] and [`Self::decompile_detail`]), or a file is not written.
+  pub fn decompile_to_path(
+    request: &ObjectDecompileRequest,
+    tool: &str,
+    tool_version: &str,
+  ) -> XrfResult<ObjectDecompileReport> {
+    request.get_outputs().assert_free(request.is_forced)?;
+
+    let bytes: Vec<u8> = std::fs::read(&request.source)
+      .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(&request.source))))?;
+    // Hashed before the reader takes the bytes, so the source is held once.
+    let source_sha256: String = Sidecar::get_sha256_hex(&bytes);
+    let decompile: ObjectDecompile = if XrayExtension::Dm.matches_path(&request.source) {
+      Self::decompile_detail(&DetailModel::read_from_bytes::<XRayByteOrder>(bytes)?)?
+    } else {
+      Self::decompile(&OgfFile::read_from_bytes::<XRayByteOrder>(bytes)?)?
+    };
+    let provenance: ObjectProvenance = ObjectProvenance::of_source_hash(
+      format_path(&request.source).to_string(),
+      source_sha256,
+      tool,
+      tool_version,
+      decompile.inferred.clone(),
+      decompile.tangents,
+    )
+    .with_detail(decompile.detail);
+    let sidecar: PathBuf = request.get_sidecar_path();
+
+    // The sidecar first: an object that failed to publish leaves a stray sidecar, never a decompile taken for an
+    // authored file.
+    StagedFile::write_creating_directories(&sidecar, provenance.to_json()?.as_bytes()).map_err(|error| {
+      XrfError::new_io_error(
+        format!("{} was not written: {error}", format_path(&sidecar)),
+        error.kind(),
+      )
+    })?;
+    decompile
+      .object
+      .write_to_path::<XRayByteOrder, _>(&request.destination)?;
+
+    Ok(ObjectDecompileReport::new(request, &decompile))
+  }
+
+  /// Decompiles an OGF the Actor Editor exported: a skeleton, or a static visual (`MT_NORMAL`, `MT_PROGRESSIVE`, or an
+  /// `MT_HIERRARHY` of them) as a static object without bones.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for another model type, or bones, IK data, vertex layouts or indices that do not hold together.
+  pub fn decompile(file: &OgfFile) -> XrfResult<ObjectDecompile> {
+    match OgfModelType::from_raw(file.header.model_type) {
+      Some(OgfModelType::SkeletonRigid | OgfModelType::SkeletonAnim) => Self::decompile_skeleton(file),
+      Some(OgfModelType::Normal | OgfModelType::Progressive | OgfModelType::Hierarchy) => Self::decompile_static(file),
+      other => Err(XrfError::new_not_implemented_error(format!(
+        "An OGF of model type {} is not decompiled; only skeletons and static visuals are",
+        other.map_or_else(
+          || OgfModelType::label(file.header.model_type),
+          |it| String::from(it.name())
+        )
+      ))),
+    }
+  }
+
+  /// Decompiles a breakable part the Level Editor cut out of a level (`SBPart::Export`, `meshes\brkbl#<N>.ogf`) into
+  /// the static object it was cut from. Its bones are random fragments (`Random.randI`), so they are dropped and the
+  /// points welded across them; each surface takes its fragment bone's game material, split where those differ.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an OGF that is no skeleton, or one whose vertex layouts or indices do not hold together.
+  pub fn decompile_breakable(file: &OgfFile) -> XrfResult<ObjectDecompile> {
+    if OgfModelType::from_raw(file.header.model_type) != Some(OgfModelType::SkeletonRigid) {
+      return Err(XrfError::new_invalid_error(format!(
+        "A breakable part is a rigid skeleton, not a visual of model type {}",
+        OgfModelType::label(file.header.model_type)
+      )));
+    }
+
+    let materials: Vec<&str> = file
+      .ik_data
+      .as_ref()
+      .map(|chunk| chunk.bones.iter().map(|bone| bone.game_material.as_str()).collect())
+      .unwrap_or_default();
+    let mut surfaces: Vec<OgfSurface> = Vec::new();
+
+    for surface in OgfSurface::collect(file)? {
+      let mut by_material: Vec<(&str, Vec<[OgfCorner; 3]>)> = Vec::new();
+
+      for mut triangle in surface.triangles {
+        // The export gives a face's corners its fragment's bone alone.
+        let material: &str = triangle[0]
+          .influences
+          .iter()
+          .next()
+          .and_then(|(bone, _)| materials.get(usize::from(bone)).copied())
+          .unwrap_or(SurfaceDress::DEFAULT_SETTING);
+
+        for corner in &mut triangle {
+          corner.influences = BoneInfluences::NONE;
+        }
+
+        match by_material.iter_mut().find(|(it, _)| *it == material) {
+          Some((_, triangles)) => triangles.push(triangle),
+          None => by_material.push((material, vec![triangle])),
+        }
+      }
+
+      surfaces.extend(by_material.into_iter().map(|(material, triangles)| OgfSurface {
+        texture: surface.texture.clone(),
+        shader: surface.shader.clone(),
+        dress: SurfaceDress {
+          game_material: String::from(material),
+          ..surface.dress.clone()
+        },
+        triangles,
+      }));
+    }
+
+    Ok(Self::assemble_static(
+      Self::assemble(&surfaces, MeshKind::Static)?,
+      0,
+      file.get_description().map(Self::copy_description),
+      Self::get_tangent_method(file),
+    ))
+  }
+
+  /// Decompiles visuals of a compiled level into one static object, welded into one mesh so faces of different visuals
+  /// meet again; visuals of one texture, shader and dress share a surface. The weld, folding and smoothing allow level
+  /// normals one quantisation step.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for no visual, or one whose indices reach past its vertices.
+  pub fn decompile_level_geometry(geometry: &[LevelVisualGeometry]) -> XrfResult<ObjectDecompile> {
+    let mut surfaces: Vec<OgfSurface> = Vec::new();
+
+    for visual in geometry {
+      let surface: OgfSurface = OgfSurface::of_level(visual)?;
+
+      match surfaces
+        .iter_mut()
+        .find(|it| it.texture == surface.texture && it.shader == surface.shader && it.dress == surface.dress)
+      {
+        Some(existing) => existing.triangles.extend(surface.triangles),
+        None => surfaces.push(surface),
+      }
+    }
+
+    let assembled: AssembledMesh = Self::assemble(&surfaces, MeshKind::Static)?;
+    // The Level Editor builds a picking model of every mesh it loads and asserts it holds 4 points and 2 triangles
+    // (`CEditableMesh::GenerateCFModel`, `CDB::MODEL::build`), so a mesh of one face, such as a sector's lone
+    // collision-only face, comes back halved: the same area in two faces.
+    let is_too_small: bool =
+      assembled.mesh.points.len() < Self::EDITOR_LEAST_POINTS || assembled.mesh.faces.len() < Self::EDITOR_LEAST_FACES;
+    let assembled: AssembledMesh = if is_too_small {
+      Self::assemble(
+        &surfaces.iter().map(OgfSurface::halve).collect::<Vec<_>>(),
+        MeshKind::Static,
+      )?
+    } else {
+      assembled
+    };
+    // The object is static and compiles without tangents, so the method recorded for its compile is moot.
+    let mut decompile: ObjectDecompile = Self::assemble_static(assembled, 0, None, TangentMethod::ActorEditor);
+
+    if is_too_small {
+      decompile.inferred.push(ObjectInference::HalvedFace);
+    }
+
+    Ok(decompile)
+  }
+
+  /// Decompiles a detail model (`.dm`, `CDetail`) into a static object of one mesh and one surface, its flags and scale
+  /// range in [`ObjectDecompile::detail`]. A model stores no normal or mirror, so every edge comes back smooth and no
+  /// surface two-sided.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a model of no triangle, or an index past its vertices.
+  pub fn decompile_detail(model: &DetailModel) -> XrfResult<ObjectDecompile> {
+    let surface: OgfSurface = OgfSurface::of_detail(model)?;
+    // The object is static and compiles without tangents, so the method recorded for its compile is moot.
+    let decompile: ObjectDecompile = Self::assemble_static(
+      Self::assemble(std::slice::from_ref(&surface), MeshKind::Static)?,
+      0,
+      None,
+      TangentMethod::ActorEditor,
+    );
+
+    Ok(ObjectDecompile {
+      detail: Some(DetailParameters {
+        flags: model.flags,
+        min_scale: model.min_scale,
+        max_scale: model.max_scale,
+      }),
+      ..decompile
+    })
+  }
+
+  /// A static visual's object: its children's surfaces in one mesh, no bones.
+  fn decompile_static(file: &OgfFile) -> XrfResult<ObjectDecompile> {
+    let surfaces: Vec<OgfSurface> = OgfSurface::collect(file)?;
+
+    Ok(Self::assemble_static(
+      Self::assemble(&surfaces, MeshKind::Static)?,
+      if Self::is_progressive(file) {
+        EditableObjectFile::PROGRESSIVE_FLAG
+      } else {
+        0
+      },
+      file.get_description().map(Self::copy_description),
+      Self::get_tangent_method(file),
+    ))
+  }
+
+  /// A static object of `assembled`'s mesh and surfaces, with `flags` and `description`, and no bones.
+  fn assemble_static(
+    assembled: AssembledMesh,
+    flags: u32,
+    description: Option<EditableDescription>,
+    tangents: TangentMethod,
+  ) -> ObjectDecompile {
+    ObjectDecompile {
+      object: EditableObjectFile {
+        flags,
+        flags_size: EditableObjectFile::FLAGS_SIZE,
+        class_script: None,
+        lods: None,
+        meshes: Some(vec![assembled.mesh]),
+        surfaces: Some(assembled.surfaces),
+        bones: None,
+        embedded_motions: None,
+        motion_references: None,
+        bone_parts: None,
+        actor_transform: None,
+        description,
+        layout: ChunkLayout::default(),
+      },
+      inferred: Self::INFERRED.to_vec(),
+      tangents,
+      detail: None,
+    }
+  }
+
+  /// `surfaces` welded into one mesh of `kind`, faces written again dropped, mirrored copies folded into two-sided
+  /// faces and smoothing inferred.
+  fn assemble(surfaces: &[OgfSurface], kind: MeshKind<'_>) -> XrfResult<AssembledMesh> {
+    let mut welded: WeldedMesh = WeldedMesh::weld(surfaces)?;
+
+    welded.faces = TwoSidedPairs::fold(RepeatedFaces::drop_repeats(std::mem::take(&mut welded.faces)));
+
+    let smoothing: Vec<u32> = SmoothingInference::infer(&welded.faces);
+
+    MeshAssembler::assemble(surfaces, &welded, smoothing, kind)
+  }
+
+  /// A skeleton's object: its children's surfaces in one skinned mesh, its bones and its motions.
+  fn decompile_skeleton(file: &OgfFile) -> XrfResult<ObjectDecompile> {
+    let surfaces: Vec<OgfSurface> = OgfSurface::collect(file)?;
+    let bones: Vec<EditableBone> = BoneConverter::convert(file)?;
+    let bone_names: Vec<String> = bones.iter().map(|bone| bone.definition.name.clone()).collect();
+    let assembled: AssembledMesh = Self::assemble(
+      &surfaces,
+      MeshKind::Skinned {
+        bone_names: &bone_names,
+      },
+    )?;
+    let motions: Option<ConvertedMotions> = MotionConverter::convert::<XRayByteOrder>(file, &bone_names)?;
+    let mut inferred: Vec<ObjectInference> = Self::INFERRED.to_vec();
+
+    inferred.push(ObjectInference::BoneLengths);
+
+    if let Some(motions) = &motions {
+      inferred.push(ObjectInference::MotionCurves);
+
+      if motions.is_lengthened {
+        inferred.push(ObjectInference::MotionLengths);
+      }
+    }
+
+    inferred.sort_unstable();
+
+    Ok(ObjectDecompile {
+      object: EditableObjectFile {
+        flags: EditableObjectFile::DYNAMIC_FLAG
+          | if Self::is_progressive(file) {
+            EditableObjectFile::PROGRESSIVE_FLAG
+          } else {
+            0
+          },
+        flags_size: EditableObjectFile::FLAGS_SIZE,
+        class_script: file.user_data.as_ref().map(|chunk| Self::trim_text(&chunk.user_data)),
+        // Exported as a line (`w_string`), so its first line, as the engine reads it.
+        lods: file.lods.as_ref().map(|chunk| String::from(chunk.get_visual_name())),
+        meshes: Some(vec![assembled.mesh]),
+        surfaces: Some(assembled.surfaces),
+        bones: Some(bones),
+        embedded_motions: motions
+          .as_ref()
+          .map(|it| EditableMotion::write_list::<XRayByteOrder>(&it.motions))
+          .transpose()?,
+        motion_references: file
+          .kinematics
+          .as_ref()
+          .map(|chunk| chunk.motion_refs.clone())
+          .filter(|references| !references.is_empty()),
+        bone_parts: motions.map(|it| it.parts),
+        actor_transform: None,
+        description: file.get_description().map(Self::copy_description),
+        layout: ChunkLayout::default(),
+      },
+      inferred,
+      tangents: Self::get_tangent_method(file),
+      detail: None,
+    })
+  }
+
+  /// The tangent method `file`'s basis was made with: MikkTSpace where its convertor names Blender, else the Actor
+  /// Editor's. On Blender models MikkTSpace gives the stored tangent back within a degree on 65% to 97% of vertices
+  /// against the editor's under 42%, and on every other model the editor's pass does better.
+  fn get_tangent_method(file: &OgfFile) -> TangentMethod {
+    let is_blender: bool = file
+      .get_description()
+      .is_some_and(|description| description.convertor.to_ascii_lowercase().contains("blender"));
+
+    if is_blender {
+      TangentMethod::MikkTSpace
+    } else {
+      TangentMethod::ActorEditor
+    }
+  }
+
+  /// The text of a string chunk the OGF keeps whole, up to the terminator the export wrote: the object stores it as a
+  /// string of its own, terminated again on write.
+  pub(crate) fn trim_text(stored: &str) -> String {
+    String::from(stored.split('\0').next().unwrap_or_default())
+  }
+
+  /// Whether any of the OGF's children carries sliding windows, which the export builds only for a progressive
+  /// object.
+  fn is_progressive(file: &OgfFile) -> bool {
+    file.swi_data.as_ref().is_some_and(|swi| !swi.windows.is_empty())
+      || file
+        .children
+        .iter()
+        .flat_map(|children| &children.nested)
+        .any(Self::is_progressive)
+  }
+
+  /// The object's own description, which the OGF's description copied.
+  fn copy_description(description: &OgfDescriptionChunk) -> EditableDescription {
+    EditableDescription {
+      creator: description.creator.clone(),
+      created_at: description.created_at,
+      modifier: description.editor.clone(),
+      modified_at: description.edited_at,
+      time_width: match description.time_width {
+        OgfDescriptionTimeWidth::Narrow => EditableTimeWidth::Seconds32,
+        OgfDescriptionTimeWidth::Wide => EditableTimeWidth::Seconds64,
+      },
+    }
+  }
+}

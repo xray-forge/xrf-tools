@@ -1,12 +1,12 @@
 use image::imageops::{self, FilterType};
 use image::{ImageBuffer, Luma};
 use serde::Serialize;
-use xrf_dds::{DdsFile, RgbaImage};
-use xrf_error::XrfResult;
+use xrf_dds::RgbaImage;
 
-use crate::alignment::BumpAlignmentVerdict;
+use crate::alignment::{BumpAlignmentLevel, BumpAlignmentVerdict};
 
-/// One value a texel, as both textures are brought to before they are compared.
+/// One value a texel, as both textures are compared: `f32` storage for a texture-sized buffer, the correlation taken
+/// in `f64`.
 type Field = ImageBuffer<Luma<f32>, Vec<f32>>;
 
 /// Whether a bump belongs to its diffuse: how closely the bump's edges follow the diffuse's, against how closely they
@@ -26,11 +26,11 @@ pub struct BumpAlignment {
   pub bump_size: [u32; 2],
   /// The correlation of the diffuse's edges with the bump's, texel for texel; `None` where one carries nothing to
   /// compare.
-  pub correlation: Option<f32>,
+  pub correlation: Option<f64>,
   /// The highest correlation of the bump shifted along the tile, what the two share by chance.
-  pub chance: Option<f32>,
+  pub chance: Option<f64>,
   /// How far the correlation rises over chance, which the verdict judges.
-  pub lift: Option<f32>,
+  pub lift: Option<f64>,
   pub verdict: BumpAlignmentVerdict,
 }
 
@@ -43,22 +43,16 @@ impl BumpAlignment {
   /// times across the tile does not line up with itself.
   pub const CHANCE_SHIFTS: u32 = 8;
   /// The spread a field's values stay under when it carries nothing to compare.
-  const FEATURELESS_SPREAD: f32 = 1e-3;
+  const FEATURELESS_SPREAD: f64 = 1e-3;
+  /// Correlations a comparison takes: the tile as it lies, and each shift measuring chance.
+  const SHIFTS: usize = Self::CHANCE_SHIFTS as usize + 1;
 
   /// Compares a diffuse with its bump, each read at its largest level within [`Self::MEASURED_SIDE`].
   ///
-  /// # Errors
-  ///
-  /// Returns an error when either level does not decode.
-  pub fn read(diffuse: &DdsFile, bump: &DdsFile) -> XrfResult<Self> {
-    let (diffuse_metadata, bump_metadata) = (diffuse.metadata(), bump.metadata());
-
-    Ok(Self::measure(
-      [diffuse_metadata.width, diffuse_metadata.height],
-      &diffuse.decode_rgba(diffuse_metadata.get_level_within(Self::MEASURED_SIDE))?,
-      [bump_metadata.width, bump_metadata.height],
-      &bump.decode_rgba(bump_metadata.get_level_within(Self::MEASURED_SIDE))?,
-    ))
+  /// A caller comparing many pairs can let each file go once [`BumpAlignmentLevel::read`] has read it: the comparison
+  /// takes most of the time.
+  pub fn compare(diffuse: &BumpAlignmentLevel, bump: &BumpAlignmentLevel) -> Self {
+    Self::measure(diffuse.base_size, &diffuse.image, bump.base_size, &bump.image)
   }
 
   /// Compares decoded levels of a diffuse and a bump whose base levels are `diffuse_size` and `bump_size`.
@@ -81,27 +75,30 @@ impl BumpAlignment {
       return featureless();
     }
 
-    let edges: Field = Self::edges_of(Self::colour_of(diffuse), width, height);
-    let relief: Field = Self::edges_of(Self::normal_of(bump), width, height);
-    let Some(correlation) = Self::correlation(&edges, &relief, (0, 0)) else {
+    let edges: Field = Self::colour_edges(diffuse, width, height);
+    let relief: Field = Self::normal_edges(bump, width, height);
+    let mut shifts: [(u32, u32); Self::SHIFTS] = [(0, 0); Self::SHIFTS];
+
+    // The tile as it lies first, then the shifts that measure chance.
+    for (index, shift) in (1..=Self::CHANCE_SHIFTS).zip(&mut shifts[1..]) {
+      // R2's generator, the plastic number's inverse and its square.
+      let (across, down): (f64, f64) = (
+        (f64::from(index) * 0.754_877_666).fract(),
+        (f64::from(index) * 0.569_840_291).fract(),
+      );
+
+      *shift = (
+        ((f64::from(width) * across) as u32).max(1),
+        ((f64::from(height) * down) as u32).max(1),
+      );
+    }
+
+    let [aligned, shifted @ ..] = Self::correlations(&edges, &relief, shifts);
+    let Some(correlation) = aligned else {
       return featureless();
     };
-    let chance: f32 = (1..=Self::CHANCE_SHIFTS)
-      .filter_map(|index| {
-        // R2's generator, the plastic number's inverse and its square.
-        let (across, down): (f64, f64) = (
-          (f64::from(index) * 0.754_877_666).fract(),
-          (f64::from(index) * 0.569_840_291).fract(),
-        );
-        let shift: (u32, u32) = (
-          ((f64::from(width) * across) as u32).max(1),
-          ((f64::from(height) * down) as u32).max(1),
-        );
-
-        Self::correlation(&edges, &relief, shift)
-      })
-      .fold(f32::MIN, f32::max);
-    let lift: f32 = correlation - chance;
+    let chance: f64 = shifted.into_iter().flatten().fold(f64::MIN, f64::max);
+    let lift: f64 = correlation - chance;
 
     Self {
       diffuse_size,
@@ -115,94 +112,131 @@ impl BumpAlignment {
 
   /// The diffuse's colour as it is stored, a channel each: an edge is where the picture changes, in hue as much as in
   /// lightness, whatever light it decodes to.
-  fn colour_of(image: &RgbaImage) -> [Field; 3] {
-    [0, 1, 2].map(|channel| {
-      Field::from_fn(image.width(), image.height(), |x, y| {
-        Luma([f32::from(image.get_pixel(x, y)[channel]) / 255.0])
-      })
-    })
+  fn colour_edges(image: &RgbaImage, width: u32, height: u32) -> Field {
+    Self::edges_of(image, [0, 1, 2], |value| value / 255.0, width, height)
   }
 
   /// The bump's normal, a component each: stored reversed behind the gloss, `x` in alpha, `y` in blue and `z` in
   /// green. The gloss is left out, being no part of the relief.
-  fn normal_of(image: &RgbaImage) -> [Field; 3] {
-    [3, 2, 1].map(|channel| {
-      Field::from_fn(image.width(), image.height(), |x, y| {
-        Luma([f32::from(image.get_pixel(x, y)[channel]) / 255.0 * 2.0 - 1.0])
-      })
-    })
+  fn normal_edges(image: &RgbaImage, width: u32, height: u32) -> Field {
+    Self::edges_of(image, [3, 2, 1], |value| value / 255.0 * 2.0 - 1.0, width, height)
   }
 
-  /// How sharply a picture of `channels` changes at each texel, at `width` by `height`: the length of every channel's
-  /// gradient together.
-  fn edges_of(channels: [Field; 3], width: u32, height: u32) -> Field {
-    let gradients: [Field; 3] = channels.map(|channel| Self::gradient_of(&Self::resized(channel, width, height)));
+  /// How sharply the picture in `channels` of `image` changes at each texel at `width` by `height`, each byte read
+  /// through `value`: every channel's gradient length together.
+  fn edges_of(image: &RgbaImage, channels: [usize; 3], value: impl Fn(f32) -> f32, width: u32, height: u32) -> Field {
+    if image.dimensions() == (width, height) {
+      let mut table: [f32; 256] = [0.0; 256];
 
-    Field::from_fn(width, height, |x, y| {
-      Luma([gradients
-        .iter()
-        .map(|gradient| gradient.get_pixel(x, y)[0].powi(2))
-        .sum::<f32>()
-        .sqrt()])
-    })
-  }
+      for (byte, entry) in (0..=u8::MAX).zip(&mut table) {
+        *entry = value(f32::from(byte));
+      }
 
-  /// The length of a field's gradient, by Sobel's kernels across the tile's wrapped edges.
-  fn gradient_of(field: &Field) -> Field {
-    let (width, height): (u32, u32) = field.dimensions();
-    let at = |x: u32, y: u32, dx: i64, dy: i64| {
-      let column: u32 = (i64::from(x) + dx).rem_euclid(i64::from(width)) as u32;
-      let row: u32 = (i64::from(y) + dy).rem_euclid(i64::from(height)) as u32;
+      let texels: &[u8] = image.as_raw();
 
-      field.get_pixel(column, row)[0]
-    };
-
-    Field::from_fn(width, height, |x, y| {
-      let across: f32 = at(x, y, 1, -1) + 2.0 * at(x, y, 1, 0) + at(x, y, 1, 1)
-        - at(x, y, -1, -1)
-        - 2.0 * at(x, y, -1, 0)
-        - at(x, y, -1, 1);
-      let down: f32 = at(x, y, -1, 1) + 2.0 * at(x, y, 0, 1) + at(x, y, 1, 1)
-        - at(x, y, -1, -1)
-        - 2.0 * at(x, y, 0, -1)
-        - at(x, y, 1, -1);
-
-      Luma([across.hypot(down)])
-    })
-  }
-
-  fn resized(field: Field, width: u32, height: u32) -> Field {
-    if field.dimensions() == (width, height) {
-      return field;
+      return Self::edges_from(width, height, |channel, texel| {
+        table[usize::from(texels[texel * 4 + channels[channel]])]
+      });
     }
 
-    imageops::resize(&field, width, height, FilterType::Triangle)
+    let planes: [Field; 3] = channels.map(|channel| {
+      let mut plane: Field = Field::new(image.width(), image.height());
+      let values: &mut [f32] = &mut plane;
+
+      for (texel, pixel) in values.iter_mut().zip(image.as_raw().as_chunks::<4>().0) {
+        *texel = value(f32::from(pixel[channel]));
+      }
+
+      imageops::resize(&plane, width, height, FilterType::Triangle)
+    });
+
+    Self::edges_from(width, height, |channel, texel| planes[channel].as_raw()[texel])
   }
 
-  /// Pearson's correlation of two fields of one size, the second read `shift` texels along the tile; `None` where
-  /// either is as good as constant.
-  fn correlation(first: &Field, second: &Field, shift: (u32, u32)) -> Option<f32> {
+  /// Three channels' Sobel gradient lengths together at each texel, wrapping at the tile's edges; `sample` answers a
+  /// channel's value at a texel index.
+  fn edges_from(width: u32, height: u32, sample: impl Fn(usize, usize) -> f32) -> Field {
+    let (columns, rows): (usize, usize) = (width as usize, height as usize);
+    let mut edges: Field = Field::new(width, height);
+    let values: &mut [f32] = &mut edges;
+
+    for (y, row) in values.chunks_exact_mut(columns).enumerate() {
+      // The first texel of the row above, this one and the one below.
+      let above: usize = Self::wrapped(y + rows - 1, rows) * columns;
+      let middle: usize = y * columns;
+      let below: usize = Self::wrapped(y + 1, rows) * columns;
+
+      for (x, edge) in row.iter_mut().enumerate() {
+        let (left, right): (usize, usize) = (Self::wrapped(x + columns - 1, columns), Self::wrapped(x + 1, columns));
+        let gradients: [f32; 3] = std::array::from_fn(|channel| {
+          let at = |row_start: usize, column: usize| sample(channel, row_start + column);
+          let across: f32 = at(above, right) + 2.0 * at(middle, right) + at(below, right)
+            - at(above, left)
+            - 2.0 * at(middle, left)
+            - at(below, left);
+          let down: f32 = at(below, left) + 2.0 * at(below, x) + at(below, right)
+            - at(above, left)
+            - 2.0 * at(above, x)
+            - at(above, right);
+
+          across.hypot(down)
+        });
+
+        *edge = gradients.iter().map(|gradient| gradient.powi(2)).sum::<f32>().sqrt();
+      }
+    }
+
+    edges
+  }
+
+  /// `index`, less than a `length` past the axis's end, wrapped back into it without a division per texel.
+  fn wrapped(index: usize, length: usize) -> usize {
+    if index >= length { index - length } else { index }
+  }
+
+  /// Pearson's correlation of two same-sized fields at each of `shifts`, the second read that many texels along the
+  /// tile; `None` where either is as good as constant.
+  ///
+  /// One pass serves every shift, and each answer is exactly what correlating at that shift alone gives.
+  fn correlations(first: &Field, second: &Field, shifts: [(u32, u32); Self::SHIFTS]) -> [Option<f64>; Self::SHIFTS] {
     let (width, height): (u32, u32) = first.dimensions();
     let count: f64 = f64::from(width) * f64::from(height);
     let mean = |field: &Field| field.pixels().map(|it| f64::from(it[0])).sum::<f64>() / count;
     let (first_mean, second_mean): (f64, f64) = (mean(first), mean(second));
-    let (mut covariance, mut first_variance, mut second_variance): (f64, f64, f64) = (0.0, 0.0, 0.0);
+    let mut first_variance: f64 = 0.0;
+    let mut covariances: [f64; Self::SHIFTS] = [0.0; Self::SHIFTS];
+    let mut second_variances: [f64; Self::SHIFTS] = [0.0; Self::SHIFTS];
+    let (columns, rows): (usize, usize) = (width as usize, height as usize);
+    let offsets: [(usize, usize); Self::SHIFTS] =
+      shifts.map(|(across, down)| ((across % width) as usize, (down % height) as usize));
+    let second_values: &[f32] = second.as_raw();
 
-    for (x, y, value) in first.enumerate_pixels() {
-      let a: f64 = f64::from(value[0]) - first_mean;
-      let b: f64 = f64::from(second.get_pixel((x + shift.0) % width, (y + shift.1) % height)[0]) - second_mean;
+    for (y, first_row) in first.as_raw().chunks_exact(columns).enumerate() {
+      let second_rows: [&[f32]; Self::SHIFTS] =
+        offsets.map(|(_, down)| &second_values[Self::wrapped(y + down, rows) * columns..][..columns]);
 
-      covariance += a * b;
-      first_variance += a * a;
-      second_variance += b * b;
+      for (x, value) in first_row.iter().enumerate() {
+        let a: f64 = f64::from(*value) - first_mean;
+
+        first_variance += a * a;
+
+        for (shift, ((across, _), second_row)) in offsets.iter().zip(&second_rows).enumerate() {
+          let b: f64 = f64::from(second_row[Self::wrapped(x + across, columns)]) - second_mean;
+
+          covariances[shift] += a * b;
+          second_variances[shift] += b * b;
+        }
+      }
     }
 
-    let spread: f64 = f64::from(Self::FEATURELESS_SPREAD).powi(2) * count;
+    let spread: f64 = Self::FEATURELESS_SPREAD.powi(2) * count;
 
-    if first_variance < spread || second_variance < spread {
-      return None;
-    }
+    std::array::from_fn(|shift| {
+      if first_variance < spread || second_variances[shift] < spread {
+        return None;
+      }
 
-    Some((covariance / (first_variance * second_variance).sqrt()) as f32)
+      Some(covariances[shift] / (first_variance * second_variances[shift]).sqrt())
+    })
   }
 }

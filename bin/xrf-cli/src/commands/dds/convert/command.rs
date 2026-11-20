@@ -8,27 +8,24 @@ use xrf_utils::format_path;
 
 use super::report::DdsConvertReport;
 use crate::commands::dds::dds_encode_arguments::DdsEncodeArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct ConvertCommand;
+pub(crate) struct ConvertCommand;
 
 impl GenericCommand for ConvertCommand {
   fn operation(&self) -> &'static str {
     "convert"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path of the dds file to read")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Re-encode a DDS file into another format, with its mip chain rebuilt")
-      .arg(
-        Arg::new("path")
-          .help("Path of the dds file to read")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path of the dds file to write")
@@ -65,7 +62,7 @@ impl GenericCommand for ConvertCommand {
   /// The source is decoded once and reduced once; every candidate is then encoded from those same levels, so a
   /// comparison weighs formats rather than weighing one format against a differently built chain.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches.get_one("path").expect("Expected valid source path");
+    let source: &PathBuf = InputArgument::of(matches);
     let destination: &PathBuf = matches.get_one("dest").expect("Expected valid destination path");
     let candidate: DdsEncodeCandidate = Self::get_candidate(matches)?;
     let quality: Quality = DdsEncodeArguments::quality_of(matches);

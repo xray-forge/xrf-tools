@@ -84,6 +84,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "alsa"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "812947049edcd670a82cd5c73c3661d2e58468577ba8489de58e1a73c04cbd5d"
+dependencies = [
+ "alsa-sys",
+ "bitflags 2.13.2",
+ "cfg-if",
+ "libc",
+]
+
+[[package]]
+name = "alsa-sys"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad7569085a265dd3f607ebecce7458eaab2132a84393534c95b18dcbc3f31e04"
+dependencies = [
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -170,6 +192,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bc62ac97cc33321f50863d514c3bc38a453947a8f9e781137e47c7401020aed"
 
 [[package]]
+name = "arbitrary-chunks"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ad8689a486416c401ea15715a4694de30054248ec627edbf31f49cb64ee4086"
+
+[[package]]
 name = "arg_enum_proc_macro"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -217,6 +245,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_no_alloc"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55ca83137a482d61d916ceb1eba52a684f98004f18e0cafea230fe5579c178a3"
+
+[[package]]
 name = "ast_node"
 version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -255,6 +289,27 @@ name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
+
+[[package]]
+name = "audionimbus"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e391ffd8257606bd4c29c4957cddd860e60d657c6b73a675cb3e1259faa650b"
+dependencies = [
+ "audionimbus-sys",
+ "bitflags 2.13.2",
+ "slotmap",
+ "smallvec",
+]
+
+[[package]]
+name = "audionimbus-sys"
+version = "4.8.2-rc.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5fb68e9595849919611dd5d7f57fe19c90b344bcee8a67484bf1388e37c9e68"
+dependencies = [
+ "bindgen 0.71.1",
+]
 
 [[package]]
 name = "autocfg"
@@ -333,6 +388,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mikktspace"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bff34eb29ff4b8a8688bc7299f14fb6b597461ca80fec03ed7d22939ab33e48f"
+
+[[package]]
+name = "bindgen"
+version = "0.71.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f58bf3d7db68cfbac37cfc485a8d711e87e064c3d0fe0435b92f7a407f9d6b3"
+dependencies = [
+ "bitflags 2.13.2",
+ "cexpr",
+ "clang-sys",
+ "itertools 0.13.0",
+ "log",
+ "prettyplease 0.2.37",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash 2.1.3",
+ "shlex 1.3.0",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.73.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -342,12 +423,12 @@ dependencies = [
  "cexpr",
  "clang-sys",
  "log",
- "prettyplease",
+ "prettyplease 0.3.0",
  "proc-macro2",
  "quote",
  "regex",
  "rustc-hash 2.1.3",
- "shlex",
+ "shlex 2.0.1",
  "syn 3.0.9",
 ]
 
@@ -418,6 +499,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "block-pseudorand"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2097358495d244a0643746f4d13eedba4608137008cf9dec54e53a3b700115a6"
+dependencies = [
+ "chiapos-chacha8",
+ "nanorand",
 ]
 
 [[package]]
@@ -633,7 +724,7 @@ dependencies = [
  "find-msvc-tools",
  "jobserver",
  "libc",
- "shlex",
+ "shlex 2.0.1",
 ]
 
 [[package]]
@@ -683,6 +774,15 @@ name = "cfg_aliases"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
+
+[[package]]
+name = "chiapos-chacha8"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33f8be573a85f6c2bc1b8e43834c07e32f95e489b914bf856c0549c3c269cd0a"
+dependencies = [
+ "rayon",
+]
 
 [[package]]
 name = "chrono"
@@ -896,6 +996,50 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f8f80099a98041a3d1622845c271458a2d73e688351bf3cb999266764b81d48"
 
 [[package]]
+name = "coreaudio-rs"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d5d7dca3ebcf65a035582c9ad4385371a9d9ee6537474d2a278f4e1e475bb58"
+dependencies = [
+ "bitflags 2.13.2",
+ "libc",
+ "objc2-audio-toolbox",
+ "objc2-core-audio",
+ "objc2-core-audio-types",
+ "objc2-core-foundation",
+]
+
+[[package]]
+name = "cpal"
+version = "0.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f02e8d0327b42d3e2e4ab2119af397344eb9fc54a34bf0ddeaa1277af8681f1"
+dependencies = [
+ "alsa",
+ "block2",
+ "coreaudio-rs",
+ "dasp_sample",
+ "jni 0.22.4",
+ "js-sys",
+ "libc",
+ "mach2",
+ "ndk",
+ "ndk-context",
+ "num-derive",
+ "num-traits",
+ "objc2",
+ "objc2-audio-toolbox",
+ "objc2-avf-audio",
+ "objc2-core-audio",
+ "objc2-core-audio-types",
+ "objc2-core-foundation",
+ "objc2-foundation",
+ "web-sys",
+ "windows",
+ "windows-core",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -915,6 +1059,32 @@ dependencies = [
 
 [[package]]
 name = "criterion"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b12d017a929603d80db1831cd3a24082f8137ce19c69e6447f54f5fc8d692f"
+dependencies = [
+ "anes",
+ "cast",
+ "ciborium",
+ "clap",
+ "criterion-plot 0.5.0",
+ "is-terminal",
+ "itertools 0.10.5",
+ "num-traits",
+ "once_cell",
+ "oorandom",
+ "plotters",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tinytemplate",
+ "walkdir",
+]
+
+[[package]]
+name = "criterion"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "950046b2aa2492f9a536f5f4f9a3de7b9e2476e575e05bd6c333371add4d98f3"
@@ -924,7 +1094,7 @@ dependencies = [
  "cast",
  "ciborium",
  "clap",
- "criterion-plot",
+ "criterion-plot 0.8.2",
  "itertools 0.13.0",
  "num-traits",
  "oorandom",
@@ -934,6 +1104,16 @@ dependencies = [
  "serde_json",
  "tinytemplate",
  "walkdir",
+]
+
+[[package]]
+name = "criterion-plot"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
+dependencies = [
+ "cast",
+ "itertools 0.10.5",
 ]
 
 [[package]]
@@ -1058,6 +1238,12 @@ dependencies = [
  "quote",
  "syn 3.0.9",
 ]
+
+[[package]]
+name = "dasp_sample"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
 
 [[package]]
 name = "data-url"
@@ -1473,6 +1659,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "extended"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af9673d8203fcb076b19dfd17e38b3d4ae9f44959416ea532ce72415a6020365"
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1710,15 +1902,6 @@ dependencies = [
  "memchr",
  "pin-project-lite",
  "slab",
-]
-
-[[package]]
-name = "fxhash"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
-dependencies = [
- "byteorder",
 ]
 
 [[package]]
@@ -2536,6 +2719,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "is-terminal"
+version = "0.4.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
+dependencies = [
+ "hermit-abi",
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "is-wsl"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2559,6 +2753,15 @@ checksum = "a396f76fd253fab9945bb4c6080f515d0c4036bc30219462d199b58886fd37b4"
 dependencies = [
  "libc",
  "num_cpus",
+]
+
+[[package]]
+name = "itertools"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -2676,6 +2879,36 @@ dependencies = [
  "thiserror 1.0.69",
  "walkdir",
  "windows-sys 0.45.0",
+]
+
+[[package]]
+name = "jni"
+version = "0.22.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5efd9a482cf3a427f00d6b35f14332adc7902ce91efb778580e180ff90fa3498"
+dependencies = [
+ "cfg-if",
+ "combine",
+ "jni-macros",
+ "jni-sys 0.4.1",
+ "log",
+ "simd_cesu8",
+ "thiserror 2.0.21",
+ "walkdir",
+ "windows-link",
+]
+
+[[package]]
+name = "jni-macros"
+version = "0.22.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a00109accc170f0bdb141fed3e393c565b6f5e072365c3bd58f5b062591560a3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rustc_version",
+ "simd_cesu8",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -2955,6 +3188,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mach2"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dae608c151f68243f2b000364e1f7b186d9c29845f7d2d85bd31b9ad77ad552b"
+
+[[package]]
 name = "macro_rules_attribute"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3131,6 +3370,12 @@ dependencies = [
  "indexmap 2.14.2",
  "rustc-hash 1.1.0",
 ]
+
+[[package]]
+name = "nanorand"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "729eb334247daa1803e0a094d0a5c55711b85571179f5ec6e53eccfdf7008958"
 
 [[package]]
 name = "ndk"
@@ -3379,6 +3624,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "objc2-audio-toolbox"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6948501a91121d6399b79abaa33a8aa4ea7857fe019f341b8c23ad6e81b79b08"
+dependencies = [
+ "bitflags 2.13.2",
+ "libc",
+ "objc2",
+ "objc2-core-audio",
+ "objc2-core-audio-types",
+ "objc2-core-foundation",
+ "objc2-foundation",
+]
+
+[[package]]
+name = "objc2-avf-audio"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13a380031deed8e99db00065c45937da434ca987c034e13b87e4441f9e4090be"
+dependencies = [
+ "bitflags 2.13.2",
+ "objc2",
+ "objc2-foundation",
+]
+
+[[package]]
 name = "objc2-cloud-kit"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3387,6 +3658,29 @@ dependencies = [
  "bitflags 2.13.2",
  "objc2",
  "objc2-foundation",
+]
+
+[[package]]
+name = "objc2-core-audio"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1eebcea8b0dbff5f7c8504f3107c68fc061a3eb44932051c8cf8a68d969c3b2"
+dependencies = [
+ "dispatch2",
+ "objc2",
+ "objc2-core-audio-types",
+ "objc2-core-foundation",
+ "objc2-foundation",
+]
+
+[[package]]
+name = "objc2-core-audio-types"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a89f2ec274a0cf4a32642b2991e8b351a404d290da87bb6a9a9d8632490bd1c"
+dependencies = [
+ "bitflags 2.13.2",
+ "objc2",
 ]
 
 [[package]]
@@ -3406,7 +3700,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a180dd8642fa45cdb7dd721cd4c11b1cadd4929ce112ebd8b9f5803cc79d536"
 dependencies = [
  "bitflags 2.13.2",
+ "block2",
  "dispatch2",
+ "libc",
  "objc2",
 ]
 
@@ -3606,6 +3902,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "obvhs"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e079e5dff9fc17017bfb526d5b71fe077e603de662e4b22f6deb4b6b36e5895"
+dependencies = [
+ "bytemuck",
+ "glam",
+ "half",
+ "log",
+ "rayon",
+ "rdst",
+ "static_assertions",
+ "thread_local",
+]
+
+[[package]]
 name = "offset-allocator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3744,6 +4056,12 @@ dependencies = [
  "smallvec",
  "windows-link",
 ]
+
+[[package]]
+name = "partition"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "947f833aaa585cf12b8ec7c0476c98784c49f33b861376ffc84ed92adebf2aba"
 
 [[package]]
 name = "paste"
@@ -3939,6 +4257,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "plotters"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aeb6f403d7a4911efb1e33402027fc44f29b5bf6def3effcc22d7bb75f2b747"
+dependencies = [
+ "num-traits",
+ "plotters-backend",
+ "plotters-svg",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "plotters-backend"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df42e13c12958a16b3f7f4386b9ab1f3e7933914ecea48da7139435263a4172a"
+
+[[package]]
+name = "plotters-svg"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51bae2ac328883f7acdfea3d66a7c35751187f870bc81f94563733a154d7a670"
+dependencies = [
+ "plotters-backend",
+]
+
+[[package]]
 name = "png"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4016,6 +4362,16 @@ name = "presser"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
+
+[[package]]
+name = "prettyplease"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.119",
+]
 
 [[package]]
 name = "prettyplease"
@@ -4333,6 +4689,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "rdst"
+version = "0.20.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e7970b4e577b76a96d5e56b5f6662b66d1a4e1f5bb026ee118fc31b373c2752"
+dependencies = [
+ "arbitrary-chunks",
+ "block-pseudorand",
+ "criterion 0.5.1",
+ "partition",
+ "rayon",
+ "tikv-jemallocator",
+ "voracious_radix_sort",
+]
+
+[[package]]
 name = "read-fonts"
 version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4527,6 +4898,12 @@ checksum = "9da7f59328b09405b181fee1018925fad50f157afb43c0c0f5c522c256dd5907"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "rtrb"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5974e397833d890f2f74963408e0d4a6cd8eda2f6a445ae06750291b5d7a997e"
 
 [[package]]
 name = "rustc-hash"
@@ -4859,6 +5236,12 @@ dependencies = [
 
 [[package]]
 name = "shlex"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
+name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
@@ -4868,6 +5251,16 @@ name = "simd-adler32"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a219298ac11a56ea9a6d2120044824d6f01aeb034955e7af7bc16858527deea"
+
+[[package]]
+name = "simd_cesu8"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11031e251abf8611c80f460e19dbdeb54a66db918e49c65a7065b46ac7aec520"
+dependencies = [
+ "rustc_version",
+ "simdutf8",
+]
 
 [[package]]
 name = "simd_helpers"
@@ -5385,9 +5778,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7edef6a96b696d4e0cab5ee9ebb7ca155ed95f30a6b45bbb8b97d2727f02424"
 dependencies = [
  "lazy_static",
+ "symphonia-codec-pcm",
  "symphonia-codec-vorbis",
  "symphonia-core",
+ "symphonia-format-riff",
  "symphonia-metadata",
+]
+
+[[package]]
+name = "symphonia-codec-pcm"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e04ba75686acbe43542fdd374571195f0530c0b7785ca25cc6840e9c6c4b6eea"
+dependencies = [
+ "log",
+ "symphonia-core",
 ]
 
 [[package]]
@@ -5424,6 +5829,18 @@ dependencies = [
  "log",
  "num-complex",
  "smallvec",
+]
+
+[[package]]
+name = "symphonia-format-riff"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ff70929083a8c1a5f6cd7c904b6071c7914ad04739b510c2f7239dfc9b7dabe"
+dependencies = [
+ "extended",
+ "log",
+ "symphonia-core",
+ "symphonia-metadata",
 ]
 
 [[package]]
@@ -5538,7 +5955,7 @@ dependencies = [
  "gdkwayland-sys",
  "gdkx11-sys",
  "gtk",
- "jni",
+ "jni 0.21.1",
  "libc",
  "log",
  "ndk",
@@ -5600,7 +6017,7 @@ dependencies = [
  "gtk",
  "heck 0.5.0",
  "http",
- "jni",
+ "jni 0.21.1",
  "libc",
  "log",
  "mime",
@@ -5808,7 +6225,7 @@ dependencies = [
  "dpi",
  "gtk",
  "http",
- "jni",
+ "jni 0.21.1",
  "objc2",
  "objc2-ui-kit",
  "objc2-web-kit",
@@ -5831,7 +6248,7 @@ checksum = "e1aa9d8b7a120f879f44fdc1053f7b7dbf416bf0bbc6a72b714dec46b782b52f"
 dependencies = [
  "gtk",
  "http",
- "jni",
+ "jni 0.21.1",
  "log",
  "objc2",
  "objc2-app-kit",
@@ -5980,6 +6397,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad99c4c6d32803332c548b1af0540b357b3f5fc0be8f6c6bfe8b2e6ae784070"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "tikv-jemalloc-sys"
+version = "0.5.4+5.3.0-patched"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9402443cb8fd499b6f327e40565234ff34dbda27460c5b47db0db77443dd85d1"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
+name = "tikv-jemallocator"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "965fe0c26be5c56c94e38ba547249074803efd52adfb66de62107d95aab3eaca"
+dependencies = [
+ "libc",
+ "tikv-jemalloc-sys",
 ]
 
 [[package]]
@@ -6543,6 +6980,15 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "voracious_radix_sort"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "446e7ffcb6c27a71d05af7e51ef2ee5b71c48424b122a832f2439651e1914899"
+dependencies = [
+ "rayon",
+]
 
 [[package]]
 name = "vswhom"
@@ -7379,7 +7825,7 @@ dependencies = [
  "gtk",
  "http",
  "javascriptcore-rs",
- "jni",
+ "jni 0.21.1",
  "libc",
  "ndk",
  "objc2",
@@ -7472,6 +7918,7 @@ dependencies = [
  "tauri-plugin-store",
  "windows",
  "xrf-app-archives",
+ "xrf-app-audio",
  "xrf-app-configs",
  "xrf-app-core",
  "xrf-app-dialogs",
@@ -7485,10 +7932,13 @@ dependencies = [
  "xrf-app-textures",
  "xrf-app-translations",
  "xrf-app-visuals",
+ "xrf-audio",
  "xrf-build-info",
  "xrf-env-flags",
+ "xrf-error",
  "xrf-ipc-typescript",
  "xrf-job",
+ "xrf-profiler",
  "xrf-renderer",
  "xrf-test-utils",
  "xrf-utils",
@@ -7506,9 +7956,11 @@ dependencies = [
  "uuid",
  "xrf-animation-envelope",
  "xrf-anm",
+ "xrf-app-audio",
  "xrf-app-core",
  "xrf-archive",
  "xrf-archive-stats",
+ "xrf-audio",
  "xrf-chunk",
  "xrf-efd",
  "xrf-error",
@@ -7532,6 +7984,20 @@ dependencies = [
  "xrf-thm",
  "xrf-utils",
  "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-audio"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "xrf-app-core",
+ "xrf-audio",
 ]
 
 [[package]]
@@ -7574,6 +8040,7 @@ dependencies = [
  "specta",
  "specta-typescript",
  "tauri",
+ "tauri-plugin-store",
  "tauri-specta",
  "tokio",
  "uuid",
@@ -7649,35 +8116,48 @@ dependencies = [
  "glam",
  "image",
  "log",
+ "profiling",
  "rayon",
  "resvg",
  "serde",
+ "serde_json",
  "specta",
  "tauri",
  "tauri-specta",
  "uuid",
+ "windows",
  "xrf-anm",
  "xrf-app-core",
  "xrf-app-render",
+ "xrf-audio",
+ "xrf-build-info",
  "xrf-chunk",
  "xrf-dds",
  "xrf-dltx",
+ "xrf-editable-level",
+ "xrf-editable-object",
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",
  "xrf-extension",
  "xrf-gamemtl",
+ "xrf-geometry",
+ "xrf-ini",
  "xrf-ipc",
  "xrf-job",
  "xrf-level",
+ "xrf-level-compiler",
  "xrf-light-anim",
  "xrf-ltx",
  "xrf-material",
  "xrf-math",
+ "xrf-object-visual",
  "xrf-ogf",
  "xrf-particles",
+ "xrf-rawdata",
  "xrf-renderer",
  "xrf-shaders",
+ "xrf-sound",
  "xrf-spawn",
  "xrf-test-utils",
  "xrf-texture",
@@ -7712,6 +8192,7 @@ dependencies = [
  "xrf-extension",
  "xrf-job",
  "xrf-material",
+ "xrf-profiler",
  "xrf-renderer",
  "xrf-test-utils",
  "xrf-utils",
@@ -7733,9 +8214,13 @@ dependencies = [
  "uuid",
  "xrf-app-core",
  "xrf-chunk",
+ "xrf-dltx",
+ "xrf-error",
  "xrf-ipc",
  "xrf-job",
+ "xrf-ltx",
  "xrf-spawn",
+ "xrf-spawn-builder",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -7848,11 +8333,16 @@ dependencies = [
  "xrf-app-core",
  "xrf-app-render",
  "xrf-chunk",
+ "xrf-editable-object",
  "xrf-environment",
  "xrf-error",
+ "xrf-extension",
  "xrf-job",
  "xrf-material",
+ "xrf-math",
+ "xrf-object-visual",
  "xrf-ogf",
+ "xrf-rawdata",
  "xrf-renderer",
  "xrf-test-utils",
  "xrf-vfs",
@@ -7892,6 +8382,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-audio"
+version = "0.1.0"
+dependencies = [
+ "assert_no_alloc",
+ "audionimbus",
+ "cpal",
+ "log",
+ "rtrb",
+ "serde",
+ "specta",
+ "symphonia",
+ "xrf-audio-scene",
+ "xrf-error",
+ "xrf-sound",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-audio-scene"
+version = "0.1.0"
+dependencies = [
+ "rtrb",
+ "serde",
+ "specta",
+]
+
+[[package]]
 name = "xrf-build-info"
 version = "0.1.0"
 dependencies = [
@@ -7905,7 +8423,7 @@ name = "xrf-chunk"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "criterion",
+ "criterion 0.8.2",
  "fileslice",
  "xrf-error",
  "xrf-test-utils",
@@ -7922,10 +8440,11 @@ dependencies = [
  "env_logger",
  "indexmap 2.14.2",
  "log",
+ "profiling",
  "rayon",
  "serde",
  "serde_json",
- "sysinfo",
+ "uuid",
  "walkdir",
  "xrf-archive",
  "xrf-build-info",
@@ -7933,6 +8452,8 @@ dependencies = [
  "xrf-dds",
  "xrf-dialog",
  "xrf-dltx",
+ "xrf-editable-level",
+ "xrf-editable-object",
  "xrf-engine-target",
  "xrf-env-flags",
  "xrf-error",
@@ -7942,6 +8463,7 @@ dependencies = [
  "xrf-gamemtl",
  "xrf-job",
  "xrf-level",
+ "xrf-level-compiler",
  "xrf-ltx",
  "xrf-ltx-inspect",
  "xrf-material",
@@ -7951,10 +8473,11 @@ dependencies = [
  "xrf-output",
  "xrf-pack",
  "xrf-particles",
+ "xrf-profiler",
+ "xrf-rawdata",
  "xrf-report",
- "xrf-shaders",
- "xrf-sound",
  "xrf-spawn",
+ "xrf-spawn-builder",
  "xrf-test-utils",
  "xrf-texture",
  "xrf-thm",
@@ -7971,6 +8494,7 @@ dependencies = [
  "ddsfile",
  "image",
  "image_dds",
+ "rayon",
  "xrf-error",
  "xrf-test-utils",
  "xrf-utils",
@@ -7998,7 +8522,7 @@ name = "xrf-dlss"
 version = "0.1.0"
 dependencies = [
  "ash",
- "bindgen",
+ "bindgen 0.73.2",
  "cc",
  "glam",
  "log",
@@ -8012,11 +8536,39 @@ dependencies = [
 name = "xrf-dltx"
 version = "0.1.0"
 dependencies = [
+ "profiling",
  "xrf-error",
  "xrf-extension",
  "xrf-ltx",
  "xrf-test-utils",
  "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-editable-level"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-ini",
+ "xrf-math",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-editable-object"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "xrf-animation-envelope",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-math",
+ "xrf-skeleton",
+ "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -8120,8 +8672,9 @@ dependencies = [
 name = "xrf-gamedata"
 version = "0.1.0"
 dependencies = [
- "criterion",
+ "criterion 0.8.2",
  "derive_more 2.1.1",
+ "profiling",
  "rayon",
  "serde",
  "serde_json",
@@ -8170,6 +8723,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-geometry"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "obvhs",
+ "xrf-error",
+ "xrf-math",
+]
+
+[[package]]
+name = "xrf-ini"
+version = "0.1.0"
+dependencies = [
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-ipc"
 version = "0.1.0"
 dependencies = [
@@ -8203,6 +8775,7 @@ dependencies = [
  "specta-util",
  "tauri",
  "tauri-specta",
+ "xrf-error",
  "xrf-ipc",
  "xrf-test-utils",
  "xrf-typescript",
@@ -8213,12 +8786,13 @@ dependencies = [
 name = "xrf-job"
 version = "0.1.0"
 dependencies = [
- "criterion",
+ "criterion 0.8.2",
  "log",
  "rayon",
  "serde",
  "serde_json",
  "specta",
+ "windows",
  "xrf-error",
  "xrf-utils",
 ]
@@ -8228,16 +8802,47 @@ name = "xrf-level"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "glam",
  "rayon",
  "serde",
  "specta",
  "uuid",
  "xrf-chunk",
  "xrf-error",
+ "xrf-geometry",
  "xrf-math",
  "xrf-ogf",
  "xrf-report",
  "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-level-compiler"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "glam",
+ "log",
+ "pollster",
+ "rayon",
+ "serde",
+ "sha2",
+ "specta",
+ "uuid",
+ "xrf-chunk",
+ "xrf-dds",
+ "xrf-error",
+ "xrf-geometry",
+ "xrf-job",
+ "xrf-level",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-renderer-core",
+ "xrf-report",
+ "xrf-shaders",
+ "xrf-test-utils",
+ "xrf-thm",
  "xrf-utils",
 ]
 
@@ -8257,10 +8862,12 @@ dependencies = [
 name = "xrf-ltx"
 version = "0.1.0"
 dependencies = [
- "criterion",
- "fxhash",
+ "criterion 0.8.2",
+ "hashbrown 0.17.1",
  "indexmap 2.14.2",
+ "profiling",
  "rayon",
+ "rustc-hash 2.1.3",
  "serde",
  "specta",
  "xrf-error",
@@ -8309,7 +8916,6 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-extension",
- "xrf-particles",
  "xrf-shaders",
  "xrf-test-utils",
  "xrf-thm",
@@ -8322,6 +8928,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "derive_more 2.1.1",
+ "glam",
  "serde",
  "serde_json",
  "specta",
@@ -8331,14 +8938,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-object-visual"
+version = "0.1.0"
+dependencies = [
+ "xrf-chunk",
+ "xrf-editable-object",
+ "xrf-error",
+ "xrf-level",
+ "xrf-material",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-rawdata",
+ "xrf-shaders",
+ "xrf-vfs",
+ "xrf-visual",
+]
+
+[[package]]
 name = "xrf-ogf"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "derive_more 2.1.1",
  "log",
  "serde",
- "specta",
  "xrf-chunk",
  "xrf-error",
  "xrf-math",
@@ -8368,7 +8990,7 @@ name = "xrf-pack"
 version = "0.1.0"
 dependencies = [
  "crc32fast",
- "criterion",
+ "criterion 0.8.2",
  "log",
  "lzokay",
  "rayon",
@@ -8417,6 +9039,50 @@ dependencies = [
  "xrf-animation-envelope",
  "xrf-chunk",
  "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-profiler"
+version = "0.1.0"
+dependencies = [
+ "profiling",
+ "tracy-client",
+ "tracy-client-sys",
+]
+
+[[package]]
+name = "xrf-rawdata"
+version = "0.1.0"
+dependencies = [
+ "bevy_mikktspace",
+ "byteorder",
+ "crc32fast",
+ "glam",
+ "serde",
+ "serde_json",
+ "sha2",
+ "specta",
+ "uuid",
+ "walkdir",
+ "xrf-animation-envelope",
+ "xrf-chunk",
+ "xrf-dds",
+ "xrf-editable-level",
+ "xrf-editable-object",
+ "xrf-error",
+ "xrf-extension",
+ "xrf-gamemtl",
+ "xrf-geometry",
+ "xrf-ini",
+ "xrf-job",
+ "xrf-level",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-shaders",
+ "xrf-skeleton",
+ "xrf-spawn",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -8477,10 +9143,11 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "specta",
  "tracy-client",
- "tracy-client-sys",
  "wgpu",
  "xrf-error",
+ "xrf-profiler",
  "xrf-renderer-derive",
  "xrf-test-utils",
 ]
@@ -8564,9 +9231,33 @@ dependencies = [
  "specta",
  "uuid",
  "xrf-chunk",
+ "xrf-dltx",
  "xrf-error",
  "xrf-ltx",
  "xrf-math",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-spawn-builder"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "rayon",
+ "serde",
+ "sha2",
+ "specta",
+ "uuid",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-geometry",
+ "xrf-job",
+ "xrf-level",
+ "xrf-ltx",
+ "xrf-math",
+ "xrf-report",
+ "xrf-spawn",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -8594,8 +9285,6 @@ dependencies = [
  "xrf-ltx",
  "xrf-math",
  "xrf-output",
- "xrf-particles",
- "xrf-spawn",
  "xrf-test-utils",
  "xrf-thm",
  "xrf-utils",
@@ -8673,8 +9362,9 @@ dependencies = [
 name = "xrf-vfs"
 version = "0.1.0"
 dependencies = [
- "criterion",
+ "criterion 0.8.2",
  "log",
+ "profiling",
  "serde",
  "serde_json",
  "specta",
@@ -8691,18 +9381,20 @@ name = "xrf-visual"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "glam",
  "log",
  "serde",
  "specta",
  "xrf-chunk",
  "xrf-error",
+ "xrf-geometry",
  "xrf-level",
  "xrf-light-anim",
  "xrf-ltx",
+ "xrf-material",
  "xrf-math",
  "xrf-ogf",
  "xrf-omf",
- "xrf-particles",
  "xrf-skeleton",
  "xrf-spawn",
  "xrf-test-utils",
@@ -8720,6 +9412,7 @@ dependencies = [
  "specta",
  "xrf-animation-envelope",
  "xrf-anm",
+ "xrf-audio-scene",
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",

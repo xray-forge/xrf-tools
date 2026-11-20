@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -41,8 +41,8 @@ impl ChunkReadWrite for ArtefactSpawnPoint {
 
 impl LtxImportExport for ArtefactSpawnPoint {
   /// Import artefact spawn point data from ltx section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Artefact spawn point section '{}' should be defined in ltx file ({})",
         section_name,
@@ -58,12 +58,12 @@ impl LtxImportExport for ArtefactSpawnPoint {
   }
 
   /// Export artefact spawn point data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("distance", self.distance.to_string())
-      .set("position", self.position.to_string())
-      .set("level_vertex_id", self.level_vertex_id.to_string());
+      .set("distance", self.distance)
+      .set("position", self.position)
+      .set("level_vertex_id", self.level_vertex_id);
 
     Ok(())
   }

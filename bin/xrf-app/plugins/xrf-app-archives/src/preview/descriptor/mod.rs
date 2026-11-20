@@ -4,6 +4,6 @@ mod audio_descriptor;
 mod audio_source_parameters;
 mod image_descriptor;
 
-pub use audio_descriptor::AudioDescriptor;
-pub use audio_source_parameters::AudioSourceParameters;
-pub use image_descriptor::ImageDescriptor;
+pub(crate) use audio_descriptor::AudioDescriptor;
+pub(crate) use audio_source_parameters::AudioSourceParameters;
+pub(crate) use image_descriptor::ImageDescriptor;

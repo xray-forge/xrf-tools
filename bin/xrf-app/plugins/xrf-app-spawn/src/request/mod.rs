@@ -2,4 +2,4 @@
 
 mod spawn_convert_request;
 
-pub use spawn_convert_request::SpawnConvertRequest;
+pub(crate) use spawn_convert_request::SpawnConvertRequest;

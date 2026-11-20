@@ -7,14 +7,14 @@ import { SPAWN_COMPILER_HELP } from "./help";
 
 export const SPAWN_COMPILER_TOOL: IToolDescriptor = createToolDescriptor(
   {
-    description: "Build game spawn data from level sources and graphs",
+    description: "Build a game's root spawn from its built levels",
     group: EToolGroupId.SPAWNS,
     help: SPAWN_COMPILER_HELP,
     icon: <AccountTreeIcon />,
     id: EToolId.SPAWN_COMPILER,
     label: "Spawn compiler",
     path: "/spawn-compiler",
-    status: EToolStatus.PLANNED,
+    status: EToolStatus.READY,
   },
   {
     load: () => import("./runtime"),

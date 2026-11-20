@@ -12,6 +12,7 @@ impl LtxGroup {
       label: "LTX",
       about: "LTX configuration tools",
       commands: vec![
+        ltx::find::FindCommand::new_box(),
         ltx::format::FormatCommand::new_box(),
         ltx::inspect::InspectCommand::new_box(),
         ltx::list::ListCommand::new_box(),

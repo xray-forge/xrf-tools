@@ -2,29 +2,31 @@ import { useInjection } from "@wirestate/react";
 import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { useCopiedText } from "@xrf/react/copied-text";
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckIcon } from "@xrf/ui/icons/check";
+import { ContentCopyIcon } from "@xrf/ui/icons/content-copy";
 import { FilterDramaIcon } from "@xrf/ui/icons/filter-drama";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
 import { LevelWeatherEffectSelect } from "@/core/level/components/weather/LevelWeatherEffectSelect";
 import { LevelWeatherSeedNote } from "@/core/level/components/weather/LevelWeatherSeedNote";
 import { LevelWeatherSourceChoice } from "@/core/level/components/weather/LevelWeatherSourceChoice";
+import { LevelWeatherTime } from "@/core/level/components/weather/LevelWeatherTime";
 import { toLevelManualWeatherLtx } from "@/core/level/lib/weather/level-manual-weather-ltx";
 import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
-import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { useCopiedText } from "@/lib/react/use-copied-text";
 
 /**
- * The weather in short: what lights the level, the cycle and the effect, and the clock; the panel keeps the detail.
+ * The weather in short: what lights the level, the cycle, the effect and the time of day; the panel keeps the detail.
  */
 export function LevelWeatherAction({
   "data-testid": dataTestId = "level-weather-action",
@@ -35,12 +37,14 @@ export function LevelWeatherAction({
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  const { source, time, control, report, isManual, seed } = weatherService;
+  const { source, isManual, seed } = weatherService;
+  const { time, control, report } = weatherService.clock;
   const description: Nullable<LevelWeatherDescription> = weatherService.description.value;
   const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle.value;
   const isPlayable: boolean = cycle !== null;
   const isPlaying: boolean = !control.isPaused;
   const cycles = useMemo(() => (description ? listLevelWeatherCycles(description) : []), [description]);
+  const keyframes: Array<number> = useMemo(() => cycle?.keyframes.map((it) => it.time) ?? [], [cycle]);
 
   const at: string = formatLevelWeatherTime(time);
 
@@ -54,7 +58,7 @@ export function LevelWeatherAction({
         toLevelManualWeatherLtx({
           engine: weatherService.engine,
           manual: weatherService.shown,
-          time: weatherService.time,
+          time: weatherService.clock.time,
         })
       ),
     [copy, weatherService]
@@ -74,45 +78,48 @@ export function LevelWeatherAction({
       icon={<FilterDramaIcon />}
       isActive={!isManual}
     >
-      <div className={"flex w-72 flex-col gap-3 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Weather
-        </Typography>
+      <EditorPopoverContent label={"Weather"}>
+        <EditorPopoverGroupSection label={"Lit by"}>
+          <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={weatherService.setSource} />
 
-        <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={weatherService.setSource} />
+          {isManual ? <LevelWeatherSeedNote seed={seed} /> : null}
 
-        {isManual ? (
-          <LevelWeatherSeedNote
-            seed={seed}
-            isPlayable={isPlayable}
-            onBack={() => weatherService.setSource(ELevelWeatherSource.WEATHER)}
+          <LevelWeatherCycleSelect
+            cycles={cycles}
+            selected={cycle?.name ?? null}
+            reading={weatherService.reading}
+            onSelect={(name: string) => void weatherService.selectCycle(name)}
           />
-        ) : null}
 
-        <LevelWeatherCycleSelect
-          cycles={cycles}
-          selected={cycle?.name ?? null}
-          reading={weatherService.reading}
-          onSelect={(name: string) => void weatherService.selectCycle(name)}
-        />
+          <LevelWeatherEffectSelect
+            effects={description?.effects ?? []}
+            playing={report?.effect ?? null}
+            onPlay={renderService.weather.playEffect}
+          />
+        </EditorPopoverGroupSection>
 
-        <LevelWeatherEffectSelect
-          effects={description?.effects ?? []}
-          playing={report?.effect ?? null}
-          onPlay={renderService.weather.playEffect}
-        />
-
-        <LevelWeatherClock
-          time={time}
-          isPlaying={isPlaying}
-          onSeek={renderService.weather.seek}
-          onPlaying={weatherService.setPlaying}
-        />
-
-        <Button size={"small"} onClick={onCopy}>
-          {isCopied ? "Copied" : "Copy as LTX"}
-        </Button>
-      </div>
+        <EditorPopoverGroupSection
+          label={"Time"}
+          actions={
+            <EditorIconAction
+              label={isCopied ? "Copied" : "Copy as LTX"}
+              description={"Copies the keyframe on screen as a weather config section"}
+              icon={isCopied ? <CheckIcon /> : <ContentCopyIcon />}
+              onClick={onCopy}
+            />
+          }
+        >
+          <LevelWeatherTime
+            time={time}
+            keyframes={keyframes}
+            report={weatherService.weather !== null ? report : null}
+            control={control}
+            onSeek={renderService.weather.seek}
+            onPlaying={weatherService.clock.setPlaying}
+            onFactor={weatherService.clock.setFactor}
+          />
+        </EditorPopoverGroupSection>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

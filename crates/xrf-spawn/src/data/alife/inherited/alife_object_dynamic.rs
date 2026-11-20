@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 
@@ -13,16 +13,16 @@ pub struct AlifeObjectDynamic {
   pub base: AlifeObjectAbstract,
 }
 
-impl ChunkReadWrite for AlifeObjectDynamic {
+impl ChunkFieldReadWrite for AlifeObjectDynamic {
   /// Read dynamic object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
     })
   }
 
   /// Write dynamic object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
 
     Ok(())
@@ -31,14 +31,14 @@ impl ChunkReadWrite for AlifeObjectDynamic {
 
 impl LtxImportExport for AlifeObjectDynamic {
   /// Import dynamic object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     Ok(Self {
       base: AlifeObjectAbstract::import(section_name, ltx)?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     Ok(())

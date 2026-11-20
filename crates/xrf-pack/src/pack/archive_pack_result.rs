@@ -70,7 +70,7 @@ impl ArchivePackResult {
   ///
   /// The one place the counts are decided, so `files_stored` means the same thing to a reader of the summary and to a
   /// reader of the transcript: a reverted or an empty entry is stored, whatever the line about it says it is.
-  pub(crate) fn record_outcome(&mut self, outcome: ArchivePackEntryOutcome) {
+  pub(crate) fn record_outcome(&mut self, outcome: ArchivePackEntryOutcome<'_>) {
     match outcome {
       ArchivePackEntryOutcome::Compressed => self.files_compressed += 1,
       ArchivePackEntryOutcome::Stored | ArchivePackEntryOutcome::Reverted | ArchivePackEntryOutcome::Empty => {

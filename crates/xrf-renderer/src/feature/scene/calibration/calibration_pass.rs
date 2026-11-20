@@ -9,7 +9,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the calibration props into the G-buffer and its depth, each as a quad: a sphere ray-cast within its own,
 /// writing the depth it meets, and the chart flat.
-pub struct CalibrationPass {
+pub(crate) struct CalibrationPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::RenderPipeline>,
@@ -19,7 +19,7 @@ impl CalibrationPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = CalibrationParameters::create_layout(source.device);
 
     Ok(Self {
@@ -31,7 +31,7 @@ impl CalibrationPass {
 
   /// Makes its pipeline again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last one where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout)
     }) {
@@ -40,7 +40,7 @@ impl CalibrationPass {
   }
 
   /// Draws every prop, one instance each.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &CalibrationParameters) {
+  pub(crate) fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &CalibrationParameters) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();

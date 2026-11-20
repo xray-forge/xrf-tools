@@ -7,7 +7,7 @@ use xrf_app_core::execution::ExecutionState;
 /// least recently used past its size; once a day as the page starts, or now where `is_forced`.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "tidy_app_cache")]
-pub async fn system_tidy_app_cache(
+pub(crate) async fn system_tidy_app_cache(
   cache: State<'_, AppCache>,
   execution: State<'_, ExecutionState>,
   policy: AppCachePolicy,

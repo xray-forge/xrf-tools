@@ -43,7 +43,7 @@ type TextureLoad = (u32, u32, Result<Option<DecodedTexture>, String>, Option<u64
 /// Every texture the renderer's scenes sample, once each by scope and reference, in one bindless array: a material
 /// names its texture by slot, so draws are never split by texture. A slot no scene samples any more is freed and given
 /// to the next texture asked for.
-pub struct TextureCache {
+pub(crate) struct TextureCache {
   layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
   /// The sampler's anisotropy clamp, one for trilinear.
@@ -56,6 +56,8 @@ pub struct TextureCache {
   references: Vec<String>,
   /// What each slot is sampled as, which decides what stands in for it.
   roles: Vec<TextureRole>,
+  /// Per slot, [`Self::is_blue_free`].
+  blue_free: Vec<bool>,
   /// What stands in for a texture of each role while it loads, by `TextureRole as usize`.
   neutral: Vec<wgpu::TextureView>,
   /// What stands in for a base texture that cannot be had.
@@ -96,12 +98,12 @@ pub struct TextureCache {
 
 impl TextureCache {
   /// Environment cubes the scenes' surfaces may mix toward, the first slot standing for none.
-  pub const ENVIRONMENT_SLOTS: u32 = 16;
+  pub(crate) const ENVIRONMENT_SLOTS: u32 = 16;
 
   /// The slot a surface binds where it names no texture of a kind: mid grey, never sampled by a surface without one.
-  pub const MISSING_SLOT: u32 = 0;
+  pub(crate) const MISSING_SLOT: u32 = 0;
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, workers: &RenderWorkers) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue, workers: &RenderWorkers) -> Self {
     // The environment cubes a composited draw binds beside the array share the stage's budget.
     let capacity: u32 = device
       .limits()
@@ -150,6 +152,7 @@ impl TextureCache {
       states: vec![RenderTextureState::Missing],
       references: vec![String::new()],
       roles: vec![TextureRole::Detail],
+      blue_free: vec![false],
       neutral,
       checker,
       by_reference: HashMap::new(),
@@ -172,18 +175,18 @@ impl TextureCache {
     }
   }
 
-  pub fn get_layout(&self) -> &wgpu::BindGroupLayout {
+  pub(crate) fn get_layout(&self) -> &wgpu::BindGroupLayout {
     &self.layout
   }
 
   /// The bindless group, bound at group 1, below the per-batch groups, so switching batches never re-walks its views.
-  pub fn get_bind_group(&self) -> &wgpu::BindGroup {
+  pub(crate) fn get_bind_group(&self) -> &wgpu::BindGroup {
     &self.bind_group
   }
 
   /// The slot a texture reference samples from, loading it on a loader thread the first time its source's scope asks
   /// for it; until it loads, its role's neutral stands in.
-  pub fn request(&mut self, reference: &str, role: TextureRole, source: &Arc<dyn RenderAssetSource>) -> u32 {
+  pub(crate) fn request(&mut self, reference: &str, role: TextureRole, source: &Arc<dyn RenderAssetSource>) -> u32 {
     if reference.is_empty() {
       return Self::MISSING_SLOT;
     }
@@ -211,6 +214,7 @@ impl TextureCache {
         self.states[index] = RenderTextureState::Loading;
         self.references[index] = reference.to_owned();
         self.roles[index] = role;
+        self.blue_free[index] = false;
         self.keys[index] = Some((scope.to_owned(), reference.to_owned()));
         self.sources[index] = Some(Arc::clone(source));
         self.stamps[index] = None;
@@ -222,6 +226,7 @@ impl TextureCache {
         self.states.push(RenderTextureState::Loading);
         self.references.push(reference.to_owned());
         self.roles.push(role);
+        self.blue_free.push(false);
         self.keys.push(Some((scope.to_owned(), reference.to_owned())));
         self.generations.push(0);
         self.sources.push(Some(Arc::clone(source)));
@@ -257,7 +262,7 @@ impl TextureCache {
 
   /// Loads the terrains' heights from now on, those held deferred among them, once a view first reads them: each costs
   /// an integration where the installation brings none, so they wait for an enhanced parallax or the heights view.
-  pub fn want_heights(&mut self) {
+  pub(crate) fn want_heights(&mut self) {
     if self.is_heights_wanted {
       return;
     }
@@ -273,7 +278,7 @@ impl TextureCache {
   }
 
   /// Loads every texture again at `texture_lod`, where it changed: each keeps what it shows until its new levels land.
-  pub fn set_lod(&mut self, lod: u32) {
+  pub(crate) fn set_lod(&mut self, lod: u32) {
     if lod == self.lod {
       return;
     }
@@ -289,7 +294,7 @@ impl TextureCache {
   }
 
   /// The environment slot a cube reference is sampled from, `0` for none or for one past the slots there are.
-  pub fn request_environment(&mut self, reference: &str) -> u32 {
+  pub(crate) fn request_environment(&mut self, reference: &str) -> u32 {
     if reference.is_empty() {
       return 0;
     }
@@ -321,23 +326,23 @@ impl TextureCache {
   }
 
   /// The cubes asked for as environments, by slot from the second; a freed slot is empty.
-  pub fn list_environments(&self) -> &[String] {
+  pub(crate) fn list_environments(&self) -> &[String] {
     &self.environments
   }
 
   /// The cube an environment slot is sampled from, or `None` for the first slot or a freed one.
-  pub fn get_environment(&self, slot: u32) -> Option<&str> {
+  pub(crate) fn get_environment(&self, slot: u32) -> Option<&str> {
     let reference: &String = self.environments.get((slot as usize).checked_sub(1)?)?;
 
     (!reference.is_empty()).then_some(reference.as_str())
   }
 
-  pub fn get_environments_generation(&self) -> u64 {
+  pub(crate) fn get_environments_generation(&self) -> u64 {
     self.environments_generation
   }
 
   /// Frees every environment slot no scene samples, so the next cubes asked for take their places.
-  pub fn retain_environments(&mut self, sampled: &HashSet<u32>) {
+  pub(crate) fn retain_environments(&mut self, sampled: &HashSet<u32>) {
     for (index, reference) in self.environments.iter_mut().enumerate() {
       if !reference.is_empty() && !sampled.contains(&(index as u32 + 1)) {
         reference.clear();
@@ -347,7 +352,7 @@ impl TextureCache {
   }
 
   /// Whether every one of some slots is uploaded or given up on.
-  pub fn is_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> bool {
+  pub(crate) fn is_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> bool {
     slots.into_iter().all(|slot| {
       !matches!(
         self.states.get(*slot.borrow() as usize),
@@ -356,8 +361,15 @@ impl TextureCache {
     })
   }
 
+  /// Whether a slot holds an uploaded distortion map with no blue, which never blurs the frame.
+  ///
+  /// False while it loads, while a placeholder stands in, or for any other role.
+  pub(crate) fn is_blue_free(&self, slot: u32) -> bool {
+    self.blue_free.get(slot as usize).copied().unwrap_or(false)
+  }
+
   /// Of some slots, how many are uploaded or given up on.
-  pub fn count_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> u32 {
+  pub(crate) fn count_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> u32 {
     slots
       .into_iter()
       .filter(|slot| {
@@ -370,7 +382,7 @@ impl TextureCache {
   }
 
   /// What became of some slots' textures.
-  pub fn describe<'a>(
+  pub(crate) fn describe<'a>(
     &self,
     slots: impl IntoIterator<Item = &'a u32>,
     group: RenderTextureGroup,
@@ -389,7 +401,7 @@ impl TextureCache {
 
   /// Frees every slot but the missing texture's and those some scene still samples, so the next textures asked for
   /// take their places; a load still on its way to a freed slot is dropped when it lands.
-  pub fn retain(&mut self, sampled: &HashSet<u32>) {
+  pub(crate) fn retain(&mut self, sampled: &HashSet<u32>) {
     for slot in 1..self.views.len() {
       if self.keys[slot].is_none() || sampled.contains(&(slot as u32)) {
         continue;
@@ -409,6 +421,7 @@ impl TextureCache {
 
       self.views[slot] = self.views[Self::MISSING_SLOT as usize].clone();
       self.states[slot] = RenderTextureState::Missing;
+      self.blue_free[slot] = false;
       self.references[slot].clear();
       self.generations[slot] = self.generations[slot].wrapping_add(1);
       self.free.push(slot as u32);

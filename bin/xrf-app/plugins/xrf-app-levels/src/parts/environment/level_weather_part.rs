@@ -21,10 +21,10 @@ impl SessionPart for LevelWeatherPart {
 
 impl LevelWeatherPart {
   /// The level's local weather overrides.
-  pub const ENV_MOD_FILE: &'static str = "level.env_mod";
+  pub(crate) const ENV_MOD_FILE: &'static str = "level.env_mod";
 
   /// Runs `read` of what the open level's weather plays with through a search recording into its weather part.
-  pub fn record<T>(
+  pub(crate) fn record<T>(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     read: impl FnOnce(&XraySearch) -> T,

@@ -9,7 +9,7 @@ use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 /// check carries every finding and the run's time.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LtxVerifyReport {
+pub(crate) struct LtxVerifyReport {
   checked_fields: usize,
   checked_sections: usize,
   invalid_sections: usize,
@@ -29,7 +29,7 @@ impl LtxVerifyReport {
   const CHECK: &'static str = "ltx";
 
   /// `result` as the shared report, its findings named by the paths a person can act on in `project`.
-  pub fn new(project: &LtxProject, result: &LtxProjectVerifyResult) -> Self {
+  pub(crate) fn new(project: &LtxProject, result: &LtxProjectVerifyResult) -> Self {
     // A stopped run judged only the files it reached, which is no verdict on the rest.
     let status: Status = match result.outcome {
       JobOutcome::Cancelled => Status::Incomplete,
@@ -52,19 +52,19 @@ impl LtxVerifyReport {
         result
           .findings
           .iter()
-          .map(|finding| Self::to_finding(project, finding))
+          .map(|finding| Self::describe_finding(project, finding))
           .collect(),
       )]),
     }
   }
 
-  pub fn report(&self) -> &Report {
+  pub(crate) fn report(&self) -> &Report {
     &self.report
   }
 
   /// One finding as the shared report holds it: the config to open as its subject, the section and field it is about
   /// leading its message.
-  fn to_finding(project: &LtxProject, finding: &LtxFinding) -> Finding {
+  fn describe_finding(project: &LtxProject, finding: &LtxFinding) -> Finding {
     let reported: LtxFinding = project.with_reported_paths(finding);
 
     Finding::new(

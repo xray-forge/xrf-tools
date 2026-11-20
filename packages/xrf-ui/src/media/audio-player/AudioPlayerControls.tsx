@@ -1,14 +1,15 @@
 import { formatPlaybackTime } from "@xrf/format";
+import { IThrottledDraft, useThrottledDraft } from "@xrf/react/throttled-draft";
 import { ReactElement } from "react";
 
+import { IconButton } from "#/button";
+import { Slider } from "#/form/control";
 import { PauseIcon } from "#/icons/pause";
 import { PlayArrowIcon } from "#/icons/play-arrow";
 import { RepeatIcon } from "#/icons/repeat";
 import { VolumeUpIcon } from "#/icons/volume-up";
-import { IconButton } from "#/material/icon-button";
-import { Slider } from "#/material/slider";
-import { Tooltip } from "#/material/tooltip";
-import { Typography } from "#/material/typography";
+import { Tooltip } from "#/overlay";
+import { Typography } from "#/typography";
 
 interface IAudioPlayerControlsProps {
   isPlaying: boolean;
@@ -21,7 +22,13 @@ interface IAudioPlayerControlsProps {
   onVolumeChange: (value: number) => void;
 }
 
-/** Playback, looping, and volume controls for a single sound. */
+/** The volume slider's step. */
+const VOLUME_STEP: number = 0.01;
+
+/**
+ * Playback, looping, and volume controls for a single sound. A dragged volume tells its owner at most once an interval,
+ * since an owner may keep it on disk.
+ */
 export function AudioPlayerControls({
   isPlaying,
   isLooping,
@@ -32,6 +39,8 @@ export function AudioPlayerControls({
   onToggleLoop,
   onVolumeChange,
 }: IAudioPlayerControlsProps): ReactElement {
+  const volumeDraft: IThrottledDraft = useThrottledDraft(volume, VOLUME_STEP, onVolumeChange);
+
   return (
     <div className={"flex items-center gap-2"}>
       <Tooltip describeChild title={isPlaying ? "Pause" : "Play"}>
@@ -66,13 +75,10 @@ export function AudioPlayerControls({
         size={"small"}
         min={0}
         max={1}
-        step={0.01}
-        value={volume}
-        onChange={(_, value) => {
-          if (typeof value === "number") {
-            onVolumeChange(value);
-          }
-        }}
+        step={VOLUME_STEP}
+        value={volumeDraft.value}
+        onChange={volumeDraft.onChange}
+        onChangeCommitted={volumeDraft.onChangeCommitted}
       />
     </div>
   );

@@ -1,17 +1,26 @@
 use std::fs;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use std::path::Path;
 
 use xrf_error::XrfResult;
-use xrf_utils::{StagedFile, encode_string_to_w1251_bytes, read_as_string_from_w1251_encoded};
+use xrf_utils::{StagedFile, encode_string_into_w1251_bytes, read_as_string_from_w1251_encoded};
 
-use crate::ltx::Ltx;
-use crate::syntax::{DEFAULT_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
+use crate::binding::LtxWrite;
+use crate::ltx::{Ltx, SectionSetter};
+use crate::syntax::{DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
+
+impl LtxWrite for Ltx {
+  type SectionWriter<'a> = SectionSetter<'a>;
+
+  fn with_section<'a>(&'a mut self, section: &'a str) -> SectionSetter<'a> {
+    SectionSetter::new(self, String::from(section))
+  }
+}
 
 impl Ltx {
   /// Format single LTX file by provided path
   pub(crate) fn format_file<P: AsRef<Path>>(filename: P, write: bool) -> XrfResult<bool> {
-    let formatted: String = Ltx::format_from_file(&filename)?;
+    let formatted: String = Self::format_from_file(&filename)?;
     let existing: String =
       read_as_string_from_w1251_encoded(&mut fs::OpenOptions::new().read(true).open(filename.as_ref())?)?;
 
@@ -21,7 +30,7 @@ impl Ltx {
       if write {
         // The read path above decodes Windows-1251, so the rewrite has to go back in that encoding. Staged, so a
         // failed write leaves the source as it was.
-        StagedFile::write(filename.as_ref(), &encode_string_to_w1251_bytes(&formatted)?)?;
+        StagedFile::write(filename.as_ref(), &encode_string_into_w1251_bytes(formatted)?)?;
       }
 
       Ok(true)
@@ -46,67 +55,79 @@ impl Ltx {
 
   /// The file's bytes, in the Windows-1251 encoding the read path decodes.
   ///
-  /// Rendered into a buffer first because `write!` of a Rust string emits UTF-8, which the next read would decode as
-  /// something else. Encoding per `write!` is not an option: a format piece can end mid-character.
+  /// ASCII text, as an exported spawn or particle library is, hands its buffer back as the bytes without a copy.
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
-    let mut rendered: Vec<u8> = Vec::new();
-
-    self.render_to(&mut rendered)?;
-
-    Ok(encode_string_to_w1251_bytes(
-      // Every piece written below came from a Rust string, so the buffer is valid UTF-8.
-      &String::from_utf8(rendered).expect("Rendered LTX to be valid UTF-8"),
-    )?)
+    Ok(encode_string_into_w1251_bytes(self.render())?)
   }
 
-  /// Buffered here rather than at the call sites. Every line below is a `write!`, and `write_fmt` issues one
-  /// `write_all` per format piece, so writing straight to a `File` cost four syscalls a line — two orders of magnitude
-  /// slower than this on an export the size of the particles library. Flushed explicitly so a failing flush is returned
-  /// instead of being swallowed when the buffer drops.
-  fn render_to<W: Write>(&self, writer: &mut W) -> XrfResult {
-    let mut writer: BufWriter<&mut W> = BufWriter::new(writer);
+  /// The text of the file, sized by a first pass so tens of megabytes are not copied each time a buffer doubles.
+  fn render(&self) -> String {
+    let mut length: usize = 0;
+
+    self.render_pieces(|piece| length += piece.len());
+
+    let mut rendered: String = String::with_capacity(length);
+
+    self.render_pieces(|piece| rendered.push_str(piece));
+
+    rendered
+  }
+
+  /// Hands `emit` the file's text piece by piece, in order: the one place its layout is defined.
+  fn render_pieces(&self, mut emit: impl FnMut(&str)) {
     let mut firstline: bool = true;
 
-    // Write include statements.
-    if !self.includes.is_empty() {
+    for include in &self.includes {
       firstline = false;
-
-      for include in &self.includes {
-        write!(writer, "#include \"{}\"{}", include, LTX_LINE_SEPARATOR)?;
-      }
+      emit("#include \"");
+      emit(include);
+      emit("\"");
+      emit(LTX_LINE_SEPARATOR);
     }
 
-    for (section, props) in &self.sections {
+    // The root section goes first: its fields have no header, so after another section they would read back as that
+    // section's.
+    let root = self.sections.get_key_value(ROOT_SECTION).into_iter();
+    let named = self
+      .sections
+      .iter()
+      .filter(|(section, _)| section.as_str() != ROOT_SECTION);
+
+    for (section, props) in root.chain(named) {
       // If root section with data or generic section.
       if section != ROOT_SECTION || !props.data.is_empty() {
         if firstline {
           firstline = false;
         } else {
           // Write an empty line between sections
-          writer.write_all(LTX_LINE_SEPARATOR.as_bytes())?;
+          emit(LTX_LINE_SEPARATOR);
         }
       }
 
       if section != ROOT_SECTION {
-        let inherited: String = if props.inherited.is_empty() {
-          String::new()
-        } else {
-          format!(":{}", props.inherited.join(", "))
-        };
+        emit("[");
+        emit(section);
+        emit("]");
 
-        write!(writer, "[{}]{}{}", section, inherited, LTX_LINE_SEPARATOR)?;
+        for (index, parent) in props.inherited.iter().enumerate() {
+          emit(if index == 0 { ":" } else { ", " });
+          emit(parent);
+        }
+
+        emit(LTX_LINE_SEPARATOR);
       }
 
-      for (key, value) in props.iter() {
-        let separator: &str = if value.is_empty() { " =" } else { DEFAULT_KV_SEPARATOR };
-
-        write!(writer, "{}{}{}{}", key, separator, value, LTX_LINE_SEPARATOR)?;
+      for (key, value) in props {
+        emit(key);
+        emit(if value.is_empty() {
+          EMPTY_VALUE_KV_SEPARATOR
+        } else {
+          DEFAULT_KV_SEPARATOR
+        });
+        emit(value);
+        emit(LTX_LINE_SEPARATOR);
       }
     }
-
-    writer.flush()?;
-
-    Ok(())
   }
 }
 
@@ -114,6 +135,7 @@ impl Ltx {
 mod test {
   use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 
+  use crate::binding::LtxSectionWrite;
   use crate::ltx::Ltx;
   use crate::syntax::{LTX_LINE_SEPARATOR, ROOT_SECTION};
 
@@ -175,6 +197,33 @@ a3 = n3
   }
 
   #[test]
+  fn writes_includes_parents_and_root_fields_in_their_places() {
+    let mut ltx: Ltx = Ltx::new();
+
+    ltx.include(String::from("first.ltx"));
+    ltx.include(String::from("second.ltx"));
+    ltx.with_root_section().set("root", 1);
+    ltx.with_section("child").set("key", "value").set("empty", "");
+    ltx.section_mut("child").expect("the section").inherit("first_parent");
+    ltx.section_mut("child").expect("the section").inherit("second_parent");
+    ltx.with_section("only_parent").set("x", 2.5);
+    ltx.section_mut("only_parent").expect("the section").inherit("base");
+
+    let bytes: Vec<u8> = ltx.write_to_bytes().unwrap();
+
+    assert_eq!(
+      String::from_utf8(bytes.clone()).unwrap(),
+      "#include \"first.ltx\"\r\n#include \"second.ltx\"\r\n\r\nroot = 1\r\n\r\n\
+       [child]:first_parent, second_parent\r\nkey = value\r\nempty =\r\n\r\n[only_parent]:base\r\nx = 2.5\r\n"
+    );
+    assert_eq!(
+      bytes.len(),
+      bytes.capacity(),
+      "the text to be sized exactly before it is written"
+    );
+  }
+
+  #[test]
   fn write_empty_values_without_trailing_spaces() {
     let mut ltx: Ltx = Ltx::new();
 
@@ -225,7 +274,7 @@ a3 = n3
   /// back to the same text. Characters outside that encoding are refused rather than silently mangled.
   #[test]
   fn write_non_ascii_as_windows_1251() {
-    let input: String = format!("some-key = мова{}", LTX_LINE_SEPARATOR);
+    let input: String = format!("some-key = мова{LTX_LINE_SEPARATOR}");
     let ltx: Ltx = Ltx::read_from_str(&input).unwrap();
 
     let mut output: Vec<u8> = Vec::new();
@@ -237,7 +286,7 @@ a3 = n3
 
   #[test]
   fn refuse_values_outside_windows_1251() {
-    let ltx: Ltx = Ltx::read_from_str(&format!("some-key = åäö{}", LTX_LINE_SEPARATOR)).unwrap();
+    let ltx: Ltx = Ltx::read_from_str(&format!("some-key = åäö{LTX_LINE_SEPARATOR}")).unwrap();
 
     assert!(ltx.write_to(&mut Vec::new()).is_err());
   }

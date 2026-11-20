@@ -46,7 +46,7 @@ impl ArchiveOmfBank {
         .count(),
       bones: file.get_bones_count(),
       frames,
-      duration_seconds: ArchiveOmfMotion::to_duration_seconds(frames),
+      duration_seconds: ArchiveOmfMotion::get_duration_seconds(frames),
       diverging_labels: motions.iter().filter(|motion| motion.has_diverging_label).count(),
       marked_motions: motions.iter().filter(|motion| !motion.marks.is_empty()).count(),
       replaced_falloffs: motions.iter().filter(|motion| motion.blend.is_falloff_replaced).count(),

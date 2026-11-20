@@ -11,7 +11,10 @@ pub(crate) mod scheme;
 pub(crate) mod source;
 pub(crate) mod syntax;
 
-pub use crate::binding::{FileImportExport, LtxImportExport, META_TYPE_FIELD};
+pub use crate::binding::{
+  FileImportExport, LtxImportExport, LtxRead, LtxRecord, LtxRecordReader, LtxRecordSection, LtxRecordWriter,
+  LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD,
+};
 pub use crate::condlist::{Condlist, CondlistBranch, CondlistCondition};
 pub use crate::dialect::{
   LtxDialect, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic, LtxResolveRequest,
@@ -29,6 +32,6 @@ pub use crate::scheme::{
 };
 pub use crate::source::LtxDocumentSource;
 pub use crate::syntax::{
-  LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME, read_engine_bool,
-  read_engine_float, read_engine_floats, scan_engine_float,
+  LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME, fold_section_name,
+  read_engine_bool, read_engine_float, read_engine_floats, scan_engine_float,
 };

@@ -41,7 +41,7 @@ The reader accepts every version `COMotion::Load` reads:
 | 4 (`AnmFile::PITCH_FIRST_VERSION`) | narrow, `CEnvelope::Load_2` | **pitch before heading** |
 | 5 (`AnmFile::CURRENT_VERSION`)     | narrow, `CEnvelope::Load_2` | heading before pitch     |
 
-Version 4 ships: `anims\helicopter\aaa.anm` in every workspace tree.
+Version 4 still ships: every reference game tree's `anims\helicopter\aaa.anm` uses it.
 
 ## Write a motion
 
@@ -93,10 +93,9 @@ Envelopes and their encoding constraints belong to [xrf-animation-envelope](../x
 
 ## Play a motion
 
-`get_played_time(elapsed, playback)` is the time in seconds a `CObjectAnimator` plays a motion at, `elapsed` after
-`Play`: from the first frame's time, and past the last frame's, `AnimationPlayback::Looped` (the shared
-[xrf-animation-envelope](../xrf-animation-envelope/README.md) vocabulary) wraps back by whole lengths while
-`AnimationPlayback::Once` holds there. A one-frame motion holds its first frame either way. Pass the result to
+`get_played_time(elapsed, playback)` answers the motion time, in seconds, that a `CObjectAnimator` shows `elapsed` after
+`Play`. Time starts at the first frame. Past the last frame, `AnimationPlayback::Looped` wraps back by whole lengths and
+`AnimationPlayback::Once` holds the last frame. A one-frame motion holds its first frame either way. Pass the result to
 `evaluate`:
 
 ```rust
@@ -119,17 +118,27 @@ assert_eq!(motion.get_played_time(elapsed, AnimationPlayback::Looped), 0.5);
 assert_eq!(motion.get_played_time(elapsed, AnimationPlayback::Once), 2.0);
 ```
 
-Torrid zones and cyclic camera effects loop; a camera effect that is not cyclic plays once, and lives
-`get_duration_seconds`, one frame longer than its motion moves, so it ends holding the last frame. A looped time is
-wrapped in whole `Duration` lengths before it becomes seconds, so it keeps its pace however long it has played, where
-the engine accumulates a frame's step in a float. The engine also evaluates a frame's pose before advancing its time,
-a frame behind; that is its update order, which the caller's clock replaces, not part of how a motion plays.
+- Torrid zones and cyclic camera effects loop. A non-cyclic camera effect plays once and lives for
+  `get_duration_seconds`, one frame longer than its motion moves, so it ends holding the last frame.
+- A looped time wraps in whole `Duration` lengths before it becomes seconds, so it does not drift however long it
+  plays. The engine accumulates each frame's step in a float instead.
+- The engine evaluates a frame's pose before advancing its time, so it shows the pose one frame late. That is its
+  update order, not part of the motion; the caller's clock replaces it here.
 
-## Errors and checks
+## Errors
 
-Reads reject a file that cannot be opened, missing motion chunks, unsupported versions, truncated payloads, declared key
-counts the payload cannot hold, and trailing bytes inside the motion chunk. Writes reject unsupported versions and
-propagate envelope encoding errors.
+Reads reject:
 
-Run `cargo test --locked -p xrf-anm` from the repository root. See the [motion type and operations](src/anm_file.rs),
-the [channels](src/anm_channel.rs) and [format tests](src/tests.rs).
+- a file that cannot be opened, or a missing motion chunk;
+- an unsupported version;
+- a truncated payload, or a declared key count the payload cannot hold;
+- trailing bytes inside the motion chunk.
+
+Writes reject unsupported versions and return envelope encoding errors.
+
+## Checks
+
+Run `cargo test --locked -p xrf-anm` from the repository root.
+
+Sources: the [motion type and operations](src/anm_file.rs), the [channels](src/anm_channel.rs) and
+[format tests](src/tests.rs).

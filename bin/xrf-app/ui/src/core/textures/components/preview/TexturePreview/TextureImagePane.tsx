@@ -5,11 +5,10 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { ErrorState } from "@xrf/ui/layout/error-state";
 import { ImageViewport, PanZoomController } from "@xrf/ui/media/image-viewport";
+import { PreviewFrame } from "@xrf/ui/media/preview-frame";
 import { ReactElement } from "react";
 
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-
-import { TexturePreviewFrame } from "./TexturePreviewFrame";
 
 interface ITextureImagePaneProps extends BaseComponentProps {
   /** What this picture is, on the bar beneath it. */
@@ -47,7 +46,7 @@ export function TextureImagePane({
   const url: Nullable<string> = useAssetUrl(assetKey, preview.value);
 
   return (
-    <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption} isCheckered={false}>
+    <PreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption} isCheckered={false}>
       {preview.error ? <ErrorState title={"Could not show this encoding"} description={preview.error.message} /> : null}
 
       {!preview.error && (preview.isLoading || !url || !shape) ? (
@@ -64,6 +63,6 @@ export function TextureImagePane({
           hasControls={hasControls}
         />
       ) : null}
-    </TexturePreviewFrame>
+    </PreviewFrame>
   );
 }

@@ -50,7 +50,7 @@ describe("ArchivesService statistics", () => {
     const service: ArchivesService = mockArchivesService();
 
     await flowResult(service.loadStatistics());
-    await service.closeSubject();
+    await service.close();
 
     expect(service.statistics.value).toBeNull();
   });

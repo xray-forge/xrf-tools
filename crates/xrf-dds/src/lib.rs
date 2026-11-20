@@ -6,7 +6,7 @@ pub(crate) mod mip;
 pub(crate) mod renderer;
 
 pub use ddsfile::{D3DFormat, DxgiFormat};
-pub use image::{Rgba, RgbaImage};
+pub use image::{GrayImage, Rgba, RgbaImage};
 pub use image_dds::{ImageFormat, Quality};
 
 pub use crate::encode::{DdsEncodeAttempt, DdsEncodeCandidate, DdsEncoding, DdsImageDifference};

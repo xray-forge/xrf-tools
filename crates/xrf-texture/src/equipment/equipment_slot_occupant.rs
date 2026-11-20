@@ -5,7 +5,7 @@ use crate::equipment::{EquipmentGridRect, EquipmentSlotClaim, LTX_FIELD_INVENTOR
 
 /// A section that occupies part of an equipment sheet, as the editor reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EquipmentSlotOccupant {
   pub section: String,
@@ -25,7 +25,7 @@ impl EquipmentSlotOccupant {
   pub fn new_list_from_ltx(ltx: &Ltx) -> Vec<Self> {
     let mut occupants: Vec<Self> = Vec::new();
 
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       if let Some(occupant) = Self::new_optional_from_section(section_name, section) {
         occupants.push(occupant);
       }

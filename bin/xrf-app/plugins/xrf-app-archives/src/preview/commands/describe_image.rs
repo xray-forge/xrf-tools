@@ -16,7 +16,7 @@ use crate::preview::ImageDescriptor;
 /// webview draws - which the caller decided before asking, so reaching it means the two disagree.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_image")]
-pub async fn archives_describe_image(
+pub(crate) async fn archives_describe_image(
   session_id: SessionId,
   name: String,
   execution: State<'_, ExecutionState>,

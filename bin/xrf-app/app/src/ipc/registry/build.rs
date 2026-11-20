@@ -43,10 +43,11 @@ macro_rules! inline_plugins {
 
 /// Declares every plugin crate's domains as inline plugins of the application, and lists their names in
 /// `OUT_DIR/inline_plugins.rs` (`INLINE_PLUGINS`), against which the app's tests check every list it keeps by hand.
-pub fn configure(attributes: tauri_build::Attributes) -> tauri_build::Attributes {
+pub(crate) fn configure(attributes: tauri_build::Attributes) -> tauri_build::Attributes {
   let plugins: Vec<Vec<(&str, tauri_build::InlinedPlugin)>> = vec![
     for_each_core_domain!(inline_plugins),
     for_each_render_domain!(inline_plugins),
+    for_each_audio_domain!(inline_plugins),
     for_each_archives_domain!(inline_plugins),
     for_each_configs_domain!(inline_plugins),
     for_each_dialogs_domain!(inline_plugins),

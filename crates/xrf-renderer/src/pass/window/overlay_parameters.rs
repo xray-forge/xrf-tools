@@ -7,7 +7,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// the window, and its lighting, which places the sun.
 #[derive(PassParameters)]
 #[parameters(group = 1)]
-pub struct OverlayParameters {
+pub(crate) struct OverlayParameters {
   #[texture(d2, depth)]
   pub depth_target: GraphTexture,
   #[uniform]

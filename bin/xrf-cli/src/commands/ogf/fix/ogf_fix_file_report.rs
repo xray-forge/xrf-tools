@@ -6,10 +6,10 @@ use xrf_ogf::OgfResidue;
 /// One visual whose bytes `ogf fix` changed, or would change on a dry run.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfFixFileReport {
-  /// Why the residue was inert to the engine: `split-motion-ref` or `trailing-fragment` for bytes dropped,
-  /// `understated-motion-refs` or `overstated-motion-refs` for a size corrected. Absent when the only discarded bytes sat
-  /// inside the motion refs chunk, past its count.
+pub(crate) struct OgfFixFileReport {
+  /// Why the residue was inert to the engine: `split-motion-ref`, `trailing-fragment` or `unread-trailing-chunk` for
+  /// bytes dropped, `understated-motion-refs`, `overstated-motion-refs` or `overstated-lods` for a size corrected.
+  /// Absent when the only discarded bytes sat inside the motion refs chunk, past its count.
   cause: Option<String>,
   destination: String,
   /// The motion reference path the residue completed, for the split-reference shape only.
@@ -20,7 +20,7 @@ pub struct OgfFixFileReport {
 }
 
 impl OgfFixFileReport {
-  pub fn new(
+  pub(crate) fn new(
     source: &Path,
     destination: &Path,
     original_size: usize,
@@ -29,18 +29,18 @@ impl OgfFixFileReport {
   ) -> Self {
     Self {
       cause: residue.map(|residue| String::from(residue.cause.as_str())),
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       discarded_reference: residue
         .and_then(|residue| residue.cause.get_discarded_path())
         .map(String::from),
       normalized_size,
       original_size,
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
     }
   }
 
-  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after it.
-  pub fn discarded_size(&self) -> usize {
+  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after the last chunk.
+  pub(crate) fn discarded_size(&self) -> usize {
     self.original_size.saturating_sub(self.normalized_size)
   }
 }

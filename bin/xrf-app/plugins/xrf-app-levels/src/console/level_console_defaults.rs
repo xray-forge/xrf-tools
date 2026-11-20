@@ -1,8 +1,10 @@
 use std::io::ErrorKind;
+use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
 use serde::Serialize;
 use xrf_error::XrfResult;
+use xrf_math::EPS;
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::{FsgameFile, XrayRoots, XraySearch};
 
@@ -13,7 +15,7 @@ use crate::report::LevelReport;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelConsoleDefaults {
+pub(crate) struct LevelConsoleDefaults {
   /// Whether the game ships console defaults at all.
   pub is_shipped: bool,
   /// `r2_tonemap`.
@@ -54,7 +56,7 @@ impl LevelConsoleDefaults {
   /// # Errors
   ///
   /// Returns an error when the shipped file is there and cannot be read.
-  pub fn read(search: &XraySearch, roots: &XrayRoots) -> XrfResult<Self> {
+  pub(crate) fn read(search: &XraySearch, roots: &XrayRoots) -> XrfResult<Self> {
     let shipped: Self = Self::read_shipped(search)?;
 
     let Some((path, text)) = Self::read_user_console(roots) else {
@@ -71,7 +73,7 @@ impl LevelConsoleDefaults {
   /// # Errors
   ///
   /// Returns an error when the file is there and cannot be read.
-  pub fn read_shipped(search: &XraySearch) -> XrfResult<Self> {
+  pub(crate) fn read_shipped(search: &XraySearch) -> XrfResult<Self> {
     let Some(asset) = search.find(Self::SHIPPED)? else {
       return Ok(Self::default());
     };
@@ -83,9 +85,11 @@ impl LevelConsoleDefaults {
     })
   }
 
-  /// The commands of a console file this viewer draws by, `r2_sun_lumscale 2.0` and its kin; a command it cannot read
-  /// is left to the engine. Whether the game ships such a file is its reader's to say.
-  pub fn parse(text: &str) -> Self {
+  /// Read the drawing commands of a console file, such as `r2_sun_lumscale 2.0`.
+  ///
+  /// An unreadable or out-of-range command stays unset, as the engine keeps its own value on refusing one
+  /// (`CCC_Float::Execute`, `CCC_Vector3::Execute`).
+  pub(crate) fn parse(text: &str) -> Self {
     let mut defaults: Self = Self::default();
 
     for line in text.lines() {
@@ -94,29 +98,39 @@ impl LevelConsoleDefaults {
         continue;
       };
       let value: &str = value.trim();
-      let number = || value.parse::<f32>().ok();
+      let number = |range: RangeInclusive<f32>| Self::parse_number(value, &range);
 
+      // The ranges `xrRender_console.cpp` registers. Engines differ only on the bloom kernel scale's minimum
+      // (OpenXRay 0.5, Anomaly 0.05); the `r__` commands are Anomaly's.
       match name.to_ascii_lowercase().as_str() {
         "r2_tonemap" => defaults.is_tonemapped = Self::parse_switch(value),
-        "r2_tonemap_amount" => defaults.tonemap_amount = number(),
-        "r2_tonemap_middlegray" => defaults.tonemap_middle_gray = number(),
-        "r2_tonemap_lowlum" => defaults.tonemap_low_luminance = number(),
-        "r2_tonemap_adaptation" => defaults.tonemap_adaptation = number(),
-        "r2_sun_lumscale" => defaults.sun_scale = number(),
-        "r2_sun_lumscale_hemi" => defaults.hemi_scale = number(),
-        "r2_sun_lumscale_amb" => defaults.ambient_scale = number(),
-        "r__exposure" => defaults.image_exposure = number(),
-        "r__gamma" => defaults.image_gamma = number(),
-        "r__saturation" => defaults.image_saturation = number(),
+        "r2_tonemap_amount" => defaults.tonemap_amount = number(0.0..=1.0),
+        "r2_tonemap_middlegray" => defaults.tonemap_middle_gray = number(0.0..=2.0),
+        "r2_tonemap_lowlum" => defaults.tonemap_low_luminance = number(0.0001..=1.0),
+        "r2_tonemap_adaptation" => defaults.tonemap_adaptation = number(0.01..=10.0),
+        "r2_sun_lumscale" => defaults.sun_scale = number(-1.0..=3.0),
+        "r2_sun_lumscale_hemi" => defaults.hemi_scale = number(0.0..=3.0),
+        "r2_sun_lumscale_amb" => defaults.ambient_scale = number(0.0..=3.0),
+        "r__exposure" => defaults.image_exposure = number(0.5..=4.0),
+        "r__gamma" => defaults.image_gamma = number(0.5..=2.2),
+        "r__saturation" => defaults.image_saturation = number(0.0..=2.0),
         "r__color_grading" => defaults.color_grading = Self::parse_vector(value),
-        "r2_ls_bloom_threshold" => defaults.bloom_threshold = number(),
-        "r2_ls_bloom_kernel_g" => defaults.bloom_radius = number(),
-        "r2_ls_bloom_kernel_scale" => defaults.bloom_strength = number(),
+        "r2_ls_bloom_threshold" => defaults.bloom_threshold = number(0.0..=1.0),
+        "r2_ls_bloom_kernel_g" => defaults.bloom_radius = number(1.0..=7.0),
+        "r2_ls_bloom_kernel_scale" => defaults.bloom_strength = number(0.05..=2.0),
         _ => {}
       }
     }
 
     defaults
+  }
+
+  /// A console number within `range`, widened by `EPS` as the engine's console does; none outside it or for NaN.
+  fn parse_number(value: &str, range: &RangeInclusive<f32>) -> Option<f32> {
+    value
+      .parse::<f32>()
+      .ok()
+      .filter(|number| *number >= range.start() - EPS && *number <= range.end() + EPS)
   }
 
   /// The `user.ltx` of the first installation the roots sit in, found where its `fsgame.ltx` puts the user data folder;
@@ -155,7 +169,7 @@ impl LevelConsoleDefaults {
     }
   }
 
-  /// A console vector: `(r, g, b)`.
+  /// A console colour vector `(r, g, b)`, each channel within 0..=1 as for `r__color_grading`; none outside it.
   fn parse_vector(value: &str) -> Option<[f32; 3]> {
     let parts: Vec<f32> = value
       .trim_matches(|it| it == '(' || it == ')')
@@ -164,11 +178,14 @@ impl LevelConsoleDefaults {
       .collect::<Result<_, _>>()
       .ok()?;
 
-    parts.try_into().ok()
+    parts
+      .try_into()
+      .ok()
+      .filter(|parts: &[f32; 3]| parts.iter().all(|part| (0.0..=1.0).contains(part)))
   }
 
   /// These commands over `base`'s: each one these leave unset taken from it.
-  pub fn over(self, base: Self) -> Self {
+  pub(crate) fn over(self, base: Self) -> Self {
     Self {
       is_shipped: self.is_shipped || base.is_shipped,
       is_tonemapped: self.is_tonemapped.or(base.is_tonemapped),

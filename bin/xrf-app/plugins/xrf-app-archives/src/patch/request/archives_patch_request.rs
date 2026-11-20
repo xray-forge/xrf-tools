@@ -5,7 +5,7 @@ use xrf_pack::ArchivePatchConfig;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct ArchivesPatchRequest {
+pub(crate) struct ArchivesPatchRequest {
   /// What to compare and where to publish the difference.
   pub config: ArchivePatchConfig,
   /// Whether an existing output may be overwritten. Ignored by a comparison, which writes nothing.

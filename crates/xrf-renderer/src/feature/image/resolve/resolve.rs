@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::targets::fsr_targets::FsrTargets;
 use crate::feature::image::resolve::temporal::temporal_resolve::TemporalResolve;
 
 /// The temporal resolve gathering a view's samples, and what it keeps from frame to frame.
-pub enum Resolve {
+pub(crate) enum Resolve {
   /// TAA.
   Temporal(Box<TemporalResolve>),
   /// FSR: its targets and its constants this frame.
@@ -20,22 +20,9 @@ pub enum Resolve {
 }
 
 impl Resolve {
-  pub fn get_memory(&self) -> u64 {
-    match self {
-      Self::Temporal(temporal) => [&temporal.history, &temporal.flicker]
-        .iter()
-        .flat_map(|history| history.get_sides())
-        .map(|side| side.get_memory())
-        .sum(),
-      Self::Fsr { targets, .. } => targets.get_memory(),
-      Self::Dlss(resolve) => resolve.output.get_memory(),
-      Self::RayReconstruction(resolve) => resolve.output.get_memory(),
-    }
-  }
-
   /// Drops what it gathered, so its next frame resolves the frame alone, as after a cut: TAA's last camera, which its
   /// history is read by, FSR's frames counted from none, and DLSS's reset.
-  pub fn reset(&mut self) {
+  pub(crate) fn reset(&mut self) {
     match self {
       Self::Temporal(temporal) => temporal.previous = None,
       Self::Fsr { targets, .. } => targets.frames.restart(),
@@ -45,7 +32,7 @@ impl Resolve {
   }
 
   /// The written history becomes the one the next frame reads.
-  pub fn swap(&mut self) {
+  pub(crate) fn swap(&mut self) {
     match self {
       Self::Temporal(temporal) => {
         temporal.history.swap();

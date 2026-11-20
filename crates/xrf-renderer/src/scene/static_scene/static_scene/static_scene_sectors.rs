@@ -35,7 +35,7 @@ impl StaticScene {
   ///
   /// Returns an error for a handle that holds a sector already, or when a buffer would outgrow what the device allows;
   /// none of it stands in the scene, though the surfaces it put and the texture slots they asked for stay.
-  pub fn add_sector(
+  pub(crate) fn add_sector(
     &mut self,
     context: &mut StaticItemContext<'_>,
     descriptors: &[XraySurfaceDescriptor],
@@ -169,7 +169,8 @@ impl StaticScene {
           class,
         };
         let cut: Vec<(u32, u32, Vec4)> = clusters.cut(section.draw.start, section.draw.count);
-        let sphere: Vec4 = Self::bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
+        let cluster_spheres: Vec<Vec4> = cut.iter().map(|(_, _, sphere)| *sphere).collect();
+        let sphere: Vec4 = Self::bound_spheres(&cluster_spheres);
 
         sections.push(sphere);
         let (slot, clusters): (u32, u32) = writer.put_slot(
@@ -204,12 +205,15 @@ impl StaticScene {
 
         let sight: StaticSight = StaticSight::of(class, passes);
 
+        // Cluster spheres bound a wide lake or a building's windows far tighter than the section's sphere.
         if !sight.is_empty() {
-          writer.sights.push((sphere, sight));
+          writer
+            .sights
+            .extend(cluster_spheres.into_iter().map(|cluster| (cluster, sight)));
         }
 
         if class.is_deferred() {
-          writer.trace_geometries.push(StaticTraceGeometry {
+          let traced: StaticTraceGeometry = writer.put_densities(StaticTraceGeometry {
             layout: StaticLayout::Baked,
             first_index: base.index_start + section.draw.start,
             index_count: section.draw.count,
@@ -217,7 +221,10 @@ impl StaticScene {
             vertex_count: description.geometry.vertex_count,
             surface,
             is_cut_out: class == StaticClass::CutOut,
+            first_density: 0,
           });
+
+          writer.trace_geometries.push(traced);
         }
       }
     }

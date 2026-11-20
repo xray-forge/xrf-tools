@@ -1,19 +1,19 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde_json::Value;
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
 use xrf_test_utils::GeneratedResources;
 
 use crate::commands::packed_file::{PackCommand, UnpackCommand, VerifyCommand};
 use crate::commands::particle::fixtures::create_library;
-use crate::core::command::command_testing::run_command;
+use crate::core::command::command_testing::{run_command, run_command_for_result};
 use crate::core::command::{CommandResult, GenericCommand};
 
 fn run<T: GenericCommand>(command: &T, path: &Path, extra: &[&str]) -> CommandResult {
   let mut arguments: Vec<String> = vec![
     String::from(command.operation()),
-    String::from("--path"),
     path.display().to_string(),
     String::from("--silent"),
   ];
@@ -108,6 +108,33 @@ fn a_forced_unpack_replaces_the_old_folder_whole() -> XrfResult {
 
   assert!(!dest.join("stale.ltx").exists());
   assert!(dest.join("effects.ltx").exists());
+
+  Ok(())
+}
+
+#[test]
+fn reports_an_unpack_of_a_format_saying_nothing_more_as_the_conversion() -> CommandResult {
+  let library: PathBuf = create_library("packed_file_unpack_report")?;
+  let dest: PathBuf = library.with_file_name("reported");
+  let command: UnpackCommand<ParticlesFile> = UnpackCommand::default();
+  let report: Value = run_command_for_result(
+    &command,
+    &[
+      String::from(command.operation()),
+      library.display().to_string(),
+      String::from("--dest"),
+      dest.display().to_string(),
+      String::from("--force"),
+      String::from("--silent"),
+      String::from("--json"),
+    ],
+  )?
+  .expect("a result was asked for");
+  let mut keys: Vec<&String> = report.as_object().expect("an object").keys().collect();
+
+  keys.sort();
+
+  assert_eq!(keys, ["destination", "readDuration", "source", "writeDuration"]);
 
   Ok(())
 }

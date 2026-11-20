@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -76,9 +76,9 @@ impl AlifeObjectHangingLamp {
   }
 }
 
-impl ChunkReadWrite for AlifeObjectHangingLamp {
+impl ChunkFieldReadWrite for AlifeObjectHangingLamp {
   /// Read hanging lamp data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       skeleton: reader.read_xr::<T, _>()?,
@@ -107,7 +107,7 @@ impl ChunkReadWrite for AlifeObjectHangingLamp {
   }
 
   /// Write skeleton data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.skeleton)?;
 
@@ -141,8 +141,8 @@ impl ChunkReadWrite for AlifeObjectHangingLamp {
 
 impl LtxImportExport for AlifeObjectHangingLamp {
   /// Import ALife hanging lamp object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -178,36 +178,33 @@ impl LtxImportExport for AlifeObjectHangingLamp {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
     self.skeleton.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
-      .set("hanging_lamp.main_color", self.main_color.to_string())
-      .set("hanging_lamp.main_brightness", self.main_brightness.to_string())
+      .set("hanging_lamp.main_color", self.main_color)
+      .set("hanging_lamp.main_brightness", self.main_brightness)
       .set("hanging_lamp.color_animator", &self.color_animator)
-      .set("hanging_lamp.main_range", self.main_range.to_string())
-      .set("hanging_lamp.light_flags", self.light_flags.to_string())
+      .set("hanging_lamp.main_range", self.main_range)
+      .set("hanging_lamp.light_flags", self.light_flags)
       .set("hanging_lamp.startup_animation", &self.startup_animation)
       .set("hanging_lamp.fixed_bones", &self.fixed_bones)
-      .set("hanging_lamp.health", self.health.to_string())
-      .set("hanging_lamp.virtual_size", self.virtual_size.to_string())
-      .set("hanging_lamp.ambient_radius", self.ambient_radius.to_string())
-      .set("hanging_lamp.ambient_power", self.ambient_power.to_string())
+      .set("hanging_lamp.health", self.health)
+      .set("hanging_lamp.virtual_size", self.virtual_size)
+      .set("hanging_lamp.ambient_radius", self.ambient_radius)
+      .set("hanging_lamp.ambient_power", self.ambient_power)
       .set("hanging_lamp.ambient_texture", &self.ambient_texture)
       .set("hanging_lamp.light_texture", &self.light_texture)
       .set("hanging_lamp.light_bone", &self.light_bone)
-      .set("hanging_lamp.spot_cone_angle", self.spot_cone_angle.to_string())
+      .set("hanging_lamp.spot_cone_angle", self.spot_cone_angle)
       .set("hanging_lamp.glow_texture", &self.glow_texture)
-      .set("hanging_lamp.glow_radius", self.glow_radius.to_string())
+      .set("hanging_lamp.glow_radius", self.glow_radius)
       .set("hanging_lamp.light_ambient_bone", &self.light_ambient_bone)
-      .set("hanging_lamp.volumetric_quality", self.volumetric_quality.to_string())
-      .set(
-        "hanging_lamp.volumetric_intensity",
-        self.volumetric_intensity.to_string(),
-      )
-      .set("hanging_lamp.volumetric_distance", self.volumetric_distance.to_string());
+      .set("hanging_lamp.volumetric_quality", self.volumetric_quality)
+      .set("hanging_lamp.volumetric_intensity", self.volumetric_intensity)
+      .set("hanging_lamp.volumetric_distance", self.volumetric_distance);
 
     Ok(())
   }

@@ -7,29 +7,25 @@ use xrf_pack::{ArchiveExtractOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use xrf_utils::format_path;
 
 use super::report::ArchiveUnpackDryReport;
-use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct UnpackCommand;
+pub(crate) struct UnpackCommand;
 
 impl GenericCommand for UnpackCommand {
   fn operation(&self) -> &'static str {
     "unpack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Unpack an archive into separate files")
-      .arg(
-        Arg::new("path")
-          .help("Path to the *.db archive")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Folder to unpack into")
@@ -43,18 +39,24 @@ impl GenericCommand for UnpackCommand {
           .help("Report what would be unpacked without writing anything")
           .long("dry-run")
           .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("force")
+          .help(
+            "Overwrite files already in the folder, names compared without case; without it, one there is refused \
+             before any is written",
+          )
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
       );
 
     LinkPolicyArgument::declare(JobsArgument::declare(command))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: PathBuf = xrf_utils::to_absolute_path(
-      matches
-        .get_one::<PathBuf>("path")
-        .expect("Expected valid path to be provided"),
-    )?;
-    let destination: PathBuf = xrf_utils::to_absolute_path(
+    let path: PathBuf = xrf_utils::resolve_absolute_path(InputArgument::of(matches))?;
+    let destination: PathBuf = xrf_utils::resolve_absolute_path(
       matches
         .get_one::<PathBuf>("dest")
         .expect("Expected valid output path to be provided"),
@@ -74,7 +76,7 @@ impl GenericCommand for UnpackCommand {
     let archive_project: ArchiveProject = ArchiveProject::new(&path)?;
 
     let (compressed_size, real_size): (String, String) =
-      xrf_utils::format_bytes_pair(archive_project.get_compressed_size(), archive_project.get_real_size());
+      xrf_utils::format_bytes_pair(archive_project.sum_compressed_size(), archive_project.get_real_size());
 
     xrf_output::info!(
       output,
@@ -101,7 +103,8 @@ impl GenericCommand for UnpackCommand {
         &destination,
         ArchiveExtractOptions::default()
           .with_job(CliJob::for_output(&output))
-          .with_link_policy(LinkPolicyArgument::of(matches)),
+          .with_link_policy(LinkPolicyArgument::of(matches))
+          .with_forced(matches.get_flag("force")),
       )?;
 
       xrf_output::success!(
@@ -137,12 +140,12 @@ mod tests {
   /// An alias would have kept a second name for a plan the report can only print under one of them.
   #[test]
   fn no_longer_answers_to_the_flag_it_replaced() {
-    assert!(parse(&["unpack", "--path", "archive.db", "--parallel", "4"]).is_err());
+    assert!(parse(&["unpack", "archive.db", "--parallel", "4"]).is_err());
   }
 
   #[test]
   fn takes_the_width_every_other_command_takes() {
-    let matches = parse(&["unpack", "--path", "archive.db", "-j", "4"]).expect("the arguments parse");
+    let matches = parse(&["unpack", "archive.db", "-j", "4"]).expect("the arguments parse");
 
     assert_eq!(
       JobsArgument::of(&matches),
@@ -153,7 +156,7 @@ mod tests {
   /// Omitting it stays valid and means what it always meant here: whatever the host offers.
   #[test]
   fn unpacks_at_the_host_width_when_nobody_says_otherwise() {
-    let matches = parse(&["unpack", "--path", "archive.db"]).expect("the arguments parse");
+    let matches = parse(&["unpack", "archive.db"]).expect("the arguments parse");
 
     assert_eq!(JobsArgument::of(&matches), Some(ExecutionRequest::Auto));
   }

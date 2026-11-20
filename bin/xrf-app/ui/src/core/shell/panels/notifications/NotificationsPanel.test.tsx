@@ -6,7 +6,7 @@ import { Container } from "@wirestate/core";
 import { ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
 import { EToolId } from "@/core/routing/tool";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { NotificationsPanel } from "@/core/shell/panels/notifications/NotificationsPanel";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

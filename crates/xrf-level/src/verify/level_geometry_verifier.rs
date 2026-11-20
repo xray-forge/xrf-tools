@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
-use xrf_math::{Matrix4x4, Vector3d};
-use xrf_ogf::{OgfBox, OgfGeometryContainerChunk};
+use xrf_math::{Aabb, Matrix4x4, Vector3d};
+use xrf_ogf::OgfGeometryContainerChunk;
 use xrf_report::{Finding, Report, RuleId};
 
 use crate::verify::level_file_source::LevelFileSource;
@@ -162,7 +162,6 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   }
 
   /// Reads one visual's range the way the renderer addresses it, and reports what could not be read.
-  #[allow(clippy::too_many_arguments)]
   fn verify_container<D: ChunkDataSource>(
     &self,
     index: usize,
@@ -239,7 +238,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
     vertices: &[LevelVertex],
     state: &mut LevelGeometryFindings,
   ) {
-    let declared: &OgfBox = &visual.header.bounding_box;
+    let declared: &Aabb = &visual.header.bounding_box;
 
     // A box of no extent declares nothing rather than contradicting the geometry. Every visual of every shipped level
     // declares a real one, so this only skips a hand-built fixture that never set one.
@@ -253,7 +252,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
       .iter()
       .map(|vertex| match placement {
         Some(transform) => transform.transform_point(&vertex.position),
-        None => vertex.position.clone(),
+        None => vertex.position,
       })
       .find(|position| {
         position.x < declared.min.x - Self::BOUNDS_TOLERANCE
@@ -285,7 +284,10 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   }
 
   /// Judges what a decoded range holds, once it is known to be readable.
-  #[allow(clippy::too_many_arguments)]
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "one visual's coordinates and decoded range, judged in one pass"
+  )]
   fn verify_geometry(
     &self,
     index: usize,

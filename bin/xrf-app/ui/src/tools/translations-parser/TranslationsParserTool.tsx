@@ -1,17 +1,26 @@
 import { useInjection } from "@wirestate/react";
+import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { SwitchFormRow } from "@xrf/ui/form/switch-row";
-import { Button } from "@xrf/ui/material/button";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations/translations.config";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { TranslationsParserService } from "@/tools/translations-parser/services/translations-parser.service";
 
 import { TranslationsParseResult } from "./components/TranslationsParseResult";
+
+interface ITranslationsParseRequest {
+  source: string;
+  /** The language the raw XML is declared to be in. */
+  language: ETranslationLanguage;
+  output: string;
+  isOverwrite: boolean;
+}
 
 export function TranslationsParserTool(): ReactElement {
   const parserService: TranslationsParserService = useInjection(TranslationsParserService);
@@ -47,32 +56,41 @@ export function TranslationsParserTool(): ReactElement {
     isDisabled: isRunning,
   });
 
-  const sourcePath: Nullable<string> = source.value;
   const outputPath: Nullable<string> = destination.value;
 
-  const onRun = useCallback(
-    async (isDryRun: boolean): Promise<void> => {
-      if (!sourcePath || !outputPath) {
-        return;
-      }
-
-      await parserService.parse(sourcePath, language, outputPath, isOverwrite, isDryRun);
-    },
-    [isOverwrite, language, outputPath, parserService, sourcePath]
+  const request: Nullable<ITranslationsParseRequest> = useMemo(
+    () => (source.value && outputPath ? { source: source.value, language, output: outputPath, isOverwrite } : null),
+    [isOverwrite, language, outputPath, source.value]
   );
 
-  const onPreviewClicked = useCallback(() => void onRun(true), [onRun]);
+  const onRun = useCallback(
+    async ({ submitted, isDryRun }: { submitted: ITranslationsParseRequest; isDryRun: boolean }): Promise<void> => {
+      await parserService.parse(
+        submitted.source,
+        submitted.language,
+        submitted.output,
+        submitted.isOverwrite,
+        isDryRun
+      );
+    },
+    [parserService]
+  );
 
-  const onImportClicked = useCallback(() => void onRun(false), [onRun]);
+  const onPreviewClicked = useCallback(() => {
+    if (request) {
+      void onRun({ submitted: request, isDryRun: true });
+    }
+  }, [onRun, request]);
 
-  // Changing anything the run depends on invalidates whatever the previous one reported.
-  useEffect(() => {
-    parserService.operation.reset();
-  }, [sourcePath, outputPath, language, isOverwrite, parserService]);
+  const onImport = useCallback(
+    (submitted: ITranslationsParseRequest) => void onRun({ submitted, isDryRun: false }),
+    [onRun]
+  );
 
   return (
     <JobPickerForm
       operation={parserService.operation}
+      request={request}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Parse translations"}
       description={
@@ -82,14 +100,14 @@ export function TranslationsParserTool(): ReactElement {
       secondaryActions={
         <Button
           variant={"outlined"}
-          disabled={isRunning || !source.isValid || !destination.isValid}
+          disabled={isRunning || !request || !source.isValid || !destination.isValid}
           onClick={onPreviewClicked}
         >
           Preview
         </Button>
       }
       renderResult={(result) => <TranslationsParseResult result={result} outputPath={outputPath} />}
-      onSubmit={onImportClicked}
+      onSubmit={onImport}
     >
       <PathFormRow
         isDisabled={isRunning}

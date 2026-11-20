@@ -11,7 +11,7 @@ pub(crate) struct TargetSizeAction {
 }
 
 impl TargetSizeAction {
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let share: Vec3 = self.scale * step.dt;
 
     for m in pool.get_particles_mut() {
@@ -23,8 +23,8 @@ impl TargetSizeAction {
 impl From<&ParticleActionTargetSize> for TargetSizeAction {
   fn from(action: &ParticleActionTargetSize) -> Self {
     Self {
-      size: Vec3::from_array(action.size.to_array()),
-      scale: Vec3::from_array(action.scale.to_array()),
+      size: Vec3::from(&action.size),
+      scale: Vec3::from(&action.scale),
     }
   }
 }

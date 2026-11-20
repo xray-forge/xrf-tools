@@ -5,6 +5,8 @@ use xrf_engine_target::XrayEngine;
 use xrf_environment::{SunPosition, WeatherDescriptor, WeatherModifier};
 use xrf_renderer::RenderLevelWeather;
 
+use crate::host::sound::world_sound::WorldSound;
+use crate::host::sound::world_sound_channel::WorldSoundChannel;
 use crate::host::world_ambient::WorldAmbient;
 use crate::host::world_ambient_effect::WorldAmbientEffect;
 
@@ -26,4 +28,10 @@ pub struct WorldLevelWeather {
   pub ambients: HashMap<String, WorldAmbient>,
   /// Every effect an ambient may play, by its section's name.
   pub ambient_effects: HashMap<String, WorldAmbientEffect>,
+  /// Every sound channel an ambient may play, by its section's name.
+  pub sound_channels: HashMap<String, WorldSoundChannel>,
+  /// The rain's loop, `ambient\rain`.
+  pub rain_sound: Option<WorldSound>,
+  /// Each thunderbolt's sound, by its section's name; a bolt naming none is silent.
+  pub thunder_sounds: HashMap<String, WorldSound>,
 }

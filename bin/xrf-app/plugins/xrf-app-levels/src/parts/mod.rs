@@ -13,16 +13,15 @@ mod spawn;
 
 pub(crate) use console::LevelConsolePart;
 pub(crate) use drawn::{
-  LevelDetailsPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, PackedLevelDetails, PackedLevelLights,
-  PackedLevelParticles,
+  LevelAiMapPart, LevelDetailsPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, PackedLevelDetails,
+  PackedLevelLights, PackedLevelParticles,
 };
 pub(crate) use environment::{LevelEnvironment, LevelEnvironmentPart, LevelWeatherPart};
 pub(crate) use level::{
-  LevelCollisionPart, LevelGeometryPart, LevelMapPart, LevelPlacementsPart, LevelSurfacesPart, LevelTexturesPart,
+  LevelCollisionPart, LevelGeometryPart, LevelMapArea, LevelMapDescription, LevelMapPart, LevelPlacements,
+  LevelPlacementsPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
 };
-pub use level::{LevelMapArea, LevelMapDescription, LevelPlacements, LevelTextureReference};
 pub(crate) use spawn::{
-  LevelGraphPart, LevelHemiPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelSpawnVisual, LevelSpawnVisuals,
-  LevelSpawnVisualsPart, LevelStartPart, NamedSpawnVisual, SpawnVisualReader,
+  LevelGraphPart, LevelHemiPart, LevelSectionsPart, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnPart,
+  LevelSpawnVisualsPart, LevelStart, LevelStartOrigin, LevelStartPart, NamedSpawnVisual,
 };
-pub use spawn::{LevelSpawnObjectHemi, LevelStart, LevelStartOrigin};

@@ -1,6 +1,7 @@
 //! Shader permutations and the pipelines made from them: each described by a hashable description and made once.
 
 mod compute_pipeline_description;
+mod pipeline_ask;
 mod pipeline_cache;
 mod pipeline_constants;
 mod pipeline_map;
@@ -16,6 +17,7 @@ mod vertex_layout;
 mod tests;
 
 pub use compute_pipeline_description::ComputePipelineDescription;
+pub use pipeline_ask::PipelineAsk;
 pub use pipeline_cache::PipelineCache;
 pub use pipeline_constants::PipelineConstants;
 pub use pipeline_map::PipelineMap;

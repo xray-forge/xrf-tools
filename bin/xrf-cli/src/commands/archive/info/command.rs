@@ -1,43 +1,39 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::ArchiveInfoReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct InfoCommand;
+pub(crate) struct InfoCommand;
 
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {
     "info"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    command.about("Describe an X-Ray archive volume or volume set").arg(
-      Arg::new("path")
-        .help("Path to an archive volume or a directory containing volumes")
-        .short('p')
-        .long("path")
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    )
+    command.about("Describe an X-Ray archive volume or volume set")
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
-    let path: &PathBuf = matches
-      .get_one("path")
-      .expect("Expected an archive path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
     let (compressed, unpacked): (String, String) =
-      xrf_utils::format_bytes_pair(project.get_compressed_size(), project.get_real_size());
+      xrf_utils::format_bytes_pair(project.sum_compressed_size(), project.get_real_size());
 
     xrf_output::info!(output, "Archive root: {}", format_path(&project.root));
     xrf_output::info!(output, "Volumes: {}", project.archives.len());

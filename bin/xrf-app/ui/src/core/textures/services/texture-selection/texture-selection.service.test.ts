@@ -6,7 +6,7 @@ import { IpcBulkRouteFetch, mockIpcBulkRoutes } from "@xrf/ipc/testing";
 import { ETextureSource, TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { mockInjectedService } from "@/fixtures/utils/container";

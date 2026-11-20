@@ -7,7 +7,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 /// Averages each detail model's texture over its solid texels into the colour a traced hit on grassed ground blends
 /// towards (`grass/colours`), a workgroup a model, each frame the scene is traced: a few thousand reads a model, and
 /// always the textures as they stand, streamed in or not.
-pub struct GrassColourPass {
+pub(crate) struct GrassColourPass {
   layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
   pipeline: PipelineSet<wgpu::ComputePipeline>,
@@ -17,7 +17,7 @@ impl GrassColourPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, texture_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, texture_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = GrassColourParameters::create_layout(device);
@@ -31,7 +31,7 @@ impl GrassColourPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.layout, &self.texture_layout)
     }) {
@@ -40,7 +40,7 @@ impl GrassColourPass {
   }
 
   /// Averages the colours of `models` detail models, their textures read through the texture cache's group.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut ComputeContext<'_>,
     parameters: &GrassColourParameters,

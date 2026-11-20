@@ -42,7 +42,7 @@ fn the_vignette_leaves_the_centre_and_dims_the_corners_by_cos_to_the_fourth() {
 
   // Half the strength stands halfway to the falloff; none leaves every pixel whole.
   for found in &answered {
-    assert!((found.y - (1.0 + found.x) * 0.5).abs() < 1e-5, "{found}");
+    assert!((found.y - f32::midpoint(1.0, found.x)).abs() < 1e-5, "{found}");
     assert_eq!(found.z, 1.0);
   }
 }

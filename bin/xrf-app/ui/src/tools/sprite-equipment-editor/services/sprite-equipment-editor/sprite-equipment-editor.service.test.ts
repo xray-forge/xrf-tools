@@ -33,7 +33,7 @@ describe("SpriteEquipmentEditorService", () => {
       }),
     });
 
-    await expect(service.reopenEquipmentProject()).resolves.toBe(false);
+    await expect(service.refresh()).resolves.toBe(false);
 
     // Left loading, every command in the editor stays disabled for the rest of the session and the
     // only way out is closing the project.
@@ -48,7 +48,7 @@ describe("SpriteEquipmentEditorService", () => {
     mockShownEquipmentSprite(service);
     service.repackSourcePath = null;
 
-    await expect(service.repackAndOpenProject()).rejects.toThrow("without base icons");
+    await expect(service.repackAndRefresh()).rejects.toThrow("without base icons");
 
     // The guard has to leave the editor usable, since the command is offered again immediately.
     expect(service.spriteImage.isLoading).toBe(false);
@@ -66,7 +66,7 @@ describe("SpriteEquipmentEditorService", () => {
       },
     });
 
-    await expect(service.repackAndOpenProject()).rejects.toThrow("pack failed");
+    await expect(service.repackAndRefresh()).rejects.toThrow("pack failed");
 
     expect(service.spriteImage.isLoading).toBe(false);
     expect(String(service.spriteImage.error)).toContain("pack failed");
@@ -91,7 +91,7 @@ describe("SpriteEquipmentEditorService", () => {
       }),
     });
 
-    await service.openEquipmentProject(mockEquipmentSpriteOpen());
+    await service.open(mockEquipmentSpriteOpen());
 
     expect(service.spriteImage.error?.message).toBe("boom");
 
@@ -107,7 +107,7 @@ describe("SpriteEquipmentEditorService", () => {
 
     mockIpcCommands({ [ESpriteEquipmentCommand.OPEN_SPRITE]: () => new Promise(() => {}) });
 
-    void service.openEquipmentProject(mockEquipmentSpriteOpen());
+    void service.open(mockEquipmentSpriteOpen());
     service.clearSpriteError();
 
     expect(service.spriteImage.isLoading).toBe(true);
@@ -127,7 +127,7 @@ describe("SpriteEquipmentEditorService", () => {
         throw new Error("previous failure");
       }),
     });
-    await service.reopenEquipmentProject();
+    await service.refresh();
 
     const previous = service.spriteImage;
 
@@ -150,7 +150,7 @@ describe("SpriteEquipmentEditorService", () => {
       });
     }
 
-    await service.repackAndOpenProject();
+    await service.repackAndRefresh();
 
     expect(service.spriteImage.value).toBe(previous.value);
     expect(service.spriteImage.error).toBe(previous.error);

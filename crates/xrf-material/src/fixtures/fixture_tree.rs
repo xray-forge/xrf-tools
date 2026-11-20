@@ -96,7 +96,7 @@ impl FixtureTree {
 
   /// A renderer shader script where the engine would load one for `shader`, holding `source`.
   pub fn with_shader_script(self, shader: &str, source: &str) -> Self {
-    self.write(&XraySurfaceScript::to_logical_path(shader), source.as_bytes());
+    self.write(&XraySurfaceScript::resolve_logical_path(shader), source.as_bytes());
 
     self
   }

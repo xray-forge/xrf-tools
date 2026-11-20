@@ -7,7 +7,7 @@ use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 /// sees, nearest first, as many as its records hold, and the shadowed ones out of view kept ready near the eye, with
 /// the frame it lights them and has their faces drawn by. The scene settles every view's asks for faces at once
 /// (`LevelLights::settle`); the view then writes its lights from its own (`LevelLights::write`).
-pub struct LightAsks {
+pub(crate) struct LightAsks {
   pub frame: LightsFrame,
   /// Where the camera looks, which a spot facing it asks bigger faces by.
   pub forward: Vec3,

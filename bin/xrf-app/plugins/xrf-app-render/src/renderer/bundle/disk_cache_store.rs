@@ -3,13 +3,13 @@ use xrf_renderer::RenderCacheStore;
 
 /// The renderer's cache as one client of the application's caches, which mark what it reads used and tidy what it
 /// stops reading.
-pub struct DiskCacheStore {
+pub(crate) struct DiskCacheStore {
   store: AppCacheStore,
 }
 
 impl DiskCacheStore {
   /// The renderer's cache over the application's `store` for it.
-  pub fn new(store: AppCacheStore) -> Self {
+  pub(crate) fn new(store: AppCacheStore) -> Self {
     Self { store }
   }
 }

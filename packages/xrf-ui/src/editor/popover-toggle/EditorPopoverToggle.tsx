@@ -2,9 +2,10 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { EditorPopoverAction } from "#/editor/popover-action";
+import { EditorPopoverContent } from "#/editor/popover-content";
+import { EditorPopoverGroupSection } from "#/editor/popover-group";
+import { EditorPopoverNote } from "#/editor/popover-row";
 import { BaseComponentProps } from "#/element-types";
-import { CheckboxFormRow } from "#/form/checkbox-row";
-import { Typography } from "#/material/typography";
 
 export interface IEditorPopoverToggleProps extends BaseComponentProps {
   /** Stable accessible name, independent of whether the toggle is on. */
@@ -24,7 +25,11 @@ export interface IEditorPopoverToggleProps extends BaseComponentProps {
   /** Why the settings behind it do nothing now, said in their place; the toggle still turns over. */
   lockedReason?: Nullable<string>;
   onToggle: () => void;
-  /** The settings the toggle turns on and off. */
+  /** Sets what the toggle heads back, from a button at the end of its heading; none while nothing is to set back. */
+  onReset?: () => void;
+  /** What the reset sets them back to, its tooltip. */
+  resetLabel?: string;
+  /** The settings the toggle turns on and off, under its heading; a further section of them heads its own. */
   children: ReactNode;
 }
 
@@ -46,6 +51,8 @@ export function EditorPopoverToggle({
   header = null,
   lockedReason = null,
   onToggle,
+  onReset,
+  resetLabel,
   children,
 }: IEditorPopoverToggleProps): ReactElement {
   const reason: Nullable<string> = isDisabled ? description : lockedReason;
@@ -65,28 +72,20 @@ export function EditorPopoverToggle({
       kind={isDisabled ? "popover" : "toggle"}
       onClick={isDisabled ? undefined : onClick}
     >
-      <div className={`flex ${isWide ? "w-80" : "w-60"} flex-col gap-2 px-4 py-2`}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          {label}
-        </Typography>
-
+      <EditorPopoverContent label={label} isWide={isWide}>
         {header}
 
-        <CheckboxFormRow
+        <EditorPopoverGroupSection
           label={toggleLabel}
-          isChecked={isOn && !isDisabled}
+          isOn={isOn && !isDisabled}
           isDisabled={isDisabled}
-          onChange={onToggle}
+          resetLabel={resetLabel}
+          onToggle={onToggle}
+          onReset={reason ? undefined : onReset}
         />
 
-        {reason ? (
-          <Typography className={"text-text-secondary"} variant={"caption"}>
-            {reason}
-          </Typography>
-        ) : (
-          children
-        )}
-      </div>
+        {reason ? <EditorPopoverNote>{reason}</EditorPopoverNote> : children}
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

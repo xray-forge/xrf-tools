@@ -3,7 +3,7 @@ use xrf_lua::{XRayLuaChainedCall, XRayLuaMethodCall, XRayLuaValue};
 use crate::script::XRayShaderBlendFactor;
 
 /// The render state a shader script sets on one pass, in the calls chained onto its `shader:begin`.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct XRayShaderPassState {
   /// Whether the pass is composited rather than written, `blend(true, ...)`.
   pub is_blended: bool,

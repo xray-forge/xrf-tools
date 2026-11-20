@@ -52,15 +52,15 @@ const GLASS_TEXTURES: [&str; 3] = ["glas\\", "wind\\", "glass"];
 const HUE_STEP: f32 = 137.508;
 
 /// Builds the surfaces the static draws wear from shader table entries.
-pub struct StaticSurfaceBuilder;
+pub(crate) struct StaticSurfaceBuilder;
 
 impl StaticSurfaceBuilder {
   /// The material whose slice `lod.ps` writes: the default lighting model.
-  pub const IMPOSTOR_MATERIAL: f32 = 0.0;
+  pub(crate) const IMPOSTOR_MATERIAL: f32 = 0.0;
 
   /// A shader table entry as the static draws wear it, asking for its textures; `None` for an invisible one, which no
   /// static draw draws. A composited wall mark is laid into the G-buffer's albedo rather than over the lit frame.
-  pub fn build(
+  pub(crate) fn build(
     surface: &SectorSurface,
     descriptor: Option<&XraySurfaceDescriptor>,
     textures: &mut TextureCache,
@@ -69,7 +69,7 @@ impl StaticSurfaceBuilder {
     if let Some(descriptor) = descriptor
       && let XraySurfaceDraw::Water { .. } = descriptor.draw
     {
-      let color: Vec3 = Self::to_surface_color(surface.shader_id);
+      let color: Vec3 = Self::get_surface_color(surface.shader_id);
 
       return Some((
         StaticWaterSurfaceBuilder::build(surface, descriptor, textures, source, color),
@@ -96,17 +96,17 @@ impl StaticSurfaceBuilder {
       texture_slots[StaticSurface::LIGHTMAP] = textures.request(lightmap, TextureRole::Hemi, source);
     }
 
-    let distortion: u32 = plan
-      .distortion
-      .map_or(0, |reference| textures.request(reference, TextureRole::Detail, source));
+    let distortion: u32 = plan.distortion.map_or(0, |reference| {
+      textures.request(reference, TextureRole::Distortion, source)
+    });
 
     Some((
       StaticSurface {
         tiling: 1.0,
         detail_scale: plan.detail_scale,
-        alpha_reference: plan.alpha_reference as f32 / 255.0,
+        alpha_reference: f32::from(plan.alpha_reference) / 255.0,
         slice: material_slice(plan.material),
-        color: Self::to_surface_color(surface.shader_id),
+        color: Self::get_surface_color(surface.shader_id),
         flags: plan.flags,
         textures: texture_slots,
         terrain,
@@ -120,7 +120,7 @@ impl StaticSurfaceBuilder {
   /// What a shader table entry decides of a surface before its textures are asked for: its class, alpha reference and
   /// flags, and the textures it names; `None` for water, which `StaticWaterSurfaceBuilder` builds, and for an
   /// invisible one.
-  pub fn plan<'a>(
+  pub(crate) fn plan<'a>(
     surface: &'a SectorSurface,
     descriptor: Option<&'a XraySurfaceDescriptor>,
   ) -> Option<StaticSurfacePlan<'a>> {
@@ -188,7 +188,7 @@ impl StaticSurfaceBuilder {
     );
     name(StaticSurface::HEMI, surface.hemi.as_deref(), TextureRole::Hemi);
 
-    let mut flags: u32 = Self::to_flags(descriptor, &slots.map(|it| it.is_some()), class, reference, blend);
+    let mut flags: u32 = Self::get_flags(descriptor, &slots.map(|it| it.is_some()), class, reference, blend);
 
     let terrain: Option<&'a XraySurfaceTerrain> = descriptor
       .and_then(|it| it.terrain.as_ref())
@@ -247,7 +247,7 @@ impl StaticSurfaceBuilder {
 
   /// A surface's flags by what its shader entry (`descriptor`) asks for and which of its own slots name a texture
   /// (`named`): its class and alpha `reference` deciding its test, and its `blend`.
-  fn to_flags(
+  fn get_flags(
     descriptor: Option<&XraySurfaceDescriptor>,
     named: &[bool; 7],
     class: StaticClass,
@@ -354,7 +354,7 @@ impl StaticSurfaceBuilder {
   }
 
   /// A run of impostors' surface, asking for its atlas and the atlas's `_nm` companion.
-  pub fn build_impostor(
+  pub(crate) fn build_impostor(
     surface: &SectorSurface,
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
@@ -377,7 +377,7 @@ impl StaticSurfaceBuilder {
       detail_scale: 1.0,
       alpha_reference: 0.0,
       slice: material_slice(Self::IMPOSTOR_MATERIAL),
-      color: Self::to_surface_color(surface.shader_id),
+      color: Self::get_surface_color(surface.shader_id),
       flags,
       textures: texture_slots,
       terrain: StaticTerrainSlots::default(),
@@ -439,8 +439,8 @@ impl StaticSurfaceBuilder {
   }
 
   /// A stable colour per shader table entry, from a hue its id decides, so a surface reads the same in every sector.
-  fn to_surface_color(shader_id: u16) -> Vec3 {
-    let hue: f32 = (shader_id as f32 * HUE_STEP) % 360.0;
+  fn get_surface_color(shader_id: u16) -> Vec3 {
+    let hue: f32 = (f32::from(shader_id) * HUE_STEP) % 360.0;
     let (saturation, lightness): (f32, f32) = (0.45, 0.6);
     let reach: f32 = saturation * lightness.min(1.0 - lightness);
     let channel = |offset: f32| -> f32 {

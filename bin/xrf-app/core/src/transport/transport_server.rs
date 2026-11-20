@@ -1,6 +1,5 @@
 use std::convert::Infallible;
 use std::error::Error;
-use std::future::Future;
 use std::io;
 use std::net::{Ipv4Addr, SocketAddr, TcpListener as StdTcpListener};
 use std::sync::Arc;
@@ -240,12 +239,12 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
   fn refuse(refusal: &TransportRefusal) -> Response<Full<Bytes>> {
     Self::respond(
       refusal.get_status(),
-      Full::new(Bytes::from(Self::to_refusal_message(refusal))),
+      Full::new(Bytes::from(Self::encode_refusal(refusal))),
       Some(HeaderValue::from_static(Self::REFUSAL)),
     )
   }
 
-  fn to_refusal_message(refusal: &TransportRefusal) -> Vec<u8> {
+  fn encode_refusal(refusal: &TransportRefusal) -> Vec<u8> {
     serde_json::to_vec(&refusal.get_message()).unwrap_or_default()
   }
 

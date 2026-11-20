@@ -5,10 +5,10 @@ use std::path::{Path, PathBuf};
 use image::RgbaImage;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
-use xrf_math::Vector3d;
+use xrf_math::{Affine3d, Sphere, Vector3d};
 use xrf_spawn::{
   AlifeLevelChanger, AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, AlifeObjectSpaceRestrictor, ClsId,
-  GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
+  GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph, SpawnLevelGraphPoint,
 };
 use xrf_test_utils::GeneratedResources;
 use xrf_visual::VisualTransform;
@@ -19,7 +19,7 @@ use crate::objects::{
 };
 use crate::parts::{LevelMapArea, LevelSpawn};
 use crate::tests::fixtures;
-use crate::viewer::map::annotations::{
+use crate::viewer::export::map::annotations::{
   AnnotationCanvas, AnnotationMarker, AnnotationOutline, AnnotationVolume, LevelAnnotations, MapAnnotationsWriteRequest,
 };
 
@@ -32,11 +32,12 @@ fn new_restrictor(shape: Vec<Shape>, restrictor_type: u8) -> AlifeObjectSpaceRes
 }
 
 fn new_object(name: &str, position: Vector3d, heading: f32, inherited: AlifeObjectInherited) -> AlifeObject {
-  AlifeObject {
-    position,
-    direction: Vector3d::new(0.0, heading, 0.0),
-    ..fixtures::new_object(name, "space_restrictor", ClsId::SpcRsS, inherited)
-  }
+  let mut object: AlifeObject = fixtures::new_object(name, "space_restrictor", ClsId::SpcRsS, inherited);
+
+  object.header.position = position;
+  object.header.direction = Vector3d::new(0.0, heading, 0.0);
+
+  object
 }
 
 fn new_level(id: u8, name: &str, offset: Vector3d) -> GraphLevel {
@@ -51,12 +52,12 @@ fn new_level(id: u8, name: &str, offset: Vector3d) -> GraphLevel {
 
 /// A box four metres square and two high about the origin.
 fn new_box() -> Shape {
-  Shape::Box((
-    Vector3d::new(4.0, 0.0, 0.0),
-    Vector3d::new(0.0, 2.0, 0.0),
-    Vector3d::new(0.0, 0.0, 4.0),
-    Vector3d::new(0.0, 0.0, 0.0),
-  ))
+  Shape::Box(Affine3d {
+    x_axis: Vector3d::new(4.0, 0.0, 0.0),
+    y_axis: Vector3d::new(0.0, 2.0, 0.0),
+    z_axis: Vector3d::new(0.0, 0.0, 4.0),
+    translation: Vector3d::new(0.0, 0.0, 0.0),
+  })
 }
 
 fn new_spawn(objects: Vec<AlifeObject>) -> LevelSpawn {
@@ -74,7 +75,10 @@ fn new_graph() -> SpawnLevelGraph {
       new_level(1, "zaton", Vector3d::new(0.0, 0.0, 0.0)),
       new_level(2, "pripyat", Vector3d::new(0.0, 0.0, 500.0)),
     ],
-    points: vec![(321, Vector3d::new(5.0, 0.0, 6.0))],
+    points: vec![SpawnLevelGraphPoint {
+      game_vertex_id: 321,
+      level_point: Vector3d::new(5.0, 0.0, 6.0),
+    }],
     patrols: vec![Patrol {
       name: String::from("zat_walk"),
       points: ["wp00", "wp01"]
@@ -176,7 +180,10 @@ fn outlines_a_box_from_above_at_its_place() {
 
 #[test]
 fn turns_a_sphere_with_its_object_and_keeps_its_radius() {
-  let sphere: Shape = Shape::Sphere((Vector3d::new(5.0, 0.0, 0.0), 3.0));
+  let sphere: Shape = Shape::Sphere(Sphere {
+    center: Vector3d::new(5.0, 0.0, 0.0),
+    radius: 3.0,
+  });
   let spawn: LevelSpawn = new_spawn(vec![new_object(
     "zat_in",
     Vector3d::new(100.0, 0.0, 0.0),

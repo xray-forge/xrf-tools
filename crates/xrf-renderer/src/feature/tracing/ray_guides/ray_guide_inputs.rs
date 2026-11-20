@@ -6,7 +6,7 @@ use crate::feature::weather::wet::wet_targets::WetTargets;
 /// reflections where they were traced (their trace's hit distances) and the indirect light where it was traced (its
 /// rays' hit distances).
 #[derive(Clone, Copy)]
-pub struct RayGuideInputs {
+pub(crate) struct RayGuideInputs {
   pub wet: WetTargets,
   pub reflections: Option<ReflectionsRecorded>,
   pub indirect: Option<IndirectTraced>,

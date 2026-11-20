@@ -6,24 +6,44 @@ use xrf_renderer_core::{
 
 use crate::context::gpu_requirements::can_trace;
 use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
+use crate::feature::tracing::scene_trace::requests::scene_list_parameters::SceneListParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
 use crate::feature::tracing::scene_trace::requests::trace_request_handles::TraceRequestHandles;
 use crate::feature::tracing::scene_trace::requests::trace_request_list::TraceRequestList;
+use crate::feature::tracing::scene_trace::requests::water_ray_parameters::WaterRayParameters;
+use crate::feature::tracing::scene_trace::requests::water_rays::WaterRays;
 use crate::feature::tracing::scene_trace::scene_trace_bindings::SceneTraceBindings;
 use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::pass::build::pipeline_source::PipelineSource;
 
-/// The reflections' scene pass, the surfaces' and the water's alike: a pass listing the rays it leaves unanswered
-/// (`TraceRequestList`) has its list emptied before it, then the scene pass traces exactly the rays listed against the
-/// level's static geometry by hardware ray query (`frame/reflection_scene`), as many workgroups as were counted, and
-/// writes each that meets something into the list's target. Nothing traces on a device without ray queries.
-pub struct SceneTracePass {
+/// The scene pass's two ways in.
+struct SceneTracePipelines {
+  /// A request list's rays, a thread a request.
+  listed: wgpu::ComputePipeline,
+  /// The water's every-pixel rays (`WaterRays`), a thread a drawn pixel.
+  pixels: wgpu::ComputePipeline,
+}
+
+/// The layouts the scene pass's pipelines bind beside the view's and the sky's, on a device with ray queries.
+struct SceneTraceLayouts {
+  scene: wgpu::BindGroupLayout,
+  trace: wgpu::BindGroupLayout,
+  textures: wgpu::BindGroupLayout,
+  list: wgpu::BindGroupLayout,
+  water_rays: wgpu::BindGroupLayout,
+}
+
+/// The reflections' scene pass, for the surfaces and the water: traces the rays the screen left unanswered against the
+/// level's static geometry by hardware ray query (`frame/reflection_scene`).
+///
+/// Rays come from a `TraceRequestList`, emptied before the pass filling it and dispatched by its count, or from the
+/// water's every-pixel `WaterRays`. Nothing traces on a device without ray queries.
+pub(crate) struct SceneTracePass {
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
-  /// The pass's own, the trace's and the texture cache's layouts, on a device with ray queries.
-  layouts: Option<[wgpu::BindGroupLayout; 3]>,
-  pipeline: PipelineSet<Option<wgpu::ComputePipeline>>,
+  layouts: Option<SceneTraceLayouts>,
+  pipelines: PipelineSet<Option<SceneTracePipelines>>,
   /// What a list's head is set back to before the pass filling it, its wait kept: `TraceRequest::HEAD`.
   head_reset: wgpu::Buffer,
   /// What a list keeping no ends binds for them, which nothing writes.
@@ -37,7 +57,7 @@ impl SceneTracePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
@@ -45,18 +65,18 @@ impl SceneTracePass {
   ) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
-    let layouts: Option<[wgpu::BindGroupLayout; 3]> = can_trace(device).then(|| {
-      [
-        ReflectionSceneParameters::create_layout(device),
-        TraceParameters::create_layout(device),
-        texture_layout.clone(),
-      ]
+    let layouts: Option<SceneTraceLayouts> = can_trace(device).then(|| SceneTraceLayouts {
+      scene: ReflectionSceneParameters::create_layout(device),
+      trace: TraceParameters::create_layout(device),
+      textures: texture_layout.clone(),
+      list: SceneListParameters::create_layout(device),
+      water_rays: WaterRayParameters::create_layout(device),
     });
 
     Ok(Self {
-      pipeline: PipelineSet::new(
+      pipelines: PipelineSet::new(
         source.cache,
-        Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
+        Self::create_pipelines(source, view_layout, sky_layout, layouts.as_ref())?,
       ),
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
@@ -87,26 +107,26 @@ impl SceneTracePass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if let Err(error) = self.pipeline.refresh(source.cache, || {
-      Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref())
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref())
     }) {
       log::error!("Scene trace rejected, tracing with the last one: {error}");
     }
   }
 
   /// Whether it traces rays: a device with ray queries.
-  pub fn is_traced(&self) -> bool {
+  pub(crate) fn is_traced(&self) -> bool {
     self.layouts.is_some()
   }
 
   /// What a list keeping no ends binds for them.
-  pub fn get_no_ends(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_no_ends(&self) -> &wgpu::TextureView {
     &self.no_ends
   }
 
   /// Imports a list into the frame's graph and empties it for the pass that fills it, which binds what this answers.
-  pub fn add_reset<'a>(
+  pub(crate) fn add_reset<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,
@@ -154,15 +174,16 @@ impl SceneTracePass {
     handles
   }
 
-  /// Traces the rays a `request`'s list holds once the pass filling it has run: its dispatch copied out of its head,
-  /// then the scene pass over the `bindings`, whose parameters name the list and the targets its hits write.
-  pub fn add_trace<'a>(
+  /// Traces the rays in a `request`'s list once the pass filling it has run, dispatched by the count in its head; the
+  /// `bindings` name the targets its hits write.
+  pub(crate) fn add_trace<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     request: SceneTraceRequest,
     bindings: SceneTraceBindings<'a>,
   ) {
     let (head, dispatch) = (request.handles.head, request.handles.dispatch);
+    let list: SceneListParameters = request.handles.to_read();
 
     graph
       .add_encoder_pass(request.dispatch_label)
@@ -184,52 +205,104 @@ impl SceneTracePass {
       .parameters(&bindings.parameters)
       .parameters(&bindings.sky)
       .parameters(&bindings.trace)
+      .parameters(&list)
       .buffer(dispatch, GraphBufferAccess::Indirect)
       .record(move |context| {
         let copied: &wgpu::Buffer = context.get_buffer(dispatch);
 
-        self.record(context, &bindings, copied);
+        if let Some(pass) = self.begin(context, &bindings, &list, |pipelines| &pipelines.listed) {
+          pass.dispatch_workgroups_indirect(copied, 0);
+        }
       });
   }
 
-  fn record(&self, context: &mut ComputeContext<'_>, bindings: &SceneTraceBindings<'_>, dispatch: &wgpu::Buffer) {
-    let Some(pipeline) = &*self.pipeline else {
-      return;
+  /// Traces the water's every-pixel `rays` once the pass writing them has run, a thread a pixel of the drawn size.
+  pub(crate) fn add_trace_pixels<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    label: &'static str,
+    (width, height): (u32, u32),
+    bindings: SceneTraceBindings<'a>,
+    rays: WaterRayParameters,
+  ) {
+    graph
+      .add_compute_pass(label)
+      .parameters(&bindings.parameters)
+      .parameters(&bindings.sky)
+      .parameters(&bindings.trace)
+      .parameters(&rays)
+      .record(move |context| {
+        if let Some(pass) = self.begin(context, &bindings, &rays, |pipelines| &pipelines.pixels) {
+          pass.dispatch_workgroups(
+            width.div_ceil(WaterRays::WORKGROUP),
+            height.div_ceil(WaterRays::WORKGROUP),
+            1,
+          );
+        }
+      });
+  }
+
+  /// Binds the `bindings`, the `rays` group and the pipeline `pick` chooses; none on a device that does not trace.
+  fn begin<'c, P: PassParameters>(
+    &self,
+    context: &'c mut ComputeContext<'_>,
+    bindings: &SceneTraceBindings<'_>,
+    rays: &P,
+    pick: impl Fn(&SceneTracePipelines) -> &wgpu::ComputePipeline,
+  ) -> Option<&'c mut wgpu::ComputePass<'static>> {
+    let Some(pipelines) = &*self.pipelines else {
+      return None;
     };
 
     context.bind(&bindings.parameters);
     context.bind(&bindings.sky);
     context.bind(&bindings.trace);
+    context.bind(rays);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
-    pass.set_pipeline(pipeline);
+    pass.set_pipeline(pick(pipelines));
     pass.set_bind_group(0, &bindings.view.bind_group, &[]);
     pass.set_bind_group(Self::TEXTURE_GROUP, bindings.textures, &[]);
-    pass.dispatch_workgroups_indirect(dispatch, 0);
+
+    Some(pass)
   }
 
-  fn create_pipeline(
+  /// Each way in binds its own rays' group (`SceneListParameters` or `WaterRayParameters`) and leaves the other's slot
+  /// a gap.
+  fn create_pipelines(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
-    layouts: Option<&[wgpu::BindGroupLayout; 3]>,
-  ) -> XrfResult<Option<wgpu::ComputePipeline>> {
-    let Some([scene_layout, trace_layout, texture_layout]) = layouts else {
+    layouts: Option<&SceneTraceLayouts>,
+  ) -> XrfResult<Option<SceneTracePipelines>> {
+    let Some(layouts) = layouts else {
       return Ok(None);
     };
-    source
-      .get_compute_pipeline(
-        &ComputePipelineDescription::new("scene trace", "frame/reflection_scene", "cs_scene").with_bind_group_layouts(
-          &[
-            Some(view_layout),
-            Some(scene_layout),
-            Some(sky_layout),
-            Some(trace_layout),
-            Some(texture_layout),
-          ],
-        ),
+    let pipeline = |label: &'static str,
+                    entry: &'static str,
+                    rays: [Option<&wgpu::BindGroupLayout>; 2]|
+     -> XrfResult<wgpu::ComputePipeline> {
+      source.get_compute_pipeline(
+        &ComputePipelineDescription::new(label, "frame/reflection_scene", entry).with_bind_group_layouts(&[
+          Some(view_layout),
+          Some(&layouts.scene),
+          Some(sky_layout),
+          Some(&layouts.trace),
+          Some(&layouts.textures),
+          rays[0],
+          rays[1],
+        ]),
       )
-      .map(Some)
+    };
+
+    Ok(Some(SceneTracePipelines {
+      listed: pipeline("scene trace", "cs_scene", [Some(&layouts.list), None])?,
+      pixels: pipeline(
+        "scene trace pixels",
+        "cs_water_scene",
+        [None, Some(&layouts.water_rays)],
+      )?,
+    }))
   }
 }

@@ -3,7 +3,7 @@ use crate::frame::readback::gpu_readback::GpuReadback;
 /// How long the GPU spends on each frame from its first command to its last, whether or not its passes are timed: a
 /// stamp at the start of the frame's own encoder and one in a buffer submitted after every other, read back without
 /// waiting a few frames late. A device without timestamps inside encoders measures nothing.
-pub struct FrameSpanTimer {
+pub(crate) struct FrameSpanTimer {
   queries: Option<wgpu::QuerySet>,
   /// Each slot's two stamps resolved at its own aligned offset.
   resolve: wgpu::Buffer,
@@ -22,7 +22,7 @@ impl FrameSpanTimer {
   /// Bytes between two slots' resolved stamps: a query resolve's offset alignment.
   const STRIDE: u64 = wgpu::QUERY_RESOLVE_BUFFER_ALIGNMENT;
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let queries: Option<wgpu::QuerySet> = device
       .features()
       .contains(wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS)
@@ -53,7 +53,7 @@ impl FrameSpanTimer {
 
   /// Stamps the start of a frame tagged `tag` into the first free slot, at the start of the frame's own encoder, which
   /// is submitted first; nothing while every slot is on its way back.
-  pub fn begin(&mut self, encoder: &mut wgpu::CommandEncoder, tag: u64) {
+  pub(crate) fn begin(&mut self, encoder: &mut wgpu::CommandEncoder, tag: u64) {
     self.slot = None;
 
     let Some(queries) = &self.queries else {
@@ -70,7 +70,7 @@ impl FrameSpanTimer {
 
   /// The commands stamping the end of the frame and copying its two stamps out, to submit after all of the frame's
   /// others; none where its start was not stamped.
-  pub fn end(&mut self, device: &wgpu::Device) -> Option<wgpu::CommandBuffer> {
+  pub(crate) fn end(&mut self, device: &wgpu::Device) -> Option<wgpu::CommandBuffer> {
     let (queries, slot) = (self.queries.as_ref()?, self.slot.take()?);
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
       label: Some("frame span"),
@@ -87,14 +87,14 @@ impl FrameSpanTimer {
   }
 
   /// Asks for the stamps of the frame just submitted; call after each submit.
-  pub fn request(&self) {
+  pub(crate) fn request(&self) {
     for slot in &self.slots {
       slot.request();
     }
   }
 
   /// Each frame read back since the last call, by its tag and its milliseconds, oldest first.
-  pub fn take(&mut self) -> Vec<(u64, f32)> {
+  pub(crate) fn take(&mut self) -> Vec<(u64, f32)> {
     let period: f32 = self.period;
     let mut spans: Vec<(u64, f32)> = Vec::new();
 

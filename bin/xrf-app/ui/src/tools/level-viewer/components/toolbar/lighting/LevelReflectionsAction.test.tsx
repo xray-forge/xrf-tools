@@ -75,7 +75,7 @@ describe("LevelReflectionsAction", () => {
       traceSize: ERenderTraceSize.FULL,
     });
 
-    await userEvent.click(getByRole("button", { name: "Set the reflections back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Reflections: Back to the settings" }));
 
     expect(view.features.reflections).toEqual({});
   });
@@ -121,7 +121,7 @@ describe("LevelReflectionsAction", () => {
     await open(rendered);
 
     expect(rendered.getByRole("checkbox", { name: "Ray tracing" })).toBeChecked();
-    expect(rendered.getByRole("slider", { name: "Re-trace" })).toHaveAttribute("aria-valuetext", "Every 2 frames");
+    expect(rendered.getByRole("slider", { name: "Frames per trace" })).toHaveAttribute("aria-valuetext", "2");
   });
 
   it("greys out tracing what the screen misses where the GPU traces no rays", async () => {
@@ -135,6 +135,6 @@ describe("LevelReflectionsAction", () => {
     expect(traced).toBeDisabled();
     expect(traced).not.toBeChecked();
     expect(traced).toHaveAccessibleDescription("Needs a GPU that traces rays");
-    expect(rendered.getByRole("slider", { name: "Re-trace" })).toBeDisabled();
+    expect(rendered.getByRole("slider", { name: "Frames per trace" })).toBeDisabled();
   });
 });

@@ -70,7 +70,7 @@ impl TextureCache {
   }
 
   /// Samples the textures with an anisotropy clamp, one for trilinear, made again where it changed.
-  pub fn set_anisotropy(&mut self, device: &wgpu::Device, anisotropy: u16) {
+  pub(crate) fn set_anisotropy(&mut self, device: &wgpu::Device, anisotropy: u16) {
     if anisotropy == self.anisotropy {
       return;
     }

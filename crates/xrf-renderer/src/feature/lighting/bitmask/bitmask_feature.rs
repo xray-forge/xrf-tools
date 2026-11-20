@@ -21,6 +21,7 @@ use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
@@ -33,7 +34,7 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 /// tracing the occlusion in its place where asked: what it searches for this frame, what its passes read, and its
 /// accumulations over frames, the occlusion's and, while it gathers light, the light's.
 #[derive(Default)]
-pub struct BitmaskFeature {
+pub(crate) struct BitmaskFeature {
   search: Option<BitmaskSearch>,
   indirect_light: RenderIndirectLightSettings,
   uniform: VbaoUniform,
@@ -51,7 +52,7 @@ impl BitmaskFeature {
   /// while it gathers light too, dropped otherwise, and what its passes read. A reference's sample turns the noise by
   /// `reference_sample`, so each instant's samples cycle the same turns through the accumulation and their mean is its
   /// settled value; the accumulation's own frames turn it otherwise.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device, view, options, ..
@@ -129,12 +130,12 @@ impl BitmaskFeature {
   }
 
   /// What it searches for this frame, none where it does not run.
-  pub fn get_search(&self) -> Option<BitmaskSearch> {
+  pub(crate) fn get_search(&self) -> Option<BitmaskSearch> {
     self.search
   }
 
   /// The indirect light as asked for, which it gathers while its search is lit.
-  pub fn get_indirect_light(&self) -> RenderIndirectLightSettings {
+  pub(crate) fn get_indirect_light(&self) -> RenderIndirectLightSettings {
     self.indirect_light
   }
 
@@ -144,7 +145,7 @@ impl BitmaskFeature {
   /// filtered (into the second occlusion target, which combine reads). Answers the indirect light filtered while lit;
   /// nothing where it does not run. RTAO asked for before the scene's trace is built searches as VBAO does meanwhile.
   /// Where the indirect light is traced in its place (`is_light_traced`), it searches for the occlusion alone.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -253,7 +254,7 @@ impl BitmaskFeature {
           passes
             .lighting
             .vbao
-            .record_search(context, VbaoGathering::of(is_lit), view, &searching)
+            .record_search(context, VbaoGathering::of(is_lit), view, &searching);
         });
     }
 
@@ -359,7 +360,7 @@ impl BitmaskFeature {
             passes
               .lighting
               .vbao
-              .record_accumulate(context, gathering, view, &accumulate)
+              .record_accumulate(context, gathering, view, &accumulate);
           });
 
         (written, written_light.or(lit_searched))
@@ -386,16 +387,6 @@ impl BitmaskFeature {
 }
 
 impl ViewFeature for BitmaskFeature {
-  /// Its accumulations.
-  fn get_memory(&self) -> u64 {
-    [&self.occlusion, &self.light]
-      .into_iter()
-      .flatten()
-      .flat_map(History::get_sides)
-      .map(FrameTexture::get_memory)
-      .sum()
-  }
-
   /// The accumulations this frame wrote become the ones the next reads; one it did not write holds nothing to read.
   fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
     for (history, is_written) in [&mut self.occlusion, &mut self.light]
@@ -413,5 +404,16 @@ impl ViewFeature for BitmaskFeature {
   fn release(&mut self) {
     self.occlusion = None;
     self.light = None;
+  }
+
+  /// A motion restart starts the accumulations over as if just made, noise included; a cut only drops their history,
+  /// which no longer matches the place, the noise turning on.
+  fn restart(&mut self, restart: ViewRestart) {
+    for history in [&mut self.occlusion, &mut self.light].into_iter().flatten() {
+      match restart {
+        ViewRestart::Motion => history.restart(),
+        ViewRestart::Cut => history.invalidate(),
+      }
+    }
   }
 }

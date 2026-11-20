@@ -1,5 +1,5 @@
-import { Tooltip } from "@xrf/ui/material/tooltip";
-import { Typography } from "@xrf/ui/material/typography";
+import { Tooltip } from "@xrf/ui/overlay";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { ApplicationStatusDetails } from "@/core/shell/status-bar/ApplicationStatusDetails";

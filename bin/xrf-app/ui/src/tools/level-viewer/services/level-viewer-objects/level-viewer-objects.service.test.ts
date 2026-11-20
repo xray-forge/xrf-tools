@@ -31,7 +31,7 @@ async function mockObjects(
     [ELevelsCommand.DESCRIBE_OBJECTS]: mockSessionResponse(listed),
     [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
   });
-  await descriptor.load.load({
+  await descriptor.load.open({
     source: { kind: "asset", logicalPath: "levels\\zaton" },
     roots: level.roots,
     isDltx: false,

@@ -8,7 +8,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 
 /// What a level's frame hands its shadows as they ready: the scene and camera, the settings, the sun, the sway and what
 /// moves every frame.
-pub struct ShadowFrame<'a> {
+pub(crate) struct ShadowFrame<'a> {
   pub scene: &'a StaticScene,
   pub camera: &'a CameraView,
   pub settings: &'a RenderShadowSettings,

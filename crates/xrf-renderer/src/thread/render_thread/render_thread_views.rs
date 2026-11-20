@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
+use super::RenderThread;
 use crate::camera::camera_view::CameraView;
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_job::CaptureJob;
@@ -19,7 +20,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::timing::frame_phases::FramePhases;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::world::render_scene_id::RenderSceneId;
-use crate::host::world::render_view_frame::RenderViewFrame;
+use crate::host::world::view::render_view_frame::RenderViewFrame;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;
@@ -48,8 +49,6 @@ use crate::viewport::pick::pick_unprojection::PickUnprojection;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::viewport::viewport_parts::ViewportParts;
 use crate::window::window_frame::WindowFrame;
-
-use super::RenderThread;
 
 /// A viewport a window draws this frame, by its whole rectangle, and the scene it shows, none where it shows none.
 struct DrawnView {
@@ -180,7 +179,8 @@ impl RenderThread {
       let view: Option<&mut SceneView> = self.viewports.get_mut(&id).and_then(RenderViewport::get_drawn_view_mut);
 
       if let (Some(view), Some(scene)) = (view, self.scenes.get(&scene_id)) {
-        view.finish_prepare(scene, &gpu.context.device, &mut *encoder, &options, output, &asks);
+        view.finish_prepare(scene, &gpu.context.device, &mut *encoder, &options, &asks);
+        view.finish_present(scene, &gpu.textures, &options, output);
       }
 
       let Some(mut frame) = frame else {
@@ -438,7 +438,7 @@ impl RenderThread {
 
     view_state.sample_reference(reference);
 
-    let framing: SceneViewFraming = SceneViewFraming {
+    let framing: SceneViewFraming<'_> = SceneViewFraming {
       view,
       rect: *rect,
       resolved,
@@ -587,7 +587,7 @@ impl RenderThread {
     let jitter: Vec2 = view_state.next_jitter(
       options,
       resolved.0 as f32 / drawn_rect.width.max(1) as f32,
-      gpu.context.dlss.as_ref(),
+      gpu.context.dlss.get(),
     );
     let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
     let motion: ViewMotion = view_state.next_motion(&view, drawn.get_view_projection());
@@ -624,6 +624,7 @@ impl RenderThread {
         device,
         HelperSources {
           helpers: &scene.helpers,
+          sounding: &scene.sounding,
           statics: &scene.statics,
           options: &options.helpers,
           marks_layout: gpu.scene.gbuffer.get_marks_layout(),
@@ -645,7 +646,7 @@ impl RenderThread {
         &ViewPrepare {
           device,
           queue,
-          dlss: gpu.context.dlss.as_ref(),
+          dlss: gpu.context.dlss.get(),
           passes: gpu.get_level_passes(shaders),
           view: &view,
           drawn: (drawn_rect.width, drawn_rect.height),

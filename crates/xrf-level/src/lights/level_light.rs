@@ -8,7 +8,8 @@ use xrf_math::Vector3d;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelLight {
-  /// `D3DLIGHT_POINT` is 1 and `D3DLIGHT_DIRECTIONAL` is 3; `CLight_DB::LoadHemi` takes only the point ones.
+  /// xrLC's `LT_DIRECT` 0, `LT_POINT` 1 or `LT_SECONDARY` 2 (`xrLC_Light/R_light.h`); `CLight_DB::LoadHemi` takes only
+  /// the point ones.
   pub kind: u16,
   /// Global illumination level the compiler bounced this light at.
   pub level: u16,
@@ -29,7 +30,10 @@ pub struct LevelLight {
 }
 
 impl LevelLight {
-  /// `D3DLIGHT_POINT`, the only kind `CLight_DB::LoadHemi` turns into a runtime light.
+  /// `LT_DIRECT`: a light from a direction, the sun's or a hemisphere sample's, at no position.
+  pub const KIND_DIRECTIONAL: u16 = 0;
+
+  /// `LT_POINT`, the only kind `CLight_DB::LoadHemi` turns into a runtime light.
   pub const KIND_POINT: u16 = 1;
 
   /// Bytes one light occupies, which is what tells a light chunk from any other.
@@ -38,6 +42,12 @@ impl LevelLight {
   /// Whether the runtime would make a light of this, which only a point light becomes.
   pub const fn is_point(&self) -> bool {
     self.kind == Self::KIND_POINT
+  }
+
+  /// Whether the light comes from a direction rather than a position, `LT_DIRECT`; the light compilers trace every
+  /// other kind from its position.
+  pub const fn is_directional(&self) -> bool {
+    self.kind == Self::KIND_DIRECTIONAL
   }
 }
 

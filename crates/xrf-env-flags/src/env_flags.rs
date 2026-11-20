@@ -253,7 +253,7 @@ impl EnvFlags {
     Self::ALL
       .iter()
       .filter(|flag| flag.kind.is_read_at_run())
-      .map(EnvFlag::to_reading)
+      .map(|flag| flag.to_reading())
       .collect()
   }
 
@@ -266,7 +266,7 @@ impl EnvFlags {
   }
 
   /// The `ENVIRONMENT.md` document for every variable.
-  pub fn to_markdown() -> String {
+  pub fn format_markdown() -> String {
     let mut document: String = format!(
       "# Environment variables\n\n\
        Every environment variable the workspace reads. This file is generated from `EnvFlags::ALL` in \

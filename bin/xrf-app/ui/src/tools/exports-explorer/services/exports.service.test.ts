@@ -67,7 +67,7 @@ describe("ExportsService", () => {
     const service = mockInjectedService(ExportsService).service;
 
     await service.onProvision();
-    await service.openExportsProject("C:\\chosen\\xrf");
+    await service.open("C:\\chosen\\xrf");
 
     expect(mockInvoke).toHaveBeenCalledWith(EExportsCommand.OPEN_PROJECT, {
       sessionId: expect.any(String),
@@ -97,7 +97,7 @@ describe("ExportsService", () => {
     );
 
     try {
-      await service.refreshExportsProject();
+      await service.refresh();
 
       expect(service.project.value).toBe(PROJECT);
       expect(projectChanged).not.toHaveBeenCalled();
@@ -112,12 +112,12 @@ describe("ExportsService", () => {
   it("forgets the manifest of a project it closes", async () => {
     const service = mockInjectedService(ExportsService).service;
 
-    await service.openExportsProject("C:\\chosen\\xrf");
+    await service.open("C:\\chosen\\xrf");
     await service.exportManifest("C:\\out\\extern.json");
 
     expect(service.manifest.value).toBe("C:\\out\\extern.json");
 
-    await service.closeExportsProject();
+    await service.close();
 
     expect(service.project.value).toBeNull();
     expect(service.manifest.state.isIdle).toBe(true);
@@ -136,7 +136,7 @@ describe("ExportsService", () => {
 
     await service.onProvision();
 
-    await service.closeExportsProject();
+    await service.close();
 
     expect(service.project.value).toEqual(PROJECT);
     expect(service.project.isLoading).toBe(false);

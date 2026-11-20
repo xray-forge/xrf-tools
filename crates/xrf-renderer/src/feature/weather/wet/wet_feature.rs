@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec2, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::{
   GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
@@ -10,14 +10,18 @@ use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::view::overhead_windows::OverheadWindows;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::water::enhanced::enhanced_water_maps::EnhancedWaterMaps;
 use crate::feature::weather::wet::draw::wet_apply_parameters::WetApplyParameters;
 use crate::feature::weather::wet::draw::wet_draw::WetDraw;
 use crate::feature::weather::wet::draw::wet_pass::WetPass;
 use crate::feature::weather::wet::draw::wet_patch_parameters::WetPatchParameters;
+use crate::feature::weather::wet::wet_clock::WetClock;
+use crate::feature::weather::wet::wet_drift::WetDrift;
 use crate::feature::weather::wet::wet_stage::WetStage;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;
@@ -28,17 +32,19 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// The wet surfaces: the G-buffer wetted by the level's wetness and its puddles' fill (`LevelWetness`, the scene's)
 /// while the rain falls and, enhanced, while the level is still wet after it stops.
 #[derive(Default)]
-pub struct WetFeature {
+pub(crate) struct WetFeature {
   uniform: WetUniform,
   /// The splash volume and the flow, as the weather textures hold them, while the surfaces are wetted.
   views: Option<[wgpu::TextureView; 2]>,
+  /// The gusts' and calm waves' drift, stepped every frame wet or dry, so wet surfaces return where they would stand.
+  drift: WetDrift,
 }
 
 impl WetFeature {
-  /// Takes this frame's wetting from the level's wetness (`level`) at the scene's clock `time`: with the falling rain's
-  /// uniform where it falls, over the overhead maps where they stand (`windows`), its cover's noise turned by
-  /// `noise_frame`; dry for an orthographic view, which has no eye for the overhead maps to stand about.
-  pub fn prepare(
+  /// Prepares this frame's wetting from the level's wetness on `clock`, over the overhead maps where they stand
+  /// (`windows`); dry for an orthographic view, which has no eye for the maps to stand about. The drift steps on
+  /// whatever it draws.
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       view,
@@ -50,11 +56,16 @@ impl WetFeature {
     }: &ViewPrepare<'_>,
     level: &LevelWetness,
     falling: Option<&RainUniform>,
-    time: f32,
+    clock: WetClock,
     windows: OverheadWindows,
     noise_frame: u32,
   ) {
     self.views = None;
+
+    let density: f32 = falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)));
+    let gust: Vec2 = WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity);
+
+    self.drift.advance(clock.view, gust, density);
 
     let has_eye: bool = !view.is_orthographic();
 
@@ -81,9 +92,9 @@ impl WetFeature {
     let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform = WetUniform {
-      density: falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0))),
-      time: falling.map_or(time, |uniform| uniform.time),
-      is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
+      density,
+      time: LevelTime::wrap(clock.splashes, RainUniform::CLOCK_PERIOD),
+      is_extended: u32::from(lighting.engine == XrayEngine::Extended) as f32,
       is_enhanced: f32::from(u8::from(is_enhanced)),
       cover: windows.cover,
       cover_state: Vec4::new(
@@ -103,7 +114,7 @@ impl WetFeature {
         0.0,
         0.0,
       ),
-      gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
+      drift: self.drift.get(),
       relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
       drying: Vec4::new(drying.get_peak(), drying.get_left(), 0.0, 0.0),
       rings: Vec4::ZERO,
@@ -119,12 +130,12 @@ impl WetFeature {
   }
 
   /// Follows the enhanced drops' rings this frame.
-  pub fn follow_rings(&mut self, rings: DropRings) {
+  pub(crate) fn follow_rings(&mut self, rings: DropRings) {
     self.uniform.rings = Vec4::new(rings.tile, rings.reach, rings.strength, 0.0);
   }
 
   /// Follows the overhead maps to where they stand once they have moved, as the wet surfaces read them.
-  pub fn follow(&mut self, windows: OverheadWindows) {
+  pub(crate) fn follow(&mut self, windows: OverheadWindows) {
     let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform.cover = windows.cover;
@@ -136,34 +147,39 @@ impl WetFeature {
   }
 
   /// Whether the surfaces are wetted this frame.
-  pub fn is_wet(&self) -> bool {
+  pub(crate) fn is_wet(&self) -> bool {
     self.views.is_some()
   }
 
   /// Whether the enhanced wetting draws this frame, its puddles seated on the level's surface.
-  pub fn is_enhanced(&self) -> bool {
+  pub(crate) fn is_enhanced(&self) -> bool {
     self.is_wet() && self.uniform.is_enhanced > 0.5
   }
 
   /// Whether puddles stand this frame, which no tuft is planted in.
-  pub fn has_puddles(&self) -> bool {
+  pub(crate) fn has_puddles(&self) -> bool {
     self.is_enhanced() && self.uniform.puddle_state.y > 0.0
   }
 
+  /// Metres from the eye the puddles are drawn to, where they stand this frame (`has_puddles`).
+  pub(crate) fn get_puddle_distance(&self) -> Option<f32> {
+    self.has_puddles().then_some(self.uniform.puddle_state.x)
+  }
+
   /// How far the rain cover reaches for the traced reflections' wet gloss, where it reaches past the engine's.
-  pub fn get_reach(&self) -> Option<f32> {
+  pub(crate) fn get_reach(&self) -> Option<f32> {
     (self.is_wet() && self.uniform.reach.x > 0.5).then_some(self.uniform.reach.y)
   }
 
   /// Pushes what its passes and the level surface's read, while the surfaces are wetted.
-  pub fn push_uniform(&self, runtime: &mut GraphRuntime) -> Option<UniformBinding<WetUniform>> {
+  pub(crate) fn push_uniform(&self, runtime: &mut GraphRuntime) -> Option<UniformBinding<WetUniform>> {
     self.is_wet().then(|| runtime.push_uniform(&self.uniform))
   }
 
   /// Adds the wetting of the G-buffer before any light is drawn over it, through the rain's cover and the level's
   /// surface (its lowest heights, its puddle sites and its water) as the shadows phase drew them, the puddles rippled
   /// by the enhanced drops' `rings`; answers what it writes for the reflections and combine.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {
@@ -203,7 +219,7 @@ impl WetFeature {
     } else {
       bindings.import_view(&mut *graph, "wet surface none", passes.tracing.reflections.get_empty())
     };
-    let patch: WetPatchParameters = WetPatchParameters {
+    let patch: WetPatchParameters<'_> = WetPatchParameters {
       depth_target: handles.depth,
       albedo_target: handles.albedo,
       normal_target: handles.normal,
@@ -257,7 +273,7 @@ impl WetFeature {
           is_enhanced,
         };
 
-        passes.weather.wet.record(context, draw, view, &patch)
+        passes.weather.wet.record(context, draw, view, &patch);
       });
 
     graph
@@ -271,7 +287,7 @@ impl WetFeature {
           is_enhanced,
         };
 
-        passes.weather.wet.record(context, draw, view, &apply)
+        passes.weather.wet.record(context, draw, view, &apply);
       });
 
     WetTargets {
@@ -282,12 +298,15 @@ impl WetFeature {
 }
 
 impl ViewFeature for WetFeature {
-  /// Its targets are the frame's own; the textures are the weather's.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     self.views = None;
+  }
+
+  /// A motion restart starts the drift over, as at a view's first frame; a cut leaves it, as it follows the time, not
+  /// the camera.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.drift = WetDrift::default();
+    }
   }
 }

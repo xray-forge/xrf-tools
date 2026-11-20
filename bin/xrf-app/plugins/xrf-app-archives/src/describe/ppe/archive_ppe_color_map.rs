@@ -21,7 +21,7 @@ pub struct ArchivePpeColorMap {
 
 impl ArchivePpeColorMap {
   /// The grading as the viewer reads it, with the gradient it names resolved.
-  pub fn of(source: &ArchiveDescribeSource, color_map: &PpeColorMap) -> Self {
+  pub fn of(source: &ArchiveDescribeSource<'_>, color_map: &PpeColorMap) -> Self {
     Self {
       texture: (!color_map.texture.is_empty())
         .then(|| ArchiveReference::resolve(source, XrayAssetType::Dds, &color_map.texture)),

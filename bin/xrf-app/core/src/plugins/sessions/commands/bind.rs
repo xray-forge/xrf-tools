@@ -7,6 +7,11 @@ use crate::window::InvokingWindow;
 /// tool's scope closes it; an opening not bound is refused.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "bind")]
-pub fn sessions_bind(scopes: State<'_, SessionScopes>, window: InvokingWindow, session_id: SessionId, tool: String) {
+pub(crate) fn sessions_bind(
+  scopes: State<'_, SessionScopes>,
+  window: InvokingWindow,
+  session_id: SessionId,
+  tool: String,
+) {
   scopes.bind(session_id, SessionScope::of(&window, tool));
 }

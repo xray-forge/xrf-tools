@@ -6,7 +6,7 @@ use crate::feature::image::resolve::fsr::targets::fsr_targets::FsrTargets;
 /// FSR's targets imported into a frame's graph: the reconstruction's buffer, the frame's own targets, and this frame's
 /// side of the two the frames swap with the last frame's.
 #[derive(Clone, Copy)]
-pub struct FsrGraphTextures {
+pub(crate) struct FsrGraphTextures {
   pub reconstructed: GraphBuffer,
   pub opaque: GraphTexture,
   pub reactive: GraphTexture,
@@ -31,7 +31,7 @@ pub struct FsrGraphTextures {
 }
 
 impl FsrGraphTextures {
-  pub fn import<'a>(graph: &mut FrameGraph<'a>, bindings: &mut GraphBindings<'a>, fsr: &'a FsrTargets) -> Self {
+  pub(crate) fn import<'a>(graph: &mut FrameGraph<'a>, bindings: &mut GraphBindings<'a>, fsr: &'a FsrTargets) -> Self {
     let reconstructed: GraphBuffer = bindings.import_buffer(graph, "fsr reconstructed", &fsr.reconstructed);
     let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
     // This frame's targets, written, and the last frame's, read.

@@ -12,7 +12,7 @@ pub(crate) struct ConstantAttribute;
 impl ConstantAttribute {
   /// Expands the attribute over `item`, refusing any arguments and anything but a module-level `const` or a function
   /// computing one.
-  pub fn expand(arguments: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
+  pub(crate) fn expand(arguments: TokenStream, item: TokenStream) -> syn::Result<TokenStream> {
     if !arguments.is_empty() {
       return Err(Error::new_spanned(arguments, "`#[constant]` takes no arguments"));
     }

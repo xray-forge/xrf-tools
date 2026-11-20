@@ -16,7 +16,7 @@ use crate::request::ConfigsVerifyRequest;
 /// Verifies LTX configs through the VFS, including archived files, one verification at a time.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "verify_directory")]
-pub async fn configs_verify_directory(
+pub(crate) async fn configs_verify_directory(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: ConfigsVerifyRequest,

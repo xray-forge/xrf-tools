@@ -1,11 +1,11 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObjectMotion {
   pub motion_name: String,
@@ -18,16 +18,16 @@ impl AlifeObjectMotion {
   }
 }
 
-impl ChunkReadWrite for AlifeObjectMotion {
+impl ChunkFieldReadWrite for AlifeObjectMotion {
   /// Read motion object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       motion_name: reader.read_w1251_string()?,
     })
   }
 
   /// Write motion object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&self.motion_name)?;
 
     Ok(())
@@ -36,8 +36,8 @@ impl ChunkReadWrite for AlifeObjectMotion {
 
 impl LtxImportExport for AlifeObjectMotion {
   /// Import motion object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -51,7 +51,7 @@ impl LtxImportExport for AlifeObjectMotion {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx.with_section(section_name).set("motion_name", &self.motion_name);
 
     Ok(())
@@ -62,7 +62,7 @@ impl LtxImportExport for AlifeObjectMotion {
 mod tests {
   #[test]
   fn test_get_name_names_none_for_an_empty_motion() {
-    let motion = |name: &str| super::AlifeObjectMotion {
+    let motion = |name: &str| AlifeObjectMotion {
       motion_name: name.to_owned(),
     };
 

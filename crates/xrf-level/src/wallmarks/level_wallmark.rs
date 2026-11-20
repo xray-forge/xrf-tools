@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::wallmarks::level_wallmark_vertex::LevelWallmarkVertex;
 
@@ -50,7 +50,7 @@ impl ChunkReadWrite for LevelWallmark {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.center)?;
     writer.write_f32::<T>(self.radius)?;
-    writer.write_u32::<T>(to_format_size(self.vertices.len(), "wallmark vertices")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "wallmark vertices")?)?;
 
     for vertex in &self.vertices {
       writer.write_xr::<T, _>(vertex)?;

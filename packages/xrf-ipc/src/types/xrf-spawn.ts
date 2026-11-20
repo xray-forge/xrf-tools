@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { Vector3d } from "#/types/xrf-math";
+import { Affine3d, Sphere, Vector3d } from "#/types/xrf-math";
 
 /** Every `type` the `ActorPhysicsState` union is told apart by, so a switch or a comparison names one. */
 export enum EActorPhysicsState {
@@ -59,6 +59,82 @@ export type AlifeAnomalousZone = {
   lastSpawnTime: LastSpawnTime;
 };
 
+/**
+ * The actor as Clear Sky's `se_actor` saves it (`se_actor.script`): the server class's fields, then, under a save
+ * marker, the random task manager, the squads' id generator and the minigames manager, each under its own marker. It
+ * adds nothing to the update packet.
+ *
+ * The task manager (`CRandomTask:save`, `task_manager.script`) keeps the tasks given, the rewards and the upgrade
+ * tasks, which a running game fills. A spawn holds none, so their counts are read as empty and any other refused; only
+ * its task id generator is kept.
+ */
+export type AlifeClearSkyActor = {
+  base: AlifeObjectActor;
+  /** The task manager's id generator. */
+  taskIds: ClearSkyObjectCollection;
+  /** The simulation board's id generator, which numbers squads. */
+  squadIds: ClearSkyObjectCollection;
+  minigames: Array<ClearSkyMinigame>;
+};
+
+/**
+ * A monster as Clear Sky's `se_monster` saves one (`se_monster.script`): the server class's spawn fields, then,
+ * unmarked, whether its job keeps it online, its squad and whether the simulation forces it online. It adds nothing to
+ * the update packet.
+ */
+export type AlifeClearSkyMonster = {
+  base: AlifeObjectMonsterBase;
+  jobOnline: ClearSkyJobOnline;
+  /** `squad_id` as the script writes it, `tostring` of the squad's id; `None` for `nil`. */
+  squadId: string | null;
+  /** `sim_forced_online`, a `w_bool`. */
+  simForcedOnline: number;
+};
+
+/**
+ * A faction as Clear Sky's `se_sim_faction` saves one (`sim_faction.script`), the class Clear Sky registers for
+ * `SFACTION`: the smart zone's spawn fields, then, under a save marker, whether the player leads it, whether its start
+ * position was filled, its expansion level, its last spawn time and four tables.
+ *
+ * A running simulation fills the time and the tables (squad targets, random tasks, attack counts, squads); a spawn
+ * holds `nil` and four empty tables, which are read as such, and any other value is refused. The time is
+ * `utils.w_CTime`'s Clear Sky form, whose `nil` is a lone 255.
+ */
+export type AlifeClearSkySimFaction = {
+  base: AlifeSmartZone;
+  /** `community_player`, a `w_bool`. */
+  communityPlayer: number;
+  /** `start_position_filled`, a `w_bool`. */
+  startPositionFilled: number;
+  currentExpansionLevel: number;
+};
+
+/**
+ * A smart terrain as Clear Sky's `se_smart_terrain` saves one (`smart_terrain.script`): the smart zone's spawn fields,
+ * then, under a save marker, its combat manager, the stalkers' jobs and the jobs' death times. A spawn holds no jobs
+ * or death times, so their counts are read as empty and any other value is refused.
+ */
+export type AlifeClearSkySmartTerrain = {
+  base: AlifeSmartZone;
+  combatManager: ClearSkyCombatManager;
+};
+
+/**
+ * A stalker as Clear Sky's `se_stalker` saves one (`se_stalker.script`): the server class's spawn fields, then,
+ * unmarked, whether its job keeps it online, whether its corpse's loot was dropped, its squad and whether the
+ * simulation forces it online. It adds nothing to the update packet.
+ */
+export type AlifeClearSkyStalker = {
+  base: AlifeObjectHumanStalker;
+  jobOnline: ClearSkyJobOnline;
+  /** Whether the death manager already dropped the corpse's loot, `w_bool` of `death_droped`; zero for a new object. */
+  lootDropped: number;
+  /** `squad_id` as the script writes it, `tostring` of the squad's id; `None` for `nil`. */
+  squadId: string | null;
+  /** `sim_forced_online`, a `w_bool`. */
+  simForcedOnline: number;
+};
+
 export type AlifeGraphPoint = {
   connectionPointName: string;
   connectionLevelName: string;
@@ -95,34 +171,18 @@ export type AlifeMonster = {
   offlineState: OfflineObjectState;
 };
 
-/** Generic abstract ALife object base. */
+/**
+ * An object of a spawn set (`all.spawn`): its spawn packet, the spawn packet header's fields then the class's spawn
+ * fields, and its update packet, the class's update fields, each in a chunk of its own behind a `u16` length.
+ */
 export type AlifeObject = {
-  id: number;
-  netAction: number;
-  section: string;
   clsid: ClsId;
-  name: string;
-  scriptGameId: number;
-  scriptRp: number;
-  position: Vector3d;
-  direction: Vector3d;
-  respawnTime: number;
-  parentId: number;
-  phantomId: number;
-  /** `s_flags`; the spawn version is stored only while `M_SPAWN_VERSION` is set. */
-  scriptFlags: number;
-  version: number;
-  gameType: number;
-  scriptVersion: number;
-  /** The client object's saved state (`CSE_Abstract::client_data`), carried as stored. */
-  clientData: Array<number>;
-  spawnId: number;
   /**
    * The server class payload, its fields from both packets. The engine applies the update packet over the spawn
    * packet when it creates the object, so where both carry a field the update packet's is the one the game uses.
    */
   inherited: AlifeObjectInherited;
-};
+} & SpawnPacketHeader;
 
 /** Generic ALife object abstraction data. */
 export type AlifeObjectAbstract = {
@@ -173,6 +233,10 @@ export type AlifeObjectCar = {
   health: number | null;
 };
 
+/**
+ * `CSE_ALifeObjectClimable`. Up to spawn version 126 the packet stores no game material, which then holds the
+ * constructor's `materials\fake_ladders`.
+ */
 export type AlifeObjectClimable = {
   base: AlifeObjectShape;
   gameMaterial: string;
@@ -326,6 +390,9 @@ export type AlifeObjectInherited =
       type: "SeLevelChanger";
     } & AlifeLevelChanger)
   | ({
+      type: "CseAlifeTeamBaseZone";
+    } & AlifeTeamBaseZone)
+  | ({
       type: "CseAlifeZoneVisual";
     } & AlifeZoneVisual)
   | ({
@@ -414,8 +481,27 @@ export type AlifeObjectInherited =
     } & AlifeObjectStationaryMgun)
   | ({
       type: "SimSquadScripted";
-    } & AlifeSquad);
+    } & AlifeSquad)
+  | ({
+      type: "ClearSkySeActor";
+    } & AlifeClearSkyActor)
+  | ({
+      type: "ClearSkySeStalker";
+    } & AlifeClearSkyStalker)
+  | ({
+      type: "ClearSkySeMonster";
+    } & AlifeClearSkyMonster)
+  | ({
+      type: "ClearSkySeSmartTerrain";
+    } & AlifeClearSkySmartTerrain)
+  | ({
+      type: "ClearSkySeSimFaction";
+    } & AlifeClearSkySimFaction);
 
+/**
+ * `CSE_ALifeInventoryBox`. Up to spawn version 124 the packet stores none of its own fields, which then hold the
+ * constructor's: open to taking, not closed, the `inventory_box_use` tip.
+ */
 export type AlifeObjectInventoryBox = {
   base: AlifeObjectDynamicVisual;
   canTake: number;
@@ -423,6 +509,10 @@ export type AlifeObjectInventoryBox = {
   tip: string;
 };
 
+/**
+ * An item, `CSE_ALifeItem`: a dynamic visual and an inventory item. Up to spawn version 123 the packet stores no
+ * upgrades, and the item holds none, as `CSE_ALifeInventoryItem`'s constructor leaves `m_upgrades`.
+ */
 export type AlifeObjectItem = {
   base: AlifeObjectDynamicVisual;
   condition: number | null;
@@ -504,8 +594,10 @@ export type AlifeObjectItemTorch = {
 };
 
 /**
- * A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the rounds loaded, weapon state, addons and ammo type the
- * spawn packet stores, and the engine reads them over the spawn packet's, so those are what the game starts with.
+ * A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the spawn packet's rounds loaded, state, addons and ammo
+ * type, and the engine reads them over the spawn packet's, so those are what the game starts with. Up to spawn
+ * version 122 the spawn packet stores no loaded grenades, which hold the constructor's none of the first type, the
+ * byte `pack_to_byte` makes zero.
  */
 export type AlifeObjectItemWeapon = {
   base: AlifeObjectItem;
@@ -612,7 +704,7 @@ export type AlifeObjectPhysic = {
    * The physics state the update packet carries. `CPhysicObject::net_Import` drops it for a local object, so a single
    * player game never applies it, which is why vanilla's are often left uninitialised.
    */
-  updateState: PhysicsNetState | null;
+  updateState: PhysicsClosingState;
 };
 
 export type AlifeObjectShape = {
@@ -627,6 +719,10 @@ export type AlifeObjectSkeleton = {
   sourceId: number;
 };
 
+/**
+ * `CSE_SmartCover`'s own fields. Below spawn version 128 the packet has no `can_fire`, which the engine then sets to
+ * the combat cover flag.
+ */
 export type AlifeObjectSmartCover = {
   base: AlifeObjectDynamic;
   shape: Array<Shape>;
@@ -667,6 +763,10 @@ export type AlifeObjectTrader = {
   trader: AlifeObjectTraderAbstract;
 };
 
+/**
+ * `CSE_ALifeTraderAbstract`, the trading part of a trader, a human and the actor. Up to spawn version 124 the packet
+ * stores neither of its corpse's access fields, which hold the constructor's: open to taking, not closed.
+ */
 export type AlifeObjectTraderAbstract = {
   money: number;
   specificCharacter: string;
@@ -685,7 +785,11 @@ export type AlifeObjectVisual = {
   visualFlags: number;
 };
 
-/** Represents script extension of base server smart cover class. */
+/**
+ * `se_smart_cover`, the script class over the server smart cover. Below script version 9 its packet has no last
+ * description or loopholes, which hold the script constructor's empty values (`se_smart_cover.script`'s `__init`);
+ * Call of Pripyat's script fills them from smart cover descriptions no packet carries.
+ */
 export type AlifeSmartCover = {
   base: AlifeObjectSmartCover;
   lastDescription: string;
@@ -750,6 +854,16 @@ export type AlifeStalker = {
   lootDropped: number;
 };
 
+/**
+ * A multiplayer team's base, `CSE_ALifeTeamBaseZone` (`zone_team_base`, class `Z_TEAMBS`): a space restrictor and the
+ * team it belongs to, which the team modes respawn and score at.
+ */
+export type AlifeTeamBaseZone = {
+  base: AlifeObjectSpaceRestrictor;
+  /** `m_team`, which the Level Editor offers from 0 to 16. */
+  team: number;
+};
+
 export type AlifeZoneVisual = {
   base: AlifeObjectAnomalyZone;
   visual: AlifeObjectVisual;
@@ -765,7 +879,154 @@ export type ArtefactSpawnPoint = {
   distance: number | null;
 };
 
-/** todo: Add script to parse system ltx and read all the data from ltx/txt file instead. */
+/**
+ * The combat state a Clear Sky smart terrain saves, `CCombat_manager:save` with its `CCover_manager:save`
+ * (`sim_combat.script`, `cover_manager.script`), each under its own save marker.
+ *
+ * A running simulation fills the squads in combat or forced online, the cover table and the time the actor was last
+ * seen; a spawn holds none, so their counts and flags are read as empty and any other value is refused.
+ */
+export type ClearSkyCombatManager = {
+  /** `actor_defence_come`, a `w_bool`. */
+  actorDefenceCome: number;
+  /** `combat_quest` as written; the constructor's is the text `nil`. */
+  combatQuest: string;
+  /** The task's id, `u16::MAX` for none. */
+  taskId: number;
+  /** `see_actor_enemy` as the script writes it, `tostring` of a value; `None` for `nil`. */
+  seeActorEnemy: string | null;
+  /** `force_online`, a `w_bool`. */
+  forceOnline: number;
+  /** The cover manager's `is_valid`, a `w_bool`. */
+  coverIsValid: number;
+};
+
+/**
+ * The crow shooting minigame's state, `CMGCrowKiller:save` (`minigame_crowkiller.script`): the manager's parameters
+ * for it, then the game's own counters, under a save marker.
+ */
+export type ClearSkyCrowKiller = {
+  highscore: number;
+  timer: number;
+  /** The parameter `win`, a `w_bool`. */
+  win: number;
+  crowsToKill: Array<number>;
+  moneyMultiplier: number;
+  championMultiplier: number;
+  selected: number;
+  gameType: string;
+  /** The game's own `high_score`. */
+  currentHighScore: number;
+  /** The game's own `timer`. */
+  currentTimer: number;
+  timeOut: number;
+  killedCounter: number;
+  /** The game's own `win`, a `w_bool`. */
+  currentWin: number;
+};
+
+/** Every `type` the `ClearSkyJobOnline` union is told apart by, so a switch or a comparison names one. */
+export enum EClearSkyJobOnline {
+  /** `true`, written as 0. */
+  ONLINE = "Online",
+  /** `false`, written as 1. */
+  OFFLINE = "Offline",
+  /** `nil`, written as 2: the job does not decide. */
+  UNSET = "Unset",
+  /** A condition list deciding it, written as 3 and the list's text. */
+  CONDLIST = "Condlist",
+}
+
+/**
+ * Whether a Clear Sky stalker's or monster's job keeps it online or offline, `job_online` of `se_stalker` and
+ * `se_monster`: a byte, then a condition list when it is 3. The scripts read any byte past 2 as a condition list and
+ * write 3, so only 0 to 3 are accepted. A spawn holds `Unset`.
+ */
+export type ClearSkyJobOnline =
+  /** `true`, written as 0. */
+  | { type: "Online" }
+  /** `false`, written as 1. */
+  | { type: "Offline" }
+  /** `nil`, written as 2: the job does not decide. */
+  | { type: "Unset" }
+  /** A condition list deciding it, written as 3 and the list's text. */
+  | { type: "Condlist"; value: string };
+
+/**
+ * One minigame of Clear Sky's minigames manager, as `CMinigames:save` writes it (`minigames_manager.script`): its
+ * name, its game's profile name, its state, then the game's own state.
+ */
+export type ClearSkyMinigame = {
+  name: string;
+  /** What the manager holds it as: `valiable` (sic), `enabled`, `started` or `running`. */
+  state: string;
+  game: ClearSkyMinigameGame;
+};
+
+/**
+ * The game a Clear Sky minigame runs, by the profile name the minigames manager saves before its state: the two
+ * `CMinigames:load` builds. Any other profile leaves the game without one, so it is refused.
+ */
+export type ClearSkyMinigameGame =
+  | ({
+      type: "CrowKiller";
+    } & ClearSkyCrowKiller)
+  | ({
+      type: "Shooting";
+    } & ClearSkyShooting);
+
+/**
+ * An id generator of Clear Sky's scripts, `object_collection:save` (`object_collection.script`): the id count and the
+ * last id, then the freed and the given ids, under a save marker. A spawn holds a generator that gave none, so both
+ * lists are read as empty and any other count is refused.
+ */
+export type ClearSkyObjectCollection = {
+  /** `m_count`. */
+  count: number;
+  /** `m_last_id`. */
+  lastId: number;
+};
+
+/**
+ * The shooting range minigame's state, `CMGShooting:save` (`minigame_shooting.script`): the manager's parameters for
+ * it, the inventory taken from the actor and the game in progress, under a save marker.
+ *
+ * Playing fills the targets, the inventory taken and the game; a spawn holds no targets, nothing taken and the game
+ * `nil`, which are read as such, and any other value is refused.
+ */
+export type ClearSkyShooting = {
+  gameType: string;
+  wpnType: string;
+  /** The patrol paths, each `tostring` of a name; `None` for `nil`. */
+  standWay: string | null;
+  lookWay: string | null;
+  standWayBack: string | null;
+  lookWayBack: string | null;
+  /** The target object's name; `None` for `nil`. */
+  objName: string | null;
+  win: ClearSkyShootingWin;
+  distance: number;
+  ammo: number;
+  targetCounter: number;
+  prevTime: number;
+};
+
+/** Every `type` the `ClearSkyShootingWin` union is told apart by, so a switch or a comparison names one. */
+export enum EClearSkyShootingWin {
+  FLAG = "Flag",
+  COUNT = "Count",
+}
+
+/**
+ * The shooting minigame's `win` parameter, a boolean or a count by the game played: a kind byte, 0 for a `w_bool` and
+ * 1 for a `u16`. The script reads any other kind as a count and writes 1, so only 0 and 1 are accepted.
+ */
+export type ClearSkyShootingWin = { type: "Flag"; value: number } | { type: "Count"; value: number };
+
+/**
+ * The class a spawned object is created as, named by the configs' `class` key; `SpawnSectionClasses` says which a
+ * section is.
+ */
 export enum EClsId {
   AI_CROW = "AiCrow",
   AI_GRAPH = "AiGraph",
@@ -802,6 +1063,8 @@ export enum EClsId {
   P_SKELET = "PSkelet",
   S_ACTOR = "SActor",
   S_EXPLO = "SExplo",
+  /** `SFACTION`, Clear Sky's `se_sim_faction`. */
+  S_FACTION = "SFaction",
   S_FOOD = "SFood",
   S_INV_BOX = "SInvBox",
   SM209 = "SM209",
@@ -860,6 +1123,7 @@ export enum EClsId {
   Z_NO_GRAV = "ZNoGrav",
   Z_RADIO = "ZRadio",
   Z_RUSTY_H = "ZRustyH",
+  Z_TEAM_BS = "ZTeamBs",
   Z_TORRID = "ZTorrid",
   ZS_AMEBA = "ZsAmeba",
   ZS_B_FUZZ = "ZsBFuzz",
@@ -874,9 +1138,15 @@ export enum EClsId {
 /** Every `EClsId` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type ClsId = `${EClsId}`;
 
+/**
+ * One level's cross table, `CGameLevelCrossTable`: a header naming the level and the game graph it was built against,
+ * then a cell for each of the level's AI nodes, in node order.
+ */
 export type GraphCrossTable = {
   version: number;
+  /** The level's AI node count, which the cells match. */
   nodesCount: number;
+  /** The level's game vertex count. */
   verticesCount: number;
   levelGuid: string;
   gameGuid: string;
@@ -987,14 +1257,39 @@ export type PatrolPoint = {
   gameVertexId: number;
 };
 
+/** Every `type` the `PhysicsClosingState` union is told apart by, so a switch or a comparison names one. */
+export enum EPhysicsClosingState {
+  /** The packet ends before the state's byte. */
+  ABSENT = "Absent",
+  /** The zero byte of no state, as the engine writes it. */
+  UNSET = "Unset",
+  /** A state, including one the SDK packed to zero. */
+  SET = "Set",
+}
+
 /**
- * The physics state an inventory item and a physic object carry in their update packets, `SPHNetState` behind the
- * byte `CSE_ALifeInventoryItem::UPDATE_Write` and `CSE_ALifeObjectPhysic::UPDATE_Write` open it with.
+ * The physics state closing a physic object's update packet (`CSE_ALifeObjectPhysic::UPDATE_Read`), kept as stored.
+ * The engine reads an empty packet and a lone zero byte alike as no state.
  *
- * That byte packs the item count into its low five bits and, above them, a mask: whether the body is enabled, and
- * whether each velocity is left out as zero. A zero byte is a state that is not there at all, so an object without one
- * is `None` beside its other update fields rather than a state with dead fields. The SDK writes some states without
- * initialising them, so each float keeps the bits it is stored in.
+ * A zero byte with bytes behind it is a state packing to zero, which the SDK's 2009 `xrSE_Factory` writes for an
+ * object of no items with both velocities set; the engine reads the zero byte and skips the rest.
+ */
+export type PhysicsClosingState =
+  /** The packet ends before the state's byte. */
+  | { type: "Absent" }
+  /** The zero byte of no state, as the engine writes it. */
+  | { type: "Unset" }
+  /** A state, including one the SDK packed to zero. */
+  | { type: "Set"; value: PhysicsNetState };
+
+/**
+ * The physics state, `SPHNetState`, an inventory item's and a physic object's update packets carry behind an opening
+ * byte (`CSE_ALifeInventoryItem::UPDATE_Write`, `CSE_ALifeObjectPhysic::UPDATE_Write`).
+ *
+ * That byte packs the item count into its low five bits and a mask above them: whether the body is enabled, and
+ * whether each velocity is left out as zero. A zero byte means no state, so an object without one holds `None`; a
+ * physic object's closing state differs (`PhysicsClosingState`). The SDK writes some states uninitialised, so each
+ * float keeps its stored bits.
  */
 export type PhysicsNetState = {
   /** The synchronised items, `m_u8NumItems`, at most the 31 its five bits hold. */
@@ -1010,8 +1305,11 @@ export type PhysicsNetState = {
   angularVelocity: [RawFloat, RawFloat, RawFloat] | null;
   /** `None` where the mask leaves the linear velocity out as zero. */
   linearVelocity: [RawFloat, RawFloat, RawFloat] | null;
-  /** The byte closing the state: zero freezes the object and anything else leaves it awake. */
-  awake: number;
+  /**
+   * The closing byte: zero freezes the object, anything else leaves it awake. `None` where the packet ends before it,
+   * which the engine reads as awake (`r_eof`) and which writes back without it.
+   */
+  awake: number | null;
 };
 
 /**
@@ -1029,10 +1327,14 @@ export type ScaledDirection = {
   magnitude: number | null;
 };
 
-/** Shape enumeration stored in objects descriptors. */
+/** One shape of an object's volume, `CShapeData::shape_def`, in the object's own space. */
 export type Shape =
-  | ({ Sphere: [Vector3d, number | null] } & { Box?: never })
-  | ({ Box: [Vector3d, Vector3d, Vector3d, Vector3d] } & { Sphere?: never });
+  | ({ Sphere: Sphere } & { Box?: never })
+  /**
+   * The unit cube centred on the origin, placed by the transform: its axes are the box's sides and its
+   * translation the box's centre.
+   */
+  | ({ Box: Affine3d } & { Sphere?: never });
 
 /**
  * ALife spawns chunk has the following structure:
@@ -1068,6 +1370,38 @@ export type SpawnHeaderChunk = {
   graphGuid: string;
   objectsCount: number;
   levelsCount: number;
+};
+
+/**
+ * What every server entity's spawn packet opens with, `CSE_Abstract::Spawn_Write`, up to the size it patches in once
+ * its class's own fields, the state, are written.
+ */
+export type SpawnPacketHeader = {
+  id: number;
+  /** `M_SPAWN`, which the engine asserts on before reading anything else. */
+  netAction: number;
+  /** The config section the entity is built from. */
+  section: string;
+  /** The name the level gives this one, `s_name_replace`. */
+  name: string;
+  scriptGameId: number;
+  scriptRp: number;
+  position: Vector3d;
+  direction: Vector3d;
+  respawnTime: number;
+  parentId: number;
+  phantomId: number;
+  /** `s_flags`; the spawn version is stored only while `M_SPAWN_VERSION` is set. */
+  scriptFlags: number;
+  version: number;
+  gameType: number;
+  scriptVersion: number;
+  /**
+   * The client object's saved state (`CSE_Abstract::client_data`), raw bytes carried as stored, which fields cannot
+   * hold.
+   */
+  clientData: Array<number>;
+  spawnId: number;
 };
 
 /** `CPatrolPathStorage::load` in xray engine. */

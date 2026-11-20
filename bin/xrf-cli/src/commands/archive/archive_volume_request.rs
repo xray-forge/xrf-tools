@@ -7,7 +7,7 @@ use xrf_pack::{
 
 /// The volumes a pack or a patch was asked to write: where, under what name and header, how stored, how large, and
 /// whether a set already there may be replaced.
-pub struct ArchiveVolumeRequest {
+pub(crate) struct ArchiveVolumeRequest {
   pub dest: PathBuf,
   pub name: String,
   /// The header entries named, merged over the default header, or none where none was named.
@@ -26,7 +26,7 @@ impl ArchiveVolumeRequest {
   /// # Errors
   ///
   /// Returns an error for a volume size the configuration refuses.
-  pub fn apply_to_pack(&self, mut config: ArchivePackConfig) -> XrfResult<ArchivePackConfig> {
+  pub(crate) fn apply_to_pack(&self, mut config: ArchivePackConfig) -> XrfResult<ArchivePackConfig> {
     if let Some(header) = &self.header {
       config = config.with_header_entries(header);
     }
@@ -53,7 +53,7 @@ impl ArchiveVolumeRequest {
   /// # Errors
   ///
   /// Returns an error for a volume size the configuration refuses.
-  pub fn apply_to_patch(&self, mut config: ArchivePatchConfig) -> XrfResult<ArchivePatchConfig> {
+  pub(crate) fn apply_to_patch(&self, mut config: ArchivePatchConfig) -> XrfResult<ArchivePatchConfig> {
     if let Some(header) = &self.header {
       config.header = Some(ArchivePackHeaderEntry::join(header));
     }

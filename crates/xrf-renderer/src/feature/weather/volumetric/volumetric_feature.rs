@@ -8,6 +8,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::volumetric::froxels::froxel_inject_parameters::FroxelInjectParameters;
 use crate::feature::weather::volumetric::froxels::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
@@ -25,7 +26,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// place of the sun's and the lights' shafts; or the shadowed lights' shafts (`accum_volumetric`) the sun shafts'
 /// composite adds.
 #[derive(Default)]
-pub struct VolumetricFeature {
+pub(crate) struct VolumetricFeature {
   /// What the froxels read this frame, while they draw.
   uniform: Option<FroxelUniform>,
   froxels: Option<FroxelVolume>,
@@ -37,7 +38,7 @@ impl VolumetricFeature {
 
   /// Takes this frame's volumetric lighting: the froxels made or kept where the enhanced volume draws, which is lit and
   /// solid, dropped where it does not.
-  pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
+  pub(crate) fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
     let settings = options.features.volumetric;
 
     if !(settings.is_enhanced() && options.mode.is_lit && !options.mode.is_wireframe) {
@@ -76,13 +77,13 @@ impl VolumetricFeature {
   }
 
   /// Whether the froxels draw this frame, in place of the sun's and the lights' shafts.
-  pub fn is_froxeled(&self) -> bool {
+  pub(crate) fn is_froxeled(&self) -> bool {
     self.uniform.is_some() && self.froxels.is_some()
   }
 
   /// Adds the shadowed lights' shafts (`accum_volumetric`), or the enhanced volume's froxels in place of both shafts,
   /// for the sun shafts' composite.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -143,7 +144,7 @@ impl VolumetricFeature {
       height,
       ViewTargets::DEPTH,
     ));
-    let parameters: LightVolumeParameters = LightVolumeParameters {
+    let parameters: LightVolumeParameters<'_> = LightVolumeParameters {
       light_volumes: StorageArray::new(bindings.import_buffer(&mut *graph, "light volumes", &lights.volume_buffer)),
       records: StorageArray::new(bindings.import_buffer(&mut *graph, "light records", &lights.record_buffer)),
       shadow_atlas: bindings.import_view(&mut *graph, "light shadow atlas", atlas.view),
@@ -162,7 +163,7 @@ impl VolumetricFeature {
         passes
           .weather
           .light_volumes
-          .record_depth(context, view, &parameters, textures)
+          .record_depth(context, view, &parameters, textures);
       });
     graph
       .add_raster_pass("light volumes")
@@ -176,7 +177,7 @@ impl VolumetricFeature {
         passes
           .weather
           .light_volumes
-          .record(context, view, &parameters, textures, slices)
+          .record(context, view, &parameters, textures, slices);
       });
 
     Some(target)
@@ -240,11 +241,6 @@ impl VolumetricFeature {
 }
 
 impl ViewFeature for VolumetricFeature {
-  /// The froxels' grids, while they draw.
-  fn get_memory(&self) -> u64 {
-    self.froxels.as_ref().map_or(0, FroxelVolume::get_memory)
-  }
-
   fn release(&mut self) {
     self.uniform = None;
     self.froxels = None;
@@ -254,6 +250,17 @@ impl ViewFeature for VolumetricFeature {
   fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
     if let (Some(_), Some(froxels)) = (self.uniform, &mut self.froxels) {
       froxels.histories.swap();
+    }
+  }
+
+  /// A motion restart starts the froxels' history over as if just made, jitter included; a cut only drops the
+  /// history, the jitter stepping on.
+  fn restart(&mut self, restart: ViewRestart) {
+    if let Some(froxels) = &mut self.froxels {
+      match restart {
+        ViewRestart::Motion => froxels.histories.restart(),
+        ViewRestart::Cut => froxels.histories.invalidate(),
+      }
     }
   }
 }

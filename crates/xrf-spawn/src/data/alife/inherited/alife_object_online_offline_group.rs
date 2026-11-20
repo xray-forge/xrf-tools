@@ -1,11 +1,11 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{vector_from_string, vector_to_string};
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
 
@@ -20,9 +20,9 @@ pub struct AlifeObjectOnlineOfflineGroup {
   pub members: Vec<u16>,
 }
 
-impl ChunkReadWrite for AlifeObjectOnlineOfflineGroup {
+impl ChunkFieldReadWrite for AlifeObjectOnlineOfflineGroup {
   /// Read the group from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       members: reader.read_u16_vector::<T>()?,
@@ -30,7 +30,7 @@ impl ChunkReadWrite for AlifeObjectOnlineOfflineGroup {
   }
 
   /// Write the group into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_u16_vector::<T>(&self.members)?;
 
@@ -40,8 +40,8 @@ impl ChunkReadWrite for AlifeObjectOnlineOfflineGroup {
 
 impl LtxImportExport for AlifeObjectOnlineOfflineGroup {
   /// Import the group from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -56,7 +56,7 @@ impl LtxImportExport for AlifeObjectOnlineOfflineGroup {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
@@ -67,7 +67,7 @@ impl LtxImportExport for AlifeObjectOnlineOfflineGroup {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectOnlineOfflineGroup {
   /// A group of `members` at no particular vertex.
   pub fn new_mock(members: Vec<u16>) -> Self {
@@ -97,7 +97,7 @@ mod tests {
 
   use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
 
-  /// The alife object's 27 bytes, then the count and two bytes a member.
+  // The alife object's 27 bytes, then the count and two bytes a member.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectOnlineOfflineGroup = AlifeObjectOnlineOfflineGroup::new_mock(vec![6511, 6523]);

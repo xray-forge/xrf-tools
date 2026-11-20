@@ -22,10 +22,10 @@
 // The face's G-buffer texels a cube texel averages a side.
 const BOX: u32 = 2u;
 
-// What one G-buffer texel of the face comes to as light: the surface lit, fogged to it, and in `w` its metres from the
-// camera; the sky's light where none, at no distance.
-fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
-  let depth: f32 = textureLoad(depth_target, texel, 0);
+// What one G-buffer texel of the face, kept at `layer` of the arrays, comes to as light: the surface lit, fogged to it,
+// and in `w` its metres from the camera; the sky's light where none, at no distance.
+fn lit_texel(texel: vec2<i32>, layer: i32, direction: vec3<f32>, scale: f32) -> vec4<f32> {
+  let depth: f32 = textureLoad(depth_target, texel, layer, 0);
 
   if (depth <= 0.0) {
     // At the pictures' share, as the frame shows its sky, and as the prefiltered sky holds it (`sky_reflected`).
@@ -33,10 +33,10 @@ fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
       sky_repeat, scale) * picture_share(lighting) * lighting.sky_reflected.rgb, 0.0);
   }
 
-  let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let stored: vec4<f32> = textureLoad(albedo_target, texel, layer, 0);
   let albedo: vec4<f32> = vec4<f32>(authored_colour(stored.rgb), stored.a);
-  let material: vec4<f32> = textureLoad(material_target, texel, 0);
-  let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
+  let material: vec4<f32> = textureLoad(material_target, texel, layer, 0);
+  let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, layer, 0).xy);
   let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth);
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let normal_world: vec3<f32> = normalize(rotation * normal);
@@ -63,6 +63,7 @@ fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let face: u32 = u32(settings.face.x);
   let drawn: u32 = u32(settings.face.z);
+  let layer: i32 = i32(settings.face.w);
   let scale: f32 = picture_exposure(lighting, exposure);
   let direction: vec3<f32> = cube_face_direction(face, (vec2<f32>(id.xy) + 0.5) / f32(size));
   let first: vec2<i32> = vec2<i32>(id.xy * BOX);
@@ -73,7 +74,7 @@ fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
   for (var y: u32 = 0u; y < BOX; y++) {
     for (var x: u32 = 0u; x < BOX; x++) {
       let texel: vec2<i32> = min(first + vec2<i32>(i32(x), i32(y)), vec2<i32>(i32(drawn) - 1));
-      let lit: vec4<f32> = lit_texel(texel, direction, scale);
+      let lit: vec4<f32> = lit_texel(texel, layer, direction, scale);
 
       sum += lit.rgb;
       nearest = select(nearest, lit.w, lit.w > 0.0 && (nearest <= 0.0 || lit.w < nearest));

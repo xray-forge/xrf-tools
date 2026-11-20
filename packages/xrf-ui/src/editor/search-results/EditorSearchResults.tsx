@@ -1,9 +1,9 @@
 import { ReactElement, ReactNode, useEffect, useRef } from "react";
 
+import { LinearProgress } from "#/feedback";
 import { EmptyListing } from "#/layout/empty-listing";
-import { List, ListItemButton, ListItemIcon, ListItemText } from "#/material/list";
-import { LinearProgress } from "#/material/progress";
-import { Typography } from "#/material/typography";
+import { List, ListItemButton, ListItemIcon, ListItemText } from "#/list";
+import { Typography } from "#/typography";
 
 export interface IEditorSearchResultRow {
   id: string;

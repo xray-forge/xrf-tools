@@ -8,6 +8,15 @@ pub(crate) struct GamedataSoundReferencesVerificationResult {
   pub(crate) invalid_references_count: u32,
 }
 
+impl GamedataSoundReferencesVerificationResult {
+  /// Takes in what one file's references came to, after everything already counted.
+  pub(crate) fn merge(&mut self, other: Self) {
+    self.checked_references_count += other.checked_references_count;
+    self.invalid_references_count += other.invalid_references_count;
+    self.findings.extend(other.findings);
+  }
+}
+
 impl GamedataCheckResult for GamedataSoundReferencesVerificationResult {
   fn get_status(&self) -> GamedataVerificationStatus {
     GamedataVerificationStatus::from_is_valid(self.invalid_references_count == 0)

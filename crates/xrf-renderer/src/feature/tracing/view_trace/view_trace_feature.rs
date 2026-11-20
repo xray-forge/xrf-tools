@@ -32,7 +32,7 @@ use crate::scene::static_scene::trace::static_trace_swaying::StaticTraceSwaying;
 /// at their transforms; and the drawable kinds' instances after the scene's (`DrawableTraceInstance`: the grass's cards
 /// the view stands). The scene's top level where neither stands.
 #[derive(Default)]
-pub struct ViewTraceFeature {
+pub(crate) struct ViewTraceFeature {
   trace: Option<ViewTrace>,
 }
 
@@ -64,11 +64,12 @@ impl ViewTraceFeature {
   const MOST: usize = 64;
   const MOST_VERTICES: u32 = 1 << 20;
 
-  /// Takes this frame's swaying trees about the camera, where the scene's trace stands (`trace`) and the view traces
-  /// the scene: the nearest chosen, a structure made for each newly chosen, the sway pass's slots written and the
-  /// view's top level filled, the drawable `kinds`' instances after the scene's (the grass's cards where the view stands
-  /// them).
-  pub fn prepare(
+  /// Prepares the view's top level over the scene's `trace`: the nearest swaying trees (`choose`), each with its own
+  /// structure, then the drawable `kinds`' instances, such as the grass's cards.
+  ///
+  /// With no wind the trees keep the scene's shared structures, quicker to trace than one refitted per tree; with no
+  /// kinds either, the view traces the scene's own top level.
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -79,6 +80,7 @@ impl ViewTraceFeature {
     }: &ViewPrepare<'_>,
     encoder: &mut FrameEncoder,
     trace: Option<&StaticTrace>,
+    sway_amplitude: f32,
     kinds: &[DrawableTraceInstance<'_>],
   ) {
     let camera: Vec3 = view.position;
@@ -89,7 +91,7 @@ impl ViewTraceFeature {
 
       return;
     };
-    let chosen: Vec<StaticTraceSwaying> = Self::choose(trace.get_swaying(), camera);
+    let chosen: Vec<StaticTraceSwaying> = Self::choose(trace.get_swaying(), camera, sway_amplitude);
 
     if chosen.is_empty() && kinds.is_empty() {
       self.trace = None;
@@ -118,7 +120,7 @@ impl ViewTraceFeature {
       .iter()
       .map(|swaying| {
         let slot: TraceSwaySlot = TraceSwaySlot {
-          to_local: StaticTraceGroup::to_matrix(&swaying.transform).inverse(),
+          to_local: StaticTraceGroup::unpack_transform(&swaying.transform).inverse(),
           vertex_start: swaying.geometry.vertex_start,
           vertex_count: swaying.geometry.vertex_count,
           place: swaying.place,
@@ -272,8 +274,12 @@ impl ViewTraceFeature {
     Some(AccelerationStructureBinding::new(&trace.tlas, trace.key))
   }
 
-  /// The nearest instances within reach, as many as the limits let in.
-  fn choose(swaying: &[StaticTraceSwaying], camera: Vec3) -> Vec<StaticTraceSwaying> {
+  /// The nearest swaying instances within reach, as many as the limits let in; none while `sway_amplitude` is nought.
+  pub(crate) fn choose(swaying: &[StaticTraceSwaying], camera: Vec3, sway_amplitude: f32) -> Vec<StaticTraceSwaying> {
+    if sway_amplitude <= 0.0 {
+      return Vec::new();
+    }
+
     let mut near: Vec<(f32, StaticTraceSwaying)> = swaying
       .iter()
       .map(|it| (it.position.distance_squared(camera), *it))
@@ -328,7 +334,7 @@ impl ViewTraceFeature {
   }
 
   /// The scene's trace where the view traces rays against it this frame: the scene holds one and the device traces.
-  pub fn get_scene_trace<'a>(scene: &'a LevelScene, passes: LevelPasses<'_>) -> Option<&'a StaticTrace> {
+  pub(crate) fn get_scene_trace<'a>(scene: &'a LevelScene, passes: LevelPasses<'_>) -> Option<&'a StaticTrace> {
     scene.trace.as_ref().filter(|_| passes.tracing.scene_trace.is_traced())
   }
 
@@ -336,7 +342,7 @@ impl ViewTraceFeature {
   /// consumer binds (the reflections, the water), where the device traces rays; with the drawable `kinds`' parts, which
   /// each kind recorded over the same trace. The trace's shaders bind the grass's by name, so it traces nothing without
   /// it.
-  pub fn add_scene_trace<'a>(
+  pub(crate) fn add_scene_trace<'a>(
     &'a self,
     scene: &'a LevelScene,
     GraphDeclaration {
@@ -392,12 +398,14 @@ impl ViewTraceFeature {
           trace_shadow_sampler: scene.lights.get_shadow_atlas().sampler,
           trace_sun_maps: lit.shadow_maps,
           trace_sun_shadows: lit.shadows,
+          trace_sun_compare: lit.shadow_compare,
           trace_grass_grid: StorageArray::new(grass.grid),
           trace_grass_slots: StorageArray::new(grass.slots),
           trace_grass_models: StorageArray::new(grass.models),
           trace_grass_colours: StorageArray::new(grass.colours),
           trace_grass: grass.uniform,
           trace_grass_cards: StorageArray::new(grass.cards),
+          trace_densities: StorageArray::new(statics.trace_densities),
         },
         textures: texture_group,
       })
@@ -405,14 +413,6 @@ impl ViewTraceFeature {
 }
 
 impl ViewFeature for ViewTraceFeature {
-  /// Its swayed vertices and slots, without the structures, whose size the driver keeps.
-  fn get_memory(&self) -> u64 {
-    self
-      .trace
-      .as_ref()
-      .map_or(0, |trace| trace.vertices.size() + trace.slots.size())
-  }
-
   fn release(&mut self) {
     self.trace = None;
   }

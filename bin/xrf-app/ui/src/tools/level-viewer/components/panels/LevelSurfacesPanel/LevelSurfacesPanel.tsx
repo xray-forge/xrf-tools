@@ -9,6 +9,7 @@ import { cn } from "@xrf/ui/theme";
 import { ITreeNode, IUseTreeState, TreeRowLabel, useTreeState, VirtualizedTree } from "@xrf/ui/tree";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { describeLevelResidentWait } from "@/core/level/lib/load/level-resident-wait";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/level-resident";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
@@ -26,7 +27,6 @@ import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
 import { EditorSearchHeader } from "@/core/shell/chrome/EditorSearchHeader";
 import { noop } from "@/lib/callbacks/noop";
-import { describeLevelResidentWait } from "@/tools/level-viewer/lib/load/level-resident-wait";
 import {
   listLevelSurfaceGroupIds,
   TLevelSurfaceTreeRow,

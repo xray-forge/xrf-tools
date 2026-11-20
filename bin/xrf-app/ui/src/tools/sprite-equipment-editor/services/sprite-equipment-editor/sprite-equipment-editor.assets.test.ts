@@ -79,13 +79,13 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets, container } = createService();
 
-    await service.openEquipmentProject(mockEquipmentSpriteOpen());
+    await service.open(mockEquipmentSpriteOpen());
 
     const previousImage = service.spriteImage.value?.image;
 
     service.repackSourcePath = "C:\\game\\equipment";
 
-    await service.repackAndOpenProject();
+    await service.repackAndRefresh();
 
     expect(mockInvoke).toHaveBeenCalledWith(
       ESpriteEquipmentCommand.PACK_SPRITE,
@@ -124,11 +124,11 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets } = createService();
 
-    await service.openEquipmentProject(mockEquipmentSpriteOpen());
+    await service.open(mockEquipmentSpriteOpen());
 
-    await service.reopenEquipmentProject();
-    await service.reopenEquipmentProject();
-    await service.reopenEquipmentProject();
+    await service.refresh();
+    await service.refresh();
+    await service.refresh();
 
     // A replacement must release its predecessor while retaining the displayed image.
     expect(assets.heldCount).toBe(1);
@@ -142,7 +142,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets } = createService();
 
-    await service.openEquipmentProject(mockEquipmentSpriteOpen());
+    await service.open(mockEquipmentSpriteOpen());
 
     const revoked: Array<string> = [];
 
@@ -150,11 +150,11 @@ describe("SpriteEquipmentEditorService object urls", () => {
       revoked.push(url);
     });
 
-    await service.reopenEquipmentProject();
+    await service.refresh();
 
     const current: string | undefined = service.spriteImage.value?.image.src;
 
-    await service.reopenEquipmentProject();
+    await service.refresh();
 
     // Releasing after the swap would revoke the replacement, blanking the viewer.
     expect(current).toBeDefined();
@@ -171,9 +171,9 @@ describe("SpriteEquipmentEditorService object urls", () => {
 
     const { service, assets, container } = createService();
 
-    await service.openEquipmentProject(mockEquipmentSpriteOpen());
+    await service.open(mockEquipmentSpriteOpen());
 
-    await service.reopenEquipmentProject();
+    await service.refresh();
     expect(assets.heldCount).toBe(1);
 
     container.deprovision();
@@ -197,11 +197,11 @@ describe("SpriteEquipmentEditorService object urls", () => {
       }
     } as unknown as typeof Image;
 
-    const first = service.openEquipmentProject(mockEquipmentSpriteOpen());
+    const first = service.open(mockEquipmentSpriteOpen());
 
     await waitFor(() => expect(decoding).toHaveLength(1));
 
-    const second = service.openEquipmentProject(mockEquipmentSpriteOpen());
+    const second = service.open(mockEquipmentSpriteOpen());
 
     await waitFor(() => expect(decoding).toHaveLength(2));
     decoding[1].onload?.();

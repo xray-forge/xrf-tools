@@ -1,40 +1,53 @@
 use std::time::{Duration, Instant};
 
+use wgpu::util::StagingBelt;
 use xrf_error::XrfError;
 use xrf_renderer_core::{ExecutedGraph, ExecutedGroup};
 
-use wgpu::util::StagingBelt;
-
+use super::RenderThread;
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::readback::frame_capture::FrameCapture;
 use crate::frame::timing::frame_phases::FramePhases;
 use crate::thread::copies::capture_copy::CaptureCopy;
 use crate::thread::copies::frame_copies::FrameCopies;
+use crate::thread::copies::record_copy::RecordCopy;
 use crate::thread::running_gpu::RunningGpu;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::thread::views::scene_recorder::SceneRecorder;
+use crate::viewport::render_viewport::RenderViewport;
 use crate::window::window_frame::WindowFrame;
 
-use super::RenderThread;
-
 impl RenderThread {
-  /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
-  /// the acceleration structures the scenes built, which they count as done) and still goes up; what the graph copied
-  /// out for reading back is dropped, its picks wait for the next frame, and its captures and bursts are refused, a
-  /// burst's frames no longer following one another.
+  /// Failure-log keys for an undrawable frame and its unsubmitted uploads: failed in `abandon_frame`, recovered in
+  /// `draw_frame`.
+  pub(super) const UNDRAWN_FRAME: &'static str = "The frame cannot be drawn";
+  pub(super) const UNSUBMITTED_UPLOADS: &'static str = "The frame's uploads cannot be submitted";
+
+  /// Gives up a frame its graph could not draw.
+  ///
+  /// The encoder's uploads and acceleration structure builds, which the scenes count as done, are still submitted.
+  /// Graph uniforms and readback copies are dropped, picks wait for the next frame, captures and bursts are refused (a
+  /// burst's frames would no longer be consecutive), and a recording frame is dropped.
   pub(super) fn abandon_frame(
     &mut self,
     running: &mut RunningGpu,
     encoder: FrameEncoder,
     frames: Vec<ReadiedView>,
     recorders: &[SceneRecorder],
-    captures: Vec<CaptureCopy>,
+    FrameCopies { captures, records, .. }: FrameCopies,
     error: &XrfError,
   ) {
-    log::error!("The frame cannot be drawn: {error}");
+    self.frame_failures.fail(Self::UNDRAWN_FRAME, error);
 
-    let RunningGpu { gpu, belt: kept, .. } = running;
+    let RunningGpu {
+      gpu,
+      runtime,
+      belt: kept,
+      ..
+    } = running;
+
+    runtime.uploads.discard();
 
     let scope: wgpu::ErrorScopeGuard = gpu.context.device.push_error_scope(wgpu::ErrorFilter::Validation);
     let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
@@ -43,7 +56,7 @@ impl RenderThread {
     *kept = Some(belt);
 
     if let Some(error) = pollster::block_on(scope.pop()) {
-      log::error!("The frame's uploads cannot be submitted: {error}");
+      self.frame_failures.fail(Self::UNSUBMITTED_UPLOADS, &error);
     }
 
     let message: String = error.to_string();
@@ -72,6 +85,16 @@ impl RenderThread {
 
     for copy in captures {
       let _ = copy.reply.send(Err(XrfError::new_invalid_error(message.clone())));
+    }
+
+    for RecordCopy { viewport, shot } in records {
+      if let Some(record) = self
+        .viewports
+        .get_mut(&viewport)
+        .and_then(RenderViewport::get_record_mut)
+      {
+        record.abandon(&shot);
+      }
     }
   }
 
@@ -127,8 +150,8 @@ impl RenderThread {
     executed.groups
   }
 
-  /// Ends each view's submitted frame: its history kept, its stats and its pick asked for back, its burst moved on with
-  /// the frame copied out of it; and each capture asked for back.
+  /// Ends each submitted view frame: keeps its history, requests its stats, pick and captures back, and advances its
+  /// burst and recording.
   pub(super) fn end_view_frames(
     &mut self,
     frames: Vec<ReadiedView>,
@@ -136,8 +159,19 @@ impl RenderThread {
       captures,
       mut shots,
       mut bursts,
+      records,
     }: FrameCopies,
   ) {
+    for RecordCopy { viewport, shot } in records {
+      if let Some(record) = self
+        .viewports
+        .get_mut(&viewport)
+        .and_then(RenderViewport::get_record_mut)
+      {
+        record.advance(shot);
+      }
+    }
+
     for ReadiedView {
       viewport: id,
       frame,
@@ -240,8 +274,19 @@ impl RenderThread {
       for drawn in &window.drawn {
         if let Some(viewport) = self.viewports.get_mut(&drawn.id) {
           viewport.count_frame(interval, cpu, span, &window_phases, groups);
+
+          if let Some(record) = viewport.get_record_mut() {
+            record.present(presented);
+          }
         }
       }
+    }
+
+    // A recorded viewport whose window gave no image was still drawn; its frame is done now.
+    let done: Instant = Instant::now();
+
+    for record in self.viewports.values_mut().filter_map(RenderViewport::get_record_mut) {
+      record.present(done);
     }
   }
 }

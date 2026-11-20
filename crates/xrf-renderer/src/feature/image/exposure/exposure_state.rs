@@ -6,7 +6,7 @@ use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 /// what the physical light's histogram metered (`ExposureHead`), then each cell's luminance.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
-pub struct ExposureState {
+pub(crate) struct ExposureState {
   pub adapted: f32,
   pub used: f32,
   pub key: f32,

@@ -45,9 +45,9 @@ impl RenderBackend {
   /// none.
   pub fn get_forced() -> Option<Self> {
     match EnvFlags::RENDER_BACKEND.read_choice()? {
-      "vulkan" => Some(RenderBackend::Vulkan),
-      "metal" => Some(RenderBackend::Metal),
-      _ => Some(RenderBackend::D3d12),
+      "vulkan" => Some(Self::Vulkan),
+      "metal" => Some(Self::Metal),
+      _ => Some(Self::D3d12),
     }
   }
 
@@ -63,17 +63,17 @@ impl RenderBackend {
   /// The backends a wgpu instance is made for to start on this one alone.
   pub fn to_backends(self) -> wgpu::Backends {
     match self {
-      RenderBackend::D3d12 => wgpu::Backends::DX12,
-      RenderBackend::Vulkan => wgpu::Backends::VULKAN,
-      RenderBackend::Metal => wgpu::Backends::METAL,
+      Self::D3d12 => wgpu::Backends::DX12,
+      Self::Vulkan => wgpu::Backends::VULKAN,
+      Self::Metal => wgpu::Backends::METAL,
     }
   }
 
   pub fn get_label(self) -> &'static str {
     match self {
-      RenderBackend::D3d12 => "D3D12",
-      RenderBackend::Vulkan => "Vulkan",
-      RenderBackend::Metal => "Metal",
+      Self::D3d12 => "D3D12",
+      Self::Vulkan => "Vulkan",
+      Self::Metal => "Metal",
     }
   }
 }

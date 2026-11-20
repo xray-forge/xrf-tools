@@ -12,11 +12,11 @@ pub(crate) struct TargetVelocityAction {
 }
 
 impl TargetVelocityAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.velocity = matrix.transform_vector3(self.velocity_local);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let share: f32 = self.scale * step.dt;
 
     for m in pool.get_particles_mut() {
@@ -27,7 +27,7 @@ impl TargetVelocityAction {
 
 impl From<&ParticleActionTargetVelocity> for TargetVelocityAction {
   fn from(action: &ParticleActionTargetVelocity) -> Self {
-    let velocity: Vec3 = Vec3::from_array(action.velocity.to_array());
+    let velocity: Vec3 = Vec3::from(&action.velocity);
 
     Self {
       velocity_local: velocity,

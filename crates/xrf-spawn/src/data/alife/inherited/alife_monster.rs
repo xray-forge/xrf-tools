@@ -1,12 +1,14 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxRead, LtxWrite};
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_monster_base::AlifeObjectMonsterBase;
+use crate::data::alife::spawn_layout::SpawnLayout;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::offline_object_state::OfflineObjectState;
 
 /// A monster as its script class `se_monster` saves one: vanilla's `se_monster.script` and xrf-engine's `Monster.ts`
@@ -30,7 +32,7 @@ impl AlifeMonster {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeMonster {
   /// A monster at `position` as a compiled spawn holds one.
   pub fn new_mock(position: Vector3d) -> Self {
@@ -42,29 +44,37 @@ impl AlifeMonster {
 }
 
 impl AlifePacketsReadWrite for AlifeMonster {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the monster from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectMonsterBase::read::<T, _>(spawn, update)?,
+      base: AlifeObjectMonsterBase::read::<T, _, _>(spawn, update, layout)?,
       offline_state: spawn.read_xr::<T, _>()?,
     })
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
     spawn.write_xr::<T, _>(&self.offline_state)
   }
-}
 
-impl LtxImportExport for AlifeMonster {
   /// Import monster data from ltx file section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -73,14 +83,14 @@ impl LtxImportExport for AlifeMonster {
     })?;
 
     Ok(Self {
-      base: AlifeObjectMonsterBase::import(section_name, ltx)?,
+      base: AlifeObjectMonsterBase::import(section_name, ltx, layout)?,
       offline_state: OfflineObjectState::import(section, "monster")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
     self.offline_state.export(section_name, "monster", ltx);
 
     Ok(())
@@ -91,22 +101,23 @@ impl LtxImportExport for AlifeMonster {
 mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_monster::AlifeMonster;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::generic::offline_object_state::OfflineObjectState;
   use crate::fixtures::GameWrittenPackets;
 
-  /// What the game writes for a new monster reads whole and writes back byte for byte.
   #[test]
   fn reads_and_writes_what_the_game_writes() -> XrfResult {
     let spawn: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::MONSTER_SPAWN);
     let update: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::MONSTER_UPDATE);
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update)?;
-    let monster: AlifeMonster = AlifeMonster::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let monster: AlifeMonster =
+      AlifeMonster::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     spawn_reader.assert_read("Expect the game's spawn packet to be read whole")?;
     update_reader.assert_read("Expect the game's update packet to be read whole")?;
@@ -123,27 +134,29 @@ mod tests {
     let mut spawn_writer: ChunkWriter = ChunkWriter::new();
     let mut update_writer: ChunkWriter = ChunkWriter::new();
 
-    monster.write::<XRayByteOrder>(&mut spawn_writer, &mut update_writer)?;
+    monster.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((spawn_writer.buffer, update_writer.buffer), (spawn, update));
 
     Ok(())
   }
 
-  /// The tail in `Monster.ts`'s `STATE_Write` order - the level vertex and active section as strings - reads as the
-  /// offline state it saved.
+  // `Monster.ts`'s `STATE_Write` order: the level vertex and active section as strings.
   #[test]
   fn reads_the_tail_in_the_script_order() -> XrfResult {
     let original: AlifeMonster = AlifeMonster::new_mock(Vector3d::new(1.0, 2.0, 3.0));
     let mut spawn: ChunkWriter = ChunkWriter::new();
     let mut update: ChunkWriter = ChunkWriter::new();
 
-    original.base.write::<XRayByteOrder>(&mut spawn, &mut update)?;
+    original
+      .base
+      .write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
     spawn.buffer.extend_from_slice(b"450\0scheme@test\0");
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
-    let read: AlifeMonster = AlifeMonster::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let read: AlifeMonster =
+      AlifeMonster::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     spawn_reader.assert_read("Expect the tail to close the spawn packet")?;
 
@@ -158,18 +171,18 @@ mod tests {
     Ok(())
   }
 
-  /// A compiled spawn's tail: two `nil` strings follow the server class's spawn fields with no marker counting them.
+  // A compiled spawn's tail: two `nil` strings with no marker counting them.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeMonster = AlifeMonster::new_mock(Vector3d::new(-12.5, 0.75, 310.0));
-    let (base_spawn_size, _, _) = original.base.read_back::<XRayByteOrder>()?;
+    let (base_spawn_size, _, _) = original.base.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut spawn, &mut ChunkWriter::new())?;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(&spawn.buffer[base_spawn_size..], b"nil\0nil\0");
     assert_eq!(
-      original.read_back::<XRayByteOrder>()?,
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
       (base_spawn_size + 8, 52, original)
     );
 
@@ -182,9 +195,12 @@ mod tests {
     let mut ltx: Ltx = Ltx::new();
 
     original.offline_state.level_vertex_id = Some(3108);
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeMonster::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeMonster::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

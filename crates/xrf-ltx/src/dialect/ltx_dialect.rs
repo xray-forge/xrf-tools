@@ -17,6 +17,11 @@ pub trait LtxDialect: Debug + Send + Sync {
   /// How this dialect names itself in output and diagnostics.
   fn get_name(&self) -> &'static str;
 
+  /// Whether this dialect lowercases section names as it reads them, so headers differing only in case name one section.
+  ///
+  /// Neither dialect folds field names or parents named after `:`.
+  fn is_folding_section_names(&self) -> bool;
+
   /// Files that patch another config rather than standing on their own.
   ///
   /// Project assembly asks this so an attachment is not mistaken for an entry point: under DLTX a `mod_system_a.ltx`

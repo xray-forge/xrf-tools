@@ -1,7 +1,7 @@
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 #[derive(Default)]
-pub struct GamedataHudMotionCollisionsVerificationResult {
+pub(crate) struct GamedataHudMotionCollisionsVerificationResult {
   pub checked_huds_count: u32,
   pub collisions_count: u32,
   pub findings: Vec<Finding>,

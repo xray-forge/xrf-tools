@@ -35,6 +35,26 @@ impl GraphRuntime {
     }
   }
 
+  /// Drops the pooled transients, bind groups and attachment views, for a renderer drawing no frames.
+  ///
+  /// Their patience counts frames, so without frames they would hold what the last frames drew into for good; the next
+  /// frame makes again what it needs.
+  pub fn forget_frames(&mut self) {
+    self.pool.clear();
+    self.bind_groups.clear_groups();
+    self.attachment_views.clear();
+  }
+
+  /// Drops at once the pooled transients, bind groups and attachment views the frame just executed did not use.
+  ///
+  /// For a frame drawn at new sizes: what the old sizes keyed is not used again, and a set of it a frame, as while a
+  /// window is dragged, can exhaust GPU memory and slow frames to a few a second before patience ages it out.
+  pub fn forget_unused(&mut self) {
+    self.pool.forget_unused();
+    self.bind_groups.forget_unused();
+    self.attachment_views.forget_unused();
+  }
+
   /// Pushes `value` to the upload ring, for a pass to bind as a uniform this frame.
   pub fn push_uniform<T: ShaderType + bytemuck::Pod>(&mut self, value: &T) -> UniformBinding<T> {
     UniformBinding::new(self.uploads.push(value))

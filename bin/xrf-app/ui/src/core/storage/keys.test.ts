@@ -11,7 +11,6 @@ import {
   getPanelSelectionStorageKey,
   getPanelWidthStorageKey,
   IPC_PROFILING_STORAGE_KEY,
-  MEDIA_VOLUME_STORAGE_KEY,
   THEME_STORAGE_KEY,
 } from "@/core/storage/keys";
 import { EStorageNamespace, isInStorageNamespace } from "@/core/storage/namespace";
@@ -21,7 +20,6 @@ const FIXED_KEYS: ReadonlyArray<string> = [
   CATALOG_VIEW_STORAGE_KEY,
   DEV_MODE_STORAGE_KEY,
   IPC_PROFILING_STORAGE_KEY,
-  MEDIA_VOLUME_STORAGE_KEY,
   THEME_STORAGE_KEY,
 ];
 

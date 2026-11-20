@@ -4,7 +4,7 @@ use crate::manifest::extern_documentation::ExternDocumentation;
 use crate::manifest::extern_parameter::ExternParameter;
 
 /// A callable extern with an explicitly declared function contract.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct ExternCallable {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub doc: Option<ExternDocumentation>,

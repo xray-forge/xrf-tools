@@ -2,17 +2,17 @@ use crate::frame::targets::history::History;
 
 /// The enhanced volumetric lighting's froxels, a grid along the view: what each scatters and how thick it is, kept over
 /// frames in a history, and what is scattered towards the camera up to each, integrated from them.
-pub struct FroxelVolume {
+pub(crate) struct FroxelVolume {
   pub histories: History<wgpu::TextureView>,
   pub integrated: wgpu::TextureView,
 }
 
 impl FroxelVolume {
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Froxels across the screen, down it and along the view.
-  pub const SIZE: [u32; 3] = [160, 90, 64];
+  pub(crate) const SIZE: [u32; 3] = [160, 90, 64];
 
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     let create = |label: &str| -> wgpu::TextureView {
       device
         .create_texture(&wgpu::TextureDescriptor {
@@ -36,12 +36,5 @@ impl FroxelVolume {
       histories: History::new(|side| create(["froxel history 0", "froxel history 1"][side])),
       integrated: create("froxels integrated"),
     }
-  }
-
-  /// Bytes its three grids take: two histories and the integrated one, at half floats.
-  pub fn get_memory(&self) -> u64 {
-    let [width, height, depth] = Self::SIZE.map(u64::from);
-
-    3 * width * height * depth * 8
   }
 }

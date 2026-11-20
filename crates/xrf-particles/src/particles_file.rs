@@ -14,10 +14,10 @@ use crate::chunks::particles_effects_chunk::ParticlesEffectsChunk;
 use crate::chunks::particles_firstgen_chunk::ParticlesFirstgenChunk;
 use crate::chunks::particles_groups_chunk::ParticlesGroupsChunk;
 use crate::chunks::particles_header_chunk::ParticlesHeaderChunk;
+use crate::data::actions::particle_action::ParticleAction;
+use crate::data::actions::particle_action_type::ParticleActionType;
 use crate::data::effect::particle_effect::ParticleEffect;
 use crate::data::group::particle_group::ParticleGroup;
-use crate::data::particle_action::ParticleAction;
-use crate::data::particle_action_type::ParticleActionType;
 use crate::particles_file_issue::ParticlesFileIssue;
 
 #[derive(Debug, Serialize, Deserialize)]

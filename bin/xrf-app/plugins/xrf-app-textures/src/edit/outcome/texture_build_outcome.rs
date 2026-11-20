@@ -2,7 +2,7 @@ use serde::Serialize;
 use xrf_app_core::TauriResult;
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_texture::{BuildTextureOptions, BuildTextureProcessor, BuildTextureResult, GenerateBumpResult};
-use xrf_utils::{error_to_string, to_portable_path_string};
+use xrf_utils::{error_to_string, format_portable_path};
 
 use crate::edit::TextureBuildOmissionReport;
 
@@ -10,7 +10,7 @@ use crate::edit::TextureBuildOmissionReport;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureBuildOutcome {
+pub(crate) struct TextureBuildOutcome {
   /// Whether the texture was written or the run stopped before it started.
   pub outcome: JobOutcome,
   pub destination: String,
@@ -36,13 +36,13 @@ impl TextureBuildOutcome {
   /// # Errors
   ///
   /// Returns an error when the texture cannot be encoded or written.
-  pub fn build(job: &JobHandle, options: &BuildTextureOptions) -> TauriResult<Self> {
+  pub(crate) fn build(job: &JobHandle, options: &BuildTextureOptions) -> TauriResult<Self> {
     // Read before the encode rather than after it. `BuildTextureProcessor::build` writes the file it encodes, so a
     // check on the far side would be reporting a stop for a run that had already published its result.
     if job.is_cancelled() {
       return Ok(Self {
         outcome: JobOutcome::Cancelled,
-        destination: to_portable_path_string(&options.destination),
+        destination: format_portable_path(&options.destination),
         companion: None,
         gloss_power: None,
         is_gloss_too_dark: false,
@@ -65,8 +65,8 @@ impl TextureBuildOutcome {
 
     Ok(Self {
       outcome: JobOutcome::Completed,
-      destination: to_portable_path_string(&built.destination),
-      companion: built.bump.as_ref().map(|pair| to_portable_path_string(&pair.companion)),
+      destination: format_portable_path(&built.destination),
+      companion: built.bump.as_ref().map(|pair| format_portable_path(&pair.companion)),
       gloss_power: built.bump.as_ref().map(|pair| pair.gloss_power),
       is_gloss_too_dark: built.bump.as_ref().is_some_and(GenerateBumpResult::is_gloss_too_dark),
       width: built.width,

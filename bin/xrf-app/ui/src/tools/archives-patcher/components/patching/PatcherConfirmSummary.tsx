@@ -1,24 +1,22 @@
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { bytesToWholeMegabytes } from "@xrf/format";
 import { ArchivePatchConfig, EArchivePackMode } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material/alert";
-import { Checkbox } from "@xrf/ui/material/checkbox";
-import { FormControlLabel } from "@xrf/ui/material/form-control-label";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Alert } from "@xrf/ui/feedback";
 import { ReactElement } from "react";
 
-import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
-import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
-import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
+import { ArchiveRunConfirmSummary } from "@/core/archive/components/config-editor/ArchiveRunConfirmSummary";
+import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib/header";
+import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib/volume-options";
 
 interface IPatcherConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePatchConfig;
   /** Whether the run reports the difference or writes it, which changes almost everything below. */
   isPreviewOnly: boolean;
   /** Volumes of this set the output already holds, which publishing refuses to replace unasked. */
-  publishedVolumes: Array<string>;
+  publishedVolumes: ReadonlyArray<string>;
   isForced: boolean;
   onForceChange: (isForced: boolean) => void;
 }
@@ -40,26 +38,36 @@ export function PatcherConfirmSummary({
   const volumeName: string = `${config.name}.${ARCHIVE_VOLUME_SUFFIX[config.volumeExtension]}`;
 
   return (
-    <Stack data-testid={dataTestId} id={id} className={className} spacing={1.5}>
-      <ArchiveSummaryRow label={"Game"}>
-        <ArchivePathText value={config.input} />
-      </ArchiveSummaryRow>
+    <ArchiveRunConfirmSummary
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      publishedVolumes={isPreviewOnly ? EMPTY_ARRAY : publishedVolumes}
+      replaceWarning={
+        `The output already holds ${publishedVolumes.length} volume(s) of this set. ` +
+        "Replacing them cannot be undone if the run fails partway through."
+      }
+      isForced={isForced}
+      onForceChange={onForceChange}
+    >
+      <EditorPanelProperty label={"Game"} value={config.input} isMonospace isInline />
 
-      <ArchiveSummaryRow label={"Delivers"}>
-        {config.target === null ? (
-          <Typography variant={"body2"}>Its own loose gamedata</Typography>
-        ) : (
-          <ArchivePathText value={config.target} />
-        )}
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Delivers"}
+        value={config.target ?? "Its own loose gamedata"}
+        isMonospace={config.target !== null}
+        isInline
+      />
 
-      <ArchiveSummaryRow label={"Compares"}>
-        <Typography variant={"body2"}>
-          {config.include.length ? config.include.join(", ") : "Everything both sides hold"}
-          {config.ignore.length ? `, except ${config.ignore.join(", ")}` : ""}
-          {config.excludeExtensions.length ? `, excluding ${config.excludeExtensions.join(", ")}` : ""}
-        </Typography>
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Compares"}
+        value={
+          (config.include.length ? config.include.join(", ") : "Everything both sides hold") +
+          (config.ignore.length ? `, except ${config.ignore.join(", ")}` : "") +
+          (config.excludeExtensions.length ? `, excluding ${config.excludeExtensions.join(", ")}` : "")
+        }
+        isInline
+      />
 
       {isPreviewOnly ? (
         <Alert severity={"info"} variant={"outlined"}>
@@ -67,40 +75,25 @@ export function PatcherConfirmSummary({
         </Alert>
       ) : (
         <>
-          <ArchiveSummaryRow label={"Writes"}>
-            <ArchivePathText value={`${config.destination}\\${volumeName}`} />
-          </ArchiveSummaryRow>
+          <EditorPanelProperty label={"Writes"} value={`${config.destination}\\${volumeName}`} isMonospace isInline />
 
-          <ArchiveSummaryRow label={"Mounts at"}>
-            <Typography variant={"body2"} className={"monospace"}>
-              {entryPoint ?? "nothing — the engine will read these as encrypted archives"}
-            </Typography>
-          </ArchiveSummaryRow>
+          <EditorPanelProperty
+            label={"Mounts at"}
+            value={entryPoint ?? "nothing — the engine will read these as encrypted archives"}
+            isMonospace
+            isInline
+          />
 
-          <ArchiveSummaryRow label={"Volumes"}>
-            <Typography variant={"body2"}>
-              {config.mode === EArchivePackMode.STORE ? "Stored" : "Compressed"}, up to{" "}
-              {bytesToWholeMegabytes(config.maxVolumeSize)} MB each
-            </Typography>
-          </ArchiveSummaryRow>
-        </>
-      )}
-
-      {!isPreviewOnly && publishedVolumes.length ? (
-        <>
-          <Alert severity={"warning"}>
-            The output already holds {publishedVolumes.length} volume(s) of this set. Replacing them cannot be undone if
-            the run fails partway through.
-          </Alert>
-
-          <FormControlLabel
-            control={
-              <Checkbox size={"small"} checked={isForced} onChange={(event) => onForceChange(event.target.checked)} />
+          <EditorPanelProperty
+            label={"Volumes"}
+            value={
+              `${config.mode === EArchivePackMode.STORE ? "Stored" : "Compressed"}, up to ` +
+              `${bytesToWholeMegabytes(config.maxVolumeSize)} MB each`
             }
-            label={<Typography variant={"body2"}>Replace them</Typography>}
+            isInline
           />
         </>
-      ) : null}
-    </Stack>
+      )}
+    </ArchiveRunConfirmSummary>
   );
 }

@@ -21,18 +21,21 @@ indexmap = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+profiling = { workspace = true }
 rayon = { workspace = true }
 walkdir = { workspace = true }
-sysinfo = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
+xrf-editable-object = { workspace = true }
+xrf-rawdata = { workspace = true }
 xrf-dialog = { workspace = true }
 xrf-gamedata = { workspace = true }
 xrf-gamemtl = { workspace = true }
 xrf-level = { workspace = true }
+xrf-level-compiler = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-material = { workspace = true }
 xrf-ltx-inspect = { workspace = true }
@@ -49,18 +52,30 @@ xrf-translation = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-omf = { workspace = true }
 xrf-thm = { workspace = true }
-xrf-shaders = { workspace = true }
-xrf-sound = { workspace = true }
 xrf-spawn = { workspace = true }
+xrf-spawn-builder = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-chunk = { workspace = true }
 
 [dev-dependencies]
+uuid = { workspace = true }
+xrf-editable-level = { workspace = true }
 xrf-test-utils = { workspace = true }
 # Publication tests arm a staged write to fail; the feature reaches no normal build.
 xrf-utils = { workspace = true, features = ["staging-faults"] }
+
+[features]
+default = ["gpu"]
+# `level compile --backend gpu`: the light step's, the details' and the AI map's rays traced with GPU ray queries, on
+# Vulkan where no DXC stands beside the CLI. On by default; `--no-default-features` builds a CLI linking no graphics code.
+gpu = ["xrf-level-compiler/gpu"]
+# Every crate's zones in a Tracy capture; built with the `tracy` profile.
+tracy = ["xrf-profiler/tracy"]
+# Every allocation in the capture too, with its call stack: for finding what holds memory, never for timing.
+tracy-memory = ["tracy", "xrf-profiler/tracy-memory"]
 
 [lints]
 workspace = true

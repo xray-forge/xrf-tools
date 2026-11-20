@@ -41,20 +41,20 @@ impl WorldCamera {
   /// Where the camera starts and what it looks at.
   pub fn get_start(&self) -> ([f32; 3], [f32; 3]) {
     match *self {
-      WorldCamera::Fly { position, target, .. } | WorldCamera::Orbit { position, target, .. } => (position, target),
+      Self::Fly { position, target, .. } | Self::Orbit { position, target, .. } => (position, target),
     }
   }
 
   /// Vertical field of view in degrees, near and far.
   pub fn get_lens(&self) -> (f32, f32, f32) {
     match *self {
-      WorldCamera::Fly {
+      Self::Fly {
         field_of_view,
         near,
         far,
         ..
       }
-      | WorldCamera::Orbit {
+      | Self::Orbit {
         field_of_view,
         near,
         far,

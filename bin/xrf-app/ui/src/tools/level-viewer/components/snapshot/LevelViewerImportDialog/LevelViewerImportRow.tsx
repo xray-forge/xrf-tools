@@ -1,8 +1,8 @@
 import { ABSENT_VALUE } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Checkbox } from "@xrf/ui/material/checkbox";
-import { Typography } from "@xrf/ui/material/typography";
+import { Checkbox } from "@xrf/ui/form/control";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ChangeEvent, ReactElement, useCallback } from "react";
 
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";

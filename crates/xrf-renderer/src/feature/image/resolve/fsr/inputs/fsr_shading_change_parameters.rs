@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// FSR's shading change: the shading change pyramid's three levels.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrShadingChangeParameters<'a> {
+pub(crate) struct FsrShadingChangeParameters<'a> {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, float)]

@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GraphHeader {
   pub version: u8,
@@ -45,8 +45,8 @@ impl ChunkReadWrite for GraphHeader {
 
 impl LtxImportExport for GraphHeader {
   /// Import graph header from ltx file.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Graph section '{}' should be defined in ltx file ({})",
         section_name,
@@ -65,15 +65,15 @@ impl LtxImportExport for GraphHeader {
   }
 
   /// Export graph header data into level ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("version", self.version.to_string())
-      .set("vertex_count", self.vertices_count.to_string())
-      .set("edges_count", self.edges_count.to_string())
-      .set("point_count", self.points_count.to_string())
-      .set("level_count", self.levels_count.to_string())
-      .set("guid", self.guid.to_string());
+      .set("version", self.version)
+      .set("vertex_count", self.vertices_count)
+      .set("edges_count", self.edges_count)
+      .set("point_count", self.points_count)
+      .set("level_count", self.levels_count)
+      .set("guid", self.guid);
 
     Ok(())
   }

@@ -4,12 +4,12 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { EditableListItem } from "@xrf/ui/form/editable-list";
 import { FormRow } from "@xrf/ui/form/row";
 import { AddIcon } from "@xrf/ui/icons/add";
-import { Stack } from "@xrf/ui/material/stack";
-import { TextField } from "@xrf/ui/material/text-field";
-import { Typography } from "@xrf/ui/material/typography";
+import { TextField } from "@xrf/ui/input";
+import { Stack } from "@xrf/ui/layout/stack";
+import { Typography } from "@xrf/ui/typography";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
-import { isReservedHeaderKey, isSameHeaderKey, readHeaderEntries, writeHeaderValue } from "@/core/archive/lib";
+import { isReservedHeaderKey, isSameHeaderKey, readHeaderEntries, writeHeaderValue } from "@/core/archive/lib/header";
 
 interface IArchiveHeaderEntriesProps extends BaseComponentProps {
   header: Nullable<string>;

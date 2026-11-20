@@ -34,7 +34,7 @@ const SORT_INDIRECT_ABOVE: u32 = 1 << 21;
 
 /// Plants the grass around the camera as `CDetailManager` does, on the GPU, and draws a model's tufts at a time into
 /// the G-buffer. Its draws bind the texture cache's group at 1, as every static draw does, and their own at 2.
-pub struct GrassPass {
+pub(crate) struct GrassPass {
   level_layout: wgpu::BindGroupLayout,
   build_layout: wgpu::BindGroupLayout,
   draw_layout: wgpu::BindGroupLayout,
@@ -59,12 +59,12 @@ impl GrassPass {
   pub(crate) const WORKGROUP: u32 = 64;
 
   /// Bytes one indexed indirect draw takes.
-  pub const DRAW_BYTES: u64 = 20;
+  pub(crate) const DRAW_BYTES: u64 = 20;
 
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -114,7 +114,7 @@ impl GrassPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     let planted: XrfResult = self.compute.refresh(source.cache, || {
       Self::create_planting(
         source,
@@ -144,7 +144,7 @@ impl GrassPass {
 
   /// Draws the cards that stand into a sun cascade's map the pass draws into, seen by its `view`, as many corners as
   /// `draw` holds.
-  pub fn record_card_shadow(
+  pub(crate) fn record_card_shadow(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
@@ -164,7 +164,7 @@ impl GrassPass {
 
   /// Stands the cards: their count reset and `triangles` of them cleared, each of the `tufts` invocations' tuft stood
   /// where it is near the eye, then the cascades' draw of them sized.
-  pub fn record_cards(
+  pub(crate) fn record_cards(
     &self,
     context: &mut ComputeContext<'_>,
     level: &GrassLevelParameters,
@@ -188,7 +188,7 @@ impl GrassPass {
   }
 
   /// Plants the frame's grass: the ring's stale cells ranked and the nearest planted.
-  pub fn record_plant(
+  pub(crate) fn record_plant(
     &self,
     context: &mut ComputeContext<'_>,
     level: &GrassLevelParameters,
@@ -216,7 +216,7 @@ impl GrassPass {
 
   /// Culls every current cell of the ring by the view and the frame's depth `occlusion`, and sorts what it keeps into a
   /// draw a model.
-  pub fn record_cull(
+  pub(crate) fn record_cull(
     &self,
     context: &mut ComputeContext<'_>,
     level: &GrassLevelParameters,
@@ -257,7 +257,7 @@ impl GrassPass {
 
   /// Draws every model's tufts the planting sorted into the G-buffer the pass draws into, over what the static draws
   /// left.
-  pub fn record_draw(
+  pub(crate) fn record_draw(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

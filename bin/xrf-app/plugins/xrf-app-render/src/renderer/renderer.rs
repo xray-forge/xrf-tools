@@ -6,10 +6,11 @@ use std::time::Duration;
 use xrf_app_core::TauriResult;
 use xrf_error::XrfResult;
 use xrf_renderer::{
-  BurstEvent, CaptureEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
-  RenderFrameReport, RenderLevelHit, RenderLibraries, RenderLoadReport, RenderMapCapture, RenderMemoryReport,
-  RenderOverlay, RenderPick, RenderQueue, RenderScreenshot, RenderSelection, RenderSettings, RenderTextureReport,
-  RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
+  BurstEvent, CaptureEvent, RecordEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
+  RenderFrameReport, RenderHoldId, RenderLevelHit, RenderLibraries, RenderLoadReport, RenderMapCapture,
+  RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue, RenderSceneId, RenderScreenshot, RenderSelection,
+  RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait,
+  RenderWindowHost,
 };
 
 use crate::renderer::{RenderAnswer, RenderPickRequest};
@@ -22,6 +23,8 @@ pub struct Renderer {
   queue: RenderQueue,
   /// The number the last viewport was attached under, none before the first.
   last_id: Arc<AtomicU32>,
+  /// The number the last hold was taken under, none before the first.
+  last_hold: Arc<AtomicU32>,
 }
 
 impl Renderer {
@@ -30,7 +33,27 @@ impl Renderer {
     Self {
       queue,
       last_id: Arc::new(AtomicU32::new(0)),
+      last_hold: Arc::new(AtomicU32::new(0)),
     }
+  }
+
+  /// Starts the GPU and keeps it, answering the number that releases the hold; `None` once every number was handed.
+  /// `RenderViewports` holds it for a window.
+  pub(crate) fn hold(&self) -> Option<RenderHoldId> {
+    let last: u32 = self
+      .last_hold
+      .try_update(Ordering::Relaxed, Ordering::Relaxed, |last| last.checked_add(1))
+      .ok()?;
+    let id: RenderHoldId = RenderHoldId(last + 1);
+
+    self.queue.send(RenderCommand::Hold { id });
+
+    Some(id)
+  }
+
+  /// Releases a hold; the GPU stops a few seconds after the last hold and viewport go.
+  pub(crate) fn release_hold(&self, id: RenderHoldId) {
+    self.queue.send(RenderCommand::Release { id });
   }
 
   /// Starts drawing a viewport into a window, answering the number every later call names it by; none once every
@@ -185,6 +208,18 @@ impl Renderer {
     self.ask(|events| RenderCommand::CaptureBurst { id, burst, events })
   }
 
+  /// Records a viewport's presented frames at `size`, at most one per sixtieth of a second, answering each for the
+  /// caller to read. A frame due while the caller holds every buffer is dropped and counted; dropping the answer stops
+  /// the recording.
+  pub fn record(&self, id: RenderViewportId, size: (u32, u32)) -> Receiver<RecordEvent> {
+    self.ask(|events| RenderCommand::Record { id, size, events })
+  }
+
+  /// Stops a viewport's recording at once, as its recorder goes, whether or not the viewport draws.
+  pub fn stop_record(&self, id: RenderViewportId) {
+    self.queue.send(RenderCommand::StopRecord { id });
+  }
+
   /// Draws every scene's frames `step` apart on its clock from the next on; none at the time each is drawn.
   pub fn step_clock(&self, step: Option<Duration>) {
     self.queue.send(RenderCommand::StepClock { step });
@@ -198,9 +233,13 @@ impl Renderer {
     });
   }
 
-  /// Replaces what a viewport draws over its frame.
-  pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>) {
-    self.queue.send(RenderCommand::Overlays { id, overlays });
+  /// Replaces what a viewport draws over its frame: at once, or from the frame it shows the scene `scene` names.
+  pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>, scene: Option<u32>) {
+    self.queue.send(RenderCommand::Overlays {
+      id,
+      overlays,
+      scene: scene.map(RenderSceneId),
+    });
   }
 
   /// Marks what of a viewport's level is selected, or nothing for `None`.

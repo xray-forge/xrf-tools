@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
 use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
@@ -28,22 +28,33 @@ pub struct AlifeLevelChanger {
 impl AlifeLevelChanger {
   /// The script class the trailing fields belong to, named in a refused save marker.
   const SCRIPT_CLASS: &'static str = "se_level_changer";
+
+  /// The hint the script class's constructor sets, with `enabled` true.
+  const CONSTRUCTED_HINT: &'static str = "level_changer_invitation";
 }
 
-impl ChunkReadWrite for AlifeLevelChanger {
+impl ChunkFieldReadWrite for AlifeLevelChanger {
   /// Read ALife level changer object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let base: AlifeObjectSpaceRestrictor = reader.read_xr::<T, _>()?;
     let dest_game_vertex_id: u16 = reader.read_u16::<T>()?;
     let dest_level_vertex_id: u32 = reader.read_u32::<T>()?;
-    let dest_position: Vector3d = reader.read_xr::<T, _>()?;
+    // Three floats where the angles that follow are one vector, as `STATE_Write` writes them.
+    let dest_position: Vector3d = Vector3d::new(
+      reader.read_f32::<T>()?,
+      reader.read_f32::<T>()?,
+      reader.read_f32::<T>()?,
+    );
     let dest_direction: Vector3d = reader.read_xr::<T, _>()?;
     let dest_level_name: String = reader.read_w1251_string()?;
     let dest_graph_point: String = reader.read_w1251_string()?;
     let silent_mode: u8 = reader.read_u8()?;
-    let (enabled, hint): (u8, String) = ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
-      Ok((reader.read_u8()?, reader.read_w1251_string()?))
-    })?;
+    let (enabled, hint): (u8, String) = ScriptSaveMarker::read_or_constructed::<T, _, _>(
+      reader,
+      Self::SCRIPT_CLASS,
+      || (1, String::from(Self::CONSTRUCTED_HINT)),
+      |reader| Ok((reader.read_u8()?, reader.read_w1251_string()?)),
+    )?;
 
     Ok(Self {
       base,
@@ -60,20 +71,25 @@ impl ChunkReadWrite for AlifeLevelChanger {
   }
 
   /// Write object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
 
     writer.write_u16::<T>(self.dest_game_vertex_id)?;
     writer.write_u32::<T>(self.dest_level_vertex_id)?;
 
-    writer.write_xr::<T, _>(&self.dest_position)?;
+    // `CSE_ALifeLevelChanger::STATE_Write` puts the position down as three floats and the angles as one vector; the
+    // bytes are the same, the fields are not.
+    for component in self.dest_position.to_array() {
+      writer.write_f32::<T>(component)?;
+    }
+
     writer.write_xr::<T, _>(&self.dest_direction)?;
 
     writer.write_w1251_string(&self.dest_level_name)?;
     writer.write_w1251_string(&self.dest_graph_point)?;
     writer.write_u8(self.silent_mode)?;
 
-    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.enabled)?;
       writer.write_w1251_string(&self.hint)?;
 
@@ -84,8 +100,8 @@ impl ChunkReadWrite for AlifeLevelChanger {
 
 impl LtxImportExport for AlifeLevelChanger {
   /// Import ALife level changer object data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -108,25 +124,19 @@ impl LtxImportExport for AlifeLevelChanger {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
-      .set(
-        "level_changer.dest_game_vertex_id",
-        self.dest_game_vertex_id.to_string(),
-      )
-      .set(
-        "level_changer.dest_level_vertex_id",
-        self.dest_level_vertex_id.to_string(),
-      )
-      .set("level_changer.dest_position", self.dest_position.to_string())
-      .set("level_changer.dest_direction", self.dest_direction.to_string())
+      .set("level_changer.dest_game_vertex_id", self.dest_game_vertex_id)
+      .set("level_changer.dest_level_vertex_id", self.dest_level_vertex_id)
+      .set("level_changer.dest_position", self.dest_position)
+      .set("level_changer.dest_direction", self.dest_direction)
       .set("level_changer.dest_level_name", &self.dest_level_name)
       .set("level_changer.dest_graph_point", &self.dest_graph_point)
-      .set("level_changer.silent_mode", self.silent_mode.to_string())
-      .set("level_changer.enabled", self.enabled.to_string())
+      .set("level_changer.silent_mode", self.silent_mode)
+      .set("level_changer.enabled", self.enabled)
       .set("level_changer.hint", &self.hint);
 
     Ok(())
@@ -142,7 +152,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_level_changer::AlifeLevelChanger;
@@ -168,13 +178,16 @@ mod tests {
           spawn_story_id: 213,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(4.5, 0.5, 11.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(1.5, 2.5, 73.1),
-            Vector3d::new(5.1, 3.2, 2.3),
-            Vector3d::new(1.0, 3.0, 6.4),
-            Vector3d::new(9.2, 3.3, 3.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(4.5, 0.5, 11.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(1.5, 2.5, 73.1),
+            y_axis: Vector3d::new(5.1, 3.2, 2.3),
+            z_axis: Vector3d::new(1.0, 3.0, 6.4),
+            translation: Vector3d::new(9.2, 3.3, 3.0),
+          }),
         ],
         restrictor_type: 3,
       },
@@ -230,13 +243,16 @@ mod tests {
           spawn_story_id: 213,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(4.5, 0.5, 11.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(21.5, 32.5, 73.1),
-            Vector3d::new(25.1, 33.2, 42.3),
-            Vector3d::new(21.0, 33.0, 46.4),
-            Vector3d::new(29.2, 33.3, 43.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(4.5, 0.5, 11.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(21.5, 32.5, 73.1),
+            y_axis: Vector3d::new(25.1, 33.2, 42.3),
+            z_axis: Vector3d::new(21.0, 33.0, 46.4),
+            translation: Vector3d::new(29.2, 33.3, 43.0),
+          }),
         ],
         restrictor_type: 3,
       },
@@ -277,13 +293,16 @@ mod tests {
           spawn_story_id: 1,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(4.5, 0.5, 11.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(10.5, 20.5, 73.1),
-            Vector3d::new(5.1, 30.2, 2.3),
-            Vector3d::new(1.0, 3.0, 60.4),
-            Vector3d::new(90.2, 30.3, 3.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(4.5, 0.5, 11.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(10.5, 20.5, 73.1),
+            y_axis: Vector3d::new(5.1, 30.2, 2.3),
+            z_axis: Vector3d::new(1.0, 3.0, 60.4),
+            translation: Vector3d::new(90.2, 30.3, 3.0),
+          }),
         ],
         restrictor_type: 3,
       },

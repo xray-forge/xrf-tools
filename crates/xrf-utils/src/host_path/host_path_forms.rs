@@ -38,7 +38,7 @@ pub fn format_path_or<'a, P: AsRef<Path> + ?Sized>(path: Option<&'a P>, fallback
 
 /// Render a host path with forward slashes, for a wire contract or a report key.
 #[inline]
-pub fn to_portable_path_string<T: AsRef<Path>>(path: T) -> String {
+pub fn format_portable_path<T: AsRef<Path>>(path: T) -> String {
   path.as_ref().to_string_lossy().replace('\\', "/")
 }
 
@@ -47,7 +47,7 @@ pub fn to_portable_path_string<T: AsRef<Path>>(path: T) -> String {
 /// # Errors
 ///
 /// Returns an IO error when the path is relative and the current directory cannot be read.
-pub fn to_absolute_path<T: AsRef<Path>>(path: T) -> XrfResult<PathBuf> {
+pub fn resolve_absolute_path<T: AsRef<Path>>(path: T) -> XrfResult<PathBuf> {
   let path: &Path = path.as_ref();
   let absolute: PathBuf = if path.is_absolute() {
     path.to_path_buf()
@@ -74,16 +74,16 @@ pub fn to_absolute_path<T: AsRef<Path>>(path: T) -> XrfResult<PathBuf> {
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use super::{format_path, format_path_or, to_absolute_path, to_portable_path_string};
+  use super::{format_path, format_path_or, format_portable_path, resolve_absolute_path};
 
   #[test]
   fn renders_separators_the_same_way_on_every_platform() {
     assert_eq!(
-      to_portable_path_string(PathBuf::from("configs").join("gameplay").join("dialogs.xml")),
+      format_portable_path(PathBuf::from("configs").join("gameplay").join("dialogs.xml")),
       "configs/gameplay/dialogs.xml"
     );
-    assert_eq!(to_portable_path_string("already/portable"), "already/portable");
-    assert_eq!(to_portable_path_string(""), "");
+    assert_eq!(format_portable_path("already/portable"), "already/portable");
+    assert_eq!(format_portable_path(""), "");
   }
 
   #[test]
@@ -120,8 +120,11 @@ mod tests {
   fn resolves_a_relative_path_against_the_current_directory() {
     let current: PathBuf = std::env::current_dir().expect("a current directory");
 
-    assert_eq!(to_absolute_path("packed").expect("resolves"), current.join("packed"));
-    assert_eq!(to_absolute_path("").expect("resolves"), current);
+    assert_eq!(
+      resolve_absolute_path("packed").expect("resolves"),
+      current.join("packed")
+    );
+    assert_eq!(resolve_absolute_path("").expect("resolves"), current);
   }
 
   #[test]
@@ -129,7 +132,7 @@ mod tests {
     let current: PathBuf = std::env::current_dir().expect("a current directory");
 
     assert_eq!(
-      to_absolute_path(Path::new(".").join("out").join("..").join("packed")).expect("resolves"),
+      resolve_absolute_path(Path::new(".").join("out").join("..").join("packed")).expect("resolves"),
       current.join("packed")
     );
   }
@@ -145,7 +148,7 @@ mod tests {
     let absent: PathBuf = root.join("no_such_directory").join("gamedata");
 
     assert!(!absent.exists(), "the case worth covering is a path that is not there");
-    assert_eq!(to_absolute_path(&absent).expect("resolves"), absent);
+    assert_eq!(resolve_absolute_path(&absent).expect("resolves"), absent);
   }
 
   #[test]
@@ -157,7 +160,10 @@ mod tests {
       .expect("a root")
       .to_path_buf();
 
-    assert_eq!(to_absolute_path(root.join("..").join("..")).expect("resolves"), root);
+    assert_eq!(
+      resolve_absolute_path(root.join("..").join("..")).expect("resolves"),
+      root
+    );
   }
 
   /// A Unix filename is bytes, not text, so it can be a valid path and still not be valid Unicode.

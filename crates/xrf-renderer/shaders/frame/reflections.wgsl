@@ -46,16 +46,6 @@ const MIRROR_FRAMES: f32 = 4.0;
 // The share of the roughness's mip a missed ray reads the prefiltered sky at: its lobe spreads the rays already, and
 // the denoiser gathers them, so the cube supplies the other half of the blur.
 const MISS_BLUR: f32 = 0.5;
-// Metres behind a surface a ray may lie, and what of its distance more, and still have met it: thin, so a leaf stays a
-// leaf and a ray aimed past its edge goes past it; further behind, the walk ends uncertain. Within `PROBABLE_BEHIND`
-// more (metres, then a share of the distance: a wall met at a glancing step) the surface it stands behind is the
-// probable answer, and its colour is taken with a confidence fading over that depth; beyond it the ray has passed
-// something standing between, and the miss chain answers. Behind a plant the band is a bush's depth
-// (`PROBABLE_BEHIND_PLANT`): its blades are billboards standing in for a volume, a ray from the ground under a bush
-// leaves a metre behind its front, and behind a blade is mostly more bush.
-const HIT_THICKNESS: vec2<f32> = vec2<f32>(0.05, 0.005);
-const PROBABLE_BEHIND: vec2<f32> = vec2<f32>(0.5, 0.03);
-const PROBABLE_BEHIND_PLANT: vec2<f32> = vec2<f32>(1.5, 0.05);
 // How far along the ray the met surface's own normal may point before the hit is a back face: faded out from none to
 // this, since the depth's normal at an edge leans.
 const BACK_FACING: f32 = 0.2;
@@ -143,11 +133,17 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
 // Whether a pixel the screen leaves unanswered traces against the level's geometry this frame: once in its
 // `trace_turns`, `scale` times as many for a still, dim reflection, stretched by the list's wait where the rays asked
 // overrun it; each pixel's turn its own (`trace_turn_of`), so a held pixel has traced ones about it, which the resolve
-// clips it to. Tiles turning together kept a held tile's lag from its traced neighbours as a chequer in motion.
+// clips it to. Tiles turning together kept a held tile's lag from its traced neighbours as a chequer in motion. Under
+// ray budgets each quad's turn is its own (`is_on_quad_trace_turn`): it traces one pixel a frame, which asks the scene
+// for the quad.
 fn is_trace_turn(pixel: vec2<f32>, scale: u32) -> bool {
   let turns: u32 = max(reflection.trace_turns, 1u) * scale * trace_request_wait();
 
-  return (trace_turn_of(vec2<u32>(pixel), turns) + reflection.frame) % turns == 0u;
+  if (quad_scale > 0u) {
+    return is_on_quad_trace_turn(vec2<u32>(pixel), turns, reflection.frame);
+  }
+
+  return is_on_trace_turn(vec2<u32>(pixel), turns, reflection.frame);
 }
 
 // What a pixel reflected the frame before, off its turn to trace: read where its reflected point stood then, through
@@ -228,8 +224,9 @@ fn scene_ray(pixel: vec2<f32>, position: vec3<f32>, normal: vec3<f32>, direction
   let pixel_angle: f32 = 2.0 * reflection.ratio / (camera.projection[1][1] * camera.viewport.y);
   var request: TraceRequest;
 
-  request.origin = vec4<f32>(origin, reflection.distance);
-  request.cone = vec2<f32>(distance * pixel_angle, pixel_angle + roughness);
+  request.origin = pack_trace_request_origin(origin);
+  request.reach = pack2x16float(vec2<f32>(reflection.distance, 0.0));
+  request.cone = pack2x16float(vec2<f32>(distance * pixel_angle, pixel_angle + roughness));
   request.toward = pack2x16snorm(octahedral_encode(world_direction(direction)));
   request.pixel = u32(pixel.x) | (u32(pixel.y) << 16u);
 
@@ -242,6 +239,9 @@ var<private> is_scene_requested: bool = false;
 var<private> scene_texel: vec2<i32>;
 // The corners of the pixel's quad that take its answer under ray budgets, which its request carries to the scene pass.
 var<private> scene_mates: u32 = 0u;
+// Under ray budgets, the scale of the turns the pixel's quad takes its scene turn at as one (`is_trace_turn`): one, or
+// `DIM_TURNS` where every pixel it traces is still and dim; none where the pixel traces alone.
+var<private> quad_scale: u32 = 0u;
 
 // Lists the pixel's ray for the scene pass with what the screen answered (`answer`'s colour weighed by its `share`,
 // its length) and the reason `hit_end` its ends take where the ray meets something; whether the list took it.
@@ -249,7 +249,7 @@ fn request_scene(answer: vec4<f32>, share: f32, hit_end: u32) -> bool {
   var request: TraceRequest = scene_request;
 
   request.screen = trace_request_screen(answer.rgb, share);
-  request.screen_length = answer.w;
+  request.reach = pack2x16float(vec2<f32>(unpack2x16float(request.reach).x, answer.w));
   request.hit_end = hit_end | (scene_mates << TRACE_REQUEST_MATES_SHIFT);
 
   return list_trace_request(request);
@@ -284,7 +284,7 @@ fn pixel_numbers(pixel: vec2<f32>) -> vec2<f32> {
     textureLoad(blue_noise, (at + size / 2u) % size, 0).r,
   );
 
-  return fract(noise + f32(reflection.frame) * R2_STEPS);
+  return fract(noise + vec2<f32>(reflection.noise_x, reflection.noise_y));
 }
 
 // What a ray met lit as combine lights it this frame: `hmodel` over its G-buffer, its occlusion where it is searched.
@@ -578,6 +578,14 @@ fn trace_start(pixel: vec2<f32>) -> TraceStart {
   return TraceStart(true, END_UNTRACED, texel, roughness, normal, position, toward, facing, shown, is_puddle);
 }
 
+// Whether a traced pixel's reflection is dim and its surface stands where it stood the frame before, so its scene trace
+// waits `DIM_TURNS` times the quality's turns.
+fn is_still_dim(start: TraceStart) -> bool {
+  let was: vec2<f32> = previous_uv(camera.position.xyz + world_offset(start.position)) * camera.viewport.xy;
+
+  return start.shown < DIM_SHARE && length(was - (vec2<f32>(start.texel) + 0.5)) < DIM_STILL;
+}
+
 @fragment
 fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   return trace_pixel(floor(in.clip.xy));
@@ -623,7 +631,9 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   // A rough surface's reflection is blurred over its lobe: half the crossings find what it shows.
   let budget: u32 = u32(f32(reflection.crossings) * mix(1.0, ROUGH_CROSSINGS, smoothstep(ROUGH_BUDGET.x, ROUGH_BUDGET.y,
     roughness)));
-  let walk: RayWalk = ray_walk(nearest_depth, origin, toward_screen, max(budget, 8u), HIT_THICKNESS);
+  // A ray goes on behind a twig or a blade, as behind a wire: the surfaces' rays answer a plant probable instead.
+  let walk: RayWalk = ray_walk(nearest_depth, material_target, false, origin, toward_screen, max(budget, 8u),
+    HIT_THICKNESS);
   let distance_met: f32 = -ray_view_point(walk.position).z;
   let thickness: f32 = HIT_THICKNESS.x + distance_met * HIT_THICKNESS.y;
   let confidence: f32 = select(0.0, hit_confidence(walk, position, thickness), walk.is_met);
@@ -635,10 +645,10 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   if (confidence < 1.0 && reflection.is_traced > 0.5) {
     var held: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 
-    let was: vec2<f32> = previous_uv(camera.position.xyz + world_offset(position)) * camera.viewport.xy;
-    let is_still_dim: bool = shown < DIM_SHARE && length(was - (vec2<f32>(texel) + 0.5)) < DIM_STILL;
+    // Under ray budgets the quad's scale, so every pixel of it waits the same turns.
+    let scale: u32 = select(select(1u, DIM_TURNS, is_still_dim(start)), quad_scale, quad_scale > 0u);
 
-    if (!is_trace_turn(pixel, select(1u, DIM_TURNS, is_still_dim))) {
+    if (!is_trace_turn(pixel, scale)) {
       held = held_radiance(texel);
     }
 
@@ -674,8 +684,7 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   if (walk.end == END_UNCERTAIN) {
     let behind_texel: vec2<i32> = walk_texel(walk.position.xy);
     let is_plant: bool = has_mark(textureLoad(material_target, behind_texel, 0).a, MARK_PLANT);
-    let band: vec2<f32> = select(PROBABLE_BEHIND, PROBABLE_BEHIND_PLANT, is_plant);
-    let probable: f32 = 1.0 - smoothstep(thickness, thickness + band.x + distance_met * band.y, walk.behind);
+    let probable: f32 = probable_behind(walk.behind, thickness, distance_met, is_plant);
 
     if (probable > 0.0) {
       let shown: vec3<f32> = shown_point(behind_texel).xyz;
@@ -720,8 +729,6 @@ const GRAZING_FACING: f32 = 0.25;
 const NOISY_VARIANCE: f32 = 0.05;
 // Traced pixels a side each workgroup of the budgeted trace takes, as quads one an invocation.
 const BUDGET_TILE: u32 = 16u;
-// The order a quad's pixels take its rays in, the diagonals first, so two rays fall across each other.
-const QUAD_ORDER: array<u32, 4> = array<u32, 4>(0u, 3u, 1u, 2u);
 
 // The rays of its quad's four a traced pixel asks for.
 fn ray_need(start: TraceStart, pixel: vec2<u32>) -> u32 {
@@ -760,8 +767,9 @@ fn store_trace(pixel: vec2<u32>, written: TraceTargets) {
 }
 
 // Each listed ray: its pixel's place in the tile, four bits a side, then from the eighth bit the corners of its quad
-// that take its answer.
+// that take its answer, then one bit where its quad waits a still, dim reflection's turns (`BUDGET_DIM_BIT`).
 var<workgroup> budget_rays: array<u32, 256>;
+const BUDGET_DIM_BIT: u32 = 1u << 12u;
 var<workgroup> budget_count: atomic<u32>;
 
 // The trace under ray budgets: a tile of traced pixels a workgroup, each invocation one quad's. Each quad finds what
@@ -782,6 +790,8 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
   var starts: array<TraceStart, 4>;
   var needs: array<u32, 4> = array<u32, 4>(0u, 0u, 0u, 0u);
   var budget: u32 = 0u;
+  // The quad waits a still, dim reflection's turns only where every pixel it traces is one.
+  var is_dim: bool = true;
 
   for (var corner: u32 = 0u; corner < 4u; corner++) {
     let pixel: vec2<u32> = tile + place + vec2<u32>(corner & 1u, corner >> 1u);
@@ -801,12 +811,13 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
 
     needs[corner] = ray_need(starts[corner], pixel);
     budget = max(budget, needs[corner]);
+    is_dim = is_dim && is_still_dim(starts[corner]);
   }
 
   // The quad's first pixel to trace turns each frame from a place its noise picks; two rays take a diagonal.
   let noise_size: vec2<u32> = textureDimensions(blue_noise);
   let picked: u32 = u32(textureLoad(blue_noise, ((tile + place) / 2u) % noise_size, 0).r * 4.0);
-  let turn: u32 = (reflection.frame + picked) % 4u;
+  let turn: u32 = quad_turn(reflection.frame, picked);
   let first: u32 = select(turn, turn & 2u, budget == 2u);
   var is_traced: array<bool, 4> = array<bool, 4>(false, false, false, false);
   var taken: u32 = 0u;
@@ -846,7 +857,8 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
     if (is_traced[corner]) {
       let at: vec2<u32> = place + vec2<u32>(corner & 1u, corner >> 1u);
 
-      budget_rays[atomicAdd(&budget_count, 1u)] = at.x | (at.y << 4u) | (mates[corner] << 8u);
+      budget_rays[atomicAdd(&budget_count, 1u)] =
+        at.x | (at.y << 4u) | (mates[corner] << 8u) | select(0u, BUDGET_DIM_BIT, is_dim);
     }
   }
 
@@ -859,7 +871,8 @@ fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_inv
     let pixel: vec2<u32> = tile + vec2<u32>(packed & 15u, (packed >> 4u) & 15u);
     let quad: vec2<u32> = pixel & vec2<u32>(~1u);
 
-    scene_mates = packed >> 8u;
+    scene_mates = (packed >> 8u) & 15u;
+    quad_scale = select(1u, DIM_TURNS, (packed & BUDGET_DIM_BIT) != 0u);
 
     let written: TraceTargets = trace_pixel(vec2<f32>(pixel));
 

@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use xrf_error::XrfError;
 
-use crate::{PipelineCache, PipelineMap, PipelineSet};
+use crate::{PipelineAsk, PipelineCache, PipelineMap, PipelineSet};
 
 #[test]
 fn makes_a_set_again_once_a_generation_and_keeps_the_last_where_refused() {
@@ -38,19 +38,63 @@ fn makes_a_set_again_once_a_generation_and_keeps_the_last_where_refused() {
 }
 
 #[test]
-fn asks_for_a_set_until_one_is_made() {
+fn asks_for_a_set_once_a_generation_until_one_is_made() {
   let cache: PipelineCache = PipelineCache::new();
-  let mut set: Option<PipelineSet<u32>> = None;
+  let mut set: PipelineAsk<u32> = PipelineAsk::default();
+  let made: Cell<u32> = Cell::new(0);
+  let refuse = || {
+    made.set(made.get() + 1);
+    Err(XrfError::new_invalid_error("refused"))
+  };
 
-  assert!(PipelineSet::ask(&mut set, &cache, || Err(XrfError::new_invalid_error("refused"))).is_err());
-  assert!(set.is_none());
-  assert!(PipelineSet::ask(&mut set, &cache, || Ok(1)).is_ok());
-  assert!(PipelineSet::ask(&mut set, &cache, || Ok(2)).is_ok());
+  assert!(set.ask(&cache, refuse).is_err());
+  assert!(set.ask(&cache, refuse).is_ok(), "the refusal is told once");
   assert_eq!(
-    set.as_deref().copied(),
-    Some(1),
-    "a made set is kept while the cache stands"
+    (set.get(), made.get()),
+    (None, 1),
+    "nor tried again before the cache changes"
   );
+
+  cache.invalidate_all();
+
+  assert!(set.ask(&cache, || Ok(1)).is_ok());
+  assert!(set.ask(&cache, || Ok(2)).is_ok());
+  assert_eq!(set.get().copied(), Some(1), "a made set is kept while the cache stands");
+}
+
+#[test]
+fn makes_a_refused_key_again_only_once_the_cache_changes() {
+  let cache: PipelineCache = PipelineCache::new();
+  let mut map: PipelineMap<u8, u32> = PipelineMap::new(&cache);
+  let made: Cell<u32> = Cell::new(0);
+  let refuse = |_| {
+    made.set(made.get() + 1);
+    Err(XrfError::new_invalid_error("refused"))
+  };
+
+  let first: XrfError = map.prepare(1, refuse).unwrap_err();
+  let again: XrfError = map.prepare(1, refuse).unwrap_err();
+
+  assert_eq!(
+    first.to_string(),
+    again.to_string(),
+    "the refusal stands, word for word, so a log skipping a repeat tells it once"
+  );
+  assert!(
+    matches!(again, XrfError::Invalid { .. }),
+    "the refusal keeps its kind: {again:?}"
+  );
+  assert_eq!(
+    (map.get(&1), made.get()),
+    (None, 1),
+    "not made again before the cache changes"
+  );
+
+  cache.invalidate_all();
+
+  assert!(map.refresh(&cache, |key| Ok(u32::from(key))).is_ok());
+  assert!(map.prepare(1, |key| Ok(u32::from(key) * 10)).is_ok());
+  assert_eq!(map.get(&1), Some(&10));
 }
 
 #[test]

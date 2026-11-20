@@ -1,6 +1,5 @@
-use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 /// Lists every WGSL module under `shaders/` for the shader library to embed, each named by its path there without the
 /// extension, so a module is added by its file alone.

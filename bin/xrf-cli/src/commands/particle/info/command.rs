@@ -4,31 +4,32 @@ use xrf_particles::ParticlesFile;
 use xrf_utils::format_path;
 
 use super::report::ParticleInfoReport;
-use crate::commands::particle::particles_file_arguments::ParticlesFileArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::commands::particle::particles_file_input::ParticlesFileInput;
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct InfoCommand;
+pub(crate) struct InfoCommand;
 
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {
     "info"
   }
 
+  fn input(&self) -> CommandInput {
+    ParticlesFileInput::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    ParticlesFileArguments::declare(command.about("Print what a particle file holds"))
+    command.about("Print what a particle file holds")
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(
-      output,
-      "Read particle file {}",
-      format_path(ParticlesFileArguments::path_of(matches))
-    );
+    xrf_output::info!(output, "Read particle file {}", format_path(InputArgument::of(matches)));
 
-    let particles_file: ParticlesFile = ParticlesFileArguments::open(matches)?;
+    let particles_file: ParticlesFile = ParticlesFileInput::open(matches)?;
 
     xrf_output::info!(output, "Particles file information:");
 

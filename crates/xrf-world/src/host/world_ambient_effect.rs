@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::host::sound::world_sound::WorldSound;
 use crate::host::world_wind_blast::WorldWindBlast;
 
 /// An effect an ambient plays near the camera, `CEnvAmbient::SEffect`: a particle system standing where the camera
@@ -15,4 +16,6 @@ pub struct WorldAmbientEffect {
   /// How often the wind gusts while it plays, `wind_gust_factor`: the frequency of the wind's noise.
   pub wind_gust_factor: f32,
   pub wind_blast: WorldWindBlast,
+  /// The sound it plays once where it starts, none where it names none.
+  pub sound: Option<WorldSound>,
 }

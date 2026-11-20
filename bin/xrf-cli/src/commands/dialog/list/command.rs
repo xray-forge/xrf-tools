@@ -11,18 +11,22 @@ use super::dialog_list_entry::DialogListEntry;
 use super::dialog_list_profile::DialogListProfile;
 use super::report::DialogListReport;
 use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct ListCommand;
+pub(crate) struct ListCommand;
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {
     "list"
   }
 
+  fn input(&self) -> CommandInput {
+    DialogProjectOpening::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    DialogProjectOpening::declare(
+    DialogProjectOpening::declare_language(
       command.about("List the dialogs a tree holds, or the ones reaching the actor from an NPC of one profile"),
     )
     .arg(

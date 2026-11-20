@@ -8,12 +8,12 @@ use xrf_renderer::{
 };
 
 /// A weather's mix as the lighting the scene is drawn with.
-pub struct WeatherLighting;
+pub(crate) struct WeatherLighting;
 
 impl WeatherLighting {
   /// A weather's mix as the scene is lit by it, in renderer space: the skies and clouds of both keyframes by their
   /// references, the sky's irradiance stood in for until its cubes are up.
-  pub fn of(mix: &WeatherMix, [a, b]: &[WeatherPlayedKeyframe; 2], engine: XrayEngine) -> RenderLighting {
+  pub(crate) fn of(mix: &WeatherMix, [a, b]: &[WeatherPlayedKeyframe; 2], engine: XrayEngine) -> RenderLighting {
     let [a, b]: [&WeatherDescriptor; 2] = [&a.descriptor, &b.descriptor];
 
     RenderLighting {
@@ -29,13 +29,13 @@ impl WeatherLighting {
         far_plane: mix.far_plane,
       }),
       sky: RenderSky {
-        textures: [Self::to_named(&a.sky_texture), Self::to_named(&b.sky_texture)],
-        environments: [Self::to_environment(a), Self::to_environment(b)],
+        textures: [Self::find_named(&a.sky_texture), Self::find_named(&b.sky_texture)],
+        environments: [Self::find_environment(a), Self::find_environment(b)],
         blend: mix.weight,
         color: Vec3::from(mix.sky_color),
         rotation: mix.sky_rotation,
         clouds: RenderClouds {
-          textures: [Self::to_named(&a.clouds_texture), Self::to_named(&b.clouds_texture)],
+          textures: [Self::find_named(&a.clouds_texture), Self::find_named(&b.clouds_texture)],
           color: Vec4::from(mix.clouds_color),
           rotation: mix.clouds_rotation,
         },
@@ -66,22 +66,22 @@ impl WeatherLighting {
 
   /// The sky textures a keyframe's lighting samples, as `of` takes them from it: its cube, its irradiance cube and its
   /// clouds' layer, each only where the keyframe names it.
-  pub fn list_sky_textures(keyframe: &WeatherDescriptor) -> impl Iterator<Item = (String, WeatherTextureKind)> {
+  pub(crate) fn list_sky_textures(keyframe: &WeatherDescriptor) -> impl Iterator<Item = (String, WeatherTextureKind)> {
     [
-      (Self::to_named(&keyframe.sky_texture), WeatherTextureKind::Cube),
-      (Self::to_environment(keyframe), WeatherTextureKind::Cube),
-      (Self::to_named(&keyframe.clouds_texture), WeatherTextureKind::Flat),
+      (Self::find_named(&keyframe.sky_texture), WeatherTextureKind::Cube),
+      (Self::find_environment(keyframe), WeatherTextureKind::Cube),
+      (Self::find_named(&keyframe.clouds_texture), WeatherTextureKind::Flat),
     ]
     .into_iter()
     .filter_map(|(reference, kind)| Some((reference?, kind)))
   }
 
-  fn to_named(reference: &str) -> Option<String> {
+  fn find_named(reference: &str) -> Option<String> {
     Some(reference.to_owned()).filter(|it| !it.is_empty())
   }
 
   /// A keyframe's irradiance cube; one without a sky names only its suffix, which nothing answers to.
-  fn to_environment(keyframe: &WeatherDescriptor) -> Option<String> {
-    Self::to_named(&keyframe.sky_texture).and_then(|_| Self::to_named(&keyframe.sky_texture_env))
+  fn find_environment(keyframe: &WeatherDescriptor) -> Option<String> {
+    Self::find_named(&keyframe.sky_texture).and_then(|_| Self::find_named(&keyframe.sky_texture_env))
   }
 }

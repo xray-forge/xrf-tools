@@ -12,7 +12,7 @@ use crate::request::ConfigsReadSectionSchemeRequest;
 /// What one section is judged by, and how it measures against that.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_section_scheme")]
-pub async fn configs_read_section_scheme(
+pub(crate) async fn configs_read_section_scheme(
   execution: State<'_, ExecutionState>,
   projects: State<'_, ConfigsProjects>,
   request: ConfigsReadSectionSchemeRequest,

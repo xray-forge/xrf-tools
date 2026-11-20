@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use xrf_level::{
   LevelDynamicLight, LevelEnvModFile, LevelEnvModifier, LevelFogVolFile, LevelFogVolume, LevelGameFile,
-  LevelGameRPoint, LevelLightColor, LevelPsStaticFile, LevelPsStaticPlacement, LevelSndEnvFace, LevelSndEnvFile,
-  LevelSndStaticFile, LevelSndStaticSound, LevelSndStaticWindow,
+  LevelGameRPoint, LevelPsStaticFile, LevelPsStaticPlacement, LevelSndEnvFace, LevelSndEnvFile, LevelSndStaticFile,
+  LevelSndStaticSound, LevelSndStaticWindow,
 };
-use xrf_math::{Matrix4x4, Vector3d};
+use xrf_math::{Aabb, Color, Matrix4x4, Vector3d};
 use xrf_renderer::{RenderHelperIcon, RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 
 use crate::objects::{
@@ -24,12 +24,7 @@ fn new_matrix(scale: f32, at: [f32; 3]) -> Matrix4x4 {
 }
 
 fn new_light(kind: u32, at: Vector3d) -> LevelDynamicLight {
-  let color = |r: f32| LevelLightColor {
-    r,
-    g: 0.5,
-    b: 0.25,
-    a: 1.0,
-  };
+  let color = |r: f32| Color::new(r, 0.5, 0.25, 1.0);
 
   LevelDynamicLight {
     controller: 0,
@@ -94,8 +89,10 @@ fn new_placements() -> LevelPlacements {
     sound_environments: Some(LevelSndEnvFile {
       environments: vec![String::from("open"), String::from("room")],
       version: 4,
-      aabb_min: Vector3d::new(9.0, -2.0, -3.0),
-      aabb_max: Vector3d::new(11.0, 2.0, 3.0),
+      bounds: Aabb {
+        min: Vector3d::new(9.0, -2.0, -3.0),
+        max: Vector3d::new(11.0, 2.0, 3.0),
+      },
       vertices: corners,
       faces: (0..12)
         .map(|_| LevelSndEnvFace {

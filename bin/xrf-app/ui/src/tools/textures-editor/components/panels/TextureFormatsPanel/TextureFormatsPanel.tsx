@@ -3,13 +3,13 @@ import { formatBytes } from "@xrf/format";
 import { TextureDescription, TextureEncodingComparison, TextureEncodingReport } from "@xrf/ipc/types/xrf-app-textures";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material/alert";
-import { Button } from "@xrf/ui/material/button";
-import { List } from "@xrf/ui/material/list";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Alert } from "@xrf/ui/feedback";
+import { Stack } from "@xrf/ui/layout/stack";
+import { List } from "@xrf/ui/list";
 import { ReactElement, useCallback } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
@@ -44,7 +44,7 @@ export function TextureFormatsPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Formats"}>
-      <EditorPanelSection title={"Current"} isFirst>
+      <EditorPanelSection title={"Current"}>
         <EditorPanelProperty
           label={"Format"}
           value={comparison?.current.label ?? description.base?.shape?.format ?? "-"}
@@ -95,28 +95,26 @@ export function TextureFormatsPanel({
             ))}
           </List>
         ) : (
-          <Typography variant={"caption"} color={"text.secondary"}>
+          <EditorPopoverNote>
             {encodingService.compare.isRunning
               ? "Encoding each candidate from the same reduced levels, cheapest first."
               : "Nothing weighed yet. BC7 alone takes over a second on a large texture, so this is asked for."}
-          </Typography>
+          </EditorPopoverNote>
         )}
 
         {comparison?.outcome === EJobOutcome.CANCELLED ? (
-          <Alert className={"mt-2"} severity={"info"}>
+          <EditorPopoverNote className={"mt-2"}>
             Stopped before every format was weighed. The ones listed are real measurements and can still be saved.
-          </Alert>
+          </EditorPopoverNote>
         ) : null}
       </EditorPanelSection>
 
       {encodingService.chosenReport ? (
         <EditorPanelSection title={"Pending"}>
-          <div>
-            <Alert severity={"info"}>
-              {`Saving writes this texture as ${encodingService.chosenReport.label}. The descriptor's own format is ` +
-                "updated with it, except for BC7, which ETFormat cannot name."}
-            </Alert>
-          </div>
+          <EditorPopoverNote>
+            {`Saving writes this texture as ${encodingService.chosenReport.label}. The descriptor's own format is ` +
+              "updated with it, except for BC7, which ETFormat cannot name."}
+          </EditorPopoverNote>
         </EditorPanelSection>
       ) : null}
     </EditorPanel>

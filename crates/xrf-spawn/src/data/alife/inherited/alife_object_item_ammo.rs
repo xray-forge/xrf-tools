@@ -1,11 +1,13 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
+use crate::data::alife::spawn_layout::SpawnLayout;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -18,32 +20,42 @@ pub struct AlifeObjectItemAmmo {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemAmmo {
+  /// The item's, then the rounds left the spawn packet holds, which `STATE_Read` reads over the constructor's box size.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+    self.update_ammo_left = self.ammo_left;
+  }
+
   /// Read ammo from both packets, each carrying the rounds left.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::read::<T, _>(spawn, update)?,
+      base: AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?,
       ammo_left: spawn.read_u16::<T>()?,
       update_ammo_left: update.read_u16::<T>()?,
     })
   }
 
   /// Write ammo into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
     spawn.write_u16::<T>(self.ammo_left)?;
     update.write_u16::<T>(self.update_ammo_left)?;
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectItemAmmo {
   /// Import ALife ammo item data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -52,20 +64,20 @@ impl LtxImportExport for AlifeObjectItemAmmo {
     })?;
 
     Ok(Self {
-      base: AlifeObjectItem::import(section_name, ltx)?,
+      base: AlifeObjectItem::import(section_name, ltx, layout)?,
       ammo_left: section.read_field("item_ammo.ammo_left")?,
       update_ammo_left: section.read_field("item_ammo.update_ammo_left")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
 
     ltx
       .with_section(section_name)
-      .set("item_ammo.ammo_left", self.ammo_left.to_string())
-      .set("item_ammo.update_ammo_left", self.update_ammo_left.to_string());
+      .set("item_ammo.ammo_left", self.ammo_left)
+      .set("item_ammo.update_ammo_left", self.update_ammo_left);
 
     Ok(())
   }
@@ -75,12 +87,13 @@ impl LtxImportExport for AlifeObjectItemAmmo {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_ammo::AlifeObjectItemAmmo;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectItemAmmo {
     AlifeObjectItemAmmo {
@@ -90,12 +103,15 @@ mod tests {
     }
   }
 
-  /// The rounds left follow the physics state in the update packet as they follow the item in the spawn packet.
+  // The rounds left follow the physics state in the update packet as they follow the item in the spawn packet.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemAmmo = new_object();
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (54, 56, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (54, 56, original)
+    );
 
     Ok(())
   }
@@ -105,9 +121,12 @@ mod tests {
     let original: AlifeObjectItemAmmo = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectItemAmmo::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectItemAmmo::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

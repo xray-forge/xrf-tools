@@ -10,15 +10,18 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 /// What a frame was granted: each job's passes, the units it drew and what a unit cost before any was learned.
 type FrameGrants = Vec<(&'static [&'static str], f32, f32)>;
 
-/// The work every view and scene draws once in so many frames, and what streams in, decided for all of them so the
-/// frame carries about the same share of it every time: each offers its due jobs, the scheduler grants them, and each
-/// does what it was granted. A frame decides in rounds sharing its budget: what streams in as the scenes take their
-/// updates, then what is drawn once every view prepared. A job that must be done this frame is granted whatever it
-/// costs, and spends the budget like any other, so what may wait fills only what it leaves; then the one waited longest
-/// past its deadline, whatever the budget, one a frame; then the rest by how near their deadline they stand, while they
-/// fit. A job's cost is its units at the milliseconds a unit last cost: as the timer measured its passes where they are
-/// timed, else as the frames' GPU times show it, fitted over the jobs each frame was granted; its seed before either.
-pub struct PeriodicScheduler {
+/// Grants the periodic and streaming work of every view and scene against one GPU budget, so each frame carries a
+/// similar share: owners offer due jobs, the scheduler grants, owners do what was granted.
+///
+/// A frame decides in rounds sharing the budget: streaming as scenes take their updates, then draws once every view
+/// prepared. Grant order: jobs due now, whatever they cost, spending the budget so work that may wait fills only what
+/// they leave; then the one longest past its deadline, one a frame
+/// regardless of budget, unless due-now work already spent the budget and it is only just at its deadline, so two
+/// large draws do not share a frame; then the rest by nearest deadline while they fit.
+///
+/// A job's cost is its units times the last cost per unit: from the timer where its passes are timed, else fitted from
+/// frame GPU times over each frame's grants, else its seed.
+pub(crate) struct PeriodicScheduler {
   /// Milliseconds of GPU time a frame's work that may wait fills.
   budget: f32,
   /// Frames begun, which tags the timed frames.
@@ -61,7 +64,7 @@ impl PeriodicScheduler {
   /// How far one frame moves a job's typical units.
   const UNITS_STEP: f32 = 0.1;
 
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       budget: RENDER_DEFAULT_PERIODIC_BUDGET,
       frame: 0,
@@ -82,7 +85,7 @@ impl PeriodicScheduler {
   /// the passes the timer read back since the last frame, and from the GPU's milliseconds on each frame read back
   /// (`spans`, by the frame's tag) where its passes were not timed. What is offered next is the scenes' own until a
   /// view is named.
-  pub fn begin(&mut self, budget: f32, times: &[GraphTaggedTime], spans: &[(u64, f32)]) {
+  pub(crate) fn begin(&mut self, budget: f32, times: &[GraphTaggedTime], spans: &[(u64, f32)]) {
     self.learn(times);
     self.fit(times, spans);
     self.budget = budget.max(0.0);
@@ -96,23 +99,24 @@ impl PeriodicScheduler {
   }
 
   /// The frame begun last, which tags it for the timer.
-  pub fn get_frame(&self) -> u64 {
+  pub(crate) fn get_frame(&self) -> u64 {
     self.frame
   }
 
   /// Milliseconds this frame's grants cost, as estimated: of what may wait, which the budget bounds, and of what must
   /// draw this frame.
-  pub fn get_spent(&self) -> (f32, f32) {
+  #[cfg(test)]
+  pub(crate) fn get_spent(&self) -> (f32, f32) {
     (self.spent, self.now_spent)
   }
 
   /// Names who offers the jobs offered from now on, which `withdraw` takes back together.
-  pub fn set_owner(&mut self, owner: PeriodicOwner) {
+  pub(crate) fn set_owner(&mut self, owner: PeriodicOwner) {
     self.owner = owner;
   }
 
   /// Offers a job for this frame, granted or not once `grant` decides.
-  pub fn offer(&mut self, job: PeriodicJob) -> PeriodicTicket {
+  pub(crate) fn offer(&mut self, job: PeriodicJob) -> PeriodicTicket {
     self.offers.push(PeriodicOffer {
       owner: self.owner,
       job,
@@ -127,7 +131,7 @@ impl PeriodicScheduler {
   }
 
   /// Takes back what `owner` offered this frame: a view that does not draw this frame draws none of it.
-  pub fn withdraw(&mut self, owner: PeriodicOwner) {
+  pub(crate) fn withdraw(&mut self, owner: PeriodicOwner) {
     for offer in self.offers.iter_mut().filter(|offer| offer.owner == owner) {
       offer.is_withdrawn = true;
       offer.is_granted = false;
@@ -135,8 +139,9 @@ impl PeriodicScheduler {
   }
 
   /// Decides the offers since the last round: every one that must be done, then the one most overdue unless the frame
-  /// took one already, then the rest most urgent first while they fit what is left of the budget.
-  pub fn grant(&mut self) {
+  /// took one already (one only just at its deadline waits a frame where what must draw spent the budget), then the rest
+  /// most urgent first while they fit what is left of the budget.
+  pub(crate) fn grant(&mut self) {
     let costs: Vec<f32> = self.offers.iter().map(|offer| self.get_cost(&offer.job)).collect();
     let open: Vec<usize> = (self.decided..self.offers.len())
       .filter(|index| !self.offers[*index].is_withdrawn)
@@ -154,10 +159,17 @@ impl PeriodicScheduler {
       self.now_spent += costs[index];
     }
 
+    // A frame whose must-draw work spent the budget already carries a large draw: a job just at its deadline waits for
+    // the next, which no frame defers further.
+    let is_heavy: bool = self.now_spent > self.budget;
     let overdue: Option<usize> = open
       .iter()
       .copied()
-      .filter(|index| !self.is_forced && self.offers[*index].job.is_overdue())
+      .filter(|index| {
+        let job: &PeriodicJob = &self.offers[*index].job;
+
+        !self.is_forced && job.is_overdue() && (!is_heavy || job.is_late())
+      })
       .fold(None, |most: Option<usize>, index| {
         let past = |index: usize| {
           let job: &PeriodicJob = &self.offers[index].job;
@@ -215,13 +227,13 @@ impl PeriodicScheduler {
   }
 
   /// Whether a job offered this frame was granted.
-  pub fn is_granted(&self, ticket: PeriodicTicket) -> bool {
+  pub(crate) fn is_granted(&self, ticket: PeriodicTicket) -> bool {
     ticket.frame == self.frame && self.offers.get(ticket.index).is_some_and(|offer| offer.is_granted)
   }
 
   /// Milliseconds a job costs: its units at what a unit of its passes last cost, or at its seed before any was
   /// measured.
-  pub fn get_cost(&self, job: &PeriodicJob) -> f32 {
+  pub(crate) fn get_cost(&self, job: &PeriodicJob) -> f32 {
     let rate: f32 = job
       .passes
       .first()

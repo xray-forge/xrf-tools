@@ -2,4 +2,4 @@
 
 mod level_viewer_folder;
 
-pub use level_viewer_folder::LevelViewerFolder;
+pub(crate) use level_viewer_folder::LevelViewerFolder;

@@ -14,7 +14,7 @@ use xrf_ltx::{
 /// is a thing the source answers with rather than a thing that cannot be built - which is the case the structure
 /// record and the parse finding both exist for.
 #[derive(Debug, Default)]
-pub struct LtxMapSource {
+pub(crate) struct LtxMapSource {
   contents: BTreeMap<String, String>,
   /// How many documents have been read out of this source.
   ///
@@ -28,7 +28,7 @@ impl LtxMapSource {
   /// Builds a source from `(logical path, contents)` pairs.
   ///
   /// Paths are lowercased on the way in, which is what the engine's own file table does to every name it registers.
-  pub fn new(files: &[(&str, &str)]) -> Self {
+  pub(crate) fn new(files: &[(&str, &str)]) -> Self {
     Self {
       contents: files
         .iter()
@@ -39,12 +39,12 @@ impl LtxMapSource {
   }
 
   /// Resolves one root under standard LTX, recording where every field came from.
-  pub fn resolve(&self, root: &str) -> XrfResult<LtxResolution> {
+  pub(crate) fn resolve(&self, root: &str) -> XrfResult<LtxResolution> {
     LtxStandardDialect.resolve(root, self, LtxResolveRequest::with_provenance())
   }
 
   /// How many documents this source has been asked for so far.
-  pub fn reads(&self) -> usize {
+  pub(crate) fn reads(&self) -> usize {
     self.reads.get()
   }
 

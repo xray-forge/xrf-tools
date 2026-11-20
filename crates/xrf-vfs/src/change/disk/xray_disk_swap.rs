@@ -31,7 +31,7 @@ impl XrayDiskSwap {
         self.create_directories_above(&target)?;
 
         Some(
-          StagedFile::stage(&target, &StagedFile::to_sibling(&target, "staged")?, bytes).map_err(|error| {
+          StagedFile::stage(&target, &StagedFile::name_sibling(&target, "staged")?, bytes).map_err(|error| {
             XrfError::new_asset_error(format!("failed to stage '{}': {error}", format_path(&target)))
           })?,
         )
@@ -40,7 +40,7 @@ impl XrayDiskSwap {
     };
     let backup: Option<PathBuf> = target
       .exists()
-      .then(|| StagedFile::to_sibling(&target, "replaced"))
+      .then(|| StagedFile::name_sibling(&target, "replaced"))
       .transpose()?;
 
     self.files.push(XraySwappedFile { target, staged, backup });

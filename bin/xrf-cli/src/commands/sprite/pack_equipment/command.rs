@@ -9,16 +9,20 @@ use xrf_output::OutputOptions;
 use xrf_texture::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
 use xrf_utils::format_path;
 
-use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct PackEquipmentCommand;
+pub(crate) struct PackEquipmentCommand;
 
 impl GenericCommand for PackEquipmentCommand {
   fn operation(&self) -> &'static str {
     "pack-equipment"
+  }
+
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Folder holding one icon per section")
   }
 
   fn declare(&self, command: Command) -> Command {
@@ -28,14 +32,6 @@ impl GenericCommand for PackEquipmentCommand {
         Arg::new("system-ltx")
           .help("Path to system ltx file or root folder with ltx files")
           .long("system-ltx")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("path")
-          .help("Folder holding one icon per section")
-          .short('p')
-          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -68,9 +64,7 @@ impl GenericCommand for PackEquipmentCommand {
       .get_one::<PathBuf>("system-ltx")
       .expect("Expected valid path to be provided for system-ltx");
 
-    let source: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid source path to be provided");
+    let source: &PathBuf = InputArgument::of(matches);
 
     let gamedata: Option<&PathBuf> = matches.get_one::<PathBuf>("gamedata");
 

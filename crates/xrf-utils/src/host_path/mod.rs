@@ -12,5 +12,5 @@ mod tests;
 pub use host_destination::HostDestination;
 pub use host_file_name::HostFileName;
 pub use host_link_policy::HostLinkPolicy;
-pub use host_path_forms::{format_path, format_path_or, to_absolute_path, to_portable_path_string};
+pub use host_path_forms::{format_path, format_path_or, format_portable_path, resolve_absolute_path};
 pub use host_relative_path::HostRelativePath;

@@ -1,0 +1,27 @@
+use std::time::Duration;
+
+/// What the engine reads of a sound file as it loads it (`CSoundRender_Source::LoadWave`), its defaults where the file
+/// carries none. A stereo sound always plays 2D.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WorldSoundInfo {
+  /// Its length at its own rate, `get_length_sec`.
+  pub length: Duration,
+  pub is_stereo: bool,
+  /// Metres within which it plays at full volume, and past which it is not heard.
+  pub min_distance: f32,
+  pub max_distance: f32,
+  pub base_volume: f32,
+}
+
+impl Default for WorldSoundInfo {
+  /// `SoundSourceInfo`'s defaults, a mono second.
+  fn default() -> Self {
+    Self {
+      length: Duration::from_secs(1),
+      is_stereo: false,
+      min_distance: 1.0,
+      max_distance: 300.0,
+      base_volume: 1.0,
+    }
+  }
+}

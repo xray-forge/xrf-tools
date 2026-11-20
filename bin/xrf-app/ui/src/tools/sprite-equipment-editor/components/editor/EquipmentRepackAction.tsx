@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useState } from "react";
 
 import {
@@ -36,7 +36,7 @@ export function EquipmentRepackAction({
     setConfirmOpen(false);
 
     try {
-      await spriteEquipmentService.repackAndOpenProject();
+      await spriteEquipmentService.repackAndRefresh();
     } catch (error) {
       // Already published as the sprite failure, which the editor renders. Logged here for the stack.
       log.error("Failed to repack and reopen DDS:", error);

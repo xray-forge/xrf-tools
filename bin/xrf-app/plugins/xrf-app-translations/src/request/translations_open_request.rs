@@ -7,7 +7,7 @@ use xrf_vfs::XrayRoots;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct TranslationsOpenRequest {
+pub(crate) struct TranslationsOpenRequest {
   pub session_id: SessionId,
   pub roots: XrayRoots,
   pub mode: TranslationProjectMode,

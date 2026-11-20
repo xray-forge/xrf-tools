@@ -9,22 +9,22 @@ use xrf_vfs::XraySkippedMount;
 /// unambiguously in a listing and collides with a skipped check verdict in a verification.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SkippedMountReport {
+pub(crate) struct SkippedMountReport {
   origin: String,
   path: String,
   reason: String,
 }
 
 impl SkippedMountReport {
-  pub fn new(skipped: &XraySkippedMount) -> Self {
+  pub(crate) fn new(skipped: &XraySkippedMount) -> Self {
     Self {
       origin: skipped.origin.clone(),
-      path: xrf_utils::to_portable_path_string(&skipped.path),
+      path: xrf_utils::format_portable_path(&skipped.path),
       reason: skipped.reason.clone(),
     }
   }
 
-  pub fn list(skipped: &[XraySkippedMount]) -> Vec<Self> {
+  pub(crate) fn list(skipped: &[XraySkippedMount]) -> Vec<Self> {
     skipped.iter().map(Self::new).collect()
   }
 }

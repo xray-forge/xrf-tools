@@ -3,13 +3,14 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
-import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EToolId } from "@/core/routing/tool";
+import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IGamedataVerification } from "@/tools/gamedata-verifier/lib/gamedata-verification";
 import { GamedataVerifierService } from "@/tools/gamedata-verifier/services/gamedata-verifier.service";
 
 import { GamedataVerifyResult } from "./components/GamedataVerifyResult";
@@ -36,23 +37,24 @@ export function GamedataVerifierTool(): ReactElement {
   const root: Nullable<string> = gamedata.value;
   const engine: IEngineChoice = useEngineChoice(gamedata.isValid ? root : null);
 
-  const onVerify = useCallback(async () => {
-    if (!root) {
-      return;
-    }
+  const request: Nullable<IGamedataVerification> = useMemo(
+    () => (root ? { engine: engine.choice, isStrict, root } : null),
+    [engine.choice, isStrict, root]
+  );
 
-    log.info("Verifying gamedata:", root);
+  const onVerify = useCallback(
+    async (submitted: IGamedataVerification) => {
+      log.info("Verifying gamedata:", submitted.root);
 
-    await verifierService.verify({ engine: engine.choice, isStrict, root });
-  }, [engine.choice, isStrict, log, root, verifierService]);
-
-  useEffect(() => {
-    verifierService.operation.reset();
-  }, [engine.choice, root, isStrict, verifierService]);
+      await verifierService.verify(submitted);
+    },
+    [log, verifierService]
+  );
 
   return (
     <JobPickerForm
       operation={verifierService.operation}
+      request={request}
       isSubmitDisabled={!gamedata.isValid}
       title={"Verify gamedata"}
       description={"Runs every check over a gamedata tree: configs, meshes, textures, sounds, scripts and the rest."}

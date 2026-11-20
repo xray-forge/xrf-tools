@@ -1,6 +1,6 @@
 /// How large a build of the grass's ring and item lists is.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct GrassBuildSize {
+pub(crate) struct GrassBuildSize {
   /// Slots the ring holds.
   pub cells: u32,
   /// Tufts a cell holds at most.
@@ -13,11 +13,11 @@ pub struct GrassBuildSize {
 
 impl GrassBuildSize {
   /// Bytes a cached tuft or a planted item takes: two vectors.
-  pub const ITEM_BYTES: u64 = 32;
+  pub(crate) const ITEM_BYTES: u64 = 32;
 
   /// What a reach and a slot's candidates want, within what one storage binding may hold: past it the planting plants
   /// what fits, dropping the rest. The lists are a power of two, so a setting dragged rebuilds them a handful of times.
-  pub fn wanted(reach: u32, candidates: u32, binding_limit: u64) -> Self {
+  pub(crate) fn wanted(reach: u32, candidates: u32, binding_limit: u64) -> Self {
     // Counted in 64 bits: a wide reach at a dense spacing passes a 32-bit count before the binding limit bounds it.
     let line: u64 = u64::from(reach) * 2 + 1;
     let cells: u64 = line.saturating_mul(line);
@@ -37,7 +37,7 @@ impl GrassBuildSize {
 
   /// Whether a build of this size holds what another wants without more than twice its room, which gives memory back
   /// when a radius or density is brought back down.
-  pub fn is_fitting(&self, wanted: &Self) -> bool {
+  pub(crate) fn is_fitting(&self, wanted: &Self) -> bool {
     let is_outgrown: bool = wanted.capacity > self.capacity
       || wanted.cells > self.cells
       || wanted.per_cell > self.per_cell

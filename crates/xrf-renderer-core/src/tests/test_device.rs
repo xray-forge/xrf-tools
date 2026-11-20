@@ -2,7 +2,7 @@ use xrf_test_utils::GpuRequirement;
 
 /// A device to execute graphs on: hardware where there is one, the software adapter (WARP under D3D12) otherwise, or
 /// `None`, said aloud, on a machine with neither.
-pub fn create_device() -> Option<(wgpu::Device, wgpu::Queue)> {
+pub(crate) fn create_device() -> Option<(wgpu::Device, wgpu::Queue)> {
   for backends in [wgpu::Backends::DX12, wgpu::Backends::VULKAN, wgpu::Backends::PRIMARY] {
     let mut descriptor: wgpu::InstanceDescriptor = wgpu::InstanceDescriptor::new_without_display_handle();
 

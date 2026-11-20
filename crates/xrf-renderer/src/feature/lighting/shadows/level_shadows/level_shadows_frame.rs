@@ -12,12 +12,13 @@ use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::pass::view::camera_uniform::CameraUniform;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 
 impl LevelShadows {
   /// Fits the cascades, offers those wanting a draw to `scheduler` while the sun lights anything, and takes what the
   /// sun samples them by.
-  pub fn prepare_cascades(
+  pub(crate) fn prepare_cascades(
     &mut self,
     device: &wgpu::Device,
     view_layout: &wgpu::BindGroupLayout,
@@ -106,7 +107,7 @@ impl LevelShadows {
 
   /// Readies the cascades and bands `scheduler` granted to be culled and drawn, marking each drawn; one not granted
   /// waits a frame more. `encoder` takes what readying them writes.
-  pub fn commit_cascades(
+  pub(crate) fn commit_cascades(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -141,8 +142,8 @@ impl LevelShadows {
             encoder,
             &offer.fit.get_rows_view((y, y + height), resolution),
             RenderRect {
-              x: x as i32,
-              y: y as i32,
+              x: x.cast_signed(),
+              y: y.cast_signed(),
               width,
               height,
             },
@@ -169,7 +170,7 @@ impl LevelShadows {
       match offer.draw {
         CascadeDraw::Kept => {}
         CascadeDraw::Banded(band) => {
-          let started: f32 = cascade.sway_sweep.map_or(frame.sway.time, |(started, _)| started);
+          let started: LevelTime = cascade.sway_sweep.map_or(frame.sway.time, |(started, _)| started);
 
           cascade.sway_sweep = (band + 1 < BANDS).then_some((started, band + 1));
 
@@ -189,9 +190,9 @@ impl LevelShadows {
       cascade.has_drawn_moving = offer.draw != CascadeDraw::Whole && has_moving;
       cascade.is_kept = offer.draw != CascadeDraw::Whole && self.kept.is_some() && has_moving;
 
+      // Swaying or kept trees are drawn only where their shadows can fall in view, so they follow the camera.
       if matches!(offer.draw, CascadeDraw::Static | CascadeDraw::Swaying) {
-        cascade.received_at = cascade
-          .is_kept
+        cascade.received_at = (cascade.is_kept || frame.settings.is_swaying(offer.index))
           .then(|| (frame.camera.position, frame.camera.get_look()));
       } else if offer.draw == CascadeDraw::Whole {
         cascade.received_at = None;
@@ -226,8 +227,8 @@ impl LevelShadows {
         encoder,
         &prefetch.fit.get_rows_view((y, y + height), resolution),
         RenderRect {
-          x: x as i32,
-          y: y as i32,
+          x: x.cast_signed(),
+          y: y.cast_signed(),
           width,
           height,
         },

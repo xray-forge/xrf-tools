@@ -36,7 +36,7 @@ impl ArchiveAnmDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not an object motion this reader can
   /// walk - a version it does not implement, or a payload not accounting for six envelopes.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     Ok(Self::of(&AnmFile::read_from_bytes::<XRayByteOrder>(
       source.read_bytes(name)?,
     )?))
