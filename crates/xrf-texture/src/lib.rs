@@ -25,7 +25,7 @@ pub use crate::description::{
   DescriptionSpriteOptions, DescriptionSpritePacker, DescriptionSpriteResult, DescriptionSpriteUnpacker,
   TextureFileDescriptor, TextureSpriteDescriptor,
 };
-pub use crate::encoding::{TextureEncodingFormat, TextureEncodingQuality};
+pub use crate::encoding::{TextureEncodedDescriptor, TextureEncodingFormat, TextureEncodingQuality};
 pub use crate::equipment::{
   EquipmentGridOverlap, EquipmentGridVerifier, EquipmentSlotClaim, EquipmentSlotOccupant, EquipmentSpritePackOptions,
   EquipmentSpritePackResult, EquipmentSpritePacker, EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker,

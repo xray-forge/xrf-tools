@@ -13,7 +13,10 @@ impl ThmGroup {
       about: "THM texture metadata tools",
       commands: vec![
         thm::bump_alignment::BumpAlignmentCommand::new_box(),
+        thm::info::InfoCommand::new_box(),
         thm::patch_bump::PatchBumpCommand::new_box(),
+        thm::set_field::SetFieldCommand::new_box(),
+        thm::write::WriteCommand::new_box(),
       ],
     }
   }
