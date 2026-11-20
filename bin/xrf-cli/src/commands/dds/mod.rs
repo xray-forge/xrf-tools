@@ -1,5 +1,6 @@
 pub(crate) mod convert;
 pub(crate) mod crop;
+pub(crate) mod dds_compatibility_report;
 pub(crate) mod dds_encode_arguments;
 mod dds_group;
 pub(crate) mod info;

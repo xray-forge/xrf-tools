@@ -4,6 +4,7 @@ import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
 import { ETexturesCommand } from "@xrf/ipc/commands/textures";
 import { mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureMakeBumpOutcome } from "@xrf/ipc/types/xrf-app-textures";
+import { EGenerateBumpFormat } from "@xrf/ipc/types/xrf-texture";
 
 import { JobsService } from "@/core/jobs/services/jobs.service";
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/core/textures/fixtures/texture.mocks";
@@ -15,6 +16,7 @@ import { TextureEncodingService } from "@/tools/textures-editor/services/texture
 import { ITextureBumpSources, TextureBumpService } from "./texture-bump.service";
 
 const SOURCES: ITextureBumpSources = {
+  format: EGenerateBumpFormat.BC3,
   gloss: { kind: "constant", level: 0.5 },
   height: "C:\\work\\wall_height.png",
   normalMap: null,

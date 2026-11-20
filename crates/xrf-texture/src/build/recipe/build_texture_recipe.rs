@@ -42,7 +42,7 @@ impl BuildTextureRecipe {
       ThmTextureType::BumpMap => {
         return Ok(Self {
           layout: BuildTextureLayout::BumpPair(BuildTextureBumpPair::of(file)),
-          format: BuildTextureBumpPair::FORMAT,
+          format: BuildTextureBumpPair::FORMAT.to_candidate().to_image_format(),
           is_cut_out: false,
           mipmaps: BuildTextureMipmaps::Filtered {
             filter: BuildTextureBumpPair::MIP_FILTER,

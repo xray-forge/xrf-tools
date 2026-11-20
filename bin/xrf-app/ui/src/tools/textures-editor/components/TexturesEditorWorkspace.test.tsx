@@ -14,6 +14,7 @@ import {
   TextureSaveOutcome,
   TexturesSaveRequest,
 } from "@xrf/ipc/types/xrf-app-textures";
+import { EGenerateBumpFormat } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
 import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
@@ -35,6 +36,7 @@ import { TEXTURES_EDITOR_TOOL } from "@/tools/textures-editor/tool";
 import { TexturesEditorWorkspace } from "./TexturesEditorWorkspace";
 
 const SOURCES: ITextureBumpSources = {
+  format: EGenerateBumpFormat.BC3,
   gloss: { kind: "constant", level: 0.5 },
   height: "C:\\work\\wall_height.png",
   normalMap: null,

@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use serde_json::Value;
-use xrf_dds::{DdsFile, Rgba, RgbaImage};
+use xrf_dds::{DdsFile, DxgiFormat, Rgba, RgbaImage};
 use xrf_test_utils::GeneratedResources;
 
 use crate::commands::dds::make_bump::command::MakeBumpCommand;
@@ -65,9 +65,46 @@ fn writes_both_halves_beside_the_texture_they_belong_to() -> CommandResult {
       .is_some_and(|it| it.ends_with("act_wall_bump%23.dds") || it.ends_with("act_wall_bump#.dds"))
   );
 
-  // Both halves are DXT5 with a chain, as the SDK writes them.
+  // Both halves are DXT5 with a chain, as the SDK writes them, which every renderer but the unread GL path loads.
   assert_eq!(DdsFile::read_from_path(&bump)?.metadata().mipmap_levels, 5);
   assert_eq!(DdsFile::read_from_path(&companion)?.metadata().mipmap_levels, 5);
+  assert_eq!(report["format"], "BC3 (DXT5)");
+  assert_eq!(report["compatibility"][0]["support"], "supported");
+
+  Ok(())
+}
+
+#[test]
+fn writes_a_bc7_pair_and_says_dx9_cannot_load_it() -> CommandResult {
+  let (destination, report) = run("bc7", &["--format", "bc7", "--quality", "fast"])?;
+
+  for half in ["act_wall_bump.dds", "act_wall_bump#.dds"] {
+    assert_eq!(
+      DdsFile::read_from_path(destination.with_file_name(half))?
+        .metadata()
+        .dx10_format,
+      Some(DxgiFormat::BC7_UNorm)
+    );
+  }
+
+  assert_eq!(report["format"], "BC7");
+
+  let compatibility = report["compatibility"]
+    .as_array()
+    .expect("Expect one answer per renderer");
+
+  assert_eq!(compatibility[0]["renderer"], "DX9");
+  assert_eq!(compatibility[0]["support"], "unsupported");
+  assert_eq!(compatibility[1]["support"], "supported");
+  assert_eq!(compatibility[2]["support"], "unverified");
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_format_without_a_full_alpha_channel() -> CommandResult {
+  // The pair keeps the normal's `x` and the height in alpha, which BC1 keeps at one bit and BC2 at four.
+  assert!(run("bc1", &["--format", "bc1"]).is_err());
 
   Ok(())
 }

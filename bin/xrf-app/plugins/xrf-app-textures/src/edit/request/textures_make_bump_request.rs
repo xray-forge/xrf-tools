@@ -5,7 +5,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::jobs::JobResource;
 use xrf_dds::DdsMipFilter;
 use xrf_job::JobHandle;
-use xrf_texture::{GenerateBumpOptions, GenerateBumpProcessor, ImageFileReader, TextureEncodingQuality};
+use xrf_texture::{
+  GenerateBumpFormat, GenerateBumpOptions, GenerateBumpProcessor, ImageFileReader, TextureEncodingQuality,
+};
 use xrf_utils::error_to_string;
 
 use crate::edit::request::TextureBumpGloss;
@@ -30,6 +32,8 @@ pub(crate) struct TexturesMakeBumpRequest {
   pub virtual_height: Option<f32>,
   /// Kernel the pair's chain is reduced with, by its SDK name.
   pub mip_filter: Option<String>,
+  /// What both halves are written in, which the error plane is measured against.
+  pub format: GenerateBumpFormat,
   pub quality: TextureEncodingQuality,
 }
 
@@ -80,6 +84,7 @@ impl TexturesMakeBumpRequest {
         .virtual_height
         .unwrap_or(GenerateBumpOptions::DEFAULT_VIRTUAL_HEIGHT),
       mip_filter,
+      format: self.format,
       quality: self.quality.to_quality(),
     })
   }

@@ -1,10 +1,12 @@
 import { useInjection } from "@wirestate/react";
-import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
+import { TextureBumpFormatEntry, TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
-import { Nullable } from "@xrf/types";
+import { EGenerateBumpFormat, GenerateBumpFormat } from "@xrf/ipc/types/xrf-texture";
+import { Nullable, Optional } from "@xrf/types";
+import { Chip } from "@xrf/ui/badge";
 import { Button } from "@xrf/ui/button";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
-import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverChoiceRow, EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
 import { Stack } from "@xrf/ui/layout/stack";
@@ -46,9 +48,12 @@ export function TextureBumpPanel({
 
   const [glossConstant, setGlossConstant] = useState<number>(DEFAULT_GLOSS_POWER);
   const [isGlossFromHeight, setIsGlossFromHeight] = useState<boolean>(false);
+  const [format, setFormat] = useState<GenerateBumpFormat>(EGenerateBumpFormat.BC3);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
   const isRunning: boolean = bumpService.generate.isRunning;
+  const formats: ReadonlyArray<TextureBumpFormatEntry> = editorService.vocabulary.value?.bumpFormats ?? [];
+  const chosenFormat: Optional<TextureBumpFormatEntry> = formats.find((entry) => entry.format === format);
 
   const height: IPathField = usePathField({
     tool: EToolId.TEXTURES_EDITOR,
@@ -84,13 +89,23 @@ export function TextureBumpPanel({
     }
 
     void bumpService.run({
+      format,
       gloss: toBumpGloss(isGlossFromHeight, gloss.value, glossConstant),
       height: height.value ?? "",
       normalMap: normalMap.value,
       // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
       virtualHeight: editorService.draft?.virtualHeight ?? null,
     });
-  }, [bumpService, editorService.draft?.virtualHeight, gloss, glossConstant, height, isGlossFromHeight, normalMap]);
+  }, [
+    bumpService,
+    editorService.draft?.virtualHeight,
+    format,
+    gloss,
+    glossConstant,
+    height,
+    isGlossFromHeight,
+    normalMap,
+  ]);
 
   if (!description) {
     return (
@@ -157,6 +172,35 @@ export function TextureBumpPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Generate"}>
+        {formats.length > 0 ? (
+          <EditorPopoverChoiceRow
+            data-testid={"texture-bump-format"}
+            label={"Format"}
+            description={"Both halves are written in it, and the error plane is measured against it"}
+            options={formats.map((entry) => ({ label: entry.label, value: entry.format }))}
+            value={format}
+            isDisabled={isRunning}
+            onChange={setFormat}
+          />
+        ) : null}
+
+        {chosenFormat ? (
+          <Chip
+            className={"mb-2"}
+            size={"small"}
+            variant={"outlined"}
+            color={chosenFormat.isRefusedAnywhere ? "warning" : "default"}
+            label={chosenFormat.supportSummary}
+          />
+        ) : null}
+
+        {chosenFormat?.isRefusedAnywhere ? (
+          <Alert data-testid={"texture-bump-format-warning"} className={"mb-2"} severity={"warning"}>
+            A {chosenFormat.label} pair does not load on every renderer ({chosenFormat.supportSummary}). The descriptor
+            cannot name it, so rebuilding the pair from the descriptor writes it as DXT5 again.
+          </Alert>
+        ) : null}
+
         <Stack direction={"row"} spacing={1}>
           <Button
             data-testid={"texture-bump-generate"}

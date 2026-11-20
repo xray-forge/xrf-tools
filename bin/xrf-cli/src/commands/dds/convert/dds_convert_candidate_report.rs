@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use serde::Serialize;
-use xrf_dds::{DdsEncodeAttempt, DdsRenderer};
+use xrf_dds::DdsEncodeAttempt;
 
-use crate::commands::dds::convert::dds_convert_compatibility_report::DdsConvertCompatibilityReport;
+use crate::commands::dds::dds_compatibility_report::DdsCompatibilityReport;
 
 /// What one candidate format cost, whether it was written or only weighed.
 #[derive(Debug, Serialize)]
@@ -21,7 +21,7 @@ pub(crate) struct DdsConvertCandidateReport {
   /// Root mean square error per channel, in the eight-bit units the pixels are stored in.
   channel_rmse: [f64; 4],
   /// Which renderer path loads a texture in this format.
-  compatibility: Vec<DdsConvertCompatibilityReport>,
+  compatibility: Vec<DdsCompatibilityReport>,
 }
 
 impl DdsConvertCandidateReport {
@@ -33,10 +33,7 @@ impl DdsConvertCandidateReport {
       encode_duration: attempt.encode_duration,
       psnr: attempt.difference.psnr,
       channel_rmse: attempt.difference.channel_rmse,
-      compatibility: DdsRenderer::ALL
-        .into_iter()
-        .map(|renderer| DdsConvertCompatibilityReport::new(renderer, attempt.candidate.support(renderer)))
-        .collect(),
+      compatibility: DdsCompatibilityReport::list_all(attempt.candidate),
     }
   }
 }

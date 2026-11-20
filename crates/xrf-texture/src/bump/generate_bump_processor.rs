@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use image::{Rgba, RgbaImage};
 use rayon::prelude::*;
-use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat};
+use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_job::{JobOutcome, JobScope};
@@ -39,8 +39,9 @@ const GENERATE_STEPS: u64 = 7;
 /// A port of `DXTCompressBump` (`xray/trunk/xrDXT/NormalMapGen.cpp`), which is the only description of this format
 /// that exists: the pair is not two pictures but one packed structure, and the second half is defined in terms of what
 /// the first half lost to compression. That is why the encoder runs in the middle of the algorithm rather than at the
-/// end of it - the error plane is the difference between the normals and the normals as DXT5 gave them back, so it
-/// can only be computed against the encoder that will actually write the file.
+/// end of it - the error plane is the difference between the normals and the normals as the encoder gave them back,
+/// so it can only be computed against the encoder that will actually write the file. The SDK hardcodes DXT5;
+/// [`GenerateBumpOptions::format`] picks the encoder here, and the error plane follows it.
 pub struct GenerateBumpProcessor {}
 
 impl GenerateBumpProcessor {
@@ -217,7 +218,7 @@ impl GenerateBumpProcessor {
   /// The error is two thirds of the difference biased onto the middle of the byte range, which is what the shader
   /// undoes when it adds `NuE.xyz - 1`. The height goes into alpha, where the parallax path reads it. An error past
   /// the byte range is clamped where the SDK's `color_rgba` keeps its low eight bits; only a far larger loss than
-  /// DXT5's can reach it.
+  /// either block format's can reach it.
   fn pack_companion(bump: &RgbaImage, restored: &RgbaImage, height: &[u8]) -> RgbaImage {
     Self::packed_by_rows(bump, |x, y| {
       let original = bump.get_pixel(x, y).0;
@@ -290,9 +291,10 @@ impl GenerateBumpProcessor {
     value.clamp(0, 255) as u8
   }
 
-  /// Both halves are written the same way: DXT5, with a mip chain, as `fmt0` in the SDK sets up twice.
+  /// Both halves are written the same way, in the pair's one format with a mip chain, as `fmt0` in the SDK sets up
+  /// twice.
   fn encode(image: &RgbaImage, options: &GenerateBumpOptions) -> XrfResult<DdsFile> {
-    DdsEncoding::new(ImageFormat::BC3RgbaUnorm, options.quality)
+    DdsEncoding::new(options.format.to_candidate().to_image_format(), options.quality)
       .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(options.mip_filter))?)
   }
 
@@ -326,12 +328,13 @@ mod tests {
   use std::path::PathBuf;
 
   use image::{Rgba, RgbaImage};
-  use xrf_dds::{DdsFile, DdsMipFilter, Quality};
+  use xrf_dds::{DdsFile, DdsMipFilter, DxgiFormat, Quality};
   use xrf_error::XrfResult;
   use xrf_job::JobHandle;
   use xrf_test_utils::GeneratedResources;
 
   use super::GenerateBumpProcessor;
+  use crate::bump::generate_bump_format::GenerateBumpFormat;
   use crate::bump::generate_bump_gloss::GenerateBumpGloss;
   use crate::bump::generate_bump_options::GenerateBumpOptions;
   use crate::bump::generate_bump_result::GenerateBumpResult;
@@ -354,8 +357,38 @@ mod tests {
       normal_map: None,
       virtual_height: GenerateBumpOptions::DEFAULT_VIRTUAL_HEIGHT,
       mip_filter: DdsMipFilter::Box,
+      format: GenerateBumpFormat::Bc3,
       quality: Quality::Fast,
     }
+  }
+
+  /// A height map whose relief climbs with y, so the normals tilt and every block holds more than one colour.
+  fn ramp(size: u32) -> RgbaImage {
+    RgbaImage::from_fn(size, size, |_, y| {
+      let level: u8 = (y * 256 / size) as u8;
+
+      Rgba([level, level, level, u8::MAX])
+    })
+  }
+
+  /// The normal the shader rebuilds at every texel, `Nu.wzy + (NuE.xyz - 1)`, in the eight-bit units both halves
+  /// store.
+  fn reconstruct(result: &GenerateBumpResult) -> XrfResult<Vec<[i32; 3]>> {
+    let bump: RgbaImage = decode(&result.bump)?;
+    let companion: RgbaImage = decode(&result.companion)?;
+
+    Ok(
+      bump
+        .pixels()
+        .zip(companion.pixels())
+        .map(|(normal, error)| {
+          let [_, green, blue, alpha] = normal.0.map(i32::from);
+          let [red, error_green, error_blue, _] = error.0.map(i32::from);
+
+          [alpha + red - 255, blue + error_green - 255, green + error_blue - 255]
+        })
+        .collect(),
+    )
   }
 
   /// The base level of a written half, as the four channels it stores.
@@ -541,6 +574,83 @@ mod tests {
     mismatched.gloss = GenerateBumpGloss::Mask(level(4, 200));
 
     assert!(GenerateBumpProcessor::generate(&mismatched).is_err());
+  }
+
+  #[test]
+  fn a_bc7_pair_writes_both_halves_as_bc7() -> XrfResult {
+    let mut bc7: GenerateBumpOptions = options("bc7_format", ramp(16));
+
+    bc7.format = GenerateBumpFormat::Bc7;
+
+    let result: GenerateBumpResult = GenerateBumpProcessor::generate(&bc7)?;
+
+    for half in [&result.bump, &result.companion] {
+      assert_eq!(
+        DdsFile::read_from_path(half)?.metadata().dx10_format,
+        Some(DxgiFormat::BC7_UNorm)
+      );
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn a_bc7_pair_measures_its_error_plane_against_bc7() -> XrfResult {
+    // A flat surface is one colour per block, which BC7 stores without the 5:6:5 rounding DXT5 pays, so the error
+    // plane that DXT5 fills with `132, 130, 132` comes back as the bias alone: recomputed, not carried over.
+    let mut flat: GenerateBumpOptions = options("bc7_flat", level(8, 128));
+
+    flat.format = GenerateBumpFormat::Bc7;
+
+    let companion: [u8; 4] = decode(&GenerateBumpProcessor::generate(&flat)?.companion)?
+      .get_pixel(0, 0)
+      .0;
+
+    assert_eq!([companion[0], companion[1], companion[2]], [128, 128, 128]);
+
+    // The height itself is centred the same way whatever the format, but nothing corrects it after encoding, and BC7
+    // can round alpha by one where DXT5's eight-bit alpha endpoints keep a uniform block exact.
+    assert!(companion[3].abs_diff(127) <= 1, "got height {}", companion[3]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn a_bc7_pair_rebuilds_the_same_normals_as_a_dxt5_pair() -> XrfResult {
+    let dxt5: GenerateBumpResult = GenerateBumpProcessor::generate(&options("ramp_dxt5", ramp(16)))?;
+    let mut bc7: GenerateBumpOptions = options("ramp_bc7", ramp(16));
+
+    bc7.format = GenerateBumpFormat::Bc7;
+
+    let bc7: GenerateBumpResult = GenerateBumpProcessor::generate(&bc7)?;
+
+    // Each pair corrects its own loss, so what the shader adds up agrees between them to within what DXT5's error
+    // plane leaves uncorrected: a third of its loss, which the two-thirds scale gives away, plus the plane's own
+    // 5:6:5 rounding.
+    let tolerance: i32 = 6;
+
+    for (texel, (dxt5, bc7)) in reconstruct(&dxt5)?.iter().zip(reconstruct(&bc7)?).enumerate() {
+      for channel in 0..3 {
+        assert!(
+          (dxt5[channel] - bc7[channel]).abs() <= tolerance,
+          "texel {texel} channel {channel}: DXT5 rebuilds {dxt5:?} and BC7 {bc7:?}"
+        );
+      }
+    }
+
+    // And the two error planes are not the same plane, which is what a pair carrying DXT5's error over would show.
+    assert_ne!(
+      decode(&dxt5.companion)?
+        .pixels()
+        .map(|it| [it.0[0], it.0[1], it.0[2]])
+        .collect::<Vec<_>>(),
+      decode(&bc7.companion)?
+        .pixels()
+        .map(|it| [it.0[0], it.0[1], it.0[2]])
+        .collect::<Vec<_>>()
+    );
+
+    Ok(())
   }
 
   #[test]

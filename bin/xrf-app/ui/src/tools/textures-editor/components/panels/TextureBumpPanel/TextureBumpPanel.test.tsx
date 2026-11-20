@@ -5,8 +5,9 @@ import { userEvent } from "@testing-library/user-event";
 import { Binding, Container } from "@wirestate/core";
 import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
 import { ETexturesCommand } from "@xrf/ipc/commands/textures";
-import { mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import { mockInvoke, mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureMakeBumpOutcome } from "@xrf/ipc/types/xrf-app-textures";
+import { EGenerateBumpFormat } from "@xrf/ipc/types/xrf-texture";
 
 import { clearLocalStorage } from "@/core/storage";
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/core/textures/fixtures/texture.mocks";
@@ -79,5 +80,35 @@ describe("TextureBumpPanel", () => {
     await userEvent.click(getByRole("button", { name: "Generate pair" }));
 
     await waitFor(() => expect(within(heightRow).getByRole("button", { name: "Recent paths" })).toBeInTheDocument());
+  });
+
+  it("warns before writing a pair DX9 cannot load, and asks the backend for that format", async () => {
+    const { getByRole, getAllByTestId, getByTestId, queryByTestId } = await renderPanel();
+
+    await waitFor(() => expect(getByRole("button", { name: "BC7" })).toBeInTheDocument());
+
+    // The SDK's own format is chosen first and every renderer that was read loads it, so nothing is said.
+    expect(queryByTestId("texture-bump-format-warning")).toBeNull();
+
+    await userEvent.click(getByRole("button", { name: "BC7" }));
+
+    expect(getByTestId("texture-bump-format-warning")).toHaveTextContent("not on DX9");
+
+    fireEvent.change(
+      within(getAllByTestId("path-panel-row")[0] as HTMLElement).getByRole("textbox", { name: "Height map" }),
+      {
+        target: { value: "C:\\work\\wall_height.png" },
+      }
+    );
+
+    await waitFor(() => expect(getByRole("button", { name: "Generate pair" })).toBeEnabled());
+    await userEvent.click(getByRole("button", { name: "Generate pair" }));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith(
+        ETexturesCommand.MAKE_BUMP,
+        expect.objectContaining({ request: expect.objectContaining({ format: EGenerateBumpFormat.BC7 }) })
+      )
+    );
   });
 });

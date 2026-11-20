@@ -12,6 +12,7 @@ import {
   TextureVocabulary,
 } from "@xrf/ipc/types/xrf-app-textures";
 import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
+import { EGenerateBumpFormat } from "@xrf/ipc/types/xrf-texture";
 import { EXrayMountMode, XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 /** The engine reference of a texture, its bump, and that bump's companion, which most cases need together. */
@@ -179,6 +180,20 @@ export function mockTextureVocabulary(overrides: Partial<TextureVocabulary> = {}
     bumpModes: [
       { label: "None", value: 1 },
       { label: "Use", value: 2 },
+    ],
+    bumpFormats: [
+      {
+        format: EGenerateBumpFormat.BC3,
+        isRefusedAnywhere: false,
+        label: "BC3 (DXT5)",
+        supportSummary: "all renderers, GL unverified",
+      },
+      {
+        format: EGenerateBumpFormat.BC7,
+        isRefusedAnywhere: true,
+        label: "BC7",
+        supportSummary: "not on DX9, GL unverified",
+      },
     ],
     bumpModeUse: 2,
     minimumGlossPower: 0.1,

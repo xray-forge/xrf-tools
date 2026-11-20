@@ -95,6 +95,13 @@ impl DdsEncodeCandidate {
     renderer.supports(self.to_dxgi_format())
   }
 
+  /// Whether some renderer is known to refuse this format, which a caller says before writing it.
+  ///
+  /// A renderer nobody has checked does not count: unverified is not a refusal.
+  pub fn is_refused_anywhere(self) -> bool {
+    !Self::renderers_answering(self, DdsFormatSupport::Unsupported).is_empty()
+  }
+
   /// What the renderers together make of this format, as a sentence a surface can show beside it.
   ///
   /// Says the unverified path by name rather than folding it into the supported ones, because "we did not check GL"
@@ -161,6 +168,7 @@ mod tests {
       assert_eq!(candidate.support(DdsRenderer::Dx11), DdsFormatSupport::Supported);
       assert_eq!(candidate.support(DdsRenderer::OpenGl), DdsFormatSupport::Unverified);
       assert_eq!(candidate.support_summary(), "all renderers, GL unverified");
+      assert!(!candidate.is_refused_anywhere());
     }
   }
 
@@ -176,6 +184,7 @@ mod tests {
       DdsFormatSupport::Supported
     );
     assert_eq!(DdsEncodeCandidate::Bc7.support_summary(), "not on DX9, GL unverified");
+    assert!(DdsEncodeCandidate::Bc7.is_refused_anywhere());
   }
 
   #[test]

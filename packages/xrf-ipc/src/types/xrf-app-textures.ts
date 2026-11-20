@@ -3,7 +3,7 @@
 import { AssetSource, AssetTextureDescriptor, FileStamp, SessionId } from "#/types/xrf-app-core";
 import { JobOutcome } from "#/types/xrf-job";
 import { XrayMaterialDescriptor } from "#/types/xrf-material";
-import { TextureEncodingFormat, TextureEncodingQuality } from "#/types/xrf-texture";
+import { GenerateBumpFormat, TextureEncodingFormat, TextureEncodingQuality } from "#/types/xrf-texture";
 import { XrayAsset, XrayRoots } from "#/types/xrf-vfs";
 
 /** Rebuilding a texture from a source image, as its descriptor says to. */
@@ -61,6 +61,17 @@ export type TextureBuildOutcome = {
   mipmapLevels: number;
   /** Recipe fields the descriptor asked for and the build did not carry out. */
   omissions: Array<TextureBuildOmissionReport>;
+};
+
+/** One format a bump pair can be generated in, with what a choice between them needs to show. */
+export type TextureBumpFormatEntry = {
+  format: GenerateBumpFormat;
+  /** The format's name with the DXT name the SDK uses for it. */
+  label: string;
+  /** What the renderers together make of a pair in this format, as a sentence a badge can show. */
+  supportSummary: string;
+  /** Whether a renderer is known to refuse the pair, so such a choice is flagged before it is written. */
+  isRefusedAnywhere: boolean;
 };
 
 /** Every `kind` the `TextureBumpGloss` union is told apart by, so a switch or a comparison names one. */
@@ -408,6 +419,11 @@ export type TextureVocabulary = {
   bumpModeUse: number;
   /** The mean gloss below which a generated bump shows almost no specular response. */
   minimumGlossPower: number | null;
+  /**
+   * The formats a bump pair can be generated in. None of them is a descriptor format: a pair is always rebuilt from
+   * its descriptor as DXT5.
+   */
+  bumpFormats: Array<TextureBumpFormatEntry>;
 };
 
 /** One value a descriptor field can take, under the name the SDK gives it. */
@@ -467,6 +483,8 @@ export type TexturesMakeBumpRequest = {
   virtualHeight: number | null;
   /** Kernel the pair's chain is reduced with, by its SDK name. */
   mipFilter: string | null;
+  /** What both halves are written in, which the error plane is measured against. */
+  format: GenerateBumpFormat;
   quality: TextureEncodingQuality;
 };
 

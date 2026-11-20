@@ -2,7 +2,9 @@ use serde::Serialize;
 use xrf_texture::GenerateBumpResult;
 use xrf_thm::{ThmBumpMode, ThmFormat, ThmMaterial, ThmMipFilter, ThmTextureType};
 
-use crate::describe::vocabulary::{TextureFlagEntry, TextureTypeChange, TextureVocabularyEntry};
+use crate::describe::vocabulary::{
+  TextureBumpFormatEntry, TextureFlagEntry, TextureTypeChange, TextureVocabularyEntry,
+};
 
 /// Every named value the descriptor form's numeric fields can take.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,6 +26,9 @@ pub(crate) struct TextureVocabulary {
   pub bump_mode_use: u32,
   /// The mean gloss below which a generated bump shows almost no specular response.
   pub minimum_gloss_power: f32,
+  /// The formats a bump pair can be generated in. None of them is a descriptor format: a pair is always rebuilt from
+  /// its descriptor as DXT5.
+  pub bump_formats: Vec<TextureBumpFormatEntry>,
 }
 
 impl TextureVocabulary {
@@ -39,6 +44,7 @@ impl TextureVocabulary {
       type_changes: TextureTypeChange::of_all(),
       bump_mode_use: ThmBumpMode::Use.into(),
       minimum_gloss_power: GenerateBumpResult::MINIMUM_GLOSS_POWER,
+      bump_formats: TextureBumpFormatEntry::of_all(),
     }
   }
 }

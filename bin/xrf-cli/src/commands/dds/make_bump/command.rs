@@ -1,10 +1,14 @@
 use std::path::PathBuf;
 
+use clap::builder::{PossibleValuesParser, TypedValueParser};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
-use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult, ImageFileReader};
+use xrf_texture::{
+  GenerateBumpFormat, GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult,
+  ImageFileReader,
+};
 use xrf_utils::format_path;
 
 use super::report::DdsMakeBumpReport;
@@ -62,13 +66,33 @@ impl GenericCommand for MakeBumpCommand {
           .value_parser(value_parser!(PathBuf)),
       );
 
-    DdsEncodeArguments::declare(command, DdsEncodeArguments::BUMP_MIP_FILTER).arg(
-      Arg::new("virtual-height")
-        .help("Relief depth the normals are derived at, `bump_virtual_height` of the descriptor")
-        .long("virtual-height")
-        .default_value("0.05")
-        .value_parser(value_parser!(f32)),
-    )
+    DdsEncodeArguments::declare(command, DdsEncodeArguments::BUMP_MIP_FILTER)
+      .arg(
+        Arg::new("virtual-height")
+          .help("Relief depth the normals are derived at, `bump_virtual_height` of the descriptor")
+          .long("virtual-height")
+          .default_value("0.05")
+          .value_parser(value_parser!(f32)),
+      )
+      .arg(
+        Arg::new("format")
+          .help(
+            "Format both halves are written in, the error plane measured against it; `bc7` loads on DX11 only, and a \
+             rebuild from the descriptor writes `bc3` again",
+          )
+          .long("format")
+          .default_value(GenerateBumpFormat::default().to_candidate().as_str())
+          .value_parser(
+            PossibleValuesParser::new(GenerateBumpFormat::ALL.map(|it| it.to_candidate().as_str())).map(
+              |name: String| {
+                GenerateBumpFormat::ALL
+                  .into_iter()
+                  .find(|it| it.to_candidate().as_str() == name)
+                  .expect("Expected every possible value to name a bump format")
+              },
+            ),
+          ),
+      )
   }
 
   /// Generate the pair and say what it came to.
@@ -79,6 +103,19 @@ impl GenericCommand for MakeBumpCommand {
     let height: &PathBuf = InputArgument::of(matches);
     let destination: &PathBuf = matches.get_one("dest").expect("Expected valid destination path");
     let output: OutputOptions = context.get_output().clone();
+    let format: GenerateBumpFormat = *matches
+      .get_one::<GenerateBumpFormat>("format")
+      .expect("Expected the format to have a default");
+
+    // Said before anything is written, so a pair the target renderer cannot load is never a surprise found in game.
+    if format.to_candidate().is_refused_anywhere() {
+      xrf_output::warning!(
+        output,
+        "Writing the pair as {}, which does not load on every renderer ({})",
+        format.to_candidate().label(),
+        format.to_candidate().support_summary()
+      );
+    }
 
     let options: GenerateBumpOptions = GenerateBumpOptions {
       job: JobHandle::inert(),
@@ -93,6 +130,7 @@ impl GenericCommand for MakeBumpCommand {
         .get_one::<f32>("virtual-height")
         .expect("Expected valid virtual height"),
       mip_filter: DdsEncodeArguments::mip_filter_of(matches),
+      format,
       quality: DdsEncodeArguments::quality_of(matches),
     };
 
@@ -115,7 +153,7 @@ impl GenericCommand for MakeBumpCommand {
       );
     }
 
-    context.set_result(|| DdsMakeBumpReport::new(height, &result))?;
+    context.set_result(|| DdsMakeBumpReport::new(height, format, &result))?;
 
     Ok(())
   }

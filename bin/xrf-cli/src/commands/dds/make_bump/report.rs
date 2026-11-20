@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use serde::Serialize;
-use xrf_texture::GenerateBumpResult;
+use xrf_texture::{GenerateBumpFormat, GenerateBumpResult};
+
+use crate::commands::dds::dds_compatibility_report::DdsCompatibilityReport;
 
 /// What `dds make-bump` generated, and what it thinks of the gloss it was given.
 #[derive(Debug, Serialize)]
@@ -13,6 +15,10 @@ pub(crate) struct DdsMakeBumpReport {
   bump: String,
   /// The compression error and the height.
   companion: String,
+  /// The format both halves were written in, which the error plane was measured against.
+  format: String,
+  /// Which renderer path loads a pair in that format.
+  compatibility: Vec<DdsCompatibilityReport>,
   /// Mean gloss over the whole surface, from 0 to 1.
   gloss_power: f32,
   /// Whether the gloss is too dark to show a specular response, which is a verdict rather than a failure.
@@ -20,11 +26,13 @@ pub(crate) struct DdsMakeBumpReport {
 }
 
 impl DdsMakeBumpReport {
-  pub(crate) fn new(source: &Path, result: &GenerateBumpResult) -> Self {
+  pub(crate) fn new(source: &Path, format: GenerateBumpFormat, result: &GenerateBumpResult) -> Self {
     Self {
       source: xrf_utils::format_portable_path(source),
       bump: xrf_utils::format_portable_path(&result.bump),
       companion: xrf_utils::format_portable_path(&result.companion),
+      format: format.to_candidate().label().to_owned(),
+      compatibility: DdsCompatibilityReport::list_all(format.to_candidate()),
       gloss_power: result.gloss_power,
       is_gloss_too_dark: result.is_gloss_too_dark(),
     }

@@ -9,6 +9,7 @@ import {
   TEXTURES_JOB_MAKE_BUMP,
 } from "@xrf/ipc/types/xrf-app-textures";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
+import { GenerateBumpFormat } from "@xrf/ipc/types/xrf-texture";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -30,6 +31,8 @@ export interface ITextureBumpSources {
   normalMap: Nullable<string>;
   /** `bump_virtual_height` of the descriptor, which decides how deep the relief is derived at; null for the SDK's. */
   virtualHeight: Nullable<number>;
+  /** What both halves are written in, which the error plane is measured against. */
+  format: GenerateBumpFormat;
 }
 
 /**
@@ -93,6 +96,7 @@ export class TextureBumpService {
         texturesCommands.makeBump(
           {
             destination,
+            format: sources.format,
             gloss: sources.gloss,
             height: sources.height,
             // The backend's own chain, the Box the SDK's generator leaves its parameters at.

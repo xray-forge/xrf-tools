@@ -97,6 +97,7 @@ impl BuildTextureProcessor {
       normal_map,
       virtual_height: pair.virtual_height,
       mip_filter: BuildTextureBumpPair::MIP_FILTER,
+      format: BuildTextureBumpPair::FORMAT,
       quality: options.quality,
     })?;
 

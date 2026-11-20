@@ -5,6 +5,7 @@ use xrf_dds::{DdsMipFilter, Quality};
 use xrf_job::JobHandle;
 use xrf_thm::ThmBumpChunk;
 
+use crate::bump::generate_bump_format::GenerateBumpFormat;
 use crate::bump::generate_bump_gloss::GenerateBumpGloss;
 
 /// What a bump pair is generated from.
@@ -32,6 +33,9 @@ pub struct GenerateBumpOptions {
   pub virtual_height: f32,
   /// The kernel both halves are reduced with. The SDK always reduces them with a box, `STextureParams`'s default.
   pub mip_filter: DdsMipFilter,
+  /// What both halves are encoded in, and so what the error plane is measured against. The SDK always writes
+  /// [`GenerateBumpFormat::Bc3`]; a descriptor cannot name anything else.
+  pub format: GenerateBumpFormat,
   pub quality: Quality,
 }
 

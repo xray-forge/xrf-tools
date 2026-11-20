@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use xrf_dds::{DdsMipFilter, ImageFormat};
+use xrf_dds::DdsMipFilter;
 use xrf_thm::{ThmBumpChunk, ThmFile};
+
+use crate::bump::GenerateBumpFormat;
 
 /// What a bump descriptor asks of the pair it builds, which `DXTCompressBump` reads off it: everything else of the
 /// descriptor, its format and its mip settings included, is left at the SDK's own (`fmt0`, DXT5 with a box chain).
@@ -15,8 +17,9 @@ pub struct BuildTextureBumpPair {
 }
 
 impl BuildTextureBumpPair {
-  /// The layout both halves are written in, `fmt0.fmt`, whatever the descriptor's own format.
-  pub const FORMAT: ImageFormat = ImageFormat::BC3RgbaUnorm;
+  /// The format both halves are written in, `fmt0.fmt`, whatever the descriptor's own format. A descriptor has no way
+  /// to name BC7, so rebuilding a pair generated as BC7 returns it to this.
+  pub const FORMAT: GenerateBumpFormat = GenerateBumpFormat::Bc3;
 
   /// The kernel both halves are reduced with, `fmt0`'s default, whatever the descriptor's own filter.
   pub const MIP_FILTER: DdsMipFilter = DdsMipFilter::Box;
