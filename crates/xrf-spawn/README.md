@@ -218,7 +218,7 @@ list.write::<XRayByteOrder>(&mut writer)?;
 let read: LevelSpawnFile = LevelSpawnFile::read_from_bytes::<XRayByteOrder>(writer.buffer.clone())?;
 
 assert_eq!(read, list);
-assert_eq!(read.get_sections().get("medkit"), Some(&1));
+assert_eq!(read.count_sections().get("medkit"), Some(&1));
 # Ok(())
 # }
 ```

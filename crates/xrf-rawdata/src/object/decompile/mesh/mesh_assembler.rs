@@ -2,6 +2,7 @@ use xrf_chunk::ChunkLayout;
 use xrf_editable_object::{EditableFace, EditableFaceCorner, EditableMesh, EditableSurfaceFaces};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Aabb;
+use xrf_utils::narrow_format_size;
 
 use crate::object::decompile::geometry::source::ogf_corner::OgfCorner;
 use crate::object::decompile::geometry::source::ogf_surface::OgfSurface;
@@ -34,7 +35,7 @@ impl MeshAssembler {
     let mut surface_faces: Vec<Vec<u32>> = vec![Vec::new(); layout.surfaces.len()];
 
     for (face_index, face) in welded.faces.iter().enumerate() {
-      let face_number: u32 = Self::narrow_index(face_index, "faces")?;
+      let face_number: u32 = narrow_format_size::<u32>(face_index, "Decompiled mesh faces")?;
       let mut corners: [EditableFaceCorner; 3] = [EditableFaceCorner {
         point: 0,
         vmap_reference: 0,
@@ -92,15 +93,5 @@ impl MeshAssembler {
       },
       surfaces: layout.surfaces,
     })
-  }
-
-  /// `value` as the `u32` an `.object` stores counts and indices as.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when it does not fit, naming `what` it counts.
-  pub(crate) fn narrow_index(value: usize, what: &str) -> XrfResult<u32> {
-    u32::try_from(value)
-      .map_err(|_| XrfError::new_invalid_error(format!("A decompiled mesh has more {what} than a u32 indexes")))
   }
 }

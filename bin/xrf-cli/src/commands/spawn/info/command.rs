@@ -62,7 +62,7 @@ impl InfoCommand {
   }
 
   fn print_level(output: &OutputOptions, file: &LevelSpawnFile) {
-    let sections: BTreeMap<&str, usize> = file.get_sections();
+    let sections: BTreeMap<&str, usize> = file.count_sections();
 
     xrf_output::info!(output, "Level spawn list information:");
     xrf_output::info!(output, "Objects count: {}", file.objects.len());

@@ -13,7 +13,7 @@ impl SpawnLevelSectionReport {
   /// Every section the list spawns from, by name.
   pub(crate) fn list(file: &LevelSpawnFile) -> Vec<Self> {
     file
-      .get_sections()
+      .count_sections()
       .into_iter()
       .map(|(name, objects)| Self {
         name: name.to_owned(),

@@ -68,7 +68,7 @@ fn reads_every_object_of_a_flat_packet_run() -> XrfResult {
 fn counts_what_a_level_spawns_by_section() -> XrfResult {
   // A level spawns up to 2,832 objects of at most 175 sections, so the sections are the answer.
   let file: LevelSpawnFile = LevelSpawnFile::read_from_bytes::<XRayByteOrder>(new_sample()?)?;
-  let sections = file.get_sections();
+  let sections = file.count_sections();
 
   assert_eq!(sections.len(), 2);
   assert_eq!(sections.get("graph_point"), Some(&2));

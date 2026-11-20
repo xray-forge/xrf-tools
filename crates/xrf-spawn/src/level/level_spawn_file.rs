@@ -155,7 +155,7 @@ impl LevelSpawnFile {
 
 impl LevelSpawnFile {
   /// What the level spawns, counted by the section each object is built from.
-  pub fn get_sections(&self) -> BTreeMap<&str, usize> {
+  pub fn count_sections(&self) -> BTreeMap<&str, usize> {
     let mut counted: BTreeMap<&str, usize> = BTreeMap::new();
 
     for object in &self.objects {

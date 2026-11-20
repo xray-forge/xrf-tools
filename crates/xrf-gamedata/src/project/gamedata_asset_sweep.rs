@@ -1,6 +1,7 @@
 use rayon::prelude::*;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_output::{OutputSequence, OutputSlot};
+use xrf_utils::narrow_format_size;
 
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
 use crate::{Finding, GamedataFindingFactory, GamedataProjectVerifyOptions};
@@ -46,13 +47,9 @@ impl<'a> GamedataAssetSweep<'a> {
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
 
     Ok(GamedataAssetSweepOutcome {
-      checked_count: Self::narrow_count(items.len())?,
-      invalid_count: Self::narrow_count(invalid_count)?,
+      checked_count: narrow_format_size(items.len(), "Checked assets")?,
+      invalid_count: narrow_format_size(invalid_count, "Invalid assets")?,
       findings,
     })
-  }
-
-  fn narrow_count(count: usize) -> XrfResult<u32> {
-    u32::try_from(count).map_err(|_| XrfError::new_verify_error("Item count exceeds the supported result range"))
   }
 }

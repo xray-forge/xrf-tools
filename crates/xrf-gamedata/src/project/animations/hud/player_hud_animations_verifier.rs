@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use rayon::prelude::*;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxResolution, Section};
+use xrf_utils::narrow_format_size;
 
 use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
 use crate::project::animations::hud::player_hud_motion_requests::PlayerHudMotionRequests;
@@ -86,8 +87,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       xrf_output::error!(self.options.output, "{}", finding.message());
     }
 
-    let checked_huds_count: u32 = Self::narrow_count(player_hud_sections.len())?;
-    let invalid_huds_count: u32 = Self::narrow_count(invalid_hands.len())?;
+    let checked_huds_count: u32 = narrow_format_size(player_hud_sections.len(), "Checked player HUD sections")?;
+    let invalid_huds_count: u32 = narrow_format_size(invalid_hands.len(), "Invalid player HUD sections")?;
 
     xrf_output::info!(
       self.options.output,
@@ -101,10 +102,6 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       findings,
       invalid_huds_count,
     })
-  }
-
-  fn narrow_count(count: usize) -> XrfResult<u32> {
-    u32::try_from(count).map_err(|_| XrfError::new_verify_error("Player HUD count exceeds the supported result range"))
   }
 
   /// The motions the hands visual plays, each problem reading them added to `problems`. Resolved and read through the

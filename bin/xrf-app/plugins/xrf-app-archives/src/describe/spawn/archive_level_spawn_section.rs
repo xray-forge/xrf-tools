@@ -16,7 +16,7 @@ pub struct ArchiveLevelSpawnSection {
 impl ArchiveLevelSpawnSection {
   /// What a level spawns, grouped by section, most planted first.
   pub fn of_all(file: &LevelSpawnFile) -> Vec<Self> {
-    let counted: BTreeMap<&str, usize> = file.get_sections();
+    let counted: BTreeMap<&str, usize> = file.count_sections();
     let mut sections: Vec<Self> = counted
       .into_iter()
       .map(|(name, objects)| Self {

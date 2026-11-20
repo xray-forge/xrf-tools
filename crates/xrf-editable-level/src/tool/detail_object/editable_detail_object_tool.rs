@@ -255,11 +255,17 @@ impl EditableDetailObjectTool {
       Ok(())
     })?;
     chunk(Self::COLOR_INDEX_CHUNK_ID, &|writer| {
-      writer.write_u8(Self::narrow_u8(self.color_indices.len(), "colour indices")?)?;
+      writer.write_u8(narrow_format_size::<u8>(
+        self.color_indices.len(),
+        "Detail object tool colour indices",
+      )?)?;
 
       for index in &self.color_indices {
         writer.write_u32::<T>(index.color)?;
-        writer.write_u8(Self::narrow_u8(index.objects.len(), "objects of a colour index")?)?;
+        writer.write_u8(narrow_format_size::<u8>(
+          index.objects.len(),
+          "Detail objects of a colour index",
+        )?)?;
 
         for object in &index.objects {
           writer.write_w1251_string(object)?;
@@ -399,10 +405,5 @@ impl EditableDetailObjectTool {
       reader.read_f32::<T>()?,
       reader.read_f32::<T>()?,
     ))
-  }
-
-  fn narrow_u8(count: usize, what: &str) -> XrfResult<u8> {
-    u8::try_from(count)
-      .map_err(|_| XrfError::new_invalid_error(format!("A detail object tool holds {count} {what}, past a u8")))
   }
 }

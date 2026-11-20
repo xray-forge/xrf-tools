@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use xrf_editable_object::{EditableVMap, EditableVMapKind, EditableVMapPoint, EditableVMapReference};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector2d;
+use xrf_utils::narrow_format_size;
 
 use crate::object::decompile::geometry::welded_mesh::WeldedMesh;
-use crate::object::decompile::mesh::mesh_assembler::MeshAssembler;
 use crate::object::decompile::mesh::mesh_kind::MeshKind;
 
 /// A mesh's vertex maps as they fill, and the references its corners make into them.
@@ -72,10 +72,10 @@ impl VertexMaps {
           .expect("every bone a point follows has a weight map");
 
         entries.push(EditableVMapPoint {
-          vmap: Self::FIRST_WEIGHT_MAP + MeshAssembler::narrow_index(map, "weight maps")?,
-          index: MeshAssembler::narrow_index(weight_points[map].len(), "weights")?,
+          vmap: Self::FIRST_WEIGHT_MAP + narrow_format_size::<u32>(map, "Decompiled mesh weight maps")?,
+          index: narrow_format_size::<u32>(weight_points[map].len(), "Decompiled mesh weights")?,
         });
-        weight_points[map].push(MeshAssembler::narrow_index(point, "points")?);
+        weight_points[map].push(narrow_format_size::<u32>(point, "Decompiled mesh points")?);
         weight_values[map].push(weight);
       }
 
@@ -119,7 +119,7 @@ impl VertexMaps {
         index: point,
       },
       Some(_) => {
-        let index: u32 = MeshAssembler::narrow_index(self.polygon_points.len(), "polygon UVs")?;
+        let index: u32 = narrow_format_size::<u32>(self.polygon_points.len(), "Decompiled mesh polygon UVs")?;
 
         self.polygon_uvs.extend(uv.to_array());
         self.polygon_points.push(point);
@@ -138,7 +138,7 @@ impl VertexMaps {
       return Ok(*reference);
     }
 
-    let reference: u32 = MeshAssembler::narrow_index(self.references.len(), "vertex map references")?;
+    let reference: u32 = narrow_format_size::<u32>(self.references.len(), "Decompiled mesh vertex map references")?;
     let mut entries: Vec<EditableVMapPoint> = Vec::with_capacity(1 + self.point_weights[point_index].len());
 
     entries.push(uv_entry);
@@ -192,6 +192,6 @@ impl VertexMaps {
 
   /// The polygon UV map's place, after every weight map.
   fn get_polygon_map(&self) -> XrfResult<u32> {
-    Ok(Self::FIRST_WEIGHT_MAP + MeshAssembler::narrow_index(self.weight_bones.len(), "weight maps")?)
+    Ok(Self::FIRST_WEIGHT_MAP + narrow_format_size::<u32>(self.weight_bones.len(), "Decompiled mesh weight maps")?)
   }
 }

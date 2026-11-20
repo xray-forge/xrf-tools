@@ -1,6 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::narrow_format_size;
 
 use crate::data::geometry::ogf_fvf::OgfFvf;
 use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
@@ -168,8 +169,8 @@ impl OgfGeometry {
 
     let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
 
-    vertices_chunk.write_u32::<T>(Self::count(links, "links")?)?;
-    vertices_chunk.write_u32::<T>(Self::count(vertices.len(), "vertices")?)?;
+    vertices_chunk.write_u32::<T>(narrow_format_size::<u32>(links, "OGF vertex links")?)?;
+    vertices_chunk.write_u32::<T>(narrow_format_size::<u32>(vertices.len(), "OGF vertices")?)?;
 
     for vertex in vertices {
       vertex.write::<T>(&mut vertices_chunk)?;
@@ -194,7 +195,7 @@ impl OgfGeometry {
     let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
 
     vertices_chunk.write_u32::<T>(format.raw)?;
-    vertices_chunk.write_u32::<T>(Self::count(vertices.len(), "vertices")?)?;
+    vertices_chunk.write_u32::<T>(narrow_format_size::<u32>(vertices.len(), "OGF vertices")?)?;
 
     for vertex in vertices {
       vertex.write::<T>(&mut vertices_chunk, format)?;
@@ -208,7 +209,7 @@ impl OgfGeometry {
   fn write_indices<T: ByteOrder>(writer: &mut ChunkWriter, indices: &[u16]) -> XrfResult {
     let mut indices_chunk: ChunkWriter = ChunkWriter::new();
 
-    indices_chunk.write_u32::<T>(Self::count(indices.len(), "indices")?)?;
+    indices_chunk.write_u32::<T>(narrow_format_size::<u32>(indices.len(), "OGF indices")?)?;
 
     for index in indices {
       indices_chunk.write_u16::<T>(*index)?;
@@ -217,11 +218,6 @@ impl OgfGeometry {
     indices_chunk.flush_chunk_into::<T>(writer, Self::INDICES_CHUNK_ID)?;
 
     Ok(())
-  }
-
-  fn count(length: usize, what: &str) -> XrfResult<u32> {
-    u32::try_from(length)
-      .map_err(|_| XrfError::new_invalid_error(format!("A child holds more {what} than a u32 counts")))
   }
 
   fn read_indices<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u16>> {

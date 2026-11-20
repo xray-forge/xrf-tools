@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordReader, LtxRecordWriter};
-use xrf_utils::{StagedFile, assert_length};
+use xrf_utils::{StagedFile, assert_length, narrow_format_size};
 
 use crate::data::graph::graph_cross_table::GraphCrossTable;
 use crate::data::graph::graph_edge::GraphEdge;
@@ -31,6 +31,14 @@ impl GraphTable {
     start >= self.start
       && start + u64::from(count) * self.record <= self.end
       && (start - self.start).is_multiple_of(self.record)
+  }
+
+  /// The offset `CGameGraph` stores for a vertex whose records follow `records` earlier ones in this table.
+  fn get_offset(&self, records: u64, what: &str) -> XrfResult<u32> {
+    let offset: u64 = self.start + records * self.record;
+
+    u32::try_from(offset)
+      .map_err(|_| XrfError::new_invalid_error(format!("{what} {offset} exceeds the u32 format limit")))
   }
 }
 
@@ -61,17 +69,17 @@ impl SpawnGraphsChunk {
   ///
   /// Returns an error when the graph holds more vertices, edges, level points or levels than the header counts.
   pub fn derive_layout(&mut self) -> XrfResult {
-    self.header.vertices_count = Self::narrow(self.vertices.len() as u64, "game graph vertices")?;
-    self.header.edges_count = Self::narrow(self.edges.len() as u64, "game graph edges")?;
-    self.header.points_count = Self::narrow(self.points.len() as u64, "game graph level points")?;
-    self.header.levels_count = Self::narrow(self.levels.len() as u64, "game graph levels")?;
+    self.header.vertices_count = narrow_format_size(self.vertices.len(), "Game graph vertices")?;
+    self.header.edges_count = narrow_format_size(self.edges.len(), "Game graph edges")?;
+    self.header.points_count = narrow_format_size(self.points.len(), "Game graph level points")?;
+    self.header.levels_count = narrow_format_size(self.levels.len(), "Game graph levels")?;
 
     let [edge_table, point_table] = self.get_tables();
     let (mut edges, mut points): (u64, u64) = (0, 0);
 
     for vertex in &mut self.vertices {
-      vertex.edges_offset = Self::narrow(edge_table.start + edges * edge_table.record, "edge offset")?;
-      vertex.level_points_offset = Self::narrow(point_table.start + points * point_table.record, "level point offset")?;
+      vertex.edges_offset = edge_table.get_offset(edges, "Game graph edge offset")?;
+      vertex.level_points_offset = point_table.get_offset(points, "Game graph level point offset")?;
       edges += u64::from(vertex.edges_count);
       points += u64::from(vertex.level_points_count);
     }
@@ -215,11 +223,6 @@ impl SpawnGraphsChunk {
         record: GraphLevelPoint::MIN_SERIALIZED_SIZE,
       },
     ]
-  }
-
-  /// A count or offset in the width the format stores it.
-  fn narrow<T: TryFrom<u64>>(value: u64, what: &str) -> XrfResult<T> {
-    T::try_from(value).map_err(|_| XrfError::new_invalid_error(format!("Too many {what} for the game graph's format")))
   }
 
   /// Refuse a header whose counts are not what the graph holds: `CGameGraph` finds each table by the counts before it.
