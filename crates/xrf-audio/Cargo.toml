@@ -9,7 +9,7 @@ rust-version.workspace = true
 audionimbus = { version = "0.16.2", default-features = false, optional = true }
 cpal = "0.18.2"
 log = { workspace = true }
-rtrb = "0.4.1"
+rtrb = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 symphonia = { workspace = true, features = ["pcm", "wav"] }

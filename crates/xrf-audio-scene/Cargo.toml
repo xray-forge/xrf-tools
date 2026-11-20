@@ -6,7 +6,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rtrb = "0.4.1"
+rtrb = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 

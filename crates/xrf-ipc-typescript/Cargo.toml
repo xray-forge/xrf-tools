@@ -8,9 +8,9 @@ rust-version.workspace = true
 [dependencies]
 serde_json = { workspace = true }
 specta = { workspace = true }
-specta-serde = { workspace = true }
+specta-serde = "0.0.13"
 specta-typescript = { workspace = true }
-specta-util = { workspace = true }
+specta-util = "0.0.13"
 tauri = { workspace = true }
 tauri-specta = { workspace = true, features = ["typescript"] }
 xrf-error = { workspace = true }

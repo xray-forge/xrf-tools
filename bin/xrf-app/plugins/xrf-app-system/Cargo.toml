@@ -13,7 +13,7 @@ build = "../../core/build.rs"
 log = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-sysinfo = { workspace = true }
+sysinfo = "0.40.4"
 tauri = { workspace = true }
 tauri-specta = { workspace = true, optional = true }
 xrf-app-core = { workspace = true }
