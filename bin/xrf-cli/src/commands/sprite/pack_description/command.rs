@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::ImageFormat;
 use xrf_output::OutputOptions;
-use xrf_sprite::{DescriptionSpriteOptions, DescriptionSpritePacker, DescriptionSpriteResult};
+use xrf_sprite::{DescriptionSpriteOptions, DescriptionSpritePacker, DescriptionSpriteResult, SpriteRunPrinter};
 use xrf_utils::format_path;
 
 use super::report::SpriteDescriptionReport;
@@ -84,7 +84,6 @@ impl GenericCommand for PackDescriptionCommand {
       job: CliJob::for_output(&output),
       description: description.clone(),
       base: base.clone(),
-      output: output.clone(),
       output_path: destination.clone(),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files,
@@ -94,7 +93,11 @@ impl GenericCommand for PackDescriptionCommand {
       is_forced: false,
     };
 
-    let result: DescriptionSpriteResult = DescriptionSpritePacker::pack_xml_descriptions(&options)?;
+    let result: DescriptionSpriteResult = DescriptionSpritePacker::pack_xml_descriptions(&options, |notice| {
+      SpriteRunPrinter::print_notice(&notice, &output);
+    })?;
+
+    SpriteRunPrinter::print_description_pack(&options, &result, &output);
 
     xrf_output::success!(
       output,

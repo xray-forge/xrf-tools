@@ -11,6 +11,7 @@ use xrf_ltx::{Ltx, LtxSectionWrite};
 use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
+use crate::report::SpriteNotice;
 
 const SENTINEL: &[u8] = b"sentinel";
 
@@ -40,7 +41,6 @@ fn options_for(root: &Path, sections: &[&str]) -> EquipmentSpriteUnpackOptions {
     job: Default::default(),
     ltx,
     source: RgbaImage::from_pixel(50 * sections.len() as u32, 50, Rgba([255, 255, 255, 255])),
-    output: Default::default(),
     output_path: root.join("out"),
     dds_compression_format: ImageFormat::BC3RgbaUnorm,
     link_policy: Default::default(),
@@ -72,7 +72,7 @@ fn refuses_a_section_name_that_leaves_the_destination() {
     let root: PathBuf = create_root(&format!("escape-{index}"));
 
     // A valid icon is listed first, so a run that wrote before it checked would leave it behind.
-    let result = EquipmentSpriteUnpacker::unpack_sprites(options_for(&root, &["wpn_valid", section]));
+    let result = EquipmentSpriteUnpacker::unpack_sprites(options_for(&root, &["wpn_valid", section]), |_| {});
 
     assert!(
       matches!(result, Err(XrfError::Invalid { .. })),
@@ -91,7 +91,7 @@ fn refuses_a_section_name_that_leaves_the_destination() {
 fn writes_each_icon_under_its_section_name_as_spelled() {
   let root: PathBuf = create_root("valid");
 
-  EquipmentSpriteUnpacker::unpack_sprites(options_for(&root, &["wpn_AK74", "wpn ak74 (old)"])).expect("unpack");
+  EquipmentSpriteUnpacker::unpack_sprites(options_for(&root, &["wpn_AK74", "wpn ak74 (old)"]), |_| {}).expect("unpack");
 
   assert!(root.join("out").join("wpn_AK74.dds").is_file());
   assert!(root.join("out").join("wpn ak74 (old).dds").is_file());
@@ -106,8 +106,16 @@ fn skips_an_icon_whose_pixels_pass_u32() {
   // 85,899,346 columns of 50 pixels wrap a `u32` to 4, which would cut the icon from inside the source.
   options.ltx.set_to("wpn_far", "inv_grid_x".into(), "85899346".into());
 
-  EquipmentSpriteUnpacker::unpack_sprites(options).expect("unpack");
+  let mut notices: Vec<SpriteNotice> = Vec::new();
+  let unpacked: u32 = EquipmentSpriteUnpacker::unpack_sprites(options, |notice| notices.push(notice)).expect("unpack");
 
+  assert_eq!(unpacked, 1);
+  assert_eq!(
+    notices,
+    [SpriteNotice::IconOutsideSheet {
+      section: String::from("wpn_far")
+    }]
+  );
   assert!(root.join("out").join("wpn_near.dds").is_file());
   assert!(!root.join("out").join("wpn_far.dds").exists());
 }

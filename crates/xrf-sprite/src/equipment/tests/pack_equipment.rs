@@ -1,27 +1,34 @@
-use std::fmt::Display;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 
 use image::{Rgba, RgbaImage};
 use xrf_dds::{DdsFile, ImageFormat};
-use xrf_job::{JobHandle, JobOutcome};
+use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
 use xrf_ltx::{Ltx, LtxSectionWrite};
-use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
 use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker, InventorySpriteDescriptor};
-use xrf_texture::ImageFileWriter;
+use crate::job_phases::SPRITE_PHASE_PACK_EQUIPMENT;
+use crate::report::SpriteNotice;
+use xrf_texture::{ImageFileReshape, ImageFileWriter};
 
-struct CancelOnOutput {
-  job: JobHandle,
-  channel: OutputChannel,
+/// Cancels its job as soon as the pack has started on its first icon, while that icon is still being read and drawn.
+#[derive(Default)]
+struct CancelOnFirstIcon {
+  job: OnceLock<JobHandle>,
 }
 
-impl Output for CancelOnOutput {
-  fn write(&self, channel: OutputChannel, _: &dyn Display) {
-    if channel == self.channel {
-      self.job.cancel();
+impl ProgressSink for CancelOnFirstIcon {
+  fn report(&self, progress: &JobProgress) {
+    let is_on_an_icon: bool = progress
+      .levels
+      .iter()
+      .any(|level| level.id == SPRITE_PHASE_PACK_EQUIPMENT && level.completed > 0);
+
+    if is_on_an_icon {
+      self.job.get().expect("the sink is given its job").cancel();
     }
   }
 }
@@ -58,7 +65,6 @@ fn options(name: &str, icons: u32, existing: bool) -> EquipmentSpritePackOptions
     job: JobHandle::default(),
     ltx,
     source: root,
-    output: OutputOptions::default(),
     output_path,
     gamedata: None,
     dds_compression_format: ImageFormat::BC3RgbaUnorm,
@@ -66,20 +72,33 @@ fn options(name: &str, icons: u32, existing: bool) -> EquipmentSpritePackOptions
   }
 }
 
-fn cancel_on(options: &mut EquipmentSpritePackOptions, channel: OutputChannel) {
-  options.output = OutputOptions::new(
-    Arc::new(CancelOnOutput {
-      job: options.job.clone(),
-      channel,
-    }),
-    OutputVerbosity::Verbose,
+fn cancel_on_first_icon(options: &mut EquipmentSpritePackOptions) {
+  let sink: Arc<CancelOnFirstIcon> = Arc::new(CancelOnFirstIcon::default());
+
+  options.job = JobHandle::with_interval(Arc::<CancelOnFirstIcon>::clone(&sink), Duration::ZERO);
+
+  assert!(
+    sink.job.set(options.job.clone()).is_ok(),
+    "the sink is given its job once"
   );
 }
 
-fn assert_cancelled_without_publication(options: EquipmentSpritePackOptions, packed: u32, skipped: u32) {
+/// Packs, cancelling the job when `is_cancelling` picks a notice, and checks nothing was published.
+fn assert_cancelled_without_publication(
+  options: EquipmentSpritePackOptions,
+  packed: u32,
+  skipped: u32,
+  is_cancelling: impl Fn(&SpriteNotice) -> bool,
+) {
   let path: PathBuf = options.output_path.clone();
   let before: Option<Vec<u8>> = path.exists().then(|| fs::read(&path).unwrap());
-  let result = EquipmentSpritePacker::pack_sprites(options).unwrap();
+  let job: JobHandle = options.job.clone();
+  let result = EquipmentSpritePacker::pack_sprites(options, |notice| {
+    if is_cancelling(&notice) {
+      job.cancel();
+    }
+  })
+  .unwrap();
 
   assert_eq!(result.outcome, JobOutcome::Cancelled);
   assert_eq!(result.packed_count, packed);
@@ -95,7 +114,7 @@ fn pre_cancelled_pack_preserves_destination() {
   for existing in [false, true] {
     let options = options("pre-cancelled", 1, existing);
     options.job.cancel();
-    assert_cancelled_without_publication(options, 0, 0);
+    assert_cancelled_without_publication(options, 0, 0, |_| false);
   }
 }
 
@@ -103,9 +122,8 @@ fn pre_cancelled_pack_preserves_destination() {
 fn mid_pack_cancellation_preserves_destination() {
   for existing in [false, true] {
     let mut options = options("mid-pack", 2, existing);
-    // The icon message is emitted after decoding and before drawing the first icon.
-    cancel_on(&mut options, OutputChannel::Verbose);
-    assert_cancelled_without_publication(options, 1, 0);
+    cancel_on_first_icon(&mut options);
+    assert_cancelled_without_publication(options, 1, 0, |_| false);
   }
 }
 
@@ -113,26 +131,52 @@ fn mid_pack_cancellation_preserves_destination() {
 fn cancellation_during_final_icon_preserves_destination() {
   for existing in [false, true] {
     let mut options = options("final-icon", 1, existing);
-    cancel_on(&mut options, OutputChannel::Verbose);
-    assert_cancelled_without_publication(options, 1, 0);
+    cancel_on_first_icon(&mut options);
+    assert_cancelled_without_publication(options, 1, 0, |_| false);
   }
 }
 
 #[test]
 fn cancellation_precedes_strict_missing_icon_validation() {
   for existing in [false, true] {
-    let mut options = options("cancelled-missing-icon", 1, existing);
+    let options = options("cancelled-missing-icon", 1, existing);
     fs::remove_file(options.source.join("icon_0.png")).unwrap();
-    cancel_on(&mut options, OutputChannel::Warning);
-    assert_cancelled_without_publication(options, 0, 1);
+    assert_cancelled_without_publication(options, 0, 1, |notice| {
+      matches!(notice, SpriteNotice::IconUnreadable { .. })
+    });
   }
 }
 
 #[test]
-fn cancellation_during_shape_warning_preserves_destination() {
-  let mut options = options("shape-warning", 2, true);
-  cancel_on(&mut options, OutputChannel::Warning);
-  assert_cancelled_without_publication(options, 2, 0);
+fn cancellation_during_shape_notice_preserves_destination() {
+  let options = options("shape-notice", 2, true);
+  assert_cancelled_without_publication(options, 2, 0, |notice| {
+    matches!(notice, SpriteNotice::SheetReshaped { .. })
+  });
+}
+
+#[test]
+fn notices_a_sheet_written_over_one_of_another_shape() {
+  let options = options("reshaped", 2, true);
+  let path: PathBuf = options.output_path.clone();
+  let mut notices: Vec<SpriteNotice> = Vec::new();
+
+  EquipmentSpritePacker::pack_sprites(options, |notice| notices.push(notice)).unwrap();
+
+  assert_eq!(
+    notices,
+    [SpriteNotice::SheetReshaped {
+      path,
+      width: 100,
+      height: 52,
+      mipmap_levels: ImageFileWriter::UI_MIPMAP_LEVELS,
+      replaced: ImageFileReshape::Reshaped {
+        width: 52,
+        height: 52,
+        mipmap_levels: ImageFileWriter::UI_MIPMAP_LEVELS,
+      },
+    }]
+  );
 }
 
 #[test]
@@ -140,7 +184,7 @@ fn completed_pack_publishes_every_icon() {
   for existing in [false, true] {
     let options = options("completed", 2, existing);
     let path: PathBuf = options.output_path.clone();
-    let result = EquipmentSpritePacker::pack_sprites(options).unwrap();
+    let result = EquipmentSpritePacker::pack_sprites(options, |_| {}).unwrap();
     assert_eq!(result.outcome, JobOutcome::Completed);
     assert_eq!(result.packed_count, 2);
     assert_eq!(result.skipped_count, 0);
@@ -182,7 +226,14 @@ fn strict_missing_icon_error_preserves_destination() {
     let path: PathBuf = options.output_path.clone();
     let before: Option<Vec<u8>> = path.exists().then(|| fs::read(&path).unwrap());
 
-    assert!(EquipmentSpritePacker::pack_sprites(options).is_err());
+    let mut notices: Vec<SpriteNotice> = Vec::new();
+
+    assert!(EquipmentSpritePacker::pack_sprites(options, |notice| notices.push(notice)).is_err());
+    // The refusal names the section; the notice handed out before it says why the icon could not be read.
+    assert!(matches!(
+      notices.as_slice(),
+      [SpriteNotice::IconUnreadable { section, .. }] if section == "icon_0"
+    ));
     match before {
       Some(bytes) => assert_eq!(fs::read(path).unwrap(), bytes),
       None => assert!(!path.exists()),

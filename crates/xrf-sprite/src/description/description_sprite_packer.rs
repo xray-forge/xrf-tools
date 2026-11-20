@@ -10,15 +10,20 @@ use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
+use crate::report::SpriteNotice;
 use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpritePacker {}
 
 impl DescriptionSpritePacker {
-  /// Packs the sheets the description declares, every one or those `options` names, and answers what was written.
-  pub fn pack_xml_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<DescriptionSpriteResult> {
+  /// Packs the sheets the description declares, every one or those `options` names, and answers what was written,
+  /// handing whatever it passed over or noticed to `on_notice` as it is met.
+  pub fn pack_xml_descriptions(
+    options: &DescriptionSpriteOptions,
+    mut on_notice: impl FnMut(SpriteNotice),
+  ) -> XrfResult<DescriptionSpriteResult> {
     let started_at: Instant = Instant::now();
-    let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options)?;
+    let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options, &mut on_notice)?;
     let mut result: DescriptionSpriteResult = DescriptionSpriteResult::default();
 
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
@@ -28,8 +33,6 @@ impl DescriptionSpritePacker {
       file.to_sprite_paths()?;
     }
 
-    xrf_output::info!(options.output, "Packing for {} files", selected.len());
-
     let packing: xrf_job::JobScope = options.job.enter(
       crate::job_phases::SPRITE_PHASE_PACK_DESCRIPTIONS,
       Some(selected.len() as u64),
@@ -37,11 +40,12 @@ impl DescriptionSpritePacker {
 
     for file in selected {
       packing.advance();
+      options.job.set_detail(Some(file.name.clone()));
 
-      result = result.merged(Self::pack_xml_description(options, file)?);
+      result = result.merged(Self::pack_xml_description(options, file, &mut on_notice)?);
     }
 
-    xrf_output::info!(options.output, "Packed {} files", result.files);
+    options.job.set_detail(None);
 
     Ok(DescriptionSpriteResult {
       duration: started_at.elapsed(),
@@ -53,6 +57,7 @@ impl DescriptionSpritePacker {
   pub fn pack_xml_description(
     options: &DescriptionSpriteOptions,
     file: &TextureFileDescriptor,
+    on_notice: &mut impl FnMut(SpriteNotice),
   ) -> XrfResult<DescriptionSpriteResult> {
     let relative_path: HostRelativePath = file.to_host_relative_path()?;
     let sprite_paths: Vec<HostRelativePath> = file.to_sprite_paths()?;
@@ -65,24 +70,7 @@ impl DescriptionSpritePacker {
     let mut placed: u32 = 0;
     let mut skipped: u32 = 0;
 
-    xrf_output::verbose!(
-      options.output,
-      "Packing file {} ({width}x{height})",
-      format_path(&full_name)
-    );
-
     for (texture, texture_relative_path) in file.sprites.iter().zip(&sprite_paths) {
-      xrf_output::verbose!(
-        options.output,
-        "Packing texture {} -> {} at [x:{}, y:{}, w:{}, h:{}]",
-        format_path(&full_name),
-        texture.id,
-        texture.x,
-        texture.y,
-        texture.w,
-        texture.h
-      );
-
       let texture_path: PathBuf = options.base.join(texture_relative_path);
 
       match DdsFile::read_from_path(&texture_path).and_then(|dds| dds.decode_rgba(0)) {
@@ -115,14 +103,12 @@ impl DescriptionSpritePacker {
             )));
           }
 
-          xrf_output::warning!(
-            options.output,
-            "Failed to read texture dds {} for {} ({}): {}",
-            texture.id,
-            file.name,
-            format_path(&full_name),
-            error
-          );
+          on_notice(SpriteNotice::SpriteUnreadable {
+            id: texture.id.clone(),
+            file: file.name.clone(),
+            sheet: full_name.clone(),
+            reason: error.to_string(),
+          });
 
           skipped += 1;
         }
@@ -135,15 +121,17 @@ impl DescriptionSpritePacker {
 
     let destination: PathBuf = sheets.prepare_file(&relative_path.with_extension(XrayExtension::Dds.as_str()))?;
 
-    xrf_output::verbose!(options.output, "Saving file: {}", format_path(&destination));
-
-    ImageFileWriter::warn_on_reshaped_dds(
-      &options.output,
-      &destination,
-      width,
-      height,
-      ImageFileWriter::UI_MIPMAP_LEVELS,
-    );
+    if let Some(replaced) =
+      ImageFileWriter::compare_replaced_dds(&destination, width, height, ImageFileWriter::UI_MIPMAP_LEVELS)
+    {
+      on_notice(SpriteNotice::SheetReshaped {
+        path: destination.clone(),
+        width,
+        height,
+        mipmap_levels: ImageFileWriter::UI_MIPMAP_LEVELS,
+        replaced,
+      });
+    }
 
     ImageFileWriter::write_dds(
       &destination,

@@ -12,6 +12,7 @@ use crate::description::{
   DescriptionSpriteOptions, TextureFileDescriptor, TextureSpriteDescriptor, XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME,
   XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW,
 };
+use crate::report::SpriteNotice;
 
 pub(crate) struct XmlDescriptionCollection {
   pub files: HashMap<String, TextureFileDescriptor>,
@@ -83,16 +84,13 @@ impl XmlDescriptionCollection {
     described == requested || described.rsplit('/').next().is_some_and(|base| base == requested)
   }
 
-  /// Get descriptions from provided options.
-  /// Handle both directory and single file as inputs.
-  pub(crate) fn get_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<Self> {
+  /// Reads the descriptions `options` names, one file or every XML file in a directory, merging sheets described
+  /// in several files and handing whatever is passed over to `on_notice`.
+  pub(crate) fn get_descriptions(
+    options: &DescriptionSpriteOptions,
+    on_notice: &mut impl FnMut(SpriteNotice),
+  ) -> XrfResult<Self> {
     if options.description.is_dir() {
-      xrf_output::info!(
-        options.output,
-        "Check texture descriptions from dir: {}",
-        format_path(&options.description)
-      );
-
       let mut files: HashMap<String, TextureFileDescriptor> = HashMap::new();
       let entries: ReadDir = fs::read_dir(&options.description)?;
 
@@ -100,7 +98,7 @@ impl XmlDescriptionCollection {
         let path: PathBuf = entry.path();
 
         if XrayExtension::Xml.matches_path(&path) {
-          let descriptions: HashMap<String, TextureFileDescriptor> = Self::get_description(options, &path)?;
+          let descriptions: HashMap<String, TextureFileDescriptor> = Self::get_description(options, &path, on_notice)?;
 
           descriptions
             .into_iter()
@@ -108,11 +106,7 @@ impl XmlDescriptionCollection {
               None => {
                 files.insert(name, description);
               }
-              Some(existing) => {
-                xrf_output::verbose!(options.output, "Merging textures for {name}");
-
-                existing.sprites.extend(description.sprites);
-              }
+              Some(existing) => existing.sprites.extend(description.sprites),
             });
         }
       }
@@ -120,18 +114,17 @@ impl XmlDescriptionCollection {
       Ok(Self { files })
     } else {
       Ok(Self {
-        files: Self::get_description(options, &options.description)?,
+        files: Self::get_description(options, &options.description, on_notice)?,
       })
     }
   }
 
-  /// Get descriptions from provided file path.
+  /// Reads the sheets one description file declares, handing whatever is passed over to `on_notice`.
   pub(crate) fn get_description(
     options: &DescriptionSpriteOptions,
     path: &Path,
+    on_notice: &mut impl FnMut(SpriteNotice),
   ) -> XrfResult<HashMap<String, TextureFileDescriptor>> {
-    xrf_output::verbose!(options.output, "Found texture description: {}", format_path(path));
-
     let mut descriptions: HashMap<String, TextureFileDescriptor> = HashMap::new();
 
     let contents: Vec<u8> = fs::read(path)?;
@@ -146,12 +139,11 @@ impl XmlDescriptionCollection {
           )));
         }
 
-        xrf_output::warning!(
-          options.output,
-          "Error parsing XML file: {} - {}",
-          format_path(path),
-          error
-        );
+        on_notice(SpriteNotice::DescriptionUnparsable {
+          path: path.to_path_buf(),
+          reason: error.to_string(),
+        });
+
         return Ok(HashMap::new());
       }
     };
@@ -163,58 +155,43 @@ impl XmlDescriptionCollection {
         let file_name: Option<&str> = file.attribute(XML_ATTRIBUTE_NAME);
 
         if let Some(file_name) = file_name {
-          xrf_output::verbose!(options.output, "Parsing file: {file_name}");
-
           let mut file_description: TextureFileDescriptor = TextureFileDescriptor::new(file_name);
 
           for node in file.descendants_named(XML_TAG_TEXTURE) {
             if let Some(sprite) = TextureSpriteDescriptor::new_optional_from_node(node) {
               file_description.add_sprite(sprite);
             } else {
-              xrf_output::warning!(
-                options.output,
-                "Skip texture node: {} ({})",
-                node.attribute(XML_ATTRIBUTE_ID).unwrap_or("unknown"),
-                node
+              on_notice(SpriteNotice::TextureNodeIncomplete {
+                id: node.attribute(XML_ATTRIBUTE_ID).map(String::from),
+                attributes: node
                   .attributes()
-                  .map(|(name, value)| format!("{name}={value}"))
-                  .collect::<Vec<String>>()
-                  .join(","),
-              );
+                  .map(|(name, value)| (String::from(name), String::from(value)))
+                  .collect(),
+              });
             }
           }
 
           if file_description.sprites.is_empty() {
-            xrf_output::warning!(
-              options.output,
-              "Skip definitions node \"{file_name}\" without textures (in {})",
-              format_path(path)
-            );
+            on_notice(SpriteNotice::FileWithoutTextures {
+              name: String::from(file_name),
+              path: path.to_path_buf(),
+            });
           } else {
             match descriptions.get_mut(&file_description.name) {
               None => {
                 descriptions.insert(file_description.name.clone(), file_description);
               }
-              Some(existing) => {
-                xrf_output::verbose!(options.output, "Merging textures for {file_name}");
-
-                file_description
-                  .sprites
-                  .into_iter()
-                  .for_each(|it| existing.sprites.push(it));
-              }
+              Some(existing) => existing.sprites.extend(file_description.sprites),
             }
           }
         } else {
-          xrf_output::warning!(options.output, "Invalid file node supplied without name attribute");
+          on_notice(SpriteNotice::FileWithoutName);
         }
       }
     } else {
-      xrf_output::warning!(
-        options.output,
-        "Got no 'w' tag for file '{}'",
-        format_path(&options.description)
-      );
+      on_notice(SpriteNotice::DescriptionWithoutWindow {
+        path: path.to_path_buf(),
+      });
     }
 
     Ok(descriptions)
@@ -241,7 +218,6 @@ mod tests {
       job: Default::default(),
       description: path.clone(),
       base: PathBuf::new(),
-      output: Default::default(),
       output_path: PathBuf::new(),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
@@ -250,7 +226,7 @@ mod tests {
       is_forced: false,
     };
 
-    let result = XmlDescriptionCollection::get_description(&options, &path);
+    let result = XmlDescriptionCollection::get_description(&options, &path, &mut |_| {});
 
     fs::remove_file(&path).unwrap();
 
@@ -275,7 +251,6 @@ mod tests {
       job: Default::default(),
       description: directory,
       base: PathBuf::new(),
-      output: Default::default(),
       output_path: PathBuf::new(),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
@@ -285,7 +260,7 @@ mod tests {
     };
 
     let collection: XmlDescriptionCollection =
-      XmlDescriptionCollection::get_descriptions(&options).expect("the directory to be read");
+      XmlDescriptionCollection::get_descriptions(&options, &mut |_| {}).expect("the directory to be read");
 
     assert_eq!(collection.files.len(), 1, "the upper-case description has to be read");
   }
@@ -316,7 +291,6 @@ mod select_files_tests {
       job: Default::default(),
       description: PathBuf::from("ui_actor_upgrades.xml"),
       base: PathBuf::new(),
-      output: Default::default(),
       output_path: PathBuf::new(),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: files.iter().map(|it| String::from(*it)).collect(),

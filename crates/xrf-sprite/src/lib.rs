@@ -2,6 +2,7 @@
 
 mod description;
 mod equipment;
+mod report;
 
 pub mod job_phases;
 
@@ -14,3 +15,4 @@ pub use crate::equipment::{
   EquipmentSpritePackResult, EquipmentSpritePacker, EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker,
   InventorySpriteDescriptor,
 };
+pub use crate::report::{SpriteNotice, SpriteRunPrinter};

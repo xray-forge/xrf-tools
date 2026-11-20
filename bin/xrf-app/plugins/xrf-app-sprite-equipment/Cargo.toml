@@ -25,7 +25,6 @@ xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-ltx = { workspace = true }
 xrf-ltx-project = { workspace = true }
-xrf-output = { workspace = true }
 xrf-sprite = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }

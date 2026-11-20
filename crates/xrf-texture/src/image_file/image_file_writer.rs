@@ -1,10 +1,10 @@
 use std::path::Path;
 
 use image::{ImageFormat, RgbaImage};
-use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat as DDSImageFormat, Quality};
+use xrf_dds::{DdsEncoding, DdsFile, DdsMetadata, DdsMipChain, DdsMipmaps, ImageFormat as DDSImageFormat, Quality};
 use xrf_error::{MapXrfErr, XrfResult};
-use xrf_output::OutputOptions;
-use xrf_utils::format_path;
+
+use crate::image_file::ImageFileReshape;
 
 /// Writes an image out as the texture file a caller asked for.
 pub struct ImageFileWriter;
@@ -37,45 +37,33 @@ impl ImageFileWriter {
       .map_texture_processing_err()
   }
 
-  /// Warn when the sheet about to be written at `path` is shaped differently from the one it replaces.
+  /// How the sheet about to be written at `path` differs from the one it replaces, if it does.
   ///
   /// Packing is meant to replace a sheet's pixels, not its geometry. Canvas size and mip chain length are
   /// resource state that the packed sprite rectangles do not fully describe, so a sheet that quietly
   /// changes shape diverges from its pristine form and from the other resource repositories with nothing
   /// in the log to say so. One sheet can also be described by several description files, and packing only
-  /// some of them would otherwise shrink it without a word.
-  pub fn warn_on_reshaped_dds(output: &OutputOptions, path: &Path, width: u32, height: u32, mipmap_levels: u32) {
+  /// some of them would otherwise shrink it without a word. Nothing at `path` is no difference.
+  pub fn compare_replaced_dds(path: &Path, width: u32, height: u32, mipmap_levels: u32) -> Option<ImageFileReshape> {
     if !path.is_file() {
-      return;
+      return None;
     }
 
-    let existing: DdsFile = match DdsFile::read_from_path(path) {
-      Ok(existing) => existing,
+    let metadata: DdsMetadata = match DdsFile::read_from_path(path) {
+      Ok(existing) => existing.metadata(),
       Err(error) => {
-        xrf_output::warning!(
-          output,
-          "Cannot compare shape against replaced file {}: {}",
-          format_path(path),
-          error
-        );
-
-        return;
+        return Some(ImageFileReshape::Unreadable {
+          reason: error.to_string(),
+        });
       }
     };
-    let metadata = existing.metadata();
 
-    if metadata.width != width || metadata.height != height || metadata.mipmap_levels != mipmap_levels {
-      xrf_output::warning!(
-        output,
-        "Replacing {} of {}x{} with {} mipmap levels by {}x{} with {} mipmap levels",
-        format_path(path),
-        metadata.width,
-        metadata.height,
-        metadata.mipmap_levels,
-        width,
-        height,
-        mipmap_levels
-      );
-    }
+    (metadata.width != width || metadata.height != height || metadata.mipmap_levels != mipmap_levels).then_some(
+      ImageFileReshape::Reshaped {
+        width: metadata.width,
+        height: metadata.height,
+        mipmap_levels: metadata.mipmap_levels,
+      },
+    )
   }
 }

@@ -8,7 +8,6 @@ pub struct EquipmentSpritePackOptions {
   pub job: xrf_job::JobHandle,
   pub ltx: Ltx,
   pub source: PathBuf,
-  pub output: xrf_output::OutputOptions,
   pub output_path: PathBuf,
   pub gamedata: Option<PathBuf>,
   pub dds_compression_format: ImageFormat,

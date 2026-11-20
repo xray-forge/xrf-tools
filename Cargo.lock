@@ -8129,7 +8129,6 @@ dependencies = [
  "xrf-job",
  "xrf-ltx",
  "xrf-ltx-project",
- "xrf-output",
  "xrf-sprite",
  "xrf-utils",
  "xrf-vfs",

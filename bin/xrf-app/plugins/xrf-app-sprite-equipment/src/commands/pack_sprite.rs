@@ -10,8 +10,7 @@ use xrf_dds::ImageFormat;
 use xrf_dltx::DltxDialect;
 use xrf_job::JobProgress;
 use xrf_ltx::Ltx;
-use xrf_output::OutputOptions;
-use xrf_sprite::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
+use xrf_sprite::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker, SpriteRunPrinter};
 
 use crate::ipc::sprite_equipment::SPRITE_EQUIPMENT_JOB_PACK;
 use crate::request::SpriteEquipmentPackRequest;
@@ -51,16 +50,18 @@ pub(crate) async fn sprite_equipment_pack_sprite(
       &execution,
       start,
       move |job| {
-        EquipmentSpritePacker::pack_sprites(EquipmentSpritePackOptions {
-          job,
-          ltx: Ltx::read_from_file_with_dialect(&system_ltx, DltxDialect::select(is_dltx).as_ref())?,
-          source,
-          output: OutputOptions::default(),
-          output_path: output,
-          gamedata: None,
-          dds_compression_format: ImageFormat::BC3RgbaUnorm,
-          is_strict: false,
-        })
+        EquipmentSpritePacker::pack_sprites(
+          EquipmentSpritePackOptions {
+            job,
+            ltx: Ltx::read_from_file_with_dialect(&system_ltx, DltxDialect::select(is_dltx).as_ref())?,
+            source,
+            output_path: output,
+            gamedata: None,
+            dds_compression_format: ImageFormat::BC3RgbaUnorm,
+            is_strict: false,
+          },
+          |notice| log::warn!("{}", SpriteRunPrinter::format_notice(&notice)),
+        )
       },
       |result| result.outcome,
     )

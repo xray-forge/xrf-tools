@@ -5,12 +5,18 @@ use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath};
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, InventorySpriteDescriptor};
+use crate::report::SpriteNotice;
 use xrf_texture::ImageFileWriter;
 
 pub struct EquipmentSpriteUnpacker {}
 
 impl EquipmentSpriteUnpacker {
-  pub fn unpack_sprites(options: EquipmentSpriteUnpackOptions) -> XrfResult {
+  /// Cuts every declared icon out of the sheet into a file named by its section, answering how many it wrote and
+  /// handing each one it passed over to `on_notice`.
+  pub fn unpack_sprites(
+    options: EquipmentSpriteUnpackOptions,
+    mut on_notice: impl FnMut(SpriteNotice),
+  ) -> XrfResult<u32> {
     let mut count: u32 = 0;
     let sprites: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(&options.ltx);
 
@@ -30,43 +36,34 @@ impl EquipmentSpriteUnpacker {
 
     for sprite in &sprites {
       unpacking.advance();
+      options.job.set_detail(Some(sprite.section.clone()));
 
-      if Self::unpack_sprite(&options, &destination, sprite)? {
+      if Self::unpack_sprite(&options, &destination, sprite, &mut on_notice)? {
         count += 1;
       }
     }
 
-    xrf_output::info!(options.output, "Unpacked {count} icons");
+    options.job.set_detail(None);
 
-    Ok(())
+    Ok(count)
   }
 
-  pub fn unpack_sprite(
+  /// Cuts one icon out of the sheet, answering whether it was written; one outside the sheet is noticed and skipped.
+  fn unpack_sprite(
     options: &EquipmentSpriteUnpackOptions,
     destination: &HostDestination,
     sprite: &InventorySpriteDescriptor,
+    on_notice: &mut impl FnMut(SpriteNotice),
   ) -> XrfResult<bool> {
     let (x, y, w, h) = sprite.get_boundaries();
     let relative_path: HostRelativePath = sprite.to_host_file_name(XrayExtension::Dds)?.into();
 
-    xrf_output::verbose!(
-      options.output,
-      "Unpacking icon: '{}' x:{}({x}), y:{}({y}), w:{}({w}), h:{}({h})",
-      sprite.section,
-      sprite.x,
-      sprite.y,
-      sprite.w,
-      sprite.h,
-    );
-
     // todo: Respect custom icon path from LTX file here (sprite.custom_icon).
 
     if x.saturating_add(w) > options.source.width() || y.saturating_add(h) > options.source.height() {
-      xrf_output::warning!(
-        options.output,
-        "Skip for possible section: '{}' - icon is out of source file bonds",
-        sprite.section
-      );
+      on_notice(SpriteNotice::IconOutsideSheet {
+        section: sprite.section.clone(),
+      });
 
       Ok(false)
     } else {

@@ -6,7 +6,6 @@ use image::{DynamicImage, GenericImage, ImageBuffer, Rgba};
 use xrf_dds::DdsFile;
 use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::equipment::{
@@ -14,12 +13,18 @@ use crate::equipment::{
   LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX, LTX_PATH_GAMEDATA_MARKER,
   LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
+use crate::report::SpriteNotice;
 use xrf_texture::{ImageFileReader, ImageFileWriter, ImageFit};
 
 pub struct EquipmentSpritePacker {}
 
 impl EquipmentSpritePacker {
-  pub fn pack_sprites(options: EquipmentSpritePackOptions) -> XrfResult<EquipmentSpritePackResult> {
+  /// Draws every declared icon into one sheet and writes it, unless cancelled first, handing each notice to
+  /// `on_notice` as it is met.
+  pub fn pack_sprites(
+    options: EquipmentSpritePackOptions,
+    mut on_notice: impl FnMut(SpriteNotice),
+  ) -> XrfResult<EquipmentSpritePackResult> {
     let started_at: Instant = Instant::now();
 
     let mut count: u32 = 0;
@@ -52,32 +57,17 @@ impl EquipmentSpritePacker {
         continue;
       };
 
-      let Some((sprite_path, sprite)) = Self::read_sprite(&options, &sprite_descriptor)? else {
+      options.job.set_detail(Some(section_name.to_owned()));
+
+      let Some(sprite) = Self::read_sprite(&options, &sprite_descriptor, &mut on_notice)? else {
         skipped_sections.push(section_name);
         continue;
       };
 
-      let (x, y, w, h) = sprite_descriptor.get_boundaries();
+      let (x, y, _, _) = sprite_descriptor.get_boundaries();
 
-      xrf_output::verbose!(
-        options.output,
-        "Packing icon: '{}':({}:{};{}x{}) as ({}:{};{}x{}), src: {}x{}, {}",
-        sprite_descriptor.section,
-        sprite_descriptor.x,
-        sprite_descriptor.y,
-        sprite_descriptor.w,
-        sprite_descriptor.h,
-        x,
-        y,
-        w,
-        h,
-        sprite.width(),
-        sprite.height(),
-        format_path(&sprite_path),
-      );
-
-      Self::warn_on_conflicting_slot(
-        &options,
+      Self::claim_slot(
+        &mut on_notice,
         &mut occupied_slots,
         (x, y),
         &sprite_descriptor.section,
@@ -88,6 +78,8 @@ impl EquipmentSpritePacker {
       count += 1;
     }
 
+    options.job.set_detail(None);
+
     // Cancellation during the last icon has no next iteration to observe it.
     if options.job.is_cancelled() {
       outcome = xrf_job::JobOutcome::Cancelled;
@@ -96,13 +88,20 @@ impl EquipmentSpritePacker {
     if outcome == xrf_job::JobOutcome::Completed {
       Self::assert_every_section_has_an_icon(&options, &skipped_sections)?;
 
-      ImageFileWriter::warn_on_reshaped_dds(
-        &options.output,
+      if let Some(replaced) = ImageFileWriter::compare_replaced_dds(
         &options.output_path,
         image.width(),
         image.height(),
         ImageFileWriter::UI_MIPMAP_LEVELS,
-      );
+      ) {
+        on_notice(SpriteNotice::SheetReshaped {
+          path: options.output_path.clone(),
+          width: image.width(),
+          height: image.height(),
+          mipmap_levels: ImageFileWriter::UI_MIPMAP_LEVELS,
+          replaced,
+        });
+      }
 
       // The write is the publication boundary; once started, finish it even if cancellation arrives.
       if options.job.is_cancelled() {
@@ -114,13 +113,6 @@ impl EquipmentSpritePacker {
           options.dds_compression_format,
           ImageFileWriter::UI_MIPMAPS,
         )?;
-
-        xrf_output::info!(
-          options.output,
-          "Packed {} icons in {} format",
-          count,
-          options.dds_compression_format
-        );
       }
     }
 
@@ -135,13 +127,14 @@ impl EquipmentSpritePacker {
     })
   }
 
-  /// Warn when a slot already holds different art, which means one section's icon is being discarded.
+  /// Claims a grid slot, noticing when it already holds different art, which means one section's icon is being
+  /// discarded.
   ///
   /// Sharing a slot is normal and harmless while the art matches, so only a genuine difference is
   /// reported. Without this, updating a weapon's icon and forgetting its variants looks like it worked:
   /// the pack succeeds, the count is unchanged, and the variant packed later quietly wins.
-  fn warn_on_conflicting_slot(
-    options: &EquipmentSpritePackOptions,
+  fn claim_slot(
+    on_notice: &mut impl FnMut(SpriteNotice),
     occupied_slots: &mut HashMap<(u32, u32), (String, Vec<u8>)>,
     slot: (u32, u32),
     section: &str,
@@ -151,14 +144,12 @@ impl EquipmentSpritePacker {
 
     match occupied_slots.get(&slot) {
       Some((previous_section, previous_bytes)) if previous_bytes != &bytes => {
-        xrf_output::warning!(
-          options.output,
-          "Slot {}:{} is claimed by '{}' and '{}' with different icons, only the last one packed survives",
-          slot.0,
-          slot.1,
-          previous_section,
-          section
-        );
+        on_notice(SpriteNotice::SlotConflict {
+          x: slot.0,
+          y: slot.1,
+          previous: previous_section.clone(),
+          section: String::from(section),
+        });
       }
       _ => {}
     }
@@ -179,23 +170,23 @@ impl EquipmentSpritePacker {
     )))
   }
 
-  pub fn read_sprite(
+  /// Reads one section's icon, or notices why it could not and answers none; only resolving its path can fail.
+  fn read_sprite(
     options: &EquipmentSpritePackOptions,
     sprite: &InventorySpriteDescriptor,
-  ) -> XrfResult<Option<(PathBuf, DynamicImage)>> {
+    on_notice: &mut impl FnMut(SpriteNotice),
+  ) -> XrfResult<Option<DynamicImage>> {
     let (_, _, w, h) = sprite.get_boundaries();
     let sprite_path: PathBuf = Self::read_sprite_path(options, sprite)?;
 
     match Self::read_sprite_from_path(&sprite_path, w, h) {
-      Ok(icon) => Ok(Some((sprite_path, icon))),
+      Ok(icon) => Ok(Some(icon)),
       Err(error) => {
-        xrf_output::warning!(
-          options.output,
-          "Skip icon {} / '{}', reason: {}",
-          format_path(&sprite_path),
-          sprite.section,
-          error
-        );
+        on_notice(SpriteNotice::IconUnreadable {
+          path: sprite_path,
+          section: sprite.section.clone(),
+          reason: error.to_string(),
+        });
 
         Ok(None)
       }

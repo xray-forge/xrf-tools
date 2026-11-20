@@ -6,7 +6,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsFile, DdsMetadata, ImageFormat};
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_sprite::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
+use xrf_sprite::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker, SpriteRunPrinter};
 use xrf_utils::format_path;
 
 use super::report::SpriteEquipmentUnpackReport;
@@ -88,15 +88,19 @@ impl GenericCommand for UnpackEquipmentCommand {
 
     create_dir_all(output)?;
 
-    EquipmentSpriteUnpacker::unpack_sprites(EquipmentSpriteUnpackOptions {
-      job: CliJob::for_output(&output_options),
-      ltx: system_ltx,
-      source: source_dds,
-      output: output_options.clone(),
-      output_path: output.into(),
-      dds_compression_format: ImageFormat::BC3RgbaUnorm,
-      link_policy: LinkPolicyArgument::of(matches),
-    })?;
+    let unpacked: u32 = EquipmentSpriteUnpacker::unpack_sprites(
+      EquipmentSpriteUnpackOptions {
+        job: CliJob::for_output(&output_options),
+        ltx: system_ltx,
+        source: source_dds,
+        output_path: output.into(),
+        dds_compression_format: ImageFormat::BC3RgbaUnorm,
+        link_policy: LinkPolicyArgument::of(matches),
+      },
+      |notice| SpriteRunPrinter::print_notice(&notice, &output_options),
+    )?;
+
+    SpriteRunPrinter::print_equipment_unpack(unpacked, &output_options);
 
     context.set_result(|| SpriteEquipmentUnpackReport::new(source, system_ltx_path, output, &metadata))?;
 

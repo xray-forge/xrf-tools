@@ -6,22 +6,28 @@ use rayon::prelude::*;
 use xrf_dds::{DdsFile, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::{HostDestination, HostRelativePath, OutputFiles, format_path};
 
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
+use crate::report::SpriteNotice;
 use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpriteUnpacker {}
 
 impl DescriptionSpriteUnpacker {
   /// Cuts the sprites out of the sheets the description declares, every one or those `options` names, and answers
-  /// what was written.
-  pub fn unpack_xml_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<DescriptionSpriteResult> {
+  /// what was written, handing whatever it passed over to `on_notice`.
+  ///
+  /// The sheets are cut in parallel, so their notices are handed out once every sheet is done, in selection order
+  /// rather than in the order the workers finished; a run that fails hands out only what reading the description met.
+  pub fn unpack_xml_descriptions(
+    options: &DescriptionSpriteOptions,
+    mut on_notice: impl FnMut(SpriteNotice),
+  ) -> XrfResult<DescriptionSpriteResult> {
     let started_at: Instant = Instant::now();
-    let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options)?;
+    let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options, &mut on_notice)?;
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
 
     // Every name is checked, and every sprite already there refused unforced, before the first sprite is written, so a
@@ -36,32 +42,33 @@ impl DescriptionSpriteUnpacker {
 
     outputs.assert_free(options.is_forced)?;
 
-    xrf_output::info!(options.output, "Unpacking for {} files", selected.len());
-
     let unpacking: xrf_job::JobScope = options.job.enter(
       crate::job_phases::SPRITE_PHASE_UNPACK_DESCRIPTIONS,
       Some(selected.len() as u64),
     );
 
-    // Each file logs into its listed position and the sequence releases them in selection order rather than in the
-    // order the workers finished. A file that fails still takes its turn, because the slot commits as the error
-    // unwinds past it — which is what keeps output identical however wide the run is.
-    let sequence: OutputSequence = OutputSequence::new(&options.output, selected.len());
-
-    let result: DescriptionSpriteResult = selected
+    // Reduction keeps the indexed order, so the notices come out as the sheets were selected however wide the run is.
+    let (result, notices): (DescriptionSpriteResult, Vec<SpriteNotice>) = selected
       .par_iter()
-      .enumerate()
-      .map(|(index, file)| {
-        let slot: OutputSlot<'_> = sequence.new_slot(index);
-        let unpacked: DescriptionSpriteResult = Self::unpack_xml_description(options, slot.get_output(), file)?;
+      .map(|file| {
+        let mut notices: Vec<SpriteNotice> = Vec::new();
+        let unpacked: DescriptionSpriteResult =
+          Self::unpack_xml_description(options, file, &mut |notice| notices.push(notice))?;
 
         unpacking.advance();
 
-        Ok::<DescriptionSpriteResult, XrfError>(unpacked)
+        Ok::<(DescriptionSpriteResult, Vec<SpriteNotice>), XrfError>((unpacked, notices))
       })
-      .try_reduce(DescriptionSpriteResult::default, |left, right| Ok(left.merged(right)))?;
+      .try_reduce(
+        || (DescriptionSpriteResult::default(), Vec::new()),
+        |(left, mut left_notices), (right, right_notices)| {
+          left_notices.extend(right_notices);
 
-    xrf_output::info!(options.output, "Unpacked {} files", result.files);
+          Ok((left.merged(right), left_notices))
+        },
+      )?;
+
+    notices.into_iter().for_each(on_notice);
 
     Ok(DescriptionSpriteResult {
       duration: started_at.elapsed(),
@@ -73,8 +80,8 @@ impl DescriptionSpriteUnpacker {
   /// that cannot be read is passed over whole outside strict mode.
   pub fn unpack_xml_description(
     options: &DescriptionSpriteOptions,
-    output: &OutputOptions,
     file: &TextureFileDescriptor,
+    on_notice: &mut impl FnMut(SpriteNotice),
   ) -> XrfResult<DescriptionSpriteResult> {
     let relative_path: HostRelativePath = file.to_host_relative_path()?;
     let sprite_paths: Vec<HostRelativePath> = file.to_sprite_paths()?;
@@ -82,8 +89,6 @@ impl DescriptionSpriteUnpacker {
       .base
       .join(relative_path.with_extension(XrayExtension::Dds.as_str()));
     let destination: HostDestination = HostDestination::new(&options.output_path, options.link_policy);
-
-    xrf_output::verbose!(output, "Unpacking {}", format_path(&full_name));
 
     let dds: RgbaImage = match DdsFile::read_from_path(&full_name).and_then(|dds| dds.decode_rgba(0)) {
       Ok(dds) => dds,
@@ -94,12 +99,10 @@ impl DescriptionSpriteUnpacker {
         )));
       }
       Err(error) => {
-        xrf_output::warning!(
-          output,
-          "Skip file {}, not able to read: {}",
-          format_path(&full_name),
-          error
-        );
+        on_notice(SpriteNotice::SheetUnreadable {
+          path: full_name,
+          reason: error.to_string(),
+        });
 
         return Ok(DescriptionSpriteResult::skipped());
       }
@@ -112,8 +115,6 @@ impl DescriptionSpriteUnpacker {
     let mut skipped: u32 = 0;
 
     for (sprite, sprite_path) in file.sprites.iter().zip(&sprite_paths) {
-      xrf_output::verbose!(output, "Unpacking {} -> {}", format_path(&full_name), sprite.id);
-
       let (max_x, max_y) = sprite.get_dimension_boundaries();
 
       if max_x > dds.width() || max_y > dds.height() {
@@ -129,16 +130,14 @@ impl DescriptionSpriteUnpacker {
           )));
         }
 
-        xrf_output::warning!(
-          output,
-          "[WARN] - exceeding sprite size '{}' (x:{}, y:{}) ({}x{} - {})",
-          sprite.id,
+        on_notice(SpriteNotice::SpriteOutsideSheet {
+          id: sprite.id.clone(),
           max_x,
           max_y,
-          dds.width(),
-          dds.height(),
-          format_path(&full_name)
-        );
+          width: dds.width(),
+          height: dds.height(),
+          sheet: full_name.clone(),
+        });
 
         skipped += 1;
 
@@ -188,7 +187,6 @@ mod tests {
       job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("source"),
-      output: Default::default(),
       output_path: root.join("output"),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
@@ -204,7 +202,7 @@ mod tests {
     let file: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\missing");
 
     assert_eq!(
-      DescriptionSpriteUnpacker::unpack_xml_description(&options, &options.output, &file)
+      DescriptionSpriteUnpacker::unpack_xml_description(&options, &file, &mut |_| {})
         .expect("non-strict unpacking to skip an unreadable sheet"),
       DescriptionSpriteResult::skipped()
     );
@@ -221,7 +219,7 @@ mod tests {
     let options: DescriptionSpriteOptions = options_for_missing_source(true);
     let file: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\missing");
 
-    assert!(DescriptionSpriteUnpacker::unpack_xml_description(&options, &options.output, &file).is_err());
+    assert!(DescriptionSpriteUnpacker::unpack_xml_description(&options, &file, &mut |_| {}).is_err());
     assert!(
       !options
         .output_path
@@ -267,7 +265,6 @@ mod tests {
       job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("base"),
-      output: Default::default(),
       output_path: root.join("out"),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
@@ -305,7 +302,7 @@ mod tests {
 
         assert!(
           matches!(
-            DescriptionSpriteUnpacker::unpack_xml_descriptions(&options),
+            DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |_| {}),
             Err(XrfError::Invalid { .. })
           ),
           "sprite id '{id}' must be refused by name"
@@ -325,7 +322,8 @@ mod tests {
     let options: DescriptionSpriteOptions = options_for_sheet("valid", &["ui_icon_PDA", "ui icon (old)"], true);
     let root: PathBuf = root_of(&options);
 
-    let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options).expect("unpack");
+    let result: DescriptionSpriteResult =
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |_| {}).expect("unpack");
 
     assert_eq!((result.files, result.sprites, result.skipped_sprites), (1, 2, 0));
     assert!(root.join("out").join("sheet").join("ui_icon_PDA.dds").is_file());
@@ -342,7 +340,7 @@ mod tests {
     fs::write(&existing, SENTINEL).expect("an earlier sprite");
 
     assert!(
-      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |_| {})
         .expect_err("an earlier sprite is refused")
         .to_string()
         .contains("UI_Icon.dds")
@@ -362,7 +360,7 @@ mod tests {
     };
 
     assert_eq!(
-      DescriptionSpriteUnpacker::unpack_xml_descriptions(&forced)
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&forced, |_| {})
         .expect("forced, it writes over")
         .sprites,
       2

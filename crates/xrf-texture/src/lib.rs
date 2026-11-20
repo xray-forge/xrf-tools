@@ -20,4 +20,4 @@ pub use crate::build::{
 pub use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 pub use crate::crop::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 pub use crate::encoding::{TextureEncodedDescriptor, TextureEncodingFormat, TextureEncodingQuality};
-pub use crate::image_file::{ImageFileReader, ImageFileWriter, ImageFit, ImageShape};
+pub use crate::image_file::{ImageFileReader, ImageFileReshape, ImageFileWriter, ImageFit, ImageShape};

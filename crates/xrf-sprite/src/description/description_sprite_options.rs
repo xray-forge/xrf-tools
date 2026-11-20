@@ -9,7 +9,6 @@ pub struct DescriptionSpriteOptions {
   pub job: xrf_job::JobHandle,
   pub description: PathBuf,
   pub base: PathBuf,
-  pub output: xrf_output::OutputOptions,
   pub output_path: PathBuf,
   pub dds_compression_format: ImageFormat,
   /// Names of the described files to process. Empty processes every file in the description.

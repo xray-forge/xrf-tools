@@ -15,6 +15,9 @@ It sits above [xrf-texture](../xrf-texture/README.md), which reads, fits and wri
 | `DescriptionSpritePacker::pack_xml_descriptions`, `DescriptionSpriteUnpacker::unpack_xml_descriptions` | Packs or unpacks sprite sheets an XML description lays out; both take `DescriptionSpriteOptions` |
 
 - Each operation takes an options value carrying its inputs, output paths and policy.
+- Each pack and unpack prints nothing. It answers counts and hands each `SpriteNotice` (what it skipped or noticed) to
+  the `on_notice` callback it is given, in the order met. `SpriteRunPrinter` renders the notices and counts as the CLI
+  prints them.
 - Resolve game configs with the intended LTX dialect before passing them to the equipment operations.
 
 ## Inventory sprites
@@ -61,8 +64,9 @@ fn main() -> xrf_error::XrfResult {
 `$inventory_icon_path`), fits it into its rectangle, and writes the whole sheet once at the end, so a cancelled run
 replaces nothing.
 
-- An unreadable icon is skipped with a warning, or fails the run when `is_strict` is set.
-- A slot claimed by two sections with different art is warned about; the last packed wins.
+- An unreadable icon is skipped with a notice, or fails the run when `is_strict` is set.
+- A slot claimed by two sections with different art gets a notice; the last packed wins.
+- A sheet written over one of another size or mip chain gets a notice.
 
 **Unpacking** writes one `<section>.dds` per declared icon and skips an icon outside the sheet. It ignores
 `$inventory_icon_path`.
@@ -70,7 +74,8 @@ replaces nothing.
 ## XML description sheets
 
 XML description sheets use texture and sprite descriptors instead of inventory sections. With `is_strict` they fail
-where they would otherwise warn and skip: an unreadable sheet or sprite, or a sprite outside its sheet.
+where they would otherwise skip with a notice: an unreadable sheet or sprite, or a sprite outside its sheet. Unpacking
+cuts sheets in parallel and hands their notices out in selection order once every sheet is done.
 
 ## Output names
 
@@ -89,5 +94,5 @@ The optional `typescript-bindings` feature derives frontend type metadata.
 
 Run `cargo test --locked -p xrf-sprite` from the repository root.
 
-Sources: the [public operations](src/lib.rs) and their options in [description](src/description) and
-[equipment](src/equipment).
+Sources: the [public operations](src/lib.rs), their options in [description](src/description) and
+[equipment](src/equipment), and the notices and printer in [report](src/report).
