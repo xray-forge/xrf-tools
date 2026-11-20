@@ -303,10 +303,7 @@ impl LtxProject {
     let ltx_scheme_declarations: LtxSectionSchemes = if options.is_with_schemes_check {
       LtxSchemeParser::parse_from_source(
         &LtxVfsSource::new(search.clone()),
-        &ltx_scheme_file_entries
-          .iter()
-          .map(XrayLogicalPath::as_str)
-          .collect::<Vec<&str>>(),
+        ltx_scheme_file_entries.iter().map(XrayLogicalPath::as_str),
       )?
     } else {
       Default::default()

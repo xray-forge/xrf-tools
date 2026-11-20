@@ -19,7 +19,10 @@ impl LtxSchemeParser {
   ///
   /// Returns an error when a scheme cannot be read or contains invalid, duplicate, or malformed declarations, a
   /// duplicate being one that any two of the files repeat.
-  pub fn parse_from_source<P: AsRef<str>>(source: &dyn LtxDocumentSource, files: &[P]) -> XrfResult<LtxSectionSchemes> {
+  pub fn parse_from_source<P: AsRef<str>>(
+    source: &dyn LtxDocumentSource,
+    files: impl IntoIterator<Item = P>,
+  ) -> XrfResult<LtxSectionSchemes> {
     let mut schemes: LtxSectionSchemes = Default::default();
 
     for file in files {
