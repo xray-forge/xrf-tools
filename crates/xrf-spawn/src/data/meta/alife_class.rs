@@ -1,4 +1,4 @@
-use derive_more::{Display, FromStr};
+use xrf_enum_derive::EnumDisplay;
 
 use crate::data::alife::script_dialect::ScriptDialect;
 use crate::data::meta::cls_id::ClsId;
@@ -6,111 +6,62 @@ use crate::data::meta::map::class_of;
 
 /// The server class a spawned object is read as: Call of Pripyat's spawnable classes (`object_factory_register.cpp`,
 /// `class_registrator.script`), and Clear Sky's script classes that save other fields.
-#[derive(Clone, Debug, PartialEq, Eq, FromStr, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumDisplay)]
 pub enum AlifeClass {
-  #[display("CseAlifeAnomalousZone")]
   CseAlifeAnomalousZone,
-  #[display("CseAlifeCar")]
   CseAlifeCar,
-  #[display("CseAlifeCreatureCrow")]
   CseAlifeCreatureCrow,
-  #[display("CseAlifeCreaturePhantom")]
   CseAlifeCreaturePhantom,
-  #[display("CseAlifeDynamicObjectVisual")]
   CseAlifeDynamicObjectVisual,
-  #[display("CseAlifeGraphPoint")]
   CseAlifeGraphPoint,
-  #[display("CseAlifeHelicopter")]
   CseAlifeHelicopter,
-  #[display("CseAlifeInventoryBox")]
   CseAlifeInventoryBox,
-  #[display("CseAlifeItem")]
   CseAlifeItem,
-  #[display("CseAlifeItemAmmo")]
   CseAlifeItemAmmo,
-  #[display("CseAlifeItemArtefact")]
   CseAlifeItemArtefact,
-  #[display("CseAlifeItemBolt")]
   CseAlifeItemBolt,
-  #[display("CseAlifeItemCustomOutfit")]
   CseAlifeItemCustomOutfit,
-  #[display("CseAlifeItemDetector")]
   CseAlifeItemDetector,
-  #[display("CseAlifeItemDocument")]
   CseAlifeItemDocument,
-  #[display("CseAlifeItemExplosive")]
   CseAlifeItemExplosive,
-  #[display("CseAlifeItemGrenade")]
   CseAlifeItemGrenade,
-  #[display("CseAlifeItemHelmet")]
   CseAlifeItemHelmet,
-  #[display("CseAlifeItemPda")]
   CseAlifeItemPda,
-  #[display("CseAlifeItemTorch")]
   CseAlifeItemTorch,
-  #[display("CseAlifeItemWeapon")]
   CseAlifeItemWeapon,
-  #[display("CseAlifeItemWeaponMagazined")]
   CseAlifeItemWeaponMagazined,
-  #[display("CseAlifeItemWeaponMagazinedWGl")]
   CseAlifeItemWeaponMagazinedWGl,
-  #[display("CseAlifeItemWeaponShotgun")]
   CseAlifeItemWeaponShotgun,
-  #[display("CseAlifeObjectBreakable")]
   CseAlifeObjectBreakable,
-  #[display("CseAlifeObjectClimable")]
   CseAlifeObjectClimable,
-  #[display("CseAlifeObjectHangingLamp")]
   CseAlifeObjectHangingLamp,
-  #[display("CseAlifeObjectPhysic")]
   CseAlifeObjectPhysic,
-  #[display("CseAlifeObjectProjector")]
   CseAlifeObjectProjector,
-  #[display("CseAlifePhSkeletonObject")]
   CseAlifePhSkeletonObject,
-  #[display("CseAlifeSpaceRestrictor")]
   CseAlifeSpaceRestrictor,
-  #[display("CseAlifeStationaryMGun")]
   CseAlifeStationaryMGun,
-  #[display("CseAlifeTeamBaseZone")]
   CseAlifeTeamBaseZone,
-  #[display("CseAlifeTorridZone")]
   CseAlifeTorridZone,
-  #[display("CseAlifeTrader")]
   CseAlifeTrader,
-  #[display("CseAlifeZoneVisual")]
   CseAlifeZoneVisual,
-  #[display("SeActor")]
   SeActor,
-  #[display("SeLevelChanger")]
   SeLevelChanger,
-  #[display("SeMonster")]
   SeMonster,
-  #[display("SeSmartCover")]
   SeSmartCover,
-  #[display("SeSmartTerrain")]
   SeSmartTerrain,
-  #[display("SeStalker")]
   SeStalker,
-  #[display("SimSquadScripted")]
   SimSquadScripted,
   /// Clear Sky's `se_actor`.
-  #[display("ClearSkySeActor")]
   ClearSkySeActor,
   /// Clear Sky's `se_monster`.
-  #[display("ClearSkySeMonster")]
   ClearSkySeMonster,
   /// Clear Sky's `se_sim_faction`, which Call of Pripyat has no class for.
-  #[display("ClearSkySeSimFaction")]
   ClearSkySeSimFaction,
   /// Clear Sky's `se_smart_terrain`.
-  #[display("ClearSkySeSmartTerrain")]
   ClearSkySeSmartTerrain,
   /// Clear Sky's `se_stalker`.
-  #[display("ClearSkySeStalker")]
   ClearSkySeStalker,
   /// A class no spawn can hold, such as a rocket's `CSE_Temporary`, which is no alife object.
-  #[display("Unknown")]
   Unknown,
 }
 

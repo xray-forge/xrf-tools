@@ -1,0 +1,5 @@
+error: expected string literal
+ --> tests/ui/fail/invalid_attribute.rs:5:13
+  |
+5 |   #[display(eng)]
+  |             ^^^

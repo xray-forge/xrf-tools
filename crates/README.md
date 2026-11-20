@@ -103,6 +103,7 @@ README is also its crate's rustdoc page.
 | Crate                                          | Purpose                                                           |
 | ---------------------------------------------- | ----------------------------------------------------------------- |
 | [xrf-build-info](xrf-build-info/README.md)     | Record and expose binary build provenance                         |
+| [xrf-enum-derive](xrf-enum-derive/README.md)   | Derive text and the variant list for fieldless enums              |
 | [xrf-env-flags](xrf-env-flags/README.md)       | Declare and read every environment variable the workspace honours |
 | [xrf-error](xrf-error/README.md)               | Share typed errors and results                                    |
 | [xrf-error-derive](xrf-error-derive/README.md) | Generate message-based error constructors                         |

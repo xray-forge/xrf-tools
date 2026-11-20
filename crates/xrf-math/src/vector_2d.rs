@@ -1,19 +1,25 @@
+use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
 use byteorder::ByteOrder;
-use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 
 /// Two named components, the engine's `Fvector2`: a texture coordinate, a sprite's size on its sheet.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Display)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[display("{x},{y}")]
 pub struct Vector2d {
   pub x: f32,
   pub y: f32,
+}
+
+/// `x,y`, as LTX writes a vector.
+impl Display for Vector2d {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+    write!(formatter, "{},{}", self.x, self.y)
+  }
 }
 
 impl Vector2d {

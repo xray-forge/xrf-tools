@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
-use derive_more::Display;
 use serde::{Deserialize, Serialize};
+use xrf_enum_derive::EnumDisplay;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{XRayEncoding, new_windows1250_encoder, new_windows1251_encoder, new_windows1252_encoder};
 
 /// A language a translation is written in, spelled on the wire as its code; `all` stands for every one at once.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumDisplay, Serialize, Deserialize)]
 pub enum TranslationLanguage {
   #[display("all")]
   #[serde(rename = "all")]

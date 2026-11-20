@@ -1,79 +1,45 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use derive_more::{Display, FromStr};
-use enum_map::Enum;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_enum_derive::{EnumDisplay, EnumFromStr};
 use xrf_error::XrfResult;
 
 use crate::data::actions::particle_action::ParticleAction;
 
-#[derive(Copy, Clone, Debug, Enum, PartialEq, Eq, FromStr, Display, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumFromStr, EnumDisplay, Serialize, Deserialize)]
 pub enum ParticleActionType {
-  #[display("Avoid")]
   Avoid = 0,
-  #[display("Bounce")]
   Bounce = 1,
-  #[display("CallActionList")]
   CallActionList = 2,
-  #[display("CopyVertex")]
   CopyVertex = 3,
-  #[display("Damping")]
   Damping = 4,
-  #[display("Explosion")]
   Explosion = 5,
-  #[display("Follow")]
   Follow = 6,
-  #[display("Gravitate")]
   Gravitate = 7,
-  #[display("Gravity")]
   Gravity = 8,
-  #[display("Jet")]
   Jet = 9,
-  #[display("KillOld")]
   KillOld = 10,
-  #[display("MatchVelocity")]
   MatchVelocity = 11,
-  #[display("Move")]
   Move = 12,
-  #[display("OrbitLine")]
   OrbitLine = 13,
-  #[display("OrbitPoint")]
   OrbitPoint = 14,
-  #[display("RandomAccel")]
   RandomAccel = 15,
-  #[display("RandomDisplace")]
   RandomDisplace = 16,
-  #[display("RandomVelocity")]
   RandomVelocity = 17,
-  #[display("Restore")]
   Restore = 18,
-  #[display("Sink")]
   Sink = 19,
-  #[display("SinkVelocity")]
   SinkVelocity = 20,
-  #[display("Source")]
   Source = 21,
-  #[display("SpeedLimit")]
   SpeedLimit = 22,
-  #[display("TargetColor")]
   TargetColor = 23,
-  #[display("TargetSize")]
   TargetSize = 24,
-  #[display("TargetRotate")]
   TargetRotate = 25,
-  #[display("TargetRotateD")]
   TargetRotateD = 26,
-  #[display("TargetVelocity")]
   TargetVelocity = 27,
-  #[display("TargetVelocityD")]
   TargetVelocityD = 28,
-  #[display("Vortex")]
   Vortex = 29,
-  #[display("Turbulence")]
   Turbulence = 30,
-  #[display("Scatter")]
   Scatter = 31,
-  #[display("Unknown")]
   Unknown = -1,
 }
 

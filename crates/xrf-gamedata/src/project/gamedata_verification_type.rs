@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use derive_more::Display;
 use serde::{Deserialize, Serialize};
+use xrf_enum_derive::EnumDisplay;
 use xrf_error::XrfError;
 
 use crate::project::animations::animations_verifier::AnimationsVerifier;
@@ -25,7 +25,7 @@ use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationC
 
 /// One check a verification runs, spelled on the wire and the command line as it displays.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumDisplay, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum GamedataVerificationType {
   /// Files one source holds but the engine cannot reach, rather than any kind of asset authored inside them.

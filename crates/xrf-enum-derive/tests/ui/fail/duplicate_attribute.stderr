@@ -1,0 +1,5 @@
+error: duplicate #[display] attribute
+ --> tests/ui/fail/duplicate_attribute.rs:6:3
+  |
+6 |   #[display("en")]
+  |   ^^^^^^^^^^^^^^^^

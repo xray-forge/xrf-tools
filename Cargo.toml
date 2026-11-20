@@ -21,6 +21,7 @@ members = [
   "crates/xrf-editable-object",
   "crates/xrf-efd",
   "crates/xrf-engine-target",
+  "crates/xrf-enum-derive",
   "crates/xrf-env-flags",
   "crates/xrf-environment",
   "crates/xrf-error",
@@ -87,8 +88,6 @@ criterion = { version = "0.8.2", default-features = false, features = ["cargo_be
 byteorder = "1.5.0"
 bytemuck = { version = "1.25.2", features = ["derive"] }
 bytes = "1.12.1"
-derive_more = "2.1.1"
-enum-map = "3.1.0"
 env_logger = { version = "0.11.11", default-features = false, features = ["auto-color", "humantime"] }
 glam = { version = "0.34.1", features = ["bytemuck"] }
 fileslice = { version = "0.8.0", default-features = false }
@@ -156,6 +155,7 @@ xrf-error = { path = "crates/xrf-error" }
 xrf-error-derive = { path = "crates/xrf-error-derive" }
 xrf-export = { path = "crates/xrf-export" }
 xrf-engine-target = { path = "crates/xrf-engine-target" }
+xrf-enum-derive = { path = "crates/xrf-enum-derive" }
 xrf-env-flags = { path = "crates/xrf-env-flags" }
 xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }

@@ -1,20 +1,26 @@
+use std::fmt::{self, Display, Formatter};
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
 use byteorder::ByteOrder;
-use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[display("{x},{y},{z}")]
 pub struct Vector3d<T = f32> {
   pub x: T,
   pub y: T,
   pub z: T,
+}
+
+/// `x,y,z`, as LTX writes a vector.
+impl<T: Display> Display for Vector3d<T> {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+    write!(formatter, "{},{},{}", self.x, self.y, self.z)
+  }
 }
 
 impl Vector3d<f32> {

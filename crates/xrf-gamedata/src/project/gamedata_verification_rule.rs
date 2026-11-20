@@ -1,7 +1,7 @@
-use derive_more::Display;
+use xrf_enum_derive::EnumDisplay;
 
 /// Stable rule identifiers assigned to gamedata verification findings.
-#[derive(Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, EnumDisplay, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum GamedataVerificationRule {
   #[display("animations.hud-item")]

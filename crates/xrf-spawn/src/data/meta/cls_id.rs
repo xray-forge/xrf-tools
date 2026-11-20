@@ -1,7 +1,7 @@
 #![allow(dead_code, reason = "names every engine class, including ones no tool reads yet")]
 
-use enum_map::{Enum, EnumMap};
 use serde::{Deserialize, Serialize};
+use xrf_enum_derive::EnumVariants;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::data::alife::script_dialect::ScriptDialect;
@@ -10,7 +10,7 @@ use crate::data::meta::map::{CLEAR_SKY_SECTION_TO_CLS_ID, SECTION_TO_CLS_ID};
 /// The class a spawned object is created as, named by the configs' `class` key; `SpawnSectionClasses` says which a
 /// section is.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Enum, PartialEq, Serialize, Deserialize, Eq)]
+#[derive(Clone, Debug, EnumVariants, PartialEq, Serialize, Deserialize, Eq)]
 pub enum ClsId {
   AiCrow,
   AiGraph,
@@ -273,7 +273,7 @@ impl ClsId {
 
   /// Every class, in declaration order.
   pub fn all() -> impl Iterator<Item = Self> {
-    EnumMap::<Self, ()>::default().into_iter().map(|(cls_id, ())| cls_id)
+    Self::VARIANTS.iter().cloned()
   }
 
   /// The class a section declares in Call of Pripyat's configs, which the games after it keep.

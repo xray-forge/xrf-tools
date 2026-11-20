@@ -10,13 +10,12 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
-enum-map = { workspace = true }
 log = { workspace = true }
-derive_more = { workspace = true, features = ["display", "from_str"] }
 glam = { workspace = true }
 serde = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-engine-target = { workspace = true }
+xrf-enum-derive = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }

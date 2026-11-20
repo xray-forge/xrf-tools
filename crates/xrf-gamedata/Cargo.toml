@@ -6,13 +6,13 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-derive_more = { workspace = true, features = ["display"] }
 profiling = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 xrf-chunk = { workspace = true }
+xrf-enum-derive = { workspace = true }
 xrf-ltx-project = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }

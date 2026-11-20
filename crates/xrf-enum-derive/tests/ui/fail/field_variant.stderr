@@ -1,0 +1,11 @@
+error: only fieldless variants are supported
+ --> tests/ui/fail/field_variant.rs:6:9
+  |
+6 |   Circle(f32),
+  |         ^^^^^
+
+error: only fieldless variants are supported
+ --> tests/ui/fail/field_variant.rs:7:7
+  |
+7 |   Box { width: f32 },
+  |       ^^^^^^^^^^^^^^

@@ -923,15 +923,6 @@ dependencies = [
 
 [[package]]
 name = "convert_case"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "633458d4ef8c78b72454de2d54fd6ab2e60f9e02be22f3c6104cdc8a4e0fceb9"
-dependencies = [
- "unicode-segmentation",
-]
-
-[[package]]
-name = "convert_case"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1af709f1f33454bf52eadfc8c78b3b9ef9cb26fb54d16dc9cd9a7299f899fd1b"
@@ -1319,12 +1310,10 @@ version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "799a97264921d8623a957f6c3b9011f3b5492f557bbb7a5a19b7fa6d06ba8dcb"
 dependencies = [
- "convert_case 0.10.0",
  "proc-macro2",
  "quote",
  "rustc_version",
  "syn 2.0.119",
- "unicode-xid",
 ]
 
 [[package]]
@@ -1508,26 +1497,6 @@ dependencies = [
  "rustversion",
  "scopeguard",
  "simdutf8",
-]
-
-[[package]]
-name = "enum-map"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4532960034c15ba2f55e9eee631040ecc473c32e6c4b200828c759840f13a06"
-dependencies = [
- "enum-map-derive",
-]
-
-[[package]]
-name = "enum-map-derive"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7127272f64b3e098f7d81f350d672081b879bff896d219c42370dc858b1af9ff"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 3.0.10",
 ]
 
 [[package]]
@@ -8524,6 +8493,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-enum-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.10",
+ "trybuild",
+ "xrf-error",
+]
+
+[[package]]
 name = "xrf-env-flags"
 version = "0.1.0"
 dependencies = [
@@ -8563,7 +8543,7 @@ dependencies = [
 name = "xrf-error-derive"
 version = "0.1.0"
 dependencies = [
- "convert_case 0.12.0",
+ "convert_case",
  "proc-macro2",
  "quote",
  "syn 3.0.10",
@@ -8601,7 +8581,6 @@ name = "xrf-gamedata"
 version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
- "derive_more 2.1.1",
  "profiling",
  "rayon",
  "serde",
@@ -8613,6 +8592,7 @@ dependencies = [
  "xrf-chunk",
  "xrf-dds",
  "xrf-engine-target",
+ "xrf-enum-derive",
  "xrf-environment",
  "xrf-error",
  "xrf-extension",
@@ -8869,7 +8849,6 @@ name = "xrf-math"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "derive_more 2.1.1",
  "glam",
  "serde",
  "serde_json",
@@ -8957,14 +8936,13 @@ name = "xrf-particles"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "derive_more 2.1.1",
- "enum-map",
  "glam",
  "log",
  "serde",
  "serde_json",
  "xrf-chunk",
  "xrf-engine-target",
+ "xrf-enum-derive",
  "xrf-error",
  "xrf-ltx",
  "xrf-math",
@@ -9163,8 +9141,6 @@ name = "xrf-spawn"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "derive_more 2.1.1",
- "enum-map",
  "log",
  "serde",
  "serde_json",
@@ -9172,6 +9148,7 @@ dependencies = [
  "uuid",
  "xrf-chunk",
  "xrf-dltx",
+ "xrf-enum-derive",
  "xrf-error",
  "xrf-ltx",
  "xrf-math",
@@ -9251,13 +9228,13 @@ dependencies = [
 name = "xrf-translation"
 version = "0.1.0"
 dependencies = [
- "derive_more 2.1.1",
  "indexmap 2.14.2",
  "log",
  "serde",
  "serde_json",
  "specta",
  "walkdir",
+ "xrf-enum-derive",
  "xrf-error",
  "xrf-extension",
  "xrf-job",

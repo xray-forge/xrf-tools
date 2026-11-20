@@ -1,0 +1,5 @@
+error: `EnumDisplay` does not support generic enums
+ --> tests/ui/fail/generic_enum.rs:4:12
+  |
+4 | enum Buffer<const N: usize> {
+  |            ^^^^^^^^^^^^^^^^

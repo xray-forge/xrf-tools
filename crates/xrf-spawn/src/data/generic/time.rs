@@ -1,7 +1,7 @@
+use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
 use byteorder::ByteOrder;
-use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReadWriteOptional, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -9,9 +9,8 @@ use xrf_error::{XrfError, XrfResult};
 use crate::constants::NIL;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[display("{year},{month},{day},{hour},{minute},{second},{millis}")]
 pub struct Time {
   pub year: u8,
   pub month: u8,
@@ -20,6 +19,17 @@ pub struct Time {
   pub minute: u8,
   pub second: u8,
   pub millis: u16,
+}
+
+/// `year,month,day,hour,minute,second,millis`, the form `FromStr` reads back.
+impl Display for Time {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+    write!(
+      formatter,
+      "{},{},{},{},{},{},{}",
+      self.year, self.month, self.day, self.hour, self.minute, self.second, self.millis
+    )
+  }
 }
 
 impl ChunkFieldReadWriteOptional for Time {
