@@ -1,774 +1,780 @@
-use enum_map::{EnumMap, enum_map};
-use lazy_static::lazy_static;
-use phf::phf_map;
+use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::meta::cls_id::ClsId;
 
-lazy_static! {
-  pub static ref SECTION_TO_CLS_ID: phf::Map<&'static str, ClsId> = phf_map! {
-    // Base:
-    "actor" => ClsId::SActor,	// O_ACTOR before 122 (cse_alife_creature_actor)
-    "aes_snork" => ClsId::SmSnork, 	 // before 128
-    "af_blood" => ClsId::Artefact,
-    "af_cristall" => ClsId::Artefact,
-    "af_cristall_flower" => ClsId::Artefact,
-    "af_dummy_battery" => ClsId::Artefact,
-    "af_dummy_dummy" => ClsId::Artefact,
-    "af_dummy_glassbeads" => ClsId::Artefact,
-    "af_electra_flash" => ClsId::ScrptArt,
-    "af_electra_moonlight" => ClsId::ScrptArt,
-    "af_electra_sparkler" => ClsId::ScrptArt,
-    "af_fireball" => ClsId::Artefact,
-    "af_fuzz_kolobok" => ClsId::ScrptArt,	 // ARTEFACT before 128
-    "af_gold_fish" => ClsId::Artefact,
-    "af_gravi" => ClsId::Artefact,
-    "af_medusa" => ClsId::Artefact,
-    "af_mincer_meat" => ClsId::Artefact,
-    "af_night_star" => ClsId::Artefact, // SCRPTART before 128
-    "af_soul" => ClsId::Artefact,
-    "af_vyvert" => ClsId::Artefact,
-    "ammo_11.43x23_fmj" => ClsId::AmmoS,
-    "ammo_11.43x23_hydro" => ClsId::AmmoS,
-    "ammo_12x70_buck" => ClsId::AmmoS,
-    "ammo_12x76_zhekan" => ClsId::AmmoS,
-    "ammo_12x76_zhekan_heli" => ClsId::AmmoS,
-    "ammo_5.45x39_ap" => ClsId::AmmoS,
-    "ammo_5.45x39_fmj" => ClsId::AmmoS,
-    "ammo_5.56x45_ap" => ClsId::AmmoS,
-    "ammo_5.56x45_ss190" => ClsId::AmmoS,
-    "ammo_7.62x54_7h1" => ClsId::AmmoS,
-    "ammo_9x18_fmj" => ClsId::AmmoS,
-    "ammo_9x18_pmm" => ClsId::AmmoS,
-    "ammo_9x19_fmj" => ClsId::AmmoS,
-    "ammo_9x19_pbp" => ClsId::AmmoS,
-    "ammo_9x39_ap" => ClsId::AmmoS,
-    "ammo_9x39_pab9" => ClsId::AmmoS,
-    "ammo_gauss" => ClsId::AmmoS,
-    "ammo_m209" => ClsId::SM209, // A_M209 in 124
-    "ammo_og-7b" => ClsId::SOG7B, // A_OG7B in 124
-    "ammo_pkm_100" => ClsId::AmmoS,
-    "ammo_vog-25" => ClsId::SVog25,		// A_VOG25 in 124
-    "antirad" => ClsId::SFood, // II_ANTIR  before 128
-    "attachable_item" => ClsId::IIAttch,
-    "bandage" => ClsId::SFood, // II_BANDG  before 128
-    "bloodsucker_normal" => ClsId::SmBlood,
-    "bloodsucker_strong" => ClsId::SmBlood,
-    "bloodsucker_weak" => ClsId::SmBlood,
-    "boar_normal" => ClsId::SmBoarW,
-    "boar_strong" => ClsId::SmBoarW,
-    "bolt" => ClsId::IIBolt,
-    "bottle_3l" => ClsId::ODstrS,
-    "bread" => ClsId::SFood, // II_FOOD  before 128
-    "breakable_object" => ClsId::OBrkbl,
-    "campfire" => ClsId::ZCFire,
-    "child_bench" => ClsId::ODstrS,
-    "chimera_normal" => ClsId::SmChims,
-    "climable_object" => ClsId::OClmbl,
-    "conserva" => ClsId::SFood, // II_FOOD  before 128
-    "controller_tubeman" => ClsId::SmContr,
-    "cs_heavy_outfit" => ClsId::EStlk,
-    "custom_script_object" => ClsId::NwAttch,
-    "debris_01" => ClsId::ODstrS,
-    "detector_advanced" => ClsId::DetAdva,
-    "detector_elite" => ClsId::DetElit,
-    "detector_simple" => ClsId::DetSimp,
-    "dev_flash_1" => ClsId::DPda,
-    "dev_flash_2" => ClsId::DPda,
-    "device_flare" => ClsId::DFlare,
-    "device_pda" => ClsId::SPda,
-    "device_torch" => ClsId::TorchS,
-    "document" => ClsId::IIDoc,
-    "dog_normal" => ClsId::SmDogS,
-    "dog_strong" => ClsId::SmDogS,
-    "dog_weak" => ClsId::SmDogS,
-    "dolg_heavy_outfit" => ClsId::EStlk,
-    "dolg_outfit" => ClsId::EStlk,
-    "energy_drink" => ClsId::SFood, // II_BOTTL  before 128
-    "exo_outfit" => ClsId::EStlk,
-    "explosive_barrel" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_barrel_low" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_dinamit" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_fuelcan" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_grenade" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_hide" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_mobiltank" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_particle" => ClsId::SExplo, //	#II_EXPLO before 122
-    "explosive_tank" => ClsId::SExplo, //	#II_EXPLO before 122
-    "fire_vedro" => ClsId::ODstrS,
-    "fireball_zone" => ClsId::ZsTorrd,		// Z_TORRID before 128
-    "flesh_normal" => ClsId::SmFlesh,
-    "flesh_strong" => ClsId::SmFlesh,
-    "freezer" => ClsId::ODstrS,
-    "gigant_normal" => ClsId::SmGiant,
-    "graph_point" => ClsId::AiGraph,
-    "grenade_f1" => ClsId::GF1S,
-    "grenade_gd-05" => ClsId::GF1S,
-    "grenade_rgd5" => ClsId::GRgd5S,
-    "guitar_a" => ClsId::IIAttch,
-    "hand_radio" => ClsId::IIAttch,
-    "harmonica_a" => ClsId::IIAttch,
-    "helicopter" => ClsId::CHlcpS,
-    "helicopter_missile" => ClsId::GRpg7,
-    "inventory_box" => ClsId::SInvBox,
-    "kanistra_01" => ClsId::ODstrS,
-    "kanistra_02" => ClsId::ODstrS,
-    "kastrula" => ClsId::ODstrS,
-    "kastrula_up" => ClsId::ODstrS,
-    "kolbasa" => ClsId::SFood, // II_FOOD  before 128
-    "kolyaska_01" => ClsId::ODstrS,
-    "kolyaska_01_braked" => ClsId::ODstrS,
-    "kolyaska_wheel_01_braked" => ClsId::ODstrS,
-    "komp_block" => ClsId::ODstrS,
-    "komp_klava" => ClsId::ODstrS,
-    "komp_monitor" => ClsId::ODstrS,
-    "krujka" => ClsId::ODstrS,
-    "level_changer" => ClsId::LvlChng,
-    "lights_hanging_lamp" => ClsId::SoHLamp,
-    "lights_signal_light" => ClsId::SoHLamp,
-    "lojka" => ClsId::ODstrS,
-    "m_bloodsucker_e" => ClsId::SmBlood,
-    "m_boar_e" => ClsId::SmBoarW,
-    "m_burer_e" => ClsId::SmBurer,
-    "m_car" => ClsId::ScrptCar,
-    "m_chimera_e" => ClsId::SmChims,
-    "m_controller_e" => ClsId::SmContr,
-    "m_controller_normal" => ClsId::SmContr,
-    "m_crow" => ClsId::AiCrow,
-    "m_dog_e" => ClsId::SmDogS,
-    "m_flesh_e" => ClsId::SmFlesh,
-    "m_gigant_e" => ClsId::SmGiant,
-    "m_phantom" => ClsId::AiPhant,
-    "m_poltergeist_e" => ClsId::SmPoltr,
-    "m_poltergeist_normal_flame" => ClsId::SmPoltr,
-    "m_poltergeist_normal_tele" => ClsId::SmPoltr,
-    "m_pseudodog_e" => ClsId::SmPDog,
-    "m_snork_e" => ClsId::SmSnork,
-    "m_tushkano_e" => ClsId::SmTushk,
-    "med_stolik_01" => ClsId::ODstrS,
-    "medkit" => ClsId::SFood, // II_MEDKI  before 128
-    "medkit_army" => ClsId::SFood, // II_MEDKI  before 128
-    "medkit_scientic" => ClsId::SFood, // II_MEDKI  before 128
-    "military_outfit" => ClsId::EStlk,
-    "miska" => ClsId::ODstrS,
-    "new_attachable_item" => ClsId::IIBttch,
-    "notebook" => ClsId::ODstrS,
-    "novice_outfit" => ClsId::EStlk,
-    "ognetushitel" => ClsId::ODstrS,
-    "online_offline_group" => ClsId::OnOffS,
-    "ph_skeleton_object" => ClsId::PSkelet,
-    "physic_destroyable_object" => ClsId::ODstrS,
-    "physic_object" => ClsId::OPhysS,
-    "priemnik_gorizont" => ClsId::ODstrS,
-    "pseudodog_normal" => ClsId::SmPDog,
-    "psy_dog" => ClsId::SmDogP,
-    "psy_dog_phantom" => ClsId::SmDogF,
-    "rupor" => ClsId::ODstrS,
-    "scientific_outfit" => ClsId::EStlk,
-    "script_object" => ClsId::ScrptObj,
-    "script_zone" => ClsId::ScriptZn,
-    "search_light" => ClsId::OSearch,
-    "shooting_target_1" => ClsId::ODstrS,
-    "sim_default_duty_2" => ClsId::AiStlS,
-    "sim_default_military_2" => ClsId::AiStlS,
-    "sim_default_military_3" => ClsId::AiStlS,
-    "sim_default_stalker_3" => ClsId::AiStlS,
-    "sim_faction" => ClsId::ScriptZn, // S_FACTION in Clear Sky
-    "smart_cover" => ClsId::SmrtCS,
-    "smart_terrain" => ClsId::SmrtTrrn,
-    "snork_indoor" => ClsId::SmSnork,
-    "snork_jumper" => ClsId::SmSnork,
-    "snork_normal" => ClsId::SmSnork,
-    "snork_outdoor" => ClsId::SmSnork,
-    "snork_strong" => ClsId::SmSnork,
-    "snork_weak" => ClsId::SmSnork,
-    "space_restrictor" => ClsId::SpcRsS,
-    "specops_outfit" => ClsId::EStlk,
-    "stalker" => ClsId::AiStlS,
-    "stalker_die_hard" => ClsId::AiStlS,
-    "stalker_outfit" => ClsId::EStlk,
-    "stalker_sakharov" => ClsId::AiStlS,
-    "stalker_strelok" => ClsId::AiStlS,
-    "stalker_zombied" => ClsId::AiStlS,
-    "stationary_mgun" => ClsId::WSTMGun,
-    "svoboda_heavy_outfit" => ClsId::EStlk,
-    "svoboda_light_outfit" => ClsId::EStlk,
-    "table_lamp_01" => ClsId::ODstrS,
-    "tarelka1" => ClsId::ODstrS,
-    "tarelka2" => ClsId::ODstrS,
-    "teapot_1" => ClsId::ODstrS,
-    "tiski" => ClsId::ODstrS,
-    "transiver" => ClsId::ODstrS,
-    "tushkano_normal" => ClsId::SmTushk,
-    "tv_1" => ClsId::ODstrS,
-    "vedro_01" => ClsId::ODstrS,
-    "vodka" => ClsId::SFood, // II_BOTTL  before 128
-    "wheel_litter_01" => ClsId::ODstrS,
-    "wheel_litter_01_braked" => ClsId::ODstrS,
-    "wpn_abakan" => ClsId::WpAk74,
-    "wpn_addon_grenade_launcher" => ClsId::WpGLaun,
-    "wpn_addon_grenade_launcher_m203" => ClsId::WpGLaun,
-    "wpn_addon_scope" => ClsId::WpScope,
-    "wpn_addon_scope_susat" => ClsId::WpScope,
-    "wpn_addon_silencer" => ClsId::WpSilen,
-    "wpn_ak74" => ClsId::WpAk74,
-    "wpn_ak74u" => ClsId::WpAk74,
-    "wpn_beretta" => ClsId::WpLR300,// WP_PM before 128
-    "wpn_binoc" => ClsId::WpBinoc,
-    "wpn_bm16" => ClsId::WpBM16,
-    "wpn_colt1911" => ClsId::WpPM,
-    "wpn_desert_eagle" => ClsId::WpPM,
-    "wpn_fake_missile" => ClsId::GFake,
-    "wpn_fake_missile1" => ClsId::GFake,
-    "wpn_fake_missile2" => ClsId::GFake,
-    "wpn_fn2000" => ClsId::WpGroza,
-    "wpn_fort" => ClsId::WpPM,
-    "wpn_g36" => ClsId::WpAk74,
-    "wpn_gauss" => ClsId::WpSVD,
-    "wpn_groza" => ClsId::WpAk74,
-    "wpn_hpsa" => ClsId::WpHPSA,
-    "wpn_knife" => ClsId::WpKnife,
-    "wpn_l85" => ClsId::WpAk74,
-    "wpn_lr300" => ClsId::WpAk74,
-    "wpn_mp5" => ClsId::WpLR300,
-    "wpn_pb" => ClsId::WpPM,
-    "wpn_pkm" => ClsId::WpAk74,
-    "wpn_pm" => ClsId::WpPM,
-    "wpn_rg-6" => ClsId::WpRG6,
-    "wpn_rpg7" => ClsId::WpRPG7,
-    "wpn_rpg7_missile" => ClsId::GRpg7,
-    "wpn_sig220" => ClsId::WpLR300, // WP_PM before 128
-    "wpn_sig550" => ClsId::WpAk74,
-    "wpn_spas12" => ClsId::WpAshTG,
-    "wpn_svd" => ClsId::WpSVD,
-    "wpn_svu" => ClsId::WpSVU,
-    "wpn_toz34" => ClsId::WpBM16,
-    "wpn_usp" => ClsId::WpLR300,	 // WP_USP45 before 128
-    "wpn_val" => ClsId::WpVAL,
-    "wpn_vintorez" => ClsId::WpAk74, // WP_VINT in soc
-    "wpn_walther" => ClsId::WpLR300, // WP_WALTH - soc, WP_PM - cs
-    "wpn_wincheaster1300" => ClsId::WpAshTG,
-    "zone_burning_fuzz" => ClsId::ZsBFuzz,
-    "zone_burning_fuzz_average" => ClsId::ZsBFuzz,
-    "zone_burning_fuzz_strong" => ClsId::ZsBFuzz,
-    "zone_burning_fuzz_weak" => ClsId::ZsBFuzz,
-    "zone_buzz" => ClsId::ZsMBald,
-    "zone_buzz_average" => ClsId::ZsMBald,
-    "zone_buzz_strong" => ClsId::ZsMBald,
-    "zone_buzz_weak" => ClsId::ZsMBald,
-    "zone_field_acidic" => ClsId::ZsRadio,
-    "zone_field_acidic_average" => ClsId::ZsRadio,
-    "zone_field_acidic_strong" => ClsId::ZsRadio,
-    "zone_field_acidic_weak" => ClsId::ZsRadio,
-    "zone_field_psychic" => ClsId::ZsRadio,
-    "zone_field_psychic_average" => ClsId::ZsRadio,
-    "zone_field_psychic_strong" => ClsId::ZsRadio,
-    "zone_field_psychic_weak" => ClsId::ZsRadio,
-    "zone_field_radioactive" => ClsId::ZsRadio,
-    "zone_field_radioactive_average" => ClsId::ZsRadio,
-    "zone_field_radioactive_strong" => ClsId::ZsRadio,
-    "zone_field_radioactive_weak" => ClsId::ZsRadio,
-    "zone_field_thermal" => ClsId::ZsRadio,
-    "zone_field_thermal_average" => ClsId::ZsRadio,
-    "zone_field_thermal_strong" => ClsId::ZsRadio,
-    "zone_field_thermal_weak" => ClsId::ZsRadio,
-    "zone_gravi_zone" => ClsId::ZsGalan,
-    "zone_mine_acidic" => ClsId::ZsMBald,
-    "zone_mine_acidic_average" => ClsId::ZsMBald,
-    "zone_mine_acidic_strong" => ClsId::ZsMBald,
-    "zone_mine_acidic_weak" => ClsId::ZsMBald,
-    "zone_mine_electric" => ClsId::ZsMBald,
-    "zone_mine_electric_average" => ClsId::ZsMBald,
-    "zone_mine_electric_strong" => ClsId::ZsMBald,
-    "zone_mine_electric_weak" => ClsId::ZsMBald,
-    "zone_mine_field" => ClsId::ZMbald,
-    "zone_mine_gravitational_average" => ClsId::ZsGalan,
-    "zone_mine_gravitational_strong" => ClsId::ZsMince,
-    "zone_mine_gravitational_weak" => ClsId::ZsMBald,
-    "zone_mine_thermal" => ClsId::ZsMBald,
-    "zone_mine_thermal_average" => ClsId::ZsMBald,
-    "zone_mine_thermal_strong" => ClsId::ZsMBald,
-    "zone_mine_thermal_weak" => ClsId::ZsMBald,
-    "zone_no_gravity" => ClsId::ZNoGrav,
-    "zone_radioactive" => ClsId::ZRadio,
-    "zone_radioactive_average" => ClsId::ZRadio,
-    "zone_radioactive_strong" => ClsId::ZRadio,
-    "zone_radioactive_weak" => ClsId::ZRadio,
-    "zone_team_base" => ClsId::ZTeamBs,
-    "zone_teleport" => ClsId::ZMbald,
-    "zone_witches_galantine" => ClsId::ZsMBald,
-    "zone_witches_galantine_average" => ClsId::ZsMBald,
-    "zone_witches_galantine_strong" => ClsId::ZsMBald,
-    "zone_witches_galantine_weak" => ClsId::ZsMBald,
-    "zone_zharka_static" => ClsId::ZsMBald,
-    "zone_zharka_static_average" => ClsId::ZsMBald,
-    "zone_zharka_static_strong" => ClsId::ZsMBald,
-    "zone_zharka_static_weak" => ClsId::ZsMBald,
-    // COP:
-    "af_baloon" => ClsId::Artefact,
-    "af_compass" => ClsId::ScrptArt,
-    "af_eye" => ClsId::Artefact,
-    "af_fire" => ClsId::Artefact,
-    "af_glass" => ClsId::Artefact,
-    "af_ice" => ClsId::Artefact,
-    "af_oasis_heart" => ClsId::ScrptArt,
-    "af_quest_b14_twisted" => ClsId::ScrptArt,
-    "ammo_gauss_cardan" => ClsId::AmmoS,
-    "anomal_zone" => ClsId::SpcRsS,
-    "anomaly_scaner" => ClsId::IIAttch,
-    "axe" => ClsId::ODstrS,
-    "balloon_poison_gas" => ClsId::ODstrS,
-    "balon_01" => ClsId::ODstrS,
-    "balon_02" => ClsId::ODstrS,
-    "balon_02a" => ClsId::ODstrS,
-    "balon_02link" => ClsId::ODstrS,
-    "banka_kraski_1" => ClsId::ODstrS,
-    "bidon" => ClsId::ODstrS,	// O_PHYS_S before 128
-    "bludo" => ClsId::ODstrS,
-    "boar_jup_b9" => ClsId::SmBoarW,
-    "bochka_close_1" => ClsId::ODstrS,
-    "bochka_close_2" => ClsId::ODstrS,
-    "bochka_close_3" => ClsId::ODstrS,
-    "bochka_close_4" => ClsId::ODstrS,
-    "booster" => ClsId::SFood,
-    "box_1a" => ClsId::ODstrS,
-    "box_1b" => ClsId::ODstrS,
-    "box_1c" => ClsId::ODstrS,
-    "box_bottle_1" => ClsId::ODstrS,
-    "box_metall_01" => ClsId::ODstrS,
-    "box_paper" => ClsId::ODstrS,
-    "box_wood_01" => ClsId::ODstrS,
-    "box_wood_02" => ClsId::ODstrS,
-    "burer_normal" => ClsId::SmBurer,
-    "camp_zone" => ClsId::SpcRsS,
-    "detector_scientific" => ClsId::DetScie,
-    "device_flash_snag" => ClsId::SPda,
-    "device_pda_port_bandit_leader" => ClsId::SPda,
-    "device_pda_zat_b5_dealer" => ClsId::SPda,
-    "disel_generator" => ClsId::ODstrS,
-    "dog_cute" => ClsId::SmDogS,
-    "door_lab_x8" => ClsId::OPhysS,
-    "drug_anabiotic" => ClsId::SFood,
-    "drug_antidot" => ClsId::SFood,
-    "drug_booster" => ClsId::SFood,
-    "drug_coagulant" => ClsId::SFood,
-    "drug_psy_blockade" => ClsId::SFood,
-    "drug_radioprotector" => ClsId::SFood,
-    "explosive_gaz_balon" => ClsId::SExplo,
-    "fireball_acidic_zone" => ClsId::ZsTorrd,
-    "fireball_electric_zone" => ClsId::ZsTorrd,
-    "flesh_jup_b9" => ClsId::SmFlesh,
-    "gaz_balon" => ClsId::ODstrS,
-    "gaz_plita" => ClsId::ODstrS,
-    "gaz_plita_small" => ClsId::ODstrS,
-    "hammer" => ClsId::ODstrS,
-    "hand_radio_r" => ClsId::IIAttch,
-    "hatch_01" => ClsId::ODstrS,
-    "helm_battle" => ClsId::EHlmet,
-    "helm_hardhat" => ClsId::EHlmet,
-    "helm_hardhat_snag" => ClsId::EHlmet,
-    "helm_protective" => ClsId::EHlmet,
-    "helm_respirator" => ClsId::EHlmet,
-    "helm_respirator_joker" => ClsId::EHlmet,
-    "helm_tactic" => ClsId::EHlmet,
-    "helmet" => ClsId::EHlmet,
-    "jup_a9_conservation_info" => ClsId::SPda,
-    "jup_a9_delivery_info" => ClsId::SPda,
-    "jup_a9_evacuation_info" => ClsId::SPda,
-    "jup_a9_losses_info" => ClsId::SPda,
-    "jup_a9_meeting_info" => ClsId::SPda,
-    "jup_a9_power_info" => ClsId::SPda,
-    "jup_a9_way_info" => ClsId::SPda,
-    "jup_b10_notes_01" => ClsId::SPda,
-    "jup_b10_notes_02" => ClsId::SPda,
-    "jup_b10_notes_03" => ClsId::SPda,
-    "jup_b10_ufo_memory" => ClsId::SPda,
-    "jup_b10_ufo_memory_2" => ClsId::SPda,
-    "jup_b16_pseudodog_strong" => ClsId::SmDogP,
-    "jup_b1_controller" => ClsId::SmContr,
-    "jup_b1_half_artifact" => ClsId::ScrptArt,
-    "jup_b1_tushkano_target" => ClsId::SmTushk,
-    "jup_b200_tech_materials_acetone" => ClsId::SPda,
-    "jup_b200_tech_materials_capacitor" => ClsId::SPda,
-    "jup_b200_tech_materials_textolite" => ClsId::SPda,
-    "jup_b200_tech_materials_transistor" => ClsId::SPda,
-    "jup_b200_tech_materials_wire" => ClsId::SPda,
-    "jup_b202_bandit_pda" => ClsId::SPda,
-    "jup_b205_sokolov_note" => ClsId::SPda,
-    "jup_b206_plant" => ClsId::SPda,
-    "jup_b206_plant_ph" => ClsId::ODstrS,
-    "jup_b207_depot_cover" => ClsId::OPhysS,
-    "jup_b207_merc_pda_with_contract" => ClsId::SPda,
-    "jup_b209_monster_scanner" => ClsId::SPda,
-    "jup_b209_ph_scanner" => ClsId::OPhysS,
-    "jup_b212_chimera_killer" => ClsId::SmChims,
-    "jup_b219_gate" => ClsId::OPhysS,
-    "jup_b32_ph_scanner" => ClsId::OPhysS,
-    "jup_b32_scanner_device" => ClsId::SPda,
-    "jup_b41_af_half_artifact" => ClsId::OPhysS,
-    "jup_b41_af_oasis_heart" => ClsId::OPhysS,
-    "jup_b43_af_fuzz_kolobok" => ClsId::OPhysS,
-    "jup_b43_af_mincer_meat" => ClsId::OPhysS,
-    "jup_b46_duty_founder_pda" => ClsId::SPda,
-    "jup_b47_jupiter_products_info" => ClsId::SPda,
-    "jup_b47_merc_pda" => ClsId::SPda,
-    "jup_b6_bloodsucker_1" => ClsId::SmBlood,
-    "jup_b6_bloodsucker_2" => ClsId::SmBlood,
-    "jup_b6_bloodsucker_3" => ClsId::SmBlood,
-    "jup_b9_blackbox" => ClsId::SPda,
-    "keyga" => ClsId::ODstrS,
-    "krisagenerator" => ClsId::ODstrS,
-    "labx8_poltergeist" => ClsId::SmPoltr,
-    "lopata" => ClsId::ODstrS,
-    "lx8_1_tushkano_1" => ClsId::SmTushk,
-    "lx8_1_tushkano_2" => ClsId::SmTushk,
-    "lx8_1_tushkano_3" => ClsId::SmTushk,
-    "lx8_1_tushkano_4" => ClsId::SmTushk,
-    "lx8_2_tushkano_1" => ClsId::SmTushk,
-    "lx8_2_tushkano_2" => ClsId::SmTushk,
-    "lx8_2_tushkano_3" => ClsId::SmTushk,
-    "lx8_2_tushkano_4" => ClsId::SmTushk,
-    "lx8_burer" => ClsId::SmBurer,
-    "lx8_burer_2" => ClsId::SmBurer,
-    "lx8_burer_3" => ClsId::SmBurer,
-    "lx8_controller" => ClsId::SmContr,
-    "lx8_lab_tushkano_1" => ClsId::SmTushk,
-    "lx8_lab_tushkano_2" => ClsId::SmTushk,
-    "lx8_lab_tushkano_3" => ClsId::SmTushk,
-    "lx8_lab_tushkano_4" => ClsId::SmTushk,
-    "lx8_lab_tushkano_5" => ClsId::SmTushk,
-    "lx8_lab_tushkano_6" => ClsId::SmTushk,
-    "lx8_lab_tushkano_7" => ClsId::SmTushk,
-    "lx8_lab_tushkano_8" => ClsId::SmTushk,
-    "lx8_litf_tushkano_1" => ClsId::SmTushk,
-    "lx8_litf_tushkano_2" => ClsId::SmTushk,
-    "lx8_litf_tushkano_3" => ClsId::SmTushk,
-    "lx8_litf_tushkano_4" => ClsId::SmTushk,
-    "lx8_litf_tushkano_5" => ClsId::SmTushk,
-    "lx8_poltergeist" => ClsId::SmPoltr,
-    "lx8_service_instruction" => ClsId::SPda,
-    "lx8_snork" => ClsId::SmSnork,
-    "lx8_snork_1_jump" => ClsId::SmSnork,
-    "lx8_snork_2_jump" => ClsId::SmSnork,
-    "lx8_toilet_burer" => ClsId::SmBurer,
-    "lx8_upper_tushkano_1" => ClsId::SmTushk,
-    "lx8_upper_tushkano_2" => ClsId::SmTushk,
-    "lx8_upper_tushkano_3" => ClsId::SmTushk,
-    "lx8_upper_tushkano_4" => ClsId::SmTushk,
-    "lx8_upper_tushkano_5" => ClsId::SmTushk,
-    "lx8_upper_tushkano_6" => ClsId::SmTushk,
-    "lx8_upper_tushkano_7" => ClsId::SmTushk,
-    "medkit_script" => ClsId::SFood,
-    "molot" => ClsId::ODstrS,
-    "museum_abakan" => ClsId::ODstrS,
-    "museum_ak74" => ClsId::ODstrS,
-    "museum_ak74u" => ClsId::ODstrS,
-    "museum_ammo_12x70_buck" => ClsId::ODstrS,
-    "museum_ammo_545x39_fmj" => ClsId::ODstrS,
-    "museum_ammo_762x54_7h14" => ClsId::ODstrS,
-    "museum_bm16" => ClsId::ODstrS,
-    "museum_groza" => ClsId::ODstrS,
-    "museum_lr300" => ClsId::ODstrS,
-    "museum_rg6" => ClsId::ODstrS,
-    "museum_rpg7" => ClsId::ODstrS,
-    "museum_sig550" => ClsId::ODstrS,
-    "museum_spas12" => ClsId::ODstrS,
-    "museum_svd" => ClsId::ODstrS,
-    "museum_toz34" => ClsId::ODstrS,
-    "museum_val" => ClsId::ODstrS,
-    "museum_vintorez" => ClsId::ODstrS,
-    "museum_winchester1300" => ClsId::ODstrS,
-    "pas_b400_tushkano_smart" => ClsId::SmTushk,
-    "physic_door" => ClsId::ODstrS,
-    "pick" => ClsId::ODstrS,
-    "pri_a15_documents" => ClsId::IIAttch,
-    "pri_a15_wpn_ak74" => ClsId::IIAttch,
-    "pri_a15_wpn_ak74u" => ClsId::IIAttch,
-    "pri_a15_wpn_svu" => ClsId::IIAttch,
-    "pri_a15_wpn_wincheaster1300" => ClsId::IIAttch,
-    "pri_a17_gauss_rifle" => ClsId::WpSVD,
-    "pri_a19_american_experiment_info" => ClsId::SPda,
-    "pri_a19_lab_x10_info" => ClsId::SPda,
-    "pri_a19_lab_x16_info" => ClsId::SPda,
-    "pri_a19_lab_x18_info" => ClsId::SPda,
-    "pri_a19_lab_x7_info" => ClsId::SPda,
-    "pri_a25_antenna_grenade" => ClsId::SExplo,
-    "pri_a25_enter_door_explosive_grenade" => ClsId::SExplo,
-    "pri_a25_explosive_charge" => ClsId::OPhysS,
-    "pri_a25_explosive_charge_item" => ClsId::DPda,
-    "pri_a25_poltergeist" => ClsId::SmPoltr,
-    "pri_a28_actor_hideout" => ClsId::OPhysS,
-    "pri_a28_earth_helli_1" => ClsId::OPhysS,
-    "pri_a28_earth_helli_2" => ClsId::OPhysS,
-    "pri_b301_snork_1" => ClsId::SmSnork,
-    "pri_b301_snork_2" => ClsId::SmSnork,
-    "pri_b301_snork_3" => ClsId::SmSnork,
-    "pri_b301_snork_4" => ClsId::SmSnork,
-    "pri_b301_snork_5" => ClsId::SmSnork,
-    "pri_b306_envoy_pda" => ClsId::SPda,
-    "pri_b35_lab_x8_key" => ClsId::DPda,
-    "pri_b36_monolith_hiding_place_pda" => ClsId::SPda,
-    "psy_dog_normal" => ClsId::SmDogP,
-    "riffler" => ClsId::ODstrS,
-    "saw" => ClsId::ODstrS,
-    "snork_indoor_normal" => ClsId::SmSnork,
-    "snork_indoor_strong" => ClsId::SmSnork,
-    "snork_indoor_weak" => ClsId::SmSnork,
-    "snork_weak_special" => ClsId::SmSnork,
-    "speakerphone" => ClsId::ODstrS,
-    "stalker_outfit_barge" => ClsId::EStlk,
-    "stul_child_01" => ClsId::ODstrS,
-    "stul_school_01" => ClsId::ODstrS,
-    "stul_school_01_br" => ClsId::ODstrS,
-    "stul_wood_01" => ClsId::ODstrS,
-    "taburet_village" => ClsId::ODstrS,
-    "taburet_wood_01" => ClsId::ODstrS,
-    "toolkit_1" => ClsId::SPda,
-    "toolkit_2" => ClsId::SPda,
-    "toolkit_3" => ClsId::SPda,
-    "ventilator_01" => ClsId::ODstrS,
-    "ventilator_02" => ClsId::ODstrS,
-    "ventilator_03" => ClsId::ODstrS,
-    "ventilator_04" => ClsId::ODstrS,
-    "ventilator_05" => ClsId::ODstrS,
-    "vodka_script" => ClsId::SFood,
-    "wood_fence_1" => ClsId::ODstrS,
-    "wood_fence_2" => ClsId::ODstrS,
-    "wood_fence_3" => ClsId::ODstrS,
-    "wood_fence_4" => ClsId::ODstrS,
-    "wpn_addon_scope_detector" => ClsId::WpScope,
-    "wpn_addon_scope_night" => ClsId::WpScope,
-    "wpn_addon_scope_susat_custom" => ClsId::WpScope,
-    "wpn_addon_scope_susat_dusk" => ClsId::WpScope,
-    "wpn_addon_scope_susat_night" => ClsId::WpScope,
-    "wpn_addon_scope_susat_x1.6" => ClsId::WpScope,
-    "wpn_addon_scope_x2.7" => ClsId::WpScope,
-    "wpn_ak74u_snag" => ClsId::WpAk74,
-    "wpn_desert_eagle_nimble" => ClsId::WpPM,
-    "wpn_fn2000_nimble" => ClsId::WpGroza,
-    "wpn_fort_snag" => ClsId::WpPM,
-    "wpn_g36_nimble" => ClsId::WpAk74,
-    "wpn_groza_nimble" => ClsId::WpAk74,
-    "wpn_groza_specops" => ClsId::WpAk74,
-    "wpn_mp5_nimble" => ClsId::WpLR300,
-    "wpn_pkm_zulus" => ClsId::WpAk74,
-    "wpn_pm_actor" => ClsId::WpPM,
-    "wpn_protecta" => ClsId::WpAshTG,
-    "wpn_protecta_nimble" => ClsId::WpAshTG,
-    "wpn_sig220_nimble" => ClsId::WpLR300,
-    "wpn_sig550_luckygun" => ClsId::WpAk74,
-    "wpn_spas12_nimble" => ClsId::WpAshTG,
-    "wpn_svd_nimble" => ClsId::WpSVD,
-    "wpn_svu_nimble" => ClsId::WpSVU,
-    "wpn_usp_nimble" => ClsId::WpLR300,
-    "wpn_vintorez_nimble" => ClsId::WpAk74,
-    "wpn_wincheaster1300_trapper" => ClsId::WpAshTG,
-    "zat_a23_access_card" => ClsId::DPda,
-    "zat_a23_gauss_rifle_docs" => ClsId::SPda,
-    "zat_a23_labx8_key" => ClsId::DPda,
-    "zat_b106_chimera" => ClsId::SmChims,
-    "zat_b12_documents_1" => ClsId::SPda,
-    "zat_b12_documents_2" => ClsId::SPda,
-    "zat_b12_key_1" => ClsId::DPda,
-    "zat_b12_key_2" => ClsId::DPda,
-    "zat_b18_dog" => ClsId::SmPDog,
-    "zat_b18_dog_noah" => ClsId::SmPDog,
-    "zat_b20_noah_pda" => ClsId::SPda,
-    "zat_b22_medic_pda" => ClsId::SPda,
-    "zat_b33_safe_container" => ClsId::SPda,
-    "zat_b38_bloodsucker_1" => ClsId::SmBlood,
-    "zat_b38_bloodsucker_2" => ClsId::SmBlood,
-    "zat_b38_bloodsucker_corpse" => ClsId::SmBlood,
-    "zat_b39_joker_pda" => ClsId::SPda,
-    "zat_b40_notebook" => ClsId::SPda,
-    "zat_b40_pda_1" => ClsId::SPda,
-    "zat_b40_pda_2" => ClsId::SPda,
-    "zat_b44_barge_pda" => ClsId::SPda,
-    "zat_b57_gas" => ClsId::SPda,
-    "zat_b57_ph_gas" => ClsId::OPhysS,
-    "zone_mine_acidic_big" => ClsId::ZsMBald,
-    "zone_mine_chemical_average" => ClsId::ZsMBald,
-    "zone_mine_chemical_strong" => ClsId::ZsMBald,
-    "zone_mine_chemical_weak" => ClsId::ZsMBald,
-    "zone_mine_gravitational_big" => ClsId::ZsMince,
-    "zone_mine_static_average" => ClsId::ZsMBald,
-    "zone_mine_static_strong" => ClsId::ZsMBald,
-    "zone_mine_static_weak" => ClsId::ZsMBald,
-    "zone_mine_steam_average" => ClsId::ZsMBald,
-    "zone_mine_steam_strong" => ClsId::ZsMBald,
-    "zone_mine_steam_weak" => ClsId::ZsMBald,
-    // CoC and Anomaly:
-    "agru_door" => ClsId::OPhysS, // O_PHYSIC in CoC
-    "ammo_12x76_dart" => ClsId::AmmoS, // AMMO
-    "ammo_7.62x54_7h14" => ClsId::AmmoS, // AMMO
-    "ammo_7.62x54_ap" => ClsId::AmmoS, // AMMO
-    "decoder" => ClsId::IIAttch,
-    "flesh_weak" => ClsId::SmFlesh,
-    "generator_dust_static" => ClsId::ZMbald,
-    "generator_electra" => ClsId::ZMbald,
-    "generator_torrid" => ClsId::ZTorrid,
-    "itm_repairkit_tier_1" => ClsId::SFood, // II_FOOD, Anomaly only
-    "itm_repairkit_tier_2" => ClsId::SFood, // II_FOOD, Anomaly only
-    "itm_repairkit_tier_3" => ClsId::SFood, // II_FOOD, Anomaly only
-    "m_lesnik" => ClsId::AiTrdS,
-    "m_trader" => ClsId::AiTrdS,
-    "main_story_1_quest_case" => ClsId::IIAttch,
-    "main_story_2_lab_x18_documents" => ClsId::IIAttch,
-    "main_story_4_lab_x10_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
-    "main_story_5_lab_x8_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
-    "main_story_6_jup_ug_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
-    "main_story_7_mon_con_documents" => ClsId::DPda, // Anomaly declares II_ATTCH, its spawn stores a pda
-    "mine_actor" => ClsId::SExplo, // II_EXPLO
-    "pri_decoder_documents" => ClsId::IIAttch,
-    "red_forest_bridge" => ClsId::OPhysS, // O_PHYSIC in CoC
-    "zone_burning_fuzz1" => ClsId::ZsBFuzz,
-    "zone_emi" => ClsId::ZsMBald,
-    "zone_mine_field_soc" => ClsId::ZsMBald,
-    "zone_monolith" => ClsId::ZsRadio,
-    "zone_mosquito_bald" => ClsId::ZsMBald,
-    "zone_mosquito_bald_average" => ClsId::ZsMBald,
-    "zone_mosquito_bald_strong" => ClsId::ZsMBald,
-    "zone_mosquito_bald_weak" => ClsId::ZsMBald,
-    "zone_zhar" => ClsId::ZsMBald,
-    // Multiplayer, CoP's `configs/mp`, by the `class` each declares or inherits: a launcher's `W_AK74` and `W_GROZA`
-    // read one more byte than `W_PM`, `W_VAL` or `W_SVD`.
-    "mp_af_electra_flash" => ClsId::ScrptArt, // ARTEFACT
-    "mp_ammo_11.43x23_fmj" => ClsId::AmmoS, // AMMO
-    "mp_ammo_11.43x23_hydro" => ClsId::AmmoS, // AMMO
-    "mp_ammo_12x70_buck" => ClsId::AmmoS, // AMMO
-    "mp_ammo_12x76_zhekan" => ClsId::AmmoS, // AMMO
-    "mp_ammo_5.45x39_ap" => ClsId::AmmoS, // AMMO
-    "mp_ammo_5.45x39_fmj" => ClsId::AmmoS, // AMMO
-    "mp_ammo_5.56x45_ap" => ClsId::AmmoS, // AMMO
-    "mp_ammo_5.56x45_ss190" => ClsId::AmmoS, // AMMO
-    "mp_ammo_7.62x54_7h1" => ClsId::AmmoS, // AMMO
-    "mp_ammo_7.62x54_ap" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x18_fmj" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x18_pmm" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x19_fmj" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x19_fmj_4mp5" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x19_pbp" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x19_pbp_4mp5" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x39_ap" => ClsId::AmmoS, // AMMO
-    "mp_ammo_9x39_pab9" => ClsId::AmmoS, // AMMO
-    "mp_ammo_gauss" => ClsId::AmmoS, // AMMO
-    "mp_ammo_m209" => ClsId::SM209, // AMMO
-    "mp_ammo_og-7b" => ClsId::SOG7B, // AMMO
-    "mp_ammo_pkm_100" => ClsId::AmmoS, // AMMO
-    "mp_ammo_vog-25" => ClsId::SVog25, // AMMO
-    "mp_antirad" => ClsId::SFood, // II_ANTIR
-    "mp_antirad_old" => ClsId::SFood, // II_ANTIR
-    "mp_bandage" => ClsId::SFood, // II_BANDG
-    "mp_detector_advanced" => ClsId::DetElit, // DET_ELIT
-    "mp_device_torch" => ClsId::TorchS, // TORCH_S
-    "mp_drug_coagulant" => ClsId::SFood, // II_FOOD
-    "mp_drug_radioprotector" => ClsId::SFood, // II_FOOD
-    "mp_energy_drink" => ClsId::SFood, // II_BOTTL
-    "mp_exo_outfit" => ClsId::EStlk, // EQU_EXO
-    "mp_explosive_barrel" => ClsId::SExplo, // II_EXPLO
-    "mp_explosive_fuelcan" => ClsId::SExplo, // II_EXPLO
-    "mp_explosive_tank" => ClsId::SExplo, // II_EXPLO
-    "mp_grenade_f1" => ClsId::GF1S, // G_F1
-    "mp_grenade_gd-05" => ClsId::GF1S, // G_F1
-    "mp_grenade_rgd5" => ClsId::GRgd5S, // G_RGD5
-    "mp_medkit" => ClsId::SFood, // II_MEDKI
-    "mp_medkit_army" => ClsId::SFood, // II_MEDKI
-    "mp_medkit_old" => ClsId::SFood, // S_MEDKI
-    "mp_medkit_scientic" => ClsId::SFood, // II_MEDKI
-    "mp_military_stalker_outfit" => ClsId::EStlk, // EQU_MLTR
-    "mp_scientific_outfit" => ClsId::EStlk, // EQU_SCIE
-    "mp_wood_stolb_fixed" => ClsId::ODstrS, // P_DSTRBL
-    "mp_wpn_abakan" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_addon_grenade_launcher" => ClsId::WpGLaun, // W_GLAUNC
-    "mp_wpn_addon_grenade_launcher_m203" => ClsId::WpGLaun, // W_GLAUNC
-    "mp_wpn_addon_scope" => ClsId::WpScope, // W_SCOPE
-    "mp_wpn_addon_scope_susat" => ClsId::WpScope, // W_SCOPE
-    "mp_wpn_addon_silencer" => ClsId::WpSilen, // W_SILENC
-    "mp_wpn_ak74" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_ak74u" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_beretta" => ClsId::WpPM, // W_PM
-    "mp_wpn_binoc" => ClsId::WpBinoc, // W_BINOC
-    "mp_wpn_bm16" => ClsId::WpBM16, // W_BM16
-    "mp_wpn_colt1911" => ClsId::WpPM, // W_PM
-    "mp_wpn_desert_eagle" => ClsId::WpPM, // W_PM
-    "mp_wpn_fake_missile" => ClsId::GFake, // G_FAKE
-    "mp_wpn_fake_missile1" => ClsId::GFake, // G_FAKE
-    "mp_wpn_fake_missile2" => ClsId::GFake, // G_FAKE
-    "mp_wpn_fn2000" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_fort" => ClsId::WpPM, // W_FORT
-    "mp_wpn_g36" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_gauss" => ClsId::WpSVD, // W_SVD
-    "mp_wpn_groza" => ClsId::WpGroza, // W_GROZA
-    "mp_wpn_hpsa" => ClsId::WpHPSA, // W_HPSA
-    "mp_wpn_knife" => ClsId::WpKnife, // W_KNIFE
-    "mp_wpn_l85" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_lr300" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_mp5" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_pb" => ClsId::WpPM, // W_PM
-    "mp_wpn_pkm" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_pm" => ClsId::WpPM, // W_PM
-    "mp_wpn_protecta" => ClsId::WpAshTG, // W_SHOTGN
-    "mp_wpn_rg-6" => ClsId::WpRG6, // W_RG6
-    "mp_wpn_rpg7" => ClsId::WpRPG7, // W_RPG7
-    "mp_wpn_rpg7_missile" => ClsId::GRpg7, // G_RPG7
-    "mp_wpn_sig220" => ClsId::WpPM, // W_PM
-    "mp_wpn_sig550" => ClsId::WpAk74, // W_AK74
-    "mp_wpn_spas12" => ClsId::WpAshTG, // W_SHOTGN
-    "mp_wpn_svd" => ClsId::WpSVD, // W_SVD
-    "mp_wpn_svu" => ClsId::WpSVD, // W_SVD
-    "mp_wpn_toz34" => ClsId::WpBM16, // W_BM16
-    "mp_wpn_usp" => ClsId::WpLR300, // W_USP45, read as any magazined weapon
-    "mp_wpn_val" => ClsId::WpVAL, // W_VAL
-    "mp_wpn_vintorez" => ClsId::WpVAL, // W_VAL
-    "mp_wpn_walther" => ClsId::WpPM, // W_PM
-    "mp_wpn_wincheaster1300" => ClsId::WpAshTG, // W_SHOTGN
-    "mp_zone_witches_galantine" => ClsId::ZsMBald, // Z_MBALD
-  };
+const SECTION_CLS_IDS: &[(&str, ClsId)] = &[
+  // Base:
+  ("actor", ClsId::SActor),      // O_ACTOR before 122 (cse_alife_creature_actor)
+  ("aes_snork", ClsId::SmSnork), // before 128
+  ("af_blood", ClsId::Artefact),
+  ("af_cristall", ClsId::Artefact),
+  ("af_cristall_flower", ClsId::Artefact),
+  ("af_dummy_battery", ClsId::Artefact),
+  ("af_dummy_dummy", ClsId::Artefact),
+  ("af_dummy_glassbeads", ClsId::Artefact),
+  ("af_electra_flash", ClsId::ScrptArt),
+  ("af_electra_moonlight", ClsId::ScrptArt),
+  ("af_electra_sparkler", ClsId::ScrptArt),
+  ("af_fireball", ClsId::Artefact),
+  ("af_fuzz_kolobok", ClsId::ScrptArt), // ARTEFACT before 128
+  ("af_gold_fish", ClsId::Artefact),
+  ("af_gravi", ClsId::Artefact),
+  ("af_medusa", ClsId::Artefact),
+  ("af_mincer_meat", ClsId::Artefact),
+  ("af_night_star", ClsId::Artefact), // SCRPTART before 128
+  ("af_soul", ClsId::Artefact),
+  ("af_vyvert", ClsId::Artefact),
+  ("ammo_11.43x23_fmj", ClsId::AmmoS),
+  ("ammo_11.43x23_hydro", ClsId::AmmoS),
+  ("ammo_12x70_buck", ClsId::AmmoS),
+  ("ammo_12x76_zhekan", ClsId::AmmoS),
+  ("ammo_12x76_zhekan_heli", ClsId::AmmoS),
+  ("ammo_5.45x39_ap", ClsId::AmmoS),
+  ("ammo_5.45x39_fmj", ClsId::AmmoS),
+  ("ammo_5.56x45_ap", ClsId::AmmoS),
+  ("ammo_5.56x45_ss190", ClsId::AmmoS),
+  ("ammo_7.62x54_7h1", ClsId::AmmoS),
+  ("ammo_9x18_fmj", ClsId::AmmoS),
+  ("ammo_9x18_pmm", ClsId::AmmoS),
+  ("ammo_9x19_fmj", ClsId::AmmoS),
+  ("ammo_9x19_pbp", ClsId::AmmoS),
+  ("ammo_9x39_ap", ClsId::AmmoS),
+  ("ammo_9x39_pab9", ClsId::AmmoS),
+  ("ammo_gauss", ClsId::AmmoS),
+  ("ammo_m209", ClsId::SM209),  // A_M209 in 124
+  ("ammo_og-7b", ClsId::SOG7B), // A_OG7B in 124
+  ("ammo_pkm_100", ClsId::AmmoS),
+  ("ammo_vog-25", ClsId::SVog25), // A_VOG25 in 124
+  ("antirad", ClsId::SFood),      // II_ANTIR  before 128
+  ("attachable_item", ClsId::IIAttch),
+  ("bandage", ClsId::SFood), // II_BANDG  before 128
+  ("bloodsucker_normal", ClsId::SmBlood),
+  ("bloodsucker_strong", ClsId::SmBlood),
+  ("bloodsucker_weak", ClsId::SmBlood),
+  ("boar_normal", ClsId::SmBoarW),
+  ("boar_strong", ClsId::SmBoarW),
+  ("bolt", ClsId::IIBolt),
+  ("bottle_3l", ClsId::ODstrS),
+  ("bread", ClsId::SFood), // II_FOOD  before 128
+  ("breakable_object", ClsId::OBrkbl),
+  ("campfire", ClsId::ZCFire),
+  ("child_bench", ClsId::ODstrS),
+  ("chimera_normal", ClsId::SmChims),
+  ("climable_object", ClsId::OClmbl),
+  ("conserva", ClsId::SFood), // II_FOOD  before 128
+  ("controller_tubeman", ClsId::SmContr),
+  ("cs_heavy_outfit", ClsId::EStlk),
+  ("custom_script_object", ClsId::NwAttch),
+  ("debris_01", ClsId::ODstrS),
+  ("detector_advanced", ClsId::DetAdva),
+  ("detector_elite", ClsId::DetElit),
+  ("detector_simple", ClsId::DetSimp),
+  ("dev_flash_1", ClsId::DPda),
+  ("dev_flash_2", ClsId::DPda),
+  ("device_flare", ClsId::DFlare),
+  ("device_pda", ClsId::SPda),
+  ("device_torch", ClsId::TorchS),
+  ("document", ClsId::IIDoc),
+  ("dog_normal", ClsId::SmDogS),
+  ("dog_strong", ClsId::SmDogS),
+  ("dog_weak", ClsId::SmDogS),
+  ("dolg_heavy_outfit", ClsId::EStlk),
+  ("dolg_outfit", ClsId::EStlk),
+  ("energy_drink", ClsId::SFood), // II_BOTTL  before 128
+  ("exo_outfit", ClsId::EStlk),
+  ("explosive_barrel", ClsId::SExplo),     //	#II_EXPLO before 122
+  ("explosive_barrel_low", ClsId::SExplo), //	#II_EXPLO before 122
+  ("explosive_dinamit", ClsId::SExplo),    //	#II_EXPLO before 122
+  ("explosive_fuelcan", ClsId::SExplo),    //	#II_EXPLO before 122
+  ("explosive_grenade", ClsId::SExplo),    //	#II_EXPLO before 122
+  ("explosive_hide", ClsId::SExplo),       //	#II_EXPLO before 122
+  ("explosive_mobiltank", ClsId::SExplo),  //	#II_EXPLO before 122
+  ("explosive_particle", ClsId::SExplo),   //	#II_EXPLO before 122
+  ("explosive_tank", ClsId::SExplo),       //	#II_EXPLO before 122
+  ("fire_vedro", ClsId::ODstrS),
+  ("fireball_zone", ClsId::ZsTorrd), // Z_TORRID before 128
+  ("flesh_normal", ClsId::SmFlesh),
+  ("flesh_strong", ClsId::SmFlesh),
+  ("freezer", ClsId::ODstrS),
+  ("gigant_normal", ClsId::SmGiant),
+  ("graph_point", ClsId::AiGraph),
+  ("grenade_f1", ClsId::GF1S),
+  ("grenade_gd-05", ClsId::GF1S),
+  ("grenade_rgd5", ClsId::GRgd5S),
+  ("guitar_a", ClsId::IIAttch),
+  ("hand_radio", ClsId::IIAttch),
+  ("harmonica_a", ClsId::IIAttch),
+  ("helicopter", ClsId::CHlcpS),
+  ("helicopter_missile", ClsId::GRpg7),
+  ("inventory_box", ClsId::SInvBox),
+  ("kanistra_01", ClsId::ODstrS),
+  ("kanistra_02", ClsId::ODstrS),
+  ("kastrula", ClsId::ODstrS),
+  ("kastrula_up", ClsId::ODstrS),
+  ("kolbasa", ClsId::SFood), // II_FOOD  before 128
+  ("kolyaska_01", ClsId::ODstrS),
+  ("kolyaska_01_braked", ClsId::ODstrS),
+  ("kolyaska_wheel_01_braked", ClsId::ODstrS),
+  ("komp_block", ClsId::ODstrS),
+  ("komp_klava", ClsId::ODstrS),
+  ("komp_monitor", ClsId::ODstrS),
+  ("krujka", ClsId::ODstrS),
+  ("level_changer", ClsId::LvlChng),
+  ("lights_hanging_lamp", ClsId::SoHLamp),
+  ("lights_signal_light", ClsId::SoHLamp),
+  ("lojka", ClsId::ODstrS),
+  ("m_bloodsucker_e", ClsId::SmBlood),
+  ("m_boar_e", ClsId::SmBoarW),
+  ("m_burer_e", ClsId::SmBurer),
+  ("m_car", ClsId::ScrptCar),
+  ("m_chimera_e", ClsId::SmChims),
+  ("m_controller_e", ClsId::SmContr),
+  ("m_controller_normal", ClsId::SmContr),
+  ("m_crow", ClsId::AiCrow),
+  ("m_dog_e", ClsId::SmDogS),
+  ("m_flesh_e", ClsId::SmFlesh),
+  ("m_gigant_e", ClsId::SmGiant),
+  ("m_phantom", ClsId::AiPhant),
+  ("m_poltergeist_e", ClsId::SmPoltr),
+  ("m_poltergeist_normal_flame", ClsId::SmPoltr),
+  ("m_poltergeist_normal_tele", ClsId::SmPoltr),
+  ("m_pseudodog_e", ClsId::SmPDog),
+  ("m_snork_e", ClsId::SmSnork),
+  ("m_tushkano_e", ClsId::SmTushk),
+  ("med_stolik_01", ClsId::ODstrS),
+  ("medkit", ClsId::SFood),          // II_MEDKI  before 128
+  ("medkit_army", ClsId::SFood),     // II_MEDKI  before 128
+  ("medkit_scientic", ClsId::SFood), // II_MEDKI  before 128
+  ("military_outfit", ClsId::EStlk),
+  ("miska", ClsId::ODstrS),
+  ("new_attachable_item", ClsId::IIBttch),
+  ("notebook", ClsId::ODstrS),
+  ("novice_outfit", ClsId::EStlk),
+  ("ognetushitel", ClsId::ODstrS),
+  ("online_offline_group", ClsId::OnOffS),
+  ("ph_skeleton_object", ClsId::PSkelet),
+  ("physic_destroyable_object", ClsId::ODstrS),
+  ("physic_object", ClsId::OPhysS),
+  ("priemnik_gorizont", ClsId::ODstrS),
+  ("pseudodog_normal", ClsId::SmPDog),
+  ("psy_dog", ClsId::SmDogP),
+  ("psy_dog_phantom", ClsId::SmDogF),
+  ("rupor", ClsId::ODstrS),
+  ("scientific_outfit", ClsId::EStlk),
+  ("script_object", ClsId::ScrptObj),
+  ("script_zone", ClsId::ScriptZn),
+  ("search_light", ClsId::OSearch),
+  ("shooting_target_1", ClsId::ODstrS),
+  ("sim_default_duty_2", ClsId::AiStlS),
+  ("sim_default_military_2", ClsId::AiStlS),
+  ("sim_default_military_3", ClsId::AiStlS),
+  ("sim_default_stalker_3", ClsId::AiStlS),
+  ("sim_faction", ClsId::ScriptZn), // S_FACTION in Clear Sky
+  ("smart_cover", ClsId::SmrtCS),
+  ("smart_terrain", ClsId::SmrtTrrn),
+  ("snork_indoor", ClsId::SmSnork),
+  ("snork_jumper", ClsId::SmSnork),
+  ("snork_normal", ClsId::SmSnork),
+  ("snork_outdoor", ClsId::SmSnork),
+  ("snork_strong", ClsId::SmSnork),
+  ("snork_weak", ClsId::SmSnork),
+  ("space_restrictor", ClsId::SpcRsS),
+  ("specops_outfit", ClsId::EStlk),
+  ("stalker", ClsId::AiStlS),
+  ("stalker_die_hard", ClsId::AiStlS),
+  ("stalker_outfit", ClsId::EStlk),
+  ("stalker_sakharov", ClsId::AiStlS),
+  ("stalker_strelok", ClsId::AiStlS),
+  ("stalker_zombied", ClsId::AiStlS),
+  ("stationary_mgun", ClsId::WSTMGun),
+  ("svoboda_heavy_outfit", ClsId::EStlk),
+  ("svoboda_light_outfit", ClsId::EStlk),
+  ("table_lamp_01", ClsId::ODstrS),
+  ("tarelka1", ClsId::ODstrS),
+  ("tarelka2", ClsId::ODstrS),
+  ("teapot_1", ClsId::ODstrS),
+  ("tiski", ClsId::ODstrS),
+  ("transiver", ClsId::ODstrS),
+  ("tushkano_normal", ClsId::SmTushk),
+  ("tv_1", ClsId::ODstrS),
+  ("vedro_01", ClsId::ODstrS),
+  ("vodka", ClsId::SFood), // II_BOTTL  before 128
+  ("wheel_litter_01", ClsId::ODstrS),
+  ("wheel_litter_01_braked", ClsId::ODstrS),
+  ("wpn_abakan", ClsId::WpAk74),
+  ("wpn_addon_grenade_launcher", ClsId::WpGLaun),
+  ("wpn_addon_grenade_launcher_m203", ClsId::WpGLaun),
+  ("wpn_addon_scope", ClsId::WpScope),
+  ("wpn_addon_scope_susat", ClsId::WpScope),
+  ("wpn_addon_silencer", ClsId::WpSilen),
+  ("wpn_ak74", ClsId::WpAk74),
+  ("wpn_ak74u", ClsId::WpAk74),
+  ("wpn_beretta", ClsId::WpLR300), // WP_PM before 128
+  ("wpn_binoc", ClsId::WpBinoc),
+  ("wpn_bm16", ClsId::WpBM16),
+  ("wpn_colt1911", ClsId::WpPM),
+  ("wpn_desert_eagle", ClsId::WpPM),
+  ("wpn_fake_missile", ClsId::GFake),
+  ("wpn_fake_missile1", ClsId::GFake),
+  ("wpn_fake_missile2", ClsId::GFake),
+  ("wpn_fn2000", ClsId::WpGroza),
+  ("wpn_fort", ClsId::WpPM),
+  ("wpn_g36", ClsId::WpAk74),
+  ("wpn_gauss", ClsId::WpSVD),
+  ("wpn_groza", ClsId::WpAk74),
+  ("wpn_hpsa", ClsId::WpHPSA),
+  ("wpn_knife", ClsId::WpKnife),
+  ("wpn_l85", ClsId::WpAk74),
+  ("wpn_lr300", ClsId::WpAk74),
+  ("wpn_mp5", ClsId::WpLR300),
+  ("wpn_pb", ClsId::WpPM),
+  ("wpn_pkm", ClsId::WpAk74),
+  ("wpn_pm", ClsId::WpPM),
+  ("wpn_rg-6", ClsId::WpRG6),
+  ("wpn_rpg7", ClsId::WpRPG7),
+  ("wpn_rpg7_missile", ClsId::GRpg7),
+  ("wpn_sig220", ClsId::WpLR300), // WP_PM before 128
+  ("wpn_sig550", ClsId::WpAk74),
+  ("wpn_spas12", ClsId::WpAshTG),
+  ("wpn_svd", ClsId::WpSVD),
+  ("wpn_svu", ClsId::WpSVU),
+  ("wpn_toz34", ClsId::WpBM16),
+  ("wpn_usp", ClsId::WpLR300), // WP_USP45 before 128
+  ("wpn_val", ClsId::WpVAL),
+  ("wpn_vintorez", ClsId::WpAk74), // WP_VINT in soc
+  ("wpn_walther", ClsId::WpLR300), // WP_WALTH - soc, WP_PM - cs
+  ("wpn_wincheaster1300", ClsId::WpAshTG),
+  ("zone_burning_fuzz", ClsId::ZsBFuzz),
+  ("zone_burning_fuzz_average", ClsId::ZsBFuzz),
+  ("zone_burning_fuzz_strong", ClsId::ZsBFuzz),
+  ("zone_burning_fuzz_weak", ClsId::ZsBFuzz),
+  ("zone_buzz", ClsId::ZsMBald),
+  ("zone_buzz_average", ClsId::ZsMBald),
+  ("zone_buzz_strong", ClsId::ZsMBald),
+  ("zone_buzz_weak", ClsId::ZsMBald),
+  ("zone_field_acidic", ClsId::ZsRadio),
+  ("zone_field_acidic_average", ClsId::ZsRadio),
+  ("zone_field_acidic_strong", ClsId::ZsRadio),
+  ("zone_field_acidic_weak", ClsId::ZsRadio),
+  ("zone_field_psychic", ClsId::ZsRadio),
+  ("zone_field_psychic_average", ClsId::ZsRadio),
+  ("zone_field_psychic_strong", ClsId::ZsRadio),
+  ("zone_field_psychic_weak", ClsId::ZsRadio),
+  ("zone_field_radioactive", ClsId::ZsRadio),
+  ("zone_field_radioactive_average", ClsId::ZsRadio),
+  ("zone_field_radioactive_strong", ClsId::ZsRadio),
+  ("zone_field_radioactive_weak", ClsId::ZsRadio),
+  ("zone_field_thermal", ClsId::ZsRadio),
+  ("zone_field_thermal_average", ClsId::ZsRadio),
+  ("zone_field_thermal_strong", ClsId::ZsRadio),
+  ("zone_field_thermal_weak", ClsId::ZsRadio),
+  ("zone_gravi_zone", ClsId::ZsGalan),
+  ("zone_mine_acidic", ClsId::ZsMBald),
+  ("zone_mine_acidic_average", ClsId::ZsMBald),
+  ("zone_mine_acidic_strong", ClsId::ZsMBald),
+  ("zone_mine_acidic_weak", ClsId::ZsMBald),
+  ("zone_mine_electric", ClsId::ZsMBald),
+  ("zone_mine_electric_average", ClsId::ZsMBald),
+  ("zone_mine_electric_strong", ClsId::ZsMBald),
+  ("zone_mine_electric_weak", ClsId::ZsMBald),
+  ("zone_mine_field", ClsId::ZMbald),
+  ("zone_mine_gravitational_average", ClsId::ZsGalan),
+  ("zone_mine_gravitational_strong", ClsId::ZsMince),
+  ("zone_mine_gravitational_weak", ClsId::ZsMBald),
+  ("zone_mine_thermal", ClsId::ZsMBald),
+  ("zone_mine_thermal_average", ClsId::ZsMBald),
+  ("zone_mine_thermal_strong", ClsId::ZsMBald),
+  ("zone_mine_thermal_weak", ClsId::ZsMBald),
+  ("zone_no_gravity", ClsId::ZNoGrav),
+  ("zone_radioactive", ClsId::ZRadio),
+  ("zone_radioactive_average", ClsId::ZRadio),
+  ("zone_radioactive_strong", ClsId::ZRadio),
+  ("zone_radioactive_weak", ClsId::ZRadio),
+  ("zone_team_base", ClsId::ZTeamBs),
+  ("zone_teleport", ClsId::ZMbald),
+  ("zone_witches_galantine", ClsId::ZsMBald),
+  ("zone_witches_galantine_average", ClsId::ZsMBald),
+  ("zone_witches_galantine_strong", ClsId::ZsMBald),
+  ("zone_witches_galantine_weak", ClsId::ZsMBald),
+  ("zone_zharka_static", ClsId::ZsMBald),
+  ("zone_zharka_static_average", ClsId::ZsMBald),
+  ("zone_zharka_static_strong", ClsId::ZsMBald),
+  ("zone_zharka_static_weak", ClsId::ZsMBald),
+  // COP:
+  ("af_baloon", ClsId::Artefact),
+  ("af_compass", ClsId::ScrptArt),
+  ("af_eye", ClsId::Artefact),
+  ("af_fire", ClsId::Artefact),
+  ("af_glass", ClsId::Artefact),
+  ("af_ice", ClsId::Artefact),
+  ("af_oasis_heart", ClsId::ScrptArt),
+  ("af_quest_b14_twisted", ClsId::ScrptArt),
+  ("ammo_gauss_cardan", ClsId::AmmoS),
+  ("anomal_zone", ClsId::SpcRsS),
+  ("anomaly_scaner", ClsId::IIAttch),
+  ("axe", ClsId::ODstrS),
+  ("balloon_poison_gas", ClsId::ODstrS),
+  ("balon_01", ClsId::ODstrS),
+  ("balon_02", ClsId::ODstrS),
+  ("balon_02a", ClsId::ODstrS),
+  ("balon_02link", ClsId::ODstrS),
+  ("banka_kraski_1", ClsId::ODstrS),
+  ("bidon", ClsId::ODstrS), // O_PHYS_S before 128
+  ("bludo", ClsId::ODstrS),
+  ("boar_jup_b9", ClsId::SmBoarW),
+  ("bochka_close_1", ClsId::ODstrS),
+  ("bochka_close_2", ClsId::ODstrS),
+  ("bochka_close_3", ClsId::ODstrS),
+  ("bochka_close_4", ClsId::ODstrS),
+  ("booster", ClsId::SFood),
+  ("box_1a", ClsId::ODstrS),
+  ("box_1b", ClsId::ODstrS),
+  ("box_1c", ClsId::ODstrS),
+  ("box_bottle_1", ClsId::ODstrS),
+  ("box_metall_01", ClsId::ODstrS),
+  ("box_paper", ClsId::ODstrS),
+  ("box_wood_01", ClsId::ODstrS),
+  ("box_wood_02", ClsId::ODstrS),
+  ("burer_normal", ClsId::SmBurer),
+  ("camp_zone", ClsId::SpcRsS),
+  ("detector_scientific", ClsId::DetScie),
+  ("device_flash_snag", ClsId::SPda),
+  ("device_pda_port_bandit_leader", ClsId::SPda),
+  ("device_pda_zat_b5_dealer", ClsId::SPda),
+  ("disel_generator", ClsId::ODstrS),
+  ("dog_cute", ClsId::SmDogS),
+  ("door_lab_x8", ClsId::OPhysS),
+  ("drug_anabiotic", ClsId::SFood),
+  ("drug_antidot", ClsId::SFood),
+  ("drug_booster", ClsId::SFood),
+  ("drug_coagulant", ClsId::SFood),
+  ("drug_psy_blockade", ClsId::SFood),
+  ("drug_radioprotector", ClsId::SFood),
+  ("explosive_gaz_balon", ClsId::SExplo),
+  ("fireball_acidic_zone", ClsId::ZsTorrd),
+  ("fireball_electric_zone", ClsId::ZsTorrd),
+  ("flesh_jup_b9", ClsId::SmFlesh),
+  ("gaz_balon", ClsId::ODstrS),
+  ("gaz_plita", ClsId::ODstrS),
+  ("gaz_plita_small", ClsId::ODstrS),
+  ("hammer", ClsId::ODstrS),
+  ("hand_radio_r", ClsId::IIAttch),
+  ("hatch_01", ClsId::ODstrS),
+  ("helm_battle", ClsId::EHlmet),
+  ("helm_hardhat", ClsId::EHlmet),
+  ("helm_hardhat_snag", ClsId::EHlmet),
+  ("helm_protective", ClsId::EHlmet),
+  ("helm_respirator", ClsId::EHlmet),
+  ("helm_respirator_joker", ClsId::EHlmet),
+  ("helm_tactic", ClsId::EHlmet),
+  ("helmet", ClsId::EHlmet),
+  ("jup_a9_conservation_info", ClsId::SPda),
+  ("jup_a9_delivery_info", ClsId::SPda),
+  ("jup_a9_evacuation_info", ClsId::SPda),
+  ("jup_a9_losses_info", ClsId::SPda),
+  ("jup_a9_meeting_info", ClsId::SPda),
+  ("jup_a9_power_info", ClsId::SPda),
+  ("jup_a9_way_info", ClsId::SPda),
+  ("jup_b10_notes_01", ClsId::SPda),
+  ("jup_b10_notes_02", ClsId::SPda),
+  ("jup_b10_notes_03", ClsId::SPda),
+  ("jup_b10_ufo_memory", ClsId::SPda),
+  ("jup_b10_ufo_memory_2", ClsId::SPda),
+  ("jup_b16_pseudodog_strong", ClsId::SmDogP),
+  ("jup_b1_controller", ClsId::SmContr),
+  ("jup_b1_half_artifact", ClsId::ScrptArt),
+  ("jup_b1_tushkano_target", ClsId::SmTushk),
+  ("jup_b200_tech_materials_acetone", ClsId::SPda),
+  ("jup_b200_tech_materials_capacitor", ClsId::SPda),
+  ("jup_b200_tech_materials_textolite", ClsId::SPda),
+  ("jup_b200_tech_materials_transistor", ClsId::SPda),
+  ("jup_b200_tech_materials_wire", ClsId::SPda),
+  ("jup_b202_bandit_pda", ClsId::SPda),
+  ("jup_b205_sokolov_note", ClsId::SPda),
+  ("jup_b206_plant", ClsId::SPda),
+  ("jup_b206_plant_ph", ClsId::ODstrS),
+  ("jup_b207_depot_cover", ClsId::OPhysS),
+  ("jup_b207_merc_pda_with_contract", ClsId::SPda),
+  ("jup_b209_monster_scanner", ClsId::SPda),
+  ("jup_b209_ph_scanner", ClsId::OPhysS),
+  ("jup_b212_chimera_killer", ClsId::SmChims),
+  ("jup_b219_gate", ClsId::OPhysS),
+  ("jup_b32_ph_scanner", ClsId::OPhysS),
+  ("jup_b32_scanner_device", ClsId::SPda),
+  ("jup_b41_af_half_artifact", ClsId::OPhysS),
+  ("jup_b41_af_oasis_heart", ClsId::OPhysS),
+  ("jup_b43_af_fuzz_kolobok", ClsId::OPhysS),
+  ("jup_b43_af_mincer_meat", ClsId::OPhysS),
+  ("jup_b46_duty_founder_pda", ClsId::SPda),
+  ("jup_b47_jupiter_products_info", ClsId::SPda),
+  ("jup_b47_merc_pda", ClsId::SPda),
+  ("jup_b6_bloodsucker_1", ClsId::SmBlood),
+  ("jup_b6_bloodsucker_2", ClsId::SmBlood),
+  ("jup_b6_bloodsucker_3", ClsId::SmBlood),
+  ("jup_b9_blackbox", ClsId::SPda),
+  ("keyga", ClsId::ODstrS),
+  ("krisagenerator", ClsId::ODstrS),
+  ("labx8_poltergeist", ClsId::SmPoltr),
+  ("lopata", ClsId::ODstrS),
+  ("lx8_1_tushkano_1", ClsId::SmTushk),
+  ("lx8_1_tushkano_2", ClsId::SmTushk),
+  ("lx8_1_tushkano_3", ClsId::SmTushk),
+  ("lx8_1_tushkano_4", ClsId::SmTushk),
+  ("lx8_2_tushkano_1", ClsId::SmTushk),
+  ("lx8_2_tushkano_2", ClsId::SmTushk),
+  ("lx8_2_tushkano_3", ClsId::SmTushk),
+  ("lx8_2_tushkano_4", ClsId::SmTushk),
+  ("lx8_burer", ClsId::SmBurer),
+  ("lx8_burer_2", ClsId::SmBurer),
+  ("lx8_burer_3", ClsId::SmBurer),
+  ("lx8_controller", ClsId::SmContr),
+  ("lx8_lab_tushkano_1", ClsId::SmTushk),
+  ("lx8_lab_tushkano_2", ClsId::SmTushk),
+  ("lx8_lab_tushkano_3", ClsId::SmTushk),
+  ("lx8_lab_tushkano_4", ClsId::SmTushk),
+  ("lx8_lab_tushkano_5", ClsId::SmTushk),
+  ("lx8_lab_tushkano_6", ClsId::SmTushk),
+  ("lx8_lab_tushkano_7", ClsId::SmTushk),
+  ("lx8_lab_tushkano_8", ClsId::SmTushk),
+  ("lx8_litf_tushkano_1", ClsId::SmTushk),
+  ("lx8_litf_tushkano_2", ClsId::SmTushk),
+  ("lx8_litf_tushkano_3", ClsId::SmTushk),
+  ("lx8_litf_tushkano_4", ClsId::SmTushk),
+  ("lx8_litf_tushkano_5", ClsId::SmTushk),
+  ("lx8_poltergeist", ClsId::SmPoltr),
+  ("lx8_service_instruction", ClsId::SPda),
+  ("lx8_snork", ClsId::SmSnork),
+  ("lx8_snork_1_jump", ClsId::SmSnork),
+  ("lx8_snork_2_jump", ClsId::SmSnork),
+  ("lx8_toilet_burer", ClsId::SmBurer),
+  ("lx8_upper_tushkano_1", ClsId::SmTushk),
+  ("lx8_upper_tushkano_2", ClsId::SmTushk),
+  ("lx8_upper_tushkano_3", ClsId::SmTushk),
+  ("lx8_upper_tushkano_4", ClsId::SmTushk),
+  ("lx8_upper_tushkano_5", ClsId::SmTushk),
+  ("lx8_upper_tushkano_6", ClsId::SmTushk),
+  ("lx8_upper_tushkano_7", ClsId::SmTushk),
+  ("medkit_script", ClsId::SFood),
+  ("molot", ClsId::ODstrS),
+  ("museum_abakan", ClsId::ODstrS),
+  ("museum_ak74", ClsId::ODstrS),
+  ("museum_ak74u", ClsId::ODstrS),
+  ("museum_ammo_12x70_buck", ClsId::ODstrS),
+  ("museum_ammo_545x39_fmj", ClsId::ODstrS),
+  ("museum_ammo_762x54_7h14", ClsId::ODstrS),
+  ("museum_bm16", ClsId::ODstrS),
+  ("museum_groza", ClsId::ODstrS),
+  ("museum_lr300", ClsId::ODstrS),
+  ("museum_rg6", ClsId::ODstrS),
+  ("museum_rpg7", ClsId::ODstrS),
+  ("museum_sig550", ClsId::ODstrS),
+  ("museum_spas12", ClsId::ODstrS),
+  ("museum_svd", ClsId::ODstrS),
+  ("museum_toz34", ClsId::ODstrS),
+  ("museum_val", ClsId::ODstrS),
+  ("museum_vintorez", ClsId::ODstrS),
+  ("museum_winchester1300", ClsId::ODstrS),
+  ("pas_b400_tushkano_smart", ClsId::SmTushk),
+  ("physic_door", ClsId::ODstrS),
+  ("pick", ClsId::ODstrS),
+  ("pri_a15_documents", ClsId::IIAttch),
+  ("pri_a15_wpn_ak74", ClsId::IIAttch),
+  ("pri_a15_wpn_ak74u", ClsId::IIAttch),
+  ("pri_a15_wpn_svu", ClsId::IIAttch),
+  ("pri_a15_wpn_wincheaster1300", ClsId::IIAttch),
+  ("pri_a17_gauss_rifle", ClsId::WpSVD),
+  ("pri_a19_american_experiment_info", ClsId::SPda),
+  ("pri_a19_lab_x10_info", ClsId::SPda),
+  ("pri_a19_lab_x16_info", ClsId::SPda),
+  ("pri_a19_lab_x18_info", ClsId::SPda),
+  ("pri_a19_lab_x7_info", ClsId::SPda),
+  ("pri_a25_antenna_grenade", ClsId::SExplo),
+  ("pri_a25_enter_door_explosive_grenade", ClsId::SExplo),
+  ("pri_a25_explosive_charge", ClsId::OPhysS),
+  ("pri_a25_explosive_charge_item", ClsId::DPda),
+  ("pri_a25_poltergeist", ClsId::SmPoltr),
+  ("pri_a28_actor_hideout", ClsId::OPhysS),
+  ("pri_a28_earth_helli_1", ClsId::OPhysS),
+  ("pri_a28_earth_helli_2", ClsId::OPhysS),
+  ("pri_b301_snork_1", ClsId::SmSnork),
+  ("pri_b301_snork_2", ClsId::SmSnork),
+  ("pri_b301_snork_3", ClsId::SmSnork),
+  ("pri_b301_snork_4", ClsId::SmSnork),
+  ("pri_b301_snork_5", ClsId::SmSnork),
+  ("pri_b306_envoy_pda", ClsId::SPda),
+  ("pri_b35_lab_x8_key", ClsId::DPda),
+  ("pri_b36_monolith_hiding_place_pda", ClsId::SPda),
+  ("psy_dog_normal", ClsId::SmDogP),
+  ("riffler", ClsId::ODstrS),
+  ("saw", ClsId::ODstrS),
+  ("snork_indoor_normal", ClsId::SmSnork),
+  ("snork_indoor_strong", ClsId::SmSnork),
+  ("snork_indoor_weak", ClsId::SmSnork),
+  ("snork_weak_special", ClsId::SmSnork),
+  ("speakerphone", ClsId::ODstrS),
+  ("stalker_outfit_barge", ClsId::EStlk),
+  ("stul_child_01", ClsId::ODstrS),
+  ("stul_school_01", ClsId::ODstrS),
+  ("stul_school_01_br", ClsId::ODstrS),
+  ("stul_wood_01", ClsId::ODstrS),
+  ("taburet_village", ClsId::ODstrS),
+  ("taburet_wood_01", ClsId::ODstrS),
+  ("toolkit_1", ClsId::SPda),
+  ("toolkit_2", ClsId::SPda),
+  ("toolkit_3", ClsId::SPda),
+  ("ventilator_01", ClsId::ODstrS),
+  ("ventilator_02", ClsId::ODstrS),
+  ("ventilator_03", ClsId::ODstrS),
+  ("ventilator_04", ClsId::ODstrS),
+  ("ventilator_05", ClsId::ODstrS),
+  ("vodka_script", ClsId::SFood),
+  ("wood_fence_1", ClsId::ODstrS),
+  ("wood_fence_2", ClsId::ODstrS),
+  ("wood_fence_3", ClsId::ODstrS),
+  ("wood_fence_4", ClsId::ODstrS),
+  ("wpn_addon_scope_detector", ClsId::WpScope),
+  ("wpn_addon_scope_night", ClsId::WpScope),
+  ("wpn_addon_scope_susat_custom", ClsId::WpScope),
+  ("wpn_addon_scope_susat_dusk", ClsId::WpScope),
+  ("wpn_addon_scope_susat_night", ClsId::WpScope),
+  ("wpn_addon_scope_susat_x1.6", ClsId::WpScope),
+  ("wpn_addon_scope_x2.7", ClsId::WpScope),
+  ("wpn_ak74u_snag", ClsId::WpAk74),
+  ("wpn_desert_eagle_nimble", ClsId::WpPM),
+  ("wpn_fn2000_nimble", ClsId::WpGroza),
+  ("wpn_fort_snag", ClsId::WpPM),
+  ("wpn_g36_nimble", ClsId::WpAk74),
+  ("wpn_groza_nimble", ClsId::WpAk74),
+  ("wpn_groza_specops", ClsId::WpAk74),
+  ("wpn_mp5_nimble", ClsId::WpLR300),
+  ("wpn_pkm_zulus", ClsId::WpAk74),
+  ("wpn_pm_actor", ClsId::WpPM),
+  ("wpn_protecta", ClsId::WpAshTG),
+  ("wpn_protecta_nimble", ClsId::WpAshTG),
+  ("wpn_sig220_nimble", ClsId::WpLR300),
+  ("wpn_sig550_luckygun", ClsId::WpAk74),
+  ("wpn_spas12_nimble", ClsId::WpAshTG),
+  ("wpn_svd_nimble", ClsId::WpSVD),
+  ("wpn_svu_nimble", ClsId::WpSVU),
+  ("wpn_usp_nimble", ClsId::WpLR300),
+  ("wpn_vintorez_nimble", ClsId::WpAk74),
+  ("wpn_wincheaster1300_trapper", ClsId::WpAshTG),
+  ("zat_a23_access_card", ClsId::DPda),
+  ("zat_a23_gauss_rifle_docs", ClsId::SPda),
+  ("zat_a23_labx8_key", ClsId::DPda),
+  ("zat_b106_chimera", ClsId::SmChims),
+  ("zat_b12_documents_1", ClsId::SPda),
+  ("zat_b12_documents_2", ClsId::SPda),
+  ("zat_b12_key_1", ClsId::DPda),
+  ("zat_b12_key_2", ClsId::DPda),
+  ("zat_b18_dog", ClsId::SmPDog),
+  ("zat_b18_dog_noah", ClsId::SmPDog),
+  ("zat_b20_noah_pda", ClsId::SPda),
+  ("zat_b22_medic_pda", ClsId::SPda),
+  ("zat_b33_safe_container", ClsId::SPda),
+  ("zat_b38_bloodsucker_1", ClsId::SmBlood),
+  ("zat_b38_bloodsucker_2", ClsId::SmBlood),
+  ("zat_b38_bloodsucker_corpse", ClsId::SmBlood),
+  ("zat_b39_joker_pda", ClsId::SPda),
+  ("zat_b40_notebook", ClsId::SPda),
+  ("zat_b40_pda_1", ClsId::SPda),
+  ("zat_b40_pda_2", ClsId::SPda),
+  ("zat_b44_barge_pda", ClsId::SPda),
+  ("zat_b57_gas", ClsId::SPda),
+  ("zat_b57_ph_gas", ClsId::OPhysS),
+  ("zone_mine_acidic_big", ClsId::ZsMBald),
+  ("zone_mine_chemical_average", ClsId::ZsMBald),
+  ("zone_mine_chemical_strong", ClsId::ZsMBald),
+  ("zone_mine_chemical_weak", ClsId::ZsMBald),
+  ("zone_mine_gravitational_big", ClsId::ZsMince),
+  ("zone_mine_static_average", ClsId::ZsMBald),
+  ("zone_mine_static_strong", ClsId::ZsMBald),
+  ("zone_mine_static_weak", ClsId::ZsMBald),
+  ("zone_mine_steam_average", ClsId::ZsMBald),
+  ("zone_mine_steam_strong", ClsId::ZsMBald),
+  ("zone_mine_steam_weak", ClsId::ZsMBald),
+  // CoC and Anomaly:
+  ("agru_door", ClsId::OPhysS),        // O_PHYSIC in CoC
+  ("ammo_12x76_dart", ClsId::AmmoS),   // AMMO
+  ("ammo_7.62x54_7h14", ClsId::AmmoS), // AMMO
+  ("ammo_7.62x54_ap", ClsId::AmmoS),   // AMMO
+  ("decoder", ClsId::IIAttch),
+  ("flesh_weak", ClsId::SmFlesh),
+  ("generator_dust_static", ClsId::ZMbald),
+  ("generator_electra", ClsId::ZMbald),
+  ("generator_torrid", ClsId::ZTorrid),
+  ("itm_repairkit_tier_1", ClsId::SFood), // II_FOOD, Anomaly only
+  ("itm_repairkit_tier_2", ClsId::SFood), // II_FOOD, Anomaly only
+  ("itm_repairkit_tier_3", ClsId::SFood), // II_FOOD, Anomaly only
+  ("m_lesnik", ClsId::AiTrdS),
+  ("m_trader", ClsId::AiTrdS),
+  ("main_story_1_quest_case", ClsId::IIAttch),
+  ("main_story_2_lab_x18_documents", ClsId::IIAttch),
+  ("main_story_4_lab_x10_documents", ClsId::DPda), // Anomaly declares II_ATTCH, its spawn stores a pda
+  ("main_story_5_lab_x8_documents", ClsId::DPda),  // Anomaly declares II_ATTCH, its spawn stores a pda
+  ("main_story_6_jup_ug_documents", ClsId::DPda),  // Anomaly declares II_ATTCH, its spawn stores a pda
+  ("main_story_7_mon_con_documents", ClsId::DPda), // Anomaly declares II_ATTCH, its spawn stores a pda
+  ("mine_actor", ClsId::SExplo),                   // II_EXPLO
+  ("pri_decoder_documents", ClsId::IIAttch),
+  ("red_forest_bridge", ClsId::OPhysS), // O_PHYSIC in CoC
+  ("zone_burning_fuzz1", ClsId::ZsBFuzz),
+  ("zone_emi", ClsId::ZsMBald),
+  ("zone_mine_field_soc", ClsId::ZsMBald),
+  ("zone_monolith", ClsId::ZsRadio),
+  ("zone_mosquito_bald", ClsId::ZsMBald),
+  ("zone_mosquito_bald_average", ClsId::ZsMBald),
+  ("zone_mosquito_bald_strong", ClsId::ZsMBald),
+  ("zone_mosquito_bald_weak", ClsId::ZsMBald),
+  ("zone_zhar", ClsId::ZsMBald),
+  // Multiplayer, CoP's `configs/mp`, by the `class` each declares or inherits: a launcher's `W_AK74` and `W_GROZA`
+  // read one more byte than `W_PM`, `W_VAL` or `W_SVD`.
+  ("mp_af_electra_flash", ClsId::ScrptArt),               // ARTEFACT
+  ("mp_ammo_11.43x23_fmj", ClsId::AmmoS),                 // AMMO
+  ("mp_ammo_11.43x23_hydro", ClsId::AmmoS),               // AMMO
+  ("mp_ammo_12x70_buck", ClsId::AmmoS),                   // AMMO
+  ("mp_ammo_12x76_zhekan", ClsId::AmmoS),                 // AMMO
+  ("mp_ammo_5.45x39_ap", ClsId::AmmoS),                   // AMMO
+  ("mp_ammo_5.45x39_fmj", ClsId::AmmoS),                  // AMMO
+  ("mp_ammo_5.56x45_ap", ClsId::AmmoS),                   // AMMO
+  ("mp_ammo_5.56x45_ss190", ClsId::AmmoS),                // AMMO
+  ("mp_ammo_7.62x54_7h1", ClsId::AmmoS),                  // AMMO
+  ("mp_ammo_7.62x54_ap", ClsId::AmmoS),                   // AMMO
+  ("mp_ammo_9x18_fmj", ClsId::AmmoS),                     // AMMO
+  ("mp_ammo_9x18_pmm", ClsId::AmmoS),                     // AMMO
+  ("mp_ammo_9x19_fmj", ClsId::AmmoS),                     // AMMO
+  ("mp_ammo_9x19_fmj_4mp5", ClsId::AmmoS),                // AMMO
+  ("mp_ammo_9x19_pbp", ClsId::AmmoS),                     // AMMO
+  ("mp_ammo_9x19_pbp_4mp5", ClsId::AmmoS),                // AMMO
+  ("mp_ammo_9x39_ap", ClsId::AmmoS),                      // AMMO
+  ("mp_ammo_9x39_pab9", ClsId::AmmoS),                    // AMMO
+  ("mp_ammo_gauss", ClsId::AmmoS),                        // AMMO
+  ("mp_ammo_m209", ClsId::SM209),                         // AMMO
+  ("mp_ammo_og-7b", ClsId::SOG7B),                        // AMMO
+  ("mp_ammo_pkm_100", ClsId::AmmoS),                      // AMMO
+  ("mp_ammo_vog-25", ClsId::SVog25),                      // AMMO
+  ("mp_antirad", ClsId::SFood),                           // II_ANTIR
+  ("mp_antirad_old", ClsId::SFood),                       // II_ANTIR
+  ("mp_bandage", ClsId::SFood),                           // II_BANDG
+  ("mp_detector_advanced", ClsId::DetElit),               // DET_ELIT
+  ("mp_device_torch", ClsId::TorchS),                     // TORCH_S
+  ("mp_drug_coagulant", ClsId::SFood),                    // II_FOOD
+  ("mp_drug_radioprotector", ClsId::SFood),               // II_FOOD
+  ("mp_energy_drink", ClsId::SFood),                      // II_BOTTL
+  ("mp_exo_outfit", ClsId::EStlk),                        // EQU_EXO
+  ("mp_explosive_barrel", ClsId::SExplo),                 // II_EXPLO
+  ("mp_explosive_fuelcan", ClsId::SExplo),                // II_EXPLO
+  ("mp_explosive_tank", ClsId::SExplo),                   // II_EXPLO
+  ("mp_grenade_f1", ClsId::GF1S),                         // G_F1
+  ("mp_grenade_gd-05", ClsId::GF1S),                      // G_F1
+  ("mp_grenade_rgd5", ClsId::GRgd5S),                     // G_RGD5
+  ("mp_medkit", ClsId::SFood),                            // II_MEDKI
+  ("mp_medkit_army", ClsId::SFood),                       // II_MEDKI
+  ("mp_medkit_old", ClsId::SFood),                        // S_MEDKI
+  ("mp_medkit_scientic", ClsId::SFood),                   // II_MEDKI
+  ("mp_military_stalker_outfit", ClsId::EStlk),           // EQU_MLTR
+  ("mp_scientific_outfit", ClsId::EStlk),                 // EQU_SCIE
+  ("mp_wood_stolb_fixed", ClsId::ODstrS),                 // P_DSTRBL
+  ("mp_wpn_abakan", ClsId::WpAk74),                       // W_AK74
+  ("mp_wpn_addon_grenade_launcher", ClsId::WpGLaun),      // W_GLAUNC
+  ("mp_wpn_addon_grenade_launcher_m203", ClsId::WpGLaun), // W_GLAUNC
+  ("mp_wpn_addon_scope", ClsId::WpScope),                 // W_SCOPE
+  ("mp_wpn_addon_scope_susat", ClsId::WpScope),           // W_SCOPE
+  ("mp_wpn_addon_silencer", ClsId::WpSilen),              // W_SILENC
+  ("mp_wpn_ak74", ClsId::WpAk74),                         // W_AK74
+  ("mp_wpn_ak74u", ClsId::WpAk74),                        // W_AK74
+  ("mp_wpn_beretta", ClsId::WpPM),                        // W_PM
+  ("mp_wpn_binoc", ClsId::WpBinoc),                       // W_BINOC
+  ("mp_wpn_bm16", ClsId::WpBM16),                         // W_BM16
+  ("mp_wpn_colt1911", ClsId::WpPM),                       // W_PM
+  ("mp_wpn_desert_eagle", ClsId::WpPM),                   // W_PM
+  ("mp_wpn_fake_missile", ClsId::GFake),                  // G_FAKE
+  ("mp_wpn_fake_missile1", ClsId::GFake),                 // G_FAKE
+  ("mp_wpn_fake_missile2", ClsId::GFake),                 // G_FAKE
+  ("mp_wpn_fn2000", ClsId::WpAk74),                       // W_AK74
+  ("mp_wpn_fort", ClsId::WpPM),                           // W_FORT
+  ("mp_wpn_g36", ClsId::WpAk74),                          // W_AK74
+  ("mp_wpn_gauss", ClsId::WpSVD),                         // W_SVD
+  ("mp_wpn_groza", ClsId::WpGroza),                       // W_GROZA
+  ("mp_wpn_hpsa", ClsId::WpHPSA),                         // W_HPSA
+  ("mp_wpn_knife", ClsId::WpKnife),                       // W_KNIFE
+  ("mp_wpn_l85", ClsId::WpAk74),                          // W_AK74
+  ("mp_wpn_lr300", ClsId::WpAk74),                        // W_AK74
+  ("mp_wpn_mp5", ClsId::WpAk74),                          // W_AK74
+  ("mp_wpn_pb", ClsId::WpPM),                             // W_PM
+  ("mp_wpn_pkm", ClsId::WpAk74),                          // W_AK74
+  ("mp_wpn_pm", ClsId::WpPM),                             // W_PM
+  ("mp_wpn_protecta", ClsId::WpAshTG),                    // W_SHOTGN
+  ("mp_wpn_rg-6", ClsId::WpRG6),                          // W_RG6
+  ("mp_wpn_rpg7", ClsId::WpRPG7),                         // W_RPG7
+  ("mp_wpn_rpg7_missile", ClsId::GRpg7),                  // G_RPG7
+  ("mp_wpn_sig220", ClsId::WpPM),                         // W_PM
+  ("mp_wpn_sig550", ClsId::WpAk74),                       // W_AK74
+  ("mp_wpn_spas12", ClsId::WpAshTG),                      // W_SHOTGN
+  ("mp_wpn_svd", ClsId::WpSVD),                           // W_SVD
+  ("mp_wpn_svu", ClsId::WpSVD),                           // W_SVD
+  ("mp_wpn_toz34", ClsId::WpBM16),                        // W_BM16
+  ("mp_wpn_usp", ClsId::WpLR300),                         // W_USP45, read as any magazined weapon
+  ("mp_wpn_val", ClsId::WpVAL),                           // W_VAL
+  ("mp_wpn_vintorez", ClsId::WpVAL),                      // W_VAL
+  ("mp_wpn_walther", ClsId::WpPM),                        // W_PM
+  ("mp_wpn_wincheaster1300", ClsId::WpAshTG),             // W_SHOTGN
+  ("mp_zone_witches_galantine", ClsId::ZsMBald),          // Z_MBALD
+];
 
-  /// Sections whose `class` Clear Sky's configs declare otherwise than Call of Pripyat's (`SECTION_TO_CLS_ID`), and
-  /// those only Clear Sky declares, by the `class` each inherits.
-  pub static ref CLEAR_SKY_SECTION_TO_CLS_ID: phf::Map<&'static str, ClsId> = phf_map! {
-    "agr_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
-    "agr_duty_base_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
-    "agr_secret_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
-    "agr_stalker_base_leader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
-    "agr_stalker_base_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
-    "boar_weak" => ClsId::SmBoarW, // gamedata-cs/configs/creatures/m_boar.ltx
-    "device_pda_fang" => ClsId::DPda, // gamedata-cs/configs/misc/quest_items.ltx
-    "esc_driver" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
-    "esc_tech_stalkerbase" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
-    "esc_trader_stalkerbase" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
-    "flesh_up_aceg_scientific_outfit" => ClsId::DPda, // gamedata-cs/configs/misc/upgrade_items.ltx
-    "gar_bandit_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_bandit_fixer" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_bandit_leader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_bandit_minigame" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_bandit_senya" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_bandit_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_digger_conc_camp_prisoner_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_digger_conc_camp_prisoner_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_digger_conc_camp_searcher_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_digger_conc_camp_searcher_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "gar_digger_conc_camp_searcher_3" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
-    "mar_csky_barman" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
-    "mar_csky_commander" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
-    "mar_csky_scientist" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
-    "mar_csky_tactic" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
-    "mar_csky_tech" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
-    "mar_csky_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
-    "mar_csky_tutorial_man" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
-    "sim_default_digger_0" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
-    "sim_default_digger_1" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
-    "sim_default_digger_2" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_general.ltx
-    "sim_faction" => ClsId::SFaction, // gamedata-cs/configs/misc/simulation.ltx
-    "val_freedom_trader" => ClsId::AiStlS, // gamedata-cs/configs/creatures/spawn_sections_darkvalley.ltx
-    // `Z_MBALD` registers no script class, so its zone stores no `se_zone_anom` tail.
-    "zone_mine_field_no_damage" => ClsId::ZMbald, // gamedata-cs/configs/zones/zone_minefield.ltx
-    "zone_mine_field_strong" => ClsId::ZMbald, // gamedata-cs/configs/zones/zone_minefield.ltx
-    "zone_mine_thermal_firetube" => ClsId::ZsMBald, // gamedata-cs/configs/zones/zone_mine_thermal.ltx
-  };
+pub(crate) static SECTION_TO_CLS_ID: LazyLock<HashMap<&'static str, ClsId>> =
+  LazyLock::new(|| SECTION_CLS_IDS.iter().cloned().collect());
 
-  pub static ref CLS_ID_TO_CLASS: EnumMap<ClsId, AlifeClass> = enum_map! {
+const CLEAR_SKY_SECTION_CLS_IDS: &[(&str, ClsId)] = &[
+  ("agr_barman", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+  ("agr_duty_base_trader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+  ("agr_secret_trader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+  ("agr_stalker_base_leader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+  ("agr_stalker_base_trader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_agroprom.ltx
+  ("boar_weak", ClsId::SmBoarW), // gamedata-cs/configs/creatures/m_boar.ltx
+  ("device_pda_fang", ClsId::DPda), // gamedata-cs/configs/misc/quest_items.ltx
+  ("esc_driver", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+  ("esc_tech_stalkerbase", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+  ("esc_trader_stalkerbase", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_escape.ltx
+  ("flesh_up_aceg_scientific_outfit", ClsId::DPda), // gamedata-cs/configs/misc/upgrade_items.ltx
+  ("gar_bandit_barman", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_bandit_fixer", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_bandit_leader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_bandit_minigame", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_bandit_senya", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_bandit_trader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_digger_conc_camp_prisoner_1", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_digger_conc_camp_prisoner_2", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_digger_conc_camp_searcher_1", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_digger_conc_camp_searcher_2", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("gar_digger_conc_camp_searcher_3", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_garbage.ltx
+  ("mar_csky_barman", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+  ("mar_csky_commander", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+  ("mar_csky_scientist", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+  ("mar_csky_tactic", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+  ("mar_csky_tech", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+  ("mar_csky_trader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+  ("mar_csky_tutorial_man", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_marsh.ltx
+  ("sim_default_digger_0", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+  ("sim_default_digger_1", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+  ("sim_default_digger_2", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_general.ltx
+  ("sim_faction", ClsId::SFaction), // gamedata-cs/configs/misc/simulation.ltx
+  ("val_freedom_trader", ClsId::AiStlS), // gamedata-cs/configs/creatures/spawn_sections_darkvalley.ltx
+  // `Z_MBALD` registers no script class, so its zone stores no `se_zone_anom` tail.
+  ("zone_mine_field_no_damage", ClsId::ZMbald), // gamedata-cs/configs/zones/zone_minefield.ltx
+  ("zone_mine_field_strong", ClsId::ZMbald),    // gamedata-cs/configs/zones/zone_minefield.ltx
+  ("zone_mine_thermal_firetube", ClsId::ZsMBald), // gamedata-cs/configs/zones/zone_mine_thermal.ltx
+];
+
+/// Sections whose `class` Clear Sky's configs declare otherwise than Call of Pripyat's (`SECTION_TO_CLS_ID`), and
+/// those only Clear Sky declares, by the `class` each inherits.
+pub(crate) static CLEAR_SKY_SECTION_TO_CLS_ID: LazyLock<HashMap<&'static str, ClsId>> =
+  LazyLock::new(|| CLEAR_SKY_SECTION_CLS_IDS.iter().cloned().collect());
+
+/// The server class an object of `cls_id` is read as, every class named so a new one cannot go unmapped.
+pub(crate) fn class_of(cls_id: &ClsId) -> AlifeClass {
+  match cls_id {
     ClsId::AiCrow => AlifeClass::CseAlifeCreatureCrow,
     ClsId::AiGraph => AlifeClass::CseAlifeGraphPoint,
     ClsId::AiPhant => AlifeClass::CseAlifeCreaturePhantom,
@@ -875,7 +881,7 @@ lazy_static! {
     ClsId::ZsNGrav => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZsRadio => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZsTorrd => AlifeClass::CseAlifeTorridZone,
-  };
+  }
 }
 
 #[cfg(test)]
@@ -883,7 +889,16 @@ mod tests {
   use crate::data::alife::script_dialect::ScriptDialect;
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
-  use crate::data::meta::map::CLEAR_SKY_SECTION_TO_CLS_ID;
+  use crate::data::meta::map::{
+    CLEAR_SKY_SECTION_CLS_IDS, CLEAR_SKY_SECTION_TO_CLS_ID, SECTION_CLS_IDS, SECTION_TO_CLS_ID,
+  };
+
+  // A section listed twice would keep only its last class, silently.
+  #[test]
+  fn lists_each_section_once_per_table() {
+    assert_eq!(SECTION_TO_CLS_ID.len(), SECTION_CLS_IDS.len());
+    assert_eq!(CLEAR_SKY_SECTION_TO_CLS_ID.len(), CLEAR_SKY_SECTION_CLS_IDS.len());
+  }
 
   // Groups, Shadow of Chernobyl sections and the spectator have no class; rockets are `CSE_Temporary`, no alife object.
   #[test]
@@ -921,7 +936,7 @@ mod tests {
   // Of these, only `sim_faction` names a Call of Pripyat section, as a space restrictor.
   #[test]
   fn resolves_every_clear_sky_section_under_its_own_dialect_alone() {
-    for (section, clsid) in CLEAR_SKY_SECTION_TO_CLS_ID.entries() {
+    for (section, clsid) in CLEAR_SKY_SECTION_TO_CLS_ID.iter() {
       let clear_sky: ClsId =
         ClsId::from_dialect_section(section, ScriptDialect::ClearSky).expect("a Clear Sky section");
 

@@ -1,15 +1,12 @@
-use std::ops::Index;
-
 use derive_more::{Display, FromStr};
-use enum_map::Enum;
 
 use crate::data::alife::script_dialect::ScriptDialect;
 use crate::data::meta::cls_id::ClsId;
-use crate::data::meta::map::CLS_ID_TO_CLASS;
+use crate::data::meta::map::class_of;
 
 /// The server class a spawned object is read as: Call of Pripyat's spawnable classes (`object_factory_register.cpp`,
 /// `class_registrator.script`), and Clear Sky's script classes that save other fields.
-#[derive(Clone, Debug, Enum, PartialEq, Eq, FromStr, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, FromStr, Display)]
 pub enum AlifeClass {
   #[display("CseAlifeAnomalousZone")]
   CseAlifeAnomalousZone,
@@ -120,8 +117,7 @@ pub enum AlifeClass {
 impl AlifeClass {
   /// The class Call of Pripyat reads an object of `cls_id` as.
   pub fn from_cls_id(cls_id: &ClsId) -> Self {
-    // todo: Implement with From<T> trait?
-    CLS_ID_TO_CLASS.index(cls_id.clone()).clone()
+    class_of(cls_id)
   }
 
   /// The class an object of `cls_id` is read as under `dialect`: Clear Sky's own script class where it saves other
