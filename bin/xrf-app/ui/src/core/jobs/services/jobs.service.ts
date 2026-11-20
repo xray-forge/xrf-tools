@@ -299,13 +299,16 @@ export class JobsService {
       return;
     }
 
+    // Fired at once too: a listing a shown Jobs panel read already may hold the adopted jobs' ends, and a structurally
+    // equal one read next would never change it, leaving them shown running.
     const stopReacting: () => void = reaction(
       () => this.listing.value,
       (listed: Nullable<Array<JobDescription>>) => {
         if (listed) {
           this.followAdopted(listed);
         }
-      }
+      },
+      { fireImmediately: true }
     );
     const stopWatching: () => void = this.listing.watch();
 
