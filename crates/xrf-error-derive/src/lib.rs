@@ -1,6 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::quote;
@@ -76,7 +75,7 @@ fn expand_constructor(variant: &Variant) -> syn::Result<Option<TokenStream2>> {
 
   let function_name: Ident = match &attribute.meta {
     Meta::Path(_) => Ident::new(
-      &format!("new_{}_error", variant.ident.to_string().to_case(Case::Snake)),
+      &format!("new_{}_error", to_snake_case(&variant.ident.to_string())),
       variant.ident.span(),
     ),
     Meta::List(_) => {
@@ -107,6 +106,29 @@ fn expand_constructor(variant: &Variant) -> syn::Result<Option<TokenStream2>> {
   }))
 }
 
+/// A `PascalCase` variant name in `snake_case`: a word starts at a capital after a lowercase letter or a digit, and at
+/// the last capital of an acronym, so `IoError` and `IOError` both read as `io_error`.
+fn to_snake_case(name: &str) -> String {
+  let characters: Vec<char> = name.chars().collect();
+  let mut snake: String = String::with_capacity(name.len() + 4);
+
+  for (index, &character) in characters.iter().enumerate() {
+    if character.is_uppercase() && index > 0 {
+      let previous: char = characters[index - 1];
+      let is_acronym_end: bool =
+        previous.is_uppercase() && characters.get(index + 1).is_some_and(|next| next.is_lowercase());
+
+      if previous.is_lowercase() || previous.is_ascii_digit() || is_acronym_end {
+        snake.push('_');
+      }
+    }
+
+    snake.extend(character.to_lowercase());
+  }
+
+  snake
+}
+
 fn validate_constructor_variant(variant: &Variant) -> syn::Result<()> {
   let Fields::Named(fields) = &variant.fields else {
     return Err(Error::new_spanned(
@@ -130,4 +152,25 @@ fn validate_constructor_variant(variant: &Variant) -> syn::Result<()> {
   }
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::to_snake_case;
+
+  #[test]
+  fn splits_a_variant_name_into_snake_case_words() {
+    for (name, snake) in [
+      ("Invalid", "invalid"),
+      ("NotFound", "not_found"),
+      ("TextureProcessing", "texture_processing"),
+      ("NoTerminator", "no_terminator"),
+      ("IoError", "io_error"),
+      ("IOError", "io_error"),
+      ("Utf8Error", "utf8_error"),
+      ("X", "x"),
+    ] {
+      assert_eq!(to_snake_case(name), snake, "{name}");
+    }
+  }
 }

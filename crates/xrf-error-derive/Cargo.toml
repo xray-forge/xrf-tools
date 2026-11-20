@@ -9,7 +9,6 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
-convert_case = "0.12.0"
 proc-macro2 = { workspace = true }
 quote = { workspace = true }
 syn = { workspace = true }

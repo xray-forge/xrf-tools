@@ -922,15 +922,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "convert_case"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1af709f1f33454bf52eadfc8c78b3b9ef9cb26fb54d16dc9cd9a7299f899fd1b"
-dependencies = [
- "unicode-segmentation",
-]
-
-[[package]]
 name = "cookie"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8543,7 +8534,6 @@ dependencies = [
 name = "xrf-error-derive"
 version = "0.1.0"
 dependencies = [
- "convert_case",
  "proc-macro2",
  "quote",
  "syn 3.0.10",
