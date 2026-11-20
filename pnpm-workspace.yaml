@@ -28,7 +28,7 @@ catalog:
   eslint: ^10.14.0
   jest: ^30.5.2
   jest-environment-jsdom: ^30.5.2
-  mobx: ^6.16.1
+  mobx: ^7.1.6
   prettier: ^3.10.1
   prettier-plugin-tailwindcss: 0.8.1
   react: ^19.3.1

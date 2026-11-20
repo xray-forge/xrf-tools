@@ -174,8 +174,8 @@ catalogs:
       specifier: ^30.5.2
       version: 30.5.2
     mobx:
-      specifier: ^6.16.1
-      version: 6.16.1
+      specifier: ^7.1.6
+      version: 7.1.6
     prettier:
       specifier: ^3.10.1
       version: 3.10.1
@@ -550,7 +550,7 @@ importers:
         version: 1.0.0
       '@wirestate/mobx':
         specifier: 'catalog:'
-        version: 1.0.0(@wirestate/core@1.0.0)(mobx@6.16.1)
+        version: 1.0.0(@wirestate/core@1.0.0)(mobx@7.1.6)
       '@xrf/toolchain':
         specifier: workspace:*
         version: link:../../cli
@@ -562,7 +562,7 @@ importers:
         version: 30.5.2(@types/node@24.19.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
       mobx:
         specifier: 'catalog:'
-        version: 6.16.1
+        version: 7.1.6
       prettier:
         specifier: 'catalog:'
         version: 3.10.1
@@ -633,7 +633,7 @@ importers:
         version: 1.0.0
       '@wirestate/mobx':
         specifier: 'catalog:'
-        version: 1.0.0(@wirestate/core@1.0.0)(mobx@6.16.1)
+        version: 1.0.0(@wirestate/core@1.0.0)(mobx@7.1.6)
       '@wirestate/react':
         specifier: 'catalog:'
         version: 1.0.0(@wirestate/core@1.0.0)(react@19.3.1)
@@ -648,7 +648,7 @@ importers:
         version: 30.5.2(@types/node@24.19.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
       mobx:
         specifier: 'catalog:'
-        version: 6.16.1
+        version: 7.1.6
       prettier:
         specifier: 'catalog:'
         version: 3.10.1
@@ -5244,6 +5244,9 @@ packages:
   mobx@6.16.1:
     resolution: {integrity: sha512-syNcDdX3KT+Jq3je6eGjBhuc24Z68td2VG0zNFqRswaE433D9SNH5VRy/xrGbJsUixfppLLccXhAW9JSf6n+SQ==}
 
+  mobx@7.1.6:
+    resolution: {integrity: sha512-ZCiX6zxYeWaPnBLnH/OHJCFV5FysL41I7ndHntYv/mU4bWvpmP0N46Z+ujg/DoRv2K+7748/HvgFn1Jm8jiObQ==}
+
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
@@ -8658,6 +8661,11 @@ snapshots:
       '@wirestate/core': 1.0.0
       mobx: 6.16.1
 
+  '@wirestate/mobx@1.0.0(@wirestate/core@1.0.0)(mobx@7.1.6)':
+    dependencies:
+      '@wirestate/core': 1.0.0
+      mobx: 7.1.6
+
   '@wirestate/react-mobx@1.0.0(mobx-react-lite@4.1.1(mobx@6.16.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(mobx@6.16.1)(react@19.3.1)':
     dependencies:
       mobx: 6.16.1
@@ -10698,6 +10706,8 @@ snapshots:
       - vite
 
   mobx@6.16.1: {}
+
+  mobx@7.1.6: {}
 
   ms@2.1.3: {}
 
