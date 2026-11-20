@@ -123,39 +123,70 @@ describe("LevelLookAction", () => {
     expect(descriptor.renderSettings.rendererFeatures.lightModel).toBe(ERenderLightModel.ENGINE);
   });
 
-  it("shows the physical light through the view's own display transform, offered but off under the engine light", async () => {
+  it("offers the physical light's display transform, but off under the engine light", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
     const { getByRole, findByRole } = renderWithProviders(<LevelLookAction />, { container: descriptor.container });
 
     await userEvent.click(getByRole("button", { name: "Look" }));
-    await findByRole("dialog", { name: "Look" });
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Look" });
 
     for (const section of ["Light", "Exposure", "Display", "Bloom", "Image", "Debanding"]) {
-      expect(getByRole("group", { name: section })).toBeInTheDocument();
+      expect(within(dialog).getByRole("group", { name: section })).toBeInTheDocument();
     }
 
-    expect(getByRole("button", { name: "AgX" })).toBeDisabled();
-    expect(getByRole("slider", { name: "Compensation" })).toBeDisabled();
-    expect(getByRole("slider", { name: "Middle gray" })).toBeEnabled();
+    const display: HTMLElement = within(dialog).getByRole("group", { name: "Display" });
+    const exposure: HTMLElement = within(dialog).getByRole("group", { name: "Exposure" });
 
-    await userEvent.click(within(getByRole("group", { name: "Model" })).getByRole("button", { name: "Physical" }));
-    await userEvent.click(getByRole("button", { name: "AgX" }));
+    expect(within(display).getByRole("button", { name: "AgX" })).toBeDisabled();
+    expect(within(exposure).getByRole("slider", { name: "Compensation" })).toBeDisabled();
+    expect(within(exposure).getByRole("slider", { name: "Middle gray" })).toBeEnabled();
+  });
+
+  it("shows the physical light through the view's own display transform", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+    const { getByRole, findByRole } = renderWithProviders(<LevelLookAction />, { container: descriptor.container });
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Look" });
+    const light: HTMLElement = within(dialog).getByRole("group", { name: "Light" });
+    const exposure: HTMLElement = within(dialog).getByRole("group", { name: "Exposure" });
+
+    await userEvent.click(
+      within(within(light).getByRole("group", { name: "Model" })).getByRole("button", { name: "Physical" })
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "AgX" }));
 
     expect(descriptor.view.features.displayTransform).toBe(ERenderDisplayTransform.AGX);
     expect(descriptor.renderSettings.rendererFeatures.displayTransform).toBe(ERenderDisplayTransform.ENGINE);
-    expect(getByRole("slider", { name: "Compensation" })).toBeEnabled();
+    expect(within(exposure).getByRole("slider", { name: "Compensation" })).toBeEnabled();
     // The engine meter's values, which the physical light's histogram does not read; the hemisphere's scale still
     // scales the sky's irradiance, and the game's flat ambient stays at the authored levels, off at the physical ones.
-    expect(getByRole("slider", { name: "Middle gray" })).toBeDisabled();
-    expect(getByRole("slider", { name: "Hemisphere" })).toBeEnabled();
-    expect(getByRole("slider", { name: "Ambient" })).toBeEnabled();
+    expect(within(exposure).getByRole("slider", { name: "Middle gray" })).toBeDisabled();
+    expect(within(light).getByRole("slider", { name: "Hemisphere" })).toBeEnabled();
+    expect(within(light).getByRole("slider", { name: "Ambient" })).toBeEnabled();
+    expect(within(light).getByRole("slider", { name: "Sun tint" })).toBeDisabled();
+  });
 
-    expect(getByRole("slider", { name: "Sun tint" })).toBeDisabled();
+  it("lights the physical levels by the world's sun, tinted by the weather's, with no flat ambient", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+    const { getByRole, findByRole } = renderWithProviders(<LevelLookAction />, { container: descriptor.container });
 
-    await userEvent.click(within(getByRole("group", { name: "Levels" })).getByRole("button", { name: "Physical" }));
+    await userEvent.click(getByRole("button", { name: "Look" }));
 
-    // The real-world levels light by the world's sun, whose hue the weather's may tint, and have no flat ambient.
-    expect(getByRole("slider", { name: "Ambient" })).toBeDisabled();
-    expect(getByRole("slider", { name: "Sun tint" })).toBeEnabled();
+    const light: HTMLElement = within(await findByRole("dialog", { name: "Look" })).getByRole("group", {
+      name: "Light",
+    });
+
+    await userEvent.click(
+      within(within(light).getByRole("group", { name: "Model" })).getByRole("button", { name: "Physical" })
+    );
+    await userEvent.click(
+      within(within(light).getByRole("group", { name: "Levels" })).getByRole("button", { name: "Physical" })
+    );
+
+    expect(within(light).getByRole("slider", { name: "Ambient" })).toBeDisabled();
+    expect(within(light).getByRole("slider", { name: "Sun tint" })).toBeEnabled();
   });
 });
