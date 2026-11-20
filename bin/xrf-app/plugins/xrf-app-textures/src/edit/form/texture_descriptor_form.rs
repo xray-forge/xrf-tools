@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmFormat, ThmMaterial, ThmMaterialChunk, ThmMipFilter,
-  ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk, ThmTextureType,
+  ThmTextureEdit, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk, ThmTextureType,
 };
 
 /// The descriptor fields the editor owns, read off a `.thm` and written back onto one.
@@ -80,45 +80,36 @@ impl TextureDescriptorForm {
   }
 
   /// Writes these fields onto a descriptor, leaving everything else it carries alone.
+  ///
+  /// Only the fields that differ from what the descriptor reads as are set, so it gains a chunk it lacks only for a
+  /// value other than the default that chunk reads as.
   pub(crate) fn apply_to(&self, file: &mut ThmFile) {
-    Self::apply_chunk(&mut file.texture_type, ThmTextureType::from(self.texture_type));
-    Self::apply_chunk(
-      &mut file.texture_param,
-      ThmTextureParamChunk {
-        format: ThmFormat::from(self.format),
-        flags: ThmTextureFlags::from(self.flags),
-        border_color: self.border_color,
-        fade_color: self.fade_color,
-        fade_amount: self.fade_amount,
-        mip_filter: ThmMipFilter::from(self.mip_filter),
-        width: self.width,
-        height: self.height,
-      },
-    );
-    Self::apply_chunk(
-      &mut file.detail,
-      ThmDetailChunk {
-        name: self.detail_name.clone(),
-        scale: self.detail_scale,
-      },
-    );
-    Self::apply_chunk(
-      &mut file.material,
-      ThmMaterialChunk {
-        material: ThmMaterial::from(self.material),
-        weight: self.material_weight,
-      },
-    );
-    Self::apply_chunk(
-      &mut file.bump,
-      ThmBumpChunk {
-        virtual_height: self.virtual_height,
-        mode: ThmBumpMode::from(self.bump_mode),
-        name: self.bump_name.clone(),
-      },
-    );
-    Self::apply_chunk(&mut file.ext_normal_map_name, self.ext_normal_map_name.clone());
-    Self::apply_chunk(&mut file.fade_delay, self.fade_delay);
+    self.edit_from(&Self::read(file)).apply_to(file);
+  }
+
+  /// The edit that takes a descriptor whose fields read as `current` to these.
+  fn edit_from(&self, current: &Self) -> ThmTextureEdit {
+    ThmTextureEdit {
+      texture_type: Self::differing(&self.texture_type, &current.texture_type).map(ThmTextureType::from),
+      format: Self::differing(&self.format, &current.format).map(ThmFormat::from),
+      mip_filter: Self::differing(&self.mip_filter, &current.mip_filter).map(ThmMipFilter::from),
+      width: Self::differing(&self.width, &current.width),
+      height: Self::differing(&self.height, &current.height),
+      set_flags: ThmTextureFlags::from(self.flags & !current.flags),
+      cleared_flags: ThmTextureFlags::from(current.flags & !self.flags),
+      border_color: Self::differing(&self.border_color, &current.border_color),
+      fade_color: Self::differing(&self.fade_color, &current.fade_color),
+      fade_amount: Self::differing(&self.fade_amount, &current.fade_amount),
+      fade_delay: Self::differing(&self.fade_delay, &current.fade_delay),
+      detail_name: Self::differing(&self.detail_name, &current.detail_name),
+      detail_scale: Self::differing(&self.detail_scale, &current.detail_scale),
+      material: Self::differing(&self.material, &current.material).map(ThmMaterial::from),
+      material_weight: Self::differing(&self.material_weight, &current.material_weight),
+      bump_mode: Self::differing(&self.bump_mode, &current.bump_mode).map(ThmBumpMode::from),
+      bump_name: Self::differing(&self.bump_name, &current.bump_name),
+      virtual_height: Self::differing(&self.virtual_height, &current.virtual_height),
+      ext_normal_map_name: Self::differing(&self.ext_normal_map_name, &current.ext_normal_map_name),
+    }
   }
 
   /// The descriptor this form describes, built onto `file` when there is one and onto a new one when there is not.
@@ -130,12 +121,8 @@ impl TextureDescriptorForm {
     descriptor
   }
 
-  /// Sets one chunk without inventing a presence it did not have.
-  fn apply_chunk<T: Default + PartialEq>(slot: &mut Option<T>, value: T) {
-    match slot {
-      Some(existing) => *existing = value,
-      None if value != T::default() => *slot = Some(value),
-      None => {}
-    }
+  /// `value` where it differs from `current`, which is the only case an edit names it.
+  fn differing<T: Clone + PartialEq>(value: &T, current: &T) -> Option<T> {
+    (value != current).then(|| value.clone())
   }
 }

@@ -7,13 +7,12 @@ pub(crate) mod sound;
 pub(crate) mod texture;
 pub(crate) mod thm_file;
 pub(crate) mod thm_kind;
+pub(crate) mod thm_texture_edit;
 
 #[cfg(test)]
 mod tests;
 
 pub use crate::bump::thm_bump_mode::ThmBumpMode;
-pub use crate::bump::thm_bump_patch_report::ThmBumpPatchReport;
-pub use crate::bump::thm_bump_processor::ThmBumpProcessor;
 pub use crate::chunks::thm_bump_chunk::ThmBumpChunk;
 pub use crate::chunks::thm_detail_chunk::ThmDetailChunk;
 pub use crate::chunks::thm_extra_chunk::ThmExtraChunk;
@@ -33,3 +32,4 @@ pub use crate::texture::thm_texture_flags::ThmTextureFlags;
 pub use crate::texture::thm_texture_type::ThmTextureType;
 pub use crate::thm_file::ThmFile;
 pub use crate::thm_kind::ThmKind;
+pub use crate::thm_texture_edit::ThmTextureEdit;

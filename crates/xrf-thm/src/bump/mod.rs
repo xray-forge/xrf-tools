@@ -1,5 +1,3 @@
-//! A texture descriptor's bump declaration: its mode, and repointing it in a file on disk.
+//! A texture descriptor's bump declaration: whether and how the renderer binds its bump pair.
 
 pub(crate) mod thm_bump_mode;
-pub(crate) mod thm_bump_patch_report;
-pub(crate) mod thm_bump_processor;

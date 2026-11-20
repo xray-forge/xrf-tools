@@ -5,7 +5,6 @@ pub(crate) mod set_field;
 #[cfg(test)]
 mod tests;
 mod thm_field_arguments;
-mod thm_field_edit;
 mod thm_group;
 pub(crate) mod write;
 

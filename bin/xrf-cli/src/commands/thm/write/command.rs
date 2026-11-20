@@ -5,12 +5,11 @@ use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_output::OutputOptions;
 use xrf_texture::TextureEncodedDescriptor;
-use xrf_thm::ThmFile;
+use xrf_thm::{ThmFile, ThmTextureEdit};
 use xrf_utils::{OutputFiles, format_path};
 
 use super::report::ThmWriteReport;
 use crate::commands::thm::thm_field_arguments::ThmFieldArguments;
-use crate::commands::thm::thm_field_edit::ThmFieldEdit;
 use crate::core::arguments::InputArgument;
 use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
@@ -63,7 +62,7 @@ impl GenericCommand for WriteCommand {
       .cloned()
       .unwrap_or_else(|| source.with_extension("thm"));
     let is_dry_run: bool = matches.get_flag("dry-run");
-    let edit: ThmFieldEdit = ThmFieldArguments::of(matches)?;
+    let edit: ThmTextureEdit = ThmFieldArguments::of(matches)?;
     let output: OutputOptions = context.get_output().clone();
 
     OutputFiles::of_path(&destination).assert_free(matches.get_flag("force"))?;
@@ -98,7 +97,7 @@ impl GenericCommand for WriteCommand {
 
 impl WriteCommand {
   /// The descriptor the texture at `source` is given, with the fields `edit` names set over it.
-  fn describe(source: &Path, edit: &ThmFieldEdit) -> CommandResult<ThmFile> {
+  fn describe(source: &Path, edit: &ThmTextureEdit) -> CommandResult<ThmFile> {
     let metadata: DdsMetadata = DdsFile::read_from_path(source)?.metadata();
     let mut descriptor: ThmFile = TextureEncodedDescriptor::of(&metadata, edit.format)?;
 

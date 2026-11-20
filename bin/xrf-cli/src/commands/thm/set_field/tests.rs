@@ -119,13 +119,20 @@ fn edits_every_texture_descriptor_below_a_directory_and_skips_every_other_kind()
 fn writes_nothing_when_one_descriptor_cannot_be_kept_byte_for_byte() -> CommandResult {
   let directory: PathBuf = case("unkept")?;
   let original: Vec<u8> = descriptor()?;
-  // An unknown chunk before the texture parameters, which the writer would move to the end of the file.
-  let reordered: Vec<u8> = [&original[..12], &raw_chunk(0x0900, &[1, 2, 3]), &original[12..]].concat();
+  // An unknown chunk after the ten-byte version chunk, which the writer would move to the end of the file.
+  let reordered: Vec<u8> = [&original[..10], &raw_chunk(0x0900, &[1, 2, 3]), &original[10..]].concat();
 
   std::fs::write(directory.join("a.thm"), &original)?;
   std::fs::write(directory.join("b.thm"), &reordered)?;
 
-  assert!(run(&directory, &["--fade-amount", "40"]).is_err());
+  let refusal: String = run(&directory, &["--fade-amount", "40"])
+    .expect_err("an unkept descriptor refuses the run")
+    .to_string();
+
+  assert!(
+    refusal.contains("b.thm would not be written back byte for byte"),
+    "{refusal}"
+  );
   assert_eq!(std::fs::read(directory.join("a.thm"))?, original);
   assert_eq!(std::fs::read(directory.join("b.thm"))?, reordered);
 

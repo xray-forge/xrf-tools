@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
-use xrf_error::XrfResult;
+use xrf_chunk::XRayByteOrder;
+use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
-use xrf_spawn::XRayByteOrder;
-use xrf_thm::{ThmBumpPatchReport, ThmBumpProcessor};
-use xrf_utils::format_path;
+use xrf_thm::{ThmBumpChunk, ThmBumpMode, ThmFile, ThmTextureEdit};
+use xrf_utils::{StagedFile, format_path};
 
+use super::report::ThmPatchBumpReport;
 use crate::core::arguments::InputArgument;
 use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
@@ -54,49 +55,45 @@ impl GenericCommand for PatchBumpCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = InputArgument::of(matches);
-
-    let to: Option<&String> = matches.get_one::<String>("to");
-
+    let to: Option<&str> = matches.get_one::<String>("to").map(String::as_str);
     let destination: &Path = matches
       .get_one::<PathBuf>("dest")
       .map_or(path.as_path(), |it| it.as_path());
-
+    let is_dry_run: bool = matches.get_flag("dry-run");
     let output: OutputOptions = context.get_output().clone();
+    let original: Vec<u8> = std::fs::read(path).map_err(|error| {
+      XrfError::new_io_error(
+        format!("THM file was not read: {}, error: {error}", format_path(path)),
+        error.kind(),
+      )
+    })?;
+    let previous: ThmBumpChunk = Self::read_bump(path, &original)?;
+    let patched: Vec<u8> = Self::edit_of(to).rewrite::<XRayByteOrder>(&original)?.ok_or_else(|| {
+      XrfError::new_verify_error(format!(
+        "Refused to patch {}, which would not be written back byte for byte, so its other chunks could not be kept",
+        format_path(path)
+      ))
+    })?;
 
-    let report: ThmBumpPatchReport = Self::patch_file(
-      &output,
-      path,
-      destination,
-      to.map(String::as_str),
-      matches.get_flag("dry-run"),
-    )?;
+    if !is_dry_run {
+      StagedFile::write_creating_directories(destination, &patched)?;
+    }
 
-    context.set_result(|| &report)?;
-
-    Ok(())
-  }
-}
-
-impl PatchBumpCommand {
-  /// Repoint the bump declaration of a single thm file, preserving all other chunks byte for byte.
-  fn patch_file(
-    output: &OutputOptions,
-    path: &Path,
-    destination: &Path,
-    to: Option<&str>,
-    is_dry_run: bool,
-  ) -> XrfResult<ThmBumpPatchReport> {
-    let report: ThmBumpPatchReport = match to {
-      Some(to) => ThmBumpProcessor::patch_bump_name_to_path::<XRayByteOrder>(path, destination, to, is_dry_run)?,
-      None => ThmBumpProcessor::patch_bump_off_to_path::<XRayByteOrder>(path, destination, is_dry_run)?,
+    let report: ThmPatchBumpReport = ThmPatchBumpReport {
+      original_size: original.len(),
+      patched_size: patched.len(),
+      previous_name: previous.name,
+      previous_mode: previous.mode,
+      is_dry_run,
     };
-
     let outcome: String = match to {
       Some(to) => format!("bump '{}' -> '{}'", report.previous_name, to),
       None => format!("bump '{}' -> none", report.previous_name),
     };
 
-    if report.is_dry_run {
+    context.set_result(|| &report)?;
+
+    if is_dry_run {
       xrf_output::info!(
         output,
         "Dry run, nothing written, {} and {} would receive {} bytes instead of {}",
@@ -105,17 +102,42 @@ impl PatchBumpCommand {
         report.patched_size,
         report.original_size
       );
-
-      return Ok(report);
+    } else {
+      xrf_output::success!(
+        output,
+        "Patched thm {}, written into {}",
+        outcome,
+        format_path(destination)
+      );
     }
 
-    xrf_output::success!(
-      output,
-      "Patched thm {}, written into {}",
-      outcome,
-      format_path(destination)
-    );
+    Ok(())
+  }
+}
 
-    Ok(report)
+impl PatchBumpCommand {
+  /// The bump declaration the descriptor `original` holds, which a descriptor without one cannot be patched to.
+  fn read_bump(path: &Path, original: &[u8]) -> XrfResult<ThmBumpChunk> {
+    ThmFile::read_from_bytes::<XRayByteOrder>(original.to_vec())?
+      .bump
+      .ok_or_else(|| XrfError::new_not_found_error(format!("THM file declares no bump chunk: {}", format_path(path))))
+  }
+
+  /// The edit `--to` or `--off` asks for.
+  ///
+  /// `--to` repoints the name and keeps the mode, so a declaration the SDK reads as off stays off; `--off` clears the
+  /// name and sets the mode to none, the form `STextureParams` writes for a texture without a bump.
+  fn edit_of(to: Option<&str>) -> ThmTextureEdit {
+    match to {
+      Some(to) => ThmTextureEdit {
+        bump_name: Some(to.to_owned()),
+        ..ThmTextureEdit::default()
+      },
+      None => ThmTextureEdit {
+        bump_mode: Some(ThmBumpMode::None),
+        bump_name: Some(String::new()),
+        ..ThmTextureEdit::default()
+      },
+    }
   }
 }

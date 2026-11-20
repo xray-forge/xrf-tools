@@ -8,7 +8,7 @@ what the engine loads it as, and which bump pair goes with it. It is the SDK's `
 
 - [xrf-material](../xrf-material/README.md) resolves what a descriptor makes the renderer bind.
 - [xrf-texture](../xrf-texture/README.md) builds a texture from one.
-- The CLI's `thm patch-bump`, the texture verifier, and the desktop app's texture editor and archive describer read and
+- The CLI's `thm` commands, the texture verifier, and the desktop app's texture editor and archive describer read and
   write them.
 
 ## Read and write a descriptor
@@ -135,23 +135,20 @@ first.
 No game ships these thumbnails; they exist only in the SDK's rawdata. The readers are checked against the SDK's source
 and synthetic files.
 
-## Patch a bump declaration
+## Edit a descriptor's fields
 
-`ThmBumpProcessor` rewrites only a descriptor's bump chunk on disk and copies every other chunk byte for byte:
+`ThmTextureEdit` names the fields to set, each `None` or empty to leave it alone, and is how the CLI's `thm set-field`
+and `thm patch-bump` and the desktop app's texture editor change a descriptor:
 
-- `patch_bump_name_to_path` repoints the name and keeps the mode.
-- `patch_bump_off_to_path` clears the name and sets the mode to `None`, as the SDK does.
-- `patch_bump_to_path` does either.
+- `apply_to` sets the named fields on a `ThmFile`. A chunk the file lacks is added, at its defaults, only when a field
+  in it is named.
+- The flag word is changed through two masks, `set_flags` and `cleared_flags`, so bits the SDK has no name for can be
+  set and cleared too.
+- `rewrite` does the same to a file's bytes and gives back every byte it does not change. It gives `None` for a
+  descriptor the writer would not give back byte for byte, such as one whose chunks are not in the order above, since
+  the fields it does not name could then not be kept as they are; the caller says so with the file's name.
 
-Safety:
-
-- Before writing, it refuses a file with no bump chunk, more than one, or one that does not reproduce itself when its
-  existing declaration is written back.
-- After writing, it reads the destination back. If the declaration differs, it restores the source or removes the new
-  file.
-- A dry run writes nothing.
-
-The returned `ThmBumpPatchReport` gives both sizes and the previous name and mode.
+Each field is set exactly as named: a new type does not bring the changes `change_texture_type` makes.
 
 ## Errors
 
@@ -164,6 +161,6 @@ or `ThmKind::detect`.
 
 Run `cargo test --locked -p xrf-thm` from the repository root.
 
-Sources: the [descriptor](src/thm_file.rs), its [enumerations](src/texture), the
-[bump patcher](src/bump/thm_bump_processor.rs), the [object and group](src/object) and [sound](src/sound) thumbnails,
-the [chunks](src/chunks), and the [round-trip](src/tests/round_trip.rs) and [thumbnail](src/tests/thumbnails.rs) tests.
+Sources: the [descriptor](src/thm_file.rs), its [enumerations](src/texture), the [field edit](src/thm_texture_edit.rs),
+the [object and group](src/object) and [sound](src/sound) thumbnails, the [chunks](src/chunks), and the
+[round-trip](src/tests/round_trip.rs) and [thumbnail](src/tests/thumbnails.rs) tests.

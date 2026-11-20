@@ -1,9 +1,9 @@
 use clap::builder::{PossibleValuesParser, TypedValueParser};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
-use xrf_thm::{ThmBumpMode, ThmFormat, ThmMaterial, ThmMipFilter, ThmTextureFlag, ThmTextureType};
-
-use crate::commands::thm::thm_field_edit::ThmFieldEdit;
+use xrf_thm::{
+  ThmBumpMode, ThmFormat, ThmMaterial, ThmMipFilter, ThmTextureEdit, ThmTextureFlag, ThmTextureFlags, ThmTextureType,
+};
 
 /// The descriptor fields `thm write` and `thm set-field` take, one named flag each, declared and read once.
 ///
@@ -194,7 +194,7 @@ impl ThmFieldArguments {
   /// # Errors
   ///
   /// Returns an error when the run both sets and clears one flag, which says nothing about which it meant.
-  pub(crate) fn of(matches: &ArgMatches) -> XrfResult<ThmFieldEdit> {
+  pub(crate) fn of(matches: &ArgMatches) -> XrfResult<ThmTextureEdit> {
     let set_flags: Vec<ThmTextureFlag> = Self::flags_of(matches, Self::SET_FLAG);
     let cleared_flags: Vec<ThmTextureFlag> = Self::flags_of(matches, Self::CLEAR_FLAG);
 
@@ -205,7 +205,7 @@ impl ThmFieldArguments {
       )));
     }
 
-    Ok(ThmFieldEdit {
+    Ok(ThmTextureEdit {
       texture_type: matches.get_one::<ThmTextureType>(Self::TEXTURE_TYPE).copied(),
       format: matches.get_one::<ThmFormat>(Self::FORMAT).copied(),
       mip_filter: matches.get_one::<ThmMipFilter>(Self::MIP_FILTER).copied(),
@@ -221,9 +221,17 @@ impl ThmFieldArguments {
       fade_delay: matches.get_one::<u8>(Self::FADE_DELAY).copied(),
       ext_normal_map_name: matches.get_one::<String>(Self::EXT_NORMAL_MAP).cloned(),
       virtual_height: matches.get_one::<f32>(Self::VIRTUAL_HEIGHT).copied(),
-      set_flags,
-      cleared_flags,
+      set_flags: Self::mask_of(&set_flags),
+      cleared_flags: Self::mask_of(&cleared_flags),
+      ..ThmTextureEdit::default()
     })
+  }
+
+  /// The flag word with exactly `flags` set.
+  fn mask_of(flags: &[ThmTextureFlag]) -> ThmTextureFlags {
+    flags
+      .iter()
+      .fold(ThmTextureFlags::none(), |mask, flag| mask.with(*flag, true))
   }
 
   /// A flag taking one of `table`'s names, parsed into its value.

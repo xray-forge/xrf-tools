@@ -5,12 +5,11 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_output::OutputOptions;
-use xrf_thm::{ThmFile, ThmKind};
+use xrf_thm::{ThmKind, ThmTextureEdit};
 use xrf_utils::{StagedFile, format_path, format_portable_path};
 
 use super::report::ThmSetFieldReport;
 use crate::commands::thm::thm_field_arguments::ThmFieldArguments;
-use crate::commands::thm::thm_field_edit::ThmFieldEdit;
 use crate::core::arguments::InputArgument;
 use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::host_walk::HostWalk;
@@ -59,7 +58,7 @@ impl GenericCommand for SetFieldCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let root: &PathBuf = InputArgument::of(matches);
-    let edit: ThmFieldEdit = ThmFieldArguments::of(matches)?;
+    let edit: ThmTextureEdit = ThmFieldArguments::of(matches)?;
     let is_dry_run: bool = matches.get_flag("dry-run");
     let output: OutputOptions = context.get_output().clone();
     let mut report: ThmSetFieldReport = ThmSetFieldReport {
@@ -123,29 +122,20 @@ impl GenericCommand for SetFieldCommand {
 
 impl SetFieldCommand {
   /// Reads the descriptor at `path` and sets the fields `edit` names on it, skipping a thumbnail that is not a texture
-  /// descriptor.
-  ///
-  /// A descriptor that would not be written back byte for byte is refused, since the run could then not promise that
-  /// the fields it did not name are untouched.
-  fn edit(path: &Path, edit: &ThmFieldEdit) -> XrfResult<ThmSetFieldOutcome> {
+  /// descriptor and refusing one [`ThmTextureEdit::rewrite`] refuses.
+  fn edit(path: &Path, edit: &ThmTextureEdit) -> XrfResult<ThmSetFieldOutcome> {
     let original: Vec<u8> = std::fs::read(path)?;
 
     if ThmKind::detect::<XRayByteOrder>(original.clone())? != Some(ThmKind::Texture) {
       return Ok(ThmSetFieldOutcome::Skipped);
     }
 
-    let mut file: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
-
-    if file.write_to_bytes::<XRayByteOrder>()? != original {
-      return Err(XrfError::new_invalid_error(format!(
+    let bytes: Vec<u8> = edit.rewrite::<XRayByteOrder>(&original)?.ok_or_else(|| {
+      XrfError::new_verify_error(format!(
         "{} would not be written back byte for byte, so its other fields could not be kept as they are",
         format_path(path)
-      )));
-    }
-
-    edit.apply_to(&mut file);
-
-    let bytes: Vec<u8> = file.write_to_bytes::<XRayByteOrder>()?;
+      ))
+    })?;
 
     if bytes == original {
       return Ok(ThmSetFieldOutcome::Unchanged);
