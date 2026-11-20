@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
@@ -10,7 +10,7 @@ use xrf_texture::{EquipmentGridOverlap, EquipmentGridVerifier};
 use xrf_utils::format_portable_path;
 
 use crate::commands::sprite::verify_equipment::SpriteVerifyEquipmentReport;
-use crate::core::arguments::LtxDialectArgument;
+use crate::core::arguments::{InputArgument, LtxDialectArgument};
 use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
@@ -44,21 +44,11 @@ impl GenericCommand for VerifyEquipmentCommand {
   }
 
   fn input(&self) -> CommandInput {
-    CommandInput::None
+    CommandInput::path("System ltx file, or a root folder of ltx files")
   }
 
   fn declare(&self, command: Command) -> Command {
-    let command: Command = command
-      .about("Check an equipment sprite's inventory icon grid rects for overlaps")
-      .arg(
-        Arg::new("system-ltx")
-          .help("Path to system ltx file or root folder with ltx files")
-          .long("system-ltx")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      );
-
-    LtxDialectArgument::declare(command)
+    LtxDialectArgument::declare(command.about("Check an equipment sprite's inventory icon grid rects for overlaps"))
   }
 
   /// Report inventory icon rects that overlap, exiting non zero when any are found.
@@ -67,9 +57,7 @@ impl GenericCommand for VerifyEquipmentCommand {
   /// A rect widened into a neighbour's cells packs without complaint and silently overwrites it,
   /// so this is the check that has to run before widening or moving an icon.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("system-ltx")
-      .expect("Expected valid path to system ltx to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let output: OutputOptions = context.get_output().clone();
     let started_at: Instant = Instant::now();
