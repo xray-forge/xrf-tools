@@ -18,7 +18,6 @@ xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-job = { workspace = true }
 xrf-math = { workspace = true }
-xrf-output = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-thm = { workspace = true }
 

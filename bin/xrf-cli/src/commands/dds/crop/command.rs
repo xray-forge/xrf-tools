@@ -102,7 +102,6 @@ impl GenericCommand for CropCommand {
     let options: CropTextureOptions = CropTextureOptions {
       source: source.clone(),
       output_path: output_path.clone(),
-      output: output.clone(),
       x,
       y,
       width,
@@ -116,6 +115,13 @@ impl GenericCommand for CropCommand {
     };
 
     let result: CropTextureResult = CropTextureProcessor::crop(&options)?;
+
+    if let Some((fit_width, fit_height)) = options.get_fit() {
+      xrf_output::info!(
+        output,
+        "Fitting cropped {width}x{height} region into {fit_width}x{fit_height}"
+      );
+    }
 
     context.set_result(|| DdsCropReport::new(&options, &result))?;
 

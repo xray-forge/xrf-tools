@@ -9210,7 +9210,6 @@ dependencies = [
  "xrf-extension",
  "xrf-job",
  "xrf-math",
- "xrf-output",
  "xrf-test-utils",
  "xrf-thm",
  "xrf-utils",

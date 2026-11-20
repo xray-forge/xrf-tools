@@ -32,20 +32,11 @@ impl CropTextureProcessor {
     let cropped: RgbaImage = image
       .view(options.x, options.y, options.width, options.height)
       .to_image();
-    let result: RgbaImage = match (options.fit_width, options.fit_height) {
-      (Some(fit_width), Some(fit_height)) => {
-        xrf_output::info!(
-          options.output,
-          "Fitting cropped {}x{} region into {}x{}",
-          options.width,
-          options.height,
-          fit_width,
-          fit_height
-        );
-
+    let result: RgbaImage = match options.get_fit() {
+      Some((fit_width, fit_height)) => {
         ImageFit::fit_to_bounds(DynamicImage::from(cropped), fit_width, fit_height, &options.source)?.into()
       }
-      _ => cropped,
+      None => cropped,
     };
 
     if XrayExtension::Png.matches_path(&options.output_path) {
@@ -93,7 +84,6 @@ mod tests {
     CropTextureOptions {
       output_path: source.with_file_name(format!("{name}-output.dds")),
       source,
-      output: Default::default(),
       x: 2,
       y: 1,
       width: 4,

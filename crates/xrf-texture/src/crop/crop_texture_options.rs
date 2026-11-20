@@ -1,12 +1,10 @@
 use std::path::PathBuf;
 
 use xrf_dds::{DdsMipmaps, ImageFormat};
-use xrf_output::OutputOptions;
 
 pub struct CropTextureOptions {
   pub source: PathBuf,
   pub output_path: PathBuf,
-  pub output: OutputOptions,
   pub x: u32,
   pub y: u32,
   pub width: u32,
@@ -15,4 +13,11 @@ pub struct CropTextureOptions {
   pub fit_height: Option<u32>,
   pub dds_compression_format: ImageFormat,
   pub dds_mipmaps: DdsMipmaps,
+}
+
+impl CropTextureOptions {
+  /// The bounds the cropped region is fitted into, when both are given; with either missing it is written as cut.
+  pub fn get_fit(&self) -> Option<(u32, u32)> {
+    self.fit_width.zip(self.fit_height)
+  }
 }

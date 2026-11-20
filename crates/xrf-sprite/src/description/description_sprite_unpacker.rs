@@ -171,7 +171,7 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::DescriptionSpriteUnpacker;
-  use crate::{DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor};
+  use crate::{DescriptionSpriteOptions, DescriptionSpriteResult, SpriteNotice, TextureFileDescriptor};
   use xrf_texture::ImageFileWriter;
 
   fn options_for_missing_source(is_strict: bool) -> DescriptionSpriteOptions {
@@ -329,6 +329,54 @@ mod tests {
     assert!(root.join("out").join("sheet").join("ui_icon_PDA.dds").is_file());
     assert!(root.join("out").join("sheet").join("ui icon (old).dds").is_file());
     assert_eq!(fs::read(root.join("victim.dds")).expect("sentinel"), SENTINEL);
+  }
+
+  #[test]
+  fn hands_out_notices_in_selection_order_however_the_workers_finish() {
+    let root: PathBuf = GeneratedResources::create_dir("description-unpack/notice-order").expect("description root");
+    let names: Vec<String> = (0..16).map(|index| format!("sheet_{index:02}")).collect();
+    let files: String = names
+      .iter()
+      .map(|name| {
+        format!(
+          "<file name=\"ui\\{name}\"><texture id=\"{name}_icon\" x=\"0\" y=\"0\" width=\"4\" height=\"4\" /></file>"
+        )
+      })
+      .collect();
+
+    fs::write(root.join("description.xml"), format!("<w>{files}</w>")).expect("description");
+
+    // Requested last to first, so neither the description's order nor its map's matches the one asked for. No sheet
+    // exists, so each one is passed over with a notice.
+    let requested: Vec<String> = names.iter().rev().cloned().collect();
+    let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      job: Default::default(),
+      description: root.join("description.xml"),
+      base: root.join("base"),
+      output_path: root.join("out"),
+      dds_compression_format: ImageFormat::BC3RgbaUnorm,
+      files: requested.clone(),
+      is_strict: false,
+      link_policy: Default::default(),
+      is_forced: false,
+    };
+    let mut notices: Vec<String> = Vec::new();
+
+    let result: DescriptionSpriteResult =
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |notice| match notice {
+        SpriteNotice::SheetUnreadable { path, .. } => notices.push(
+          path
+            .file_stem()
+            .expect("a sheet file name")
+            .to_string_lossy()
+            .into_owned(),
+        ),
+        other => panic!("expected only unreadable sheets, got {other:?}"),
+      })
+      .expect("a non-strict run passes unreadable sheets over");
+
+    assert_eq!(result.skipped_files, 16);
+    assert_eq!(notices, requested);
   }
 
   #[test]
