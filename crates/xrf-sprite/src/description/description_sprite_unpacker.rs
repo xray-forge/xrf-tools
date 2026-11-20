@@ -11,21 +11,24 @@ use xrf_utils::{HostDestination, HostRelativePath, OutputFiles, format_path};
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
-use crate::report::SpriteNotice;
+use crate::report::{SpriteListener, SpriteNotice};
 use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpriteUnpacker {}
 
 impl DescriptionSpriteUnpacker {
   /// Cuts the sprites out of the sheets the description declares, every one or those `options` names, and answers
-  /// what was written, handing whatever it passed over to `on_notice`.
+  /// what was written, handing whatever it passed over to the options' listener.
   ///
   /// The sheets are cut in parallel, so their notices are handed out once every sheet is done, in selection order
   /// rather than in the order the workers finished; a run that fails hands out only what reading the description met.
-  pub fn unpack_xml_descriptions(
-    options: &DescriptionSpriteOptions,
-    mut on_notice: impl FnMut(SpriteNotice),
-  ) -> XrfResult<DescriptionSpriteResult> {
+  pub fn unpack_xml_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<DescriptionSpriteResult> {
+    let listener: Option<SpriteListener> = options.listener.clone();
+    let mut on_notice = |notice: SpriteNotice| {
+      if let Some(listener) = &listener {
+        listener(&notice);
+      }
+    };
     let started_at: Instant = Instant::now();
     let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options, &mut on_notice)?;
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
@@ -78,7 +81,7 @@ impl DescriptionSpriteUnpacker {
 
   /// Cuts the sprites out of one described sheet, answering how many were written and how many did not fit; a sheet
   /// that cannot be read is passed over whole outside strict mode.
-  pub fn unpack_xml_description(
+  pub(crate) fn unpack_xml_description(
     options: &DescriptionSpriteOptions,
     file: &TextureFileDescriptor,
     on_notice: &mut impl FnMut(SpriteNotice),
@@ -171,6 +174,7 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::DescriptionSpriteUnpacker;
+  use crate::report::SpriteNoticeRecorder;
   use crate::{DescriptionSpriteOptions, DescriptionSpriteResult, SpriteNotice, TextureFileDescriptor};
   use xrf_texture::ImageFileWriter;
 
@@ -184,6 +188,7 @@ mod tests {
       .join(format!("xrf-sprite-missing-description-{}", std::process::id()));
 
     DescriptionSpriteOptions {
+      listener: None,
       job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("source"),
@@ -262,6 +267,7 @@ mod tests {
     .expect("description");
 
     DescriptionSpriteOptions {
+      listener: None,
       job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("base"),
@@ -302,7 +308,7 @@ mod tests {
 
         assert!(
           matches!(
-            DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |_| {}),
+            DescriptionSpriteUnpacker::unpack_xml_descriptions(&options),
             Err(XrfError::Invalid { .. })
           ),
           "sprite id '{id}' must be refused by name"
@@ -322,8 +328,7 @@ mod tests {
     let options: DescriptionSpriteOptions = options_for_sheet("valid", &["ui_icon_PDA", "ui icon (old)"], true);
     let root: PathBuf = root_of(&options);
 
-    let result: DescriptionSpriteResult =
-      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |_| {}).expect("unpack");
+    let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options).expect("unpack");
 
     assert_eq!((result.files, result.sprites, result.skipped_sprites), (1, 2, 0));
     assert!(root.join("out").join("sheet").join("ui_icon_PDA.dds").is_file());
@@ -349,7 +354,9 @@ mod tests {
     // Requested last to first, so neither the description's order nor its map's matches the one asked for. No sheet
     // exists, so each one is passed over with a notice.
     let requested: Vec<String> = names.iter().rev().cloned().collect();
+    let recorder: SpriteNoticeRecorder = SpriteNoticeRecorder::default();
     let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      listener: recorder.new_listener(),
       job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("base"),
@@ -360,20 +367,20 @@ mod tests {
       link_policy: Default::default(),
       is_forced: false,
     };
-    let mut notices: Vec<String> = Vec::new();
-
-    let result: DescriptionSpriteResult =
-      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |notice| match notice {
-        SpriteNotice::SheetUnreadable { path, .. } => notices.push(
-          path
-            .file_stem()
-            .expect("a sheet file name")
-            .to_string_lossy()
-            .into_owned(),
-        ),
+    let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)
+      .expect("a non-strict run passes unreadable sheets over");
+    let notices: Vec<String> = recorder
+      .list_notices()
+      .into_iter()
+      .map(|notice| match notice {
+        SpriteNotice::SheetUnreadable { path, .. } => path
+          .file_stem()
+          .expect("a sheet file name")
+          .to_string_lossy()
+          .into_owned(),
         other => panic!("expected only unreadable sheets, got {other:?}"),
       })
-      .expect("a non-strict run passes unreadable sheets over");
+      .collect();
 
     assert_eq!(result.skipped_files, 16);
     assert_eq!(notices, requested);
@@ -388,7 +395,7 @@ mod tests {
     fs::write(&existing, SENTINEL).expect("an earlier sprite");
 
     assert!(
-      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |_| {})
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)
         .expect_err("an earlier sprite is refused")
         .to_string()
         .contains("UI_Icon.dds")
@@ -403,12 +410,13 @@ mod tests {
     );
 
     let forced: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      listener: None,
       is_forced: true,
       ..options
     };
 
     assert_eq!(
-      DescriptionSpriteUnpacker::unpack_xml_descriptions(&forced, |_| {})
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&forced)
         .expect("forced, it writes over")
         .sprites,
       2

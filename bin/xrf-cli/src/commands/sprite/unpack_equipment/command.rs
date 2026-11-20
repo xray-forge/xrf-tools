@@ -88,17 +88,15 @@ impl GenericCommand for UnpackEquipmentCommand {
 
     create_dir_all(output)?;
 
-    let unpacked: u32 = EquipmentSpriteUnpacker::unpack_sprites(
-      EquipmentSpriteUnpackOptions {
-        job: CliJob::for_output(&output_options),
-        ltx: system_ltx,
-        source: source_dds,
-        output_path: output.into(),
-        dds_compression_format: ImageFormat::BC3RgbaUnorm,
-        link_policy: LinkPolicyArgument::of(matches),
-      },
-      |notice| SpriteRunPrinter::print_notice(&notice, &output_options),
-    )?;
+    let unpacked: u32 = EquipmentSpriteUnpacker::unpack_sprites(EquipmentSpriteUnpackOptions {
+      listener: SpriteRunPrinter::new_listener(&output_options),
+      job: CliJob::for_output(&output_options),
+      ltx: system_ltx,
+      source: source_dds,
+      output_path: output.into(),
+      dds_compression_format: ImageFormat::BC3RgbaUnorm,
+      link_policy: LinkPolicyArgument::of(matches),
+    })?;
 
     SpriteRunPrinter::print_equipment_unpack(unpacked, &output_options);
 

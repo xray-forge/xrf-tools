@@ -128,7 +128,6 @@ impl TranslationVerifier {
     // the reader does. An exact compare skipped `ST_A.JSON` with only an info line, while the editor
     // opened it — the VFS lower-cases logical paths and the host walk does not.
     if !TranslationSourceName::is_path(path.as_ref()) {
-      log::info!("Skip file {}", format_path(path.as_ref()));
       TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::FileSkipped { path: path.as_ref() });
 
       return Ok(TranslationVerifyResult::new());

@@ -14,6 +14,11 @@ pub struct GamedataProjectVerifyOptions {
 }
 
 impl GamedataProjectVerifyOptions {
+  /// The same options, handing the run's events to `listener`, or to nothing.
+  pub fn with_listener(self, listener: Option<GamedataListener>) -> Self {
+    Self { listener, ..self }
+  }
+
   pub fn selected_checks(&self) -> Vec<GamedataVerificationType> {
     let mut seen: HashSet<GamedataVerificationType> = HashSet::with_capacity(self.checks.len());
 

@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use xrf_output::{OutputChannel, OutputOptions};
 use xrf_utils::{format_bytes, format_bytes_pair};
@@ -24,7 +25,7 @@ impl ArchivePackPrinter {
 
     let output: OutputOptions = output.clone();
 
-    Some(Box::new(move |event: &ArchivePackEvent<'_>| {
+    Some(Arc::new(move |event: &ArchivePackEvent<'_>| {
       Self::print_event(event, &output);
     }))
   }

@@ -47,8 +47,15 @@ impl GenericCommand for VerifyCommand {
     // would leave archived includes unresolved and report their sections as missing, so the scope a person picks is the
     // path they name rather than a flag.
     let project: LtxProject = LtxProjectOpening::open(path, matches, &output)?;
-    let result: LtxProjectVerifyResult =
-      LtxRunPrinter::verify(&project, LtxVerifyOptions::default().with_job(job), &output)?;
+    LtxRunPrinter::print_verify_start(&project, &output);
+
+    let result: LtxProjectVerifyResult = project.verify_entries_opt(
+      LtxVerifyOptions::default()
+        .with_job(job)
+        .with_listener(LtxRunPrinter::new_listener(&output)),
+    )?;
+
+    LtxRunPrinter::print_verify_result(&project, &result, &output);
     let report: LtxVerifyReport = LtxVerifyReport::new(&project, &result);
 
     ReportVerdict::print_findings(&output, report.report());

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use xrf_output::{OutputChannel, OutputOptions};
 use xrf_utils::{format_bytes, format_path};
 
@@ -23,7 +25,7 @@ impl ArchivePatchPrinter {
 
     let output: OutputOptions = output.clone();
 
-    Some(Box::new(move |event: &ArchivePatchEvent<'_>| {
+    Some(Arc::new(move |event: &ArchivePatchEvent<'_>| {
       Self::print_event(event, &output);
     }))
   }

@@ -39,10 +39,10 @@ impl TranslationFormatOptions {
     self
   }
 
-  /// Hand the run's events to `listener`.
+  /// Hand the run's events to `listener`, or to nothing.
   #[must_use]
-  pub fn with_listener(mut self, listener: TranslationListener) -> Self {
-    self.listener = Some(listener);
+  pub fn with_listener(mut self, listener: Option<TranslationListener>) -> Self {
+    self.listener = listener;
     self
   }
 }

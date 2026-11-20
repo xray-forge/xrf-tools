@@ -156,7 +156,6 @@ impl TranslationBuilder {
         &mut result,
       )?;
     } else {
-      log::info!("Skip file {}", format_path(path.as_ref()));
       TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::FileSkipped { path: path.as_ref() });
     }
 

@@ -91,7 +91,6 @@ impl TranslationInitializer {
     // Through the shared name parser rather than comparing an extension, so this recognises the same names the reader
     // does; see `TranslationSourceName` for the case that made them drift.
     if !TranslationSourceName::is_path(path) {
-      log::info!("Skip file {}", format_path(path));
       TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::FileSkipped { path });
 
       return Ok(TranslationInitializeResult {
@@ -111,7 +110,6 @@ impl TranslationInitializer {
         if !entry.contains_key(&code) {
           keys_added += 1;
 
-          log::info!("Initializing missing key: {id} - {code}");
           emitter.emit(TranslationEvent::KeyInitialized { id, language: &code });
 
           entry.insert(code, None);

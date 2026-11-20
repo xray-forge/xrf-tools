@@ -11,7 +11,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker, InventorySpriteDescriptor};
 use crate::job_phases::SPRITE_PHASE_PACK_EQUIPMENT;
-use crate::report::SpriteNotice;
+use crate::report::{SpriteNotice, SpriteNoticeRecorder};
 use xrf_texture::{ImageFileReshape, ImageFileWriter};
 
 /// Cancels its job as soon as the pack has started on its first icon, while that icon is still being read and drawn.
@@ -62,6 +62,7 @@ fn options(name: &str, icons: u32, existing: bool) -> EquipmentSpritePackOptions
   }
 
   EquipmentSpritePackOptions {
+    listener: None,
     job: JobHandle::default(),
     ltx,
     source: root,
@@ -85,20 +86,22 @@ fn cancel_on_first_icon(options: &mut EquipmentSpritePackOptions) {
 
 /// Packs, cancelling the job when `is_cancelling` picks a notice, and checks nothing was published.
 fn assert_cancelled_without_publication(
-  options: EquipmentSpritePackOptions,
+  mut options: EquipmentSpritePackOptions,
   packed: u32,
   skipped: u32,
-  is_cancelling: impl Fn(&SpriteNotice) -> bool,
+  is_cancelling: impl Fn(&SpriteNotice) -> bool + Send + Sync + 'static,
 ) {
   let path: PathBuf = options.output_path.clone();
   let before: Option<Vec<u8>> = path.exists().then(|| fs::read(&path).unwrap());
   let job: JobHandle = options.job.clone();
-  let result = EquipmentSpritePacker::pack_sprites(options, |notice| {
-    if is_cancelling(&notice) {
+
+  options.listener = Some(Arc::new(move |notice: &SpriteNotice| {
+    if is_cancelling(notice) {
       job.cancel();
     }
-  })
-  .unwrap();
+  }));
+
+  let result = EquipmentSpritePacker::pack_sprites(options).unwrap();
 
   assert_eq!(result.outcome, JobOutcome::Cancelled);
   assert_eq!(result.packed_count, packed);
@@ -157,14 +160,16 @@ fn cancellation_during_shape_notice_preserves_destination() {
 
 #[test]
 fn notices_a_sheet_written_over_one_of_another_shape() {
-  let options = options("reshaped", 2, true);
+  let mut options = options("reshaped", 2, true);
   let path: PathBuf = options.output_path.clone();
-  let mut notices: Vec<SpriteNotice> = Vec::new();
+  let recorder: SpriteNoticeRecorder = SpriteNoticeRecorder::default();
 
-  EquipmentSpritePacker::pack_sprites(options, |notice| notices.push(notice)).unwrap();
+  options.listener = recorder.new_listener();
+
+  EquipmentSpritePacker::pack_sprites(options).unwrap();
 
   assert_eq!(
-    notices,
+    recorder.list_notices(),
     [SpriteNotice::SheetReshaped {
       path,
       width: 100,
@@ -184,7 +189,7 @@ fn completed_pack_publishes_every_icon() {
   for existing in [false, true] {
     let options = options("completed", 2, existing);
     let path: PathBuf = options.output_path.clone();
-    let result = EquipmentSpritePacker::pack_sprites(options, |_| {}).unwrap();
+    let result = EquipmentSpritePacker::pack_sprites(options).unwrap();
     assert_eq!(result.outcome, JobOutcome::Completed);
     assert_eq!(result.packed_count, 2);
     assert_eq!(result.skipped_count, 0);
@@ -221,17 +226,18 @@ fn refuses_a_custom_icon_path_it_cannot_resolve() {
 #[test]
 fn strict_missing_icon_error_preserves_destination() {
   for existing in [false, true] {
-    let options = options("missing-icon", 1, existing);
+    let mut options = options("missing-icon", 1, existing);
     fs::remove_file(options.source.join("icon_0.png")).unwrap();
     let path: PathBuf = options.output_path.clone();
     let before: Option<Vec<u8>> = path.exists().then(|| fs::read(&path).unwrap());
+    let recorder: SpriteNoticeRecorder = SpriteNoticeRecorder::default();
 
-    let mut notices: Vec<SpriteNotice> = Vec::new();
+    options.listener = recorder.new_listener();
 
-    assert!(EquipmentSpritePacker::pack_sprites(options, |notice| notices.push(notice)).is_err());
+    assert!(EquipmentSpritePacker::pack_sprites(options).is_err());
     // The refusal names the section; the notice handed out before it says why the icon could not be read.
     assert!(matches!(
-      notices.as_slice(),
+      recorder.list_notices().as_slice(),
       [SpriteNotice::IconUnreadable { section, .. }] if section == "icon_0"
     ));
     match before {

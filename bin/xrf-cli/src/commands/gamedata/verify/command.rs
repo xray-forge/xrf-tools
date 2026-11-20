@@ -92,7 +92,7 @@ impl GenericCommand for VerifyCommand {
 
     // Created before the project opens, so the reported total covers mounting and indexing.
     let verify_options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
-      listener: Some(GamedataRunPrinter::new_listener(&output)),
+      listener: GamedataRunPrinter::new_listener(&output),
       is_strict,
       checks,
       job: CliJob::for_output(&output),

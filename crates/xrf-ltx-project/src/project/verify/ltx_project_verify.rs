@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use indexmap::IndexSet;
@@ -10,24 +10,17 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::finding::LtxFinding;
-use crate::project::{LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
+use crate::project::{LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyEvent, LtxVerifyOptions};
 
 impl LtxProject {
   /// Verify all the entries in current ltx project.
   /// Make sure that:
   /// - All included files exist or `.ts` counterpart is declared
   /// - All the inherited sections are valid and declared before inherit attempt
+  ///
+  /// Each field checked against a scheme is handed to the options' listener as [`LtxVerifyEvent::FieldChecked`]. Where
+  /// an entry point is found is resolved once per entry, and only while something listens.
   pub fn verify_entries_opt(&self, options: LtxVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
-    self.verify_entries_traced(options, |_, _, _| {})
-  }
-
-  /// The same sweep, calling `on_field_checked` with the entry point, section and field of each field it checks
-  /// against a scheme, for a caller tracing the run. It runs inside the per-field loop, so it must stay cheap.
-  pub fn verify_entries_traced(
-    &self,
-    options: LtxVerifyOptions,
-    mut on_field_checked: impl FnMut(&XrayLogicalPath, &str, &str),
-  ) -> XrfResult<LtxProjectVerifyResult> {
     let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
 
     // Captured where the per-file work begins, so what came before it - mounting, indexing, assembling this project -
@@ -70,7 +63,23 @@ impl LtxProject {
         }
       };
 
-      result.absorb(self.verify_resolved_traced(entry, &resolved, &mut on_field_checked));
+      let verification: LtxEntryVerification = match &options.listener {
+        Some(listener) => {
+          let path: PathBuf = self.path_of(entry);
+
+          self.verify_resolved_traced(entry, &resolved, &mut |entry, section, field| {
+            listener(&LtxVerifyEvent::FieldChecked {
+              entry,
+              path: &path,
+              section,
+              field,
+            });
+          })
+        }
+        None => self.verify_resolved_traced(entry, &resolved, &mut |_, _, _| {}),
+      };
+
+      result.absorb(verification);
     }
 
     result.duration = options.job.elapsed();

@@ -215,6 +215,7 @@ mod tests {
       GeneratedResources::write("xml_description/invalid.xml", "<w>").expect("generated description to be written");
 
     let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      listener: None,
       job: Default::default(),
       description: path.clone(),
       base: PathBuf::new(),
@@ -248,6 +249,7 @@ mod tests {
     .to_path_buf();
 
     let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      listener: None,
       job: Default::default(),
       description: directory,
       base: PathBuf::new(),
@@ -288,6 +290,7 @@ mod select_files_tests {
 
   fn options_for(files: &[&str]) -> DescriptionSpriteOptions {
     DescriptionSpriteOptions {
+      listener: None,
       job: Default::default(),
       description: PathBuf::from("ui_actor_upgrades.xml"),
       base: PathBuf::new(),

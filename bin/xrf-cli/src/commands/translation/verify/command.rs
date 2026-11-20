@@ -67,7 +67,7 @@ impl GenericCommand for VerifyCommand {
     let options: TranslationVerifyOptions = TranslationVerifyOptions {
       job: CliJob::for_output(&output),
       is_strict,
-      listener: Some(TranslationRunPrinter::new_listener(&output)),
+      listener: TranslationRunPrinter::new_listener(&output),
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
       // The command reports every missing translation by name, which is what its report is for.
       is_detailed: true,

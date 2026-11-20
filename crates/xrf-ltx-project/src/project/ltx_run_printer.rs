@@ -1,11 +1,10 @@
 use std::path::Path;
+use std::sync::Arc;
 
-use xrf_error::XrfResult;
 use xrf_output::{OutputChannel, OutputOptions};
 use xrf_utils::{format_duration, format_path};
-use xrf_vfs::XrayLogicalPath;
 
-use crate::project::{LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult, LtxVerifyOptions};
+use crate::project::{LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult, LtxVerifyEvent, LtxVerifyListener};
 
 /// What a person reads of a verification or formatting run: the lines every surface running one prints, kept in one
 /// place so `ltx verify`, `ltx format` and the gamedata LTX check say the same thing about the same run.
@@ -14,39 +13,32 @@ use crate::project::{LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult,
 pub struct LtxRunPrinter;
 
 impl LtxRunPrinter {
-  /// Verifies `project` as [`LtxProject::verify_entries_opt`] does, printing the run around it: the path it verifies,
-  /// each field it checks when the output is verbose, then each finding and the totals.
-  ///
-  /// # Errors
-  ///
-  /// As [`LtxProject::verify_entries_opt`].
-  pub fn verify(
-    project: &LtxProject,
-    options: LtxVerifyOptions,
-    output: &OutputOptions,
-  ) -> XrfResult<LtxProjectVerifyResult> {
+  /// Names the path a verification is about to judge, before it starts.
+  pub fn print_verify_start(project: &LtxProject, output: &OutputOptions) {
     xrf_output::heading!(output, "Verify path: {}", format_path(&project.root));
+  }
 
-    let result: LtxProjectVerifyResult = if output.is_visible(OutputChannel::Verbose) {
-      // Rendered once per entry point rather than per field: rendering asks the VFS where the file sits.
-      let mut reported: Option<(XrayLogicalPath, String)> = None;
+  /// A listener printing each field a verification checks, or none when verbose lines would not show, so a run nobody
+  /// is reading resolves no paths for it.
+  pub fn new_listener(output: &OutputOptions) -> Option<LtxVerifyListener> {
+    if !output.is_visible(OutputChannel::Verbose) {
+      return None;
+    }
 
-      project.verify_entries_traced(options, |entry, section, field| {
-        if reported.as_ref().is_none_or(|(rendered, _)| rendered != entry) {
-          reported = Some((entry.clone(), format_path(&project.path_of(entry)).to_string()));
-        }
+    let output: OutputOptions = output.clone();
 
-        if let Some((_, path)) = &reported {
-          xrf_output::verbose!(output, "Checking {path} [{section}] {field}");
-        }
-      })?
-    } else {
-      project.verify_entries_opt(options)?
-    };
+    Some(Arc::new(move |event: &LtxVerifyEvent<'_>| {
+      Self::print_event(event, &output);
+    }))
+  }
 
-    Self::print_verify_result(project, &result, output);
-
-    Ok(result)
+  /// Says one event at verbose level.
+  pub fn print_event(event: &LtxVerifyEvent<'_>, output: &OutputOptions) {
+    match *event {
+      LtxVerifyEvent::FieldChecked {
+        path, section, field, ..
+      } => xrf_output::verbose!(output, "Checking {} [{section}] {field}", format_path(path)),
+    }
   }
 
   /// Names the files a formatting run is about to read, before it starts.
@@ -99,7 +91,7 @@ impl LtxRunPrinter {
 
   /// Each finding at the path a person opens, then how much of the project the run judged: the share of sections a
   /// scheme bound, which the findings alone do not show.
-  fn print_verify_result(project: &LtxProject, result: &LtxProjectVerifyResult, output: &OutputOptions) {
+  pub fn print_verify_result(project: &LtxProject, result: &LtxProjectVerifyResult, output: &OutputOptions) {
     for finding in &result.findings {
       xrf_output::error!(output, "{}", project.with_reported_paths(finding));
     }

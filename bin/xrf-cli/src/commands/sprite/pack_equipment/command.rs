@@ -95,6 +95,7 @@ impl GenericCommand for PackEquipmentCommand {
     let system_ltx: Ltx = Ltx::read_from_file_with_dialect(system_ltx_path, LtxDialectArgument::of(matches).as_ref())?;
 
     let options = EquipmentSpritePackOptions {
+      listener: SpriteRunPrinter::new_listener(&output_options),
       job: CliJob::for_output(&output_options),
       ltx: system_ltx,
       source: source.into(),
@@ -108,9 +109,7 @@ impl GenericCommand for PackEquipmentCommand {
 
     xrf_output::verbose!(output_options, "DDS format: {format}");
 
-    let result: EquipmentSpritePackResult = EquipmentSpritePacker::pack_sprites(options, |notice| {
-      SpriteRunPrinter::print_notice(&notice, &output_options);
-    })?;
+    let result: EquipmentSpritePackResult = EquipmentSpritePacker::pack_sprites(options)?;
 
     SpriteRunPrinter::print_equipment_pack(&result, format, &output_options);
 

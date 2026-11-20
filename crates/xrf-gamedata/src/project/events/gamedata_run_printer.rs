@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use xrf_output::OutputOptions;
+use xrf_output::{OutputChannel, OutputOptions};
 use xrf_utils::{format_duration, format_path};
 
 use crate::GamedataVerificationType;
@@ -13,11 +13,18 @@ use crate::{GamedataEvent, GamedataListener, GamedataVerificationCheckReport, Ga
 pub struct GamedataRunPrinter;
 
 impl GamedataRunPrinter {
-  /// A listener printing every event to `output`.
-  pub fn new_listener(output: &OutputOptions) -> GamedataListener {
+  /// A listener printing every event to `output`, or none when nothing it prints would show. Findings are errors,
+  /// which show at every verbosity, so in practice there always is one.
+  pub fn new_listener(output: &OutputOptions) -> Option<GamedataListener> {
+    if !output.is_visible(OutputChannel::Error) {
+      return None;
+    }
+
     let output: OutputOptions = output.clone();
 
-    Arc::new(move |event: &GamedataEvent<'_>| Self::print_event(event, &output))
+    Some(Arc::new(move |event: &GamedataEvent<'_>| {
+      Self::print_event(event, &output);
+    }))
   }
 
   /// Says one event.

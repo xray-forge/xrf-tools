@@ -16,8 +16,8 @@ It sits above [xrf-texture](../xrf-texture/README.md), which reads, fits and wri
 
 - Each operation takes an options value carrying its inputs, output paths and policy.
 - Each pack and unpack prints nothing. It answers counts and hands each `SpriteNotice` (what it skipped or noticed) to
-  the `on_notice` callback it is given, in the order met. `SpriteRunPrinter` renders the notices and counts as the CLI
-  prints them.
+  its options' `listener`, in the order met. `SpriteRunPrinter::new_listener` prints the notices and its `print_*`
+  functions the counts, as the CLI does.
 - Resolve game configs with the intended LTX dialect before passing them to the equipment operations.
 
 ## Inventory sprites

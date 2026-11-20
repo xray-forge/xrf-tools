@@ -1,4 +1,6 @@
-use xrf_output::OutputOptions;
+use std::sync::Arc;
+
+use xrf_output::{OutputChannel, OutputOptions};
 use xrf_utils::{format_duration, format_path};
 
 use crate::project::events::translation_event::TranslationEvent;
@@ -12,11 +14,18 @@ use crate::project::format::translation_format_result::TranslationFormatResult;
 pub struct TranslationRunPrinter;
 
 impl TranslationRunPrinter {
-  /// A listener printing every event to `output`.
-  pub fn new_listener(output: &OutputOptions) -> TranslationListener {
+  /// A listener printing every event to `output`, or none when nothing it prints would show. A verification's
+  /// missing keys are errors, which show at every verbosity, so in practice there always is one.
+  pub fn new_listener(output: &OutputOptions) -> Option<TranslationListener> {
+    if !output.is_visible(OutputChannel::Error) {
+      return None;
+    }
+
     let output: OutputOptions = output.clone();
 
-    Box::new(move |event: &TranslationEvent<'_>| Self::print_event(event, &output))
+    Some(Arc::new(move |event: &TranslationEvent<'_>| {
+      Self::print_event(event, &output);
+    }))
   }
 
   /// Says one event at the level it is worth.

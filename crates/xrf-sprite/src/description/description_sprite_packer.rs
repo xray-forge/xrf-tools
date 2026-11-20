@@ -10,18 +10,21 @@ use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
-use crate::report::SpriteNotice;
+use crate::report::{SpriteListener, SpriteNotice};
 use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpritePacker {}
 
 impl DescriptionSpritePacker {
   /// Packs the sheets the description declares, every one or those `options` names, and answers what was written,
-  /// handing whatever it passed over or noticed to `on_notice` as it is met.
-  pub fn pack_xml_descriptions(
-    options: &DescriptionSpriteOptions,
-    mut on_notice: impl FnMut(SpriteNotice),
-  ) -> XrfResult<DescriptionSpriteResult> {
+  /// handing whatever it passed over or noticed to the options' listener as it is met.
+  pub fn pack_xml_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<DescriptionSpriteResult> {
+    let listener: Option<SpriteListener> = options.listener.clone();
+    let mut on_notice = |notice: SpriteNotice| {
+      if let Some(listener) = &listener {
+        listener(&notice);
+      }
+    };
     let started_at: Instant = Instant::now();
     let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options, &mut on_notice)?;
     let mut result: DescriptionSpriteResult = DescriptionSpriteResult::default();
@@ -54,7 +57,7 @@ impl DescriptionSpritePacker {
   }
 
   /// Packs one described sheet, answering how many of its sprites were placed and how many could not be read.
-  pub fn pack_xml_description(
+  pub(crate) fn pack_xml_description(
     options: &DescriptionSpriteOptions,
     file: &TextureFileDescriptor,
     on_notice: &mut impl FnMut(SpriteNotice),

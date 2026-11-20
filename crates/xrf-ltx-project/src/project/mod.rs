@@ -19,4 +19,6 @@ pub(crate) use crate::project::ltx_read_counters::LtxReadCounters;
 pub use crate::project::ltx_read_counters_snapshot::LtxReadCountersSnapshot;
 pub(crate) use crate::project::ltx_resolved_root::LtxResolvedRoot;
 pub use crate::project::ltx_run_printer::LtxRunPrinter;
-pub use crate::project::verify::{LtxEntryVerification, LtxProjectVerifyResult, LtxVerifyOptions};
+pub use crate::project::verify::{
+  LtxEntryVerification, LtxProjectVerifyResult, LtxVerifyEvent, LtxVerifyListener, LtxVerifyOptions,
+};

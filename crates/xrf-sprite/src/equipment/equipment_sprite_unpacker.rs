@@ -5,18 +5,21 @@ use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath};
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, InventorySpriteDescriptor};
-use crate::report::SpriteNotice;
+use crate::report::{SpriteListener, SpriteNotice};
 use xrf_texture::ImageFileWriter;
 
 pub struct EquipmentSpriteUnpacker {}
 
 impl EquipmentSpriteUnpacker {
   /// Cuts every declared icon out of the sheet into a file named by its section, answering how many it wrote and
-  /// handing each one it passed over to `on_notice`.
-  pub fn unpack_sprites(
-    options: EquipmentSpriteUnpackOptions,
-    mut on_notice: impl FnMut(SpriteNotice),
-  ) -> XrfResult<u32> {
+  /// handing each one it passed over to the options' listener.
+  pub fn unpack_sprites(options: EquipmentSpriteUnpackOptions) -> XrfResult<u32> {
+    let listener: Option<SpriteListener> = options.listener.clone();
+    let mut on_notice = |notice: SpriteNotice| {
+      if let Some(listener) = &listener {
+        listener(&notice);
+      }
+    };
     let mut count: u32 = 0;
     let sprites: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(&options.ltx);
 

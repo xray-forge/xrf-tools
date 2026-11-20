@@ -10,5 +10,5 @@ mod tests;
 pub use crate::finding::{LtxFinding, LtxFindingKind};
 pub use crate::project::{
   LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions,
-  LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxRunPrinter, LtxVerifyOptions,
+  LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxRunPrinter, LtxVerifyEvent, LtxVerifyListener, LtxVerifyOptions,
 };

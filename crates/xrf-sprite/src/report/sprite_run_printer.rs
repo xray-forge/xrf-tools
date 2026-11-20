@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
 use xrf_dds::ImageFormat;
 use xrf_job::JobOutcome;
-use xrf_output::OutputOptions;
+use xrf_output::{OutputChannel, OutputOptions};
 use xrf_texture::ImageFileReshape;
 use xrf_utils::format_path;
 
 use crate::description::{DescriptionSpriteOptions, DescriptionSpriteResult};
 use crate::equipment::EquipmentSpritePackResult;
-use crate::report::SpriteNotice;
+use crate::report::{SpriteListener, SpriteNotice};
 
 /// What a person reads of a sprite run: the notices a run hands out and the counts it answers, kept in one place so every
 /// surface running one says the same thing about the same run.
@@ -15,8 +17,21 @@ use crate::report::SpriteNotice;
 pub struct SpriteRunPrinter;
 
 impl SpriteRunPrinter {
+  /// A listener printing every notice to `output`, or none when warnings would not show.
+  pub fn new_listener(output: &OutputOptions) -> Option<SpriteListener> {
+    if !output.is_visible(OutputChannel::Warning) {
+      return None;
+    }
+
+    let output: OutputOptions = output.clone();
+
+    Some(Arc::new(move |notice: &SpriteNotice| {
+      Self::print_event(notice, &output);
+    }))
+  }
+
   /// Prints a notice as the warning it is.
-  pub fn print_notice(notice: &SpriteNotice, output: &OutputOptions) {
+  pub fn print_event(notice: &SpriteNotice, output: &OutputOptions) {
     xrf_output::warning!(output, "{}", Self::format_notice(notice));
   }
 

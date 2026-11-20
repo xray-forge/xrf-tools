@@ -82,7 +82,7 @@ impl GenericCommand for ParseCommand {
     let output: OutputOptions = context.get_output().clone();
     let options: TranslationParseOptions = TranslationParseOptions {
       job: CliJob::for_output(&output),
-      listener: Some(TranslationRunPrinter::new_listener(&output)),
+      listener: TranslationRunPrinter::new_listener(&output),
       roots: XrayRootsArguments::of(matches)?,
       prefix: XrayRootsArguments::prefix_of(matches).map(str::to_owned),
       // Rejects `all`: a run files every entry it reads under one key, and there is no such key.

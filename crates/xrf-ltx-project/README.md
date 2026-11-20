@@ -82,9 +82,8 @@ The options carry the job that reports progress and takes cancellation. Canonica
 
 Calls:
 
-- `verify_entries` checks every entry point; `verify_entries_opt` takes the job.
-- `verify_entries_traced` is the same sweep, calling back with the entry point, section and field of each field it
-  checks against a scheme.
+- `verify_entries` checks every entry point; `verify_entries_opt` takes the job and an optional `listener`, which
+  hears an `LtxVerifyEvent::FieldChecked` for each field checked against a scheme.
 - `verify_resolved` checks one entry the caller has already resolved, with the same rules.
 
 Both answer `findings`, one `LtxFinding` for each:
@@ -101,9 +100,9 @@ engine path; `with_reported_paths` renders them as files on disk where they are 
 Verify and format runs print nothing; they answer results. `LtxRunPrinter` prints the same lines for every surface
 that runs one:
 
-- `LtxRunPrinter::verify` runs `verify_entries_opt` itself, printing the path first, each checked field at verbose
-  level, then each finding and the totals.
-- `print_format_start` and `print_format_result` go before and after a formatting run you start yourself.
+- `print_verify_start` and `print_verify_result` go before and after a verification; `new_listener` prints each
+  checked field at verbose level, and answers none otherwise, so a quiet run builds no events.
+- `print_format_start` and `print_format_result` go before and after a formatting run.
 
 ## Checks
 

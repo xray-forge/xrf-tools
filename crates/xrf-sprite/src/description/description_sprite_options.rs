@@ -3,10 +3,14 @@ use std::path::PathBuf;
 use xrf_dds::ImageFormat;
 use xrf_utils::HostLinkPolicy;
 
+use crate::report::SpriteListener;
+
 /// What a texture description run packs or unpacks, in either direction.
 pub struct DescriptionSpriteOptions {
   /// Where progress goes, and for packing, where cancellation comes from.
   pub job: xrf_job::JobHandle,
+  /// What hears the run's notices as it meets them, or nothing.
+  pub listener: Option<SpriteListener>,
   pub description: PathBuf,
   pub base: PathBuf,
   pub output_path: PathBuf,

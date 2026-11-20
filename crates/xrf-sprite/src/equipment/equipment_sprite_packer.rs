@@ -13,18 +13,21 @@ use crate::equipment::{
   LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX, LTX_PATH_GAMEDATA_MARKER,
   LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
-use crate::report::SpriteNotice;
+use crate::report::{SpriteListener, SpriteNotice};
 use xrf_texture::{ImageFileReader, ImageFileWriter, ImageFit};
 
 pub struct EquipmentSpritePacker {}
 
 impl EquipmentSpritePacker {
   /// Draws every declared icon into one sheet and writes it, unless cancelled first, handing each notice to
-  /// `on_notice` as it is met.
-  pub fn pack_sprites(
-    options: EquipmentSpritePackOptions,
-    mut on_notice: impl FnMut(SpriteNotice),
-  ) -> XrfResult<EquipmentSpritePackResult> {
+  /// the options' listener as it is met.
+  pub fn pack_sprites(options: EquipmentSpritePackOptions) -> XrfResult<EquipmentSpritePackResult> {
+    let listener: Option<SpriteListener> = options.listener.clone();
+    let mut on_notice = |notice: SpriteNotice| {
+      if let Some(listener) = &listener {
+        listener(&notice);
+      }
+    };
     let started_at: Instant = Instant::now();
 
     let mut count: u32 = 0;

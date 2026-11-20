@@ -81,6 +81,7 @@ impl GenericCommand for PackDescriptionCommand {
     );
 
     let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      listener: SpriteRunPrinter::new_listener(&output),
       job: CliJob::for_output(&output),
       description: description.clone(),
       base: base.clone(),
@@ -93,9 +94,7 @@ impl GenericCommand for PackDescriptionCommand {
       is_forced: false,
     };
 
-    let result: DescriptionSpriteResult = DescriptionSpritePacker::pack_xml_descriptions(&options, |notice| {
-      SpriteRunPrinter::print_notice(&notice, &output);
-    })?;
+    let result: DescriptionSpriteResult = DescriptionSpritePacker::pack_xml_descriptions(&options)?;
 
     SpriteRunPrinter::print_description_pack(&options, &result, &output);
 

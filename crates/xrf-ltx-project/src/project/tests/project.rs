@@ -5,6 +5,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
@@ -13,7 +14,9 @@ use xrf_vfs::{
 };
 
 use crate::finding::LtxFindingKind;
-use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions, LtxVerifyOptions};
+use crate::project::{
+  LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions, LtxVerifyEvent, LtxVerifyOptions,
+};
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
   Ok(GeneratedResources::create_dir(&format!("project/{name}"))?)
@@ -255,10 +258,21 @@ fn a_traced_verification_names_each_field_it_checks_and_counts_the_same() -> Xrf
       ..Default::default()
     },
   )?;
-  let mut traced: Vec<(String, String, String)> = Vec::new();
-  let result = project.verify_entries_traced(LtxVerifyOptions::default(), |entry, section, field| {
-    traced.push((entry.to_string(), section.to_string(), field.to_string()));
-  })?;
+  let heard: Arc<Mutex<Vec<(String, String, String)>>> = Arc::new(Mutex::new(Vec::new()));
+  let recorded: Arc<Mutex<Vec<(String, String, String)>>> = Arc::clone(&heard);
+  let result = project.verify_entries_opt(LtxVerifyOptions::default().with_listener(Some(Arc::new(
+    move |event: &LtxVerifyEvent<'_>| {
+      match *event {
+        LtxVerifyEvent::FieldChecked {
+          entry, section, field, ..
+        } => recorded
+          .lock()
+          .expect("record")
+          .push((entry.to_string(), section.to_string(), field.to_string())),
+      }
+    },
+  ))))?;
+  let traced: Vec<(String, String, String)> = heard.lock().expect("heard").clone();
 
   assert_eq!(traced.len(), result.checked_fields);
   assert!(

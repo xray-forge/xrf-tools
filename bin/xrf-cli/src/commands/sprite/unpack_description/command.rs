@@ -91,6 +91,7 @@ impl GenericCommand for UnpackDescriptionCommand {
     );
 
     let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      listener: SpriteRunPrinter::new_listener(&output),
       job: CliJob::for_output(&output),
       description: description.clone(),
       base: base.clone(),
@@ -102,9 +103,7 @@ impl GenericCommand for UnpackDescriptionCommand {
       is_forced: matches.get_flag("force"),
     };
 
-    let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options, |notice| {
-      SpriteRunPrinter::print_notice(&notice, &output);
-    })?;
+    let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)?;
 
     SpriteRunPrinter::print_description_unpack(&options, &result, &output);
 

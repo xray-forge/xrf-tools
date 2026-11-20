@@ -75,7 +75,7 @@ impl GenericCommand for BuildCommand {
     let options: TranslationBuildOptions = TranslationBuildOptions {
       job: CliJob::for_output(&output),
       is_sorted,
-      listener: Some(TranslationRunPrinter::new_listener(&output)),
+      listener: TranslationRunPrinter::new_listener(&output),
       output_dir: output_dir.clone(),
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
       link_policy: LinkPolicyArgument::of(matches),
