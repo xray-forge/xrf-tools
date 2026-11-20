@@ -86,7 +86,10 @@ export type HostInfo = {
   cpuCount: number;
   /** Physical cores, absent where the platform does not distinguish them. */
   physicalCoreCount: number | null;
-  /** Total physical memory of the machine, the figure every usage reading is read against. */
+  /**
+   * Total physical memory of the machine, the figure every usage reading is read against. Zero where the machine
+   * cannot be read.
+   */
   totalMemory: number;
   /** This process's own identifier, for pairing what is shown here with a task manager. */
   pid: number;

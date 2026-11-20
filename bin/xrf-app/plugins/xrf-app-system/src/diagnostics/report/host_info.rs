@@ -27,7 +27,8 @@ pub(crate) struct HostInfo {
   pub cpu_count: u32,
   /// Physical cores, absent where the platform does not distinguish them.
   pub physical_core_count: Option<u32>,
-  /// Total physical memory of the machine, the figure every usage reading is read against.
+  /// Total physical memory of the machine, the figure every usage reading is read against. Zero where the machine
+  /// cannot be read.
   pub total_memory: u64,
   /// This process's own identifier, for pairing what is shown here with a task manager.
   pub pid: u32,
@@ -41,12 +42,12 @@ impl HostInfo {
       // The one reading that comes from the webview rather than from the operating system, and the one most worth
       // having in a bug report: a rendering fault on this stack is usually the installed runtime's, not ours.
       webview_version: tauri::webview_version().ok(),
-      os_name: System::name(),
-      os_version: System::os_version(),
-      kernel_version: System::kernel_version(),
+      os_name: System::name().ok(),
+      os_version: System::os_version().ok(),
+      kernel_version: System::kernel_version().ok(),
       arch: System::cpu_arch(),
       cpu_count: Self::count_logical_cpus(),
-      physical_core_count: System::physical_core_count().map(|it| it as u32),
+      physical_core_count: System::physical_core_count().ok().map(|it| it as u32),
       total_memory: Self::read_total_memory(),
       pid: std::process::id(),
     }
@@ -58,11 +59,12 @@ impl HostInfo {
   }
 
   /// Physical memory installed, read through a throwaway view because it is the only machine-wide figure wanted here.
+  /// Zero where the machine cannot be read.
   fn read_total_memory() -> u64 {
-    let mut system: System = System::new();
+    System::new().map_or(0, |mut system| {
+      system.refresh_memory_specifics(MemoryRefreshKind::nothing().with_ram());
 
-    system.refresh_memory_specifics(MemoryRefreshKind::nothing().with_ram());
-
-    system.total_memory()
+      system.total_memory()
+    })
   }
 }
