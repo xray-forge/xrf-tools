@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { act, waitFor } from "@testing-library/react";
+import { act, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
@@ -74,6 +74,14 @@ describe("ApplicationTitleBar", () => {
     const { getByRole } = renderWithProviders(<ApplicationTitleBar isBusy />);
 
     expect(getByRole("progressbar", { hidden: true })).toHaveClass("invisible", "animate-delayed-reveal");
+  });
+
+  it("opens the menubar inside the caption, where it hides the breadcrumb without moving the toolbar", async () => {
+    const { getByRole, getByTestId } = renderWithProviders(<ApplicationTitleBar />);
+
+    await userEvent.click(getByRole("button", { name: "Menu" }));
+
+    expect(within(getByTestId("application-title-bar")).getByRole("menubar")).toBeInTheDocument();
   });
 
   it("reserves the space between the icon and the controls", () => {
