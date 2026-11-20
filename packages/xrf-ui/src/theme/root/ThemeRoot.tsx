@@ -7,7 +7,7 @@ import { CssBaseline, Theme, ThemeProvider } from "#/theme/styles";
 import "./tailwind.css";
 import "./base.css";
 import "./syntax.css";
-import { createApplicationStyleCache } from "./cache";
+import { getDocumentStyleCache } from "./cache";
 import { createApplicationTheme } from "./creation";
 
 interface IThemeRootProps {
@@ -26,7 +26,7 @@ interface IThemeRootProps {
  */
 export function ThemeRoot({ colorSchemeStorageKey, children }: IThemeRootProps): ReactElement {
   const theme: Theme = useMemo(() => createApplicationTheme(), []);
-  const cache: EmotionCache = useMemo(() => createApplicationStyleCache(), []);
+  const cache: EmotionCache = getDocumentStyleCache(document);
 
   return (
     <CacheProvider value={cache}>
