@@ -4,11 +4,12 @@ import { ReactElement, ReactNode, useMemo } from "react";
 
 import { CssBaseline, Theme, ThemeProvider } from "#/theme/styles";
 
+import { getDocumentStyleCache } from "./cache";
+import { createApplicationTheme } from "./creation";
+
 import "./tailwind.css";
 import "./base.css";
 import "./syntax.css";
-import { getDocumentStyleCache } from "./cache";
-import { createApplicationTheme } from "./creation";
 
 interface IThemeRootProps {
   /** Local storage key the chosen colour scheme is kept under. */
