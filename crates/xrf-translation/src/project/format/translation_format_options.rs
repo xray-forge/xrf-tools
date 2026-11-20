@@ -1,5 +1,7 @@
 use xrf_utils::LineEndings;
 
+use crate::project::events::translation_listener::TranslationListener;
+
 /// How one formatting run reports, is stopped, and spells its line endings.
 ///
 /// What to format is the operation's argument rather than a field here, matching `ArchivePacker` and
@@ -13,7 +15,8 @@ use xrf_utils::LineEndings;
 pub struct TranslationFormatOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: xrf_job::JobHandle,
-  pub output: xrf_output::OutputOptions,
+  /// What hears the run's events as they happen, or nothing.
+  pub listener: Option<TranslationListener>,
   /// Write these line endings rather than preserving each file's own.
   ///
   /// Also arms the check: with a choice made, a file spelling its endings the other way is not formatted, and the
@@ -36,10 +39,10 @@ impl TranslationFormatOptions {
     self
   }
 
-  /// Send human output to `output`.
+  /// Hand the run's events to `listener`.
   #[must_use]
-  pub fn with_output(mut self, output: xrf_output::OutputOptions) -> Self {
-    self.output = output;
+  pub fn with_listener(mut self, listener: TranslationListener) -> Self {
+    self.listener = Some(listener);
     self
   }
 }

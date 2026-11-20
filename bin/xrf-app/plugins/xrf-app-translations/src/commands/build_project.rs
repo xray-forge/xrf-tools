@@ -55,7 +55,7 @@ pub(crate) async fn translations_build_project(
           &TranslationBuildOptions {
             job,
             is_sorted,
-            output: xrf_output::OutputOptions::default(),
+            listener: None,
             output_dir,
             language,
             link_policy: Default::default(),

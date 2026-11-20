@@ -7,6 +7,8 @@ use xrf_utils::format_path;
 use crate::json::translation_json_canon::TranslationJsonCanon;
 use crate::json::translation_json_reader::TranslationJsonReader;
 use crate::json::translation_json_render::TranslationJsonRender;
+use crate::project::events::translation_emitter::TranslationEmitter;
+use crate::project::events::translation_event::TranslationEvent;
 use crate::project::format::translation_format_options::TranslationFormatOptions;
 use crate::project::format::translation_format_result::TranslationFormatResult;
 use crate::project::format::translation_source_selection::TranslationSourceSelection;
@@ -76,12 +78,10 @@ impl TranslationFormatter {
 
     result.startup_duration = options.job.elapsed();
 
-    xrf_output::heading!(
-      options.output,
-      "{} {} translation source(s)",
-      if is_check { "Checking" } else { "Formatting" },
-      files.len()
-    );
+    TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::FormatStarted {
+      files: files.len(),
+      is_check,
+    });
 
     let formatting: JobScope = options.job.enter(Self::PHASE, Some(files.len() as u64));
 
@@ -107,8 +107,6 @@ impl TranslationFormatter {
 
     result.duration = options.job.elapsed();
 
-    Self::report(&result, options, is_check);
-
     Ok(result)
   }
 
@@ -128,57 +126,17 @@ impl TranslationFormatter {
 
     result.record(path.to_path_buf(), is_changed);
 
-    if !is_changed {
-      xrf_output::verbose!(options.output, "Formatted: {}", format_path(path));
-
-      return Ok(());
+    // A rewrite is said once it is on disk, so a run that fails writing it has not claimed it.
+    if is_changed && !is_check {
+      render.write(path)?;
     }
 
-    if is_check {
-      xrf_output::info!(options.output, "Not formatted: {}", format_path(path));
-
-      return Ok(());
-    }
-
-    render.write(path)?;
-
-    xrf_output::info!(options.output, "Formatted: {}", format_path(path));
+    TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::SourceFormatted {
+      path,
+      is_changed,
+      is_check,
+    });
 
     Ok(())
-  }
-
-  /// Report the totals a run finished with.
-  ///
-  /// The two modes report separately because they mean opposite things by the same number. A check states a verdict,
-  /// and a clean one is a success worth saying; a rewrite states work done, and saying a tree was "checked" would
-  /// describe a run that wrote to it.
-  fn report(result: &TranslationFormatResult, options: &TranslationFormatOptions, is_check: bool) {
-    let duration: String = xrf_utils::format_duration(result.duration);
-
-    if !is_check {
-      xrf_output::info!(
-        options.output,
-        "Formatted {}/{} translation source(s) in {duration}",
-        result.invalid_files,
-        result.total_files
-      );
-
-      return;
-    }
-
-    if result.invalid_files == 0 {
-      xrf_output::success!(
-        options.output,
-        "All {} translation source(s) are formatted, checked in {duration}",
-        result.total_files
-      );
-    } else {
-      xrf_output::warning!(
-        options.output,
-        "Format issues with {}/{} translation source(s) in {duration}",
-        result.invalid_files,
-        result.total_files
-      );
-    }
   }
 }

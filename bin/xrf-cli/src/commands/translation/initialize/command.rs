@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
-use xrf_translation::{TranslationInitializeOptions, TranslationInitializeResult, TranslationInitializer};
+use xrf_translation::{
+  TranslationInitializeOptions, TranslationInitializeResult, TranslationInitializer, TranslationRunPrinter,
+};
 use xrf_utils::format_path;
 
 use crate::core::arguments::InputArgument;
@@ -35,7 +37,7 @@ impl GenericCommand for InitializeCommand {
     // no reason to know which it was handed.
     let result: TranslationInitializeResult = TranslationInitializer::initialize_opt(
       path,
-      TranslationInitializeOptions::default().with_output(output.clone()),
+      TranslationInitializeOptions::default().with_listener(TranslationRunPrinter::new_listener(&output)),
     )?;
 
     xrf_output::success!(

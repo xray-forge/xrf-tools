@@ -9,6 +9,8 @@ use crate::json::translation_json_reader::TranslationJsonReader;
 use crate::json::translation_json_render::TranslationJsonRender;
 use crate::json::translation_source_name::TranslationSourceName;
 use crate::language::translation_language::TranslationLanguage;
+use crate::project::events::translation_emitter::TranslationEmitter;
+use crate::project::events::translation_event::TranslationEvent;
 use crate::project::initialize::translation_initialize_options::TranslationInitializeOptions;
 use crate::project::initialize::translation_initialize_result::TranslationInitializeResult;
 use crate::text::translation_json::TranslationJson;
@@ -64,7 +66,7 @@ impl TranslationInitializer {
 
   /// Walk a tree, initializing every source in it.
   fn initialize_dir(dir: &Path, options: &TranslationInitializeOptions) -> XrfResult<TranslationInitializeResult> {
-    xrf_output::info!(options.output, "Initializing dir {}", format_path(dir));
+    TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::InitializeStarted { dir });
 
     let mut result: TranslationInitializeResult = TranslationInitializeResult::new();
 
@@ -90,7 +92,7 @@ impl TranslationInitializer {
     // does; see `TranslationSourceName` for the case that made them drift.
     if !TranslationSourceName::is_path(path) {
       log::info!("Skip file {}", format_path(path));
-      xrf_output::info!(options.output, "Skip file {}", format_path(path));
+      TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::FileSkipped { path });
 
       return Ok(TranslationInitializeResult {
         files_skipped: 1,
@@ -98,6 +100,7 @@ impl TranslationInitializer {
       });
     }
 
+    let emitter: TranslationEmitter<'_> = TranslationEmitter::of(options.listener.as_ref());
     let mut parsed: TranslationJson = TranslationJsonReader::read(path)?;
     let mut keys_added: u32 = 0;
 
@@ -109,7 +112,7 @@ impl TranslationInitializer {
           keys_added += 1;
 
           log::info!("Initializing missing key: {id} - {code}");
-          xrf_output::info!(options.output, "Initializing missing key: {id} - {code}");
+          emitter.emit(TranslationEvent::KeyInitialized { id, language: &code });
 
           entry.insert(code, None);
         }

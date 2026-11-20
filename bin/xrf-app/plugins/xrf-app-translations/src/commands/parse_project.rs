@@ -54,7 +54,7 @@ pub(crate) async fn translations_parse_project(
       move |job| {
         TranslationParser::parse(&TranslationParseOptions {
           job,
-          output: xrf_output::OutputOptions::default(),
+          listener: None,
           roots,
           prefix,
           language,

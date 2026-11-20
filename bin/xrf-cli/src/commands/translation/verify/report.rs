@@ -66,7 +66,7 @@ mod tests {
     TranslationVerifyOptions {
       is_strict: false,
       job: Default::default(),
-      output: xrf_output::OutputOptions::default(),
+      listener: None,
       language,
       is_detailed: true,
     }

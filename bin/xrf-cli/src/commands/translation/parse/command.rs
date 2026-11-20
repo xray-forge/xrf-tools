@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_report::Status;
-use xrf_translation::{TranslationLanguage, TranslationParseOptions, TranslationParseResult, TranslationParser};
+use xrf_translation::{
+  TranslationLanguage, TranslationParseOptions, TranslationParseResult, TranslationParser, TranslationRunPrinter,
+};
 
 use crate::core::arguments::{LinkPolicyArgument, XrayRootsArguments};
 use crate::core::command::{CommandContext, CommandError, CommandInput, CommandResult, GenericCommand};
@@ -80,7 +82,7 @@ impl GenericCommand for ParseCommand {
     let output: OutputOptions = context.get_output().clone();
     let options: TranslationParseOptions = TranslationParseOptions {
       job: CliJob::for_output(&output),
-      output: output.clone(),
+      listener: Some(TranslationRunPrinter::new_listener(&output)),
       roots: XrayRootsArguments::of(matches)?,
       prefix: XrayRootsArguments::prefix_of(matches).map(str::to_owned),
       // Rejects `all`: a run files every entry it reads under one key, and there is no such key.

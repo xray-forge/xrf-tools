@@ -69,6 +69,9 @@ font maps each byte to a glyph, and the font is chosen by prefix.
 - `build_file` and `verify_file` take one host file.
 - Options carry a `JobHandle` for progress and cancellation. A cancelled run reports `JobOutcome::Cancelled`; check the
   outcome before reporting a run as complete.
+- The runs print nothing. Each hands what it does to its options' `listener` as a `TranslationEvent`;
+  `TranslationRunPrinter::new_listener` prints them as the CLI does, and `print_format_result` prints a format run's
+  totals.
 
 ## Build game string tables
 
@@ -80,7 +83,7 @@ fn main() -> xrf_error::XrfResult {
   let roots = XrayRoots::one("sources".into(), XrayMountMode::Directory);
   let options = TranslationBuildOptions {
     job: Default::default(),
-    output: Default::default(),
+    listener: None,
     is_sorted: true,
     output_dir: "output/text".into(),
     language: TranslationLanguage::English,

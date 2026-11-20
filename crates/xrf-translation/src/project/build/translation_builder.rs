@@ -13,6 +13,8 @@ use crate::project::build::compiled::translation_table_compiler::TranslationTabl
 use crate::project::build::translation_build_options::TranslationBuildOptions;
 use crate::project::build::translation_build_result::TranslationBuildResult;
 use crate::project::build::translation_build_targets::TranslationBuildTargets;
+use crate::project::events::translation_emitter::TranslationEmitter;
+use crate::project::events::translation_event::TranslationEvent;
 use crate::text::translation_json::TranslationJson;
 
 /// Compiles translation sources into the per-language string tables the game loads.
@@ -69,7 +71,7 @@ impl TranslationBuilder {
 
     let destination: HostDestination = HostDestination::new(&options.output_dir, options.link_policy);
 
-    xrf_output::info!(options.output, "Building {} translation source(s)", assets.len());
+    TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::BuildStarted { sources: assets.len() });
 
     let building: xrf_job::JobScope = options.job.enter(Self::PHASE, Some(assets.len() as u64));
 
@@ -155,7 +157,7 @@ impl TranslationBuilder {
       )?;
     } else {
       log::info!("Skip file {}", format_path(path.as_ref()));
-      xrf_output::info!(options.output, "Skip file {}", format_path(path.as_ref()));
+      TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::FileSkipped { path: path.as_ref() });
     }
 
     result.duration = started_at.elapsed();
@@ -174,7 +176,9 @@ impl TranslationBuilder {
     options: &TranslationBuildOptions,
     result: &mut TranslationBuildResult,
   ) -> XrfResult {
-    xrf_output::verbose!(options.output, "Building translations {subject}");
+    let emitter: TranslationEmitter<'_> = TranslationEmitter::of(options.listener.as_ref());
+
+    emitter.emit(TranslationEvent::SourceBuilding { subject });
 
     destination.create_root()?;
 
@@ -182,11 +186,11 @@ impl TranslationBuilder {
       let data: Vec<u8> = TranslationTableCompiler::compile(subject, parsed, language, options.is_sorted)?;
       let target: HostRelativePath = TranslationBuildTargets::target_path(target_name, language)?;
 
-      xrf_output::verbose!(
-        options.output,
-        "Writing file {}",
-        format_path(&destination.get_root().join(&target))
-      );
+      if emitter.is_listening() {
+        emitter.emit(TranslationEvent::TableWriting {
+          path: &destination.get_root().join(&target),
+        });
+      }
 
       destination.create_file(&target)?.write_all(&data)?;
 

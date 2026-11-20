@@ -14,7 +14,7 @@ use crate::project::tests::fixtures::{roots, table};
 fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> TranslationParseOptions {
   TranslationParseOptions {
     job: Default::default(),
-    output: xrf_output::OutputOptions::default(),
+    listener: None,
     roots: roots(root),
     prefix: None,
     language,

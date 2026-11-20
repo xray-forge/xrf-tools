@@ -46,7 +46,7 @@ pub(crate) async fn translations_verify_project(
           &TranslationVerifyOptions {
             job,
             is_strict: false,
-            output: xrf_output::OutputOptions::default(),
+            listener: None,
             language,
             is_detailed: false,
           },

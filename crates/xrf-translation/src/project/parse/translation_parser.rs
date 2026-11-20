@@ -10,6 +10,8 @@ use xrf_vfs::{XrayAsset, XraySearch};
 
 use crate::json::translation_json_reader::TranslationJsonReader;
 use crate::json::translation_json_render::TranslationJsonRender;
+use crate::project::events::translation_emitter::TranslationEmitter;
+use crate::project::events::translation_event::TranslationEvent;
 use crate::project::parse::resolved_parse_scope::ResolvedParseScope;
 use crate::project::parse::translation_merge_outcome::TranslationMergeOutcome;
 use crate::project::parse::translation_merger::TranslationMerger;
@@ -53,12 +55,11 @@ impl TranslationParser {
 
     let scope: ResolvedParseScope = ResolvedParseScope::resolve(search, options.prefix.as_deref(), options.language)?;
 
-    xrf_output::info!(
-      options.output,
-      "Parsing translations at {} as '{language}'{}",
-      scope.describe(),
-      if options.is_dry_run { " (dry run)" } else { "" }
-    );
+    TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::ParseStarted {
+      scope: &scope.describe(),
+      language: &language,
+      is_dry_run: options.is_dry_run,
+    });
 
     let tables: XraySearch = search.clone().with_optional_prefix(Some(scope.prefix()))?;
 
@@ -290,7 +291,7 @@ impl TranslationParser {
     if !render.is_changed() {
       result.census.files_unchanged += 1;
 
-      xrf_output::verbose!(options.output, "Unchanged {}", format_path(target));
+      TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::SourceUnchanged { path: target });
 
       return Ok(());
     }
@@ -303,18 +304,11 @@ impl TranslationParser {
       result.census.files_updated += 1;
     }
 
-    xrf_output::info!(
-      options.output,
-      "{} {}",
-      if options.is_dry_run {
-        "Would write"
-      } else if is_new {
-        "Creating"
-      } else {
-        "Updating"
-      },
-      format_path(target)
-    );
+    TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::SourceWritten {
+      path: target,
+      is_new,
+      is_dry_run: options.is_dry_run,
+    });
 
     if options.is_dry_run {
       return Ok(());

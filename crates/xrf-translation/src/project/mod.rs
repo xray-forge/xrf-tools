@@ -2,6 +2,7 @@
 
 pub(crate) mod build;
 pub(crate) mod describe;
+pub(crate) mod events;
 pub(crate) mod format;
 pub(crate) mod initialize;
 pub(crate) mod parse;

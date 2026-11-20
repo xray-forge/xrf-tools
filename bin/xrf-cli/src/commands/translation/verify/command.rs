@@ -4,7 +4,9 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_report::Report;
-use xrf_translation::{TranslationLanguage, TranslationVerifier, TranslationVerifyOptions, TranslationVerifyResult};
+use xrf_translation::{
+  TranslationLanguage, TranslationRunPrinter, TranslationVerifier, TranslationVerifyOptions, TranslationVerifyResult,
+};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
@@ -65,7 +67,7 @@ impl GenericCommand for VerifyCommand {
     let options: TranslationVerifyOptions = TranslationVerifyOptions {
       job: CliJob::for_output(&output),
       is_strict,
-      output,
+      listener: Some(TranslationRunPrinter::new_listener(&output)),
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
       // The command reports every missing translation by name, which is what its report is for.
       is_detailed: true,
@@ -74,7 +76,7 @@ impl GenericCommand for VerifyCommand {
     let verify_result: XrfResult<TranslationVerifyResult> = match XrayRootsArguments::single_file_of(matches) {
       Some(file) => {
         xrf_output::info!(
-          options.output,
+          output,
           "Verifying translation file {}, language - {}",
           format_path(file),
           language
@@ -87,7 +89,7 @@ impl GenericCommand for VerifyCommand {
         let roots: XrayRoots = XrayRootsArguments::of(matches)?;
 
         xrf_output::info!(
-          options.output,
+          output,
           "Verifying translations in {} ({source}), language - {}",
           roots.describe(),
           language
@@ -102,7 +104,7 @@ impl GenericCommand for VerifyCommand {
       // An unreadable source is an execution failure; only judged content is a check failure.
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => {
-        xrf_output::failure!(options.output, "Provided translations are invalid: {error}");
+        xrf_output::failure!(output, "Provided translations are invalid: {error}");
         context.set_result(|| TranslationVerifyReport::malformed(&error))?;
 
         return Err(CommandError::new_check_failed(1));
@@ -114,7 +116,7 @@ impl GenericCommand for VerifyCommand {
     context.set_result(|| TranslationVerifyReport::new(&result))?;
 
     xrf_output::info!(
-      options.output,
+      output,
       "Verified translation files in {}, {} checked, {} missing, {} the game would refuse or mangle",
       xrf_utils::format_duration(result.duration),
       result.checked_translations_count,
@@ -131,8 +133,8 @@ impl GenericCommand for VerifyCommand {
       result.to_engine_report()
     };
 
-    ReportVerdict::print_findings(&options.output, &report);
+    ReportVerdict::print_findings(&output, &report);
 
-    ReportVerdict::conclude(&options.output, &report, "Translation verification")
+    ReportVerdict::conclude(&output, &report, "Translation verification")
   }
 }

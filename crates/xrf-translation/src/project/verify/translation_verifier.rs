@@ -11,6 +11,8 @@ use crate::language::translation_language::TranslationLanguage;
 use crate::project::build::compiled::translation_table_compiler::TranslationTableCompiler;
 use crate::project::build::translation_build_targets::TranslationBuildTargets;
 use crate::project::describe::translation_finding::TranslationFinding;
+use crate::project::events::translation_emitter::TranslationEmitter;
+use crate::project::events::translation_event::TranslationEvent;
 use crate::project::verify::translation_verify_language_summary::TranslationVerifyLanguageSummary;
 use crate::project::verify::translation_verify_options::TranslationVerifyOptions;
 use crate::project::verify::translation_verify_result::TranslationVerifyResult;
@@ -67,7 +69,7 @@ impl TranslationVerifier {
 
     // Said once the sources are known, because the count is the useful half: the caller already named
     // what it pointed at, and repeating a prefix it chose tells it nothing it did not just type.
-    xrf_output::info!(options.output, "Verifying {} translation source(s)", assets.len());
+    TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::VerifyStarted { sources: assets.len() });
 
     let verifying: xrf_job::JobScope = options.job.enter(Self::PHASE, Some(assets.len() as u64));
     // Each source's ids, which is all the checks across sources need of it.
@@ -127,7 +129,7 @@ impl TranslationVerifier {
     // opened it — the VFS lower-cases logical paths and the host walk does not.
     if !TranslationSourceName::is_path(path.as_ref()) {
       log::info!("Skip file {}", format_path(path.as_ref()));
-      xrf_output::info!(options.output, "Skip file {}", format_path(path.as_ref()));
+      TranslationEmitter::of(options.listener.as_ref()).emit(TranslationEvent::FileSkipped { path: path.as_ref() });
 
       return Ok(TranslationVerifyResult::new());
     }
@@ -152,6 +154,7 @@ impl TranslationVerifier {
     parsed: &TranslationJson,
     options: &TranslationVerifyOptions,
   ) -> XrfResult<TranslationVerifyResult> {
+    let emitter: TranslationEmitter<'_> = TranslationEmitter::of(options.listener.as_ref());
     let mut result: TranslationVerifyResult = TranslationVerifyResult::new();
 
     for language in options.language.expand() {
@@ -163,20 +166,21 @@ impl TranslationVerifier {
         if entry.get(&code).is_none_or(|translation| translation.is_none()) {
           missing += 1;
 
-          xrf_output::error!(
-            options.output,
-            "Translation key missing: {} {} in {}",
+          emitter.emit(TranslationEvent::KeyMissing {
             key,
-            code,
-            subject
-          );
+            language: &code,
+            subject,
+          });
 
           result.record_missing_translation(Path::new(subject), key, &code, options.is_detailed);
         }
       }
 
       for problem in TranslationTableCompiler::inspect(subject, parsed, language) {
-        xrf_output::error!(options.output, "{}: {}", subject, problem.message);
+        emitter.emit(TranslationEvent::ProblemFound {
+          subject,
+          problem: &problem,
+        });
 
         result.problems.push(problem);
       }

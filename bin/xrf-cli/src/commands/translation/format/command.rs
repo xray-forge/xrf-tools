@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_output::OutputOptions;
-use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, TranslationFormatter};
+use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, TranslationFormatter, TranslationRunPrinter};
 use xrf_utils::LineEndings;
 
 use crate::core::arguments::InputArgument;
@@ -61,7 +61,7 @@ impl GenericCommand for FormatCommand {
       // Created before the sources are discovered, because its clock is what the result reports as the total:
       // selecting them over a large tree is part of the wait.
       .with_job(CliJob::for_output(&output))
-      .with_output(output)
+      .with_listener(TranslationRunPrinter::new_listener(&output))
       .with_line_endings(line_endings);
 
     // Two doors rather than a flag, so the call site says whether this run rewrites the tree.
@@ -71,6 +71,8 @@ impl GenericCommand for FormatCommand {
       TranslationFormatter::format_opt(&paths, options)?
     };
     let invalid_files: usize = result.invalid_files;
+
+    TranslationRunPrinter::print_format_result(&result, is_check, &output);
 
     context.set_result(|| &result)?;
 

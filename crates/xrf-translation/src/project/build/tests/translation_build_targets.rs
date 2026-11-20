@@ -17,7 +17,7 @@ fn options(output_dir: PathBuf) -> TranslationBuildOptions {
   TranslationBuildOptions {
     job: Default::default(),
     is_sorted: false,
-    output: xrf_output::OutputOptions::default(),
+    listener: None,
     language: TranslationLanguage::English,
     output_dir,
     link_policy: Default::default(),

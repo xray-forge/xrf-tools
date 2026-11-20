@@ -18,6 +18,9 @@ pub use crate::project::describe::translation_project_descriptor::TranslationPro
 pub use crate::project::describe::translation_project_mode::TranslationProjectMode;
 pub use crate::project::describe::translation_source::TranslationSource;
 pub use crate::project::describe::translation_source_reader::TranslationSourceReader;
+pub use crate::project::events::translation_event::TranslationEvent;
+pub use crate::project::events::translation_listener::TranslationListener;
+pub use crate::project::events::translation_run_printer::TranslationRunPrinter;
 pub use crate::project::format::translation_format_options::TranslationFormatOptions;
 pub use crate::project::format::translation_format_result::TranslationFormatResult;
 pub use crate::project::format::translation_formatter::TranslationFormatter;

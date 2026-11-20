@@ -4,12 +4,14 @@ use xrf_utils::HostLinkPolicy;
 use xrf_vfs::XrayRoots;
 
 use crate::language::translation_language::TranslationLanguage;
+use crate::project::events::translation_listener::TranslationListener;
 
 /// What one import run was asked to do.
 pub struct TranslationParseOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: xrf_job::JobHandle,
-  pub output: xrf_output::OutputOptions,
+  /// What hears the run's events as they happen, or nothing.
+  pub listener: Option<TranslationListener>,
   /// Roots holding the raw XML, read through the VFS so an installation imports like a loose tree.
   pub roots: XrayRoots,
   /// Where inside those roots to look, or nothing to let the run resolve it.

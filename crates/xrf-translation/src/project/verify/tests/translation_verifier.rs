@@ -13,7 +13,7 @@ fn options(language: TranslationLanguage) -> TranslationVerifyOptions {
   TranslationVerifyOptions {
     job: Default::default(),
     is_strict: false,
-    output: xrf_output::OutputOptions::default(),
+    listener: None,
     language,
     is_detailed: true,
   }

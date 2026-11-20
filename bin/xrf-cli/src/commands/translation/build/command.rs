@@ -4,7 +4,9 @@ use std::str::FromStr;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
-use xrf_translation::{TranslationBuildOptions, TranslationBuildResult, TranslationBuilder, TranslationLanguage};
+use xrf_translation::{
+  TranslationBuildOptions, TranslationBuildResult, TranslationBuilder, TranslationLanguage, TranslationRunPrinter,
+};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
@@ -73,7 +75,7 @@ impl GenericCommand for BuildCommand {
     let options: TranslationBuildOptions = TranslationBuildOptions {
       job: CliJob::for_output(&output),
       is_sorted,
-      output,
+      listener: Some(TranslationRunPrinter::new_listener(&output)),
       output_dir: output_dir.clone(),
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
       link_policy: LinkPolicyArgument::of(matches),
@@ -82,7 +84,7 @@ impl GenericCommand for BuildCommand {
     let result: TranslationBuildResult = match XrayRootsArguments::single_file_of(matches) {
       Some(file) => {
         xrf_output::info!(
-          options.output,
+          output,
           "Building translation {}, language - {}, sorted - {}",
           format_path(file),
           language,
@@ -96,7 +98,7 @@ impl GenericCommand for BuildCommand {
         let roots: XrayRoots = XrayRootsArguments::of(matches)?;
 
         xrf_output::info!(
-          options.output,
+          output,
           "Building translations in {} ({source}), language - {}, sorted - {}",
           roots.describe(),
           language,
@@ -108,7 +110,7 @@ impl GenericCommand for BuildCommand {
     };
 
     xrf_output::success!(
-      options.output,
+      output,
       "Built translation files in {}",
       xrf_utils::format_duration(result.duration)
     );
