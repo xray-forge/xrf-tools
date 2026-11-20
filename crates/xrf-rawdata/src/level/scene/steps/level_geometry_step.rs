@@ -322,7 +322,6 @@ impl LevelGeometryStep {
     let mut instances: Option<LevelInstanceLibrary> =
       (!options.libraries.is_empty()).then(LevelInstanceLibrary::default);
     let mut details: LevelDetailLibrary = LevelDetailLibrary::default();
-    let mut uncompiled: Vec<(PathBuf, String)> = Vec::new();
 
     library.read_each::<T>(
       job,
@@ -337,14 +336,12 @@ impl LevelGeometryStep {
         }
 
         if LevelDetailLibrary::is_detail(entry) {
-          details.add(entry, &object, &mut uncompiled);
+          details.add(entry, &object);
         }
 
         Ok(())
       },
     )?;
-
-    LevelDetailLibrary::record_uncompiled(library, uncompiled);
 
     if let Some(instances) = &mut instances {
       // An earlier decompile's own objects would be found whole as placements.

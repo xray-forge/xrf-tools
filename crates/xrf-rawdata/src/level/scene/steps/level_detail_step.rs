@@ -31,10 +31,13 @@ impl LevelSceneStep for LevelDetailStep {
     };
     let atlas: Option<LevelDetailAtlas> = Self::read_atlas(sources, draft);
     // Compiled by the geometry step's walk where it ran; read here only where it did not.
-    let library: LevelDetailLibrary = match draft.detail_library.take() {
+    let mut library: LevelDetailLibrary = match draft.detail_library.take() {
       Some(library) => library,
       None => LevelDetailLibrary::read_from_library::<T>(&mut draft.object_library, &draft.job)?,
     };
+
+    // Told only here, where the level has details to match them against.
+    library.record_uncompiled(&mut draft.object_library);
     let decompile: LevelDetailDecompile = LevelDetailConversion::decompile(&file, &library, atlas.as_ref())?;
 
     draft.refused.extend(decompile.refused);
