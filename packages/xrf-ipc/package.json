@@ -30,7 +30,7 @@
     "@xrf/types": "workspace:*"
   },
   "peerDependencies": {
-    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/api": "^2.12.5",
     "@wirestate/core": "1.0.0",
     "@wirestate/mobx": "1.0.0",
     "@wirestate/react": "1.0.0",
@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
-    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/api": "^2.12.5",
     "@types/react": "^19.3.0",
     "@typescript/native": "catalog:",
     "@wirestate/core": "1.0.0",
