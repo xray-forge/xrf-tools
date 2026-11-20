@@ -272,8 +272,7 @@ mod tests {
 
   #[test]
   fn names_every_recipe_field_it_does_not_carry_out() -> XrfResult {
-    // A fade over a chain nvDXT reduces is nvDXT's own, so it is named; the dithering beside it is not, because nvDXT
-    // never dithered the formats written here.
+    // Only the border is named: the fade is carried out, and nvDXT never dithered the formats written here.
     let built: BuildTextureResult = BuildTextureProcessor::build(&options(
       "omissions",
       descriptor(
@@ -289,10 +288,36 @@ mod tests {
       translucent(16),
     ))?;
 
-    assert_eq!(
-      built.omissions,
-      vec![BuildTextureOmission::ColorBorder, BuildTextureOmission::FadeToColor]
+    assert_eq!(built.omissions, vec![BuildTextureOmission::ColorBorder]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn fades_a_chain_the_filter_reduces_as_nvdxt_does() -> XrfResult {
+    // A white picture faded all the way to black from the second level: the first level keeps its colour and every
+    // level below is black, its alpha untouched.
+    let mut faded: ThmFile = descriptor(
+      ThmFormat::Rgba,
+      &[ThmTextureFlag::GenerateMipMaps, ThmTextureFlag::FadeToColor],
+      ThmMipFilter::Kaiser,
     );
+    let param: &mut ThmTextureParamChunk = faded.texture_param.as_mut().expect("descriptor parameters");
+
+    param.fade_amount = 100;
+    faded.fade_delay = Some(2);
+
+    let built: BuildTextureResult = BuildTextureProcessor::build(&options(
+      "faded_kaiser",
+      faded,
+      RgbaImage::from_pixel(16, 16, Rgba([255, 255, 255, 200])),
+    ))?;
+    let written: DdsFile = DdsFile::read_from_path(&built.destination)?;
+
+    assert!(built.omissions.is_empty(), "got {:?}", built.omissions);
+    assert_eq!(written.decode_rgba(1)?.get_pixel(0, 0).0, [255, 255, 255, 200]);
+    assert_eq!(written.decode_rgba(2)?.get_pixel(0, 0).0, [0, 0, 0, 200]);
+    assert_eq!(written.decode_rgba(4)?.get_pixel(0, 0).0, [0, 0, 0, 200]);
 
     Ok(())
   }

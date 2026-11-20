@@ -76,7 +76,7 @@ A descriptor without texture parameters is refused too.
 | Cube map                      | A cube from six square faces side by side, `+x -x +y -y +z -z` (`CubeStrip`)      |
 | Bump map                      | The `<name>.dds` and `<name>#.dds` pair, as `DXTCompressBump` builds (`BumpPair`) |
 | `Advanced` mip filter         | The SDK's own chain (`BuildTextureAdvancedChain`), fade included                  |
-| Any other filter, mip maps on | A chain the filter reduces from the base (`BuildTextureMipmaps::Filtered`)        |
+| Any other filter, mip maps on | A chain the filter reduces from the base, faded as nvDXT fades it (`Filtered`)    |
 
 ### Bump descriptors
 
@@ -101,10 +101,17 @@ The `Advanced` chain ports `Build32MipLevel`:
 Like the SDK, it pulls the blue channel toward the fade colour's red and the red channel toward its blue, and refuses a
 level with an odd side, which the SDK asserts against.
 
+### The fade over any other filter
+
+For every other filter the SDK hands the fade to the closed nvDXT library. `BuildTextureFade::fade_chain` reproduces
+it as shipped textures show it: each level from `fade_delay` on moves `fade_amount` percent of the way towards
+`fade_color` from the faded level above, rounded, in its own channels, with alpha left unraised. It is inferred rather
+than ported, and matches the vanilla textures that fade this way within DXT noise.
+
 ### Omissions
 
 `omissions` lists each authored setting the builder does not apply, all of them ones the SDK passes to the closed nvDXT
-library: borders, binary alpha, and a fade over a chain nvDXT reduces.
+library and no shipped texture shows the effect of: the colour border, the alpha border and binary alpha.
 
 - Dithering flags are not omissions: nvDXT dithers only conversions to 16 bits, none of the formats written here, and
   documents even that as disabled.

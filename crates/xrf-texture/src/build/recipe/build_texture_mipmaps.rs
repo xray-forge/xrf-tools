@@ -4,29 +4,34 @@ use xrf_error::XrfResult;
 use xrf_thm::{ThmMipFilter, ThmTextureFlag, ThmTextureParamChunk};
 
 use crate::build::recipe::build_texture_advanced_chain::BuildTextureAdvancedChain;
+use crate::build::recipe::build_texture_fade::BuildTextureFade;
 
 /// What a texture carries below its base level, and who reduces it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BuildTextureMipmaps {
-  /// The base alone, for a descriptor without `flGenerateMipMaps`.
+  /// The base alone, for a descriptor without `flGenerateMipMaps`, which leaves nothing to fade.
   Disabled,
-  /// A chain the filter reduces from the base, which the SDK leaves to nvDXT.
-  Filtered(DdsMipFilter),
+  /// A chain the filter reduces from the base, faded as nvDXT fades it; the SDK leaves both to nvDXT.
+  Filtered {
+    filter: DdsMipFilter,
+    fade: BuildTextureFade,
+  },
   /// The chain the SDK reduces itself for the `Advanced` filter.
   Advanced(BuildTextureAdvancedChain),
 }
 
 impl BuildTextureMipmaps {
-  /// What a texture of `param` carries below its base level, its `Advanced` chain fading after `fade_delay`.
+  /// What a texture of `param` carries below its base level, faded from the level `fade_delay` names.
   pub fn of(param: &ThmTextureParamChunk, fade_delay: Option<u8>) -> Self {
     if !param.flags.has(ThmTextureFlag::GenerateMipMaps) {
       return Self::Disabled;
     }
 
+    let fade: BuildTextureFade = BuildTextureFade::of(param, fade_delay);
     let filter: DdsMipFilter = match param.mip_filter {
       // Not a filter: `DXTCompressImage` reduces this chain itself and hands nvDXT the levels.
       ThmMipFilter::Advanced => {
-        return Self::Advanced(BuildTextureAdvancedChain::of(param, fade_delay));
+        return Self::Advanced(BuildTextureAdvancedChain { fade });
       }
       ThmMipFilter::Box => DdsMipFilter::Box,
       ThmMipFilter::Point => DdsMipFilter::Point,
@@ -47,7 +52,7 @@ impl BuildTextureMipmaps {
       ThmMipFilter::Unknown(_) => DdsMipFilter::Box,
     };
 
-    Self::Filtered(filter)
+    Self::Filtered { filter, fade }
   }
 
   /// The levels one face of the texture is written with.
@@ -58,7 +63,7 @@ impl BuildTextureMipmaps {
   pub fn build(&self, face: &RgbaImage) -> XrfResult<DdsMipChain> {
     match self {
       Self::Disabled => DdsMipChain::build(face, DdsMipmaps::Disabled),
-      Self::Filtered(filter) => DdsMipChain::build(face, DdsMipmaps::Filtered(*filter)),
+      Self::Filtered { filter, fade } => fade.fade_chain(DdsMipChain::build(face, DdsMipmaps::Filtered(*filter))?),
       Self::Advanced(chain) => chain.build(face),
     }
   }

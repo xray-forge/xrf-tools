@@ -2,6 +2,7 @@
 
 pub(crate) mod build_texture_advanced_chain;
 pub(crate) mod build_texture_bump_pair;
+pub(crate) mod build_texture_fade;
 pub(crate) mod build_texture_layout;
 pub(crate) mod build_texture_mipmaps;
 pub(crate) mod build_texture_omission;

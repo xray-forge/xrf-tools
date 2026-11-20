@@ -3,6 +3,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureParamChunk, ThmTextureType};
 
 use crate::build::recipe::build_texture_bump_pair::BuildTextureBumpPair;
+use crate::build::recipe::build_texture_fade::BuildTextureFade;
 use crate::build::recipe::build_texture_layout::BuildTextureLayout;
 use crate::build::recipe::build_texture_mipmaps::BuildTextureMipmaps;
 use crate::build::recipe::build_texture_omission::BuildTextureOmission;
@@ -43,7 +44,10 @@ impl BuildTextureRecipe {
           layout: BuildTextureLayout::BumpPair(BuildTextureBumpPair::of(file)),
           format: BuildTextureBumpPair::FORMAT,
           is_cut_out: false,
-          mipmaps: BuildTextureMipmaps::Filtered(BuildTextureBumpPair::MIP_FILTER),
+          mipmaps: BuildTextureMipmaps::Filtered {
+            filter: BuildTextureBumpPair::MIP_FILTER,
+            fade: BuildTextureFade::NONE,
+          },
           omissions: Vec::new(),
         });
       }
@@ -56,14 +60,13 @@ impl BuildTextureRecipe {
     let param: &ThmTextureParamChunk = file.texture_param.as_ref().ok_or_else(|| {
       XrfError::new_texture_processing_error("Cannot build from a descriptor carrying no texture parameters")
     })?;
-    let mipmaps: BuildTextureMipmaps = BuildTextureMipmaps::of(param, file.fade_delay);
 
     Ok(Self {
       layout,
       format: Self::resolve_image_format(param.format)?,
       is_cut_out: param.format == ThmFormat::Dxt1Alpha,
-      omissions: Self::list_omissions(param, &mipmaps),
-      mipmaps,
+      mipmaps: BuildTextureMipmaps::of(param, file.fade_delay),
+      omissions: Self::list_omissions(param),
     })
   }
 
@@ -98,29 +101,16 @@ impl BuildTextureRecipe {
   ///
   /// The dithering flags are not among them: nvDXT dithers only a conversion to 16 bits, none of the formats this
   /// writes, and its header says even that is disabled (`xray/trunk/xrDXT/nvdxt_options.h`), so a dithered descriptor
-  /// was built undithered by the SDK as well. A fade is nvDXT's own only for a chain it reduces; the `Advanced` chain
-  /// fades as the SDK does, and a texture without mip maps has nothing to fade.
-  fn list_omissions(param: &ThmTextureParamChunk, mipmaps: &BuildTextureMipmaps) -> Vec<BuildTextureOmission> {
-    let is_filtered: bool = matches!(mipmaps, BuildTextureMipmaps::Filtered(_));
-
+  /// was built undithered by the SDK as well. Nor is a fade, which every chain carries out.
+  fn list_omissions(param: &ThmTextureParamChunk) -> Vec<BuildTextureOmission> {
     [
-      (ThmTextureFlag::BinaryAlpha, BuildTextureOmission::BinaryAlpha, true),
-      (ThmTextureFlag::AlphaBorder, BuildTextureOmission::AlphaBorder, true),
-      (ThmTextureFlag::ColorBorder, BuildTextureOmission::ColorBorder, true),
-      (
-        ThmTextureFlag::FadeToColor,
-        BuildTextureOmission::FadeToColor,
-        is_filtered,
-      ),
-      (
-        ThmTextureFlag::FadeToAlpha,
-        BuildTextureOmission::FadeToAlpha,
-        is_filtered,
-      ),
+      (ThmTextureFlag::BinaryAlpha, BuildTextureOmission::BinaryAlpha),
+      (ThmTextureFlag::AlphaBorder, BuildTextureOmission::AlphaBorder),
+      (ThmTextureFlag::ColorBorder, BuildTextureOmission::ColorBorder),
     ]
     .into_iter()
-    .filter(|(flag, _, applies)| *applies && param.flags.has(*flag))
-    .map(|(_, omission, _)| omission)
+    .filter(|(flag, _)| param.flags.has(*flag))
+    .map(|(_, omission)| omission)
     .collect()
   }
 }
