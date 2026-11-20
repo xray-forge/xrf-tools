@@ -9,6 +9,7 @@ use std::sync::Arc;
 use xrf_output::{OutputOptions, OutputVerbosity, RecordingOutput};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackMode};
+use crate::pack::events::ArchivePackPrinter;
 use crate::pack::tests::fixtures::{BINARY, CONFIG, create_config};
 use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 
@@ -24,8 +25,9 @@ fn pack_saying(
   configure(&mut config);
 
   let recorded: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
+  let output: OutputOptions = OutputOptions::new(Arc::<RecordingOutput>::clone(&recorded), verbosity);
   let options: ArchivePackOptions =
-    ArchivePackOptions::default().with_output(OutputOptions::new(Arc::<RecordingOutput>::clone(&recorded), verbosity));
+    ArchivePackOptions::default().with_listener(ArchivePackPrinter::new_listener(&output));
   let result: ArchivePackResult = ArchivePacker::pack_opt(&config, options).expect("source tree packs");
 
   let lines: Vec<String> = recorded

@@ -2,7 +2,7 @@
 //!
 //! Discovery only. Whether a name the walk reaches is wanted is `archive_pack_config_rules.rs`; how a host path
 //! becomes an archive name is `crate::path`; which name the engine registers it under, and that it is registered once,
-//! is `names/archive_pack_name_table.rs`; and saying any of it out loud is `archive_pack_narrator.rs`.
+//! is `names/archive_pack_name_table.rs`; and saying any of it out loud is `events/archive_pack_printer.rs`.
 
 use std::fs;
 use std::io::ErrorKind;

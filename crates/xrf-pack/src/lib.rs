@@ -15,9 +15,12 @@ pub use crate::pack::config::{
   ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory, ArchivePackHeaderEntry, ArchivePackMode,
   ArchiveVolumeExtension,
 };
-pub use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
+pub use crate::pack::events::{ArchivePackEvent, ArchivePackListener, ArchivePackPrinter};
+pub use crate::pack::source::{ArchivePackExcludedDirectory, ArchivePackSkipReason, ArchivePackSkippedFile};
+pub use crate::pack::{ArchivePackEntryOutcome, ArchivePackOptions, ArchivePackResult, ArchivePacker};
 pub use crate::patch::compare::{ArchivePatchChange, ArchivePatchClass, ArchivePatchOrigin, ArchivePatchSide};
 pub use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigJson};
+pub use crate::patch::events::{ArchivePatchEvent, ArchivePatchListener, ArchivePatchPrinter};
 pub use crate::patch::{ArchivePatchOptions, ArchivePatchPublication, ArchivePatchResult, ArchivePatcher};
 pub use crate::unpack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpackResult, ArchiveUnpacker,

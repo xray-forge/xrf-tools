@@ -7,12 +7,13 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
 use crate::pack::config::ArchivePackConfig;
+use crate::pack::events::{ArchivePackEmitter, ArchivePackEvent};
 use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 use crate::pack::volume::{
   ArchiveAlias, ArchiveAliasCandidate, ArchiveAliasTable, ArchiveDescriptorTable, ArchivePreparedEntry,
   ArchiveVolumeLayout, DescriptorName,
 };
-use crate::pack::{ArchivePackEntryOutcome, ArchivePackNarrator, ArchivePackResult};
+use crate::pack::{ArchivePackEntryOutcome, ArchivePackResult};
 
 /// Writes the volumes of one archive set, one at a time.
 ///
@@ -23,7 +24,7 @@ use crate::pack::{ArchivePackEntryOutcome, ArchivePackNarrator, ArchivePackResul
 /// cannot describe the same entry two different ways.
 pub(crate) struct ArchiveVolumeWriter<'a> {
   config: &'a ArchivePackConfig,
-  narrator: &'a ArchivePackNarrator<'a>,
+  emitter: &'a ArchivePackEmitter<'a>,
   /// Where this run's entries are read from, which is one answer for the whole set rather than one per entry.
   payloads: &'a ArchivePackPayloads<'a>,
   layout: ArchiveVolumeLayout,
@@ -42,14 +43,14 @@ impl<'a> ArchiveVolumeWriter<'a> {
   /// Open the first volume of the set, seeded with the directory rows every volume of it repeats.
   pub(crate) fn open(
     config: &'a ArchivePackConfig,
-    narrator: &'a ArchivePackNarrator<'a>,
+    emitter: &'a ArchivePackEmitter<'a>,
     payloads: &'a ArchivePackPayloads<'a>,
     layout: ArchiveVolumeLayout,
     descriptors: ArchiveDescriptorTable,
   ) -> XrfResult<Self> {
     let mut writer: Self = Self {
       config,
-      narrator,
+      emitter,
       payloads,
       layout,
       file: None,
@@ -163,9 +164,12 @@ impl<'a> ArchiveVolumeWriter<'a> {
     size_compressed: u32,
   ) {
     self.result.record_outcome(outcome);
-    self
-      .narrator
-      .describe_entry(&entry.name, outcome, size_real, size_compressed);
+    self.emitter.emit(ArchivePackEvent::Entry {
+      name: &entry.name,
+      outcome,
+      size_real,
+      size_compressed,
+    });
   }
 
   /// Make room in a volume for an entry of this size, closing the current one when that is what it takes.
@@ -207,7 +211,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     // Recorded and said before the file is created rather than after it is closed: from here on the path exists and
     // has replaced whatever stood there, so a run that stops has still touched it.
     self.result.volumes_opened.push(self.path.clone());
-    self.narrator.describe_opened_volume(&self.path);
+    self.emitter.emit(ArchivePackEvent::VolumeOpened { path: &self.path });
 
     let mut file: BufWriter<File> = BufWriter::new(File::create(&self.path)?);
 
@@ -244,9 +248,11 @@ impl<'a> ArchiveVolumeWriter<'a> {
     file.write_all(&(data_size as u32).to_le_bytes())?;
     file.flush()?;
 
-    self
-      .narrator
-      .describe_closed_volume(&self.path, self.position, self.descriptors.get_entries());
+    self.emitter.emit(ArchivePackEvent::VolumeClosed {
+      path: &self.path,
+      size: self.position,
+      entries: self.descriptors.get_entries(),
+    });
 
     self.result.volumes.push(self.path.clone());
     self.result.size_written += self.position;

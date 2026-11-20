@@ -1,5 +1,6 @@
 use xrf_job::JobHandle;
-use xrf_output::OutputOptions;
+
+use crate::pack::events::ArchivePackListener;
 
 /// How one pack run should behave, beyond the configuration describing what to pack.
 ///
@@ -10,10 +11,11 @@ use xrf_output::OutputOptions;
 pub struct ArchivePackOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: JobHandle,
-  /// Where the run says what it decided: one verbose line per directory, skipped file, placed entry, and volume.
+  /// What hears the run's decisions: one event per setting block, selection, placed entry, and volume.
   ///
-  /// The default is silent, so a caller that does not ask pays nothing beyond a verbosity check per decision.
-  pub output: OutputOptions,
+  /// The default hears nothing, so a caller that does not ask pays for no event, and the walk does not record what it
+  /// left out.
+  pub listener: Option<ArchivePackListener>,
   /// Whether the run may publish over volumes of its set that the destination already holds.
   pub is_forced: bool,
 }
@@ -33,9 +35,9 @@ impl ArchivePackOptions {
     Self { job, ..self }
   }
 
-  /// The same options, saying what the run decides through `output`.
-  pub fn with_output(self, output: OutputOptions) -> Self {
-    Self { output, ..self }
+  /// The same options, handing the run's decisions to `listener`, or to nothing.
+  pub fn with_listener(self, listener: Option<ArchivePackListener>) -> Self {
+    Self { listener, ..self }
   }
 
   /// The same options, allowed to replace a set the destination already holds.

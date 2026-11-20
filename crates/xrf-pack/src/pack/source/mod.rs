@@ -18,6 +18,5 @@ pub(crate) use archive_pack_payloads::ArchivePackPayloads;
 pub(crate) use archive_pack_source::ArchivePackSource;
 pub(crate) use archive_pack_source_collector::ArchivePackSourceCollector;
 pub(crate) use names::{ArchivePackNameCollision, ArchivePackNameTable};
-pub(crate) use omissions::{
-  ArchivePackExcludedDirectory, ArchivePackOmissions, ArchivePackSkipReason, ArchivePackSkippedFile,
-};
+pub(crate) use omissions::ArchivePackOmissions;
+pub use omissions::{ArchivePackExcludedDirectory, ArchivePackSkipReason, ArchivePackSkippedFile};

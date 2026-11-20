@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::ArgMatches;
 use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
-use xrf_pack::{ArchivePatchConfig, ArchivePatchOptions};
+use xrf_pack::{ArchivePatchConfig, ArchivePatchOptions, ArchivePatchPrinter};
 use xrf_utils::format_path;
 
 use crate::commands::archive::{ArchiveVolumeArguments, ArchiveVolumeRequest};
@@ -58,7 +58,7 @@ impl ArchivePatchRequest {
     Ok(Self {
       config: volumes.apply_to_patch(config)?,
       options: ArchivePatchOptions::default()
-        .with_output(output)
+        .with_listener(ArchivePatchPrinter::new_listener(&output))
         .with_force(volumes.is_forced)
         .with_verified_payloads(matches.get_flag("verify-payload")),
       is_dry_run: matches.get_flag("dry-run"),

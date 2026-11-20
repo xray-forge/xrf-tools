@@ -9,13 +9,14 @@ use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::pack::config::ArchivePackConfig;
+use crate::pack::events::{ArchivePackEmitter, ArchivePackEvent};
 use crate::pack::source::{
   ArchivePackEntry, ArchivePackNameTable, ArchivePackPayloads, ArchivePackSource, ArchivePackSourceCollector,
 };
 use crate::pack::volume::{
   ArchiveDescriptorTable, ArchivePreparedEntry, ArchivePublishedSet, ArchiveVolumeLayout, ArchiveVolumeWriter,
 };
-use crate::pack::{ArchivePackNarrator, ArchivePackOptions, ArchivePackResult};
+use crate::pack::{ArchivePackOptions, ArchivePackResult};
 use crate::path::is_inside_directory;
 
 /// Writes one volume set from a source tree.
@@ -104,19 +105,28 @@ impl ArchivePacker {
   fn pack_into(config: &ArchivePackConfig, options: &ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     let started_at: Instant = Instant::now();
     let job: &JobHandle = &options.job;
-    let narrator: ArchivePackNarrator<'_> = ArchivePackNarrator::new(&options.output);
+    let emitter: ArchivePackEmitter<'_> = ArchivePackEmitter::new(
+      options
+        .listener
+        .as_deref()
+        .map(|listener| listener as &dyn Fn(&ArchivePackEvent<'_>)),
+    );
 
-    narrator.describe_settings(config);
+    emitter.emit(ArchivePackEvent::Settings(config));
 
     let source: ArchivePackSource = {
       let collecting: JobScope = job.enter(ArchivePackOptions::PHASE_COLLECT, None);
 
-      ArchivePackSourceCollector::collect_opt(config, &collecting, narrator.is_recording())?
+      ArchivePackSourceCollector::collect_opt(config, &collecting, emitter.is_listening())?
     };
 
     let collected_at: Duration = started_at.elapsed();
 
-    narrator.describe_selection(source.names.get_directories(), &source.omitted);
+    emitter.emit(ArchivePackEvent::Selection {
+      directories: source.names.get_directories(),
+      excluded_directories: source.omitted.get_directories(),
+      skipped_files: source.omitted.get_files(),
+    });
 
     // xrCompress refuses an empty file list too. Saying so here beats leaving the caller to puzzle out
     // a complaint from the codec about an empty descriptor table.
@@ -146,7 +156,7 @@ impl ArchivePacker {
       &source.names,
       &ArchivePackPayloads::Host,
       job,
-      &narrator,
+      &emitter,
       ArchivePackOptions::PHASE_WRITE,
     )?;
 
@@ -202,7 +212,7 @@ impl ArchivePacker {
     names: &ArchivePackNameTable,
     payloads: &ArchivePackPayloads<'_>,
     job: &JobHandle,
-    narrator: &ArchivePackNarrator<'_>,
+    emitter: &ArchivePackEmitter<'_>,
     write_phase: &'static str,
   ) -> XrfResult<ArchivePackResult> {
     // Both are measured before anything is created, because an unsatisfiable cap is a property of the archive rather
@@ -213,7 +223,7 @@ impl ArchivePacker {
     fs::create_dir_all(&config.destination)?;
 
     let mut writer: ArchiveVolumeWriter<'_> =
-      ArchiveVolumeWriter::open(config, narrator, payloads, layout, descriptors)?;
+      ArchiveVolumeWriter::open(config, emitter, payloads, layout, descriptors)?;
 
     {
       let writing: JobScope = job.enter(write_phase, Some(names.get_files().len() as u64));

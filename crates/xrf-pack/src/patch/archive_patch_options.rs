@@ -1,13 +1,14 @@
 use xrf_job::JobHandle;
-use xrf_output::OutputOptions;
+
+use crate::patch::events::ArchivePatchListener;
 
 /// How one patch run should behave, beyond the configuration describing what to compare.
 #[derive(Default)]
 pub struct ArchivePatchOptions {
   /// Where progress goes and where cancellation comes from.
   pub job: JobHandle,
-  /// Where the run says what it decided, one verbose line per classified entry and per volume.
-  pub output: OutputOptions,
+  /// What hears the run's decisions: the settings, the comparison, and every volume and entry it publishes.
+  pub listener: Option<ArchivePatchListener>,
   /// Whether the run may publish over volumes of its set that the destination already holds.
   pub is_forced: bool,
   /// Confirm a pair the checksums agreed on by comparing its payloads.
@@ -33,9 +34,9 @@ impl ArchivePatchOptions {
     Self { job, ..self }
   }
 
-  /// The same options, saying what the run decides through `output`.
-  pub fn with_output(self, output: OutputOptions) -> Self {
-    Self { output, ..self }
+  /// The same options, handing the run's decisions to `listener`, or to nothing.
+  pub fn with_listener(self, listener: Option<ArchivePatchListener>) -> Self {
+    Self { listener, ..self }
   }
 
   /// The same options, allowed to replace a set the destination already holds.

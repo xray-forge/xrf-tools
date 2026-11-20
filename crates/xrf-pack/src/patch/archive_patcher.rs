@@ -7,14 +7,16 @@ use xrf_utils::format_path;
 use xrf_vfs::{XraySearchPlan, XraySourceKind};
 
 use crate::pack::config::ArchivePackConfig;
+use crate::pack::events::{ArchivePackEmitter, ArchivePackEvent};
 use crate::pack::source::{ArchivePackEntry, ArchivePackNameTable, ArchivePackPayloads};
 use crate::pack::volume::ArchivePublishedSet;
-use crate::pack::{ArchivePackNarrator, ArchivePackResult, ArchivePacker};
+use crate::pack::{ArchivePackResult, ArchivePacker};
 use crate::patch::archive_patch_publication::ArchivePatchPublication;
 use crate::patch::compare::ArchivePatchComparison;
 use crate::patch::config::{ArchivePatchConfig, ArchivePatchScope};
+use crate::patch::events::{ArchivePatchEmitter, ArchivePatchEvent};
 use crate::patch::world::{ArchivePatchRole, ArchivePatchWorld};
-use crate::patch::{ArchivePatchNarrator, ArchivePatchOptions, ArchivePatchResult};
+use crate::patch::{ArchivePatchOptions, ArchivePatchResult};
 
 /// Compares two roots and publishes added or modified target entries as archive volumes.
 ///
@@ -65,7 +67,12 @@ impl ArchivePatcher {
 
     let started_at: Instant = Instant::now();
     let job: &JobHandle = &options.job;
-    let narrator: ArchivePatchNarrator<'_> = ArchivePatchNarrator::new(&options.output);
+    let emitter: ArchivePatchEmitter<'_> = ArchivePatchEmitter::new(
+      options
+        .listener
+        .as_deref()
+        .map(|listener| listener as &dyn Fn(&ArchivePatchEvent<'_>)),
+    );
     let scope: ArchivePatchScope = config.to_scope()?;
 
     let (base, target) = Self::mount_sides(config)?;
@@ -74,13 +81,23 @@ impl ArchivePatcher {
       Self::require_destination_outside(config, [&base, &target])?;
     }
 
-    narrator.describe_settings(config, &base, &target);
+    emitter.emit(ArchivePatchEvent::Settings {
+      config,
+      base_root: base.get_root(),
+      target_root: target.get_root(),
+    });
 
     let comparison: ArchivePatchComparison =
       ArchivePatchComparison::of(&base, &target, &scope, job, options.is_verifying_payload)?;
 
     Self::require_both_sides_hold_entries(config, &comparison, [&base, &target], &scope)?;
-    narrator.describe_comparison(&comparison);
+    emitter.emit(ArchivePatchEvent::Comparison {
+      added: &comparison.added,
+      modified: &comparison.modified,
+      carried: comparison.get_carried_count(),
+      unchanged: comparison.unchanged,
+      payloads_read: comparison.payloads_read,
+    });
 
     let compare_duration: Duration = started_at.elapsed();
     let published_at: Instant = Instant::now();
@@ -89,7 +106,7 @@ impl ArchivePatcher {
     } else if comparison.get_carried_count() == 0 {
       ArchivePatchPublication::Unnecessary
     } else {
-      ArchivePatchPublication::Published(Self::publish(config, &comparison, &target, options, &narrator)?)
+      ArchivePatchPublication::Published(Self::publish(config, &comparison, &target, options, &emitter)?)
     };
 
     // Read before the lists move into the result, since it is derived from them.
@@ -176,7 +193,7 @@ impl ArchivePatcher {
     comparison: &ArchivePatchComparison,
     target: &ArchivePatchWorld,
     options: &ArchivePatchOptions,
-    narrator: &ArchivePatchNarrator<'_>,
+    emitter: &ArchivePatchEmitter<'_>,
   ) -> XrfResult<ArchivePackResult> {
     let publication: ArchivePackConfig = config.to_publication();
     let carried: Vec<&str> = comparison.to_carried_names();
@@ -187,13 +204,19 @@ impl ArchivePatcher {
     )?;
 
     let guarded: ArchivePublishedSet = ArchivePacker::guard_destination(&publication, options.is_forced)?;
-    let pack_narrator: ArchivePackNarrator<'_> = ArchivePackNarrator::new(narrator.get_output());
+    // The packer's events reach the patch's listener as its own, so one listener hears the whole run.
+    let forward = |event: &ArchivePackEvent<'_>| emitter.emit(ArchivePatchEvent::Pack(*event));
+    let pack_emitter: ArchivePackEmitter<'_> = ArchivePackEmitter::new(
+      emitter
+        .is_listening()
+        .then_some(&forward as &dyn Fn(&ArchivePackEvent<'_>)),
+    );
     let written: XrfResult<ArchivePackResult> = ArchivePacker::write_set(
       &publication,
       &names,
       &ArchivePackPayloads::Mounted(target.get_search()),
       &options.job,
-      &pack_narrator,
+      &pack_emitter,
       ArchivePatchOptions::PHASE_PACK,
     );
 

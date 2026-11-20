@@ -4,7 +4,8 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_pack::{
-  ArchivePackConfig, ArchivePackDirectory, ArchivePackOptions, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension,
+  ArchivePackConfig, ArchivePackDirectory, ArchivePackOptions, ArchivePackPrinter, ArchivePackResult, ArchivePacker,
+  ArchiveVolumeExtension,
 };
 use xrf_utils::format_path;
 
@@ -173,12 +174,12 @@ impl GenericCommand for PackCommand {
       }
     }
 
-    // The packer says each decision itself, at verbose level, as it is made: a log of a run that stops is then
-    // already naming the volume and the last entry it reached.
+    // Each decision is printed at verbose level as the packer makes it: a log of a run that stops is then already
+    // naming the volume and the last entry it reached.
     let result: ArchivePackResult = ArchivePacker::pack_opt(
       &config,
       ArchivePackOptions::default()
-        .with_output(output.clone())
+        .with_listener(ArchivePackPrinter::new_listener(&output))
         .with_force(is_forced),
     )?;
 

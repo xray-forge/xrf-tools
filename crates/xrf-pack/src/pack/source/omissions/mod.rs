@@ -6,7 +6,7 @@ mod archive_pack_omissions;
 mod archive_pack_skip_reason;
 mod archive_pack_skipped_file;
 
-pub(crate) use archive_pack_excluded_directory::ArchivePackExcludedDirectory;
+pub use archive_pack_excluded_directory::ArchivePackExcludedDirectory;
 pub(crate) use archive_pack_omissions::ArchivePackOmissions;
-pub(crate) use archive_pack_skip_reason::ArchivePackSkipReason;
-pub(crate) use archive_pack_skipped_file::ArchivePackSkippedFile;
+pub use archive_pack_skip_reason::ArchivePackSkipReason;
+pub use archive_pack_skipped_file::ArchivePackSkippedFile;

@@ -6,15 +6,15 @@
 //! - [`source`] — what the source tree holds, folded to the engine names one archive may register.
 //! - [`volume`] — how selected entries become volumes, and what the destination already publishes.
 //!
-//! [`ArchivePacker`] is the operation itself, ordering those three; [`ArchivePackNarrator`] is the only place that
-//! says what it decided, so a transcript of a run reads the same whichever phase produced the line.
+//! [`ArchivePacker`] is the operation itself, ordering those three; it prints nothing and hands its decisions out as
+//! [`events`], which [`events::ArchivePackPrinter`] says, so a transcript reads the same whichever phase decided.
 
 pub(crate) mod config;
+pub(crate) mod events;
 pub(crate) mod source;
 pub(crate) mod volume;
 
 mod archive_pack_entry_outcome;
-mod archive_pack_narrator;
 mod archive_pack_options;
 mod archive_pack_result;
 mod archive_packer;
@@ -22,8 +22,7 @@ mod archive_packer;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use archive_pack_entry_outcome::ArchivePackEntryOutcome;
-pub(crate) use archive_pack_narrator::ArchivePackNarrator;
+pub use archive_pack_entry_outcome::ArchivePackEntryOutcome;
 pub use archive_pack_options::ArchivePackOptions;
 pub use archive_pack_result::ArchivePackResult;
 pub use archive_packer::ArchivePacker;
