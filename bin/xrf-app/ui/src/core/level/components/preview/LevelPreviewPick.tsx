@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ViewportOverlay } from "@xrf/ui/media/viewport-overlay";
 import { ReactElement } from "react";
 
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
@@ -10,7 +11,6 @@ import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { describeLevelSurface, toLevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
-import { RenderViewportOverlay } from "@/core/render/components/overlay";
 
 /** The sector, the entry, and which mesh or impostor of the sector's it is. */
 function toSurfaceHeading(picked: Extract<TLevelPick, { kind: ELevelPick.SURFACE }>): string {
@@ -47,7 +47,7 @@ export function LevelPreviewPick({
   }
 
   return (
-    <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={"bottom-left"}>
+    <ViewportOverlay data-testid={dataTestId} id={id} className={className} corner={"bottom-left"}>
       {picked.kind === ELevelPick.OBJECT ? (
         <>
           <div>{`${picked.object.name} · ${picked.object.spawn?.section ?? getLevelObjectKind(picked.object.kind).label}`}</div>
@@ -60,6 +60,6 @@ export function LevelPreviewPick({
         </>
       )}
       <div>{formatLevelPoint(picked.point)}</div>
-    </RenderViewportOverlay>
+    </ViewportOverlay>
   );
 }

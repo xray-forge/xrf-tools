@@ -18,15 +18,15 @@ export const TESTING_LIBRARY_RESTRICTED_IMPORTS = [
 ];
 
 /**
- * What every React and Tailwind member of the workspace adds to the shared rules.
+ * What every React member of the workspace adds to the shared rules, and the Tailwind rules for one that styles.
  *
- * @param {{ tailwindStylesheet: string, customClassNames?: Array<string>, effectHooks?: string }} options - The
- *   stylesheet declaring the Tailwind theme, the plain class names the member declares itself, and a pattern naming
- *   its own hooks that take dependency lists.
+ * @param {{ tailwindStylesheet?: string, customClassNames?: Array<string>, effectHooks?: string }} [options] - The
+ *   stylesheet declaring the Tailwind theme, absent for a member that draws no styles, the plain class names the
+ *   member declares itself, and a pattern naming its own hooks that take dependency lists.
  * @returns {Array<import("eslint").Linter.Config>} The layers, to pass to `createEslintConfig`.
  */
-export function createReactLayers({ tailwindStylesheet, customClassNames = [], effectHooks }) {
-  return [
+export function createReactLayers({ tailwindStylesheet, customClassNames = [], effectHooks } = {}) {
+  const reactLayers = [
     ...fixupConfigRules(reactPlugin.configs.flat.recommended),
     {
       files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],
@@ -54,6 +54,14 @@ export function createReactLayers({ tailwindStylesheet, customClassNames = [], e
         "react-hooks/rules-of-hooks": "error",
       },
     },
+  ];
+
+  if (!tailwindStylesheet) {
+    return reactLayers;
+  }
+
+  return [
+    ...reactLayers,
     {
       // A name absent from `@theme` generates no CSS and fails silently, which is the one way Tailwind can
       // break a screen without anything reporting it.

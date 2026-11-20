@@ -15,7 +15,7 @@ use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullPara
 use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindings;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
-use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
+use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::{StaticGbufferDraw, StaticGbufferPart};
 use crate::feature::tracing::surroundings::surroundings_faces::SurroundingsFaces;
 use crate::feature::tracing::surroundings::surroundings_parameters::SurroundingsParameters;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
@@ -35,7 +35,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a
 /// reflection that meets nothing on the screen reads the trees and the hills around it rather than the sky alone.
-pub struct SurroundingsCube {
+pub(crate) struct SurroundingsCube {
   /// What culls and draws a face whole, and the camera it is lit by; and what culls and draws a band.
   cut: ShadowCut,
   band: ShadowCut,
@@ -109,8 +109,8 @@ enum CubeOffer {
 impl SurroundingsCube {
   /// Texels a side each face's G-buffer is drawn at over the cube's: twice, averaged down, so a thin tree does not
   /// alias out of the probe; never past `DRAWN_MOST`, which bounds what the six G-buffers keep.
-  pub const DRAWN_OVER: u32 = 2;
-  pub const DRAWN_MOST: u32 = 1024;
+  pub(crate) const DRAWN_OVER: u32 = 2;
+  pub(crate) const DRAWN_MOST: u32 = 1024;
   /// Metres the faces see from the camera: from past what stands about it, which the screen traces, to the whole of a
   /// level.
   const NEAR: f32 = 15.0;
@@ -127,7 +127,7 @@ impl SurroundingsCube {
   const DRAW_SEED: f32 = 1.1e-6;
   const LIGHT_SEED: f32 = 0.01;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       cut: ShadowCut::new(device, view_layout, "surroundings"),
       band: ShadowCut::new(device, view_layout, "surroundings band"),
@@ -147,18 +147,18 @@ impl SurroundingsCube {
   }
 
   /// Whether it stands in the prefiltered cube's first mip this frame, a face drawn or all kept as they were.
-  pub fn is_active(&self) -> bool {
+  pub(crate) fn is_active(&self) -> bool {
     self.is_active
   }
 
   /// Texels a side a face is drawn at for a cube `size` texels a side.
-  pub fn get_drawn_size(size: u32) -> u32 {
+  pub(crate) fn get_drawn_size(size: u32) -> u32 {
     (size * Self::DRAWN_OVER).min(Self::DRAWN_MOST).max(size)
   }
 
   /// Draws no face this frame: nothing reads the cube. Its faces, their G-buffers and its cuts' lists go, since the
   /// prefilter fills their mip with the sky meanwhile.
-  pub fn rest(&mut self) {
+  pub(crate) fn rest(&mut self) {
     self.is_due = false;
     self.band_due = None;
     self.offer = None;
@@ -176,7 +176,7 @@ impl SurroundingsCube {
   /// first band of one the camera or the scene left behind, each after the last in turn, seen from where the
   /// viewport's camera stands; else one the sun turned from, then the one lit longest ago past `REFRESH_FRAMES`, lit
   /// again from where they were drawn.
-  pub fn offer(
+  pub(crate) fn offer(
     &mut self,
     device: &wgpu::Device,
     frame: &ShadowFrame<'_>,
@@ -316,7 +316,7 @@ impl SurroundingsCube {
   /// Readies what `scheduler` granted of this frame's offer: a face's camera, looking down its axis with the up a cube
   /// texture's face lays its texels by, or a band's, the same narrowed to its rows; a band not granted waits a frame
   /// more. `encoder` takes what readying it writes.
-  pub fn commit(
+  pub(crate) fn commit(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -359,8 +359,8 @@ impl SurroundingsCube {
           &CameraUniform::new(
             &band,
             RenderRect {
-              x: x as i32,
-              y: y as i32,
+              x: x.cast_signed(),
+              y: y.cast_signed(),
               width,
               height,
             },
@@ -422,7 +422,7 @@ impl SurroundingsCube {
 
   /// Forgets that this frame drew its face, where its frame was not submitted: it draws again, and a face drawn band by
   /// band starts again.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     if self.is_due {
       self.is_due = false;
       self.drawn[self.face as usize] = None;
@@ -465,7 +465,7 @@ impl SurroundingsCube {
   /// Declares this frame's band of the face drawn again, into the spare G-buffer; then the face's cull and its draw
   /// into the G-buffer it keeps where it is drawn whole, and its resolve into `faces`, the prefiltered cube's first
   /// mip, where this frame lights one.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -482,16 +482,26 @@ impl SurroundingsCube {
     let ViewRecord { passes, lit, .. } = record;
     let size: u32 = self.size;
     let drawn: u32 = kept.drawn;
-    if let Some(band) = self.band_due {
-      let targets: [GraphTexture; 4] =
-        Self::import_layer(GraphDeclaration::new(graph, bindings, runtime), kept.get_spare());
 
+    if self.band_due.is_none() && !self.is_due {
+      return;
+    }
+
+    let targets: [GraphTexture; 4] = std::array::from_fn(|target| {
+      bindings.import_view(
+        &mut *graph,
+        SurroundingsFaces::FORMATS[target].0,
+        &kept.get_arrays()[target],
+      )
+    });
+
+    if let Some(band) = self.band_due {
       self.add_draw_passes(
         GraphDeclaration::new(graph, bindings, runtime),
         record,
         &self.band,
         &BAND_PASSES,
-        Some(band),
+        (Some(band), kept.get_spare_layer()),
         targets,
       );
     }
@@ -500,10 +510,7 @@ impl SurroundingsCube {
       return;
     }
 
-    let [albedo, normal, material, depth]: [GraphTexture; 4] = Self::import_layer(
-      GraphDeclaration::new(graph, bindings, runtime),
-      kept.get_face(self.face),
-    );
+    let layer: u32 = kept.get_face_layer(self.face);
 
     if self.is_redrawn {
       self.add_draw_passes(
@@ -511,14 +518,18 @@ impl SurroundingsCube {
         record,
         &self.cut,
         &DRAW_PASSES,
-        None,
-        [albedo, normal, material, depth],
+        (None, layer),
+        targets,
       );
     }
 
-    let settings: UniformBinding<SurroundingsUniform> =
-      runtime.push_uniform(&SurroundingsUniform::new(self.to_sun, self.face, (size, drawn)));
-    let parameters: SurroundingsParameters = SurroundingsParameters {
+    let [albedo, normal, material, depth]: [GraphTexture; 4] = targets;
+    let settings: UniformBinding<SurroundingsUniform> = runtime.push_uniform(&SurroundingsUniform::new(
+      self.to_sun,
+      (self.face, layer),
+      (size, drawn),
+    ));
+    let parameters: SurroundingsParameters<'_> = SurroundingsParameters {
       depth_target: depth,
       albedo_target: albedo,
       normal_target: normal,
@@ -550,8 +561,8 @@ impl SurroundingsCube {
       });
   }
 
-  /// Declares a cull by `cut` and its draw into a G-buffer, `targets` its albedo, normal, material and depth, under the
-  /// cull's and draw's pass `names`: the whole face, cleared, or `band` of it, the first band clearing the rest.
+  /// Declares a cull by `cut` and its draw into `layer` of the faces' G-buffer `targets`: the whole face, cleared, or
+  /// one `band` of it, the first band clearing the rest.
   fn add_draw_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
@@ -564,7 +575,7 @@ impl SurroundingsCube {
     }: ViewRecord<'a>,
     cut: &'a ShadowCut,
     names: &'static [&'static str],
-    band: Option<u32>,
+    (band, layer): (Option<u32>, u32),
     [albedo, normal, material, depth]: [GraphTexture; 4],
   ) {
     let scene: &StaticSceneHandles = &statics;
@@ -611,7 +622,7 @@ impl SurroundingsCube {
     let builder = [albedo, normal, material]
       .into_iter()
       .fold(graph.add_raster_pass(draw_pass), |builder, texture| {
-        builder.color(GraphColorAttachment::new(texture, color_load))
+        builder.color(GraphColorAttachment::new(texture, color_load).with_array_layer(layer))
       })
       .color(GraphColorAttachment::new(
         motion,
@@ -621,39 +632,31 @@ impl SurroundingsCube {
         relief,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .depth(GraphDepthAttachment::new(depth, depth_load))
+      .depth(GraphDepthAttachment::new(depth, depth_load).with_array_layer(layer))
       .buffer(args, GraphBufferAccess::Indirect);
 
     StaticDraws::declare_layouts(builder, &layouts).record(move |context| {
       let args: &wgpu::Buffer = context.get_buffer(args);
 
       StaticShadowPass::set_region(context, region);
-      passes.scene.gbuffer.record(
-        context,
-        StaticDrawBindings::new(&cut.view, &draws, textures),
-        args,
-        StaticGbufferDraw::default(),
-      );
-    });
-  }
 
-  /// A layer of the faces' G-buffers as the frame's graph knows it: its albedo, normal, material and depth.
-  fn import_layer<'a>(
-    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    layer: &'a [wgpu::TextureView; 4],
-  ) -> [GraphTexture; 4] {
-    std::array::from_fn(|target| {
-      bindings.import_view(&mut *graph, SurroundingsFaces::FORMATS[target].0, &layer[target])
-    })
+      // The cut-outs' depth, then every surface's shading, in the one pass.
+      for part in [StaticGbufferPart::Depth, StaticGbufferPart::Shading] {
+        passes.scene.gbuffer.record(
+          context,
+          StaticDrawBindings::new(&cut.view, &draws, textures),
+          args,
+          StaticGbufferDraw {
+            part,
+            ..StaticGbufferDraw::default()
+          },
+        );
+      }
+    });
   }
 }
 
 impl ViewFeature for SurroundingsCube {
-  /// The faces' G-buffers and their spare, and its cuts' lists, while the cube is in use.
-  fn get_memory(&self) -> u64 {
-    self.faces.as_ref().map_or(0, SurroundingsFaces::get_memory) + self.cut.get_memory() + self.band.get_memory()
-  }
-
   fn release(&mut self) {
     self.rest();
   }

@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3, Vec4};
+use glam::Vec2;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
@@ -19,7 +19,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// at the frame's size or half of it into a target the sun brings up and multiplies its own by, none while the sun
 /// lights nothing (a weather's night); and the lights', which the lights march in their own pass.
 #[derive(Default)]
-pub struct ContactShadowFeature {
+pub(crate) struct ContactShadowFeature {
   /// Whether the sun's are marched this frame.
   is_sun: bool,
   uniform: ContactShadowUniform,
@@ -28,19 +28,21 @@ pub struct ContactShadowFeature {
 impl ContactShadowFeature {
   /// Takes this frame's contact shadows towards the sun as the frame's `lighting` gives it, for a frame `height` texels
   /// tall, their noise turned by `noise_frame`.
-  pub fn prepare(&mut self, options: &RenderViewOptions, lighting: &LightingUniform, height: u32, noise_frame: u32) {
-    let (to_sun, sun): (Vec4, Vec4) = (lighting.to_sun, lighting.sun);
-
+  pub(crate) fn prepare(
+    &mut self,
+    options: &RenderViewOptions,
+    lighting: &LightingUniform,
+    height: u32,
+    noise_frame: u32,
+  ) {
     let shadows: &RenderShadowSettings = &options.features.shadows;
     let is_marched: bool = options.mode.is_lit && !options.mode.is_wireframe;
-    // A sun of no colour adds nothing for its contact shadows to take away.
-    let is_sunlit: bool = sun.truncate() != Vec3::ZERO;
 
-    self.is_sun = is_marched && is_sunlit && shadows.is_sun_contact_drawn();
+    self.is_sun = is_marched && lighting.is_sunlit() && shadows.is_sun_contact_drawn();
     self.uniform = if is_marched {
       ContactShadowUniform::new(
         &shadows.contact,
-        to_sun,
+        lighting.to_sun,
         height,
         noise_frame,
         Self::get_grass_reach(options),
@@ -65,13 +67,13 @@ impl ContactShadowFeature {
   }
 
   /// Lights each texel marches contact shadows towards at most this frame: none while the lights march none.
-  pub fn get_light_count(&self) -> u32 {
+  pub(crate) fn get_light_count(&self) -> u32 {
     self.uniform.lights
   }
 
   /// Adds the sun's contact shadows, answering what the sun multiplies its own by, a lit texel where none are marched,
   /// and the uniform the lights read theirs by.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration {
       graph,
@@ -123,10 +125,5 @@ impl ContactShadowFeature {
 }
 
 impl ViewFeature for ContactShadowFeature {
-  /// Its target is the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

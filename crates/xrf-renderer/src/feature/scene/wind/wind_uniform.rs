@@ -5,6 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::lighting::wind::render_tree_wind::RenderTreeWind;
+use crate::scene::level::level_time::LevelTime;
 
 /// The sway of the trees as `shaders/static/pulling.wgsl` reads it, built each frame as `FTreeVisual_setup::calculate`
 /// builds it: a wind turning once every `rotation` seconds at the amplitude's length, and a wave travelling through the
@@ -12,7 +13,7 @@ use crate::lighting::wind::render_tree_wind::RenderTreeWind;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Wind")]
-pub struct WindUniform {
+pub(crate) struct WindUniform {
   /// The engine's `wind`: which way the trees lean, and how far, across the ground.
   pub wind: Vec4,
   /// The engine's `wave`: its direction through the level, and its phase in `w`, both over a turn.
@@ -32,19 +33,21 @@ pub struct WindUniform {
 }
 
 impl WindUniform {
-  /// The sway at a time, still for none or for no amplitude.
-  pub fn new(trees: Option<&RenderTreeWind>, time: f32) -> Self {
+  /// The sway at a time, still without `trees` or amplitude; the wind's turn and the wave's phase are wrapped within
+  /// their periods (`cyclic` in `shaders/static/sway.wgsl`).
+  pub(crate) fn new(trees: Option<&RenderTreeWind>, time: LevelTime) -> Self {
     let Some(trees) = trees.filter(|trees| trees.amplitude > 0.0) else {
       return Self::default();
     };
     let rotation: f32 = if trees.rotation > 0.0 {
-      TAU * time / trees.rotation
+      TAU * time.get_phase(f64::from(trees.rotation)) / trees.rotation
     } else {
       0.0
     };
 
     let wind: Vec4 = Vec4::new(rotation.sin(), 0.0, -rotation.cos(), 0.0) * trees.amplitude;
-    let wave: Vec4 = Vec4::new(trees.wave.x, trees.wave.y, -trees.wave.z, time * trees.speed) / TAU;
+    let wave: Vec4 = (Vec4::new(trees.wave.x, trees.wave.y, -trees.wave.z, 0.0) / TAU)
+      .with_w(time.get_turns(f64::from(trees.speed) / std::f64::consts::TAU));
 
     Self {
       wind,
@@ -56,7 +59,7 @@ impl WindUniform {
   }
 
   /// This sway after the one before it, or after itself for a first frame.
-  pub fn following(mut self, before: Option<&Self>) -> Self {
+  pub(crate) fn following(mut self, before: Option<&Self>) -> Self {
     if let Some(before) = before {
       self.previous_wind = before.wind;
       self.previous_wave = before.wave;
@@ -66,7 +69,7 @@ impl WindUniform {
   }
 
   /// This sway with the enhanced foliage motion's values.
-  pub fn with_foliage(mut self, foliage: &FoliageWindValues) -> Self {
+  pub(crate) fn with_foliage(mut self, foliage: &FoliageWindValues) -> Self {
     self.foliage_wind = foliage.wind;
     self.foliage_grass = foliage.grass;
     self.foliage_trees = foliage.trees;
@@ -78,12 +81,13 @@ impl WindUniform {
   }
 
   /// Whether the trees move at all.
-  pub fn is_swaying(&self) -> bool {
+  #[cfg(test)]
+  pub(crate) fn is_swaying(&self) -> bool {
     self.wind != Vec4::ZERO
   }
 
   /// How far the trees lean for each metre of a vertex's rigid reach from its foot.
-  pub fn get_amplitude(&self) -> f32 {
+  pub(crate) fn get_amplitude(&self) -> f32 {
     self.wind.length()
   }
 }

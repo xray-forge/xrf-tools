@@ -13,7 +13,7 @@ use crate::description::{
   XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW,
 };
 
-pub struct XmlDescriptionCollection {
+pub(crate) struct XmlDescriptionCollection {
   pub files: HashMap<String, TextureFileDescriptor>,
 }
 
@@ -23,7 +23,7 @@ impl XmlDescriptionCollection {
   /// A description usually names several sheets, and packing rewrites every one of them. Selecting by
   /// name keeps a change to a single sheet from touching its neighbours. An unknown name is an error
   /// rather than a silently empty run, because that is almost always a typo.
-  pub fn select_files(&self, options: &DescriptionSpriteOptions) -> XrfResult<Vec<&TextureFileDescriptor>> {
+  pub(crate) fn select_files(&self, options: &DescriptionSpriteOptions) -> XrfResult<Vec<&TextureFileDescriptor>> {
     if options.files.is_empty() {
       return Ok(self.files.values().collect());
     }
@@ -85,7 +85,7 @@ impl XmlDescriptionCollection {
 
   /// Get descriptions from provided options.
   /// Handle both directory and single file as inputs.
-  pub fn get_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<Self> {
+  pub(crate) fn get_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<Self> {
     if options.description.is_dir() {
       xrf_output::info!(
         options.output,
@@ -113,7 +113,7 @@ impl XmlDescriptionCollection {
 
                 existing.sprites.extend(description.sprites);
               }
-            })
+            });
         }
       }
 
@@ -126,7 +126,7 @@ impl XmlDescriptionCollection {
   }
 
   /// Get descriptions from provided file path.
-  pub fn get_description(
+  pub(crate) fn get_description(
     options: &DescriptionSpriteOptions,
     path: &Path,
   ) -> XrfResult<HashMap<String, TextureFileDescriptor>> {
@@ -247,6 +247,7 @@ mod tests {
       files: Vec::new(),
       is_strict: true,
       link_policy: Default::default(),
+      is_forced: false,
     };
 
     let result = XmlDescriptionCollection::get_description(&options, &path);
@@ -280,6 +281,7 @@ mod tests {
       files: Vec::new(),
       is_strict: true,
       link_policy: Default::default(),
+      is_forced: false,
     };
 
     let collection: XmlDescriptionCollection =
@@ -320,6 +322,7 @@ mod select_files_tests {
       files: files.iter().map(|it| String::from(*it)).collect(),
       is_strict: false,
       link_policy: Default::default(),
+      is_forced: false,
     }
   }
 

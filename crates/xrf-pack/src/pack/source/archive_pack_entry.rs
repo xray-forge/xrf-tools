@@ -32,7 +32,6 @@ impl ArchivePackEntry {
 
 #[cfg(test)]
 mod tests {
-  use std::mem::size_of;
   use std::path::PathBuf;
 
   use super::{ArchivePackEntry, ArchivePackOrigin};

@@ -5,7 +5,7 @@ use xrf_app_core::TauriResult;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelMapArea {
+pub(crate) struct LevelMapArea {
   /// The first corner, the least `x` and `z`.
   pub min_x: f32,
   pub min_z: f32,
@@ -20,7 +20,7 @@ impl LevelMapArea {
   /// # Errors
   ///
   /// Returns an error naming the corners when either least edge is not below its greatest.
-  pub fn require_ground(&self) -> TauriResult<()> {
+  pub(crate) fn require_ground(&self) -> TauriResult<()> {
     let Self {
       min_x,
       min_z,

@@ -1,3 +1,4 @@
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
@@ -9,11 +10,12 @@ import {
 } from "@/core/level/lib/weather/level-manual-weather-labels";
 import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
 import { TLevelManualWeatherNumberKey } from "@/core/level/lib/weather/level-manual-weather-number-key";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 interface ILevelManualWeatherSliderProps extends BaseComponentProps {
   /** The number it sets, offered between its limits, its config key in the tooltip. */
   field: TLevelManualWeatherNumberKey;
+  /** What its row says in place of the key's own name, where the section over it names the rest. */
+  label?: string;
   /** The keyframe on screen. */
   manual: ILevelManualWeather;
   format: (value: number) => string;
@@ -28,6 +30,7 @@ export function LevelManualWeatherSlider({
   id,
   className,
   field,
+  label = LEVEL_MANUAL_WEATHER_LABELS[field],
   manual,
   format,
   onEdit,
@@ -35,11 +38,11 @@ export function LevelManualWeatherSlider({
   const sign: number = LEVEL_MANUAL_WEATHER_NEGATED.has(field) ? -1 : 1;
 
   return (
-    <RenderValueSlider
+    <EditorPopoverSliderRow
       data-testid={dataTestId}
       id={id}
       className={className}
-      label={LEVEL_MANUAL_WEATHER_LABELS[field]}
+      label={label}
       hint={describeLevelManualWeatherKey(field)}
       value={sign * manual[field]}
       {...LEVEL_MANUAL_WEATHER_LIMITS[field]}

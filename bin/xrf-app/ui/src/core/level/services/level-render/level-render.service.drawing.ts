@@ -28,6 +28,7 @@ import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config"
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
 import { toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
 import { ELevelShading, toShownLevelShading } from "@/core/level/lib/view/level-shading";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look";
 import { ILevelRenderContext } from "@/core/level/services/level-render/level-render.service.context";
@@ -200,13 +201,17 @@ export class LevelRenderDrawing {
     return toLevelListingPlaceMap(this.sources.loadService.objects?.objects ?? []);
   }
 
-  /** What of the level's world the toolbar lets play, less the spawned objects hidden one by one. */
+  /** What of the level's world the toolbar lets play, less the spawned objects hidden one by one, and what is heard. */
   @Computed()
   public get worldToggles(): WorldToggles {
-    return toNativeWorldToggles(
-      this.sources.viewService.options,
-      toLevelSpawnIndices(this.sources.viewportService.hidden)
-    );
+    const options: ILevelViewOptions = this.sources.viewService.options;
+
+    return toNativeWorldToggles(options, toLevelSpawnIndices(this.sources.viewportService.hidden), {
+      isAmbience: options.isAmbienceHeard,
+      isHeard: options.isSoundHeard,
+      isMusic: options.isMusicHeard,
+      isWorld: options.isWorldHeard,
+    });
   }
 
   /**

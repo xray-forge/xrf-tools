@@ -2,10 +2,10 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
-use crate::data::particle_action_type::ParticleActionType;
+use crate::data::actions::particle_action_type::ParticleActionType;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,8 +48,8 @@ impl ChunkReadWrite for ParticleActionTargetColor {
 }
 
 impl LtxImportExport for ParticleActionTargetColor {
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle action section '{}' should be defined in ltx file ({})",
         section_name,
@@ -68,16 +68,16 @@ impl LtxImportExport for ParticleActionTargetColor {
     })
   }
 
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("color", self.color.to_string())
-      .set("alpha", self.alpha.to_string())
-      .set("scale", self.scale.to_string())
-      .set("time_from", self.time_from.to_string())
-      .set("time_to", self.time_to.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("color", self.color)
+      .set("alpha", self.alpha)
+      .set("scale", self.scale)
+      .set("time_from", self.time_from)
+      .set("time_to", self.time_to);
 
     Ok(())
   }
@@ -96,7 +96,7 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_target_color::ParticleActionTargetColor;
-  use crate::data::particle_action_type::ParticleActionType;
+  use crate::data::actions::particle_action_type::ParticleActionType;
 
   #[test]
   fn test_read_write() -> XrfResult {

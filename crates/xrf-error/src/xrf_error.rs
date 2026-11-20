@@ -9,7 +9,7 @@ use xrf_error_derive::ErrorConstructors;
 ///
 /// Internal to Rust: a boundary carries one as its message. What a surface reports about the data it judged is a
 /// finding of that domain's own type, never one of these.
-#[derive(ThisError, Debug, ErrorConstructors)]
+#[derive(ThisError, Clone, Debug, ErrorConstructors)]
 pub enum XrfError {
   #[constructor]
   #[error("Assertion error: {message}")]

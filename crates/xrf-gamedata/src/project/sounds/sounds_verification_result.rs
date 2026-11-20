@@ -4,7 +4,7 @@ use crate::project::sounds::sound_files_verification_result::GamedataSoundFilesV
 use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
 use crate::{Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationStatus};
 
-pub struct GamedataSoundsVerificationResult {
+pub(crate) struct GamedataSoundsVerificationResult {
   pub(crate) duration: Duration,
   findings: Vec<Finding>,
   sound_files: GamedataSoundFilesVerificationResult,

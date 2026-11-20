@@ -4,8 +4,9 @@ use std::time::Duration;
 
 use xrf_environment::{
   Ambient, AmbientEffect, AmbientEffectKey, AmbientKey, EnvironmentCatalog, EnvironmentValue, LevelAmbients,
+  SoundChannel, SoundChannelKey,
 };
-use xrf_world::{WorldAmbient, WorldAmbientEffect, WorldWindBlast};
+use xrf_world::{WorldAmbient, WorldAmbientEffect, WorldSound, WorldSoundChannel, WorldSoundInfo, WorldWindBlast};
 
 use crate::tests::fixtures;
 use crate::weather::LevelWorldAmbients;
@@ -42,6 +43,67 @@ fn new_effect(name: &str, particles: &str, values: &[(AmbientEffectKey, f32)]) -
   );
 
   effect
+}
+
+fn read_sound(reference: &str) -> WorldSound {
+  WorldSound::new(reference, Some(WorldSoundInfo::default()))
+}
+
+fn new_channel(name: &str, values: Vec<(SoundChannelKey, EnvironmentValue)>) -> SoundChannel {
+  let mut channel: SoundChannel = SoundChannel::new(name, "environment\\sound_channels.ltx");
+
+  channel.values.extend(values);
+  channel
+}
+
+// CoP periods are milliseconds; SoC's two `sound_period` seconds cover both halves, a `periodN` beside them overrides
+// in seconds, and `sound_dist` is sorted nearest first.
+#[test]
+fn reads_a_channels_periods_and_distances_in_each_shape() {
+  let mut catalog: EnvironmentCatalog = new_catalog();
+  let sounds = || {
+    (
+      SoundChannelKey::Sounds,
+      EnvironmentValue::List(vec![String::from("ambient\\wind")]),
+    )
+  };
+
+  catalog.sound_channels = vec![
+    new_channel(
+      "cop",
+      vec![
+        sounds(),
+        (SoundChannelKey::MinDistance, EnvironmentValue::Number(20.0)),
+        (SoundChannelKey::MaxDistance, EnvironmentValue::Number(40.0)),
+        (SoundChannelKey::Period0, EnvironmentValue::Integer(1000)),
+        (SoundChannelKey::Period1, EnvironmentValue::Integer(2000)),
+        (SoundChannelKey::Period2, EnvironmentValue::Integer(3000)),
+        (SoundChannelKey::Period3, EnvironmentValue::Integer(4000)),
+      ],
+    ),
+    new_channel(
+      "soc",
+      vec![
+        sounds(),
+        (SoundChannelKey::SoundDist, EnvironmentValue::Vector(vec![50.0, 10.0])),
+        (SoundChannelKey::SoundPeriod, EnvironmentValue::Vector(vec![5.0, 8.0])),
+        (SoundChannelKey::Period3, EnvironmentValue::Integer(9)),
+      ],
+    ),
+  ];
+
+  let channels = LevelWorldAmbients::read_channels(&catalog, &mut read_sound);
+
+  assert_eq!(
+    channels.get("cop"),
+    Some(&WorldSoundChannel {
+      sounds: vec![read_sound("ambient\\wind")],
+      distance: [20.0, 40.0],
+      period: [1000, 2000, 3000, 4000],
+    })
+  );
+  assert_eq!(channels.get("soc").map(|it| it.distance), Some([10.0, 50.0]));
+  assert_eq!(channels.get("soc").map(|it| it.period), Some([5000, 8000, 5000, 9000]));
 }
 
 fn new_catalog() -> EnvironmentCatalog {
@@ -82,15 +144,16 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
   let catalog: EnvironmentCatalog = new_catalog();
 
   assert_eq!(
-    LevelWorldAmbients::to_world(&catalog, "zaton").get("day"),
+    LevelWorldAmbients::read_ambients(&catalog, "zaton").get("day"),
     Some(&WorldAmbient {
+      sound_channels: Vec::new(),
       effects: vec![String::from("fog")],
       least_period: Duration::from_secs(5),
       most_period: Duration::from_secs(6),
     })
   );
   assert_eq!(
-    LevelWorldAmbients::to_world(&catalog, "jupiter")
+    LevelWorldAmbients::read_ambients(&catalog, "jupiter")
       .get("day")
       .map(|it| it.effects.len()),
     Some(2)
@@ -100,7 +163,7 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
 // `iFloor(life_time * 1000)`: the life in whole milliseconds; a blast only where its strength is written.
 #[test]
 fn reads_an_effects_life_and_wind_as_the_engine_does() {
-  let effects = LevelWorldAmbients::to_world_effects(&new_catalog());
+  let effects = LevelWorldAmbients::read_effects(&new_catalog(), &mut read_sound);
 
   assert_eq!(
     effects.get("fog"),
@@ -110,6 +173,7 @@ fn reads_an_effects_life_and_wind_as_the_engine_does() {
       offset: [0.0, 0.0, 10.0],
       wind_gust_factor: 0.015,
       wind_blast: WorldWindBlast::default(),
+      sound: None,
     })
   );
 
@@ -135,7 +199,7 @@ fn reads_an_unbounded_wind_blast_ramp_as_an_hour() {
     ],
   ));
 
-  let blast: WorldWindBlast = LevelWorldAmbients::to_world_effects(&catalog)
+  let blast: WorldWindBlast = LevelWorldAmbients::read_effects(&catalog, &mut read_sound)
     .get("endless")
     .map(|it| it.wind_blast)
     .unwrap_or_default();

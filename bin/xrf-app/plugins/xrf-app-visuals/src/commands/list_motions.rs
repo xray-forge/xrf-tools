@@ -13,7 +13,7 @@ use crate::VisualModels;
 /// visual animates at all, from its references, so nothing needs this until something is about to play one.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_motions")]
-pub async fn visuals_list_motions(
+pub(crate) async fn visuals_list_motions(
   session_id: SessionId,
   models: State<'_, VisualModels>,
   assets: State<'_, AssetMountState>,

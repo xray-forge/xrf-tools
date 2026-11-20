@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescription } from "@xrf/ipc/types/xrf-app-archives";
@@ -7,6 +8,7 @@ import { ArchiveFileDescriptor, ArchiveReadResult } from "@xrf/ipc/types/xrf-arc
 import { EPathEntryKind } from "@xrf/path";
 
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
+import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { deferred } from "@/fixtures/utils/promise";
@@ -134,7 +136,77 @@ describe("ArchivePreviewService", () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  it("reads nothing as a write and leaves writing to the explorer's own check", () => {
+  it("reads the next file opened while a read is in flight, rather than waiting on it", async () => {
+    const first = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
+    const second = mockArchiveFileDescriptor({ name: "configs\\game.ltx" });
+
+    mockIpcCommands({
+      [EArchivesCommand.READ_FILE]: mockSessionRead((args?: Record<string, unknown>) =>
+        args?.name === first.name ? new Promise(() => {}) : { name: second.name, content: "game", size: 4 }
+      ),
+    });
+
+    const service: ArchivePreviewService = mockService([first, second]);
+
+    void service.selectFile(first);
+
+    expect(service.content.isLoading).toBe(true);
+
+    await service.selectFile(second);
+
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
+      sessionId: expect.any(String),
+      name: second.name,
+    });
+    expect(service.selectedEntry).toStrictEqual(second);
+  });
+
+  it("refuses to open a file or a directory while the explorer writes to disk, and opens once it is done", async () => {
+    const descriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
+
+    mockIpcCommands({ [EArchivesCommand.READ_FILE]: mockSessionRead({ name: descriptor.name, content: "", size: 0 }) });
+
+    const { archivesService, previewService } = mockExplorer([descriptor]);
+
+    // A write leaves the archive and cannot be abandoned the way a read can, so it holds an open back.
+    mockCommandAnswer(archivesService.fileExtraction, AsyncState.loading());
+
+    await previewService.selectFile(descriptor);
+    previewService.selectDirectory("configs");
+
+    expect(previewService.selection).toEqual({ kind: "none" });
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
+
+    mockCommandAnswer(archivesService.fileExtraction, AsyncState.idle());
+
+    await previewService.selectFile(descriptor);
+
+    expect(previewService.selectedEntry).toStrictEqual(descriptor);
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
+      sessionId: expect.any(String),
+      name: descriptor.name,
+    });
+  });
+
+  it("opens a sound read for its preview by the session and name it was read by", async () => {
+    mockIpcCommands({ [EArchivesCommand.OPEN_AUDIO_PREVIEW]: 7 });
+
+    const service: ArchivePreviewService = mockService([]);
+    const transport = await service.openAudio({
+      descriptor: { channels: 1, parameters: null, sampleRate: 22050 },
+      kind: "audio",
+      name: "sounds\\wind.ogg",
+      sessionId: "archives-session",
+    });
+
+    expect(transport).toBe(7);
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_AUDIO_PREVIEW, {
+      sessionId: "archives-session",
+      name: "sounds\\wind.ogg",
+    });
+  });
+
+  it("reads nothing as a write", () => {
     // A read is superseded by the next open, so treating it as busy is what dropped the second gesture entirely.
     const descriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
 
@@ -164,7 +236,7 @@ describe("ArchivePreviewService", () => {
     const { archivesService, previewService } = mockExplorer([descriptor]);
 
     await previewService.selectFile(descriptor);
-    await archivesService.closeSubject();
+    await archivesService.close();
 
     expect(previewService.selection).toEqual({ kind: "none" });
     expect(previewService.content.value).toBeNull();
@@ -192,7 +264,7 @@ describe("ArchivePreviewService", () => {
     const { archivesService, previewService } = mockExplorer([descriptor]);
 
     await previewService.selectFile(descriptor);
-    await archivesService.closeSubject();
+    await archivesService.close();
 
     expect(archivesService.subject.value).not.toBeNull();
     expect(previewService.selectedEntry).toStrictEqual(descriptor);

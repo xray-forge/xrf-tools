@@ -1,15 +1,15 @@
 use std::f32::consts::FRAC_PI_2;
 use std::sync::Arc;
 
-use xrf_level::{LevelDynamicLight, LevelLightColor};
+use xrf_level::LevelDynamicLight;
 use xrf_light_anim::{LightAnimFile, LightAnimItem, LightAnimKey};
 use xrf_ltx::Ltx;
-use xrf_math::Vector3d;
+use xrf_math::{Color, Sphere, Vector3d};
 use xrf_ogf::OgfFile;
 use xrf_spawn::{
   AlifeObject, AlifeObjectAbstract, AlifeObjectCustomZone, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
   AlifeObjectInherited, AlifeObjectMotion, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, AlifeObjectTorridZone,
-  ClsId, LastSpawnTime, Shape,
+  ClsId, LastSpawnTime, Shape, SpawnPacketHeader,
 };
 
 use crate::data::lights::light_description::LightDescription;
@@ -85,25 +85,27 @@ fn lamp(flags: u16, game_vertex_id: u16) -> AlifeObjectHangingLamp {
 
 fn object(name: &str, lamp: AlifeObjectHangingLamp) -> AlifeObject {
   AlifeObject {
-    id: 0,
-    net_action: 1,
-    section: String::from("lights_hanging_lamp"),
+    header: SpawnPacketHeader {
+      id: 0,
+      net_action: 1,
+      section: String::from("lights_hanging_lamp"),
+      name: String::from(name),
+      script_game_id: 0,
+      script_rp: 0,
+      position: vector(10.0, 2.0, 5.0),
+      // Turned a quarter about y, which `setXYZ` enters as a heading of pi/2 and turns +z to -x.
+      direction: vector(0.0, FRAC_PI_2, 0.0),
+      respawn_time: 0,
+      parent_id: u16::MAX,
+      phantom_id: u16::MAX,
+      script_flags: 0,
+      version: 128,
+      game_type: 0,
+      script_version: 12,
+      client_data: Vec::new(),
+      spawn_id: 0,
+    },
     clsid: ClsId::SoHLamp,
-    name: String::from(name),
-    script_game_id: 0,
-    script_rp: 0,
-    // Turned a quarter about y, which `setXYZ` enters as a heading of pi/2 and turns +z to -x.
-    position: vector(10.0, 2.0, 5.0),
-    direction: vector(0.0, FRAC_PI_2, 0.0),
-    respawn_time: 0,
-    parent_id: u16::MAX,
-    phantom_id: u16::MAX,
-    script_flags: 0,
-    version: 128,
-    game_type: 0,
-    script_version: 12,
-    client_data: Vec::new(),
-    spawn_id: 0,
     inherited: AlifeObjectInherited::CseAlifeObjectHangingLamp(Box::new(lamp)),
   }
 }
@@ -135,7 +137,7 @@ fn pack_one(object: &AlifeObject, animations: Option<&LightAnimFile>) -> LightsD
   let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
     unreachable!()
   };
-  let mut packer: LightsPacker = LightsPacker::new(animations);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(animations);
 
   packer.add_lamp(object, lamp, &mut |_| Some(lamp_pose()));
   packer.pack()
@@ -178,7 +180,7 @@ fn lights_nothing_for_a_lamp_the_engine_does_not_spawn_on_r2_one_already_broken_
 
   let mut rocket: AlifeObject = object("signal", lamp(FLAG_R2, 0));
 
-  rocket.section = String::from("lights_signal_light");
+  rocket.header.section = String::from("lights_signal_light");
 
   assert!(pack_one(&rocket, None).lights.is_empty());
 }
@@ -218,10 +220,10 @@ fn stands_a_lamp_whose_visual_lacks_the_bone_at_the_object_itself() {
 fn lights_each_lamp_of_the_objects_by_the_visual_it_names() {
   let mut second: AlifeObject = object("second", lamp(FLAG_R2, 1));
 
-  second.position = vector(20.0, 2.0, 5.0);
+  second.header.position = vector(20.0, 2.0, 5.0);
 
   let objects: Vec<AlifeObject> = vec![object("first", lamp(FLAG_R2, 0)), second];
-  let mut packer: LightsPacker = LightsPacker::new(None);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None);
   let mut reads: Vec<String> = Vec::new();
 
   packer.add_objects(&objects, &mut |name| {
@@ -245,7 +247,7 @@ fn asks_for_no_visual_where_a_lamp_names_none() {
 
   unnamed.base.visual_name = String::new();
 
-  let mut packer: LightsPacker = LightsPacker::new(None);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None);
   let mut reads: usize = 0;
 
   packer.add_objects(&[object("lamp", unnamed)], &mut |_| {
@@ -289,7 +291,7 @@ fn resolves_animators_once_and_takes_a_version_0_library_as_bgr() {
       version,
       items: vec![item("light\\idle")],
     };
-    let mut packer: LightsPacker = LightsPacker::new(Some(&animations));
+    let mut packer: LightsPacker<'_> = LightsPacker::new(Some(&animations));
 
     for (name, animator) in [("a", "light\\idle"), ("b", "light\\idle"), ("c", "light\\missing")] {
       let object: AlifeObject = object(name, animated(animator));
@@ -325,24 +327,9 @@ fn keeps_the_level_files_point_lights_and_leaves_its_sun() {
   let light = |kind: u32| LevelDynamicLight {
     controller: 0,
     kind,
-    diffuse: LevelLightColor {
-      r: 0.5,
-      g: 0.25,
-      b: 1.0,
-      a: 1.0,
-    },
-    specular: LevelLightColor {
-      r: 0.0,
-      g: 0.0,
-      b: 0.0,
-      a: 0.0,
-    },
-    ambient: LevelLightColor {
-      r: 0.0,
-      g: 0.0,
-      b: 0.0,
-      a: 0.0,
-    },
+    diffuse: Color::new(0.5, 0.25, 1.0, 1.0),
+    specular: Color::default(),
+    ambient: Color::default(),
     position: vector(1.0, 2.0, 3.0),
     direction: vector(0.0, -1.0, 0.0),
     range: 12.0,
@@ -353,7 +340,7 @@ fn keeps_the_level_files_point_lights_and_leaves_its_sun() {
     theta: 0.0,
     phi: 0.0,
   };
-  let mut packer: LightsPacker = LightsPacker::new(None);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None);
 
   // A spot record lights as a point too: the loader turns every light that is not the sun into one.
   packer.add_level_lights(&[
@@ -439,13 +426,13 @@ fn animations() -> LightAnimFile {
 fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   let ltx: Ltx = sections();
   let animations: LightAnimFile = animations();
-  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(Some(&animations)).with_sections(&ltx);
 
   for section in ["campfire", "zone_quiet", "zone_unanimated"] {
     let mut zone: AlifeObject = object(section, lamp(FLAG_R2, 0));
 
-    zone.id = 7;
-    zone.section = String::from(section);
+    zone.header.id = 7;
+    zone.header.section = String::from(section);
     packer.add_zone(&zone, None);
   }
 
@@ -505,12 +492,18 @@ fn torrid(shape: Shape, custom_data: &str) -> AlifeObjectTorridZone {
 fn carries_a_torrid_zones_light_along_its_motion() {
   let ltx: Ltx = sections();
   let animations: LightAnimFile = animations();
-  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(Some(&animations)).with_sections(&ltx);
   let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
   // A sphere a metre along the zone's own +z, which its quarter turn stands along the engine's -x.
-  let torrid: AlifeObjectTorridZone = torrid(Shape::Sphere((vector(0.0, 0.0, 1.0), 3.0)), "");
+  let torrid: AlifeObjectTorridZone = torrid(
+    Shape::Sphere(Sphere {
+      center: vector(0.0, 0.0, 1.0),
+      radius: 3.0,
+    }),
+    "",
+  );
 
-  zone.section = String::from("campfire");
+  zone.header.section = String::from("campfire");
   packer.add_zone(&zone, Some(&torrid));
 
   let description: LightsDescription = packer.pack();
@@ -535,14 +528,17 @@ fn carries_a_torrid_zones_light_along_its_motion() {
 fn keeps_an_always_fast_torrid_zones_light_on() {
   let ltx: Ltx = sections();
   let animations: LightAnimFile = animations();
-  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(Some(&animations)).with_sections(&ltx);
   let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
   let torrid: AlifeObjectTorridZone = torrid(
-    Shape::Sphere((vector(0.0, 0.0, 0.0), 3.0)),
+    Shape::Sphere(Sphere {
+      center: vector(0.0, 0.0, 0.0),
+      radius: 3.0,
+    }),
     "[fast_mode]\nalways_fast = true\n",
   );
 
-  zone.section = String::from("campfire");
+  zone.header.section = String::from("campfire");
   packer.add_zone(&zone, Some(&torrid));
 
   assert_eq!(packer.pack().lights[0].zone_sphere, None);
@@ -552,10 +548,10 @@ fn keeps_an_always_fast_torrid_zones_light_on() {
 #[test]
 fn lights_no_zone_without_a_library_to_find_its_animation_in() {
   let ltx: Ltx = sections();
-  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None).with_sections(&ltx);
   let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
 
-  zone.section = String::from("campfire");
+  zone.header.section = String::from("campfire");
   packer.add_zone(&zone, None);
 
   let description: LightsDescription = packer.pack();
@@ -571,7 +567,7 @@ fn takes_a_lamps_own_section_shadow_over_its_flag() {
   let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
     unreachable!()
   };
-  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None).with_sections(&ltx);
 
   packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
 
@@ -583,12 +579,12 @@ fn shadows_the_ambient_point_where_its_section_asks() {
   let ltx: Ltx = sections();
   let mut object: AlifeObject = object("lamp", lamp(FLAG_R2 | FLAG_POINT_AMBIENT, 0));
 
-  object.section = String::from("lights_shadowed_ambient");
+  object.header.section = String::from("lights_shadowed_ambient");
 
   let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
     unreachable!()
   };
-  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None).with_sections(&ltx);
 
   packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
 
@@ -605,14 +601,14 @@ fn shadows_the_ambient_point_where_its_section_asks() {
 #[test]
 fn knows_a_signal_rocket_by_its_binder_where_the_configs_are_read() {
   let ltx: Ltx = sections();
-  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None).with_sections(&ltx);
 
   // A mod's rocket under a section of its own, and vanilla's section rebound to a lamp that stays lit.
   for (section, x) in [("flare_rocket", 10.0), ("lights_signal_light", 20.0)] {
     let mut object: AlifeObject = object(section, lamp(FLAG_R2, 0));
 
-    object.section = String::from(section);
-    object.position = vector(x, 2.0, 5.0);
+    object.header.section = String::from(section);
+    object.header.position = vector(x, 2.0, 5.0);
 
     let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
       unreachable!()
@@ -699,12 +695,12 @@ fn sets_a_lamps_shafts_asked_by_its_flag_and_its_ambients_unasked() {
 fn sets_a_zones_shafts_only_where_its_section_asks() {
   let ltx: Ltx = sections();
   let animations: LightAnimFile = animations();
-  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+  let mut packer: LightsPacker<'_> = LightsPacker::new(Some(&animations)).with_sections(&ltx);
 
   for section in ["campfire", "zone_volumetric"] {
     let mut zone: AlifeObject = object(section, lamp(FLAG_R2, 0));
 
-    zone.section = String::from(section);
+    zone.header.section = String::from(section);
     packer.add_zone(&zone, None);
   }
 

@@ -7,7 +7,7 @@ import { ERenderTextureGroup, ERenderTextureState } from "@xrf/ipc/types/xrf-ren
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import {
   mockMaterialDescriptor,
   mockPackedSubmesh,
@@ -68,7 +68,7 @@ describe("VisualLoadService", () => {
       }),
     });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(openParameters).toEqual({
       sessionId: expect.any(String),
@@ -90,7 +90,7 @@ describe("VisualLoadService", () => {
       }),
     });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(service.visual.value).toBeNull();
     expect(service.visual.error?.message).toBe("chunk declares more bytes than the entry holds");
@@ -104,7 +104,7 @@ describe("VisualLoadService", () => {
 
     mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     let shownWhileOpening: Nullable<string> = null;
 
@@ -116,7 +116,7 @@ describe("VisualLoadService", () => {
       }),
     });
 
-    await service.load({ kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" }, ROOTS);
+    await service.open({ kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" }, ROOTS);
 
     expect(shownWhileOpening).toBe(ENTRY);
     expect(service.sourceLabel).toBe("C:\\gamedata\\meshes\\second.ogf");
@@ -146,7 +146,7 @@ describe("VisualLoadService", () => {
 
     mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
     service.clear();
 
     expect(service.visual.value).toBeNull();
@@ -165,7 +165,7 @@ describe("VisualLoadService textures", () => {
 
     mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.LOADING);
 
@@ -189,7 +189,7 @@ describe("VisualLoadService textures", () => {
 
     mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     service.noteTextures("another-session", [
       { group: ERenderTextureGroup.SURFACES, reference: "wpn\\wpn_ak74", state: { kind: ERenderTextureState.MISSING } },
@@ -203,7 +203,7 @@ describe("VisualLoadService textures", () => {
 
     mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(service.hasBump).toBe(false);
 
@@ -213,7 +213,7 @@ describe("VisualLoadService textures", () => {
       ),
     });
 
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+    await service.open({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(service.hasBump).toBe(true);
     expect(service.bumpStatuses.get(0)?.bump).toBe(EVisualTextureState.LOADING);

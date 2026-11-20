@@ -7,10 +7,10 @@ use crate::commands::gamedata::GamedataGroup;
 use crate::commands::gamemtl::GameMtlGroup;
 use crate::commands::level::LevelGroup;
 use crate::commands::ltx::LtxGroup;
+use crate::commands::object::ObjectGroup;
 use crate::commands::ogf::OgfGroup;
 use crate::commands::omf::OmfGroup;
 use crate::commands::particle::ParticleGroup;
-use crate::commands::profile::ProfileGroup;
 use crate::commands::spawn::SpawnGroup;
 use crate::commands::sprite::SpriteGroup;
 use crate::commands::thm::ThmGroup;
@@ -19,7 +19,7 @@ use crate::core::command::CommandGroup;
 
 impl CommandGroup {
   /// Every public CLI domain, each declaring its own operations, for dispatch and for `docs generate`.
-  pub fn list_all() -> Vec<Self> {
+  pub(crate) fn list_all() -> Vec<Self> {
     vec![
       ArchiveGroup::declare(),
       DdsGroup::declare(),
@@ -30,10 +30,10 @@ impl CommandGroup {
       GameMtlGroup::declare(),
       LevelGroup::declare(),
       LtxGroup::declare(),
+      ObjectGroup::declare(),
       OgfGroup::declare(),
       OmfGroup::declare(),
       ParticleGroup::declare(),
-      ProfileGroup::declare(),
       SpawnGroup::declare(),
       SpriteGroup::declare(),
       ThmGroup::declare(),
@@ -46,7 +46,42 @@ impl CommandGroup {
 mod tests {
   use std::collections::HashSet;
 
-  use crate::core::command::CommandGroup;
+  use clap::{Arg, Command};
+
+  use crate::core::arguments::InputArgument;
+  use crate::core::command::{CommandGroup, CommandInput};
+
+  /// What a command reads is its one positional, present exactly when it states an input, and nothing names it
+  /// `-p/--path`.
+  #[test]
+  fn every_command_reads_its_input_positionally() {
+    for group in CommandGroup::list_all() {
+      for command in &group.commands {
+        let declared: Command = command.init();
+        let name: String = format!("{} {}", group.slug, command.operation());
+        let positionals: Vec<&Arg> = declared.get_positionals().collect();
+
+        assert!(positionals.len() <= 1, "'{name}' declares more than one positional");
+        assert_eq!(
+          positionals.is_empty(),
+          command.input() == CommandInput::None,
+          "'{name}' declares a positional its stated input does not account for"
+        );
+        assert!(
+          positionals
+            .iter()
+            .all(|argument| argument.get_id() == InputArgument::ID),
+          "'{name}' declares a positional that is not its input"
+        );
+        assert!(
+          declared
+            .get_arguments()
+            .all(|argument| argument.get_long() != Some("path") && argument.get_short() != Some('p')),
+          "'{name}' still names an input with -p/--path"
+        );
+      }
+    }
+  }
 
   #[test]
   fn registered_domain_slugs_are_unique() {

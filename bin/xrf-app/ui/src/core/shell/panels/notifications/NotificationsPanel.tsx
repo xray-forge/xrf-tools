@@ -1,14 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { ClearAllIcon } from "@xrf/ui/icons/clear-all";
-import { IconButton } from "@xrf/ui/material/icon-button";
-import { Tooltip } from "@xrf/ui/material/tooltip";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { INotificationEntry, toNotificationEntries } from "@/core/shell/panels/notifications/notification-list";
 import { NotificationRow } from "@/core/shell/panels/notifications/NotificationRow";
@@ -47,18 +46,13 @@ export function NotificationsPanel(): ReactElement {
       className={"h-full"}
       title={"Notifications"}
       actions={
-        <Tooltip describeChild title={"Clear all"} placement={"left"}>
-          <span>
-            <IconButton
-              aria-label={"Clear all"}
-              disabled={!notifications.length}
-              size={"small"}
-              onClick={notificationsService.clear}
-            >
-              <ClearAllIcon fontSize={"small"} />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <EditorIconAction
+          label={"Clear all"}
+          description={notifications.length ? "Clear every notification" : "Nothing to clear"}
+          icon={<ClearAllIcon />}
+          isDisabled={!notifications.length}
+          onClick={notificationsService.clear}
+        />
       }
     >
       <div className={"h-full overflow-y-auto"}>

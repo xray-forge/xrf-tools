@@ -33,3 +33,43 @@ fn frames_draw_at_the_wall_clock_until_stepped_then_a_step_a_frame() {
     start + Duration::from_secs(11)
   );
 }
+
+#[test]
+fn a_cleared_step_keeps_the_lead_its_frames_ran_ahead_by() {
+  let start: Instant = Instant::now();
+  let step: Duration = Duration::from_secs(1);
+  let mut clock: FrameClock = FrameClock::default();
+
+  clock.tick(start);
+  clock.set_step(Some(step));
+
+  for frame in 1..=10 {
+    clock.tick(start + Duration::from_millis(frame * 10));
+  }
+
+  // Ten one-second steps over 100 ms of wall time: 9.9 s ahead.
+  let stepped: Instant = start + step * 10;
+
+  clock.set_step(None);
+
+  assert_eq!(
+    clock.tick(start + Duration::from_millis(120)),
+    stepped + Duration::from_millis(20)
+  );
+  assert_eq!(
+    clock.tick(start + Duration::from_millis(150)),
+    stepped + Duration::from_millis(50)
+  );
+}
+
+#[test]
+fn a_step_past_the_platforms_latest_time_holds_the_clock() {
+  let start: Instant = Instant::now();
+  let mut clock: FrameClock = FrameClock::default();
+
+  clock.tick(start);
+  clock.set_step(Some(Duration::MAX));
+
+  assert_eq!(clock.tick(start), start);
+  assert_eq!(clock.tick(start), start);
+}

@@ -9,8 +9,6 @@ use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
 use crate::contract::report::applied::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
-use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
-use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::tracing::reflections::draw::reflection_parameters::ReflectionParameters;
 use crate::feature::tracing::reflections::draw::reflection_pass::ReflectionPass;
@@ -33,11 +31,11 @@ use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::wet::wet_feature::WetFeature;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::readback::stats_readback::StatsReadback;
-use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
@@ -47,7 +45,7 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 /// The screen-space reflections, while they are traced: their settings and trace this frame, what their passes read,
 /// and what they keep from frame to frame.
 #[derive(Default)]
-pub struct ReflectionFeature {
+pub(crate) struct ReflectionFeature {
   settings: RenderReflectionSettings,
   trace: Option<ReflectionTrace>,
   uniform: ReflectionUniform,
@@ -61,7 +59,7 @@ impl ReflectionFeature {
   /// rays, the dry surfaces left untraced unless asked where the level is not wet (`wet`): the history at the size they
   /// trace at and the pyramid over the frame's depth made or kept while they are traced, dropped otherwise, the
   /// trace's request list fitted, and what their passes read.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -127,18 +125,18 @@ impl ReflectionFeature {
     );
   }
 
-  pub fn get_settings(&self) -> RenderReflectionSettings {
+  pub(crate) fn get_settings(&self) -> RenderReflectionSettings {
     self.settings
   }
 
   /// How they are traced this frame, none where they are not.
-  pub fn get_trace(&self) -> Option<ReflectionTrace> {
+  pub(crate) fn get_trace(&self) -> Option<ReflectionTrace> {
     self.trace
   }
 
   /// Writes into `applied` how they are traced this frame, none where they are not: their strength, the share of the
   /// frame traced, full where the raw signal is, and the steps a ray walks.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     applied.reflections = self.trace.map(|trace| RenderAppliedReflections {
       intensity: trace.intensity,
       trace_size: if trace.is_raw {
@@ -153,7 +151,7 @@ impl ReflectionFeature {
   /// Reduces the frame's `depth` as it stands now (before or after the grass drew) to its nearest, level by level, the
   /// first level the depth itself: what the rays are walked over, so a bush's billboards stand in for the volume they
   /// are and never stop a ray going for what lies behind them. Nothing where they are not traced.
-  pub fn add_pyramid_passes<'a>(
+  pub(crate) fn add_pyramid_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
@@ -162,41 +160,18 @@ impl ReflectionFeature {
     let (Some(_), Some(history)) = (self.trace, &self.history) else {
       return;
     };
-    let pyramid: &'a DepthPyramid = &history.pyramid;
-    let level_views: Vec<GraphTexture> = pyramid
-      .level_views
-      .iter()
-      .map(|level| bindings.import_view(&mut *graph, "nearest depth level", level))
-      .collect();
-    let first: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: depth,
-      target_level: level_views[0],
-    };
-    let levels: Vec<PyramidLevelParameters> = level_views
-      .windows(2)
-      .map(|pair| PyramidLevelParameters {
-        source_level: pair[0],
-        target_level: pair[1],
-      })
-      .collect();
-
-    levels
-      .iter()
-      .fold(
-        graph.add_compute_pass(ReflectionTrace::PYRAMID_PASS).parameters(&first),
-        |builder, level| builder.parameters(level),
-      )
-      .record(move |context| {
-        passes
-          .scene
-          .pyramid
-          .record(context, pyramid, &first, &levels, PyramidReduction::Nearest)
-      });
+    passes.scene.pyramid.add_passes(
+      graph,
+      bindings,
+      ReflectionTrace::PYRAMID_PASS,
+      (&history.pyramid, depth),
+      PyramidReduction::Nearest,
+    );
   }
 
   /// The last frame's scene and depth they keep, read by this frame's hits: the scene copied again after the particles
   /// draw, the depth the target the last frame drew into.
-  pub fn import_source<'a>(
+  pub(crate) fn import_source<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
   ) -> Option<ReflectionSource> {
@@ -210,7 +185,7 @@ impl ReflectionFeature {
   /// depth's pyramid, then, denoised, the last frame's reflection reprojected, an eighth-size average, the trace
   /// filtered across the surface and resolved over time into the view's history. Answers what they hand on, none where
   /// they are not traced.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -258,7 +233,7 @@ impl ReflectionFeature {
     let read: [GraphTexture; 3] = frames.as_ref().map_or([empty; 3], |frames| {
       [frames.radiance[0], frames.surface[0], frames.held[0]]
     });
-    let parameters: ReflectionParameters = ReflectionParameters {
+    let parameters: ReflectionParameters<'_> = ReflectionParameters {
       albedo_target: targets.albedo,
       normal_target: targets.normal,
       material_target: targets.material,
@@ -370,7 +345,7 @@ impl ReflectionFeature {
               out: &out,
             },
             size,
-          )
+          );
         });
     } else {
       graph
@@ -384,13 +359,12 @@ impl ReflectionFeature {
           passes
             .tracing
             .reflections
-            .record_trace(context, view, &parameters, &sky, &requests)
+            .record_trace(context, view, &parameters, &sky, &requests);
         });
     }
 
     // The rays the trace left, traced against the level's geometry.
     if let Some(TracedScene { trace, textures }) = scene_trace {
-      let (trace_requests, trace_request_head) = listed.to_read();
       let head = listed.head;
 
       passes.tracing.scene_trace.add_trace(
@@ -407,8 +381,6 @@ impl ReflectionFeature {
             material_lut: lit.material_lut,
             lut_sampler: lit.lut_sampler,
             exposure: StorageValue::new(lit.exposure),
-            trace_requests,
-            trace_request_head,
             traced_out: traced,
             ends_out: ends,
             screen_scene: parameters.source_scene,
@@ -475,7 +447,7 @@ impl ReflectionFeature {
         passes
           .tracing
           .reflections
-          .record_stage(context, view, &parameters, ReflectionStage::Guide)
+          .record_stage(context, view, &parameters, ReflectionStage::Guide);
       });
 
     let parameters: ReflectionParameters<'a> = ReflectionParameters { guide, ..parameters };
@@ -549,7 +521,7 @@ impl ReflectionFeature {
           passes
             .tracing
             .reflections
-            .record_stage(context, view, &stage_parameters, stage)
+            .record_stage(context, view, &stage_parameters, stage);
         });
     }
 
@@ -579,14 +551,14 @@ impl ReflectionFeature {
   }
 
   /// Asks for the rays asked recorded with the frame just submitted.
-  pub fn request_demand(&self) {
+  pub(crate) fn request_demand(&self) {
     if let Some(demand) = &self.demand {
       demand.request();
     }
   }
 
   /// Drops the rays asked recorded with a frame that was never submitted.
-  pub fn abandon_demand(&self) {
+  pub(crate) fn abandon_demand(&self) {
     if let Some(demand) = &self.demand {
       demand.abandon();
     }
@@ -594,11 +566,6 @@ impl ReflectionFeature {
 }
 
 impl ViewFeature for ReflectionFeature {
-  /// Their history, the pyramid and the kept scene and depth.
-  fn get_memory(&self) -> u64 {
-    self.history.as_ref().map_or(0, ReflectionHistory::get_memory)
-  }
-
   fn release(&mut self) {
     self.history = None;
   }
@@ -608,6 +575,13 @@ impl ViewFeature for ReflectionFeature {
   fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
     if let (Some(_), Some(history), Some(depth)) = (self.trace, &mut self.history, end.depth.as_deref_mut()) {
       history.swap(depth);
+    }
+  }
+
+  /// Their history starts again as `restart` asks (`ReflectionHistory::restart`).
+  fn restart(&mut self, restart: ViewRestart) {
+    if let Some(history) = &mut self.history {
+      history.restart(restart);
     }
   }
 }

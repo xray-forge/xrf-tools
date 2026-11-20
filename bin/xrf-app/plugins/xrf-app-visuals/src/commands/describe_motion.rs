@@ -11,7 +11,7 @@ use crate::VisualModels;
 /// read on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_motion")]
-pub async fn visuals_describe_motion(
+pub(crate) async fn visuals_describe_motion(
   session_id: SessionId,
   name: String,
   models: State<'_, VisualModels>,

@@ -5,13 +5,13 @@ import { AnyObject } from "@xrf/types";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { mockAlifeObject } from "@/tools/spawn-editor/fixtures/spawn.mocks";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 import { SpawnRowDetailsPanel } from "./SpawnRowDetailsPanel";
 
 interface IPanelRender {
   render: RenderResult;
-  service: SpawnFileService;
+  service: SpawnEditorService;
 }
 
 /**
@@ -21,10 +21,10 @@ interface IPanelRender {
  * starts there settles after the first paint.
  *
  * @param selected - Spawn row to select before rendering.
- * @returns Render result and the backing spawn-file service.
+ * @returns Render result and the backing spawn editor service.
  */
 async function renderPanel(selected?: AnyObject): Promise<IPanelRender> {
-  const { container, service } = mockInjectedService(SpawnFileService);
+  const { container, service } = mockInjectedService(SpawnEditorService);
   const render: RenderResult = await act(async () => renderWithProviders(<SpawnRowDetailsPanel />, { container }));
 
   // Selected after provisioning, not before: the restore that provisioning starts finds no open file and drops
@@ -74,7 +74,7 @@ describe("SpawnRowDetailsPanel", () => {
   it("drops the selection when the file it pointed into closes", async () => {
     const { render, service }: IPanelRender = await renderPanel(mockAlifeObject());
 
-    await act(() => service.closeFile());
+    await act(() => service.close());
 
     // A selection outliving its data would render a row from a file that is no longer open.
     expect(render.getByText("Nothing selected")).toBeInTheDocument();

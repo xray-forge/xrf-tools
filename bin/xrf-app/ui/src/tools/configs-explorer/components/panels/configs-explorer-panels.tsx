@@ -1,9 +1,11 @@
 import { DescriptionIcon } from "@xrf/ui/icons/description";
 import { FormatListBulletedIcon as ListIcon } from "@xrf/ui/icons/format-list-bulleted";
 import { RuleIcon } from "@xrf/ui/icons/rule";
+import { SearchIcon } from "@xrf/ui/icons/search";
 import { WarningAmberIcon as WarningIcon } from "@xrf/ui/icons/warning-amber";
 
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
+import { ConfigsFindPanel } from "@/tools/configs-explorer/components/panels/ConfigsFindPanel";
 import { ConfigsMenuPanel } from "@/tools/configs-explorer/components/panels/ConfigsMenuPanel";
 import { ConfigsProblemsPanel } from "@/tools/configs-explorer/components/panels/ConfigsProblemsPanel";
 import { ConfigsSchemePanel } from "@/tools/configs-explorer/components/panels/ConfigsSchemePanel";
@@ -39,5 +41,11 @@ export const CONFIGS_EXPLORER_PANELS: Array<IShellPanel> = [
     id: "problems",
     label: "Problems",
     render: () => <ConfigsProblemsPanel />,
+  },
+  {
+    icon: <SearchIcon />,
+    id: "find",
+    label: "Find",
+    render: () => <ConfigsFindPanel />,
   },
 ];

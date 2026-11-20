@@ -6,8 +6,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_count_fits, assert_equal, assert_length, to_format_size};
+use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
+use xrf_utils::{assert_count_fits, assert_equal, assert_length, narrow_format_size};
 
 use crate::data::alife::alife_object::AlifeObject;
 
@@ -90,7 +90,7 @@ impl SpawnALifeSpawnsChunk {
     let index: u16 = index_reader.read_u16::<T>()?;
 
     assert_equal(
-      index as u32,
+      u32::from(index),
       object_reader.id,
       "Expected index and chunk ID to be equal",
     )?;
@@ -108,7 +108,7 @@ impl SpawnALifeSpawnsChunk {
 impl ChunkReadWrite for SpawnALifeSpawnsChunk {
   /// Read spawns chunk by position descriptor from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading ALife spawns chunk, {} bytes", reader.read_bytes_remain());
+    log::debug!("Reading ALife spawns chunk, {} bytes", reader.read_bytes_remain());
 
     let mut objects: Vec<AlifeObject> = Vec::new();
     let mut failure: Option<XrfError> = None;
@@ -140,13 +140,13 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
     let mut objects_writer: ChunkWriter = ChunkWriter::new();
     let vertex_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<T>(to_format_size(self.objects.len(), "alife objects")?)?;
+    count_writer.write_u32::<T>(narrow_format_size(self.objects.len(), "alife objects")?)?;
 
     for (index, object) in self.objects.iter().enumerate() {
       let mut object_writer: ChunkWriter = ChunkWriter::new();
 
       let mut index_writer: ChunkWriter = ChunkWriter::new();
-      index_writer.write_u16::<T>(to_format_size(index, "alife object index")?)?;
+      index_writer.write_u16::<T>(narrow_format_size(index, "alife object index")?)?;
       object_writer.write_all(
         index_writer
           .flush_chunk_into_buffer::<T>(Self::OBJECT_INDEX_CHUNK_ID)?
@@ -163,7 +163,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
 
       objects_writer.write_all(
         object_writer
-          .flush_chunk_into_buffer::<T>(to_format_size(index, "alife object chunk id")?)?
+          .flush_chunk_into_buffer::<T>(narrow_format_size(index, "alife object chunk id")?)?
           .as_slice(),
       )?;
     }
@@ -184,7 +184,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
         .as_slice(),
     )?;
 
-    log::info!("Written ALife spawns chunk, {} bytes", writer.bytes_written());
+    log::debug!("Written ALife spawns chunk, {} bytes", writer.bytes_written());
 
     Ok(())
   }
@@ -193,21 +193,16 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
 impl FileImportExport for SpawnALifeSpawnsChunk {
   /// Import ALife spawns data from provided path.
   fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    let ltx: Ltx = Ltx::read_from_path(path.as_ref().join("alife_spawns.ltx"))?;
-    let mut objects: Vec<AlifeObject> = Vec::with_capacity(ltx.len());
+    let objects: Vec<AlifeObject> = LtxRecordReader::import_all(path.as_ref().join("alife_spawns.ltx"))?;
 
-    for (section_name, _) in &ltx {
-      objects.push(AlifeObject::import(section_name, &ltx)?);
-    }
-
-    log::info!("Imported ALife spawns chunk");
+    log::debug!("Imported ALife spawns chunk");
 
     Ok(Self { objects })
   }
 
   /// Export ALife spawns data into provided path.
   fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let mut ltx: Ltx = Ltx::new();
+    let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
     for (index, object) in self.objects.iter().enumerate() {
       object.export(&index.to_string(), &mut ltx)?;
@@ -215,7 +210,7 @@ impl FileImportExport for SpawnALifeSpawnsChunk {
 
     ltx.write_to_path(path.as_ref().join("alife_spawns.ltx"))?;
 
-    log::info!("Exported ALife spawns chunk");
+    log::debug!("Exported ALife spawns chunk");
 
     Ok(())
   }
@@ -249,28 +244,31 @@ mod tests {
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
   use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
+  use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
   use crate::data::meta::cls_id::ClsId;
 
   fn restrictor() -> AlifeObject {
     AlifeObject {
-      id: 7,
-      net_action: 1,
-      section: String::from("space_restrictor"),
+      header: SpawnPacketHeader {
+        id: 7,
+        net_action: 1,
+        section: String::from("space_restrictor"),
+        name: String::from("readable-restrictor"),
+        script_game_id: 5,
+        script_rp: 52,
+        position: Vector3d::new(1.0, 2.0, 4.0),
+        direction: Vector3d::new(5.0, 2.0, 1.0),
+        respawn_time: 50000,
+        parent_id: 2463,
+        phantom_id: 0,
+        script_flags: 33,
+        version: 128,
+        game_type: 1,
+        script_version: 10,
+        client_data: Vec::new(),
+        spawn_id: 2354,
+      },
       clsid: ClsId::SpcRsS,
-      name: String::from("readable-restrictor"),
-      script_game_id: 5,
-      script_rp: 52,
-      position: Vector3d::new(1.0, 2.0, 4.0),
-      direction: Vector3d::new(5.0, 2.0, 1.0),
-      respawn_time: 50000,
-      parent_id: 2463,
-      phantom_id: 0,
-      script_flags: 33,
-      version: 128,
-      game_type: 1,
-      script_version: 10,
-      client_data: Vec::new(),
-      spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor {
         base: AlifeObjectAbstract {
           game_vertex_id: 5473,
@@ -288,7 +286,6 @@ mod tests {
     }
   }
 
-  /// One object's chunk, its index then the data written into it.
   fn object_chunk(index: u16, data: &mut ChunkWriter) -> XrfResult<Vec<u8>> {
     let mut index_writer: ChunkWriter = ChunkWriter::new();
     let mut object_writer: ChunkWriter = ChunkWriter::new();
@@ -329,8 +326,7 @@ mod tests {
     Ok(())
   }
 
-  // A lenient reader answers the declared count as the spawn's total, so a chunk holding fewer objects than it declares
-  // is refused rather than overstating it.
+  // The declared count is answered as the spawn's total, so a chunk holding fewer objects must not overstate it.
   #[test]
   fn refuses_to_answer_a_count_the_objects_do_not_add_up_to() -> XrfResult {
     let mut readable: ChunkWriter = ChunkWriter::new();
@@ -397,24 +393,26 @@ mod tests {
     let original: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk {
       objects: vec![
         AlifeObject {
-          id: 2334,
-          net_action: 1,
-          section: String::from("exo_outfit"),
+          header: SpawnPacketHeader {
+            id: 2334,
+            net_action: 1,
+            section: String::from("exo_outfit"),
+            name: String::from("test-outfit-object"),
+            script_game_id: 2,
+            script_rp: 3,
+            position: Vector3d::new(1.4, 2.0, 3.0),
+            direction: Vector3d::new(3.0, 2.5, 1.0),
+            respawn_time: 50000,
+            parent_id: 2143,
+            phantom_id: 0,
+            script_flags: 33,
+            version: 128,
+            game_type: 1,
+            script_version: 10,
+            client_data: Vec::new(),
+            spawn_id: 2354,
+          },
           clsid: ClsId::EStlk,
-          name: String::from("test-outfit-object"),
-          script_game_id: 2,
-          script_rp: 3,
-          position: Vector3d::new(1.4, 2.0, 3.0),
-          direction: Vector3d::new(3.0, 2.5, 1.0),
-          respawn_time: 50000,
-          parent_id: 2143,
-          phantom_id: 0,
-          script_flags: 33,
-          version: 128,
-          game_type: 1,
-          script_version: 10,
-          client_data: Vec::new(),
-          spawn_id: 2354,
           inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
             base: AlifeObjectItem {
               base: AlifeObjectDynamicVisual {
@@ -439,24 +437,26 @@ mod tests {
           })),
         },
         AlifeObject {
-          id: 2335,
-          net_action: 1,
-          section: String::from("space_restrictor"),
+          header: SpawnPacketHeader {
+            id: 2335,
+            net_action: 1,
+            section: String::from("space_restrictor"),
+            name: String::from("test-restrictor-object"),
+            script_game_id: 5,
+            script_rp: 52,
+            position: Vector3d::new(1.0, 2.0, 4.0),
+            direction: Vector3d::new(5.0, 2.0, 1.0),
+            respawn_time: 50000,
+            parent_id: 2463,
+            phantom_id: 0,
+            script_flags: 33,
+            version: 128,
+            game_type: 1,
+            script_version: 10,
+            client_data: Vec::new(),
+            spawn_id: 2354,
+          },
           clsid: ClsId::SpcRsS,
-          name: String::from("test-restrictor-object"),
-          script_game_id: 5,
-          script_rp: 52,
-          position: Vector3d::new(1.0, 2.0, 4.0),
-          direction: Vector3d::new(5.0, 2.0, 1.0),
-          respawn_time: 50000,
-          parent_id: 2463,
-          phantom_id: 0,
-          script_flags: 33,
-          version: 128,
-          game_type: 1,
-          script_version: 10,
-          client_data: Vec::new(),
-          spawn_id: 2354,
           inherited: AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor {
             base: AlifeObjectAbstract {
               game_vertex_id: 5473,

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// The weather's ambient effect playing near a viewport's camera.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldAmbientEffectReport {
   /// Its `effects.ltx` section.

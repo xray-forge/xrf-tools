@@ -5,7 +5,7 @@ import { TRANSLATIONS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-translations";
 import { ETranslationLanguage, TranslationVerifyResult } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { describeTranslationVerifyOutcome } from "@/tools/translations-verifier/lib/describe-verify-outcome";

@@ -31,6 +31,23 @@ fn leaves_to_the_engine_whatever_no_command_sets_or_it_cannot_read() {
   assert_eq!(defaults.image_gamma, None);
 }
 
+// The engine keeps its own value on refusing an out-of-range one, so the viewer leaves such values unset.
+#[test]
+fn leaves_to_the_engine_a_value_past_its_commands_range() {
+  let defaults: LevelConsoleDefaults = LevelConsoleDefaults::parse(
+    "r__gamma 0\nr__exposure inf\nr__saturation NaN\nr2_sun_lumscale 3.000001\nr2_tonemap_lowlum 0\n\
+     r__color_grading (0.5, 1.5, 0)\n",
+  );
+
+  assert_eq!(
+    defaults,
+    LevelConsoleDefaults {
+      sun_scale: Some(3.000_001),
+      ..LevelConsoleDefaults::default()
+    }
+  );
+}
+
 // A vanilla installation that has been run has a `user.ltx` and no shipped defaults: its console ships none.
 #[test]
 fn says_nothing_shipped_for_a_user_console_alone() {

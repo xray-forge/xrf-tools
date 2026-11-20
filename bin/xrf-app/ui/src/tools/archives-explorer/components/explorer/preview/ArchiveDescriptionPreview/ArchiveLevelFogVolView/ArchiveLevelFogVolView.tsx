@@ -1,0 +1,63 @@
+import { formatCount } from "@xrf/format";
+import {
+  ArchiveDescribeScope,
+  ArchiveLevelFogVolDescription,
+  ArchiveLevelFogVolume,
+} from "@xrf/ipc/types/xrf-app-archives";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReadingColumn } from "@xrf/ui/layout/reading-column";
+import { ReactElement } from "react";
+
+import { ArchiveLevelFogVolumeRow } from "./ArchiveLevelFogVolumeRow";
+
+interface IArchiveLevelFogVolViewProps extends BaseComponentProps {
+  description: ArchiveLevelFogVolDescription;
+  scope: ArchiveDescribeScope;
+}
+
+/**
+ * A level's volumetric fog: the bodies it simulates, and the geometry each one flows around.
+ */
+export function ArchiveLevelFogVolView({
+  "data-testid": dataTestId = "archive-level-fog-vol-view",
+  id,
+  className,
+  description,
+  scope,
+}: IArchiveLevelFogVolViewProps): ReactElement {
+  const { volumes } = description;
+
+  return (
+    <ReadingColumn data-testid={dataTestId} id={id} className={className}>
+      <EditorPanelSection title={"Volumetric fog"}>
+        <EditorPanelProperty
+          isInline
+          label={"Bodies"}
+          value={`${volumes.length}`}
+          caption={volumes.length ? null : "The file was written, and nothing was placed in it"}
+        />
+
+        <EditorPanelProperty
+          isInline
+          label={"Obstacles"}
+          value={formatCount(description.obstacles)}
+          caption={"Geometry the simulation flows around, taken over every body"}
+        />
+
+        <EditorPanelProperty isInline label={"Version"} value={`${description.version}`} />
+      </EditorPanelSection>
+
+      {volumes.length ? (
+        <EditorPanelSection
+          title={`Bodies (${volumes.length})`}
+          caption={"A body's own settings live in the LTX it names, not in this file"}
+        >
+          {volumes.map((volume: ArchiveLevelFogVolume, index: number) => (
+            <ArchiveLevelFogVolumeRow key={index} volume={volume} index={index} scope={scope} />
+          ))}
+        </EditorPanelSection>
+      ) : null}
+    </ReadingColumn>
+  );
+}

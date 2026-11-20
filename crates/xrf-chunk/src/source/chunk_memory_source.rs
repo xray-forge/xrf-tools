@@ -94,8 +94,8 @@ impl ChunkDataSource for InMemoryChunkDataSource {
 
         return Ok(offset);
       }
-      SeekFrom::End(offset) => self.length() as i64 + offset,
-      SeekFrom::Current(offset) => self.position as i64 + offset,
+      SeekFrom::End(offset) => self.length().cast_signed() + offset,
+      SeekFrom::Current(offset) => self.position.cast_signed() + offset,
     };
 
     if target < 0 {
@@ -105,7 +105,7 @@ impl ChunkDataSource for InMemoryChunkDataSource {
       ));
     }
 
-    self.position = target as u64;
+    self.position = target.cast_unsigned();
 
     Ok(self.position)
   }
@@ -139,15 +139,60 @@ impl ChunkDataSource for InMemoryChunkDataSource {
       position: 0,
     }
   }
+
+  /// Copies straight from the shared bytes, without the default's zeroed buffer.
+  fn read_bytes(&mut self, count: usize) -> IoResult<Vec<u8>> {
+    self.read_with(count, <[u8]>::to_vec)
+  }
+
+  /// Lends the bytes where they lie.
+  fn read_with<R>(&mut self, count: usize, visit: impl FnOnce(&[u8]) -> R) -> IoResult<R> {
+    let remaining: &[u8] = self.remaining();
+
+    let Some(bytes) = remaining.get(..count) else {
+      // As a short `read_exact` does, the bytes that were there are consumed before the failure.
+      self.position += remaining.len() as u64;
+
+      return Err(Self::short_read_error());
+    };
+
+    let visited: R = visit(bytes);
+
+    self.position += count as u64;
+
+    Ok(visited)
+  }
+}
+
+impl InMemoryChunkDataSource {
+  /// The bytes from the cursor to the end of the window, without moving the cursor.
+  fn remaining(&self) -> &[u8] {
+    &self.data[self.index_of(self.position)..self.end]
+  }
+
+  /// The error a read past the window returns, worded as `Read::read_exact` words it.
+  fn short_read_error() -> IoError {
+    IoError::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer")
+  }
 }
 
 impl Read for InMemoryChunkDataSource {
   fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
-    let available: usize = self.len() as usize;
-    let count: usize = available.min(buf.len());
-    let from: usize = self.index_of(self.position);
+    let remaining: &[u8] = self.remaining();
+    let count: usize = remaining.len().min(buf.len());
 
-    buf[..count].copy_from_slice(&self.data[from..from + count]);
+    buf[..count].copy_from_slice(&remaining[..count]);
+    self.position += count as u64;
+
+    Ok(count)
+  }
+
+  /// Reserves the rest of the window once and copies it, instead of the default's probing reads.
+  fn read_to_end(&mut self, buf: &mut Vec<u8>) -> IoResult<usize> {
+    let remaining: &[u8] = self.remaining();
+    let count: usize = remaining.len();
+
+    buf.extend_from_slice(remaining);
     self.position += count as u64;
 
     Ok(count)
@@ -187,7 +232,6 @@ mod tests {
     let mut child: InMemoryChunkDataSource = source().slice(8..12);
     let mut buffer: [u8; 4] = [0; 4];
 
-    // A child counts from its own beginning, which is what a chunk reader reports as its position.
     assert_eq!(child.start_pos(), 0);
     assert_eq!(child.end_pos(), 4);
 
@@ -213,7 +257,6 @@ mod tests {
     let children: Vec<InMemoryChunkDataSource> = (0..8).map(|index| parent.slice(index..index + 2)).collect();
     let clones: Vec<InMemoryChunkDataSource> = children.clone();
 
-    // The whole point of the shape: slicing and cloning must not copy the bytes.
     assert_eq!(Arc::strong_count(&parent.data), 1 + children.len() + clones.len());
   }
 
@@ -236,15 +279,58 @@ mod tests {
     assert_eq!(source.set_seek(SeekFrom::Start(8)).unwrap(), 8);
     assert_eq!(source.set_seek(SeekFrom::Current(4)).unwrap(), 12);
     assert_eq!(source.set_seek(SeekFrom::End(-2)).unwrap(), 30);
-    // Past the end is allowed and reads nothing, as a cursor over a vector does.
+    // Past the end is allowed, as for a cursor over a vector.
     assert_eq!(source.set_seek(SeekFrom::Start(64)).unwrap(), 64);
     assert_eq!(source.read(&mut [0; 4]).unwrap(), 0);
     assert!(source.set_seek(SeekFrom::Current(-128)).is_err());
   }
 
   #[test]
+  fn lends_bytes_where_they_lie_and_moves_past_them() {
+    let mut source: InMemoryChunkDataSource = source().slice(4..12);
+
+    assert_eq!(source.read_with(3, <[u8]>::to_vec).unwrap(), [4, 5, 6]);
+    assert_eq!(source.cursor_pos(), 3);
+    assert_eq!(source.read_at_with(1, 2, <[u8]>::to_vec).unwrap(), [5, 6]);
+    assert_eq!(source.cursor_pos(), 3, "a read at an offset leaves the cursor");
+  }
+
+  #[test]
+  fn refuses_a_read_at_an_offset_ending_past_u64() {
+    let error: std::io::Error = source().read_at_with(u64::MAX - 1, 2, |_| ()).unwrap_err();
+
+    assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+  }
+
+  #[test]
+  fn fails_a_short_read_as_read_exact_does() {
+    // A reader's error and position must not depend on whether it lent or copied the bytes.
+    let mut lent: InMemoryChunkDataSource = source().slice(0..4);
+    let mut exact: InMemoryChunkDataSource = source().slice(0..4);
+    let mut copied: InMemoryChunkDataSource = source().slice(0..4);
+
+    let lent_error: String = lent.read_with(6, |_| ()).unwrap_err().to_string();
+    let exact_error: String = exact.read_exact(&mut [0; 6]).unwrap_err().to_string();
+
+    assert_eq!(lent_error, "failed to fill whole buffer");
+    assert_eq!(exact_error, lent_error);
+    assert!(copied.read_bytes(6).is_err());
+    assert_eq!([lent.cursor_pos(), exact.cursor_pos(), copied.cursor_pos()], [4; 3]);
+  }
+
+  #[test]
+  fn reads_the_rest_of_the_window_in_one_step() {
+    let mut source: InMemoryChunkDataSource = source().slice(28..40);
+    let mut rest: Vec<u8> = vec![1];
+
+    assert_eq!(source.read_to_end(&mut rest).unwrap(), 4);
+    assert_eq!(rest, [1, 28, 29, 30, 31]);
+    assert_eq!(source.read_to_end(&mut rest).unwrap(), 0);
+  }
+
+  #[test]
   fn answers_an_empty_window_for_a_range_beyond_the_end() {
-    // A corrupt chunk header must not panic the reader it is being read through.
+    // A corrupt chunk header must not panic its reader.
     let child: InMemoryChunkDataSource = source().slice(64..128);
 
     assert_eq!(child.end_pos(), 0);

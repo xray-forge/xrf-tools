@@ -1,5 +1,5 @@
-import { describe, expect, it } from "@jest/globals";
-import { fireEvent, waitFor } from "@testing-library/react";
+import { describe, expect, it, jest } from "@jest/globals";
+import { act, fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { TuneIcon } from "#/icons/tune";
@@ -8,6 +8,54 @@ import { renderWithTheme } from "#/testing/render";
 import { EditorPopoverAction } from "./EditorPopoverAction";
 
 describe("EditorPopoverAction", () => {
+  // Taller than the window allows, MUI moved a popover up over its trigger; capped, it scrolls under it instead.
+  it("holds the popover to the room under its trigger, so a tall one scrolls rather than moves", async () => {
+    const { getByRole, findByRole } = renderWithTheme(
+      <EditorPopoverAction label={"Look"} description={"The look"} icon={<TuneIcon />}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+
+    jest
+      .spyOn(getByRole("button", { name: "Look" }), "getBoundingClientRect")
+      .mockReturnValue(DOMRect.fromRect({ x: 0, y: 40, width: 24, height: 24 }));
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+
+    // The window's height, less the trigger's bottom and the margin MUI keeps from the window's edge.
+    expect(await findByRole("dialog", { name: "Look" })).toHaveStyle({
+      maxHeight: `${window.innerHeight - 64 - 16}px`,
+    });
+  });
+
+  it("refits the popover to the room under its trigger when the window resizes while it is open", async () => {
+    const { getByRole, findByRole } = renderWithTheme(
+      <EditorPopoverAction label={"Look"} description={"The look"} icon={<TuneIcon />}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+    const initialHeight: number = window.innerHeight;
+
+    jest
+      .spyOn(getByRole("button", { name: "Look" }), "getBoundingClientRect")
+      .mockReturnValue(DOMRect.fromRect({ x: 0, y: 40, width: 24, height: 24 }));
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Look" });
+
+    try {
+      act(() => {
+        window.innerHeight = 400;
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(dialog).toHaveStyle({ maxHeight: `${400 - 64 - 16}px` });
+    } finally {
+      window.innerHeight = initialHeight;
+    }
+  });
+
   it("opens a named dialog from the keyboard and restores focus when dismissed", async () => {
     const { getByRole, findByRole, queryByRole, getByTestId } = renderWithTheme(
       <EditorPopoverAction
@@ -63,19 +111,21 @@ describe("EditorPopoverAction", () => {
     expect(await findByRole("dialog", { name: "Options" })).toBeInTheDocument();
   });
 
-  it("explains a disabled action without opening its dialog", async () => {
-    const { getByRole, getByTitle, findByRole, queryByRole } = renderWithTheme(
+  it("explains a disabled action under its name without opening its dialog", async () => {
+    const { getByRole, findByRole, queryByRole } = renderWithTheme(
       <EditorPopoverAction label={"Options"} description={"No preview available"} icon={<TuneIcon />} isDisabled={true}>
         <button>Setting</button>
       </EditorPopoverAction>
     );
-    const wrapper: HTMLElement = getByTitle("No preview available");
+    const button: HTMLElement = getByRole("button", { name: "Options" });
+    const wrapper: HTMLElement = button.parentElement as HTMLElement;
 
-    expect(getByRole("button", { name: "Options" })).toBeDisabled();
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription("No preview available");
 
     await userEvent.hover(wrapper);
 
-    expect(await findByRole("tooltip")).toHaveTextContent("No preview available");
+    expect(await findByRole("tooltip")).toHaveTextContent("OptionsNo preview available");
 
     await userEvent.click(wrapper);
 

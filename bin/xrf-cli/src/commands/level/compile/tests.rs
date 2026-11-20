@@ -1,0 +1,69 @@
+use std::path::PathBuf;
+
+use xrf_error::XrfResult;
+use xrf_test_utils::GeneratedResources;
+
+use crate::commands::level::compile::command::CompileCommand;
+use crate::core::command::command_testing::run_command;
+
+#[test]
+fn refuses_a_level_missing_a_steps_input_before_running_it() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("level-compile/missing")?;
+  let level: PathBuf = root.join("gamedata").join("levels").join("test_level");
+
+  std::fs::create_dir_all(&level)?;
+  std::fs::write(level.join("build.prj"), b"")?;
+
+  let error: String = run_command(
+    &CompileCommand,
+    &[
+      String::from("compile"),
+      level.display().to_string(),
+      String::from("--steps"),
+      String::from("ai"),
+      String::from("--silent"),
+    ],
+  )
+  .unwrap_err()
+  .to_string();
+
+  assert!(error.contains("ai step needs build.aimap"), "{error}");
+
+  Ok(())
+}
+
+#[test]
+fn refuses_the_light_step_without_the_geometry_step() {
+  let error: String = run_command(
+    &CompileCommand,
+    &[
+      String::from("compile"),
+      String::from("levels/test_level"),
+      String::from("--steps"),
+      String::from("light"),
+      String::from("--silent"),
+    ],
+  )
+  .unwrap_err()
+  .to_string();
+
+  assert!(error.contains("light step runs only with the geometry step"), "{error}");
+}
+
+#[test]
+fn refuses_a_step_it_does_not_know() {
+  let error: String = run_command(
+    &CompileCommand,
+    &[
+      String::from("compile"),
+      String::from("levels/test_level"),
+      String::from("--steps"),
+      String::from("lights"),
+      String::from("--silent"),
+    ],
+  )
+  .unwrap_err()
+  .to_string();
+
+  assert!(error.contains("lights"), "{error}");
+}

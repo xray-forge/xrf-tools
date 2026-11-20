@@ -5,7 +5,7 @@ use xrf_particles::{ParticleEffect, ParticleGroup};
 /// effect and a group share it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ParticleInspectReport<'a> {
+pub(crate) struct ParticleInspectReport<'a> {
   pub effect: Option<&'a ParticleEffect>,
   pub group: Option<&'a ParticleGroup>,
 }

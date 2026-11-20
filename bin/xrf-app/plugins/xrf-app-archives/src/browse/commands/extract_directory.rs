@@ -13,10 +13,11 @@ use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions};
 use crate::browse::{ArchiveSubject, ArchiveSubjects, ArchivesExtractRequest};
 use crate::ipc::archives::ARCHIVES_JOB_EXTRACT;
 
-/// Write every file the open subject holds under one directory into a destination root.
+/// Write every file the open subject holds under one directory into a destination root; refused before writing where
+/// a file it writes is already there, unless forced.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "extract_directory")]
-pub async fn archives_extract_directory(
+pub(crate) async fn archives_extract_directory(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   subjects: State<'_, ArchiveSubjects>,
@@ -34,6 +35,7 @@ pub async fn archives_extract_directory(
     session_id,
     prefix,
     destination,
+    is_forced,
   } = request;
 
   log::info!("Extracting directory '{prefix}' to '{}'", destination.display());
@@ -46,7 +48,13 @@ pub async fn archives_extract_directory(
     .run(
       &execution,
       start,
-      move |job| subject.extract_directory(&prefix, &destination, ArchiveExtractOptions::default().with_job(job)),
+      move |job| {
+        subject.extract_directory(
+          &prefix,
+          &destination,
+          ArchiveExtractOptions::default().with_job(job).with_forced(is_forced),
+        )
+      },
       |result| result.outcome,
     )
     .await

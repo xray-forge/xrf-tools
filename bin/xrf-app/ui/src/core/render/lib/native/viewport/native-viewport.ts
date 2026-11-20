@@ -44,6 +44,8 @@ export interface INativeViewportListener {
   onApplied(report: RenderAppliedReport): void;
   /** Where its camera stands, while it moves and once after. */
   onCamera(pose: WorldCameraPose): void;
+  /** Whole steps of speed its fly camera's wheel asked for while the secondary button flew it, positive faster. */
+  onFlySpeed(steps: number): void;
   /** How far its scene has loaded, as that changes. */
   onLoad(report: RenderLoadReport): void;
   /** Where its weather stands, as that changes; null while none plays. */
@@ -87,6 +89,9 @@ export class NativeViewport {
 
         case EWorldViewportEvent.CAMERA:
           return listener.onCamera(event.pose);
+
+        case EWorldViewportEvent.FLY_SPEED:
+          return listener.onFlySpeed(event.steps);
 
         case ERenderViewportEvent.LOAD:
           return listener.onLoad(event.report);
@@ -155,10 +160,12 @@ export class NativeViewport {
   }
 
   /**
-   * @param overlays - The helpers drawn over its frame from now on, in place of those before.
+   * @param overlays - The helpers drawn over its frame in place of those before.
+   * @param scene - The scene they are for, as a load report names it, drawn from the frame that shows it; null draws
+   *   them at once.
    */
-  public setOverlays(overlays: Array<RenderOverlay>): void {
-    this.call("setOverlays", (id: RenderViewportId) => renderCommands.setOverlays(id, overlays));
+  public setOverlays(overlays: Array<RenderOverlay>, scene: Nullable<number> = null): void {
+    this.call("setOverlays", (id: RenderViewportId) => renderCommands.setOverlays(id, overlays, scene));
   }
 
   public setSelection(selection: Nullable<RenderSelection>): void {
@@ -190,6 +197,11 @@ export class NativeViewport {
   /** Plays a weather ambient effect near the camera at once, ending the one playing; none plays indoors. */
   public playAmbientEffect(): void {
     this.call("playAmbientEffect", (id: RenderViewportId) => renderCommands.playAmbientEffect(id));
+  }
+
+  /** Hears the scene the viewport shows from its camera; every other scene falls silent and plays on. */
+  public listen(): void {
+    this.call("listenViewport", (id: RenderViewportId) => renderCommands.listenViewport(id));
   }
 
   /**

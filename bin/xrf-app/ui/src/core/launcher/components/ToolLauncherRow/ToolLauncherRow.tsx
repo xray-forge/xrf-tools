@@ -1,14 +1,14 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ListItem, ListItemButton } from "@xrf/ui/material/list";
-import { Typography } from "@xrf/ui/material/typography";
+import { ListItem, ListItemButton } from "@xrf/ui/list";
+import { StatusPill } from "@xrf/ui/status-pill";
 import { cn, TREE } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { toAccentColor, useToolLauncherActions } from "@/core/launcher/lib";
 import { EToolStatus, IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 
 import { ToolLauncherGroupLabel } from "../ToolLauncherGroupLabel";
-import { ToolLauncherPlannedBadge } from "../ToolLauncherPlannedBadge";
 
 const ROW_COLUMNS: string = `${TREE.iconWidth}px 240px minmax(0, 1fr)`;
 const NAMED_ROW_COLUMNS: string = `${ROW_COLUMNS} 132px`;
@@ -61,7 +61,7 @@ export function ToolLauncherRow({
             {tool.label}
           </Typography>
 
-          {tool.status === EToolStatus.PLANNED ? <ToolLauncherPlannedBadge /> : null}
+          {tool.status === EToolStatus.PLANNED ? <StatusPill label={"Planned"} /> : null}
         </div>
 
         <Typography

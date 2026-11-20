@@ -17,7 +17,7 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// The strike, while a bolt strikes and the view shows it: every bolt model built for the level's weather, the uniform
 /// where the strike stands, and what its model and its two glows bind and draw.
 #[derive(Default)]
-pub struct ThunderFeature {
+pub(crate) struct ThunderFeature {
   models: Option<WeatherBuilt<ThunderModels>>,
   uniform: ThunderUniform,
   /// None while no bolt strikes.
@@ -27,7 +27,7 @@ pub struct ThunderFeature {
 impl ThunderFeature {
   /// Takes this frame's strike, while a bolt strikes and the view is lit: every bolt model built for the level's
   /// weather, the uniform where the strike stands, and what its model and glows bind.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -83,7 +83,7 @@ impl ThunderFeature {
 
   /// Adds the bolt's model with its texture, then each glow's quad with its own, over the scene, through the frame's
   /// `lighting`; nothing while no bolt strikes.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -104,16 +104,14 @@ impl ThunderFeature {
     };
     let models: &ThunderModels = models.get();
     let thunder: UniformBinding<ThunderUniform> = runtime.push_uniform(&self.uniform);
-    let entries: [ThunderParameters; 3] =
-      [(0, models.get(strike.model)), (1, &models.empty), (2, &models.empty)].map(|(entry, buffers)| {
-        ThunderParameters {
-          thunder,
-          thunder_texture: bindings.import_view(&mut *graph, "thunder texture", &strike.textures[entry]),
-          thunder_sampler: passes.effects.thunder.get_sampler(),
-          model_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder vertices", &buffers.vertices)),
-          model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
-          lighting,
-        }
+    let entries: [ThunderParameters<'_>; 3] = [(0, models.get(strike.model)), (1, &models.empty), (2, &models.empty)]
+      .map(|(entry, buffers)| ThunderParameters {
+        thunder,
+        thunder_texture: bindings.import_view(&mut *graph, "thunder texture", &strike.textures[entry]),
+        thunder_sampler: passes.effects.thunder.get_sampler(),
+        model_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder vertices", &buffers.vertices)),
+        model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
+        lighting,
       });
     let (draws, model_indices) = (strike.draws, strike.model_indices);
 
@@ -127,17 +125,12 @@ impl ThunderFeature {
         passes
           .effects
           .thunder
-          .record(context, view, &entries, draws, model_indices)
+          .record(context, view, &entries, draws, model_indices);
       });
   }
 }
 
 impl ViewFeature for ThunderFeature {
-  /// The bolt models and the empty model, kept for the level's weather.
-  fn get_memory(&self) -> u64 {
-    self.models.as_ref().map_or(0, |models| models.get().get_memory())
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

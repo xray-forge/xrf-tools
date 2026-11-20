@@ -16,12 +16,14 @@ use crate::scene::texture::texture_cache::TextureCache;
 
 /// The surfaces every item of a static scene shares: a row each in one buffer, asked for once by key and kept, and the
 /// texture and environment slots they sample.
-pub struct StaticSurfaces {
+pub(crate) struct StaticSurfaces {
   pub buffer: GrowableBuffer,
   /// Every texture slot the surfaces sample, in the order they were first asked for.
   pub texture_slots: BTreeSet<u32>,
   /// Every environment slot its environment-mapped surfaces sample.
   pub environment_slots: BTreeSet<u32>,
+  /// Texture slots of the surfaces that draw into the distortion target.
+  pub distortion_slots: BTreeSet<u32>,
   /// Each surface's row and class, once asked for; `None` for one no static draw draws.
   rows: HashMap<StaticSurfaceKey, Option<StaticSurfaceUse>>,
   /// Each impostor surface's row, by its shader table entry.
@@ -31,11 +33,12 @@ pub struct StaticSurfaces {
 }
 
 impl StaticSurfaces {
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let mut surfaces: Self = Self {
       buffer: GrowableBuffer::new(device, "static surfaces", wgpu::BufferUsages::STORAGE),
       texture_slots: BTreeSet::new(),
       environment_slots: BTreeSet::new(),
+      distortion_slots: BTreeSet::new(),
       rows: HashMap::new(),
       impostor_rows: HashMap::new(),
       count: 1,
@@ -55,7 +58,7 @@ impl StaticSurfaces {
   }
 
   /// Appends the surfaces a writer asked for first, which every item shares from then on.
-  pub fn put(
+  pub(crate) fn put(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -69,7 +72,7 @@ impl StaticSurfaces {
 
   /// A surface's row, its class and the surface passes it takes part in, made into `writer` the first time it is
   /// asked for (`ask`); none for a surface no static draw draws.
-  pub fn resolve(
+  pub(crate) fn resolve(
     &mut self,
     writer: &mut StaticSceneWriter,
     StaticSurfaceAsk {
@@ -106,7 +109,7 @@ impl StaticSurfaces {
   }
 
   /// An impostor surface's row, made into `writer` the first time its shader table entry is asked for.
-  pub fn resolve_impostor(
+  pub(crate) fn resolve_impostor(
     &mut self,
     writer: &mut StaticSceneWriter,
     surface: &SectorSurface,
@@ -122,6 +125,13 @@ impl StaticSurfaces {
     self.impostor_rows.insert(surface.shader_id, row);
 
     row
+  }
+
+  /// Whether any distorting surface's map has blue or is not yet loaded (`TextureCache::is_blue_free`).
+  ///
+  /// Checks every distorting surface, which are few, rather than only those in sight.
+  pub(crate) fn is_distortion_blurring(&self, textures: &TextureCache) -> bool {
+    self.distortion_slots.iter().any(|slot| !textures.is_blue_free(*slot))
   }
 
   /// Adds a row to `writer`, noting the slots it samples; answers its index.
@@ -155,6 +165,7 @@ impl StaticSurfaces {
 
     if surface.flags & StaticSurface::IS_DISTORTING != 0 {
       self.texture_slots.insert(surface.distortion);
+      self.distortion_slots.insert(surface.distortion);
     }
   }
 }

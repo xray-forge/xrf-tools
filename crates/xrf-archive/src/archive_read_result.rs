@@ -4,7 +4,7 @@ use xrf_utils::decode_w1251_bytes_to_string;
 
 /// One text file read for display: its name, decoded content, and unpacked size.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveReadResult {
   /// Name the content was read under.

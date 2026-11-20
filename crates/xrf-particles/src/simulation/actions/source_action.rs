@@ -28,14 +28,14 @@ impl SourceAction {
   /// `flSilent`: emits nothing, which stopping an effect sets.
   const SILENT: u32 = 1 << 30;
 
-  pub fn transform(&mut self, matrix: &Mat4, velocity: Vec3) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4, velocity: Vec3) {
     self.position.transform_from(&self.position_local, matrix);
     self.velocity.transform_direction_from(&self.velocity_local, matrix);
     self.parent_velocity = velocity * self.parent_motion;
   }
 
   /// `PlayEffect` and `StopEffect` clear and set `flSilent`.
-  pub fn set_silent(&mut self, is_silent: bool) {
+  pub(crate) fn set_silent(&mut self, is_silent: bool) {
     if is_silent {
       self.flags |= Self::SILENT;
     } else {
@@ -43,7 +43,7 @@ impl SourceAction {
     }
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     if self.flags & Self::SILENT != 0 {
       return;
     }
@@ -103,7 +103,7 @@ impl From<&ParticleActionSource> for SourceAction {
       particle_rate: action.particle_rate,
       age: action.age,
       age_sigma: action.age_sigma,
-      parent_velocity: Vec3::from_array(action.parent_vel.to_array()),
+      parent_velocity: Vec3::from(&action.parent_vel),
       parent_motion: action.parent_motion,
     }
   }

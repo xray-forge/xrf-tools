@@ -17,7 +17,7 @@ struct PreparedFile {
 }
 
 /// Publishing what the editor changed: the descriptor, and the base texture with it when one was chosen.
-pub struct TextureSaver;
+pub(crate) struct TextureSaver;
 
 impl TextureSaver {
   /// Writes a node's descriptor and, when given, its texture, each staged beside its target and renamed over it,
@@ -28,7 +28,7 @@ impl TextureSaver {
   ///
   /// Returns an error when a target changed since it was read, when the descriptor cannot be built or serialized, or
   /// when a staged write cannot be moved into place.
-  pub fn save(
+  pub(crate) fn save(
     assets: &AssetMountState,
     job: &JobHandle,
     descriptor: &TextureDescriptorSave,
@@ -52,7 +52,7 @@ impl TextureSaver {
     FileStamp::check_unchanged(&path, descriptor.target.expected)?;
 
     prepared.push(PreparedFile {
-      bytes: Self::to_descriptor_bytes(descriptor, &path, synced_format)?,
+      bytes: Self::encode_descriptor(descriptor, &path, synced_format)?,
       path,
     });
 
@@ -70,7 +70,7 @@ impl TextureSaver {
   }
 
   /// The descriptor as bytes, built onto whatever is on disk so every chunk the form does not model survives.
-  fn to_descriptor_bytes(
+  fn encode_descriptor(
     save: &TextureDescriptorSave,
     path: &Path,
     synced_format: Option<ThmFormat>,

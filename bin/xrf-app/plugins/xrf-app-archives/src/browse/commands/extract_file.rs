@@ -12,7 +12,7 @@ use crate::browse::{ArchiveSubject, ArchiveSubjects};
 /// Write one file of the open subject to a path the user chose.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "extract_file")]
-pub async fn archives_extract_file(
+pub(crate) async fn archives_extract_file(
   session_id: SessionId,
   name: String,
   destination: PathBuf,

@@ -8,7 +8,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about a level's game data.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelGameDescription {
   /// Respawn points, grouped by what they spawn.
@@ -27,7 +27,7 @@ impl ArchiveLevelGameDescription {
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not level game data this reader can walk.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: LevelGameFile = LevelGameFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     Ok(Self {

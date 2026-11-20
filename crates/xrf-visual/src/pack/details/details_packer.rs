@@ -5,7 +5,7 @@ use xrf_level::{
   DETAIL_SLOT_METERS, DetailModel, LevelCformFace, LevelCformGeometry, LevelDetailsFile, LevelDetailsHeader,
   LevelDetailsSlot,
 };
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 
 use crate::data::details::details_description::DetailsDescription;
 use crate::data::details::details_model::DetailsModel;
@@ -139,9 +139,9 @@ impl<'a> DetailsPacker<'a> {
       }
 
       let columns: RangeInclusive<i64> =
-        Self::to_cell_span(triangle.map(|corner| corner[0]), header.offset_x, header.size_x);
+        Self::get_cell_span(triangle.map(|corner| corner[0]), header.offset_x, header.size_x);
       let rows: RangeInclusive<i64> =
-        Self::to_cell_span(triangle.map(|corner| corner[2]), header.offset_z, header.size_z);
+        Self::get_cell_span(triangle.map(|corner| corner[2]), header.offset_z, header.size_z);
 
       for z in rows {
         for x in columns.clone() {
@@ -169,8 +169,10 @@ impl<'a> DetailsPacker<'a> {
       .map(|(cell, slot)| {
         slot.is_planted().then(|| {
           // `CDetailManager::QueryDB` read backwards: a cell's world slot.
-          let x: i32 = ((cell % size_x) as i64 - i64::from(header.offset_x)) as i32;
-          let z: i32 = ((cell / size_x) as i64 - i64::from(header.offset_z)) as i32;
+          let column: i64 = i64::try_from(cell % size_x).expect("a column lies within the grid");
+          let row: i64 = i64::try_from(cell / size_x).expect("a row lies within the grid");
+          let x: i32 = (column - i64::from(header.offset_x)) as i32;
+          let z: i32 = (row - i64::from(header.offset_z)) as i32;
 
           DetailsSlotBox::of(x, z, slot.base_height, slot.height)
         })
@@ -180,7 +182,7 @@ impl<'a> DetailsPacker<'a> {
 
   /// The grid cells along one axis a span of finite values touches, with the room the slot boxes grow by, cut to the
   /// grid: empty for a span wholly outside it.
-  fn to_cell_span(values: [f32; 3], offset: i32, size: u32) -> RangeInclusive<i64> {
+  fn get_cell_span(values: [f32; 3], offset: i32, size: u32) -> RangeInclusive<i64> {
     let minimum: f32 = values[0].min(values[1]).min(values[2]);
     let maximum: f32 = values[0].max(values[1]).max(values[2]);
     // Saturating casts, so a span reaching past `i64` still cuts to the grid.
@@ -215,14 +217,10 @@ impl<'a> DetailsPacker<'a> {
   }
 
   fn pack_model(model: &DetailModel, builder: &mut VisualBufferBuilder) -> DetailsModel {
-    let (minimum, maximum) = model
-      .get_bounds()
-      .unwrap_or((Vector3d::new(0.0, 0.0, 0.0), Vector3d::new(0.0, 0.0, 0.0)));
-    let half: [f32; 3] = [
-      (maximum.x - minimum.x) * 0.5,
-      (maximum.y - minimum.y) * 0.5,
-      (maximum.z - minimum.z) * 0.5,
-    ];
+    let bounds: Aabb = model.get_bounds().unwrap_or(Aabb {
+      min: Vector3d::ZERO,
+      max: Vector3d::ZERO,
+    });
 
     let mut positions: Vec<f32> = Vec::with_capacity(model.vertices.len() * 3);
     let mut uvs: Vec<f32> = Vec::with_capacity(model.vertices.len() * 2);
@@ -239,14 +237,13 @@ impl<'a> DetailsPacker<'a> {
     reverse_triangle_winding(&mut indices);
 
     DetailsModel {
-      height: maximum.y - minimum.y,
+      height: bounds.get_size().y,
       indices: builder.push_u16_section(&indices),
       is_waving: model.is_waving(),
       max_scale: model.max_scale,
       min_scale: model.min_scale,
       positions: builder.push_f32_section(&positions),
-      // `Fbox::getsphere`: from the box's centre to its corner.
-      radius: (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt(),
+      radius: bounds.get_bounding_sphere().radius,
       texture: model.texture.clone(),
       uvs: builder.push_f32_section(&uvs),
     }

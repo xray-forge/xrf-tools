@@ -46,7 +46,7 @@ impl LevelShadows {
   /// Declares the cascades due this frame and the bands drawn ahead: every one culled into its own lists in one compute
   /// pass, then each cascade drawn into its layer of the maps, whole or over its static layer's copy with what of the
   /// drawable `kinds` moves every frame over those it lands in, and each band into its cascade's hidden static layer.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
@@ -96,13 +96,13 @@ impl LevelShadows {
       .iter()
       .filter_map(|&(index, band, layer)| Some((index, band, layer, import(self.cascades[index].band.as_ref()?))))
       .collect();
-    // A kept layer's copy draws no caster, so its cascade needs no lists; one whose trees go into its kept layer keeps
-    // them only where their shadows can fall in the camera's view, the layer drawn again once the camera turns away.
+    // A kept layer's copy draws no caster, so its cascade needs no lists; one drawn for the camera (`received_at`)
+    // keeps only the trees whose shadows can fall in its view.
     let culls: Vec<(&'a ViewBinding, StaticCullParameters, ShadowCull)> = due
       .iter()
       .filter(|(_, draw, _)| *draw != CascadeDraw::Kept)
       .map(|(index, _, handles)| {
-        let kind: ShadowCull = if self.is_kept_draw(*index) {
+        let kind: ShadowCull = if self.cascades[*index].received_at.is_some() {
           ShadowCull::CascadeReceived
         } else {
           ShadowCull::Cascade

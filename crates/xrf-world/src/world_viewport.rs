@@ -2,7 +2,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer::{EngineSpace, RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions};
+use xrf_renderer::{
+  EngineSpace, RenderLighting, RenderSceneId, RenderViewBurst, RenderViewFrame, RenderViewInput, RenderViewOptions,
+};
 
 use crate::camera::camera_controller::CameraController;
 use crate::contract::camera::world_camera_pose::WorldCameraPose;
@@ -13,6 +15,9 @@ use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::ambient::ambient_frame::AmbientFrame;
+use crate::sound::weather::rain_frame::RainFrame;
+use crate::sound::weather::thunder_sound::ThunderSound;
+use crate::weather::thunder::strike_thunder::StrikeThunder;
 use crate::weather::thunder::thunder_play::ThunderPlay;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::weather::weather_lighting::WeatherLighting;
@@ -22,7 +27,7 @@ const POSE_INTERVAL: Duration = Duration::from_millis(100);
 
 /// One viewport's world: its camera, the scene it shows and that level's weather as it plays here, and what its page
 /// was last told of them.
-pub struct WorldViewport {
+pub(crate) struct WorldViewport {
   pub camera: CameraController,
   pub weather: ViewportWeather,
   /// The scene it shows, shared with every viewport showing the same level.
@@ -31,26 +36,35 @@ pub struct WorldViewport {
   /// drives it.
   pub options: RenderViewOptions,
   pub eye: Vec3,
+  /// Where its camera looked from `eye` then, in engine space.
+  pub look: Vec3,
+  /// The strikes its weather thundered with that its scene has not heard yet.
+  pub thunders: Vec<ThunderSound>,
   /// How its skinned models stand, whatever level it shows.
   pub pose: WorldModelPose,
   /// What of its world plays: the weather's rain, bolts and wind, the campfires, the ambient effects, and which spawn
   /// groups stream in.
   pub toggles: WorldToggles,
+  /// The burst it drew this frame at its own time, none while it draws on the frames' clock.
+  pub burst: Option<RenderViewBurst>,
   sink: Option<Box<dyn WorldEventSink>>,
   sent_pose: Option<WorldCameraPose>,
   pose_due: Instant,
 }
 
 impl WorldViewport {
-  pub fn new(weather: ViewportWeather, now: Instant) -> Self {
+  pub(crate) fn new(weather: ViewportWeather, now: Instant) -> Self {
     Self {
       camera: CameraController::default(),
       weather,
       scene: None,
       options: RenderViewOptions::default(),
       eye: Vec3::ZERO,
+      look: Vec3::Z,
+      thunders: Vec::new(),
       pose: WorldModelPose::default(),
       toggles: WorldToggles::default(),
+      burst: None,
       sink: None,
       sent_pose: None,
       pose_due: now,
@@ -58,14 +72,14 @@ impl WorldViewport {
   }
 
   /// Gives it the page's channel, which its camera's pose and its weather are published on.
-  pub fn set_sink(&mut self, sink: Box<dyn WorldEventSink>) {
+  pub(crate) fn set_sink(&mut self, sink: Box<dyn WorldEventSink>) {
     self.sink = Some(sink);
   }
 
   /// Moves the camera and the weather on a frame, publishes what changed, and answers the frame's input; `ambient` is
   /// where its scene's ambient effects stand, which its weather report carries, and `level` what its scene read every
   /// weather of the level plays with.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     input: RenderViewInput<'_>,
     ambient: Option<WorldAmbientReport>,
@@ -77,8 +91,10 @@ impl WorldViewport {
       height,
       options,
       skies,
+      burst,
     } = input;
 
+    self.burst = burst;
     self.camera.update(delta, height);
 
     // The weather is weighed where the camera stands, in engine space; a fade waits for the skies it fades into.
@@ -88,11 +104,26 @@ impl WorldViewport {
     let eye: Vec3 = EngineSpace::mirror(position);
 
     self.eye = eye;
+    self.look = EngineSpace::mirror(self.camera.get_pose().target.into()) - eye;
     self.options.clone_from(options);
 
     self.weather.advance(now, eye.to_array(), thunder, level, |lighting| {
       skies.request_sky(&lighting.sky)
     });
+    // A strike is heard by the frame after it or by none, so one no scene's frame took, as while no GPU draws, goes.
+    self.thunders.clear();
+    self.thunders.extend(self.weather.get_player_mut().take_thunders().map(
+      |StrikeThunder {
+         bolt,
+         position,
+         distance,
+       }| ThunderSound {
+        bolt,
+        position,
+        distance,
+        at: now,
+      },
+    ));
 
     // The keyframe the clock walks to next has its skies fetched before it is reached.
     if let Some(next) = self.weather.get_player().get_next() {
@@ -102,6 +133,12 @@ impl WorldViewport {
     }
 
     self.publish_pose(now);
+
+    let steps: i32 = self.camera.take_speed_steps();
+
+    if steps != 0 {
+      self.send(WorldViewportEvent::FlySpeed { steps });
+    }
 
     if let Some(report) = self.weather.take_report(now, ambient) {
       self.send(WorldViewportEvent::Weather { report });
@@ -117,11 +154,28 @@ impl WorldViewport {
   }
 
   /// What its weather's ambients play from this frame, for the ambient effects of a scene it drives.
-  pub fn get_ambient_frame(&self) -> Option<AmbientFrame<'_>> {
+  pub(crate) fn get_ambient_frame(&self) -> Option<AmbientFrame<'_>> {
     self.weather.get_level().map(|level| AmbientFrame {
       ambients: self.weather.get_player().get_ambients(),
       level,
     })
+  }
+
+  /// How hard its weather rains and blows as last mixed, no rain while it is switched off; `hemi` is how open the
+  /// camera of the scene stands.
+  pub(crate) fn get_rain_frame(&self, hemi: Option<f32>) -> RainFrame {
+    let mix = self.weather.get_player().get_mix().filter(|_| self.toggles.is_rainy);
+
+    RainFrame {
+      density: mix.map_or(0.0, |mix| mix.rain_density),
+      wind_velocity: mix.map_or(0.0, |mix| mix.wind_velocity),
+      hemi,
+    }
+  }
+
+  /// Milliseconds of the day its weather stands at, `GetGameDayTimeMS`.
+  pub(crate) fn get_game_time(&self) -> u32 {
+    (self.weather.get_player().get_time() * 1000.0) as u32
   }
 
   /// One frame's lighting as the toggles let it play: no rain while it is switched off, and trees and grass standing

@@ -4,8 +4,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
-use xrf_utils::{assert_equal, assert_length, new_bounded_vec, to_format_size};
+use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
+use xrf_utils::{assert_equal, assert_length, narrow_format_size, new_bounded_vec};
 
 use crate::data::patrols::patrol_link::PatrolLink;
 use crate::data::patrols::patrol_point::PatrolPoint;
@@ -84,7 +84,7 @@ impl ChunkReadWriteList for Patrol {
 
       patrol.write::<T>(&mut patrol_writer)?;
 
-      writer.write_all(&patrol_writer.flush_chunk_into_buffer::<T>(to_format_size(index, "patrol chunk id")?)?)?;
+      writer.write_all(&patrol_writer.flush_chunk_into_buffer::<T>(narrow_format_size(index, "patrol chunk id")?)?)?;
     }
 
     Ok(())
@@ -141,7 +141,7 @@ impl ChunkReadWrite for Patrol {
     meta_writer.write_w1251_string(&self.name)?;
     writer.write_all(&meta_writer.flush_chunk_into_buffer::<T>(Self::META_CHUNK_ID)?)?;
 
-    point_count_writer.write_u32::<T>(to_format_size(self.points.len(), "patrol points")?)?;
+    point_count_writer.write_u32::<T>(narrow_format_size(self.points.len(), "patrol points")?)?;
     data_writer.write_all(&point_count_writer.flush_chunk_into_buffer::<T>(Self::DATA_POINT_COUNT_CHUNK_ID)?)?;
 
     points_writer.write_xr_list::<T, _>(&self.points)?;
@@ -212,12 +212,7 @@ impl Patrol {
             ))
           })?;
 
-        log::warn!(
-          "Patrol point '{}' of patrol '{}' recovered from padded section '{}'",
-          listed,
-          name,
-          padded
-        );
+        log::warn!("Patrol point '{listed}' of patrol '{name}' recovered from padded section '{padded}'");
 
         padded
       };
@@ -230,7 +225,7 @@ impl Patrol {
     }
 
     for index in 0..links_count {
-      links.push(PatrolLink::import(&format!("{}.{}", name, index), patrol_links_ltx)?);
+      links.push(PatrolLink::import(&format!("{name}.{index}"), patrol_links_ltx)?);
     }
 
     assert_length(&links, links_count, "Expect defined count of patrols to be imported")?;
@@ -243,9 +238,9 @@ impl Patrol {
   pub fn export(
     &self,
     section_name: &str,
-    patrols_ltx: &mut Ltx,
-    patrol_points_ltx: &mut Ltx,
-    patrol_links_ltx: &mut Ltx,
+    patrols_ltx: &mut impl LtxWrite,
+    patrol_points_ltx: &mut impl LtxWrite,
+    patrol_links_ltx: &mut impl LtxWrite,
   ) -> XrfResult {
     patrols_ltx
       .with_section(section_name)
@@ -259,7 +254,7 @@ impl Patrol {
           .collect::<Vec<String>>()
           .join(","),
       )
-      .set("links_count", self.links.len().to_string());
+      .set("links_count", self.links.len());
 
     for (index, point) in self.points.iter().enumerate() {
       point.export(&format!("{}.{}.{}", self.name, index, point.name), patrol_points_ltx)?;
@@ -282,7 +277,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::Ltx;
+  use xrf_ltx::{Ltx, LtxSectionWrite};
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -339,7 +334,7 @@ mod tests {
     Ok(())
   }
 
-  /// The engine adds a link's edge by looking both points up, so a link past the last point is not written.
+  // The engine looks both points of a link up to add its edge.
   #[test]
   fn refuses_to_write_a_link_to_a_point_it_does_not_hold() {
     let patrol: Patrol = Patrol {
@@ -442,8 +437,7 @@ mod tests {
     Ok(())
   }
 
-  /// Anomaly ships patrol points whose names carry trailing whitespace. Ltx trims values, so the name survives only
-  /// in the section it was exported under, and importing has to take it from there or the repack loses those bytes.
+  // Anomaly ships point names with trailing whitespace, which ltx values trim: only the section name keeps it.
   #[test]
   fn test_import_export_preserves_padded_point_names() -> XrfResult {
     let original: Patrol = Patrol {

@@ -10,7 +10,7 @@ const ZONE_RADIUS: f32 = 0.5;
 /// Metres about a light's position its light leaves from, by what gives it: a campfire's bed, an anomaly's glow or a
 /// lamp's bulb. The physical light's falloff stops growing within it, and a traced shadow's rays are drawn over it, so
 /// a shadow's penumbra widens with its caster's distance from the light.
-pub fn get_bulb_radius(light: &LightDescription) -> f32 {
+pub(crate) fn get_bulb_radius(light: &LightDescription) -> f32 {
   if light.campfire.is_some() {
     CAMPFIRE_RADIUS
   } else if light.zone_sphere.is_some() || light.motion.is_some() {

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
@@ -169,9 +169,11 @@ impl LtxProject {
     prefix: Option<XrayLogicalPath>,
     options: LtxProjectOptions,
   ) -> XrfResult<Self> {
+    profiling::scope!("ltx project open");
+
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
     let listings: LtxListingCache = LtxListingCache::default();
-    let source: LtxVfsSource = LtxVfsSource::new_counted(search.clone(), &counters).with_listings(&listings);
+    let source: LtxVfsSource<'_> = LtxVfsSource::new_counted(search.clone(), &counters).with_listings(&listings);
 
     let ltx_files: Vec<XrayLogicalPath> = Self::collect_logical_paths(&search);
 
@@ -249,7 +251,7 @@ impl LtxProject {
     let mut ltx_file_entries_failures: Vec<(XrayLogicalPath, XrayLogicalPath)> = Vec::new();
 
     // Filter our entries not included in other files and consider them entry-points.
-    for ltx_file_path in ltx_files.iter() {
+    for ltx_file_path in &ltx_files {
       // An unreadable config is an entry point whatever else says, because its own include list is unknown and the
       // verifier has to reach it to report why.
       if unreadable.contains(ltx_file_path) {
@@ -283,7 +285,7 @@ impl LtxProject {
         "Cannot read LTX project safely, detected case-insensitive #include statements:\n{}",
         ltx_file_entries_failures
           .iter()
-          .map(|(first, second)| format!("  - {} incorrectly imported as {}", first, second))
+          .map(|(first, second)| format!("  - {first} incorrectly imported as {second}"))
           .collect::<Vec<_>>()
           .join("\n")
       )));
@@ -307,7 +309,7 @@ impl LtxProject {
 
     Ok(Self {
       counters,
-      dialect: options.dialect.clone(),
+      dialect: Arc::clone(&options.dialect),
       is_caching_resolutions: options.is_caching_resolutions,
       resolved: Mutex::default(),
       listings,
@@ -396,7 +398,7 @@ impl LtxProject {
       self
         .resolved
         .lock()
-        .expect("resolved config cache to not be poisoned")
+        .unwrap_or_else(PoisonError::into_inner)
         .entry(logical_path.clone())
         .or_default(),
     )
@@ -426,7 +428,9 @@ impl LtxProject {
 
   /// Reads one root and applies this project's dialect to it, retaining nothing.
   fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
-    let source: LtxVfsSource = self.source();
+    profiling::scope!("ltx resolve", logical_path.as_str());
+
+    let source: LtxVfsSource<'_> = self.source();
 
     self
       .dialect
@@ -439,7 +443,7 @@ impl LtxProject {
   ///
   /// Returns an error if the config is outside the scope or cannot be read or resolved.
   pub fn resolve_explained(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
-    let source: LtxVfsSource = self.source();
+    let source: LtxVfsSource<'_> = self.source();
 
     self.counters.record_resolution();
 
@@ -453,7 +457,7 @@ impl LtxProject {
     self
       .resolved
       .lock()
-      .expect("resolved config cache to not be poisoned")
+      .unwrap_or_else(PoisonError::into_inner)
       .remove(logical_path)
       .is_some()
   }
@@ -480,7 +484,7 @@ impl LtxProject {
   ///
   /// Returns an error if the config cannot be read or resolved.
   pub fn read_full_in_search(&self, search: &XraySearch, logical_path: &str) -> XrfResult<Ltx> {
-    let source: LtxVfsSource = LtxVfsSource::new_counted(search.clone(), &self.counters);
+    let source: LtxVfsSource<'_> = LtxVfsSource::new_counted(search.clone(), &self.counters);
 
     self.counters.record_resolution();
 

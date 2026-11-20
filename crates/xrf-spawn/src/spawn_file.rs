@@ -6,9 +6,8 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::FileImportExport;
-use xrf_math::Vector3d;
 use xrf_utils::{StagedFile, assert_equal, assert_length};
 
 use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
@@ -21,18 +20,13 @@ use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
 use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
-use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
-use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
+use crate::data::graph::level_view::graph_vertex_levels::GraphVertexLevels;
+use crate::data::graph::level_view::spawn_level_graph::SpawnLevelGraph;
+use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
 use crate::data::patrols::patrol::Patrol;
 
-/// Descriptor of generic spawn file used by xray game engine.
-///
-/// Root level samples by ID:
-/// 0 - header
-/// 1 - alife spawns
-/// 2 - alife objects
-/// 3 - patrols
-/// 4 - game graphs
+/// A root spawn file such as `all.spawn`: chunks 0 to 4 hold the header, the alife spawns, the artefact spawns, the
+/// patrols and the game graph.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -95,6 +89,23 @@ impl SpawnFile {
       u32::from(self.graphs.header.levels_count),
       "Expected correct levels count",
     )
+  }
+
+  /// Refuses a file the engine would refuse or misread: a spawn graph GUID other than the graph's
+  /// (`CALifeSpawnRegistry::load`), or a graph [`SpawnGraphsChunk::assert_engine_layout`] refuses.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the first disagreement.
+  pub fn assert_engine_agreement(&self) -> XrfResult {
+    if self.header.graph_guid != self.graphs.header.guid {
+      return Err(XrfError::new_invalid_error(format!(
+        "The spawn names game graph {}, but holds graph {}",
+        self.header.graph_guid, self.graphs.header.guid
+      )));
+    }
+
+    self.graphs.assert_engine_layout()
   }
 
   /// Read only the game graphs chunk of the spawn file by provided path.
@@ -164,7 +175,7 @@ impl SpawnFile {
           if let AlifeObjectInherited::SeLevelChanger(changer) = &object.inherited {
             let destination: Option<&str> = levels.get_level(changer.dest_game_vertex_id).map(|it| it.name.as_str());
 
-            arrivals.extend(SpawnLevelArrival::of(&object.name, changer, destination, level));
+            arrivals.extend(SpawnLevelArrival::of(&object.header.name, changer, destination, level));
           }
 
           if levels
@@ -182,8 +193,8 @@ impl SpawnFile {
     )?;
 
     Ok(SpawnLevelObjects {
-      arrivals,
       objects,
+      arrivals,
       total,
       skipped,
     })
@@ -205,10 +216,13 @@ impl SpawnFile {
         .get_level(game_vertex_id)
         .is_some_and(|it| it.name.eq_ignore_ascii_case(level))
     };
-    let points: Vec<(u16, Vector3d)> = (0..=u16::MAX)
+    let points: Vec<SpawnLevelGraphPoint> = (0..=u16::MAX)
       .zip(&graph.vertices)
       .filter(|(id, _)| is_on_level(*id))
-      .map(|(id, vertex)| (id, vertex.level_point.clone()))
+      .map(|(game_vertex_id, vertex)| SpawnLevelGraphPoint {
+        game_vertex_id,
+        level_point: vertex.level_point,
+      })
       .collect();
     let patrols: Vec<Patrol> = ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
       .read_xr::<T, SpawnPatrolsChunk>()?
@@ -239,13 +253,15 @@ impl SpawnFile {
     Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
-  /// Write spawn file data to the writer.
+  /// Writes the spawn file to `writer`.
   ///
   /// # Errors
   ///
-  /// Returns an error when the header's counts disagree with what the file holds, or a chunk cannot be written.
+  /// Returns an error when the header's counts disagree with what the file holds, the engine would refuse or misread
+  /// the file ([`Self::assert_engine_agreement`]), or a chunk cannot be written.
   pub fn write_to<T: ByteOrder>(&self, writer: &mut dyn Write) -> XrfResult {
     self.assert_header_counts()?;
+    self.assert_engine_agreement()?;
 
     let mut header_chunk_writer: ChunkWriter = ChunkWriter::new();
     header_chunk_writer.write_xr::<T, _>(&self.header)?;
@@ -300,7 +316,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use uuid::{Uuid, uuid};
+  use uuid::uuid;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
@@ -308,17 +324,16 @@ mod tests {
   use xrf_utils::StagingFaults;
 
   use super::SpawnFile;
-  use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
-  use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
   use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
-  use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
   use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
   use crate::data::graph::graph_header::GraphHeader;
   use crate::data::graph::graph_level::GraphLevel;
   use crate::data::graph::graph_vertex::GraphVertex;
-  use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
+  use crate::data::graph::level_view::spawn_level_graph::SpawnLevelGraph;
+  use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
   use crate::data::patrols::patrol::Patrol;
   use crate::data::patrols::patrol_point::PatrolPoint;
+  use crate::fixtures::EmptySpawnFile;
 
   fn new_level(id: u8, name: &str, offset: f32) -> GraphLevel {
     GraphLevel {
@@ -358,38 +373,10 @@ mod tests {
     }
   }
 
-  /// A write that fails part way leaves the spawn a caller had, and nothing staged beside it.
   #[test]
   fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("spawn_file/publication")?.join("all.spawn");
-    let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
-    let spawn: SpawnFile = SpawnFile {
-      header: SpawnHeaderChunk {
-        version: 10,
-        guid,
-        graph_guid: guid,
-        objects_count: 0,
-        levels_count: 0,
-      },
-      alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
-      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
-      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
-      graphs: SpawnGraphsChunk {
-        header: GraphHeader {
-          version: 10,
-          vertices_count: 0,
-          edges_count: 0,
-          points_count: 0,
-          guid,
-          levels_count: 0,
-        },
-        levels: Vec::new(),
-        vertices: Vec::new(),
-        edges: Vec::new(),
-        points: Vec::new(),
-        cross_tables: Vec::new(),
-      },
-    };
+    let spawn: SpawnFile = EmptySpawnFile::build();
 
     fs::write(&path, b"previous")?;
     StagingFaults::fail_next_write();
@@ -400,37 +387,13 @@ mod tests {
     Ok(())
   }
 
-  /// A header counting objects the file does not hold would size the engine's registry wrong, so it is not written.
+  // The engine sizes its registry by the header's count.
   #[test]
   fn refuses_to_write_a_header_that_miscounts_its_objects() {
-    let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
-    let spawn: SpawnFile = SpawnFile {
-      header: SpawnHeaderChunk {
-        version: 10,
-        guid,
-        graph_guid: guid,
-        objects_count: 1,
-        levels_count: 0,
-      },
-      alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
-      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
-      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
-      graphs: SpawnGraphsChunk {
-        header: GraphHeader {
-          version: 10,
-          vertices_count: 0,
-          edges_count: 0,
-          points_count: 0,
-          guid,
-          levels_count: 0,
-        },
-        levels: Vec::new(),
-        vertices: Vec::new(),
-        edges: Vec::new(),
-        points: Vec::new(),
-        cross_tables: Vec::new(),
-      },
-    };
+    let mut spawn: SpawnFile = EmptySpawnFile::build();
+
+    spawn.header.objects_count = 1;
+
     let mut bytes: Vec<u8> = Vec::new();
     let error: String = spawn
       .write_to::<XRayByteOrder>(&mut bytes)
@@ -477,8 +440,14 @@ mod tests {
     assert_eq!(
       graph.points,
       vec![
-        (0, Vector3d::new(10.0, 1.0, -10.0)),
-        (2, Vector3d::new(30.0, 1.0, -30.0))
+        SpawnLevelGraphPoint {
+          game_vertex_id: 0,
+          level_point: Vector3d::new(10.0, 1.0, -10.0),
+        },
+        SpawnLevelGraphPoint {
+          game_vertex_id: 2,
+          level_point: Vector3d::new(30.0, 1.0, -30.0),
+        },
       ]
     );
     assert_eq!(

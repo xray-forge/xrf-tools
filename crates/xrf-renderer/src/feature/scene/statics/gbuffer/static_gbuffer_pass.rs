@@ -8,7 +8,7 @@ use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawPara
 use crate::feature::scene::statics::draw::static_draw_permutation::StaticDrawPermutation;
 use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
 use crate::feature::scene::statics::draw::static_mark_draw::StaticMarkDraw;
-use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
+use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::{StaticGbufferDraw, StaticGbufferPart};
 use crate::frame::readback::pick_target::PickTarget;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
@@ -24,7 +24,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 /// hidden, a surface debug view) draws with pipelines keeping their code; any other with pipelines without it. For the
 /// overdraw's debug view it draws every batch again, counting each surface drawn over a pixel; for the helpers, the
 /// spawned models' batches again where they were drawn, marking the models a view's helpers mark.
-pub struct StaticGBufferPass {
+pub(crate) struct StaticGBufferPass {
   layout: wgpu::BindGroupLayout,
   impostor_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -38,7 +38,7 @@ pub struct StaticGBufferPass {
 }
 
 impl StaticGBufferPass {
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -102,18 +102,18 @@ impl StaticGBufferPass {
   }
 
   /// The layout a view's helpers bind their marked models by.
-  pub fn get_marks_layout(&self) -> &wgpu::BindGroupLayout {
+  pub(crate) fn get_marks_layout(&self) -> &wgpu::BindGroupLayout {
     &self.marks_layout
   }
 
   /// The texel the present reads where no model is marked.
-  pub fn get_unmarked(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_unmarked(&self) -> &wgpu::TextureView {
     &self.unmarked
   }
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     let drawn: XrfResult = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(
         source,
@@ -134,10 +134,9 @@ impl StaticGBufferPass {
     }
   }
 
-  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, as `draw` says: the
-  /// opaque surfaces' depth ahead of their shading where it prepasses, and with the frame's first draw the impostors
-  /// too.
-  pub fn record(
+  /// Draws the visible clusters an argument buffer lists into the pass's G-buffer, for the part `draw` names
+  /// (`StaticGbufferPart`).
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     StaticDrawBindings { view, draws, textures }: StaticDrawBindings<'_>,
@@ -145,51 +144,56 @@ impl StaticGBufferPass {
     draw: StaticGbufferDraw,
   ) {
     let StaticGbufferDraw {
-      is_first,
       is_inspected,
       is_prepassed,
+      part,
     } = draw;
     let drawing: &FrameDrawPipelines = if is_inspected {
       &self.pipelines.inspected
     } else {
       &self.pipelines.plain
     };
-    let shading: &[wgpu::RenderPipeline] = if is_prepassed {
-      &drawing.prepassed_draws
-    } else {
-      &drawing.draws
-    };
 
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, prepass) in StaticBatch::list_deferred().zip(&drawing.prepasses) {
-      if batch.class == StaticClass::CutOut || is_prepassed {
-        context.bind(&draws.layouts[batch.layout.get_index()]);
-        context.get_pass().set_pipeline(prepass);
-        context.get_pass().draw_indirect(args, batch.get_args_offset());
+    match part {
+      StaticGbufferPart::Depth => {
+        for (batch, prepass) in StaticBatch::list_deferred().zip(&drawing.prepasses) {
+          if batch.class == StaticClass::CutOut || is_prepassed {
+            context.bind(&draws.layouts[batch.layout.get_index()]);
+            context.get_pass().set_pipeline(prepass);
+            context.get_pass().draw_indirect(args, batch.get_args_offset());
+          }
+        }
       }
-    }
+      StaticGbufferPart::Shading => {
+        let shading: &[wgpu::RenderPipeline] = if is_prepassed {
+          &drawing.prepassed_draws
+        } else {
+          &drawing.draws
+        };
 
-    for (batch, pipeline) in StaticBatch::list_deferred().zip(shading) {
-      context.bind(&draws.layouts[batch.layout.get_index()]);
-      context.get_pass().set_pipeline(pipeline);
-      context.get_pass().draw_indirect(args, batch.get_args_offset());
-    }
-
-    if is_first {
-      context.bind(&draws.impostors);
-      context.get_pass().set_pipeline(&self.impostor_pipelines.draw);
-      context
-        .get_pass()
-        .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
+        for (batch, pipeline) in StaticBatch::list_deferred().zip(shading) {
+          context.bind(&draws.layouts[batch.layout.get_index()]);
+          context.get_pass().set_pipeline(pipeline);
+          context.get_pass().draw_indirect(args, batch.get_args_offset());
+        }
+      }
+      StaticGbufferPart::Impostors => {
+        context.bind(&draws.impostors);
+        context.get_pass().set_pipeline(&self.impostor_pipelines.draw);
+        context
+          .get_pass()
+          .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
+      }
     }
   }
 
   /// Draws the frame's visible clusters again into a pick's one texel, through a camera narrowed to it, in the render
   /// pass the graph opened on the pick's target: the composited ones too, glass the nearest a click meets, unless the
   /// pick passes them by.
-  pub fn pick(
+  pub(crate) fn pick(
     &self,
     context: &mut RasterContext<'_>,
     StaticDrawBindings { view, draws, textures }: StaticDrawBindings<'_>,
@@ -225,7 +229,7 @@ impl StaticGBufferPass {
 
   /// Draws every batch of the clusters the argument buffers list again into the target the graph opened, with no depth
   /// test, each fragment adding one: how many of the static scene's surfaces were drawn over each pixel, hidden or not.
-  pub fn record_overdraw(
+  pub(crate) fn record_overdraw(
     &self,
     context: &mut RasterContext<'_>,
     StaticDrawBindings { view, draws, textures }: StaticDrawBindings<'_>,
@@ -247,7 +251,7 @@ impl StaticGBufferPass {
   /// Draws the spawned models' batches of the clusters the argument buffers list again into the marks target the graph
   /// opened, over the view's depth, each fragment where its model drew the depth kept: the colour its helper marks it
   /// in (`marks`), nothing for an unmarked one.
-  pub fn mark(&self, context: &mut RasterContext<'_>, draw: StaticMarkDraw<'_>) {
+  pub(crate) fn mark(&self, context: &mut RasterContext<'_>, draw: StaticMarkDraw<'_>) {
     context.get_pass().set_bind_group(0, &draw.view.bind_group, &[]);
     context.get_pass().set_bind_group(1, draw.textures, &[]);
     context.get_pass().set_bind_group(3, draw.marks, &[]);

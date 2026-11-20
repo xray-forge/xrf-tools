@@ -10,8 +10,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::parts::LevelTextureReference;
-use crate::parts::{LevelCollisionPart, PackedLevelDetails};
+use crate::parts::{LevelCollisionPart, LevelTextureReference, PackedLevelDetails};
 use crate::report::LevelReport;
 
 /// What a change event calls what a level's grass was read from when it goes stale.
@@ -37,7 +36,7 @@ impl LevelDetailsPart {
   /// # Errors
   ///
   /// Returns why the detail library or the collision form it is planted onto cannot be read.
-  pub fn pack(
+  pub(crate) fn pack(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
   ) -> TauriResult<Option<PackedLevelDetails>> {

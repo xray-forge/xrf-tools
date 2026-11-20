@@ -2,11 +2,11 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
-use crate::data::particle_action_type::ParticleActionType;
-use crate::data::particle_domain::ParticleDomain;
+use crate::data::actions::particle_action_type::ParticleActionType;
+use crate::data::domain::particle_domain::ParticleDomain;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +36,7 @@ impl ParticleActionSource {
 }
 
 impl ChunkReadWrite for ParticleActionSource {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<ParticleActionSource> {
+  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       action_flags: reader.read_u32::<T>()?,
       action_type: reader.read_xr::<T, _>()?,
@@ -74,8 +74,8 @@ impl ChunkReadWrite for ParticleActionSource {
 }
 
 impl LtxImportExport for ParticleActionSource {
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle action section '{}' should be defined in ltx file ({})",
         section_name,
@@ -100,22 +100,22 @@ impl LtxImportExport for ParticleActionSource {
     })
   }
 
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("position", self.position.to_string())
-      .set("velocity", self.velocity.to_string())
-      .set("rot", self.rot.to_string())
-      .set("size", self.size.to_string())
-      .set("color", self.color.to_string())
-      .set("alpha", self.alpha.to_string())
-      .set("particle_rate", self.particle_rate.to_string())
-      .set("age", self.age.to_string())
-      .set("age_sigma", self.age_sigma.to_string())
-      .set("parent_vel", self.parent_vel.to_string())
-      .set("parent_motion", self.parent_motion.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("position", &self.position)
+      .set("velocity", &self.velocity)
+      .set("rot", &self.rot)
+      .set("size", &self.size)
+      .set("color", &self.color)
+      .set("alpha", self.alpha)
+      .set("particle_rate", self.particle_rate)
+      .set("age", self.age)
+      .set("age_sigma", self.age_sigma)
+      .set("parent_vel", self.parent_vel)
+      .set("parent_motion", self.parent_motion);
 
     Ok(())
   }
@@ -134,8 +134,8 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_source::ParticleActionSource;
-  use crate::data::particle_action_type::ParticleActionType;
-  use crate::data::particle_domain::ParticleDomain;
+  use crate::data::actions::particle_action_type::ParticleActionType;
+  use crate::data::domain::particle_domain::ParticleDomain;
 
   #[test]
   fn test_read_write() -> XrfResult {

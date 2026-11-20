@@ -68,7 +68,7 @@ fn a_source_naming_the_descriptor_still_answers_the_texture_beside_it() {
   );
   assert_eq!(
     file_source(texture.clone()).to_texture_path(),
-    Some(texture.clone()),
+    Some(texture),
     "expect a texture to answer itself"
   );
 

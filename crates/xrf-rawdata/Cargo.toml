@@ -1,0 +1,48 @@
+[package]
+name = "xrf-rawdata"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+bevy_mikktspace = "1.0.0"
+byteorder = { workspace = true }
+crc32fast = { workspace = true }
+glam = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+specta = { workspace = true, optional = true }
+walkdir = { workspace = true }
+xrf-animation-envelope = { workspace = true }
+xrf-chunk = { workspace = true }
+xrf-dds = { workspace = true }
+xrf-editable-level = { workspace = true }
+xrf-editable-object = { workspace = true }
+xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
+xrf-gamemtl = { workspace = true }
+xrf-geometry = { workspace = true }
+xrf-ini = { workspace = true }
+xrf-job = { workspace = true }
+xrf-level = { workspace = true }
+xrf-math = { workspace = true, features = ["glam"] }
+xrf-ogf = { workspace = true }
+xrf-shaders = { workspace = true }
+xrf-skeleton = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-utils = { workspace = true }
+
+[dev-dependencies]
+uuid = { workspace = true }
+xrf-test-utils = { workspace = true }
+
+[features]
+typescript-bindings = ["specta"]
+
+[lints]
+workspace = true

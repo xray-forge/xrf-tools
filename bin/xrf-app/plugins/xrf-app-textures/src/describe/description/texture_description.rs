@@ -16,7 +16,7 @@ use crate::edit::{TextureDescriptorForm, TextureEditTargets};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureDescription {
+pub(crate) struct TextureDescription {
   pub source: TextureSource,
   /// What to call this texture on screen: its engine reference, or a standalone file's own stem.
   pub reference: String,
@@ -53,7 +53,7 @@ impl TextureDescription {
   ///
   /// Returns an error when the roots cannot be mounted, a reference is refused by the search, or a standalone source
   /// names no file on disk.
-  pub fn describe_in(assets: &AssetMountState, source: TextureSource, roots: XrayRoots) -> TauriResult<Self> {
+  pub(crate) fn describe_in(assets: &AssetMountState, source: TextureSource, roots: XrayRoots) -> TauriResult<Self> {
     let roots: XrayRoots = roots.centred_on(source.physical_path());
 
     Self::describe(&assets.search(&roots)?, source, roots)
@@ -64,7 +64,7 @@ impl TextureDescription {
   /// # Errors
   ///
   /// Returns an error when a reference is refused by the search, or when a standalone source names no file on disk.
-  pub fn describe(search: &XraySearch, source: TextureSource, roots: XrayRoots) -> TauriResult<Self> {
+  pub(crate) fn describe(search: &XraySearch, source: TextureSource, roots: XrayRoots) -> TauriResult<Self> {
     match source.to_reference() {
       Some(reference) => Self::describe_in_roots(search, source, roots, reference),
       None => Self::describe_standalone(source, roots),
@@ -138,7 +138,7 @@ impl TextureDescription {
     } = TextureFiles::of(&path);
     let texture: Option<XrayAsset> = texture_path
       .is_file()
-      .then(|| Self::to_loose_asset(&texture_path))
+      .then(|| Self::find_loose_asset(&texture_path))
       .flatten();
     let descriptor: Option<ThmFile> = Self::read_descriptor_from_path(&descriptor_path);
 
@@ -165,7 +165,7 @@ impl TextureDescription {
   }
 
   /// A loose file as the VFS would report it, rooted at its own directory.
-  fn to_loose_asset(path: &Path) -> Option<XrayAsset> {
+  fn find_loose_asset(path: &Path) -> Option<XrayAsset> {
     let name: &str = path.file_name()?.to_str()?;
 
     Some(XrayAsset::new(

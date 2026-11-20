@@ -1,11 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
+import { defineMenu, IMenu } from "@/core/routing/menu-descriptor";
+import { defineMenuExtension, IMenuExtension } from "@/core/routing/menu-extension";
 import { EToolId } from "@/core/routing/tool";
 
 import { assembleMenus, IAssembledMenu } from "./menu-assembly";
-import { defineMenu, IMenu } from "./menu-descriptor";
-import { IMenuContribution, TMenuEntry } from "./menu-entry";
-import { defineMenuExtension, IMenuExtension } from "./menu-extension";
+import { EMenuEntryKind, IMenuContribution, TMenuEntry } from "./menu-entry";
 
 const FIRST: IMenu<"top" | "bottom"> = defineMenu({ id: "test/first", label: "First", sections: ["top", "bottom"] });
 const SECOND: IMenu<"only"> = defineMenu({ id: "test/second", label: "Second", sections: ["only"] });
@@ -17,13 +17,13 @@ const SLOTTED: IMenu<"top" | "bottom"> = defineMenu({
 });
 
 function action(id: string): TMenuEntry {
-  return { kind: "action", id, label: id, onSelect: jest.fn() };
+  return { kind: EMenuEntryKind.ACTION, id, label: id, onSelect: jest.fn() };
 }
 
 function toIds(menus: ReadonlyArray<IAssembledMenu>): Array<Array<Array<string>>> {
   return menus.map((it: IAssembledMenu) =>
     it.sections.map((entries: ReadonlyArray<TMenuEntry>) =>
-      entries.map((entry: TMenuEntry) => (entry.kind === "command" ? entry.command.id : entry.id))
+      entries.map((entry: TMenuEntry) => (entry.kind === EMenuEntryKind.COMMAND ? entry.command.id : entry.id))
     )
   );
 }

@@ -6,6 +6,6 @@ use crate::VisualPoses;
 /// Close the posed motions `session_ids` name, committed or opening.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "close_motion")]
-pub fn visuals_close_motion(poses: State<'_, VisualPoses>, session_ids: Vec<SessionId>) {
+pub(crate) fn visuals_close_motion(poses: State<'_, VisualPoses>, session_ids: Vec<SessionId>) {
   poses.close(&session_ids);
 }

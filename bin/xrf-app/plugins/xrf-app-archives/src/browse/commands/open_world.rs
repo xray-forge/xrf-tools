@@ -13,7 +13,7 @@ use crate::browse::{ArchiveSubject, ArchiveSubjects};
 /// follows commits: one that moves what its listing read lists it again, at the revision a page then refreshes to.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_world")]
-pub async fn archives_open_world(
+pub(crate) async fn archives_open_world(
   session_id: SessionId,
   roots: XrayRoots,
   execution: State<'_, ExecutionState>,

@@ -1,0 +1,143 @@
+use xrf_dds::RgbaImage;
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::{XrfError, XrfResult};
+use xrf_level::{BuildPrjLod, BuildPrjLodFace};
+use xrf_math::{Aabb, Vector2d};
+
+use crate::level::build::level_build_atlas::LevelBuildAtlas;
+use crate::level::build::level_build_atlas_sizes::LevelBuildAtlasSizes;
+use crate::level::build::level_build_impostor_atlas::LevelBuildImpostorAtlas;
+use crate::level::build::level_build_impostor_limit::LevelBuildImpostorLimit;
+use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::build::level_build_textures::LevelBuildTextures;
+use crate::level::trees::level_lod_strip::LevelLodStrip;
+
+/// The impostors a build draws its multi-use models as from afar, `SceneBuilder::BuildObjectLOD`: for each model
+/// flagged `eoUsingLOD`, eight quads through its box, drawn from its strips `lod\lod_<model>` and `_nm`, which the
+/// Build merges into the level's impostor atlas.
+#[derive(Default)]
+pub(crate) struct LevelBuildImpostors {
+  lods: Vec<BuildPrjLod>,
+  /// Each impostor's strip and its normals, as loaded.
+  strips: Vec<[RgbaImage; 2]>,
+}
+
+impl LevelBuildImpostors {
+  /// The texture and render shader of every impostor's material (`LEVEL_LODS_TEX_NAME`, `LOD_SHADER_NAME`).
+  pub(crate) const TEXTURE: &'static str = "level_lods";
+  pub(crate) const SHADER: &'static str = "details\\lod";
+
+  /// Adds the impostor of `object`, the model of `reference`, in `sector`, returning the index its model's `lod`
+  /// names. Its material goes in before the model's own, as the Build adds it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, as the Build stops, when a strip is missing, does not read or is not eight 64 by 64 frames, or
+  /// the object holds no mesh.
+  pub(crate) fn add(
+    &mut self,
+    reference: &str,
+    object: &EditableObjectFile,
+    sector: u16,
+    tables: &mut LevelBuildTables,
+    textures: &LevelBuildTextures<'_>,
+  ) -> XrfResult<u16> {
+    let material: u16 = tables.get_material(Self::SHADER, None, Self::TEXTURE, sector)?;
+    let bounds: Aabb = object
+      .meshes
+      .iter()
+      .flatten()
+      .map(|mesh| mesh.bounds)
+      .reduce(|mut held, bounds| {
+        held.include_box(&bounds);
+        held
+      })
+      .ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Multi-use object '{reference}' has an impostor but no mesh to stand it in"
+        ))
+      })?;
+    let name: String = LevelLodStrip::get_texture_name(reference);
+    let color: RgbaImage = Self::read_strip(textures, &name)?;
+    let normal: RgbaImage = Self::read_strip(textures, &(name + LevelLodStrip::NORMAL_SUFFIX))?;
+    let faces: [BuildPrjLodFace; BuildPrjLod::FACES] = std::array::from_fn(|frame| BuildPrjLodFace {
+      vertices: LevelLodStrip::get_frame_corners(frame, &bounds),
+      texture_coordinates: LevelLodStrip::get_frame_coordinates(frame),
+    });
+
+    self.lods.push(BuildPrjLod {
+      faces,
+      material: u32::from(material),
+    });
+    self.strips.push([color, normal]);
+
+    u16::try_from(self.lods.len() - 1)
+      .ok()
+      .filter(|index| *index != u16::MAX)
+      .ok_or_else(|| XrfError::new_invalid_error("A build holds more impostors than its u16 indices number"))
+  }
+
+  /// The project's `b_lod`s, their coordinates moved into the atlas of their strips, and that atlas encoded; `None`
+  /// where there is no impostor.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, as the Build stops, when the strips do not fit the largest atlas `limit` allows, or the atlas
+  /// does not encode.
+  pub(crate) fn into_export(
+    mut self,
+    limit: LevelBuildImpostorLimit,
+  ) -> XrfResult<Option<(Vec<BuildPrjLod>, LevelBuildImpostorAtlas)>> {
+    if self.lods.is_empty() {
+      return Ok(None);
+    }
+
+    let sizes: LevelBuildAtlasSizes = limit.get_sizes();
+    let atlas: LevelBuildAtlas = LevelBuildAtlas::merge(
+      &self.strips.iter().map(<[RgbaImage; 2]>::as_slice).collect::<Vec<_>>(),
+      &sizes,
+    )
+    .ok_or_else(|| {
+      let (width, height) = sizes.largest;
+
+      XrfError::new_invalid_error(format!(
+        "The {} impostors' strips do not fit an atlas {width} by {height}",
+        self.strips.len()
+      ))
+    })?;
+
+    for (lod, place) in self.lods.iter_mut().zip(&atlas.places) {
+      for face in &mut lod.faces {
+        for coordinate in &mut face.texture_coordinates {
+          let (u, v) = place.remap(coordinate.x, coordinate.y);
+
+          *coordinate = Vector2d::new(u, v);
+        }
+      }
+    }
+
+    Ok(Some((
+      self.lods,
+      LevelBuildImpostorAtlas {
+        color: LevelLodStrip::encode(&atlas.layers[0])?,
+        normal: LevelLodStrip::encode(&atlas.layers[1])?,
+      },
+    )))
+  }
+
+  /// The strip `name`, a `.dds` of eight frames side by side.
+  fn read_strip(textures: &LevelBuildTextures<'_>, name: &str) -> XrfResult<RgbaImage> {
+    let image: RgbaImage = textures.read("Impostor strip", name)?;
+
+    if image.dimensions() != (LevelLodStrip::WIDTH, LevelLodStrip::HEIGHT) {
+      return Err(XrfError::new_invalid_error(format!(
+        "Impostor strip '{name}' is {:?}, not {} by {}",
+        image.dimensions(),
+        LevelLodStrip::WIDTH,
+        LevelLodStrip::HEIGHT
+      )));
+    }
+
+    Ok(image)
+  }
+}

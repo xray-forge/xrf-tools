@@ -1,19 +1,18 @@
 use std::sync::Arc;
 
 use glam::Vec3;
-use xrf_level::{LevelCformHit, LevelCformTracer};
-use xrf_math::Vector3d;
+use xrf_geometry::{BvhTracer, Ray, TraceHit, Tracer};
 use xrf_particles::{ParticleCollider, ParticleContact};
 
 /// The level's collision form as colliding particle effects meet it: `CObjectSpace::RayPick` over the level's static
 /// form, in engine space as the simulation runs.
-pub struct LevelParticleCollider {
-  tracer: Arc<LevelCformTracer>,
+pub(crate) struct LevelParticleCollider {
+  tracer: Arc<BvhTracer>,
 }
 
 impl LevelParticleCollider {
   /// Effects colliding with the form `tracer` traces.
-  pub fn new(tracer: Arc<LevelCformTracer>) -> Self {
+  pub(crate) fn new(tracer: Arc<BvhTracer>) -> Self {
     Self { tracer }
   }
 }
@@ -21,15 +20,11 @@ impl LevelParticleCollider {
 impl ParticleCollider for LevelParticleCollider {
   fn pick(&self, origin: Vec3, direction: Vec3, range: f32, _is_dynamic: bool) -> Option<ParticleContact> {
     // todo: Collide `dfCollisionDyn` effects with spawned objects too (`rqtBoth`); the level's form alone answers.
-    let hit: LevelCformHit = self.tracer.get_nearest_hit(
-      &Vector3d::new(origin.x, origin.y, origin.z),
-      &Vector3d::new(direction.x, direction.y, direction.z),
-      range,
-    )?;
+    let hit: TraceHit = self.tracer.get_nearest_hit(&Ray::new(origin, direction, range))?;
 
     Some(ParticleContact {
       distance: hit.distance,
-      normal: Vec3::new(hit.normal.x, hit.normal.y, hit.normal.z),
+      normal: self.tracer.get_triangle(hit.face).get_normal(),
     })
   }
 }

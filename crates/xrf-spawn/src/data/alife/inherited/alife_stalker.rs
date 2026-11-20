@@ -1,12 +1,14 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_human_stalker::AlifeObjectHumanStalker;
+use crate::data::alife::spawn_layout::SpawnLayout;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::generic::offline_object_state::OfflineObjectState;
 
 /// A stalker as its script class `se_stalker` saves one: vanilla's `se_stalker.script` and xrf-engine's `Stalker.ts`
@@ -33,7 +35,7 @@ impl AlifeStalker {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeStalker {
   /// A stalker at `position` as a compiled spawn holds one.
   pub fn new_mock(position: Vector3d) -> Self {
@@ -46,33 +48,41 @@ impl AlifeStalker {
 }
 
 impl AlifePacketsReadWrite for AlifeStalker {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the stalker from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectHumanStalker::read::<T, _>(spawn, update)?,
+      base: AlifeObjectHumanStalker::read::<T, _, _>(spawn, update, layout)?,
       offline_state: spawn.read_xr::<T, _>()?,
       loot_dropped: spawn.read_u8()?,
     })
   }
 
   /// Write the stalker into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
     spawn.write_xr::<T, _>(&self.offline_state)?;
     spawn.write_u8(self.loot_dropped)?;
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeStalker {
   /// Import stalker data from ltx file section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -81,20 +91,20 @@ impl LtxImportExport for AlifeStalker {
     })?;
 
     Ok(Self {
-      base: AlifeObjectHumanStalker::import(section_name, ltx)?,
+      base: AlifeObjectHumanStalker::import(section_name, ltx, layout)?,
       offline_state: OfflineObjectState::import(section, "stalker")?,
       loot_dropped: section.read_field("stalker.loot_dropped")?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
-    self.base.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
     self.offline_state.export(section_name, "stalker", ltx);
 
     ltx
       .with_section(section_name)
-      .set("stalker.loot_dropped", self.loot_dropped.to_string());
+      .set("stalker.loot_dropped", self.loot_dropped);
 
     Ok(())
   }
@@ -104,22 +114,23 @@ impl LtxImportExport for AlifeStalker {
 mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_stalker::AlifeStalker;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::generic::offline_object_state::OfflineObjectState;
   use crate::fixtures::GameWrittenPackets;
 
-  /// What the game writes for a new stalker reads whole and writes back byte for byte.
   #[test]
   fn reads_and_writes_what_the_game_writes() -> XrfResult {
     let spawn: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::STALKER_SPAWN);
     let update: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::STALKER_UPDATE);
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update)?;
-    let stalker: AlifeStalker = AlifeStalker::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let stalker: AlifeStalker =
+      AlifeStalker::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     spawn_reader.assert_read("Expect the game's spawn packet to be read whole")?;
     update_reader.assert_read("Expect the game's update packet to be read whole")?;
@@ -144,27 +155,29 @@ mod tests {
     let mut spawn_writer: ChunkWriter = ChunkWriter::new();
     let mut update_writer: ChunkWriter = ChunkWriter::new();
 
-    stalker.write::<XRayByteOrder>(&mut spawn_writer, &mut update_writer)?;
+    stalker.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((spawn_writer.buffer, update_writer.buffer), (spawn, update));
 
     Ok(())
   }
 
-  /// The tail in `Stalker.ts`'s `STATE_Write` order - the level vertex and active section as strings, then the loot
-  /// flag - reads as the offline state and flag it saved.
+  // `Stalker.ts`'s `STATE_Write` order: the level vertex and active section as strings, then the loot flag.
   #[test]
   fn reads_the_tail_in_the_script_order() -> XrfResult {
     let original: AlifeStalker = AlifeStalker::new_mock(Vector3d::new(1.0, 2.0, 3.0));
     let mut spawn: ChunkWriter = ChunkWriter::new();
     let mut update: ChunkWriter = ChunkWriter::new();
 
-    original.base.write::<XRayByteOrder>(&mut spawn, &mut update)?;
+    original
+      .base
+      .write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
     spawn.buffer.extend_from_slice(b"435\0test_section\0\x01");
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
-    let read: AlifeStalker = AlifeStalker::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader)?;
+    let read: AlifeStalker =
+      AlifeStalker::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     spawn_reader.assert_read("Expect the tail to close the spawn packet")?;
 
@@ -182,18 +195,19 @@ mod tests {
     Ok(())
   }
 
-  /// A compiled spawn's tail: two `nil` strings and the loot byte close the spawn packet, with no marker counting them.
+  // A compiled spawn's tail: two `nil` strings and the loot byte, with no marker counting them.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeStalker = AlifeStalker::new_mock(Vector3d::new(-12.5, 0.75, 310.0));
-    let (base_spawn_size, base_update_size, _) = original.base.read_back::<XRayByteOrder>()?;
+    let (base_spawn_size, base_update_size, _) =
+      original.base.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut spawn, &mut ChunkWriter::new())?;
+    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(&spawn.buffer[base_spawn_size..], b"nil\0nil\0\0");
     assert_eq!(
-      original.read_back::<XRayByteOrder>()?,
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
       (base_spawn_size + 9, base_update_size, original)
     );
 
@@ -207,9 +221,12 @@ mod tests {
 
     original.offline_state.active_section = Some(String::from("walker@camp"));
     original.loot_dropped = 1;
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeStalker::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeStalker::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

@@ -6,7 +6,7 @@ use crate::commands::dialog::info::dialog_sweep_census::DialogSweepCensus;
 /// What `dialog info` found and counted: its checks as every verify command reports them, beside its census.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DialogInfoReport<'a> {
+pub(crate) struct DialogInfoReport<'a> {
   census: &'a DialogSweepCensus,
   #[serde(flatten)]
   report: &'a Report,
@@ -14,7 +14,7 @@ pub struct DialogInfoReport<'a> {
 
 impl<'a> DialogInfoReport<'a> {
   /// The report of a sweep that counted `census` and found `report`.
-  pub fn new(census: &'a DialogSweepCensus, report: &'a Report) -> Self {
+  pub(crate) fn new(census: &'a DialogSweepCensus, report: &'a Report) -> Self {
     Self { census, report }
   }
 }

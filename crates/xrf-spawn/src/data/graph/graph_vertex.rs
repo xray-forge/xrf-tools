@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 use xrf_utils::vector_to_string;
 
@@ -62,8 +62,8 @@ impl ChunkReadWrite for GraphVertex {
 
 impl LtxImportExport for GraphVertex {
   /// Import graph vertex from ltx file.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Graph vertex section '{}' should be defined in ltx file ({})",
         section_name,
@@ -85,17 +85,17 @@ impl LtxImportExport for GraphVertex {
   }
 
   /// Export graph vertex data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("level_point", self.level_point.to_string())
-      .set("game_point", self.game_point.to_string())
-      .set("level_id", self.level_id.to_string())
-      .set("level_vertex_id", self.level_vertex_id.to_string())
-      .set("edge_offset", self.edges_offset.to_string())
-      .set("level_point_offset", self.level_points_offset.to_string())
-      .set("edge_count", self.edges_count.to_string())
-      .set("level_point_count", self.level_points_count.to_string())
+      .set("level_point", self.level_point)
+      .set("game_point", self.game_point)
+      .set("level_id", self.level_id)
+      .set("level_vertex_id", self.level_vertex_id)
+      .set("edge_offset", self.edges_offset)
+      .set("level_point_offset", self.level_points_offset)
+      .set("edge_count", self.edges_count)
+      .set("level_point_count", self.level_points_count)
       .set(
         "vertex_type",
         vector_to_string(&[

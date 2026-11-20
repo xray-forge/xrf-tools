@@ -1,12 +1,14 @@
 use std::collections::BTreeMap;
 
 use byteorder::ByteOrder;
+use glam::Vec3;
 use rayon::prelude::*;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::XrfResult;
+use xrf_geometry::{BvhTracer, Tracer};
 use xrf_math::{Matrix4x4, Vector3d};
 
-use crate::cform::level_cform_tracer::LevelCformTracer;
+use crate::cform::level_cform_geometry::LevelCformGeometry;
 use crate::geom::level_geom_source::LevelGeomSource;
 use crate::geom::vertex::level_vertex::LevelVertex;
 use crate::level::visuals::level_visual::LevelVisual;
@@ -23,17 +25,22 @@ pub struct LevelSurfaceMaterials {
 }
 
 impl LevelSurfaceMaterials {
-  /// How far above a triangle its ray starts, and half how far it reaches: a render face and the collision face made of
-  /// it coincide, so a few centimetres either side finds the one under it and nothing past it.
-  pub const RAY_LIFT: f32 = 0.05;
+  /// How far along its normal, either side, a triangle's collision face is looked for, in metres. A render face and its
+  /// collision face coincide but for xrLC's moves; the nearest is taken where faces stack close.
+  pub const COLLISION_REACH: f32 = 0.05;
 
-  /// Tallies every drawable visual of `level.geom` against the collision form `tracer` holds. Impostors are left out:
-  /// a billboard standing for trees lies on nothing.
+  /// Tallies every drawable visual of `level.geom` against the collision form. Impostors are left out: a billboard
+  /// standing for trees lies on nothing.
   pub fn survey<T: ByteOrder, D: ChunkDataSource + Sync>(
     visuals: &LevelVisualsChunk,
     source: &LevelGeomSource<D>,
-    tracer: &LevelCformTracer,
+    collision: &LevelCformGeometry,
   ) -> Self {
+    let lookup: CollisionLookup<'_> = CollisionLookup {
+      tracer: collision.build_tracer(),
+      collision,
+    };
+
     visuals
       .visuals
       .par_iter()
@@ -42,7 +49,7 @@ impl LevelSurfaceMaterials {
         visual
           .geometry
           .as_ref()
-          .map(|_| (visual.header.shader_id, Self::tally::<T, D>(visual, source, tracer)))
+          .map(|_| (visual.header.shader_id, Self::tally::<T, D>(visual, source, &lookup)))
       })
       .fold(Self::default, |mut survey, (shader, tally)| {
         survey.add(shader, tally);
@@ -70,7 +77,7 @@ impl LevelSurfaceMaterials {
   fn tally<T: ByteOrder, D: ChunkDataSource>(
     visual: &LevelVisual,
     source: &LevelGeomSource<D>,
-    tracer: &LevelCformTracer,
+    lookup: &CollisionLookup<'_>,
   ) -> XrfResult<LevelSurfaceMaterial> {
     let mut tally: LevelSurfaceMaterial = LevelSurfaceMaterial::default();
     let Some(container) = &visual.geometry else {
@@ -87,7 +94,7 @@ impl LevelSurfaceMaterials {
     let place = |index: u16| -> Option<Vector3d<f32>> {
       let position: &Vector3d<f32> = &vertices.get(usize::from(index))?.position;
 
-      Some(placement.map_or_else(|| position.clone(), |transform| transform.transform_point(position)))
+      Some(placement.map_or_else(|| *position, |transform| transform.transform_point(position)))
     };
 
     for [first, second, third] in indices.as_chunks::<3>().0 {
@@ -104,12 +111,29 @@ impl LevelSurfaceMaterials {
 
       let normal: Vector3d<f32> = &cross / length;
       let centre: Vector3d<f32> = &(&(&a + &b) + &c) / 3.0;
-      let origin: Vector3d<f32> = &centre + &(&normal * Self::RAY_LIFT);
-      let material: Option<u16> = tracer.get_nearest_material(&origin, &-&normal, Self::RAY_LIFT * 2.0);
-
-      tally.add(f64::from(length) * 0.5, material);
+      tally.add(f64::from(length) * 0.5, lookup.get_material(&centre, &normal));
     }
 
     Ok(tally)
+  }
+}
+
+/// The collision form beside its faces in a tracer, to read a face's material off once the tracer names it.
+struct CollisionLookup<'a> {
+  tracer: BvhTracer,
+  collision: &'a LevelCformGeometry,
+}
+
+impl CollisionLookup<'_> {
+  /// The material of the collision face a triangle centred at `centre` facing along `normal` lies on, if any.
+  fn get_material(&self, centre: &Vector3d<f32>, normal: &Vector3d<f32>) -> Option<u16> {
+    self
+      .tracer
+      .get_face_nearest_along(
+        Vec3::from(centre),
+        Vec3::from(normal),
+        LevelSurfaceMaterials::COLLISION_REACH,
+      )
+      .map(|face| self.collision.get_faces()[face as usize].material)
   }
 }

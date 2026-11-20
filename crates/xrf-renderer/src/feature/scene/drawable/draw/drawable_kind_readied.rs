@@ -14,7 +14,7 @@ use crate::pass::view::view_binding::ViewBinding;
 /// A drawable kind as the frame readied it ahead of the static scene's depth, a variant a kind: what the scene group's
 /// later phases cull, stand and draw, and the shadows draw its casters from.
 #[derive(Clone, Copy)]
-pub enum DrawableKindReadied<'a> {
+pub(crate) enum DrawableKindReadied<'a> {
   /// The grass planted this frame, and its cards once they stand.
   Grass {
     view: &'a GrassView,
@@ -27,7 +27,7 @@ pub enum DrawableKindReadied<'a> {
 impl<'a> DrawableKindReadied<'a> {
   /// Culls what the kind readied against the static scene's depth this frame: its `pyramid`, reduced through the view
   /// `occlusion` holds.
-  pub fn add_cull(
+  pub(crate) fn add_cull(
     &self,
     graph: &mut FrameGraph<'a>,
     pyramid: GraphTexture,
@@ -41,7 +41,7 @@ impl<'a> DrawableKindReadied<'a> {
   }
 
   /// Stands the casters its shadows and its trace draw, where it casts any: the grass's cards.
-  pub fn add_casters(&mut self, declaration: GraphDeclaration<'_, 'a>) {
+  pub(crate) fn add_casters(&mut self, declaration: GraphDeclaration<'_, 'a>) {
     match self {
       Self::Grass {
         view,
@@ -53,14 +53,14 @@ impl<'a> DrawableKindReadied<'a> {
   }
 
   /// Whether the reflections walk their rays over its depth, so it draws before they keep it.
-  pub fn is_reflected(&self, settings: &RenderReflectionSettings) -> bool {
+  pub(crate) fn is_reflected(&self, settings: &RenderReflectionSettings) -> bool {
     match self {
       Self::Grass { .. } => settings.is_grass_reflected,
     }
   }
 
   /// Declares its draw into the G-buffer `targets` hold, seen by `view`.
-  pub fn add_draw(
+  pub(crate) fn add_draw(
     &self,
     graph: &mut FrameGraph<'a>,
     targets: ViewTargetHandles,
@@ -78,7 +78,7 @@ impl<'a> DrawableKindReadied<'a> {
   }
 
   /// What it casts into the sun's cascades and the lamps' faces, where it casts this frame.
-  pub fn get_shadow_casters(
+  pub(crate) fn get_shadow_casters(
     &self,
     declaration: GraphDeclaration<'_, 'a>,
     textures: &'a wgpu::BindGroup,

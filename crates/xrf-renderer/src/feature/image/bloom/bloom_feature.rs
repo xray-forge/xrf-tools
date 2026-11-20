@@ -1,6 +1,6 @@
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::{
-  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
+  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineAsk, UniformBinding,
 };
 
 use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
@@ -26,7 +26,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// The bloom, the engine's or the enhanced one in its place: the engine's build and blurs at its fixed size, read by
 /// the present; or the enhanced chain from the resolved image, its finish handed to the present.
 #[derive(Default)]
-pub struct BloomFeature {
+pub(crate) struct BloomFeature {
   /// What the engine's build and its two blurs read this frame, where the engine's bloom is built: where it is shown,
   /// or under the enhanced bloom where the frame's distortion blurs towards it.
   engine: Option<[BloomUniform; 3]>,
@@ -35,13 +35,13 @@ pub struct BloomFeature {
   /// What the enhanced bloom draws with, where it draws in the engine's place.
   enhanced: Option<RenderEnhancedBloomSettings>,
   /// The enhanced bloom's pipelines, one a stage, asked for once it draws.
-  pipelines: Option<PipelineSet<[wgpu::RenderPipeline; 5]>>,
+  pipelines: PipelineAsk<[wgpu::RenderPipeline; 5]>,
 }
 
 impl BloomFeature {
   /// Takes this frame's bloom for a frame `size` texels across, drawn where the view is lit and not wireframe; the
   /// enhanced bloom's pipelines asked of the cache when it draws and the cache has changed since they were.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     passes: LevelPasses<'_>,
     options: &RenderViewOptions,
@@ -56,13 +56,14 @@ impl BloomFeature {
     if self.enhanced.is_some() {
       let pass: &EnhancedBloomPass = &passes.image.enhanced_bloom;
 
-      if let Err(error) = PipelineSet::ask(&mut self.pipelines, passes.pipelines.cache, || {
-        pass.get_pipelines(passes.pipelines)
-      }) {
+      if let Err(error) = self
+        .pipelines
+        .ask(passes.pipelines.cache, || pass.get_pipelines(passes.pipelines))
+      {
         log::error!("Enhanced bloom rejected, blooming with the last one: {error}");
       }
 
-      self.enhanced = self.enhanced.filter(|_| self.pipelines.is_some());
+      self.enhanced = self.enhanced.filter(|_| self.pipelines.get().is_some());
     }
 
     self.is_engine_shown = size.is_some() && bloom.is_enabled && self.enhanced.is_none();
@@ -88,31 +89,31 @@ impl BloomFeature {
       });
   }
 
-  /// Builds the engine's bloom under the enhanced one only where the frame distorts (`is_distorting`), whose blur goes
-  /// towards the engine's bloom as `combine_2`'s does; once every unit knows what it draws.
-  pub fn keep_for_distortion(&mut self, is_distorting: bool) {
-    if !self.is_engine_shown && !is_distorting {
+  /// Keeps the engine's bloom under the enhanced one only where the distortion may blur towards it, as `combine_2`'s
+  /// does; called once every unit knows what it draws.
+  pub(crate) fn keep_for_distortion(&mut self, is_blurring: bool) {
+    if !self.is_engine_shown && !is_blurring {
       self.engine = None;
     }
   }
 
   /// Whether the engine's bloom is shown this frame, which the present adds.
-  pub fn is_engine_drawn(&self) -> bool {
+  pub(crate) fn is_engine_drawn(&self) -> bool {
     self.is_engine_shown && self.engine.is_some()
   }
 
   /// Whether the engine's bloom is built this frame, shown or under the enhanced one for the distortion's blur.
-  pub fn is_engine_built(&self) -> bool {
+  pub(crate) fn is_engine_built(&self) -> bool {
     self.engine.is_some()
   }
 
   /// Whether the enhanced bloom draws this frame in the engine's place.
-  pub fn is_enhanced_drawn(&self) -> bool {
+  pub(crate) fn is_enhanced_drawn(&self) -> bool {
     self.enhanced.is_some()
   }
 
   /// Writes into `applied` which bloom it shows this frame, none where neither is.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
     applied.bloom = if self.is_enhanced_drawn() {
       Some(RenderBloomMode::Enhanced)
     } else {
@@ -125,7 +126,7 @@ impl BloomFeature {
   /// finish; none where the enhanced bloom does not draw. Built after the resolve, as the major engines build theirs: from
   /// the frame as drawn, a glint that comes and goes with the jitter bloomed into a halo nothing smoothed. Its sizes
   /// and the depth and marks it reads are the frame's as drawn.
-  pub fn add_enhanced_passes<'a>(
+  pub(crate) fn add_enhanced_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -144,7 +145,7 @@ impl BloomFeature {
     let frame: (u32, u32) = targets.size;
     let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
-    let pipelines: &[wgpu::RenderPipeline; 5] = self.pipelines.as_deref()?;
+    let pipelines: &[wgpu::RenderPipeline; 5] = self.pipelines.get()?;
     let pass: &'a EnhancedBloomPass = &passes.image.enhanced_bloom;
     let empty: GraphTexture = bindings.import_view(
       &mut *graph,
@@ -182,7 +183,7 @@ impl BloomFeature {
                    (source, coarser): (GraphTexture, GraphTexture),
                    written: GraphTexture,
                    uniform: EnhancedBloomUniform| {
-      let parameters: EnhancedBloomParameters = EnhancedBloomParameters {
+      let parameters: EnhancedBloomParameters<'_> = EnhancedBloomParameters {
         source,
         coarser,
         source_sampler: pass.get_sampler(),
@@ -271,7 +272,7 @@ impl BloomFeature {
   /// into the first; nothing where it does not draw. The high part is the engine's own (the opaque surfaces, the sky
   /// and the sun shafts), drawn before the resolve and never resolved, so the build averages the whole footprint of each
   /// texel, the same light however the jitter falls.
-  pub fn add_engine_passes<'a>(
+  pub(crate) fn add_engine_passes<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
@@ -286,7 +287,7 @@ impl BloomFeature {
       (handles.bloom[0], handles.bloom[1]),
       (handles.bloom[1], handles.bloom[0]),
     ]) {
-      let parameters: BloomParameters = BloomParameters {
+      let parameters: BloomParameters<'_> = BloomParameters {
         source: read,
         source_sampler: passes.image.bloom.get_sampler(),
         bloom: runtime.push_uniform(&stages[stage.get_index()]),
@@ -305,11 +306,6 @@ impl BloomFeature {
 }
 
 impl ViewFeature for BloomFeature {
-  /// Its targets are the view's (the high target and the two bloom targets) or the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {
     *self = Self::default();
   }

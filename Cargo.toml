@@ -9,12 +9,16 @@ members = [
   "crates/xrf-anm",
   "crates/xrf-archive",
   "crates/xrf-archive-stats",
+  "crates/xrf-audio",
+  "crates/xrf-audio-scene",
   "crates/xrf-build-info",
   "crates/xrf-chunk",
   "crates/xrf-dds",
   "crates/xrf-dialog",
   "crates/xrf-dlss",
   "crates/xrf-dltx",
+  "crates/xrf-editable-level",
+  "crates/xrf-editable-object",
   "crates/xrf-efd",
   "crates/xrf-engine-target",
   "crates/xrf-env-flags",
@@ -25,11 +29,14 @@ members = [
   "crates/xrf-extension",
   "crates/xrf-gamedata",
   "crates/xrf-gamemtl",
+  "crates/xrf-geometry",
+  "crates/xrf-ini",
   "crates/xrf-ipc",
   "crates/xrf-ipc-derive",
   "crates/xrf-ipc-typescript",
   "crates/xrf-job",
   "crates/xrf-level",
+  "crates/xrf-level-compiler",
   "crates/xrf-light-anim",
   "crates/xrf-ltx",
   "crates/xrf-ltx-inspect",
@@ -37,12 +44,15 @@ members = [
   "crates/xrf-lzhuf",
   "crates/xrf-material",
   "crates/xrf-math",
+  "crates/xrf-object-visual",
   "crates/xrf-ogf",
   "crates/xrf-omf",
   "crates/xrf-output",
   "crates/xrf-pack",
   "crates/xrf-particles",
   "crates/xrf-ppe",
+  "crates/xrf-profiler",
+  "crates/xrf-rawdata",
   "crates/xrf-renderer-core",
   "crates/xrf-renderer-derive",
   "crates/xrf-renderer",
@@ -51,6 +61,7 @@ members = [
   "crates/xrf-skeleton",
   "crates/xrf-sound",
   "crates/xrf-spawn",
+  "crates/xrf-spawn-builder",
   "crates/xrf-test-utils",
   "crates/xrf-texture",
   "crates/xrf-thm",
@@ -65,7 +76,7 @@ members = [
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.99.1"
+rust-version = "1.100.0"
 
 [workspace.dependencies]
 ash = "0.38.0"
@@ -94,14 +105,18 @@ rayon = "1.12.0"
 resvg = { version = "0.49.0", default-features = false }
 serde ={ version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.151"
+sha2 = "0.10.9"
 syn = "3.0.5"
+symphonia = { version = "0.6.1", default-features = false, features = ["vorbis"] }
 sysinfo = "0.39.6"
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json", "uuid"] }
 specta-serde = "0.0.13"
 specta-typescript = "0.0.13"
 specta-util = "0.0.13"
 tauri = "2.12.0"
+tauri-plugin-store = "2.4.5"
 tauri-specta = { version = "=2.0.0-rc.26", features = ["typescript"] }
+tracy-client = "=0.18.5"
 trybuild = "1.0.121"
 uuid = "1.26.1"
 walkdir = "2.5.0"
@@ -109,6 +124,7 @@ windows = "0.62.2"
 wgpu = { version = "30.0.0", default-features = false, features = ["std", "dx12", "vulkan", "metal", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }
 xrf-app-archives = { path = "bin/xrf-app/plugins/xrf-app-archives" }
+xrf-app-audio = { path = "bin/xrf-app/plugins/xrf-app-audio" }
 xrf-app-configs = { path = "bin/xrf-app/plugins/xrf-app-configs" }
 xrf-app-core = { path = "bin/xrf-app/core" }
 xrf-app-dialogs = { path = "bin/xrf-app/plugins/xrf-app-dialogs" }
@@ -125,12 +141,16 @@ xrf-app-visuals = { path = "bin/xrf-app/plugins/xrf-app-visuals" }
 xrf-anm = { path = "crates/xrf-anm" }
 xrf-archive = { path = "crates/xrf-archive" }
 xrf-archive-stats = { path = "crates/xrf-archive-stats" }
+xrf-audio = { path = "crates/xrf-audio" }
+xrf-audio-scene = { path = "crates/xrf-audio-scene" }
 xrf-build-info = { path = "crates/xrf-build-info" }
 xrf-chunk = { path = "crates/xrf-chunk" }
 xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
 xrf-dlss = { path = "crates/xrf-dlss" }
 xrf-dltx = { path = "crates/xrf-dltx" }
+xrf-editable-level = { path = "crates/xrf-editable-level" }
+xrf-editable-object = { path = "crates/xrf-editable-object" }
 xrf-efd = { path = "crates/xrf-efd" }
 xrf-error = { path = "crates/xrf-error" }
 xrf-error-derive = { path = "crates/xrf-error-derive" }
@@ -141,11 +161,14 @@ xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
 xrf-gamemtl = { path = "crates/xrf-gamemtl" }
+xrf-geometry = { path = "crates/xrf-geometry" }
+xrf-ini = { path = "crates/xrf-ini" }
 xrf-ipc = { path = "crates/xrf-ipc" }
 xrf-ipc-derive = { path = "crates/xrf-ipc-derive" }
 xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
 xrf-job = { path = "crates/xrf-job" }
 xrf-level = { path = "crates/xrf-level" }
+xrf-level-compiler = { path = "crates/xrf-level-compiler" }
 xrf-light-anim = { path = "crates/xrf-light-anim" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-ltx-inspect = { path = "crates/xrf-ltx-inspect" }
@@ -153,12 +176,15 @@ xrf-lua = { path = "crates/xrf-lua" }
 xrf-lzhuf = { path = "crates/xrf-lzhuf" }
 xrf-material = { path = "crates/xrf-material" }
 xrf-math = { path = "crates/xrf-math" }
+xrf-object-visual = { path = "crates/xrf-object-visual" }
 xrf-ogf = { path = "crates/xrf-ogf" }
 xrf-omf = { path = "crates/xrf-omf" }
 xrf-output = { path = "crates/xrf-output" }
 xrf-pack = { path = "crates/xrf-pack" }
 xrf-particles = { path = "crates/xrf-particles" }
 xrf-ppe = { path = "crates/xrf-ppe" }
+xrf-profiler = { path = "crates/xrf-profiler" }
+xrf-rawdata = { path = "crates/xrf-rawdata" }
 xrf-renderer-core = { path = "crates/xrf-renderer-core" }
 xrf-renderer-derive = { path = "crates/xrf-renderer-derive" }
 xrf-renderer = { path = "crates/xrf-renderer" }
@@ -167,6 +193,7 @@ xrf-shaders = { path = "crates/xrf-shaders" }
 xrf-skeleton = { path = "crates/xrf-skeleton" }
 xrf-sound = { path = "crates/xrf-sound" }
 xrf-spawn = { path = "crates/xrf-spawn" }
+xrf-spawn-builder = { path = "crates/xrf-spawn-builder" }
 xrf-test-utils = { path = "crates/xrf-test-utils" }
 xrf-texture = { path = "crates/xrf-texture" }
 xrf-thm = { path = "crates/xrf-thm" }
@@ -257,9 +284,83 @@ strip = false
 inherits = "profiling"
 
 [workspace.lints.rust]
-dead_code = "allow"
+unsafe_code = "deny"
+
+ambiguous_negative_literals = "warn"
+deref_into_dyn_supertrait = "warn"
+elided_lifetimes_in_paths = "warn"
+impl_trait_redundant_captures = "warn"
+meta_variable_misuse = "warn"
+redundant_imports = "warn"
+redundant_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unit_bindings = "warn"
+unreachable_pub = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+unused_macro_rules = "warn"
+unused_qualifications = "warn"
 
 [workspace.lints.clippy]
-extra_unused_type_parameters = "allow"
 doc_lazy_continuation = "allow"
+extra_unused_type_parameters = "allow"
 module_inception = "allow"
+
+# Suppressions, output and unfinished code
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+dbg_macro = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
+todo = "warn"
+unimplemented = "warn"
+unwrap_used = "warn"
+
+# Unsafe code and raw pointers
+as_ptr_cast_mut = "warn"
+borrow_as_ptr = "warn"
+ptr_as_ptr = "warn"
+ptr_cast_constness = "warn"
+ref_as_ptr = "warn"
+undocumented_unsafe_blocks = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+
+# Numbers
+cast_lossless = "warn"
+cast_possible_wrap = "warn"
+checked_conversions = "warn"
+manual_midpoint = "warn"
+precedence_bits = "warn"
+
+# Mistakes that compile
+case_sensitive_file_extension_comparisons = "warn"
+collection_is_never_read = "warn"
+debug_assert_with_mut_call = "warn"
+empty_drop = "warn"
+literal_string_with_formatting_args = "warn"
+mutex_atomic = "warn"
+mutex_integer = "warn"
+path_buf_push_overwrite = "warn"
+rc_mutex = "warn"
+read_zero_byte_vec = "warn"
+significant_drop_in_scrutinee = "warn"
+unused_peekable = "warn"
+unused_result_ok = "warn"
+
+# Style
+clone_on_ref_ptr = "warn"
+cloned_instead_of_copied = "warn"
+derive_partial_eq_without_eq = "warn"
+explicit_iter_loop = "warn"
+ignore_without_reason = "warn"
+inconsistent_struct_constructor = "warn"
+manual_string_new = "warn"
+match_wildcard_for_single_variants = "warn"
+redundant_clone = "warn"
+redundant_else = "warn"
+ref_option = "warn"
+semicolon_if_nothing_returned = "warn"
+uninlined_format_args = "warn"
+unnested_or_patterns = "warn"
+use_self = "warn"

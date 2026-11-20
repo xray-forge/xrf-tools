@@ -12,8 +12,8 @@ use crate::browse::{
   TextureBadges, TextureCatalog, TextureCatalogMode, TextureEntry, TextureMaterialSummary, TextureRole,
 };
 use crate::tests::fixtures::{
-  BASE, BUMP, COMPANION, bumped_tree, catalog, entry, file_source, loose_directory, search_over, summary, sweep,
-  to_dds_bytes,
+  BASE, BUMP, COMPANION, bumped_tree, catalog, encode_dds, entry, file_source, loose_directory, search_over, summary,
+  sweep,
 };
 
 #[test]
@@ -105,9 +105,9 @@ fn a_plain_directory_lists_every_texture_it_holds_rather_than_none() {
   let root: PathBuf = loose_directory("loose_listing");
 
   fs::create_dir_all(root.join("wall")).expect("nested directory");
-  fs::write(root.join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
+  fs::write(root.join("brick01.dds"), encode_dds(4)).expect("texture is writable");
   fs::write(root.join("brick01.thm"), ThmFixture::image().to_bytes()).expect("descriptor is writable");
-  fs::write(root.join("wall").join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
+  fs::write(root.join("wall").join("brick01.dds"), encode_dds(4)).expect("texture is writable");
 
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs

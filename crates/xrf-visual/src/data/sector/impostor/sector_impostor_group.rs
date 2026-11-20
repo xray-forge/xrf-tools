@@ -4,7 +4,7 @@ use crate::data::sector::sector_surface::SectorSurface;
 
 /// A run of a sector's impostors dressed by one surface.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SectorImpostorGroup {
   pub surface: SectorSurface,

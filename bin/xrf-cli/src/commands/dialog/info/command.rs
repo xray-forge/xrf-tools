@@ -9,19 +9,23 @@ use crate::commands::dialog::info::dialog_sweep_census::DialogSweepCensus;
 use crate::commands::dialog::info::dialog_sweep_result::DialogSweepResult;
 use crate::commands::dialog::info::report::DialogInfoReport;
 use crate::core::arguments::XrayRootsArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
-pub struct InfoCommand;
+pub(crate) struct InfoCommand;
 
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {
     "info"
   }
 
+  fn input(&self) -> CommandInput {
+    DialogProjectOpening::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    DialogProjectOpening::declare_roots(command.about("Read dialog XML and report what it holds")).arg(
+    command.about("Read dialog XML and report what it holds").arg(
       Arg::new("strict")
         .help("Answer with a check failure when anything was unreadable or off schema")
         .long("strict")

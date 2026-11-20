@@ -2,12 +2,11 @@ use std::collections::BTreeMap;
 
 use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
-use xrf_ogf::{OgfBox, OgfGeometryContainerChunk, OgfHeaderChunk, OgfSphere};
+use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk};
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_geometry::LevelCformGeometry;
-use crate::cform::level_cform_tracer::LevelCformTracer;
 use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::level_geom_file::LevelGeomFile;
 use crate::geom::level_geom_source::LevelGeomSource;
@@ -103,12 +102,12 @@ fn visual(index: u32, shader: u16) -> LevelVisual {
       version: 4,
       model_type: 0,
       shader_id: shader,
-      bounding_box: OgfBox {
+      bounding_box: Aabb {
         min: Vector3d::new(0.0, 0.0, 0.0),
         max: Vector3d::new(0.0, 0.0, 0.0),
       },
-      bounding_sphere: OgfSphere {
-        position: Vector3d::new(0.0, 0.0, 0.0),
+      bounding_sphere: Sphere {
+        center: Vector3d::new(0.0, 0.0, 0.0),
         radius: 0.0,
       },
     },
@@ -142,8 +141,7 @@ fn tallies_each_surface_by_the_collision_faces_beneath_it() -> XrfResult {
   let visuals: LevelVisualsChunk = LevelVisualsChunk {
     visuals: vec![visual(0, 1), visual(1, 2), visual(2, 2)],
   };
-  let survey: LevelSurfaceMaterials =
-    LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &LevelCformTracer::new(&floor()?));
+  let survey: LevelSurfaceMaterials = LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &floor()?);
 
   let stone: &LevelSurfaceMaterial = &survey.surfaces[&1];
   let earth: &LevelSurfaceMaterial = &survey.surfaces[&2];

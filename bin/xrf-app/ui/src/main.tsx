@@ -1,10 +1,10 @@
 import { Logger } from "@xrf/logging";
+import { ErrorBoundary } from "@xrf/react/error-boundary";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { ApplicationProvider } from "@/ApplicationProvider";
 import { ApplicationRouter } from "@/ApplicationRouter";
-import { ErrorBoundary } from "@/core/error/components/ErrorBoundary";
 import { RootCrash } from "@/core/error/components/RootCrash";
 import { tidyAppCacheOnStart } from "@/core/settings/lib/app-cache";
 import { persistIpcProfiling } from "@/core/settings/lib/ipc-profiling";

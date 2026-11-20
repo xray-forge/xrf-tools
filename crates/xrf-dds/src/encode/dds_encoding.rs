@@ -1,23 +1,45 @@
 use ddsfile::{Caps, Caps2, D3DFormat, Dds, NewD3dParams};
-use image_dds::{ImageFormat, Mipmaps, Quality, SurfaceRgba8};
+use image::RgbaImage;
+use image_dds::{ImageFormat, Mipmaps, Quality, Surface, SurfaceRgba8};
+use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::encode::dds_bc1_cut_out::DdsBc1CutOut;
+use crate::encode::dds_surface_levels::DdsSurfaceLevels;
 use crate::file::dds_file::DdsFile;
 use crate::mip::dds_mip_chain::DdsMipChain;
 
-/// How a texture is written: the layout its pixels are packed into, and how hard the encoder works at it.
+/// How a texture is written: its layout, the encoder's effort, and for BC1 whether alpha below half is cut out
+/// ([`Self::with_cut_out`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DdsEncoding {
   pub format: ImageFormat,
   pub quality: Quality,
+  /// BC1 only: pixels of alpha below half cut out, the SDK's `tfADXT1`; off, every BC1 block is opaque.
+  pub is_cut_out: bool,
 }
 
 impl DdsEncoding {
   /// Pixels along one edge of a block, which every block-compressed family in this format shares.
   pub const BLOCK_SIZE: u32 = 4;
 
+  /// Rows of a level encoded as one piece, whole blocks high so only a level's last piece is padded.
+  const STRIPE_ROWS: u32 = 16 * Self::BLOCK_SIZE;
+
   pub fn new(format: ImageFormat, quality: Quality) -> Self {
-    Self { format, quality }
+    Self {
+      format,
+      quality,
+      is_cut_out: false,
+    }
+  }
+
+  /// The encoding with BC1's cut-out alpha, as a detail atlas needs; other formats ignore it.
+  pub fn with_cut_out(self) -> Self {
+    Self {
+      is_cut_out: true,
+      ..self
+    }
   }
 
   /// Writes the chain into a texture, level for level.
@@ -26,7 +48,7 @@ impl DdsEncoding {
   ///
   /// Returns an error when the chain cannot be laid out as a surface, or when the encoder refuses the pixels.
   pub fn encode(&self, chain: &DdsMipChain) -> XrfResult<DdsFile> {
-    self.write(chain.to_surface()?)
+    self.write(&DdsSurfaceLevels::of_chain(chain)?)
   }
 
   /// Writes six chains into a cube texture, `+x -x +y -y +z -z`, each face level for level as [`Self::encode`] does.
@@ -35,15 +57,24 @@ impl DdsEncoding {
   ///
   /// Returns an error unless there are six square faces alike in size and levels, or where [`Self::encode`] does.
   pub fn encode_cube(&self, faces: &[DdsMipChain]) -> XrfResult<DdsFile> {
-    self.write(DdsMipChain::to_cube_surface(faces)?)
+    self.write(&DdsSurfaceLevels::of_cube(faces)?)
   }
 
   /// Writes a surface of one layer, or of six as a cube.
-  fn write(&self, surface: SurfaceRgba8<Vec<u8>>) -> XrfResult<DdsFile> {
+  fn write(&self, levels: &DdsSurfaceLevels<'_>) -> XrfResult<DdsFile> {
+    let base: &RgbaImage = levels.base();
+    let surface: Surface<Vec<u8>> = Surface {
+      width: base.width(),
+      height: base.height(),
+      depth: 1,
+      layers: u32::try_from(levels.layers())
+        .map_err(|_| XrfError::new_texture_processing_error("Surface exceeds the supported layer count"))?,
+      mipmaps: u32::try_from(levels.mipmaps())
+        .map_err(|_| XrfError::new_texture_processing_error("Mip chain exceeds the supported level count"))?,
+      image_format: self.format,
+      data: self.encode_levels(levels.levels())?,
+    };
     let is_cube: bool = surface.layers == 6;
-    let surface = surface
-      .encode(self.format, self.quality, Mipmaps::FromSurface)
-      .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
 
     let mut dds: Dds = match Self::legacy_format(self.format) {
       Some(format) => {
@@ -77,6 +108,52 @@ impl DdsEncoding {
     }
 
     DdsFile::from_encoded(dds)
+  }
+
+  /// Every level encoded and laid end to end, as one surface's payload stores them.
+  ///
+  /// Levels are encoded in stripes of [`Self::STRIPE_ROWS`] on every worker. A block encodes from its own pixels
+  /// alone, so the stripes laid end to end are byte for byte the level encoded whole.
+  fn encode_levels(&self, levels: &[&RgbaImage]) -> XrfResult<Vec<u8>> {
+    let is_cut_out: bool = self.is_cut_out && self.format == ImageFormat::BC1RgbaUnorm;
+    let stripes: Vec<SurfaceRgba8<&[u8]>> = levels.iter().flat_map(|level| Self::stripes_of(level)).collect();
+    let encoded: Vec<Vec<u8>> = stripes
+      .par_iter()
+      .map(|stripe| {
+        let mut data: Vec<u8> = stripe
+          .encode(self.format, self.quality, Mipmaps::FromSurface)
+          .map(|surface| surface.data)
+          .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+
+        if is_cut_out {
+          DdsBc1CutOut::apply(&mut data, stripe.data, stripe.width, stripe.height);
+        }
+
+        Ok(data)
+      })
+      .collect::<XrfResult<Vec<Vec<u8>>>>()?;
+
+    Ok(encoded.concat())
+  }
+
+  /// One level as surfaces of [`Self::STRIPE_ROWS`] rows each, the last holding what remains.
+  fn stripes_of(level: &RgbaImage) -> impl Iterator<Item = SurfaceRgba8<&[u8]>> {
+    let row_length: usize = level.width() as usize * 4;
+
+    (0..level.height())
+      .step_by(Self::STRIPE_ROWS as usize)
+      .map(move |first| {
+        let height: u32 = Self::STRIPE_ROWS.min(level.height() - first);
+
+        SurfaceRgba8 {
+          width: level.width(),
+          height,
+          depth: 1,
+          layers: 1,
+          mipmaps: 1,
+          data: &level.as_raw()[first as usize * row_length..][..height as usize * row_length],
+        }
+      })
   }
 
   /// The legacy `FourCC` spelling of a layout, for the formats that predate the DX10 header extension.
@@ -232,6 +309,30 @@ mod tests {
     uneven.push(new_face(8, 5)?);
 
     assert!(encoding.encode_cube(&uneven).is_err());
+
+    Ok(())
+  }
+
+  #[test]
+  fn writes_bc1_cut_out_alpha_only_when_asked() -> XrfResult {
+    let base: RgbaImage = RgbaImage::from_fn(16, 8, |x, _| {
+      if x < 8 {
+        Rgba([40, 160, 40, u8::MAX])
+      } else {
+        Rgba([0, 0, 0, 0])
+      }
+    });
+    let chain: DdsMipChain = DdsMipChain::build(&base, DdsMipmaps::Disabled)?;
+    let read = |encoding: DdsEncoding| -> XrfResult<RgbaImage> {
+      DdsFile::read_from_bytes(&encoding.encode(&chain)?.write_to_bytes()?)?.decode_rgba(0)
+    };
+    let encoding: DdsEncoding = DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Fast);
+    let cut_out: RgbaImage = read(encoding.with_cut_out())?;
+
+    assert_eq!(cut_out.get_pixel(12, 4).0[3], 0, "cut out");
+    assert_eq!(cut_out.get_pixel(2, 4).0[3], u8::MAX, "kept");
+    assert!(cut_out.get_pixel(2, 4).0[1] > 140, "the leaf keeps its green");
+    assert_eq!(read(encoding)?.get_pixel(12, 4).0[3], u8::MAX, "opaque by default");
 
     Ok(())
   }

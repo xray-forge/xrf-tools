@@ -66,7 +66,7 @@ export function LevelWeatherPanel({
         cycle={cycle?.name ?? null}
         reading={weatherService.reading}
         effects={description?.effects ?? []}
-        effect={isWeather ? (weatherService.report?.effect ?? null) : null}
+        effect={isWeather ? (weatherService.clock.report?.effect ?? null) : null}
         onSource={weatherService.setSource}
         onCycle={onSelectCycle}
         onEffect={renderService.weather.playEffect}
@@ -75,25 +75,25 @@ export function LevelWeatherPanel({
       {description ? (
         <>
           <LevelWeatherClockSection
-            time={weatherService.time}
+            time={weatherService.clock.time}
             keyframes={keyframes}
-            report={isWeather ? weatherService.report : null}
-            control={weatherService.control}
+            report={isWeather ? weatherService.clock.report : null}
+            control={weatherService.clock.control}
             isSunTabled={description.engine === EXrayEngine.EXTENDED && description.sunTable !== null}
             isManual={isManual}
             onSeek={renderService.weather.seek}
-            onPlaying={weatherService.setPlaying}
-            onFactor={weatherService.setFactor}
-            onDynamicSun={weatherService.setDynamicSun}
+            onPlaying={weatherService.clock.setPlaying}
+            onFactor={weatherService.clock.setFactor}
+            onDynamicSun={weatherService.clock.setDynamicSun}
           />
 
           <LevelWeatherModifiersSection
             count={description.modifiers.length}
-            reaching={isWeather ? (weatherService.report?.modifiers ?? 0) : 0}
+            reaching={isWeather ? (weatherService.clock.report?.modifiers ?? 0) : 0}
           />
 
           <LevelWeatherAmbientSection
-            ambient={isWeather ? (weatherService.report?.ambient ?? null) : null}
+            ambient={isWeather ? (weatherService.clock.report?.ambient ?? null) : null}
             isPlayed={viewService.options.isAmbientEffectPlayed}
             onPlay={renderService.weather.playAmbientEffect}
           />

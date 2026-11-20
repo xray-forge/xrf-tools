@@ -10,7 +10,9 @@ import {
   BurstOutcome,
   CubeCaptureRequest,
   CubeExportRequest,
+  LevelBuildResult,
   LevelConsoleDefaults,
+  LevelDecompileResult,
   LevelEntry,
   LevelMapDescription,
   LevelObjectsDescription,
@@ -24,26 +26,51 @@ import {
   MapCaptureRequest,
   MapExportOutcome,
   MapExportRequest,
+  RecordingAvailability,
+  RecordingOutcome,
+  RecordingProgress,
+  SceneBinaryToolsDescription,
+  SceneDrawDescription,
+  SceneHelpersDescription,
+  SceneObjectId,
+  SceneObjectsDescription,
+  SceneOpenRequest,
   ScreenshotSaveRequest,
   SelectedLevelDescription,
+  SelectedSceneDescription,
 } from "#/types/xrf-app-levels";
 import { CaptureOutcome } from "#/types/xrf-app-render";
 import { WeatherCycleId } from "#/types/xrf-environment";
 import { JobProgress } from "#/types/xrf-job";
+import { LevelCompileRequest } from "#/types/xrf-level-compiler";
 import { XraySurfaceDescriptor } from "#/types/xrf-material";
+import { Sphere } from "#/types/xrf-math";
+import { LevelBuildRequest, LevelDecompileRequest } from "#/types/xrf-rawdata";
 import { RenderViewportId } from "#/types/xrf-renderer";
 import { XrayRoots } from "#/types/xrf-vfs";
+import { WorldMusicCommand, WorldSoundReport } from "#/types/xrf-world";
 
 /** The wire name of every command of the `levels` plugin. */
 export enum ELevelsCommand {
+  BUILD_LEVEL = "plugin:levels|build_level",
   CAPTURE_CUBE = "plugin:levels|capture_cube",
   CAPTURE_MAP = "plugin:levels|capture_map",
   CLOSE_LEVEL = "plugin:levels|close_level",
+  CLOSE_SCENE = "plugin:levels|close_scene",
+  COMMAND_MUSIC = "plugin:levels|command_music",
   COPY_SCREENSHOT = "plugin:levels|copy_screenshot",
+  DECOMPILE_LEVEL = "plugin:levels|decompile_level",
+  DELETE_RECORDING = "plugin:levels|delete_recording",
   DELETE_SCREENSHOT = "plugin:levels|delete_screenshot",
   DESCRIBE_CONSOLE_DEFAULTS = "plugin:levels|describe_console_defaults",
   DESCRIBE_LEVEL_MAP = "plugin:levels|describe_level_map",
   DESCRIBE_OBJECTS = "plugin:levels|describe_objects",
+  DESCRIBE_RECORDING = "plugin:levels|describe_recording",
+  DESCRIBE_SCENE_BINARY_TOOLS = "plugin:levels|describe_scene_binary_tools",
+  DESCRIBE_SCENE_DRAW = "plugin:levels|describe_scene_draw",
+  DESCRIBE_SCENE_HELPERS = "plugin:levels|describe_scene_helpers",
+  DESCRIBE_SCENE_OBJECTS = "plugin:levels|describe_scene_objects",
+  DESCRIBE_SOUND = "plugin:levels|describe_sound",
   DESCRIBE_SPAWN_OBJECT = "plugin:levels|describe_spawn_object",
   DESCRIBE_START = "plugin:levels|describe_start",
   DESCRIBE_SURFACES = "plugin:levels|describe_surfaces",
@@ -54,20 +81,39 @@ export enum ELevelsCommand {
   FIND_SCREENSHOT_PATH = "plugin:levels|find_screenshot_path",
   GET_VIEW_FOLDER = "plugin:levels|get_view_folder",
   LIST_LEVELS = "plugin:levels|list_levels",
+  LOCATE_SCENE_OBJECT = "plugin:levels|locate_scene_object",
   OPEN_LEVEL = "plugin:levels|open_level",
+  OPEN_SCENE = "plugin:levels|open_scene",
   READ_LEVEL_CYCLE = "plugin:levels|read_level_cycle",
   READ_VIEW = "plugin:levels|read_view",
   RESTORE_LEVEL = "plugin:levels|restore_level",
+  RESTORE_SCENE = "plugin:levels|restore_scene",
   SAVE_BURST = "plugin:levels|save_burst",
   SAVE_SCREENSHOT = "plugin:levels|save_screenshot",
   SAVE_VIEW = "plugin:levels|save_view",
   SHOW_LEVEL = "plugin:levels|show_level",
+  SHOW_SCENE = "plugin:levels|show_scene",
+  START_RECORDING = "plugin:levels|start_recording",
+  STOP_RECORDING = "plugin:levels|stop_recording",
   WRITE_MAP_ANNOTATIONS = "plugin:levels|write_map_annotations",
   WRITE_SCREENSHOT_REPORT = "plugin:levels|write_screenshot_report",
 }
 
 /** Commands */
 export const levelsCommands = {
+  /**
+   * Build a Level Editor scene into a level directory, as `level build` does, then compile it when `compile` is given,
+   * as `level compile` does, in one job.
+   *
+   * A cancel stops the build between steps and the compile within its running step. The compile always works on the
+   * directory the build wrote and is forced when the build is ([`LevelBuildRun::new`]).
+   */
+  buildLevel: (
+    request: LevelBuildRequest,
+    compile: LevelCompileRequest | null,
+    jobId: string,
+    progress: Channel<JobProgress>
+  ) => __TAURI_INVOKE<LevelBuildResult>(ELevelsCommand.BUILD_LEVEL, { request, compile, jobId, progress }),
   /** Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross. */
   captureCube: (request: CubeCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<CaptureOutcome>(ELevelsCommand.CAPTURE_CUBE, { request, jobId, progress }),
@@ -76,12 +122,30 @@ export const levelsCommands = {
     __TAURI_INVOKE<CaptureOutcome>(ELevelsCommand.CAPTURE_MAP, { request, jobId, progress }),
   /** Close the levels `session_ids` name, each once, unbinding it from its scope. */
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(ELevelsCommand.CLOSE_LEVEL, { sessionIds }),
+  /** Close the scenes `session_ids` name, each once, unbinding it from its scope. */
+  closeScene: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(ELevelsCommand.CLOSE_SCENE, { sessionIds }),
+  /**
+   * Control the music of the level a viewport shows: the game's schedule, one chosen track, or a seek within the playing
+   * track.
+   *
+   * Answers false for a viewport showing no level, a track the level lacks, or a seek across tracks.
+   */
+  commandMusic: (viewport: RenderViewportId, command: WorldMusicCommand) =>
+    __TAURI_INVOKE<boolean>(ELevelsCommand.COMMAND_MUSIC, { viewport, command }),
   /**
    * Copy a screenshot of the screenshots folder to where the page names, as Save as does; read whole first, so a failed
    * copy leaves no partial file and keeps any file it would have replaced.
    */
   copyScreenshot: (path: string, target: string) =>
     __TAURI_INVOKE<null>(ELevelsCommand.COPY_SCREENSHOT, { path, target }),
+  /**
+   * Decompile a compiled level's directory into a Level Editor scene on disk, as `level decompile` does, reporting each
+   * step and stopping between steps on request.
+   */
+  decompileLevel: (request: LevelDecompileRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<LevelDecompileResult>(ELevelsCommand.DECOMPILE_LEVEL, { request, jobId, progress }),
+  /** Permanently delete a video from the recordings folder. */
+  deleteRecording: (path: string) => __TAURI_INVOKE<null>(ELevelsCommand.DELETE_RECORDING, { path }),
   /**
    * Delete a screenshot of the screenshots folder for good, with what stands beside it: a screenshot's report, a level
    * map's annotations.
@@ -105,6 +169,47 @@ export const levelsCommands = {
    */
   describeObjects: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelObjectsDescription>>(ELevelsCommand.DESCRIBE_OBJECTS, { sessionId }),
+  /** Whether viewports can be recorded here, that is whether Media Foundation loads, and why not otherwise. */
+  describeRecording: () => __TAURI_INVOKE<RecordingAvailability>(ELevelsCommand.DESCRIBE_RECORDING),
+  /**
+   * Describe the open scene's AI map, detail objects and wall marks by their counts alone.
+   *
+   * Call again after a commit that invalidates them.
+   */
+  describeSceneBinaryTools: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<SceneBinaryToolsDescription>>(ELevelsCommand.DESCRIBE_SCENE_BINARY_TOOLS, {
+      sessionId,
+    }),
+  /**
+   * Describe the open scene's drawing: the extent of the drawn objects, to frame a camera on, and each object not drawn
+   * because its library object is missing or unreadable.
+   *
+   * Call again after a commit that invalidates the library objects. Compile and texture failures are reported by the
+   * viewport, not here.
+   */
+  describeSceneDraw: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<SceneDrawDescription>>(ELevelsCommand.DESCRIBE_SCENE_DRAW, { sessionId }),
+  /**
+   * Describe the open scene's helpers: their extent, to frame a camera on a scene drawing only them, how many each
+   * helped tool draws, and which spawn points draw as their models.
+   *
+   * Call again after a commit that invalidates them.
+   */
+  describeSceneHelpers: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<SceneHelpersDescription>>(ELevelsCommand.DESCRIBE_SCENE_HELPERS, { sessionId }),
+  /**
+   * Describe the objects of the open scene's object tools, resolving each library object in the scene's objects roots.
+   *
+   * Call again after a commit that invalidates them.
+   */
+  describeSceneObjects: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<SceneObjectsDescription>>(ELevelsCommand.DESCRIBE_SCENE_OBJECTS, { sessionId }),
+  /**
+   * Describe what the level a viewport shows plays: each sound with its position and heard loudness, the music, the
+   * ambient channels, and every sound that could not play; none for a viewport showing no level.
+   */
+  describeSound: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<WorldSoundReport | null>(ELevelsCommand.DESCRIBE_SOUND, { viewport }),
   /** Describe one of the open level's spawned objects, by its index among them, as a level object's spawn id names it. */
   describeSpawnObject: (sessionId: SessionId, index: number) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectDetails>>(ELevelsCommand.DESCRIBE_SPAWN_OBJECT, {
@@ -145,9 +250,21 @@ export const levelsCommands = {
   getViewFolder: () => __TAURI_INVOKE<string>(ELevelsCommand.GET_VIEW_FOLDER),
   /** Every compiled level the mounted roots hold, loose or archived alike, listed on the pool from a fresh search. */
   listLevels: (roots: XrayRoots) => __TAURI_INVOKE<Array<LevelEntry>>(ELevelsCommand.LIST_LEVELS, { roots }),
+  /**
+   * Locate one of the open scene's objects for a camera to frame, as a sphere in renderer space about its placed box or
+   * its helper; none for an object that draws nothing.
+   */
+  locateSceneObject: (sessionId: SessionId, object: SceneObjectId) =>
+    __TAURI_INVOKE<SessionSnapshot<Sphere | null>>(ELevelsCommand.LOCATE_SCENE_OBJECT, { sessionId, object }),
   /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
   openLevel: (sessionId: SessionId, request: LevelOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>(ELevelsCommand.OPEN_LEVEL, { sessionId, request }),
+  /**
+   * Open a Level Editor scene from its `.level`, listing its tools' part files and what the editor would skip or refuse,
+   * without reading their objects.
+   */
+  openScene: (sessionId: SessionId, request: SceneOpenRequest) =>
+    __TAURI_INVOKE<SessionSnapshot<SelectedSceneDescription>>(ELevelsCommand.OPEN_SCENE, { sessionId, request }),
   /**
    * Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
    * not offer itself.
@@ -163,8 +280,17 @@ export const levelsCommands = {
   restoreLevel: (tool: string) =>
     __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>(ELevelsCommand.RESTORE_LEVEL, { tool }),
   /**
-   * Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
-   * the level viewer's bursts named as asked; answers once the last is written.
+   * Restore the newest scene `tool` opened in the asking window without reading it again, for a page attaching to it or
+   * refreshing after a commit. Its parts have their own queries.
+   */
+  restoreScene: (tool: string) =>
+    __TAURI_INVOKE<SessionRestore<SelectedSceneDescription>>(ELevelsCommand.RESTORE_SCENE, { tool }),
+  /**
+   * Draw a burst of consecutive frames in a viewport and write each with its G-buffer marks into a new bursts folder,
+   * plus the camera's sound and a video when asked; answers once the last is written.
+   *
+   * A burst with sound is refused up front when the viewport's level plays none; a burst that fails once its folder is
+   * made removes the folder.
    */
   saveBurst: (request: BurstCaptureRequest) => __TAURI_INVOKE<BurstOutcome>(ELevelsCommand.SAVE_BURST, { request }),
   /**
@@ -181,6 +307,30 @@ export const levelsCommands = {
    */
   showLevel: (viewport: RenderViewportId, sessionId: SessionId | null) =>
     __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_LEVEL, { viewport, sessionId }),
+  /**
+   * Draw the open scene in a viewport, or nothing without a session; answers the drawn scene's id, which the viewport's
+   * load reports carry, or none.
+   *
+   * Each object's model is compiled from its `.object` on demand, with textures from the scene's game data. A later show
+   * on the same viewport wins over this one.
+   */
+  showScene: (viewport: RenderViewportId, sessionId: SessionId | null) =>
+    __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_SCENE, { viewport, sessionId }),
+  /**
+   * Record a viewport and what its camera hears into a new video in the recordings folder, at its current drawn size;
+   * answers the file.
+   *
+   * Until it stops, the recorded camera is heard whichever window has focus. `progress` gets a few updates a second,
+   * and the reason when the recording ends by itself. The recording stops and finishes when the asking window's page
+   * reloads or the window closes.
+   */
+  startRecording: (viewport: RenderViewportId, name: string, progress: Channel<RecordingProgress>) =>
+    __TAURI_INVOKE<string>(ELevelsCommand.START_RECORDING, { viewport, name, progress }),
+  /**
+   * Stop the recording, running or self-ended, and finish its video; answers what was written. The heard camera follows
+   * focus again.
+   */
+  stopRecording: () => __TAURI_INVOKE<RecordingOutcome>(ELevelsCommand.STOP_RECORDING),
   /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */
   writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsWriteRequest) =>
     __TAURI_INVOKE<SessionSnapshot<string>>(ELevelsCommand.WRITE_MAP_ANNOTATIONS, { sessionId, request }),
@@ -191,6 +341,10 @@ export const levelsCommands = {
 
 /** What each command of the `levels` plugin takes and resolves to, keyed by its wire name. */
 export interface ILevelsCommandSignatures {
+  [ELevelsCommand.BUILD_LEVEL]: IIpcCommandSignature<
+    typeof levelsCommands.buildLevel,
+    ["request", "compile", "jobId", "progress"]
+  >;
   [ELevelsCommand.CAPTURE_CUBE]: IIpcCommandSignature<
     typeof levelsCommands.captureCube,
     ["request", "jobId", "progress"]
@@ -200,7 +354,14 @@ export interface ILevelsCommandSignatures {
     ["request", "jobId", "progress"]
   >;
   [ELevelsCommand.CLOSE_LEVEL]: IIpcCommandSignature<typeof levelsCommands.closeLevel, ["sessionIds"]>;
+  [ELevelsCommand.CLOSE_SCENE]: IIpcCommandSignature<typeof levelsCommands.closeScene, ["sessionIds"]>;
+  [ELevelsCommand.COMMAND_MUSIC]: IIpcCommandSignature<typeof levelsCommands.commandMusic, ["viewport", "command"]>;
   [ELevelsCommand.COPY_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.copyScreenshot, ["path", "target"]>;
+  [ELevelsCommand.DECOMPILE_LEVEL]: IIpcCommandSignature<
+    typeof levelsCommands.decompileLevel,
+    ["request", "jobId", "progress"]
+  >;
+  [ELevelsCommand.DELETE_RECORDING]: IIpcCommandSignature<typeof levelsCommands.deleteRecording, ["path"]>;
   [ELevelsCommand.DELETE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.deleteScreenshot, ["path"]>;
   [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: IIpcCommandSignature<
     typeof levelsCommands.describeConsoleDefaults,
@@ -208,6 +369,21 @@ export interface ILevelsCommandSignatures {
   >;
   [ELevelsCommand.DESCRIBE_LEVEL_MAP]: IIpcCommandSignature<typeof levelsCommands.describeLevelMap, ["sessionId"]>;
   [ELevelsCommand.DESCRIBE_OBJECTS]: IIpcCommandSignature<typeof levelsCommands.describeObjects, ["sessionId"]>;
+  [ELevelsCommand.DESCRIBE_RECORDING]: IIpcCommandSignature<typeof levelsCommands.describeRecording, []>;
+  [ELevelsCommand.DESCRIBE_SCENE_BINARY_TOOLS]: IIpcCommandSignature<
+    typeof levelsCommands.describeSceneBinaryTools,
+    ["sessionId"]
+  >;
+  [ELevelsCommand.DESCRIBE_SCENE_DRAW]: IIpcCommandSignature<typeof levelsCommands.describeSceneDraw, ["sessionId"]>;
+  [ELevelsCommand.DESCRIBE_SCENE_HELPERS]: IIpcCommandSignature<
+    typeof levelsCommands.describeSceneHelpers,
+    ["sessionId"]
+  >;
+  [ELevelsCommand.DESCRIBE_SCENE_OBJECTS]: IIpcCommandSignature<
+    typeof levelsCommands.describeSceneObjects,
+    ["sessionId"]
+  >;
+  [ELevelsCommand.DESCRIBE_SOUND]: IIpcCommandSignature<typeof levelsCommands.describeSound, ["viewport"]>;
   [ELevelsCommand.DESCRIBE_SPAWN_OBJECT]: IIpcCommandSignature<
     typeof levelsCommands.describeSpawnObject,
     ["sessionId", "index"]
@@ -221,14 +397,26 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.FIND_SCREENSHOT_PATH]: IIpcCommandSignature<typeof levelsCommands.findScreenshotPath, ["name"]>;
   [ELevelsCommand.GET_VIEW_FOLDER]: IIpcCommandSignature<typeof levelsCommands.getViewFolder, []>;
   [ELevelsCommand.LIST_LEVELS]: IIpcCommandSignature<typeof levelsCommands.listLevels, ["roots"]>;
+  [ELevelsCommand.LOCATE_SCENE_OBJECT]: IIpcCommandSignature<
+    typeof levelsCommands.locateSceneObject,
+    ["sessionId", "object"]
+  >;
   [ELevelsCommand.OPEN_LEVEL]: IIpcCommandSignature<typeof levelsCommands.openLevel, ["sessionId", "request"]>;
+  [ELevelsCommand.OPEN_SCENE]: IIpcCommandSignature<typeof levelsCommands.openScene, ["sessionId", "request"]>;
   [ELevelsCommand.READ_LEVEL_CYCLE]: IIpcCommandSignature<typeof levelsCommands.readLevelCycle, ["sessionId", "cycle"]>;
   [ELevelsCommand.READ_VIEW]: IIpcCommandSignature<typeof levelsCommands.readView, ["path"]>;
   [ELevelsCommand.RESTORE_LEVEL]: IIpcCommandSignature<typeof levelsCommands.restoreLevel, ["tool"]>;
+  [ELevelsCommand.RESTORE_SCENE]: IIpcCommandSignature<typeof levelsCommands.restoreScene, ["tool"]>;
   [ELevelsCommand.SAVE_BURST]: IIpcCommandSignature<typeof levelsCommands.saveBurst, ["request"]>;
   [ELevelsCommand.SAVE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.saveScreenshot, ["request"]>;
   [ELevelsCommand.SAVE_VIEW]: IIpcCommandSignature<typeof levelsCommands.saveView, ["path", "text"]>;
   [ELevelsCommand.SHOW_LEVEL]: IIpcCommandSignature<typeof levelsCommands.showLevel, ["viewport", "sessionId"]>;
+  [ELevelsCommand.SHOW_SCENE]: IIpcCommandSignature<typeof levelsCommands.showScene, ["viewport", "sessionId"]>;
+  [ELevelsCommand.START_RECORDING]: IIpcCommandSignature<
+    typeof levelsCommands.startRecording,
+    ["viewport", "name", "progress"]
+  >;
+  [ELevelsCommand.STOP_RECORDING]: IIpcCommandSignature<typeof levelsCommands.stopRecording, []>;
   [ELevelsCommand.WRITE_MAP_ANNOTATIONS]: IIpcCommandSignature<
     typeof levelsCommands.writeMapAnnotations,
     ["sessionId", "request"]

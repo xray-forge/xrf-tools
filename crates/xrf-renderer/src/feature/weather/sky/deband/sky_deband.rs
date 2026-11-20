@@ -1,0 +1,199 @@
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture};
+
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::feature::weather::sky::deband::sky_deband_parameters::{SkyDebandCubeParameters, SkyDebandFlatParameters};
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
+use crate::lighting::weather::render_sky::RenderSky;
+use crate::pass::level_passes::LevelPasses;
+use crate::scene::texture::weather_texture_upload::WeatherTextureUpload;
+use crate::scene::texture::weather_textures::WeatherTextures;
+
+/// Float copies of both keyframes' sky cubes and clouds, smoothed where their stored steps band
+/// (`common/sky_deband.wgsl`).
+///
+/// Only the combine reads the copies; every other reader takes the textures as they are.
+#[derive(Default)]
+pub(crate) struct SkyDeband {
+  /// The cubes' copies, then the clouds', none for a texture not up or not drawn.
+  slots: [Option<SkyDebandSlot>; 4],
+}
+
+/// One texture's smoothed copy, and the upload it was made from.
+struct SkyDebandSlot {
+  reference: String,
+  upload: WeatherTextureUpload,
+  /// The copy as the sky reads it.
+  sampled: wgpu::TextureView,
+  /// The copy as the smoothing writes it.
+  written: wgpu::TextureView,
+  /// Whether this frame smooths it.
+  is_due: bool,
+  is_filled: bool,
+}
+
+impl SkyDeband {
+  const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// Each slot's pass, the cubes' first.
+  const PASSES: [&'static str; 4] = [
+    "sky deband cube 0",
+    "sky deband cube 1",
+    "sky deband clouds 0",
+    "sky deband clouds 1",
+  ];
+
+  /// Whether a view debands its sky: the enhanced debanding asked for, the sky shown, lit and solid.
+  pub(crate) fn is_asked(options: &RenderViewOptions) -> bool {
+    let is_shown: bool = options.mode.is_lit && !options.mode.is_wireframe && options.show.is_sky_visible;
+
+    is_shown && options.features.debanding.is_drawn()
+  }
+
+  /// Prepares this frame's sky: a texture newly up, newly named or newly uploaded is copied again; one not up, or
+  /// clouds not drawn (`is_clouded`), keeps no copy.
+  pub(crate) fn prepare(
+    &mut self,
+    device: &wgpu::Device,
+    textures: WeatherTextures<'_>,
+    sky: &RenderSky,
+    is_clouded: bool,
+  ) {
+    let references: [Option<&str>; 4] = [
+      sky.textures[0].as_deref(),
+      sky.textures[1].as_deref(),
+      sky.clouds.textures[0].as_deref().filter(|_| is_clouded),
+      sky.clouds.textures[1].as_deref().filter(|_| is_clouded),
+    ];
+
+    for (index, (slot, reference)) in self.slots.iter_mut().zip(references).enumerate() {
+      let is_cube: bool = index < 2;
+      let up: Option<(&str, WeatherTextureUpload)> =
+        reference.and_then(|reference| textures.get_upload(reference).map(|upload| (reference, upload)));
+
+      match (slot.as_mut(), up) {
+        (_, None) => *slot = None,
+        (Some(kept), Some((reference, upload))) if kept.reference == reference && kept.upload == upload => {
+          kept.is_due = !kept.is_filled;
+          kept.is_filled = true;
+        }
+        (_, Some((reference, upload))) => {
+          *slot = Some(SkyDebandSlot::new(device, reference, upload, is_cube));
+        }
+      }
+    }
+  }
+
+  /// Forgets a smoothing this frame made, where its frame was not submitted: it smooths again on the next.
+  pub(crate) fn abandon_frame(&mut self) {
+    for slot in self.slots.iter_mut().flatten().filter(|slot| slot.is_due) {
+      slot.is_filled = false;
+    }
+  }
+
+  /// `sky` with the copies in place of their textures, declaring the smoothing of those due this frame.
+  pub(crate) fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    passes: LevelPasses<'a>,
+    sky: SkyParameters<'a>,
+  ) -> SkyParameters<'a> {
+    let sources: [GraphTexture; 4] = [sky.sky_cube_0, sky.sky_cube_1, sky.sky_clouds_0, sky.sky_clouds_1];
+    let mut drawn: [GraphTexture; 4] = sources;
+
+    for (index, slot) in self.slots.iter().enumerate() {
+      let Some(slot) = slot else {
+        continue;
+      };
+
+      drawn[index] = bindings.import_view(&mut *graph, "sky debanded", &slot.sampled);
+
+      if !slot.is_due {
+        continue;
+      }
+
+      let written: GraphTexture = bindings.import_view(&mut *graph, "sky debanding", &slot.written);
+      let pass = &passes.weather.sky_deband;
+      let (width, height) = slot.upload.size;
+
+      if index < 2 {
+        let parameters: SkyDebandCubeParameters<'_> = SkyDebandCubeParameters {
+          cube: sources[index],
+          cube_sampler: sky.sky_clamp,
+          faces: written,
+        };
+
+        graph
+          .add_compute_pass(Self::PASSES[index])
+          .parameters(&parameters)
+          .record(move |context| pass.record_cube(context, width, &parameters));
+      } else {
+        let parameters: SkyDebandFlatParameters<'_> = SkyDebandFlatParameters {
+          clouds: sources[index],
+          clouds_sampler: sky.sky_repeat,
+          smoothed: written,
+        };
+
+        graph
+          .add_compute_pass(Self::PASSES[index])
+          .parameters(&parameters)
+          .record(move |context| pass.record_flat(context, (width, height), &parameters));
+      }
+    }
+
+    SkyParameters {
+      sky_cube_0: drawn[0],
+      sky_cube_1: drawn[1],
+      sky_clouds_0: drawn[2],
+      sky_clouds_1: drawn[3],
+      ..sky
+    }
+  }
+}
+
+impl SkyDebandSlot {
+  /// A float copy of `upload` at its size (a face's, six faces for a cube), smoothed on the frame it is made.
+  fn new(device: &wgpu::Device, reference: &str, upload: WeatherTextureUpload, is_cube: bool) -> Self {
+    let size: (u32, u32) = upload.size;
+    let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
+      label: Some("sky debanded"),
+      size: wgpu::Extent3d {
+        width: size.0,
+        height: size.1,
+        depth_or_array_layers: if is_cube { 6 } else { 1 },
+      },
+      mip_level_count: 1,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: SkyDeband::FORMAT,
+      usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+      view_formats: &[],
+    });
+    let view = |dimension: wgpu::TextureViewDimension| {
+      texture.create_view(&wgpu::TextureViewDescriptor {
+        label: Some("sky debanded"),
+        dimension: Some(dimension),
+        ..Default::default()
+      })
+    };
+    let (sampled, written): (wgpu::TextureView, wgpu::TextureView) = if is_cube {
+      (
+        view(wgpu::TextureViewDimension::Cube),
+        view(wgpu::TextureViewDimension::D2Array),
+      )
+    } else {
+      (
+        view(wgpu::TextureViewDimension::D2),
+        view(wgpu::TextureViewDimension::D2),
+      )
+    };
+
+    Self {
+      reference: reference.to_owned(),
+      upload,
+      sampled,
+      written,
+      is_due: true,
+      is_filled: true,
+    }
+  }
+}

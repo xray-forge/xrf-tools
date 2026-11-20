@@ -17,14 +17,18 @@ impl NgxVulkanResource {
     let texture: &wgpu::Texture = view.texture();
     // Each handle is taken in a statement of its own: a hal guard holds wgpu's lock until it drops, and two at once
     // are a recursive read lock.
+    // SAFETY: the handles are only read, and the caller's contract keeps the view and texture alive while NGX uses
+    // them.
     let image_view: ash::vk::ImageView =
       unsafe { view.as_hal::<Vulkan>().expect("DLSS reads Vulkan views").raw_handle() };
+    // SAFETY: as above.
     let image: ash::vk::Image = unsafe {
       texture
         .as_hal::<Vulkan>()
         .expect("DLSS reads Vulkan textures")
         .raw_handle()
     };
+    // SAFETY: the raw adapter only maps a format; nothing of it is kept.
     let format: ash::vk::Format = unsafe { adapter.as_hal::<Vulkan>() }
       .expect("DLSS runs on a Vulkan adapter")
       .texture_format_as_raw(texture.format());
@@ -40,6 +44,7 @@ impl NgxVulkanResource {
       layer_count: REMAINING_ARRAY_LAYERS,
     };
 
+    // SAFETY: NGX only packs the handles into the resource it answers, which the caller's contract keeps valid.
     unsafe {
       NVSDK_NGX_Create_ImageView_Resource_VK(
         image_view,

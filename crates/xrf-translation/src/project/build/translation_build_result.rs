@@ -55,29 +55,4 @@ impl TranslationBuildResult {
       }
     }
   }
-
-  pub(crate) fn merge(&mut self, other: Self) {
-    self.sources += other.sources;
-
-    // Merged by language rather than appended, so one language built from several sources stays one
-    // row however many results were combined to get there.
-    for summary in other.languages {
-      match self.language_index.get(&summary.language) {
-        Some(&index) => {
-          let existing: &mut TranslationBuildLanguageSummary = &mut self.languages[index];
-
-          existing.files += summary.files;
-          existing.entries += summary.entries;
-          self.files += summary.files;
-        }
-        None => {
-          self
-            .language_index
-            .insert(summary.language.clone(), self.languages.len());
-          self.files += summary.files;
-          self.languages.push(summary);
-        }
-      }
-    }
-  }
 }

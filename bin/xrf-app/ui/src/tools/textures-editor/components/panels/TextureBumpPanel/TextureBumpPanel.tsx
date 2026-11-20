@@ -2,20 +2,18 @@ import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material/alert";
-import { Button } from "@xrf/ui/material/button";
-import { Checkbox } from "@xrf/ui/material/checkbox";
-import { FormControlLabel } from "@xrf/ui/material/form-control-label";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Alert } from "@xrf/ui/feedback";
+import { Stack } from "@xrf/ui/layout/stack";
 import { ReactElement, useCallback, useState } from "react";
 
 import { EToolId } from "@/core/routing/tool";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathPanelRow, usePathField } from "@/core/ui/form";
 import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/tools/textures-editor/lib/texture-bump-gloss";
 import { TextureBumpService } from "@/tools/textures-editor/services/texture-bump";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
@@ -76,25 +74,23 @@ export function TextureBumpPanel({
     title: "Select an external normal map",
   });
 
-  const onGenerate = useCallback(
-    () =>
-      void bumpService.run({
-        gloss: toBumpGloss(isGlossFromHeight, gloss.value, glossConstant),
-        height: height.value ?? "",
-        normalMap: normalMap.value,
-        // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
-        virtualHeight: editorService.draft?.virtualHeight ?? null,
-      }),
-    [
-      bumpService,
-      editorService.draft?.virtualHeight,
-      gloss.value,
-      glossConstant,
-      height.value,
-      isGlossFromHeight,
-      normalMap.value,
-    ]
-  );
+  const onGenerate = useCallback(() => {
+    // A panel has no form to commit its paths on submit, so the run that reads them remembers them.
+    height.commit();
+    normalMap.commit();
+
+    if (!isGlossFromHeight) {
+      gloss.commit();
+    }
+
+    void bumpService.run({
+      gloss: toBumpGloss(isGlossFromHeight, gloss.value, glossConstant),
+      height: height.value ?? "",
+      normalMap: normalMap.value,
+      // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
+      virtualHeight: editorService.draft?.virtualHeight ?? null,
+    });
+  }, [bumpService, editorService.draft?.virtualHeight, gloss, glossConstant, height, isGlossFromHeight, normalMap]);
 
   if (!description) {
     return (
@@ -107,39 +103,35 @@ export function TextureBumpPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Bump"}>
       {bumpService.destination === null ? (
-        <Alert className={"mb-2"} severity={"info"}>
+        <EditorPopoverNote>
           This texture is served out of an archive, so there is nowhere beside it to write a pair.
-        </Alert>
+        </EditorPopoverNote>
       ) : null}
 
-      <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"} isFirst>
+      <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"}>
         <EditorPanelProperty label={"Bump"} value={description.generatedBump.bump} isMonospace />
         <EditorPanelProperty label={"Companion"} value={description.generatedBump.companion} isMonospace />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Sources"} caption={"The relief is required; everything else refines it"}>
-        <PathFormRow
+        <PathPanelRow
           label={"Height map"}
           description={"Averaged across its colour channels, as the SDK does"}
           isDisabled={isRunning}
           field={height}
         />
 
-        <FormControlLabel
+        <EditorPopoverSwitchRow
           data-testid={"texture-bump-gloss-from-height"}
-          label={"Gloss from the height map's alpha, as the SDK's bump source carries it"}
-          disabled={isRunning}
-          control={
-            <Checkbox
-              size={"small"}
-              checked={isGlossFromHeight}
-              onChange={(_, isChecked: boolean) => setIsGlossFromHeight(isChecked)}
-            />
-          }
+          label={"Gloss from the height map's alpha"}
+          description={"Reads the gloss out of the height map's alpha channel, as the SDK's bump source carries it"}
+          isChecked={isGlossFromHeight}
+          isDisabled={isRunning}
+          onChange={setIsGlossFromHeight}
         />
 
         {isGlossFromHeight ? null : (
-          <PathFormRow
+          <PathPanelRow
             label={"Gloss mask"}
             description={"Optional. Without one, the level below is used everywhere"}
             isDisabled={isRunning}
@@ -156,7 +148,7 @@ export function TextureBumpPanel({
           />
         )}
 
-        <PathFormRow
+        <PathPanelRow
           label={"Normal map"}
           description={"Optional. Replaces the normals the height implies, and must match its size"}
           isDisabled={isRunning}
@@ -183,9 +175,9 @@ export function TextureBumpPanel({
           ) : null}
         </Stack>
 
-        <Typography className={"mt-2 block"} variant={"caption"} color={"text.secondary"}>
+        <EditorPopoverNote className={"mt-2"}>
           Both halves are written at once, and the descriptor is pointed at them. Saving is still a separate act.
-        </Typography>
+        </EditorPopoverNote>
 
         {bumpService.generate.error ? (
           <Alert className={"mt-2"} severity={"error"}>

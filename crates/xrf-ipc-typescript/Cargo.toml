@@ -13,6 +13,7 @@ specta-typescript = { workspace = true }
 specta-util = { workspace = true }
 tauri = { workspace = true }
 tauri-specta = { workspace = true, features = ["typescript"] }
+xrf-error = { workspace = true }
 xrf-ipc = { workspace = true }
 xrf-typescript = { workspace = true, features = ["codegen"] }
 xrf-utils = { workspace = true }

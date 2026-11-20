@@ -1,4 +1,4 @@
-use std::sync::{Condvar, Mutex, MutexGuard};
+use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 use std::thread::{self, ThreadId};
 
 /// One load in progress, and the thread performing it.
@@ -18,7 +18,7 @@ impl XrayCacheFlight {
     let mut is_finished = self.lock();
 
     while !*is_finished {
-      is_finished = self.finished.wait(is_finished).expect("cache flight is never poisoned");
+      is_finished = self.finished.wait(is_finished).unwrap_or_else(PoisonError::into_inner);
     }
   }
 
@@ -37,6 +37,6 @@ impl XrayCacheFlight {
   }
 
   fn lock(&self) -> MutexGuard<'_, bool> {
-    self.is_finished.lock().expect("cache flight is never poisoned")
+    self.is_finished.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }

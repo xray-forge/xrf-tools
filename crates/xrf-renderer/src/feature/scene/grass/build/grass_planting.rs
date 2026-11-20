@@ -8,7 +8,7 @@ use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParam
 /// The grass's planting as one frame's graph binds it: the level's and the view's groups the planting, cull and cards
 /// read, the sort's dispatch, what the draw reads, and the draw arguments and counts the cull writes.
 #[derive(Clone, Copy)]
-pub struct GrassPlanting {
+pub(crate) struct GrassPlanting {
   pub level: GrassLevelParameters,
   pub build: GrassBuildParameters,
   pub sort: GrassSortParameters,

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use xrf_renderer_core::GraphReport;
 
 use crate::contract::settings::render_settings::RenderSettings;
+use crate::contract::viewport::render_hold_id::RenderHoldId;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 #[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
@@ -48,7 +49,7 @@ const IDLE_WAIT: Duration = Duration::from_millis(50);
 /// high resolution, where a channel's timeout rounds up to the system timer's tick of about 16 milliseconds.
 const PACING_POLL: Duration = Duration::from_millis(1);
 
-/// How long the thread keeps the GPU after its last viewport detaches, so a view shown again soon starts at once.
+/// How long the GPU is kept once no viewport or hold is left, so a view shown again soon starts at once.
 const IDLE_STOP: Duration = Duration::from_secs(5);
 
 /// How often the textures no scene samples any more are freed.
@@ -58,7 +59,7 @@ const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 
 /// The render thread: owns the GPU and every viewport, and is the only place GPU work happens.
-pub struct RenderThread {
+pub(crate) struct RenderThread {
   receiver: Receiver<RenderCommand>,
   /// What the queue shares with the thread, held weakly: once the last queue goes, so does its sender, and the thread
   /// stops as its channel disconnects.
@@ -99,7 +100,9 @@ pub struct RenderThread {
   scenes: HashMap<RenderSceneId, LevelScene>,
   /// The scenes viewports showed when the GPU was let go, held back until they are whole again.
   reopening: ReopeningScenes,
-  /// When the last viewport detached, while none is attached.
+  /// Holds keeping the GPU started while no viewport draws.
+  holds: BTreeSet<RenderHoldId>,
+  /// When the last viewport or hold went; none while either is left.
   idle_since: Option<Instant>,
   last_frame: Instant,
   /// The time every scene's frames are drawn at, which a tool may step; a burst paces its own while it draws. When the
@@ -116,12 +119,12 @@ pub struct RenderThread {
   textures_swept: Instant,
   /// Who asked the thread to stop at once, answered once it stopped.
   stopping: Option<Sender<()>>,
-  /// The composition's failures, which repeat every frame until a shader changes.
-  composition_failures: FrameFailureLog,
+  /// Per-frame repeating failures (frame, grid, composition), logged once until they change.
+  frame_failures: FrameFailureLog,
 }
 
 impl RenderThread {
-  pub fn new(
+  pub(crate) fn new(
     receiver: Receiver<RenderCommand>,
     link: Weak<Mutex<RenderLink>>,
     settings: RenderSettings,
@@ -152,6 +155,7 @@ impl RenderThread {
       viewports: BTreeMap::new(),
       scenes: HashMap::new(),
       reopening: ReopeningScenes::default(),
+      holds: BTreeSet::new(),
       idle_since: Some(now),
       last_frame: now,
       clock: FrameClock::default(),
@@ -161,13 +165,13 @@ impl RenderThread {
       shader_watcher: ShaderWatcher::new(&ShaderLibrary::get_source_root()),
       textures_swept: now,
       stopping: None,
-      composition_failures: FrameFailureLog::default(),
+      frame_failures: FrameFailureLog::default(),
     }
   }
 
-  /// Runs the thread until it idles past `IDLE_STOP` or is asked to stop: draws a frame while any viewport draws, paced
-  /// to the settings' rate, and handles the commands sent between frames.
-  pub fn run(mut self) {
+  /// Runs until idle past `IDLE_STOP` or asked to stop, drawing paced frames while any viewport draws and handling
+  /// commands between them.
+  pub(crate) fn run(mut self) {
     log::info!("Render thread started");
 
     'running: loop {
@@ -214,6 +218,13 @@ impl RenderThread {
       self.forget_gone();
 
       if self.viewports.is_empty() {
+        if !self.holds.is_empty() && self.stopping.is_none() {
+          self.ensure_gpu();
+          self.keep_held(Instant::now());
+
+          continue;
+        }
+
         let is_due: bool = self.stopping.is_some() || self.idle_since.is_some_and(|since| since.elapsed() >= IDLE_STOP);
 
         if is_due && self.try_stop() {
@@ -224,7 +235,15 @@ impl RenderThread {
       }
 
       self.ensure_gpu();
-      self.frame();
+
+      // A frame that presented nothing waited on no display; wait for a command so the thread does not spin.
+      if !self.frame() {
+        match self.receiver.recv_timeout(IDLE_WAIT) {
+          Ok(command) => self.handle(command),
+          Err(RecvTimeoutError::Timeout) => {}
+          Err(RecvTimeoutError::Disconnected) => break 'running,
+        }
+      }
     }
 
     // Answered once everything the thread made on the GPU is let go: its scenes hold the device as long as the GPU

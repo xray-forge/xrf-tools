@@ -1,10 +1,13 @@
+import {
+  EditorPopoverCheckboxRow,
+  EditorPopoverChoiceRow,
+  EditorPopoverNote,
+  EditorPopoverSliderRow,
+} from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   describeRenderSetting,
   ERenderSettingControl,
@@ -31,8 +34,8 @@ export interface IRenderSettingEntryProps<G, K extends keyof G> extends BaseComp
 }
 
 /**
- * One setting's entry in a popover, as its declaration says: compact, its label alone unless the declaration has it
- * say what it does, and disabled where it changes nothing. A setting drawn by a control of its own draws nothing here.
+ * One setting's row in a popover, as its declaration says: its description on hovering the label, or under it where
+ * asked, and disabled where it changes nothing. A setting with a control of its own draws nothing here.
  */
 export function RenderSettingEntry<G, K extends keyof G>({
   "data-testid": dataTestId = "render-setting-entry",
@@ -49,35 +52,39 @@ export function RenderSettingEntry<G, K extends keyof G>({
   const setting = settings[name];
   const value: G[K] = group[name];
   const label: string = setting.entryLabel ?? setting.label;
-  const description: string | undefined = setting.isEntryDescribed
-    ? describeRenderSetting(setting, group, features)
-    : undefined;
+  const description: string | undefined = describeRenderSetting(setting, group, features);
+  const note: string | undefined = setting.isEntryDescribed ? description : undefined;
   const isOff: boolean = isDisabled || isRenderSettingInert(setting, group, features);
   const onChange = useCallback((next: G[K]): void => onSet({ [name]: next } as unknown as Partial<G>), [name, onSet]);
 
   switch (setting.control) {
     case ERenderSettingControl.CHECKBOX:
       return (
-        <CheckboxFormRow
-          data-testid={dataTestId}
-          id={id}
-          className={className}
-          label={label}
-          description={description}
-          isChecked={value as boolean}
-          isDisabled={isOff}
-          onChange={(isChecked: boolean) => onChange(isChecked as G[K])}
-        />
+        <>
+          <EditorPopoverCheckboxRow
+            data-testid={dataTestId}
+            id={id}
+            className={className}
+            label={label}
+            description={description}
+            isChecked={value as boolean}
+            isDisabled={isOff}
+            onChange={(isChecked: boolean) => onChange(isChecked as G[K])}
+          />
+
+          {note ? <EditorPopoverNote>{note}</EditorPopoverNote> : null}
+        </>
       );
 
     case ERenderSettingControl.CHOICE:
       return (
         <>
-          <RenderValueChoice
+          <EditorPopoverChoiceRow
             data-testid={dataTestId}
             id={id}
             className={className}
             label={label}
+            description={description}
             options={options ?? setting.options}
             value={value as string}
             isStacked={setting.isStacked}
@@ -86,7 +93,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
           />
 
           {setting.isEntryDescribed ? (
-            <p className={"text-xs text-text-secondary"}>{setting.explain?.(value as never) ?? description}</p>
+            <EditorPopoverNote>{setting.explain?.(value as never) ?? description}</EditorPopoverNote>
           ) : null}
         </>
       );
@@ -94,11 +101,12 @@ export function RenderSettingEntry<G, K extends keyof G>({
     case ERenderSettingControl.SLIDER:
       return (
         <>
-          <RenderValueSlider
+          <EditorPopoverSliderRow
             data-testid={dataTestId}
             id={id}
             className={className}
             label={label}
+            description={description}
             value={value as number}
             {...setting.limits}
             isDisabled={isOff}
@@ -106,7 +114,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
             onChange={(moved: number) => onChange(moved as G[K])}
           />
 
-          {description ? <p className={"text-xs text-text-secondary"}>{description}</p> : null}
+          {note ? <EditorPopoverNote>{note}</EditorPopoverNote> : null}
         </>
       );
 

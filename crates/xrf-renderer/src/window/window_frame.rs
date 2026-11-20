@@ -19,12 +19,14 @@ use crate::window::window_viewport::WindowViewport;
 /// A window this frame draws: what it presents into, each viewport drawn into it, what the page is cleared to around
 /// them and whether its backdrop is painted over that; and the image it draws into, taken only once every view's work
 /// is recorded, so the render thread readies the frame while the GPU still draws the last.
-pub struct WindowFrame {
+pub(crate) struct WindowFrame {
   pub key: u64,
   pub target: DisplayTarget,
   /// Whether it shows anything this frame: one minimised or sized to nothing draws only its viewports' captures, which
   /// draw into textures of their own, and takes no image.
   pub is_shown: bool,
+  /// Whether its image may be copied out of (`RenderWindow::is_copyable`), which a capture of what it shows needs.
+  pub is_copyable: bool,
   pub drawn: Vec<WindowViewport>,
   pub clear: wgpu::Color,
   pub is_backdrop_painted: bool,
@@ -36,12 +38,12 @@ pub struct WindowFrame {
 
 impl WindowFrame {
   /// Whether it draws the viewport `id` this frame.
-  pub fn is_drawn(&self, id: RenderViewportId) -> bool {
+  pub(crate) fn is_drawn(&self, id: RenderViewportId) -> bool {
     self.drawn.iter().any(|drawn| drawn.id == id)
   }
 
   /// Takes the window's next image, timing the wait.
-  pub fn acquire(&mut self, window: &RenderWindow) {
+  pub(crate) fn acquire(&mut self, window: &RenderWindow) {
     let acquiring: Instant = Instant::now();
 
     self.image = {
@@ -54,7 +56,7 @@ impl WindowFrame {
 
   /// Declares the window's composition into `target`: the page's backdrop, each viewport's picture or its grid cropped
   /// to what the window shows, its overlays, then the `captures` of its viewports copied out of it.
-  pub fn declare<'a>(
+  pub(crate) fn declare<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     target: &'a wgpu::TextureView,
@@ -112,7 +114,12 @@ impl WindowFrame {
           0.0,
           1.0,
         );
-        pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
+        pass.set_scissor_rect(
+          shown.x.cast_unsigned(),
+          shown.y.cast_unsigned(),
+          shown.width,
+          shown.height,
+        );
 
         match &view.present {
           Some(parameters) => present.draw(context, format, binding, parameters),

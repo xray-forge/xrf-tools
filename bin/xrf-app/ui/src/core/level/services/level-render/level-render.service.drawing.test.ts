@@ -2,14 +2,20 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { listMockInvokeCalls, mockInvoke, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
-import { ERenderDebugView, ERenderLightLevel, ERenderOverlay, ERenderSurfaceColor } from "@xrf/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  ERenderDebugView,
+  ERenderLightLevel,
+  ERenderOverlay,
+  ERenderSurfaceColor,
+} from "@xrf/ipc/types/xrf-renderer";
 
 import { LEVEL_VIEWPORT, mockAttachedLevelRender, sentOverlayKinds } from "@/core/level/fixtures/level-render";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { clearLocalStorage } from "@/core/storage";
 describe("LevelRenderDrawing", () => {
   beforeEach(() => {
@@ -46,6 +52,27 @@ describe("LevelRenderDrawing", () => {
         viewport: LEVEL_VIEWPORT,
       },
     ]);
+  });
+
+  // The choice is kept, so it comes back with FSR, but the viewport is never left showing a target nothing lists.
+  it("draws the final frame for an FSR view while FSR does not draw, and the view again once it does", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const view: LevelViewService = container.get(LevelViewService);
+    const settings: RenderSettingsService = container.get(RenderSettingsService);
+
+    settings.setRendererOverrides({ antialiasing: ERenderAntialiasing.FSR });
+    view.setShading(ELevelShading.FSR_LOCKS);
+
+    expect(service.drawing.shading).toBe(ELevelShading.FSR_LOCKS);
+
+    settings.setRendererOverrides({ antialiasing: ERenderAntialiasing.TAA });
+
+    expect(view.shading).toBe(ELevelShading.FSR_LOCKS);
+    expect(service.drawing.shading).toBe(ELevelShading.FINAL);
+
+    settings.setRendererOverrides({ antialiasing: ERenderAntialiasing.FSR });
+
+    expect(service.drawing.shading).toBe(ELevelShading.FSR_LOCKS);
   });
 
   it("lets the world play what the toolbar switches, apart from what is drawn", async () => {

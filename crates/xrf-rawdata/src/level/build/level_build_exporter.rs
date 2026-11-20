@@ -1,0 +1,508 @@
+use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
+
+use byteorder::ByteOrder;
+use xrf_editable_level::{
+  EditableAiMapTool, EditableBuildParams, EditableDetailObjectTool, EditableGlowObject, EditableLevelGuid,
+  EditableLevelOptions, EditableLevelScene, EditableLightObject, EditableObjectPart, EditablePortalObject,
+  EditableSceneObject, EditableSectorObject, EditableShape, EditableShapeObject, EditableWallmarkTool,
+};
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::{XrfError, XrfResult};
+use xrf_gamemtl::GameMtlFile;
+use xrf_job::{JobHandle, JobScope};
+use xrf_level::{BuildAimapFile, BuildPrjFile, BuildPrjGlow, BuildPrjParams, BuildPrjPortal};
+use xrf_math::{Aabb, Vector3d};
+use xrf_utils::{OutputFiles, format_path};
+
+use crate::level::build::level_build_breakable_export::LevelBuildBreakableExport;
+use crate::level::build::level_build_breakables::LevelBuildBreakables;
+use crate::level::build::level_build_census::LevelBuildCensus;
+use crate::level::build::level_build_climbable_export::LevelBuildClimbableExport;
+use crate::level::build::level_build_climbables::LevelBuildClimbables;
+use crate::level::build::level_build_details::LevelBuildDetails;
+use crate::level::build::level_build_export::LevelBuildExport;
+use crate::level::build::level_build_geometry::LevelBuildGeometry;
+use crate::level::build::level_build_library::LevelBuildLibrary;
+use crate::level::build::level_build_lights::LevelBuildLights;
+use crate::level::build::level_build_models::LevelBuildModels;
+use crate::level::build::level_build_occluders::LevelBuildOccluders;
+use crate::level::build::level_build_portal::LevelBuildPortal;
+use crate::level::build::level_build_report::LevelBuildReport;
+use crate::level::build::level_build_request::LevelBuildRequest;
+use crate::level::build::level_build_sectors::LevelBuildSectors;
+use crate::level::build::level_build_sources::LevelBuildSources;
+use crate::level::build::level_build_table_records::LevelBuildTableRecords;
+use crate::level::build::level_build_tables::LevelBuildTables;
+use crate::level::build::level_build_textures::LevelBuildTextures;
+use crate::level::build::level_exported_file::LevelExportedFile;
+use crate::level::entities::level_entity_conversion::LevelEntityConversion;
+use crate::level::level_scene_exporter::LevelSceneExporter;
+use crate::level::parts::level_ai_map_conversion::LevelAiMapConversion;
+use crate::level::parts::level_map_conversion::LevelMapConversion;
+use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
+use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
+
+/// Exports a scene as the Level Editor's Build does, `SceneBuilder::CompileStatic` and `SaveBuild`: the `build.prj`
+/// it hands xrLC, and the occluders, `level.ltx`, breakables, ladders, details and AI map it writes beside it.
+///
+/// The project takes the generated sky and sun first, then each tool in the editor's order: glows, static objects,
+/// lights, portals and wall marks.
+pub struct LevelBuildExporter;
+
+impl LevelBuildExporter {
+  /// `ebqDraft`, the quality whose shaders the Build swaps for plain ones, which this does not do.
+  const DRAFT_QUALITY: u16 = 0;
+
+  /// The build project of `scene` and the files beside it, reading what the scene names from `sources`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, as the Build stops, when the scene is of draft quality, a part does not read, a placed object,
+  /// light or portal does not build, or the details or impostors need a textures root `sources` lacks or do not export.
+  pub fn export<T: ByteOrder>(
+    scene: &EditableLevelScene,
+    sources: &LevelBuildSources<'_>,
+  ) -> XrfResult<LevelBuildExport> {
+    let game_materials: &GameMtlFile = sources.game_materials;
+    let guid: EditableLevelGuid = scene.level.get_guid()?;
+    let options: EditableLevelOptions = scene.level.get_level_options()?;
+    let params: EditableBuildParams = scene.level.get_build_params()?;
+
+    if params.light_quality == Self::DRAFT_QUALITY {
+      return Err(XrfError::new_not_implemented_error(
+        "A scene of draft quality is not exported: the build would swap its shaders",
+      ));
+    }
+
+    let placed: EditableObjectPart<EditableSceneObject> = LevelSceneExporter::get_part(scene, guid)?;
+    let held: (&[LevelSceneObjectFile], &[LevelSceneTextureFile]) = sources
+      .held
+      .map_or((&[], &[]), |decompile| (&decompile.objects, &decompile.textures));
+    let mut library: LevelBuildLibrary<'_> = LevelBuildLibrary::new(sources.objects, held.0);
+    let textures: LevelBuildTextures<'_> = LevelBuildTextures::new(sources.textures, held.1);
+
+    library.load::<T>(placed.objects.iter().map(|object| object.reference.as_str()))?;
+
+    let by_name: HashMap<&str, &EditableSceneObject> = placed
+      .objects
+      .iter()
+      .map(|object| (object.object.name.as_str(), object))
+      .collect();
+    let sector_part: EditableObjectPart<EditableSectorObject> = LevelSceneExporter::get_part(scene, guid)?;
+    let sectors: LevelBuildSectors = LevelBuildSectors::new(&sector_part.objects, |object, mesh| {
+      let placed: &EditableSceneObject = by_name.get(object)?;
+      let bounds: Aabb = library
+        .get(&placed.reference)?
+        .meshes
+        .iter()
+        .flatten()
+        .find(|it| it.name == mesh)?
+        .bounds;
+
+      Some(bounds.transform(&placed.object.transform.to_matrix()))
+    });
+    let mut tables: LevelBuildTables = LevelBuildTables::default();
+    let mut geometry: LevelBuildGeometry = LevelBuildGeometry::default();
+    let mut lights: LevelBuildLights = LevelBuildLights::default();
+    let mut census: LevelBuildCensus = LevelBuildCensus::default();
+    let light_part: EditableObjectPart<EditableLightObject> = LevelSceneExporter::get_part(scene, guid)?;
+
+    lights.add_hemisphere(options.light_hemi_quality);
+    lights.add_sun(
+      options.light_sun_quality,
+      &EditableLightObject::read_sun_direction(&light_part.tool_data)?
+        .unwrap_or_else(EditableLightObject::get_default_sun_direction),
+    )?;
+
+    let glows: Vec<BuildPrjGlow> = LevelSceneExporter::get_part::<EditableGlowObject>(scene, guid)?
+      .objects
+      .iter()
+      .map(|glow| {
+        let position: &Vector3d = &glow.object.transform.position;
+
+        Ok(BuildPrjGlow {
+          position: *position,
+          size: glow.radius,
+          flags: u32::from(glow.flags & EditableGlowObject::FIXED_SIZE != 0),
+          material: u32::from(tables.get_material(
+            &glow.shader,
+            None,
+            &glow.texture,
+            sectors.calculate(position, glow.radius),
+          )?),
+        })
+      })
+      .collect::<XrfResult<_>>()?;
+
+    let mut occluders: LevelBuildOccluders = LevelBuildOccluders::default();
+    let mut breakables: LevelBuildBreakables = LevelBuildBreakables::default();
+    let mut climbables: LevelBuildClimbables = LevelBuildClimbables::default();
+    let mut models: LevelBuildModels = LevelBuildModels::default();
+    let mut placed_bounds: Option<Aabb> = None;
+
+    for object in &placed.objects {
+      let file: &EditableObjectFile = library
+        .get(&object.reference)
+        .ok_or_else(|| XrfError::new_invalid_error(format!("Library object '{}' was not read", object.reference)))?;
+
+      occluders.add_object(object, file, game_materials)?;
+
+      // `CSceneObject::GetBox`: the object's box, the union of its meshes', placed.
+      if let Some(bounds) = file
+        .meshes
+        .iter()
+        .flatten()
+        .map(|mesh| mesh.bounds)
+        .reduce(|mut held, bounds| {
+          held.include_box(&bounds);
+          held
+        })
+      {
+        let bounds: Aabb = bounds.transform(&object.object.transform.to_matrix());
+
+        match &mut placed_bounds {
+          Some(held) => held.include_box(&bounds),
+          None => placed_bounds = Some(bounds),
+        }
+      }
+
+      if file.flags
+        & (EditableObjectFile::DYNAMIC_FLAG | EditableObjectFile::HOM_FLAG | EditableObjectFile::SOUND_OCCLUDER_FLAG)
+        != 0
+      {
+        census.other_objects += 1;
+      } else if file.flags & EditableObjectFile::MULTIPLE_USAGE_FLAG != 0 {
+        models.add(object, file, &sectors, &mut tables, game_materials, &textures)?;
+      } else {
+        geometry.add_object(object, file, &sectors, &mut tables, game_materials)?;
+        breakables.add_object(object, file, game_materials)?;
+        climbables.add_object(object, file, game_materials)?;
+        census.static_objects += 1;
+      }
+    }
+
+    // `ExportGame` exports the breakables before the ladders, so they open the spawn list.
+    let breakables: LevelBuildBreakableExport = breakables.into_export()?;
+    let climbables: LevelBuildClimbableExport = climbables.into_export();
+
+    let controls: HashMap<u32, String> = EditableLightObject::read_controls(&light_part.tool_data)?;
+
+    for light in &light_part.objects {
+      lights.add_light(light, &controls, &sectors)?;
+    }
+
+    let portals: Vec<BuildPrjPortal> = LevelSceneExporter::get_part::<EditablePortalObject>(scene, guid)?
+      .objects
+      .iter()
+      .map(|portal| Self::get_portal(portal, &sectors))
+      .collect::<XrfResult<_>>()?;
+
+    if let Some(tool) = scene.get_tool(EditableWallmarkTool::TOOL_NAME) {
+      geometry.add_wallmarks(
+        &EditableWallmarkTool::read_from_scene_tool::<T>(tool)?,
+        &sectors,
+        &mut tables,
+      )?;
+    }
+
+    let details: Option<LevelBuildDetails> = match scene.get_tool(EditableDetailObjectTool::TOOL_NAME) {
+      Some(tool) => {
+        if !textures.is_available() {
+          return Err(XrfError::new_invalid_error(
+            "The scene holds details, whose textures the Build merges into an atlas; name the textures root",
+          ));
+        }
+
+        Some(LevelBuildDetails::export::<T>(
+          &EditableDetailObjectTool::read_from_scene_tool::<T>(tool)?,
+          &mut library,
+          &textures,
+        )?)
+      }
+      None => None,
+    };
+    // `ESceneAIMapTool::Export` writes nothing for a map of no node.
+    let ai_map: Option<BuildAimapFile> = match scene.get_tool(EditableAiMapTool::TOOL_NAME) {
+      Some(tool) => Some(EditableAiMapTool::read_from_scene_tool::<T>(tool)?)
+        .filter(|tool| !tool.nodes.is_empty())
+        .map(|tool| LevelAiMapConversion::export(&tool)),
+      None => None,
+    };
+    let (lods, impostors) = match models.impostors.into_export(sources.impostor_limit)? {
+      Some((lods, atlas)) => (lods, Some(atlas)),
+      None => (Vec::new(), None),
+    };
+    let records: LevelBuildTableRecords = tables.into_records()?;
+    // `BuildLTX` takes the first level-bound shape's box over the placed objects'.
+    let map_bounds: Aabb = LevelSceneExporter::get_part::<EditableShapeObject>(scene, guid)?
+      .objects
+      .iter()
+      .filter(|shape| shape.shape.usage == EditableShape::LEVEL_BOUND_USAGE)
+      .find_map(|shape| Some(shape.shape.get_bounds()?.transform(&shape.object.transform.to_matrix())))
+      .or(placed_bounds)
+      .unwrap_or_else(|| Aabb::of_point(&Vector3d::ZERO));
+    let (hom, som) = occluders.into_files();
+
+    census.faces = geometry.faces.len();
+    census.skipped_faces = geometry.skipped_faces;
+    census.invalid_faces = geometry.invalid_faces;
+    census.static_lights = lights.static_lights.len();
+    census.dynamic_lights = lights.dynamic_lights.len();
+    census.glows = glows.len();
+    census.portals = portals.len();
+    census.occluder_polygons = hom.as_ref().map_or(0, |file| file.polygons.len());
+    census.sound_occluder_polygons = som.as_ref().map_or(0, |file| file.polygons.len());
+    census.multi_use_models = models.models.len();
+    census.multi_use_references = models.references.len();
+    census.impostors = lods.len();
+    census.ai_map_nodes = ai_map.as_ref().map_or(0, |map| map.nodes.len());
+    census.detail_objects = details.as_ref().map_or(0, |details| details.file.objects.len());
+    census.detail_textures = details.as_ref().map_or(0, |details| details.textures);
+    census.breakable_objects = breakables.entities.len();
+    census.climbable_objects = climbables.entities.len();
+    census.refused_parts = breakables.refused.len() + climbables.refused.len();
+
+    Ok(LevelBuildExport {
+      project: BuildPrjFile {
+        version: BuildPrjFile::CURRENT_VERSION,
+        params: BuildPrjParams {
+          smooth_angle: params.smooth_angle,
+          weld_distance: params.weld_distance,
+          lightmap_pixels_per_meter: params.light_pixel_per_meter,
+          lightmap_jitter_samples: params.light_jitter_samples,
+          lightmap_rms_zero: params.light_rms_zero,
+          lightmap_rms: params.light_rms,
+          quality: params.light_quality,
+          quality_reserved: params.light_quality_reserved,
+          reserved: params.reserved,
+        },
+        light_controls: lights.get_controls()?,
+        static_lights: lights.static_lights,
+        dynamic_lights: lights.dynamic_lights,
+        vertices: geometry.vertices,
+        faces: geometry.faces,
+        smoothing_groups: Some(geometry.smoothing_groups),
+        materials: records.materials,
+        render_shaders: records.render_shaders,
+        compiler_shaders: records.compiler_shaders,
+        textures: records.textures,
+        glows,
+        portals,
+        lods,
+        mu_models: models.models,
+        mu_references: models.references,
+      },
+      impostors,
+      hom,
+      som,
+      map: LevelMapConversion::export(&options, &map_bounds, &sector_part.objects)?,
+      details,
+      ai_map,
+      breakable_parts: breakables.parts,
+      entities: breakables.entities.into_iter().chain(climbables.entities).collect(),
+      refused: breakables
+        .refused
+        .into_iter()
+        .chain(climbables.refused)
+        .map(|(object, reason)| LevelSceneRefusal {
+          file: String::from(LevelEntityConversion::SPAWN_FILE_NAME),
+          object,
+          reason,
+        })
+        .collect(),
+      census,
+    })
+  }
+
+  /// Corners a portal needs to be a polygon, as the simplified one must keep.
+  const MINIMUM_PORTAL_VERTICES: usize = 3;
+
+  /// A portal between the sectors it names, its polygon simplified ([`LevelBuildPortal`]) only where it has more
+  /// corners than a compiled portal holds.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the portal joins a sector the scene lacks, has fewer than three corners, or simplifies to
+  /// no polygon.
+  pub(crate) fn get_portal(portal: &EditablePortalObject, sectors: &LevelBuildSectors) -> XrfResult<BuildPrjPortal> {
+    let sector = |name: &str| {
+      sectors.get_number(name).ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Portal '{}' joins sector '{name}', which the scene does not hold",
+          portal.object.name
+        ))
+      })
+    };
+
+    if portal.vertices.len() < Self::MINIMUM_PORTAL_VERTICES {
+      return Err(XrfError::new_invalid_error(format!(
+        "Portal '{}' has {} corners, fewer than the {} of a polygon, which the editor holds invalid",
+        portal.object.name,
+        portal.vertices.len(),
+        Self::MINIMUM_PORTAL_VERTICES
+      )));
+    }
+
+    let vertices: Vec<Vector3d> = if portal.vertices.len() > BuildPrjPortal::MAXIMUM_VERTICES {
+      LevelBuildPortal::simplify(&portal.vertices).ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Portal '{}' of {} corners simplifies to no polygon, which the editor holds invalid",
+          portal.object.name,
+          portal.vertices.len()
+        ))
+      })?
+    } else {
+      portal.vertices.clone()
+    };
+    let mut vertex_slots: [Vector3d; BuildPrjPortal::MAXIMUM_VERTICES] =
+      [Vector3d::ZERO; BuildPrjPortal::MAXIMUM_VERTICES];
+
+    vertex_slots[..vertices.len()].copy_from_slice(&vertices);
+
+    Ok(BuildPrjPortal {
+      sector_front: sector(&portal.sector_front)?,
+      sector_back: sector(&portal.sector_back)?,
+      vertex_slots,
+      vertex_count: u32::try_from(vertices.len()).unwrap_or(u32::MAX),
+    })
+  }
+
+  /// What a job reports a build under: its stages, each named as its detail.
+  pub const PROGRESS_STAGES: &'static str = "stages";
+
+  /// Builds `request.source` into the level directory `request.destination`: the level compiler's files where the
+  /// request names game materials ([`Self::export`]), then the game files ([`LevelSceneExporter::export`]).
+  ///
+  /// The compiler's files go first because the entities they cut out open the spawn list. A forced build removes the
+  /// files of its own ([`LevelBuildRequest::get_outputs`]) it did not write this time.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when an unforced build finds a file it owns (before reading the scene), the scene or game
+  /// materials do not read, the scene places objects but no game materials are named, no objects root is found, the
+  /// export fails, the job is cancelled, or a file does not write or remove.
+  pub fn build_to_directory<T: ByteOrder>(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
+    Self::build_to_directory_checked::<T>(request, job, |_| Ok(()))
+  }
+
+  /// [`Self::build_to_directory`], handing the level compiler's files to `check` once made and before any is written,
+  /// where the request names game materials; an error from `check` stops the build there.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where [`Self::build_to_directory`] does, or `check` does.
+  pub fn build_to_directory_checked<T: ByteOrder>(
+    request: &LevelBuildRequest,
+    job: &JobHandle,
+    check: impl FnOnce(&LevelBuildExport) -> XrfResult,
+  ) -> XrfResult<LevelBuildReport> {
+    let (source, destination) = (&request.source, &request.destination);
+    let outputs: OutputFiles = request.get_outputs();
+
+    outputs.assert_free(request.is_forced)?;
+
+    let stages: JobScope = job.enter(Self::PROGRESS_STAGES, Some(3));
+
+    job.set_detail(Some(String::from("Reading the scene")));
+
+    let scene: EditableLevelScene = EditableLevelScene::read_from_path::<T, _>(source)?;
+
+    if request.game_materials.is_none() {
+      Self::assert_no_objects(&scene)?;
+    }
+
+    stages.advance();
+    job.check_cancelled()?;
+    job.set_detail(Some(String::from("Build project and geometry")));
+
+    let (mut files, census, entities, refused) = match &request.game_materials {
+      Some(game_materials) => {
+        let objects: Vec<PathBuf> = request.get_objects_roots();
+
+        if objects.is_empty() {
+          return Err(XrfError::new_invalid_error(format!(
+            "The build project needs the objects roots the scene's objects are read from: none is named, and no {} \
+             directory lies beside the scene's",
+            LevelBuildRequest::OBJECTS_DIRECTORY
+          )));
+        }
+
+        let game_materials: GameMtlFile = GameMtlFile::read_from_path::<T, _>(game_materials)?;
+        let textures: PathBuf = request.get_textures_root();
+        let mut export: LevelBuildExport = Self::export::<T>(
+          &scene,
+          &LevelBuildSources {
+            objects: &objects,
+            game_materials: &game_materials,
+            textures: Some(&textures),
+            impostor_limit: request.impostor_limit,
+            held: None,
+          },
+        )?;
+
+        check(&export)?;
+
+        let (census, entities, refused) = (
+          export.census,
+          std::mem::take(&mut export.entities),
+          std::mem::take(&mut export.refused),
+        );
+
+        // Packing the build project and geometry takes long on a large scene; a cancel need not wait for it.
+        job.check_cancelled()?;
+
+        (export.into_files::<T>()?, Some(census), entities, refused)
+      }
+      None => (BTreeMap::new(), None, Vec::new(), Vec::new()),
+    };
+
+    stages.advance();
+    job.check_cancelled()?;
+    job.set_detail(Some(String::from("Game files")));
+
+    files.extend(
+      LevelSceneExporter::export::<T>(&scene, &entities)?
+        .into_iter()
+        .map(|(name, bytes)| (name.to_owned(), bytes)),
+    );
+
+    job.check_cancelled()?;
+    job.set_detail(Some(format_path(destination).to_string()));
+
+    let written: Vec<LevelExportedFile> = LevelSceneExporter::write_to_directory(&files, destination)?;
+    let removed: Vec<PathBuf> =
+      outputs.remove_stale(&files.keys().map(|name| destination.join(name)).collect::<Vec<_>>())?;
+
+    stages.advance();
+
+    Ok(LevelBuildReport {
+      source: format_path(source).to_string(),
+      destination: format_path(destination).to_string(),
+      files: written,
+      removed: removed
+        .iter()
+        .map(|path| format_path(path.strip_prefix(destination).unwrap_or(path)).to_string())
+        .collect(),
+      geometry: census,
+      refused,
+    })
+  }
+
+  /// Refuses a scene placing objects when no game materials are named: without them the spawn list would miss the
+  /// ladders and breakables cut out of those objects.
+  fn assert_no_objects(scene: &EditableLevelScene) -> XrfResult {
+    let placed: EditableObjectPart<EditableSceneObject> = LevelSceneExporter::get_part(scene, scene.level.get_guid()?)?;
+
+    if placed.objects.is_empty() {
+      return Ok(());
+    }
+
+    Err(XrfError::new_invalid_error(format!(
+      "The scene places {} objects, whose ladders and breakables the spawn list needs; name the game materials to \
+       build it",
+      placed.objects.len()
+    )))
+  }
+}

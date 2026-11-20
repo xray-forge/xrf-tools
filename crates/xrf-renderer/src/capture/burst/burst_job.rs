@@ -17,6 +17,8 @@ enum BurstStage {
 
 /// A burst drawn in a viewport through its own view, at times of its own that every scene and the world follow while
 /// it draws: the frames' clock goes back to its own time once the last frame is drawn.
+///
+/// Public for [`Self::MOST_SAMPLES`], which a writer summing a reference's samples sizes its counts by.
 pub struct BurstJob {
   burst: RenderBurst,
   stage: BurstStage,
@@ -28,20 +30,22 @@ pub struct BurstJob {
 
 impl BurstJob {
   /// Frames a burst reads back at most, and samples a reference draws each at.
-  pub const MOST_FRAMES: u32 = 480;
+  pub(crate) const MOST_FRAMES: u32 = 480;
   pub const MOST_SAMPLES: u32 = 256;
+  /// Latest scene second a burst frame may be drawn at: a year, past any open level and well within the platform clock.
+  pub(crate) const LATEST_SECONDS: f64 = 365.0 * 24.0 * 3600.0;
 
   /// Frames on their way back at most: the next waits, its clock held, rather than hold more of them.
   const MOST_IN_FLIGHT: usize = 8;
 
-  /// A burst as asked.
+  /// Validates a burst.
   ///
   /// # Errors
   ///
-  /// Returns an error for a burst that reads back no frame or more than `MOST_FRAMES`, a lead-in longer than that, a
-  /// reference of no sample or more than `MOST_SAMPLES`, a step that is not a positive time, or a start that is not a
-  /// time of the scene's.
-  pub fn new(burst: RenderBurst, events: Sender<BurstEvent>) -> XrfResult<Self> {
+  /// Returns an error when frames or lead-in are outside `1..=MOST_FRAMES` (lead-in may be zero), samples outside
+  /// `1..=MOST_SAMPLES`, the step not positive, the start negative or not finite, or the last frame past
+  /// `LATEST_SECONDS`.
+  pub(crate) fn new(burst: RenderBurst, events: Sender<BurstEvent>) -> XrfResult<Self> {
     if !(1..=Self::MOST_FRAMES).contains(&burst.frames) || burst.lead_in > Self::MOST_FRAMES {
       return Err(XrfError::new_invalid_error(format!(
         "A burst reads back 1 to {} frames after a lead-in of at most as many, not {} after {}",
@@ -68,6 +72,15 @@ impl BurstJob {
       )));
     }
 
+    let last: f64 = Self::get_seconds(&burst, burst.lead_in + burst.frames - 1);
+
+    if last > Self::LATEST_SECONDS {
+      return Err(XrfError::new_invalid_error(format!(
+        "A burst draws its frames within the scene's first {} s, not up to {last} s",
+        Self::LATEST_SECONDS
+      )));
+    }
+
     Ok(Self {
       burst,
       stage: BurstStage::Drawing { frame: 0, sample: 0 },
@@ -79,18 +92,18 @@ impl BurstJob {
 
   /// Whether it draws a frame this turn: it waits, its clock held and its viewport drawing nothing, while
   /// `MOST_IN_FLIGHT` frames are on their way back.
-  pub fn is_drawing(&self) -> bool {
+  pub(crate) fn is_drawing(&self) -> bool {
     !self.is_ended && matches!(self.stage, BurstStage::Drawing { .. }) && self.in_flight.len() < Self::MOST_IN_FLIGHT
   }
 
   /// Whether this turn's frame is its first, which restarts what its view carries from frame to frame.
-  pub fn is_starting(&self) -> bool {
+  pub(crate) fn is_starting(&self) -> bool {
     self.is_drawing() && self.stage == BurstStage::Drawing { frame: 0, sample: 0 }
   }
 
   /// The sample a reference draws this turn's frame at and its samples, the lead-in's at its first; none for a burst
   /// the view resolves.
-  pub fn get_reference(&self) -> Option<(u32, u32)> {
+  pub(crate) fn get_reference(&self) -> Option<(u32, u32)> {
     match (self.stage, self.burst.samples) {
       (BurstStage::Drawing { sample, .. }, Some(samples)) => Some((sample, samples)),
       _ => None,
@@ -100,18 +113,21 @@ impl BurstJob {
   /// The scene's time its frame this turn is drawn at, since its level began opening: a step after the burst's start a
   /// frame, the same over a frame's samples and while it waits, as it moves on only with a frame drawn. None once it
   /// reads its last frames back, the frames' own clock taking over.
-  pub fn get_time(&self) -> Option<Duration> {
+  pub(crate) fn get_time(&self) -> Option<Duration> {
     let BurstStage::Drawing { frame, .. } = self.stage else {
       return None;
     };
 
-    Some(Duration::from_secs_f64(
-      f64::from(self.burst.at) + f64::from(frame) * f64::from(self.burst.step),
-    ))
+    Duration::try_from_secs_f64(Self::get_seconds(&self.burst, frame)).ok()
+  }
+
+  /// Scene seconds of `burst`'s frame `frame`, counting lead-in frames.
+  fn get_seconds(burst: &RenderBurst, frame: u32) -> f64 {
+    burst.at + f64::from(frame) * f64::from(burst.step)
   }
 
   /// Which of its frames read back this turn's is, with its sample and the scene's seconds, none for a lead-in's.
-  pub fn get_kept_frame(&self) -> Option<(u32, Option<u32>, f32)> {
+  pub(crate) fn get_kept_frame(&self) -> Option<(u32, Option<u32>, f64)> {
     let BurstStage::Drawing { frame, sample } = self.stage else {
       return None;
     };
@@ -120,14 +136,14 @@ impl BurstJob {
     Some((
       index,
       self.burst.samples.map(|_| sample),
-      self.get_time()?.as_secs_f32(),
+      self.get_time()?.as_secs_f64(),
     ))
   }
 
   /// Ends the frame drawn this turn, with `kept` the copy of it read back, and moves on to its next sample, its next
   /// frame or its last frames' return. A frame read back whose copy was not recorded stops it, as the frames it reads
   /// back would no longer follow one another.
-  pub fn advance(&mut self, kept: Option<BurstShot>) {
+  pub(crate) fn advance(&mut self, kept: Option<BurstShot>) {
     let BurstStage::Drawing { frame, sample } = self.stage else {
       return;
     };
@@ -168,7 +184,7 @@ impl BurstJob {
   }
 
   /// Tells the caller of the frames come back since, and of its end once every frame is back.
-  pub fn poll(&mut self) {
+  pub(crate) fn poll(&mut self) {
     for shot in std::mem::take(&mut self.in_flight) {
       match shot.take() {
         Some(Ok(event)) => self.send(event),
@@ -184,7 +200,7 @@ impl BurstJob {
   }
 
   /// Stops it, telling the caller why; nothing more is drawn or read back.
-  pub fn stop(&mut self, error: XrfError) {
+  pub(crate) fn stop(&mut self, error: XrfError) {
     if !self.is_ended {
       self.is_ended = true;
       self.in_flight.clear();
@@ -193,7 +209,7 @@ impl BurstJob {
   }
 
   /// Whether it finished or stopped, so its viewport draws on its own clock again.
-  pub fn is_ended(&self) -> bool {
+  pub(crate) fn is_ended(&self) -> bool {
     self.is_ended
   }
 

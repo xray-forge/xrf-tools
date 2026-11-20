@@ -20,7 +20,7 @@ use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 /// what stands behind refracted, the sky reflected by the fresnel and the sun's highlight, written whole rather than
 /// blended, tested against the G-buffer's depth as the composited surfaces are, without writing it. The copy is taken
 /// only where the cull lists glass to draw, so glass in the frustum that nearer surfaces hide costs no copy.
-pub struct GlassPass {
+pub(crate) struct GlassPass {
   layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 4],
   /// One a layout, in `StaticLayout::ALL` order.
@@ -39,7 +39,7 @@ impl GlassPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     scene_layout: &wgpu::BindGroupLayout,
@@ -75,13 +75,13 @@ impl GlassPass {
     })
   }
 
-  pub fn get_scene_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_scene_sampler(&self) -> &wgpu::Sampler {
     &self.scene_sampler
   }
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.layouts, &self.layout)
     }) {
@@ -97,7 +97,11 @@ impl GlassPass {
   }
 
   /// Works out the copy's dispatch from the cull's glass lists: the whole frame where any glass draws, none where not.
-  pub fn record_copy_dispatch(&self, context: &mut ComputeContext<'_>, parameters: &GlassCopyDispatchParameters) {
+  pub(crate) fn record_copy_dispatch(
+    &self,
+    context: &mut ComputeContext<'_>,
+    parameters: &GlassCopyDispatchParameters,
+  ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
@@ -107,7 +111,7 @@ impl GlassPass {
   }
 
   /// Copies the frame the glass refracts by the dispatch worked out before it.
-  pub fn record_copy(
+  pub(crate) fn record_copy(
     &self,
     context: &mut ComputeContext<'_>,
     parameters: &GlassCopyParameters,
@@ -123,7 +127,7 @@ impl GlassPass {
 
   /// Draws the glass each argument buffer lists, every layout's run of the glass draw list, unsorted and strictly
   /// sorted surfaces alike: each reads the frame's copy, so none needs what another drew.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     StaticLayoutBindings {

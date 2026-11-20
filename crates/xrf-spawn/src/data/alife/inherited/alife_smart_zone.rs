@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
 
@@ -13,15 +13,15 @@ pub struct AlifeSmartZone {
   pub base: AlifeObjectSpaceRestrictor,
 }
 
-impl ChunkReadWrite for AlifeSmartZone {
+impl ChunkFieldReadWrite for AlifeSmartZone {
   /// Read generic ALife smart zone object from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
 
     Ok(())
@@ -30,14 +30,14 @@ impl ChunkReadWrite for AlifeSmartZone {
 
 impl LtxImportExport for AlifeSmartZone {
   /// Import generic ALife smart zone object from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     Ok(Self {
       base: AlifeObjectSpaceRestrictor::import(section_name, ltx)?,
     })
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     Ok(())
@@ -48,7 +48,7 @@ impl LtxImportExport for AlifeSmartZone {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -74,13 +74,16 @@ mod tests {
           spawn_story_id: 25,
         },
         shape: vec![
-          Shape::Sphere((Vector3d::new(3.5, 0.5, 11.5), 1.0)),
-          Shape::Box((
-            Vector3d::new(1.5, 1.1, 73.1),
-            Vector3d::new(5.1, 2.2, 3.3),
-            Vector3d::new(4.0, 3.0, 6.4),
-            Vector3d::new(9.2, 8.3, 3.0),
-          )),
+          Shape::Sphere(Sphere {
+            center: Vector3d::new(3.5, 0.5, 11.5),
+            radius: 1.0,
+          }),
+          Shape::Box(Affine3d {
+            x_axis: Vector3d::new(1.5, 1.1, 73.1),
+            y_axis: Vector3d::new(5.1, 2.2, 3.3),
+            z_axis: Vector3d::new(4.0, 3.0, 6.4),
+            translation: Vector3d::new(9.2, 8.3, 3.0),
+          }),
         ],
         restrictor_type: 3,
       },

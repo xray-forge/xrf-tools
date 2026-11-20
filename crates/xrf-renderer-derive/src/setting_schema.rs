@@ -8,7 +8,7 @@ use syn::{
 
 /// Expands `#[derive(RenderSettingSchema)]`: a struct describes each field it does not skip under its serialized name,
 /// a unit enum is a choice of its variants as they serialize.
-pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
+pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
 
   if !input.generics.params.is_empty() {
@@ -111,7 +111,7 @@ fn describe_field(field: &Field, is_camel_case: bool, schema: &TokenStream) -> s
   let ident: &Ident = field.ident.as_ref().expect("named fields");
   let key: String = match read_serde_string(&field.attrs, "rename")? {
     Some(renamed) => renamed.value(),
-    None if is_camel_case => to_camel_case(&ident.unraw().to_string()),
+    None if is_camel_case => format_camel_case(&ident.unraw().to_string()),
     None => ident.unraw().to_string(),
   };
   let ty: &Type = &field.ty;
@@ -201,8 +201,8 @@ fn read_described(field: &Field) -> syn::Result<Described> {
     } else if meta.path.is_ident("wasted_above") {
       wasted_above = Some(meta.value()?.parse()?);
     } else if meta.path.is_ident("recommended") {
-      let value: syn::parse::ParseStream = meta.value()?;
-      let range: syn::parse::ParseBuffer;
+      let value: syn::parse::ParseStream<'_> = meta.value()?;
+      let range: syn::parse::ParseBuffer<'_>;
 
       syn::bracketed!(range in value);
       let bounds: Vec<Expr> = Punctuated::<Expr, Token![,]>::parse_terminated(&range)?
@@ -292,7 +292,7 @@ fn read_serde_string(attrs: &[Attribute], key: &str) -> syn::Result<Option<LitSt
         // Another key's value, read past so the next key parses.
         meta.value()?.parse::<Expr>()?;
       } else if meta.input.peek(syn::token::Paren) {
-        let _nested: syn::parse::ParseBuffer;
+        let _nested: syn::parse::ParseBuffer<'_>;
 
         syn::parenthesized!(_nested in meta.input);
       }
@@ -309,7 +309,7 @@ fn apply_rename_rule(rule: &LitStr, name: &str) -> syn::Result<String> {
   let words: Vec<String> = split_pascal_case(name);
 
   Ok(match rule.value().as_str() {
-    "camelCase" => to_camel_case(&words.join("_")),
+    "camelCase" => format_camel_case(&words.join("_")),
     "snake_case" => words.join("_"),
     "lowercase" => words.concat(),
     "kebab-case" => words.join("-"),
@@ -339,7 +339,7 @@ fn split_pascal_case(name: &str) -> Vec<String> {
 }
 
 /// `motion_limit` as `motionLimit`.
-fn to_camel_case(snake: &str) -> String {
+fn format_camel_case(snake: &str) -> String {
   let mut camel: String = String::with_capacity(snake.len());
   let mut is_upper: bool = false;
 
@@ -375,13 +375,13 @@ fn is_integer_type(ty: &Type) -> bool {
 mod tests {
   use syn::LitStr;
 
-  use super::{apply_rename_rule, to_camel_case};
+  use super::{apply_rename_rule, format_camel_case};
 
   #[test]
   fn names_a_field_as_serde_writes_it_in_camel_case() {
-    assert_eq!(to_camel_case("motion_limit"), "motionLimit");
-    assert_eq!(to_camel_case("ssa_glod_start"), "ssaGlodStart");
-    assert_eq!(to_camel_case("is_enabled"), "isEnabled");
+    assert_eq!(format_camel_case("motion_limit"), "motionLimit");
+    assert_eq!(format_camel_case("ssa_glod_start"), "ssaGlodStart");
+    assert_eq!(format_camel_case("is_enabled"), "isEnabled");
   }
 
   #[test]

@@ -56,7 +56,7 @@ impl SessionParts {
   /// shared and its inputs copied, so a reader of this store records nothing into the next; and the names of the parts
   /// not carried, sorted. A part asked for and still building is not carried, since what it reads is not known yet, and
   /// is named, so whoever waits on its answer asks the next snapshot again.
-  pub fn to_current(&self, vfs: &XrayVfs) -> (SessionParts, Vec<&'static str>) {
+  pub fn to_current(&self, vfs: &XrayVfs) -> (Self, Vec<&'static str>) {
     let mut carried: HashMap<TypeId, SessionPartSlot> = HashMap::new();
     let mut stale: Vec<&'static str> = Vec::new();
 
@@ -77,7 +77,7 @@ impl SessionParts {
     stale.sort_unstable();
 
     (
-      SessionParts {
+      Self {
         slots: Mutex::new(carried),
       },
       stale,
@@ -216,15 +216,15 @@ impl SessionParts {
 impl<V: Clone + Send> SessionPartCell<V> {
   fn get_or_init(&self, build: impl FnOnce() -> V + Send) -> V {
     match self {
-      SessionPartCell::Plain(cell) => cell.get_or_init(build).clone(),
-      SessionPartCell::Pooled(cell) => cell.get_or_init(build).clone(),
+      Self::Plain(cell) => cell.get_or_init(build).clone(),
+      Self::Pooled(cell) => cell.get_or_init(build).clone(),
     }
   }
 
   fn get(&self) -> Option<V> {
     match self {
-      SessionPartCell::Plain(cell) => cell.get().cloned(),
-      SessionPartCell::Pooled(cell) => cell.get().cloned(),
+      Self::Plain(cell) => cell.get().cloned(),
+      Self::Pooled(cell) => cell.get().cloned(),
     }
   }
 }
@@ -233,8 +233,8 @@ impl<V: Send + Sync + 'static> SessionPartCell<V> {
   /// Whether `cell`, a slot's erased cell of this type, holds a value.
   fn is_built_erased(cell: &(dyn Any + Send + Sync)) -> bool {
     match cell.downcast_ref::<Self>() {
-      Some(SessionPartCell::Plain(cell)) => cell.get().is_some(),
-      Some(SessionPartCell::Pooled(cell)) => cell.get().is_some(),
+      Some(Self::Plain(cell)) => cell.get().is_some(),
+      Some(Self::Pooled(cell)) => cell.get().is_some(),
       None => unreachable!("a part's cell is filed under its own key"),
     }
   }

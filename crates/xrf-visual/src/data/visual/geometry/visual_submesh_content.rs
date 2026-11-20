@@ -11,3 +11,9 @@ pub enum VisualSubmeshContent {
   Packed { geometry: VisualGeometry },
   Skipped { cause: VisualSkipCause, reason: String },
 }
+
+impl From<VisualGeometry> for VisualSubmeshContent {
+  fn from(geometry: VisualGeometry) -> Self {
+    Self::Packed { geometry }
+  }
+}

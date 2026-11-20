@@ -5,9 +5,11 @@ use xrf_renderer_core::{
 
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::weather::sky::deband::sky_deband::SkyDeband;
 use crate::feature::weather::sky::dome::sky_haze_parameters::SkyHazeParameters;
 use crate::feature::weather::sky::dome::sky_motion_parameters::SkyMotionParameters;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
@@ -29,6 +31,7 @@ use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_frame::ViewFrame;
 use crate::scene::level::view::view_prepare::ViewPrepare;
@@ -39,10 +42,12 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// once when new, else after `REFILL_WAIT_LEAST` frames and within `REFILL_WAIT_MOST` more, as the sky and its light
 /// move slowly), the haze map the distance fades into, and under the physical light the sky's irradiance.
 #[derive(Default)]
-pub struct SkyFeature {
+pub(crate) struct SkyFeature {
   views: Option<SkyViews>,
   /// The sun's sprite as the sky draws it, where one is drawn.
   sun_sprite: Option<SunSprite>,
+  /// The sky's textures smoothed where they band, which the combine draws the sky with while the debanding is enhanced.
+  deband: Option<SkyDeband>,
   /// The prefiltered cube, while the enhanced reflections and specular read it.
   prefilter: Option<SkyPrefilter>,
   /// What the sky group binds in the prefiltered cube's place while none is kept: the weather's placeholder cube.
@@ -71,11 +76,26 @@ impl SkyFeature {
   const REFILL_WAIT_MOST: u32 = 4;
   /// Milliseconds a refill costs before the timer measured one.
   const REFILL_SEED: f32 = 0.2;
+  /// The clouds' two layers' drift a second, `xy` the first's and `zw` the second's: the ways `setHP(PI_DIV_4, 0)` and
+  /// `setHP(PI_DIV_4 + PI_DIV_8, 0)` as `RenderClouds` packs them into bytes, times `CLOUD_SPEED0` and `CLOUD_SPEED1`
+  /// (`shared/cloudconfig.h`), on `timers.z`, which runs a tenth as fast.
+  const CLOUD_DRIFT: [f64; 4] = [
+    -0.709_803_9 * 0.1 * 0.1,
+    0.701_960_8 * 0.1 * 0.1,
+    -0.929_411_8 * 0.05 * 0.1,
+    0.380_392_2 * 0.05 * 0.1,
+  ];
+
+  /// How far the clouds' layers have drifted at `time`, wrapped within the textures' repeat, the first in `xy` and the
+  /// second in `zw`.
+  pub(crate) fn get_cloud_drift(time: LevelTime) -> Vec4 {
+    Vec4::from_array(Self::CLOUD_DRIFT.map(|rate| time.get_turns(rate)))
+  }
 
   /// Takes this frame's sky: its textures and the sun's sprite (`sun_sprite`) as the weather textures hold them, the
   /// level's environment cubes beside them, and the prefiltered cube at the size the settings ask, made again where
   /// that changed.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -97,6 +117,17 @@ impl SkyFeature {
     ));
     self.sun_sprite = sun_sprite;
     self.is_hazing = options.mode.is_lit && options.show.is_sky_visible && options.show.is_sky_hazed;
+
+    if SkyDeband::is_asked(options) {
+      self.deband.get_or_insert_with(SkyDeband::default).prepare(
+        device,
+        weather_textures,
+        sky,
+        options.show.is_clouded,
+      );
+    } else {
+      self.deband = None;
+    }
 
     // The physical light lights the hemisphere by the sky's irradiance; the engine's by its cubes.
     if options.is_light_physical() {
@@ -133,7 +164,7 @@ impl SkyFeature {
   }
 
   /// Offers `scheduler` a refill of the prefiltered cube, while one is kept.
-  pub fn offer_refill(&mut self, scheduler: &mut PeriodicScheduler) {
+  pub(crate) fn offer_refill(&mut self, scheduler: &mut PeriodicScheduler) {
     if self.prefilter.is_none() {
       return;
     }
@@ -160,7 +191,7 @@ impl SkyFeature {
   }
 
   /// Takes the refill `scheduler` granted; one not granted waits a frame more.
-  pub fn commit_refill(&mut self, scheduler: &PeriodicScheduler) {
+  pub(crate) fn commit_refill(&mut self, scheduler: &PeriodicScheduler) {
     let Some(ticket) = self.refill.take() else {
       return;
     };
@@ -178,7 +209,7 @@ impl SkyFeature {
 
   /// Forgets a first fill this frame made, where its frame was not submitted: it fills again at once; and drops the
   /// harmonics that frame copied out.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     if self.is_refilled {
       self.is_filled = false;
     }
@@ -186,22 +217,31 @@ impl SkyFeature {
     if let Some(irradiance) = &self.irradiance {
       irradiance.abandon();
     }
+
+    if let Some(deband) = &mut self.deband {
+      deband.abandon_frame();
+    }
   }
 
   /// Asks for the harmonics copied out with the frame just submitted.
-  pub fn request_readback(&self) {
+  pub(crate) fn request_readback(&self) {
     if let Some(irradiance) = &self.irradiance {
       irradiance.request();
     }
   }
 
+  /// Writes into `applied` whether the sky is drawn with its textures smoothed where they band.
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport) {
+    applied.is_sky_debanded = self.deband.is_some();
+  }
+
   /// The sun's sprite as the sky draws it, where one is drawn.
-  pub fn get_sun_sprite(&self) -> Option<&SunSprite> {
+  pub(crate) fn get_sun_sprite(&self) -> Option<&SunSprite> {
     self.sun_sprite.as_ref()
   }
 
   /// Writes the sky's motion where nothing was drawn, which the resolves carry its history by.
-  pub fn add_motion_pass<'a>(
+  pub(crate) fn add_motion_pass<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
@@ -219,11 +259,9 @@ impl SkyFeature {
       .record(move |context| passes.weather.sky_motion.record(context, view, &sky_motion));
   }
 
-  /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
-  /// still going up shows the other one; whether both irradiance cubes are up; the clouds' `time`; the sun's sprite
-  /// while its texture is up; the exposure and the display the view decided (`shared`); at the physical light levels the
-  /// world's light, and the units the light is in by the sky last projected.
-  pub fn get_lighting_frame(
+  /// What the lighting draws the sky with this frame. A keyframe whose textures are not all up is blended out, so a
+  /// sky still loading shows the other one.
+  pub(crate) fn get_lighting_frame(
     &self,
     &ViewPrepare {
       options,
@@ -232,7 +270,7 @@ impl SkyFeature {
       ..
     }: &ViewPrepare<'_>,
     shared: &ViewFrame,
-    time: f32,
+    time: LevelTime,
   ) -> LightingFrame {
     let sky: &RenderSky = &lighting.sky;
     let daylight: Option<Daylight> = (options.is_light_physical()
@@ -262,7 +300,7 @@ impl SkyFeature {
         .environments
         .iter()
         .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
-      clouds_time: time,
+      cloud_drift: Self::get_cloud_drift(time),
       sky_harmonics: self.harmonics,
       sun_sprite: self
         .get_sun_sprite()
@@ -272,19 +310,19 @@ impl SkyFeature {
   }
 
   /// The sky's textures this frame, once prepared.
-  pub fn get_views(&self) -> Option<&SkyViews> {
+  pub(crate) fn get_views(&self) -> Option<&SkyViews> {
     self.views.as_ref()
   }
 
   /// Whether the haze map is drawn this frame.
-  pub fn is_hazing(&self) -> bool {
+  pub(crate) fn is_hazing(&self) -> bool {
     self.is_hazing && self.views.is_some()
   }
 
   /// Adds the sky: its textures and the prefiltered cube imported, the surroundings' face drawn into its first mip
   /// where `surroundings` draws one, the cube filled where this frame refills it, and the haze map drawn; answers the
   /// sky's parameters, which the combine, the water and the composited surfaces bind, none before it is prepared.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -303,7 +341,7 @@ impl SkyFeature {
       (None, Some(unfiltered)) => unfiltered,
       (None, None) => return None,
     };
-    let sky: SkyParameters = passes.sky.import(views, cube, &mut *graph, &mut *bindings);
+    let sky: SkyParameters<'_> = passes.sky.import(views, cube, &mut *graph, &mut *bindings);
 
     if let Some(irradiance) = &self.irradiance {
       irradiance.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, &sky, &lit);
@@ -337,6 +375,20 @@ impl SkyFeature {
     }
 
     Some(sky)
+  }
+
+  /// The sky's parameters as the combine draws it: `sky`, with the enhanced debanding's smoothed copies in place of its
+  /// textures (`SkyDeband::add_passes`).
+  pub(crate) fn add_drawn_sky<'a>(
+    &'a self,
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
+    passes: LevelPasses<'a>,
+    sky: SkyParameters<'a>,
+  ) -> SkyParameters<'a> {
+    match &self.deband {
+      Some(deband) => deband.add_passes(graph, bindings, passes, sky),
+      None => sky,
+    }
   }
 
   /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first the surroundings cube's face
@@ -384,7 +436,7 @@ impl SkyFeature {
         prefilter.probe.get_size(),
         SkyPrefilterPass::SAMPLES,
       ));
-      let parameters: SkyPrefilterParameters = SkyPrefilterParameters {
+      let parameters: SkyPrefilterParameters<'_> = SkyPrefilterParameters {
         sky_cube_0: sky.sky_cube_0,
         sky_cube_1: sky.sky_cube_1,
         sky_clouds_0: sky.sky_clouds_0,
@@ -408,21 +460,9 @@ impl SkyFeature {
 }
 
 impl ViewFeature for SkyFeature {
-  /// The prefiltered cube, every mip of its six faces, and the sky's irradiance.
-  fn get_memory(&self) -> u64 {
-    let prefilter: u64 = self.prefilter.as_ref().map_or(0, |prefilter| {
-      let size: u64 = u64::from(prefilter.probe.get_size());
-
-      (0..prefilter.levels.len() as u32)
-        .map(|level| (size >> level).max(1).pow(2) * 6 * 8)
-        .sum()
-    });
-
-    prefilter + self.irradiance.as_ref().map_or(0, SkyIrradiance::get_memory)
-  }
-
   fn release(&mut self) {
     self.prefilter = None;
     self.irradiance = None;
+    self.deband = None;
   }
 }

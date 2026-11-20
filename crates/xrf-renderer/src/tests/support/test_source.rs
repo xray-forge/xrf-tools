@@ -3,7 +3,7 @@ use xrf_error::XrfResult;
 use crate::host::render_asset_source::RenderAssetSource;
 
 /// A source holding no textures: every request still takes a slot, which loads as missing.
-pub struct EmptySource;
+pub(crate) struct EmptySource;
 
 impl RenderAssetSource for EmptySource {
   fn get_texture_scope(&self) -> &str {

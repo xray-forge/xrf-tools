@@ -1,11 +1,11 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeGraphPoint {
   pub connection_point_name: String,
@@ -19,9 +19,9 @@ pub struct AlifeGraphPoint {
   pub location3: u8,
 }
 
-impl ChunkReadWrite for AlifeGraphPoint {
+impl ChunkFieldReadWrite for AlifeGraphPoint {
   /// Read graph point data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       connection_point_name: reader.read_w1251_string()?,
       connection_level_name: reader.read_w1251_string()?,
@@ -33,7 +33,7 @@ impl ChunkReadWrite for AlifeGraphPoint {
   }
 
   /// Write graph point data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&self.connection_point_name)?;
     writer.write_w1251_string(&self.connection_level_name)?;
     writer.write_u8(self.location0)?;
@@ -47,8 +47,8 @@ impl ChunkReadWrite for AlifeGraphPoint {
 
 impl LtxImportExport for AlifeGraphPoint {
   /// Import graph data from ltx file section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -67,15 +67,15 @@ impl LtxImportExport for AlifeGraphPoint {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("graph_point.connection_point_name", &self.connection_point_name)
       .set("graph_point.connection_level_name", &self.connection_level_name)
-      .set("graph_point.location0", self.location0.to_string())
-      .set("graph_point.location1", self.location1.to_string())
-      .set("graph_point.location2", self.location2.to_string())
-      .set("graph_point.location3", self.location3.to_string());
+      .set("graph_point.location0", self.location0)
+      .set("graph_point.location1", self.location1)
+      .set("graph_point.location2", self.location2)
+      .set("graph_point.location3", self.location3);
 
     Ok(())
   }

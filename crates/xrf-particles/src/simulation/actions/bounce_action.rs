@@ -3,6 +3,7 @@ use glam::{Mat4, Vec3};
 use crate::data::actions::particle_action_bounce::ParticleActionBounce;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
 use crate::simulation::domain::engine_vector::EngineVector;
+use crate::simulation::domain::particle_plane_inverse_basis::ParticlePlaneInverseBasis;
 use crate::simulation::domain::particle_volume::ParticleVolume;
 use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
 use crate::simulation::pool::particle_pool::ParticlePool;
@@ -17,17 +18,17 @@ pub(crate) struct BounceAction {
 }
 
 impl BounceAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.position.transform_from(&self.position_local, matrix);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let domain: &ParticleVolume = &self.position;
     let (particles, random) = pool.split_mut();
 
     match domain.kind {
       ParticleVolumeKind::Triangle | ParticleVolumeKind::Rectangle => {
-        let (s1, s2) = domain.get_plane_inverse_basis();
+        let inverse: ParticlePlaneInverseBasis = domain.get_plane_inverse_basis();
 
         for m in particles {
           let next: Vec3 = m.position + m.velocity * step.dt;
@@ -41,8 +42,8 @@ impl BounceAction {
           let nv: f32 = domain.p2.dot(m.velocity);
           let t: f32 = -dist_old / nv;
           let offset: Vec3 = m.position + m.velocity * t - domain.p1;
-          let upos: f32 = offset.dot(s1);
-          let vpos: f32 = offset.dot(s2);
+          let upos: f32 = offset.dot(inverse.s1);
+          let vpos: f32 = offset.dot(inverse.s2);
 
           let is_outside: bool = if domain.kind == ParticleVolumeKind::Triangle {
             upos < 0.0 || vpos < 0.0 || (upos + vpos) > 1.0

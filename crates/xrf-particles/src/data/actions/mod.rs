@@ -1,3 +1,4 @@
+pub(crate) mod particle_action;
 pub(crate) mod particle_action_avoid;
 pub(crate) mod particle_action_bounce;
 pub(crate) mod particle_action_copy_vertex;
@@ -26,4 +27,5 @@ pub(crate) mod particle_action_target_rotate;
 pub(crate) mod particle_action_target_size;
 pub(crate) mod particle_action_target_velocity;
 pub(crate) mod particle_action_turbulence;
+pub(crate) mod particle_action_type;
 pub(crate) mod particle_action_vortex;

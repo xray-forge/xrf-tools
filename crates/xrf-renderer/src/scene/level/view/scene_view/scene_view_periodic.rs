@@ -1,5 +1,3 @@
-use glam::Vec3;
-
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
 use crate::feature::scene::drawable::casters::per_frame_casters::PerFrameCasters;
 use crate::feature::view::scene_features::SceneFeatures;
@@ -7,7 +5,9 @@ use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
+use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::static_scene::static_scene::StaticScene;
 
@@ -15,14 +15,14 @@ impl SceneView {
   /// Offers `scheduler` what the view draws once in so many frames and wants this frame: the sun's cascades, the
   /// surroundings' face, the rain cover, the level's surface and the sky's refill. `commit_periodic` then readies what
   /// was granted.
-  pub fn offer_periodic(
+  pub(crate) fn offer_periodic(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
     scheduler: &mut PeriodicScheduler,
     view_layout: &wgpu::BindGroupLayout,
   ) {
-    let SceneView { shared, features, .. } = self;
+    let Self { shared, features, .. } = self;
     let SceneFeatures {
       shadows,
       rain_cover,
@@ -42,9 +42,9 @@ impl SceneView {
       camera: &shared.camera,
       settings: &shared.shadow_settings,
       sun_direction: shared.sun_direction,
-      is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
+      is_sunlit: shared.lighting.is_sunlit(),
       switches: shared.switches,
-      sway: Self::to_sway(statics, &features.wind),
+      sway: ShadowSway::of(statics, &features.wind, scene.get_time()),
       casters: casters.as_slice(),
     };
 
@@ -80,14 +80,14 @@ impl SceneView {
 
   /// Readies what `scheduler` granted of what `offer_periodic` offered, which the frame's passes then draw, and writes
   /// where the overhead maps now stand; `encoder` takes what readying them writes.
-  pub fn commit_periodic(
+  pub(crate) fn commit_periodic(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
     scheduler: &PeriodicScheduler,
   ) {
-    let SceneView { shared, features, .. } = self;
+    let Self { shared, features, .. } = self;
     let SceneFeatures {
       shadows,
       rain_cover,
@@ -104,9 +104,9 @@ impl SceneView {
       camera: &shared.camera,
       settings: &shared.shadow_settings,
       sun_direction: shared.sun_direction,
-      is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
+      is_sunlit: shared.lighting.is_sunlit(),
       switches: shared.switches,
-      sway: Self::to_sway(statics, &features.wind),
+      sway: ShadowSway::of(statics, &features.wind, scene.get_time()),
       casters: casters.as_slice(),
     };
 
@@ -130,13 +130,14 @@ impl SceneView {
 
   /// Readies the scene's light shadow faces `scheduler` granted of those every view of it asked for this frame, from
   /// this view's culling; `encoder` takes the copies a list growing makes.
-  pub fn commit_scene_shadows(
+  pub(crate) fn commit_scene_shadows(
     &self,
     scene: &mut LevelScene,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
     scheduler: &PeriodicScheduler,
   ) {
+    let time: LevelTime = scene.get_time();
     let LevelScene { statics, lights, .. } = scene;
     let casters: Option<PerFrameCasters> = self.features.grass.get_sun_casters();
     let frame: ShadowFrame<'_> = ShadowFrame {
@@ -144,9 +145,9 @@ impl SceneView {
       camera: &self.shared.camera,
       settings: &self.shared.shadow_settings,
       sun_direction: self.shared.sun_direction,
-      is_sunlit: self.shared.lighting.sun.truncate() != Vec3::ZERO,
+      is_sunlit: self.shared.lighting.is_sunlit(),
       switches: self.shared.switches,
-      sway: Self::to_sway(statics, &self.features.wind),
+      sway: ShadowSway::of(statics, &self.features.wind, time),
       casters: casters.as_slice(),
     };
 

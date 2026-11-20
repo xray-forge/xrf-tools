@@ -6,7 +6,7 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::{
-  AmbientGust, LevelParts, ParticleEmitterProxy, PlacedEffect, RenderLevelPart, RenderLevelParticles,
+  AmbientGust, LevelParts, ParticleEmitterProxy, PlacedEffect, RenderLevelPart, RenderLevelParticles, RenderMotionPose,
   RenderParticleDefinitions, RenderParticleSource, RenderSceneUpdate, RenderWorkers, ZONE_FAST_DISTANCE,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
@@ -18,18 +18,20 @@ use crate::level::ambient::level_ambient_effects::LevelAmbientEffects;
 use crate::level::effects::camera_hemi::CameraHemi;
 use crate::level::effects::campfire::Campfire;
 use crate::level::effects::campfire_state::CampfireState;
+use crate::level::effects::effect_clocks::EffectClocks;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::effects::level_campfires::LevelCampfires;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::level::effects::placed_emitter::PlacedEmitter;
 use crate::level::level_drive::LevelDrive;
 use crate::level::loading::loader_once::LoaderOnce;
+use crate::sound::schedule::zone_states::ZoneStates;
 
 /// A level's effects as the world plays them: its particle systems, read on a loader thread and each placed at an
 /// emitter of the scene's; the weather's ambient effects and the wind they bring; its campfires' switching; and the
 /// object motions its moving zones follow. Its posts tell the scene what plays where; the scene simulates and draws it,
 /// and tells which effects finished.
-pub struct LevelEffects {
+pub(crate) struct LevelEffects {
   pending: LoaderOnce<Option<RenderLevelParticles>>,
   systems: Option<EffectSystems>,
   emitters: ProxyAllocator<ParticleEmitterProxy>,
@@ -39,7 +41,7 @@ pub struct LevelEffects {
   campfires: LevelCampfires,
   motions: LevelObjectMotions,
   workers: RenderWorkers,
-  /// The level's clock at the last frame it moved on.
+  /// The engine's clock at the last frame it moved on.
   now: Duration,
 }
 
@@ -53,7 +55,7 @@ struct EffectSystems {
 }
 
 impl LevelEffects {
-  pub fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       pending: Self::read_particles(source, workers),
       systems: None,
@@ -85,7 +87,7 @@ impl LevelEffects {
   /// Reads the particles again from `source`: every placement's emitter and the ambient effect playing leave the scene
   /// with what plays at them, and the particles read are placed afresh. The wind, the campfires and the object motions
   /// go on as they were.
-  pub fn reload(
+  pub(crate) fn reload(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     source: &Arc<dyn WorldLevelSource>,
@@ -104,22 +106,28 @@ impl LevelEffects {
 
   /// Reads its object motions from `source`, a next source of the same level, from now on, every one read again where
   /// `reload` names them.
-  pub fn follow_motions(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
+  pub(crate) fn follow_motions(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
     self.motions.follow(source, reload);
   }
 
   /// Whether its loader has answered, whatever it answered.
-  pub fn is_read(&self) -> bool {
+  pub(crate) fn is_read(&self) -> bool {
     !self.pending.is_pending()
   }
 
   /// Plays an ambient effect on the next frame, ending the one playing, without waiting.
-  pub fn play_ambient_now(&mut self) {
+  pub(crate) fn play_ambient_now(&mut self) {
     self.ambient.play_now();
   }
 
+  /// Starts the ambient effects afresh, as at the level's first frame, so what a burst plays depends on its own frames
+  /// alone. The placed particles and the campfires go on as they were.
+  pub(crate) fn restart_ambient(&mut self, updates: &mut Vec<RenderSceneUpdate>) {
+    self.ambient.restart(updates, &mut self.emitters);
+  }
+
   /// Where the ambient effects stand as of the last frame, none until the particles are read.
-  pub fn report_ambient(&self) -> Option<WorldAmbientReport> {
+  pub(crate) fn report_ambient(&self) -> Option<WorldAmbientReport> {
     self.systems.as_ref().map(|systems| WorldAmbientReport {
       is_indoors: systems.hemi.is_indoors(),
       ..self.ambient.report(self.now)
@@ -127,21 +135,20 @@ impl LevelEffects {
   }
 
   /// Takes the effects the scene finished, which the ambient effects are told of on their next update.
-  pub fn note_finished(&mut self, finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>) {
+  pub(crate) fn note_finished(&mut self, finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>) {
     self.finished.extend(finished.into_iter().map(|(handle, _)| handle));
   }
 
-  /// Moves the effects on to `now`, the level's clock, and posts what the scene plays: takes the read particles, plays
-  /// the weather's ambient effects, switches the campfires and moves the object motions, then plays what each placement
-  /// plays, as the driving viewport gives the frame. `light_campfires` and `light_motions` are the campfires and motions
-  /// the level's lights follow. The wind blows and the camera's indoor estimate runs every frame; while particles are
-  /// not drawn, or the ambient effects are switched off, the ambient effects play as though indoors: none starts, what
-  /// plays stops, and the wind calms.
-  pub fn advance(
+  /// Moves the ambient effects, campfires and object motions on a frame and posts what the scene plays.
+  ///
+  /// `light_campfires` and `light_motions` are those the level's lights follow. While particles are not drawn or the
+  /// ambient effects are off, they play as though indoors: none starts, what plays stops, and the wind calms.
+  pub(crate) fn advance(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
-    now: Duration,
+    clocks: EffectClocks,
     LevelDrive {
+      viewport: _,
       options,
       toggles,
       ambient,
@@ -150,6 +157,8 @@ impl LevelEffects {
     light_campfires: &[u16],
     light_motions: &[String],
   ) -> EffectsFrame {
+    let now: Duration = clocks.engine;
+
     self.now = now;
 
     let is_playing: bool = options.show.is_particled && options.mode.is_lit;
@@ -178,11 +187,11 @@ impl LevelEffects {
     // The campfires switch and the moving zones move whether or not their particles are drawn, so their lights follow
     // them alike.
     self.campfires.prepare(CampfireState::of(toggles.is_campfire_lit), now);
-    self.motions.prepare(now);
+    self.motions.prepare(clocks.level);
 
     let placed: &[PlacedEmitter] = self.systems.as_ref().map_or(&[], |systems| &systems.placed);
     let mut campfire_shares: HashMap<u16, f32> = HashMap::new();
-    let mut motions: HashMap<String, (Mat4, Vec3)> = HashMap::new();
+    let mut motions: HashMap<String, RenderMotionPose> = HashMap::new();
 
     for id in placed
       .iter()
@@ -225,6 +234,8 @@ impl LevelEffects {
       campfire_shares,
       motions,
       camera_hemi: self.systems.as_ref().and_then(|systems| systems.hemi.get_smooth()),
+      open_sky: self.systems.as_ref().and_then(|systems| systems.hemi.get_open_sky()),
+      started_effect: self.ambient.take_started(),
     }
   }
 
@@ -253,15 +264,15 @@ impl LevelEffects {
 
     let placed: Vec<PlacedEmitter> = placements
       .into_iter()
-      .enumerate()
-      .map(|(index, placement)| {
+      .zip(1_i32..)
+      .map(|(placement, seed)| {
         let handle: ProxyHandle<ParticleEmitterProxy> = self.emitters.allocate();
         let transform: Mat4 = Mat4::from_cols_array(&placement.transform);
 
         updates.push(RenderSceneUpdate::AddEmitter {
           handle,
           transform,
-          seed: index as i32 + 1,
+          seed,
         });
 
         PlacedEmitter::new(
@@ -295,14 +306,14 @@ impl LevelEffects {
     eye: Vec3,
     wind: Vec3,
     campfires: &mut LevelCampfires,
-    motions: &HashMap<String, (Mat4, Vec3)>,
+    motions: &HashMap<String, RenderMotionPose>,
   ) {
     // Only Monolith stops a slowed zone's idle particles.
     let is_slowed: bool = systems.engine == XrayEngine::Extended;
 
     for emitter in &mut systems.placed {
-      if let Some(&(transform, velocity)) = emitter.motion.as_ref().and_then(|name| motions.get(name)) {
-        emitter.move_to(updates, transform, velocity);
+      if let Some(pose) = emitter.motion.as_ref().and_then(|name| motions.get(name)) {
+        emitter.move_to(updates, pose.transform, pose.velocity);
       }
 
       let is_far: bool = is_slowed
@@ -361,5 +372,20 @@ impl LevelEffects {
         }
       }
     }
+  }
+}
+
+/// The campfires and the object motions as the last `advance` moved them on, which the zones' sounds follow as their
+/// particles do.
+impl ZoneStates for LevelEffects {
+  fn get_campfire(&mut self, id: u16) -> Campfire {
+    *self.campfires.get(id)
+  }
+
+  fn get_place(&mut self, motion: &str) -> Option<Vec3> {
+    self
+      .motions
+      .get_pose(motion)
+      .map(|pose| pose.transform.w_axis.truncate())
   }
 }

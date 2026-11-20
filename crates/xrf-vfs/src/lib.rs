@@ -14,7 +14,7 @@ pub use change::{XrayChange, XrayChangeKind, XrayChangeSet, XrayTransaction};
 pub use input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord, XrayRevision};
 pub use mount::{
   FsgameDeclaration, FsgameFile, XrayMount, XrayMountId, XrayMountMode, XrayRoot, XrayRootKind, XrayRootProbe,
-  XrayRoots, XraySkippedMount,
+  XrayRoots, XraySdkInstallation, XraySkippedMount,
 };
 pub use path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
 pub use search::{

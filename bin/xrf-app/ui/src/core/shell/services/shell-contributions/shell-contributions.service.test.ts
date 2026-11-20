@@ -1,7 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
+import { defineMenu, IMenu } from "@/core/routing/menu-descriptor";
 import { EToolId } from "@/core/routing/tool";
-import { defineMenu, IMenu, IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -15,7 +16,7 @@ const PANEL: IShellPanel = { id: "files", label: "Files", icon: null, render: je
 
 const MENU_CONTRIBUTION: IMenuContribution = {
   section: MENU.sections.only,
-  entries: [{ kind: "action", id: "test/act", label: "Act", onSelect: jest.fn() }],
+  entries: [{ kind: EMenuEntryKind.ACTION, id: "test/act", label: "Act", onSelect: jest.fn() }],
 };
 
 describe("ShellContributionsService", () => {

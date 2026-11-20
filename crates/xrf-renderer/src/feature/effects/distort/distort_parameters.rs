@@ -7,7 +7,7 @@ use crate::feature::effects::distort::distort_uniform::DistortUniform;
 /// bloom the blur goes towards, and how far it moves.
 #[derive(PassParameters)]
 #[parameters(group = 1)]
-pub struct DistortParameters<'a> {
+pub(crate) struct DistortParameters<'a> {
   #[texture(d2, unfilterable)]
   pub frame: GraphTexture,
   #[texture(d2, unfilterable)]

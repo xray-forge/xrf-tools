@@ -16,7 +16,7 @@ async function mockOpenedView() {
   const { container, service } = mockInjectedService(DialogViewService, [DialogsService]);
   const dialogsService: DialogsService = container.get(DialogsService);
 
-  await dialogsService.openProject(createRoots(["C:\\game"]), "gamedata");
+  await dialogsService.open(createRoots(["C:\\game"]), "gamedata");
 
   return { dialogsService, service };
 }
@@ -125,7 +125,7 @@ describe("DialogViewService", () => {
 
     await service.selectDialog("configs\\gameplay\\dialogs.xml", "trader");
     service.setLanguage("rus");
-    await dialogsService.openProject(createRoots(["C:\\other"]), "gamedata");
+    await dialogsService.open(createRoots(["C:\\other"]), "gamedata");
 
     // A dialog from the previous project would otherwise stay on screen under the new project's tree.
     expect(service.selection).toBeNull();

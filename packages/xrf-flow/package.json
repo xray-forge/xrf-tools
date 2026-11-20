@@ -21,17 +21,17 @@
     "@xrf/types": "workspace:*"
   },
   "peerDependencies": {
-    "@wirestate/core": "1.0.0",
-    "@wirestate/mobx": "1.0.0"
+    "@wirestate/core": "catalog:",
+    "@wirestate/mobx": "catalog:"
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
     "@typescript/native": "catalog:",
-    "@wirestate/core": "1.0.0",
-    "@wirestate/mobx": "1.0.0",
+    "@wirestate/core": "catalog:",
+    "@wirestate/mobx": "catalog:",
     "eslint": "catalog:",
     "jest": "catalog:",
-    "mobx": "^6.16.1",
+    "mobx": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "@xrf/toolchain": "workspace:*"

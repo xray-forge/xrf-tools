@@ -22,7 +22,7 @@ const BLENDS: [ParticleBlend; 5] = [
 
 /// Draws the bolt striking over a viewport's finished scene, as `dxThunderboltRender` does after the rain: its model
 /// and its two glows, each composited as its shader says, tested against the G-buffer's depth without writing it.
-pub struct ThunderPass {
+pub(crate) struct ThunderPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
@@ -34,7 +34,7 @@ impl ThunderPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = ThunderParameters::create_layout(device);
@@ -55,7 +55,7 @@ impl ThunderPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout)
     }) {
@@ -64,12 +64,12 @@ impl ThunderPass {
   }
 
   /// The sampler the strike's textures are read through, which its parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Draws the strike: its model's indices, when it has a model, then both glows, each by its own blend.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
@@ -89,7 +89,7 @@ impl ThunderPass {
       context.bind(parameters);
       context
         .get_pass()
-        .set_pipeline(&self.pipelines[entry * BLENDS.len() + Self::get_blend_index(Self::to_blend(draw))]);
+        .set_pipeline(&self.pipelines[entry * BLENDS.len() + Self::get_blend_index(Self::get_blend(draw))]);
       context.get_pass().draw(0..vertices, 0..1);
     }
   }
@@ -136,13 +136,13 @@ impl ThunderPass {
 
   /// A shader's blend among `BLENDS`; one that composites nothing, or writes over what is behind it, still lights the
   /// air, as the engine's lightning is added.
-  fn to_blend(draw: XraySurfaceDraw) -> ParticleBlend {
+  fn get_blend(draw: XraySurfaceDraw) -> ParticleBlend {
     ParticleBlend::of(draw)
       .filter(|blend| BLENDS.contains(blend))
       .unwrap_or(ParticleBlend::Add)
   }
 
-  /// A blend's pipelines among `BLENDS`, which `to_blend` answers from alone.
+  /// A blend's pipelines among `BLENDS`, which `get_blend` answers from alone.
   fn get_blend_index(blend: ParticleBlend) -> usize {
     BLENDS
       .iter()
@@ -189,7 +189,7 @@ mod tests {
       (XraySurfaceDraw::Invisible, ParticleBlend::Add),
       (XraySurfaceDraw::Water { is_soft: true }, ParticleBlend::Add),
     ] {
-      assert_eq!(ThunderPass::to_blend(draw), blend, "{draw:?}");
+      assert_eq!(ThunderPass::get_blend(draw), blend, "{draw:?}");
       assert_eq!(BLENDS[ThunderPass::get_blend_index(blend)], blend, "{draw:?}");
     }
   }

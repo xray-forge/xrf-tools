@@ -81,7 +81,7 @@ struct FsrDebugPipelines {
 
 /// FSR 3.1.5's upscaler (AMD, MIT) over a viewport's frame, with an exposure of one and motion drawn at the render
 /// size; each of FSR's stages a pass.
-pub struct FsrPass {
+pub(crate) struct FsrPass {
   layouts: FsrLayouts,
   pipelines: PipelineSet<FsrPipelines>,
   sampler: wgpu::Sampler,
@@ -96,7 +96,7 @@ impl FsrPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
     let layouts: FsrLayouts = FsrLayouts::new(device);
 
@@ -114,7 +114,7 @@ impl FsrPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
@@ -128,7 +128,7 @@ impl FsrPass {
   /// change pyramid and the shading change; the reactive mask; the reactivity; the luma instability; and the
   /// accumulation, each full-screen stage into its targets cleared first. Where `debug` names one of FSR's debug
   /// views (`RenderDebugView::is_fsr`), it is drawn last into the target beside it.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -146,7 +146,7 @@ impl FsrPass {
     self.add_reconstruction(graph, targets, textures, uniform, fsr.render);
     self.add_shading_change(graph, textures, uniform);
 
-    let accumulate: FsrAccumulateParameters = self.add_accumulation(graph, targets, textures, uniform);
+    let accumulate: FsrAccumulateParameters<'_> = self.add_accumulation(graph, targets, textures, uniform);
 
     if let Some((view, shown)) = debug {
       self.add_debug_view(graph, view, shown, textures, uniform, accumulate);
@@ -331,7 +331,7 @@ impl FsrPass {
       },
     );
 
-    let accumulate: FsrAccumulateParameters = FsrAccumulateParameters {
+    let accumulate: FsrAccumulateParameters<'_> = FsrAccumulateParameters {
       fsr: uniform,
       color: targets.scene,
       dilated_motion: textures.dilated_motion,

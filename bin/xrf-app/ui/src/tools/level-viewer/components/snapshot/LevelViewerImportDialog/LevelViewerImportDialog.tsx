@@ -1,13 +1,13 @@
 import { formatCount, formatInstant } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { DialogHeader } from "@xrf/ui/dialog/header";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/dialog/modal";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert } from "@xrf/ui/feedback";
 import { FileOpenOutlinedIcon as FileOpenIcon } from "@xrf/ui/icons/file-open-outlined";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Alert } from "@xrf/ui/material/alert";
-import { Button } from "@xrf/ui/material/button";
-import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useId, useMemo, useState } from "react";
 
 import { LevelViewerImportGroup } from "@/tools/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportGroup";

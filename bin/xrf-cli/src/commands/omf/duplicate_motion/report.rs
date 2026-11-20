@@ -6,7 +6,7 @@ use xrf_omf::OmfFile;
 /// What `omf duplicate-motion` copied.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OmfDuplicateMotionReport {
+pub(crate) struct OmfDuplicateMotionReport {
   destination: String,
   from: String,
   is_dry_run: bool,
@@ -17,7 +17,7 @@ pub struct OmfDuplicateMotionReport {
 }
 
 impl OmfDuplicateMotionReport {
-  pub fn new(
+  pub(crate) fn new(
     source: &Path,
     destination: &Path,
     file: &OmfFile,
@@ -27,12 +27,12 @@ impl OmfDuplicateMotionReport {
     is_dry_run: bool,
   ) -> Self {
     Self {
-      destination: xrf_utils::to_portable_path_string(destination),
+      destination: xrf_utils::format_portable_path(destination),
       from: String::from(from),
       is_dry_run,
       is_play_once,
       motions: file.parameters.motions.len(),
-      source: xrf_utils::to_portable_path_string(source),
+      source: xrf_utils::format_portable_path(source),
       to: String::from(to),
     }
   }

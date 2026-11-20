@@ -13,7 +13,7 @@ use crate::viewer::LevelViewerFolder;
 /// map's annotations.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "delete_screenshot")]
-pub async fn levels_delete_screenshot(
+pub(crate) async fn levels_delete_screenshot(
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   path: PathBuf,

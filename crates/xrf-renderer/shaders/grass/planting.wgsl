@@ -301,11 +301,12 @@ fn cs_decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_work
   let w3: u32 = slot_records[at + 3u];
   let bin_start: u32 = slot_records[at + 4u];
   let bin_count: u32 = slot_records[at + 5u];
-  let base: f32 = f32(w0 & 0xfffu) * 0.2 - 200.0;
-  let top: f32 = base + f32((w0 >> 12u) & 0xffu) * 0.1;
+  let heights: vec2<f32> = grass_slot_heights(w0);
+  let base: f32 = heights.x;
+  let top: f32 = heights.y;
   let ids: array<u32, 4> = array<u32, 4>((w0 >> 20u) & 0x3fu, (w0 >> 26u) & 0x3fu, w1 & 0x3fu, (w1 >> 6u) & 0x3fu);
-  let sun: f32 = f32((w1 >> 12u) & 0xfu) / 15.0;
-  let hemi: f32 = f32((w1 >> 16u) & 0xfu) / 15.0;
+  let sun: f32 = grass_slot_light(w1, GRASS_LIGHT_SUN);
+  let hemi: f32 = grass_slot_light(w1, GRASS_LIGHT_HEMI);
   let palettes: array<u32, 4> = array<u32, 4>(w2 & 0xffffu, w2 >> 16u, w3 & 0xffffu, w3 >> 16u);
 
   shapes[cell] = vec4<f32>((base + top) * 0.5, (top - base) * 0.5, hemi, sun);
@@ -442,14 +443,12 @@ fn cs_cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups
     let kept: vec4<f32> = cached[source + 1u];
     let model: u32 = u32(kept.y);
     let shape: vec4<f32> = models[model].shape;
-    let look: vec4<f32> = ring_tuft_look(ring, kept);
+    // Nothing grows under a puddle's water where the wetting draws it, a tuft at its shore shrunk.
+    let from_eye: f32 = distance(placed.xyz, vec3<f32>(params.eye.x, params.eye.y, -params.eye.z));
+    let ringed: vec4<f32> = ring_tuft_look(ring, kept);
+    let look: vec4<f32> = vec4<f32>(ringed.x * puddle_kept(placed.xyz, from_eye), ringed.yzw);
 
     if (look.x <= 0.0 || is_outside(placed.xyz + vec3<f32>(0.0, shape.w * look.x * 0.5, 0.0), shape.z * look.x)) {
-      continue;
-    }
-
-    // Nothing grows under a puddle's water.
-    if (is_in_puddle(placed.xyz)) {
       continue;
     }
 

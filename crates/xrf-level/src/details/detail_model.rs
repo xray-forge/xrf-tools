@@ -5,8 +5,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
-use xrf_utils::{format_path, to_format_size};
+use xrf_math::Aabb;
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::details::detail_vertex::DetailVertex;
 
@@ -90,18 +90,8 @@ impl DetailModel {
   /// The box the mesh occupies, or `None` for a model carrying no vertices.
   ///
   /// In engine units before the slot's own scale applies, so this is the object as authored rather than as planted.
-  pub fn get_bounds(&self) -> Option<(Vector3d<f32>, Vector3d<f32>)> {
-    let first: &DetailVertex = self.vertices.first()?;
-
-    let mut minimum: Vector3d<f32> = first.position.clone();
-    let mut maximum: Vector3d<f32> = first.position.clone();
-
-    for vertex in &self.vertices {
-      minimum = minimum.min(&vertex.position);
-      maximum = maximum.max(&vertex.position);
-    }
-
-    Some((minimum, maximum))
+  pub fn get_bounds(&self) -> Option<Aabb> {
+    Aabb::from_points(self.vertices.iter().map(|vertex: &DetailVertex| &vertex.position))
   }
 }
 
@@ -171,8 +161,8 @@ impl ChunkReadWrite for DetailModel {
     writer.write_u32::<T>(self.flags)?;
     writer.write_f32::<T>(self.min_scale)?;
     writer.write_f32::<T>(self.max_scale)?;
-    writer.write_u32::<T>(to_format_size(self.vertices.len(), "detail vertices")?)?;
-    writer.write_u32::<T>(to_format_size(self.indices.len(), "detail indices")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "detail vertices")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.indices.len(), "detail indices")?)?;
 
     for vertex in &self.vertices {
       writer.write_xr::<T, _>(vertex)?;

@@ -1,6 +1,6 @@
+import { Chip } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Tooltip } from "@xrf/ui/overlay";
 import { ReactElement, useCallback } from "react";
 
 import {

@@ -1,3 +1,8 @@
+#![expect(
+  unsafe_code,
+  reason = "implements the renderer's unsafe window-host contract over Win32 window handles"
+)]
+
 use std::num::NonZeroIsize;
 
 use windows::Win32::Foundation::{HWND, RECT};
@@ -9,13 +14,13 @@ use xrf_renderer::{RenderWindowHost, SurfaceTargetUnsafe};
 ///
 /// The swapchain sits on the window itself, under the webview's child window, which shows it through the pixels the
 /// page leaves transparent.
-pub struct Win32WindowHost {
+pub(super) struct Win32WindowHost {
   hwnd: NonZeroIsize,
 }
 
 impl Win32WindowHost {
   /// A host over the window `hwnd` names.
-  pub fn new(hwnd: NonZeroIsize) -> Self {
+  pub(super) fn new(hwnd: NonZeroIsize) -> Self {
     Self { hwnd }
   }
 
@@ -52,10 +57,10 @@ unsafe impl RenderWindowHost for Win32WindowHost {
     let mut rect: RECT = RECT::default();
 
     // SAFETY: `rect` outlives the call; a handle no longer naming a window fails, answered as an empty area.
-    match unsafe { GetClientRect(self.get_hwnd(), &mut rect) } {
+    match unsafe { GetClientRect(self.get_hwnd(), &raw mut rect) } {
       Ok(()) => (
-        (rect.right - rect.left).max(0) as u32,
-        (rect.bottom - rect.top).max(0) as u32,
+        (rect.right - rect.left).max(0).cast_unsigned(),
+        (rect.bottom - rect.top).max(0).cast_unsigned(),
       ),
       Err(_) => (0, 0),
     }

@@ -1,4 +1,3 @@
-import { Theme } from "#/material/styles";
 import {
   BADGE_FONT_SIZE,
   CODE,
@@ -12,12 +11,14 @@ import {
   LAYOUT,
   MONOSPACE,
   PANEL,
+  POPOVER,
   RADIUS,
   REVEAL,
   TREE,
   VIEWPORT,
   VIEWPORT_INK,
 } from "#/theme";
+import { Theme } from "#/theme/styles";
 
 /** Every published property, so a consumer and a test name the same thing. */
 export type TThemeVariableName =
@@ -59,6 +60,10 @@ export function getThemeVariables(theme: Theme) {
     "--xrf-panel-property-padding": theme.spacing(PANEL.propertyPaddingY),
     "--xrf-panel-section-gap": theme.spacing(PANEL.sectionContentGap),
     "--xrf-panel-section-padding": theme.spacing(PANEL.sectionPaddingY),
+    "--xrf-popover-label-width": px(POPOVER.labelWidth),
+    "--xrf-popover-readout-width": px(POPOVER.readoutWidth),
+    "--xrf-popover-wide-width": px(POPOVER.wideWidth),
+    "--xrf-popover-width": px(POPOVER.width),
     "--xrf-radius-control": px(RADIUS.sm),
     "--xrf-reveal-delay": `${REVEAL.delay}ms`,
     "--xrf-reveal-delay-short": `${REVEAL.shortDelay}ms`,

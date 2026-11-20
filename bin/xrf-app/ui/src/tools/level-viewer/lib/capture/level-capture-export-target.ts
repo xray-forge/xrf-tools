@@ -1,7 +1,7 @@
-import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
 
+import { askToOpenDirectory, askToSave } from "@/core/path/native-dialog";
 import { ELevelCaptureMode } from "@/tools/level-viewer/lib/capture/level-capture";
 import { ILevelCubeExportSettings, isLevelCubeExportSingle } from "@/tools/level-viewer/lib/cube/level-cube-export";
 import { ILevelMapExportSettings, toLevelMapExportExtension } from "@/tools/level-viewer/lib/map/level-map-export";
@@ -28,25 +28,20 @@ export async function askLevelCaptureExportTarget(
   if (mode === ELevelCaptureMode.MAP) {
     const extension: string = toLevelMapExportExtension(settings.map.kind);
 
-    return save({
-      defaultPath: `map_${level}.${extension}`,
+    return askToSave({
       filters: [{ extensions: [extension], name: `${extension.toUpperCase()} image` }],
+      start: `map_${level}.${extension}`,
       title: "Export level map",
     });
   }
 
   if (isLevelCubeExportSingle(settings.cube.kind)) {
-    return save({
-      defaultPath: `cube_${level}.${EXrayExtension.DDS}`,
+    return askToSave({
       filters: [{ extensions: [EXrayExtension.DDS], name: "DDS cube texture" }],
+      start: `cube_${level}.${EXrayExtension.DDS}`,
       title: "Export cubemap",
     });
   }
 
-  const folder: Nullable<string | Array<string>> = await openDialog({
-    directory: true,
-    title: "Export the cubemap's faces into a folder",
-  });
-
-  return typeof folder === "string" ? folder : null;
+  return askToOpenDirectory({ title: "Export the cubemap's faces into a folder" });
 }

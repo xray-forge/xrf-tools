@@ -13,6 +13,7 @@ import {
   zoomAround,
   zoomByWheel,
 } from "@xrf/math";
+import { IElementSize, useElementSize } from "@xrf/react/element-size";
 import { Nullable } from "@xrf/types";
 import {
   MouseEvent,
@@ -29,7 +30,6 @@ import {
 } from "react";
 
 import { ViewportControls } from "#/media/viewport-controls";
-import { IElementSize, useElementSize } from "#/react/element-size";
 
 import { toCheckerboardSizing } from "./media.styles";
 import { PanZoomController } from "./pan-zoom-controller";

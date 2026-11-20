@@ -20,6 +20,7 @@ import { mockLevelFeatureOptions } from "@/core/level/fixtures/level.mocks";
 import {
   describeLevelFeatureToggle,
   ILevelFeatureOptions,
+  isLevelFeatureSet,
   LEVEL_ANTIALIASING_MODES,
   TLevelFeatureKey,
   toLevelFeatureOptions,
@@ -29,6 +30,7 @@ import {
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
   toLevelRendererFeatures,
+  withoutLevelFeatureKeys,
 } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
@@ -48,6 +50,36 @@ const VIEW: ILevelFeatureOptions = {
 const KEYS: ReadonlyArray<TLevelFeatureKey> = ["ambientOcclusion", "grass", "lights", "shadows"];
 
 describe("level feature options", () => {
+  it("counts a group as set only where what the view sets draws it otherwise than the settings", () => {
+    const view: ILevelFeatureOptions = mockLevelFeatureOptions();
+
+    expect(isLevelFeatureSet("parallax", SETTINGS, view)).toBe(false);
+    expect(isLevelFeatureSet("parallax", SETTINGS, { ...view, parallax: { steps: SETTINGS.parallax.steps } })).toBe(
+      false
+    );
+    expect(isLevelFeatureSet("parallax", SETTINGS, { ...view, parallax: { steps: SETTINGS.parallax.steps + 1 } })).toBe(
+      true
+    );
+    expect(isLevelFeatureSet("shadows", SETTINGS, { ...view, shadows: { cascades: SETTINGS.shadows.cascades } })).toBe(
+      false
+    );
+    expect(isLevelFeatureSet("shadows", SETTINGS, VIEW)).toBe(true);
+  });
+
+  it("counts a group as set only by what a partial reset would undo, the part it keeps aside", () => {
+    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), grass: { radius: 80 } };
+
+    expect(isLevelFeatureSet("grass", SETTINGS, view, { radius: 80 })).toBe(false);
+    expect(isLevelFeatureSet("grass", SETTINGS, view, {})).toBe(true);
+  });
+
+  it("keeps what a partial reset leaves the view, the values given back dropped", () => {
+    expect(
+      withoutLevelFeatureKeys({ distance: 200, mode: ERenderWaterMode.ENHANCED, steps: 3 }, ["mode", "steps"])
+    ).toEqual({ distance: 200 });
+    expect(withoutLevelFeatureKeys<{ distance: number }>({}, ["distance"])).toEqual({});
+  });
+
   it("follows the settings by default", () => {
     expect(toLevelRendererAntialiasing(ERenderAntialiasing.SMAA, mockLevelFeatureOptions(), true)).toBe(
       ERenderAntialiasing.SMAA
@@ -149,6 +181,7 @@ describe("level feature options", () => {
       isDryTraced: true,
       isRayBudgeted: true,
       isWaterReflected: false,
+      isWaterFullyTraced: true,
     };
 
     expect(toLevelFeatureOptions({ reflections }).reflections).toEqual(reflections);
@@ -220,7 +253,7 @@ describe("level feature options", () => {
 
   it("keeps the fog's, the sky debanding's, the glass's and the bloom's own modes and strengths, held to their bounds", () => {
     const view: ILevelFeatureOptions = toLevelFeatureOptions({
-      debanding: { mode: ERenderDebandingMode.ENGINE, passes: 9, radius: 400 },
+      debanding: { mode: ERenderDebandingMode.ENGINE, passes: 9 },
       enhancedBloom: { lens: 2, mode: ERenderBloomMode.ENHANCED, threshold: 0.5 },
       fog: { density: 9, height: 6, mode: ERenderFogMode.ENGINE, steps: 3 },
       glass: { blur: 1, mode: ERenderGlassMode.ENGINE, refraction: 5 },
@@ -229,11 +262,8 @@ describe("level feature options", () => {
     expect(view.fog).toEqual({ density: 5, height: 6, mode: ERenderFogMode.ENGINE });
     expect(view.glass).toEqual({ mode: ERenderGlassMode.ENGINE, refraction: 2 });
     expect(toLevelModeFeature("glass", SETTINGS, view)).toEqual({ mode: ERenderGlassMode.ENGINE, refraction: 2 });
-    expect(view.debanding).toEqual({
-      mode: ERenderDebandingMode.ENGINE,
-      passes: 4,
-      radius: 128,
-    });
+    // A value the settings do not take is dropped.
+    expect(view.debanding).toEqual({ mode: ERenderDebandingMode.ENGINE });
     expect(view.enhancedBloom).toEqual({ mode: ERenderBloomMode.ENHANCED, threshold: 1 });
     expect(toLevelModeFeature("fog", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.fog);
     expect(toLevelModeFeature("fog", SETTINGS, view)).toEqual({

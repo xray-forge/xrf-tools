@@ -1,4 +1,4 @@
-pub(crate) mod gamemtl_file_arguments;
+pub(crate) mod gamemtl_file_input;
 pub(crate) mod info;
 
 mod gamemtl_group;

@@ -8,4 +8,4 @@ mod window_build_kind;
 #[cfg(test)]
 mod tests;
 
-pub use main_window::MainWindow;
+pub(crate) use main_window::MainWindow;

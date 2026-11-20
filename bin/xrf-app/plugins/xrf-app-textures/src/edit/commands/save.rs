@@ -21,9 +21,11 @@ use crate::ipc::textures::TEXTURES_JOB_SAVE;
 /// that candidate's comparison was made of, whose descriptor the request has to name.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save")]
-// Tauri injects each managed state as an argument of its own.
-#[allow(clippy::too_many_arguments)]
-pub async fn textures_save(
+#[expect(
+  clippy::too_many_arguments,
+  reason = "Tauri injects each managed state as an argument of its own"
+)]
+pub(crate) async fn textures_save(
   request: TexturesSaveRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
@@ -71,7 +73,10 @@ pub async fn textures_save(
       move |job| {
         let texture: Option<TextureWrite> = match (request.texture, held, texture_path) {
           (Some(save), Some(held), Some(path)) => Some(TextureWrite {
-            bytes: held.require(save.format)?.write_to_bytes().map_err(error_to_string)?,
+            bytes: held
+              .require_for_save(save.format, request.descriptor.form.has_alpha())?
+              .write_to_bytes()
+              .map_err(error_to_string)?,
             path,
             expected: save.expected,
             format: save.format,

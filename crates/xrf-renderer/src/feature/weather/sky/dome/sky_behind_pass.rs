@@ -8,7 +8,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the sky the distance fog fades into along each pixel's view, at half the frame's size, for combine to mix in.
-pub struct SkyBehindPass {
+pub(crate) struct SkyBehindPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
@@ -19,12 +19,12 @@ pub struct SkyBehindPass {
 
 impl SkyBehindPass {
   /// The sky's colour, at half floats.
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
@@ -62,7 +62,7 @@ impl SkyBehindPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipeline.refresh(source.cache, || {
       Self::create_pipeline(source, &self.view_layout, &self.layout, &self.sky_layout)
     }) {
@@ -71,12 +71,12 @@ impl SkyBehindPass {
   }
 
   /// What combine reads while no sky shows behind the fog.
-  pub fn get_unseen(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_unseen(&self) -> &wgpu::TextureView {
     &self.unseen
   }
 
   /// Draws what far geometry fades into behind the fog: the haze above the fold, the sky as drawn under it.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

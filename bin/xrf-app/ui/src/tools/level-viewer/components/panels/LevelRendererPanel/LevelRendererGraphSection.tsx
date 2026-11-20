@@ -2,11 +2,11 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { RenderGraphReport, RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ReactElement } from "react";
 
-import { RenderGraphFormRows } from "@/core/render/components/controls/RenderGraphFormRows";
+import { RenderGraphSwitchRows } from "@/core/render/components/controls/RenderGraphSwitchRows";
 import {
   DEFAULT_RENDER_GRAPH_SETTINGS,
   isRenderGraphBisected,
@@ -49,14 +49,15 @@ export function LevelRendererGraphSection({
         value={`${formatCount(graph?.pooledCount ?? 0)}, ${formatBytes(graph?.pooledBytes ?? 0)}`}
       />
 
-      <CheckboxFormRow
+      <EditorPopoverSwitchRow
+        className={"mt-1"}
         label={"Optimizations"}
         description={"Turn them off, alone or all at once, to bisect a difference in a capture."}
         isChecked={!isBisected}
         onChange={() => onChange(isBisected ? DEFAULT_RENDER_GRAPH_SETTINGS : SERIAL_RENDER_GRAPH_SETTINGS)}
       />
 
-      <RenderGraphFormRows graph={settings} onChange={onChange} />
+      <RenderGraphSwitchRows graph={settings} isNested onChange={onChange} />
     </EditorPanelSection>
   );
 }

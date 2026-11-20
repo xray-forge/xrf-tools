@@ -1,8 +1,8 @@
 //! Whether one name belongs in the archive, answered by the configuration that carries the rules.
 
-use crate::archive_extension_pattern::ArchiveExtensionPattern;
 use xrf_archive::ArchiveDescriptor;
 
+use crate::archive_extension_pattern::ArchiveExtensionPattern;
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::ArchivePackSkipReason;
 use crate::path::{is_component_prefix, is_same_name};

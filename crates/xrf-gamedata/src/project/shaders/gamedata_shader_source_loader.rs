@@ -7,13 +7,13 @@ use xrf_utils::format_path;
 use xrf_vfs::XraySearch;
 
 /// Loads shader sources through mounted sources, so an installation's `db\shaders` volume reads like a loose tree.
-pub struct GamedataShaderSourceLoader<'a> {
+pub(crate) struct GamedataShaderSourceLoader<'a> {
   job: JobHandle,
   search: &'a XraySearch,
 }
 
 impl<'a> GamedataShaderSourceLoader<'a> {
-  pub fn new(search: &'a XraySearch) -> Self {
+  pub(crate) fn new(search: &'a XraySearch) -> Self {
     Self {
       search,
       job: JobHandle::inert(),

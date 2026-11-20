@@ -21,8 +21,8 @@ impl XrayAsset {
   /// Creates a location from an engine path and a source-reported container.
   pub fn new(logical_path: XrayLogicalPath, container: XrayAssetContainer) -> Self {
     Self {
-      container,
       logical_path,
+      container,
     }
   }
 
@@ -115,7 +115,7 @@ mod tests {
     let asset: XrayAsset = XrayAsset::new(
       XrayLogicalPath::new("textures\\wpn\\wpn_ak74.dds").expect("valid logical path"),
       XrayAssetContainer::Directory {
-        relative_path: relative.clone(),
+        relative_path: relative,
         root: root.clone(),
       },
     );

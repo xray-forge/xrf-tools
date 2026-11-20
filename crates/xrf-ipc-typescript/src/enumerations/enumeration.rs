@@ -14,17 +14,17 @@ pub(crate) struct Enumeration {
 
 impl Enumeration {
   /// The enum a type declares, which is its name under an `E` prefix.
-  pub fn enum_name(type_name: &str) -> String {
+  pub(super) fn enum_name(type_name: &str) -> String {
     format!("E{type_name}")
   }
 
   /// Whether this enum may stand in for the type itself rather than only for one field of it.
-  pub fn is_type_itself(&self) -> bool {
+  pub(super) fn is_type_itself(&self) -> bool {
     self.subject == EnumerationSubject::Identities
   }
 
   /// This type as the frontend declares it: the enum, and the union it is declared with.
-  pub fn render(&self, named: &NamedDataType, union: &str) -> String {
+  pub(super) fn render(&self, named: &NamedDataType, union: &str) -> String {
     let name: String = Self::enum_name(&named.name);
 
     match &self.subject {

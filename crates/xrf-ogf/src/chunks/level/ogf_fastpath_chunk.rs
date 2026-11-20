@@ -1,5 +1,5 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 use crate::chunks::level::ogf_geometry_container_chunk::OgfGeometryContainerChunk;
@@ -33,5 +33,27 @@ impl OgfFastpathChunk {
         None => None,
       },
     })
+  }
+
+  /// Writes the fast path's chunks as xrLC does (`write_ogf_fastpath`): its geometry container, then its windows where
+  /// it has them. The caller wraps them in the `OGF_FASTPATH` chunk.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer fails.
+  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    let mut geometry: ChunkWriter = ChunkWriter::new();
+
+    geometry.write_xr::<T, _>(&self.geometry)?;
+    geometry.flush_chunk_into::<T>(&mut writer.buffer, OgfGeometryContainerChunk::CHUNK_ID)?;
+
+    if let Some(swi) = &self.swi {
+      let mut windows: ChunkWriter = ChunkWriter::new();
+
+      windows.write_xr::<T, _>(swi)?;
+      windows.flush_chunk_into::<T>(&mut writer.buffer, OgfSwiDataChunk::CHUNK_ID)?;
+    }
+
+    Ok(())
   }
 }

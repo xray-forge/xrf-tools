@@ -1,11 +1,12 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { LinearProgress } from "@xrf/ui/material/progress";
+import { LinearProgress } from "@xrf/ui/feedback";
+import { WindowControls } from "@xrf/ui/shell/window-controls";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, Ref } from "react";
 
 import { ApplicationMenu } from "@/core/shell/title-bar/ApplicationMenu";
 import { ApplicationTitleBarIcon } from "@/core/shell/title-bar/ApplicationTitleBarIcon";
-import { WindowControls } from "@/core/shell/title-bar/WindowControls";
+import { IWindowControls, useWindowControls } from "@/lib/tauri/use-window-controls";
 
 interface IApplicationTitleBarProps extends BaseComponentProps {
   /** Where the active tool portals its toolbar. The frame owns the element. */
@@ -24,6 +25,8 @@ export function ApplicationTitleBar({
   toolbarRef,
   isBusy,
 }: IApplicationTitleBarProps): ReactElement {
+  const windowControls: IWindowControls = useWindowControls();
+
   return (
     <div
       data-testid={dataTestId}
@@ -40,7 +43,15 @@ export function ApplicationTitleBar({
 
       <div ref={toolbarRef} className={"flex h-full min-w-0 grow items-center"} />
 
-      <WindowControls />
+      {/* Outside a Tauri webview there is no window to drive: no close button beats one that does nothing. */}
+      {windowControls.isAvailable ? (
+        <WindowControls
+          isMaximized={windowControls.isMaximized}
+          onMinimize={windowControls.minimize}
+          onToggleMaximize={windowControls.toggleMaximize}
+          onClose={windowControls.close}
+        />
+      ) : null}
 
       {isBusy ? (
         <LinearProgress className={"invisible absolute right-0 bottom-0 left-0 h-0.5 animate-delayed-reveal"} />

@@ -6,11 +6,11 @@ use std::sync::Arc;
 use image::{Rgba, RgbaImage};
 use xrf_dds::{DdsFile, ImageFormat};
 use xrf_job::{JobHandle, JobOutcome};
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, LtxSectionWrite};
 use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
 use xrf_test_utils::GeneratedResources;
 
-use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker};
+use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker, InventorySpriteDescriptor};
 use crate::image_file::ImageFileWriter;
 
 struct CancelOnOutput {
@@ -35,7 +35,7 @@ fn options(name: &str, icons: u32, existing: bool) -> EquipmentSpritePackOptions
     ltx
       .with_section(format!("icon_{index}"))
       .set("$inventory_icon", "true")
-      .set("inv_grid_x", index.to_string())
+      .set("inv_grid_x", index)
       .set("inv_grid_y", "0")
       .set("inv_grid_width", "1")
       .set("inv_grid_height", "1");
@@ -154,6 +154,23 @@ fn completed_pack_publishes_every_icon() {
         assert_eq!(pixel.0[3], 0);
       }
     }
+  }
+}
+
+#[test]
+fn refuses_a_custom_icon_path_it_cannot_resolve() {
+  // A marker without its separator, or a relative path in a config read from no directory: an error, not a panic.
+  for (custom, is_from_directory) in [("~ui\\icon", true), ("#ui\\icon", true), ("ui\\icon", false)] {
+    let mut options = options("unresolvable-custom-icon", 1, false);
+    options.ltx.with_section("icon_0").set("$inventory_icon_path", custom);
+    options.ltx.directory = is_from_directory.then(|| options.source.clone());
+
+    let descriptors: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(&options.ltx);
+
+    assert!(
+      EquipmentSpritePacker::read_sprite_path(&options, &descriptors[0]).is_err(),
+      "{custom}"
+    );
   }
 }
 

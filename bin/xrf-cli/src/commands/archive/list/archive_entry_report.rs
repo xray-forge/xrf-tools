@@ -13,7 +13,7 @@ use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedP
 /// `find` reports the same shape, as it already borrows this command's selection rules.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ArchiveEntryReport {
+pub(crate) struct ArchiveEntryReport {
   is_directory: bool,
   name: String,
   /// Other entries a reader locates at the same stored bytes, by authored name.
@@ -28,7 +28,11 @@ pub struct ArchiveEntryReport {
 }
 
 impl ArchiveEntryReport {
-  pub fn new(project: &ArchiveProject, entry: &ArchiveFileDescriptor, shared: &ArchiveSharedPayloadIndex) -> Self {
+  pub(crate) fn new(
+    project: &ArchiveProject,
+    entry: &ArchiveFileDescriptor,
+    shared: &ArchiveSharedPayloadIndex<'_>,
+  ) -> Self {
     Self {
       is_directory: entry.is_directory,
       name: entry.name.to_string(),
@@ -40,15 +44,15 @@ impl ArchiveEntryReport {
       // failing a listing over a diagnostic field.
       source: project
         .get_volume_of(entry)
-        .map(|volume| xrf_utils::to_portable_path_string(&volume.path))
+        .map(|volume| xrf_utils::format_portable_path(&volume.path))
         .unwrap_or_default(),
     }
   }
 
-  pub fn list(
+  pub(crate) fn list(
     project: &ArchiveProject,
     entries: &[&ArchiveFileDescriptor],
-    shared: &ArchiveSharedPayloadIndex,
+    shared: &ArchiveSharedPayloadIndex<'_>,
   ) -> Vec<Self> {
     entries.iter().map(|entry| Self::new(project, entry, shared)).collect()
   }

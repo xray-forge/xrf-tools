@@ -7,7 +7,7 @@ mod transient_buffer_key;
 mod transient_pool;
 mod transient_texture_key;
 
-pub use attachment_view_cache::AttachmentViewCache;
+pub(super) use attachment_view_cache::AttachmentViewCache;
 pub use transient_buffer_key::TransientBufferKey;
 pub use transient_pool::TransientPool;
 pub use transient_texture_key::TransientTextureKey;

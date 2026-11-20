@@ -5,19 +5,23 @@ import {
   ERenderWaterMode,
   RenderTraceSize,
 } from "@xrf/ipc/types/xrf-renderer";
+import { Optional } from "@xrf/types";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverChoiceRow, EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FlipIcon } from "@xrf/ui/icons/flip";
 import { ReactElement } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { ILevelFeature, useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
@@ -39,7 +43,9 @@ export function LevelReflectionsAction({
 }: BaseComponentProps): ReactElement {
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const { settings, features, drawn } = useLevelRenderFeatures();
-  const { set, reset } = useLevelFeatureOverride("reflections");
+  const { set } = useLevelFeatureOverride("reflections");
+  // The surfaces', the water's and the trace's values are one group, set back together from the popover's heading.
+  const onReset: Optional<() => void> = useLevelFeatureReset("reflections");
   const water: ILevelFeature<"water"> = useLevelFeature("water");
 
   const value: TRenderReflectionSettings = toLevelModeFeature("reflections", settings, features);
@@ -66,20 +72,22 @@ export function LevelReflectionsAction({
         .join(", ")}
       icon={<FlipIcon />}
       isActive={isSurfaces || isWater || isTraced}
+      resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+      onReset={onReset}
     >
       <EditorPopoverGroupSection
         label={"Surfaces"}
-        description={explainRenderReflectionMode(value.mode)}
+        note={explainRenderReflectionMode(value.mode)}
         isOn={isSurfaces}
         onToggle={() => set({ mode: isSurfaces ? ERenderReflectionMode.ENGINE : ERenderReflectionMode.ENHANCED })}
       >
         {isSurfaces && isRayReconstructed ? (
-          <p className={"text-xs text-text-secondary"}>
+          <EditorPopoverNote>
             Traced at full size every frame: ray reconstruction takes each pixel&apos;s own ray.
-          </p>
+          </EditorPopoverNote>
         ) : null}
 
-        <RenderValueChoice
+        <EditorPopoverChoiceRow
           label={RENDER_REFLECTION_SETTINGS.traceSize.label}
           options={RENDER_TRACE_SIZE_OPTIONS}
           value={isRayReconstructed ? ERenderTraceSize.FULL : value.traceSize}
@@ -148,12 +156,19 @@ export function LevelReflectionsAction({
           onSet={set}
         />
 
+        <RenderSettingEntry
+          settings={RENDER_REFLECTION_SETTINGS}
+          name={"isWaterFullyTraced"}
+          group={value}
+          features={drawn}
+          isDisabled={!isTraced || !isWater}
+          onSet={set}
+        />
+
         {isTraced && isRayReconstructed && isSurfaces ? (
-          <p className={"text-xs text-text-secondary"}>The surfaces re-trace every frame under ray reconstruction.</p>
+          <EditorPopoverNote>The surfaces re-trace every frame under ray reconstruction.</EditorPopoverNote>
         ) : null}
       </EditorPopoverGroupSection>
-
-      <LevelSettingsResetButton subject={"reflections"} onReset={reset} />
 
       <LevelEnhancedFeatureSection feature={"glass"} />
     </EditorPopoverGroup>

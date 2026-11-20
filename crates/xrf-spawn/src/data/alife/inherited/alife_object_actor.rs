@@ -1,14 +1,17 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+use crate::data::alife::alife_state_read_write::AlifeStateReadWrite;
 use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
 use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
+use crate::data::alife::spawn_layout::SpawnLayout;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::actor_physics_state::ActorPhysicsState;
 use crate::data::physics::scaled_direction::ScaledDirection;
 
@@ -41,14 +44,19 @@ impl AlifeObjectActor {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectActor {
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.base.set_spawned_update(header);
+  }
+
   /// Read the actor from both packets.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectCreature::read::<T, _>(spawn, update)?,
-      trader: spawn.read_xr::<T, _>()?,
+      base: AlifeObjectCreature::read::<T, _, _>(spawn, update, layout)?,
+      trader: AlifeObjectTraderAbstract::read_state::<T, _>(spawn, layout)?,
       skeleton: spawn.read_xr::<T, _>()?,
       holder_id: spawn.read_u16::<T>()?,
       update_movement_state: update.read_u16::<T>()?,
@@ -56,15 +64,20 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
       update_velocity: update.read_xr::<T, _>()?,
       update_radiation: update.read_f32::<T>()?,
       update_weapon: update.read_u8()?,
-      update_body: ActorPhysicsState::read::<T, _>(update)?,
+      update_body: update.read_xr::<T, ActorPhysicsState>()?,
     })
   }
 
   /// Write the actor into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
-    self.base.write::<T>(spawn, update)?;
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    layout: SpawnLayout,
+  ) -> XrfResult {
+    self.base.write::<T, _, _>(spawn, update, layout)?;
 
-    spawn.write_xr::<T, _>(&self.trader)?;
+    self.trader.write_state::<T, _>(spawn, layout)?;
     spawn.write_xr::<T, _>(&self.skeleton)?;
     spawn.write_u16::<T>(self.holder_id)?;
 
@@ -74,14 +87,12 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
     update.write_f32::<T>(self.update_radiation)?;
     update.write_u8(self.update_weapon)?;
 
-    self.update_body.write::<T>(update)
+    update.write_xr::<T, _>(&self.update_body)
   }
-}
 
-impl LtxImportExport for AlifeObjectActor {
   /// Import actor data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -90,8 +101,8 @@ impl LtxImportExport for AlifeObjectActor {
     })?;
 
     Ok(Self {
-      base: AlifeObjectCreature::import(section_name, ltx)?,
-      trader: AlifeObjectTraderAbstract::import(section_name, ltx)?,
+      base: AlifeObjectCreature::import(section_name, ltx, layout)?,
+      trader: AlifeObjectTraderAbstract::import_state(section_name, ltx, layout)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
       holder_id: section.read_field("actor.holder_id")?,
       update_movement_state: section.read_field("actor.update_movement_state")?,
@@ -104,19 +115,19 @@ impl LtxImportExport for AlifeObjectActor {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
-    self.base.export(section_name, ltx)?;
-    self.trader.export(section_name, ltx)?;
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, layout: SpawnLayout) -> XrfResult {
+    self.base.export(section_name, ltx, layout)?;
+    self.trader.export_state(section_name, ltx, layout)?;
     self.skeleton.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
-      .set("actor.holder_id", self.holder_id.to_string())
-      .set("actor.update_movement_state", self.update_movement_state.to_string())
-      .set("actor.update_acceleration", self.update_acceleration.to_string())
-      .set("actor.update_velocity", self.update_velocity.to_string())
-      .set("actor.update_radiation", self.update_radiation.to_string())
-      .set("actor.update_weapon", self.update_weapon.to_string());
+      .set("actor.holder_id", self.holder_id)
+      .set("actor.update_movement_state", self.update_movement_state)
+      .set("actor.update_acceleration", &self.update_acceleration)
+      .set("actor.update_velocity", &self.update_velocity)
+      .set("actor.update_radiation", self.update_radiation)
+      .set("actor.update_weapon", self.update_weapon);
 
     self.update_body.export(section_name, "actor.update_body", ltx);
 
@@ -124,7 +135,7 @@ impl LtxImportExport for AlifeObjectActor {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectActor {
   /// An actor at `position` as a new game places one, with no body saved.
   pub fn new_mock(position: Vector3d) -> Self {
@@ -168,11 +179,12 @@ impl AlifeObjectActor {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::physics::actor_physics_state::ActorPhysicsState;
   use crate::data::physics::raw_float::RawFloat;
 
@@ -188,33 +200,32 @@ mod tests {
     }
   }
 
-  /// The creature's 40 bytes, then movement, two scaled directions, radiation, the weapon and the body's count: the
-  /// 61-byte update packet a new game's actor carries.
+  // The 61-byte update packet a new game's actor carries.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::new(256.24, 19.81, 550.82));
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>()?;
+    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61, original));
 
     Ok(())
   }
 
-  /// The enabled byte, five vectors and a quaternion follow the count.
+  // The enabled byte, five vectors and a quaternion follow the count.
   #[test]
   fn reads_and_writes_a_living_body() -> XrfResult {
     let mut original: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::ZERO);
 
     original.update_body = new_alive_body([1.0, 2.0, 3.0]);
 
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>()?;
+    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61 + 1 + 5 * 12 + 16, original));
 
     Ok(())
   }
 
-  /// A move carries a saved body by as far as the actor goes, so it stays where the actor stands.
+  // A saved body moves with the actor.
   #[test]
   fn moves_its_body_along_with_it() {
     let mut actor: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::new(10.0, 0.0, 10.0));
@@ -234,9 +245,12 @@ mod tests {
     let mut ltx: Ltx = Ltx::new();
 
     original.update_body = new_alive_body([1.0, 2.0, 3.0]);
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectActor::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectActor::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

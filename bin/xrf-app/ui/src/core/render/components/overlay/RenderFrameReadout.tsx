@@ -2,9 +2,10 @@ import { formatCount, formatMilliseconds } from "@xrf/format";
 import { RenderFrameReport, RenderPassCost } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TViewportOverlayCorner, ViewportOverlay } from "@xrf/ui/media/viewport-overlay";
 import { Fragment, ReactElement, ReactNode } from "react";
 
-import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
+import { RenderViewportJobMark } from "@/core/render/components/overlay/RenderViewportJobMark";
 import {
   describeRenderAntialiasing,
   isTemporalAntialiasing,
@@ -61,7 +62,7 @@ export interface IRenderFrameReadoutProps extends BaseComponentProps {
    */
   report: RenderFrameReport;
   /** The viewport's corner it is laid in, the top left by default. */
-  corner?: TRenderOverlayCorner;
+  corner?: TViewportOverlayCorner;
   /** Anything the scene can say that a viewport cannot, drawn under the rest. */
   children?: ReactNode;
 }
@@ -80,8 +81,11 @@ export function RenderFrameReadout({
   const scaling: Nullable<string> = toScalingLine(report);
 
   return (
-    <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
-      <div>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</div>
+    <ViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
+      <div className={"flex items-center gap-1"}>
+        {report.job ? <RenderViewportJobMark job={report.job} /> : null}
+        <span>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</span>
+      </div>
       <div>{toDrawnLine(report)}</div>
       <div>{`${report.width} × ${report.height}`}</div>
       {scaling ? <div>{scaling}</div> : null}
@@ -109,6 +113,6 @@ export function RenderFrameReadout({
           ))}
         </div>
       ) : null}
-    </RenderViewportOverlay>
+    </ViewportOverlay>
   );
 }

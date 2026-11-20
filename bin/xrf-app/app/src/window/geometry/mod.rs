@@ -9,5 +9,5 @@ mod window_geometry_tracker;
 #[cfg(test)]
 mod tests;
 
-pub use window_geometry::WindowGeometry;
-pub use window_geometry_tracker::WindowGeometryTracker;
+pub(super) use window_geometry::WindowGeometry;
+pub(super) use window_geometry_tracker::WindowGeometryTracker;

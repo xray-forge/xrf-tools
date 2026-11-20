@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_job::JobHandle;
 use xrf_ltx::{LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
 use xrf_output::OutputOptions;
@@ -9,36 +9,31 @@ use xrf_utils::format_path;
 use crate::commands::ltx::ltx_installation::LtxInstallation;
 use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
 use crate::commands::ltx::verify::report::LtxVerifyReport;
-use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::{InputArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
-pub struct VerifyCommand;
+pub(crate) struct VerifyCommand;
 
 impl GenericCommand for VerifyCommand {
   fn operation(&self) -> &'static str {
     "verify"
   }
 
+  fn input(&self) -> CommandInput {
+    LtxInstallation::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    let command: Command = command.about("Verify LTX and INI configs").arg(
-      Arg::new("path")
-        .help(LtxInstallation::PATH_HELP)
-        .short('p')
-        .long("path")
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    );
+    let command: Command = command.about("Verify LTX and INI configs");
 
     LtxDialectArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let output: OutputOptions = context.get_output().clone();
 

@@ -3,6 +3,7 @@
 #import "common/scene_light"
 #import "common/display_transform"
 #import "common/water_enhanced"
+#import "common/water_reflection_read"
 #import "common/rain_rings"
 #import "common/ray_guides"
 #import "generated/static/water_enhanced"
@@ -29,25 +30,26 @@ const WAVE_WORLD_SCALE: f32 = 0.3;
 // How many times the enhanced water tiles the base coordinate.
 const ENHANCED_TILING: f32 = 1.5;
 
-// The waves' layers: the normal map read four times, each turned (0, 61, 137 and 223 degrees), tiled by powers of the
-// golden ratio so no two repeat together, and weighted towards the finest. Each runs along its own turned axis at the
-// deep-water pace of its wavelength, `c = sqrt(g / k)`, so the long ones move slower than the short.
-const WAVE_TURNS: array<mat2x2<f32>, 4> = array<mat2x2<f32>, 4>(
-  mat2x2<f32>(1.0, 0.0, 0.0, 1.0),
-  mat2x2<f32>(0.484810, 0.874620, -0.874620, 0.484810),
-  mat2x2<f32>(-0.731354, 0.681998, -0.681998, -0.731354),
-  mat2x2<f32>(-0.731354, -0.681998, 0.681998, -0.731354),
-);
+// The waves' layers: the normal map read four times, each turned (0, 61, 137 and 223 degrees, by their cosines and
+// sines), tiled by powers of the golden ratio so no two repeat together, and weighted towards the finest. Each runs along
+// its own turned axis at the deep-water pace of its wavelength, `c = sqrt(g / k)`, so the long ones move slower than the
+// short: how far each has run and scrolled is `enhanced.wave_layers`, kept with `EnhancedWaterScroll`.
+const WAVE_TURN_COS: vec4<f32> = vec4<f32>(1.0, 0.484810, -0.731354, -0.731354);
+const WAVE_TURN_SIN: vec4<f32> = vec4<f32>(0.0, 0.874620, 0.681998, -0.681998);
 const WAVE_TILES: vec4<f32> = vec4<f32>(1.0, 1.618034, 0.618034, 0.381966);
 const WAVE_WEIGHTS: vec4<f32> = vec4<f32>(0.35, 0.25, 0.25, 0.15);
-// Map repeats a wave-clock second the layer tiled once runs.
-const WAVE_PACE: f32 = 0.3;
 
 // Calm and rippled patches: a noise over the level about 70 m across, drifting with the flow, scales the waves between
 // these shares of their strength, by the variation.
 const PATCH_SCALE: f32 = 0.015;
-const PATCH_DRIFT: vec2<f32> = vec2<f32>(0.0021, 0.0013);
 const PATCH_CALM: f32 = 0.4;
+
+// The wind layer's map tiled at a tenth of the waves' coordinates, and the rain ripples' map at three fifths of them,
+// its second and third reads tiled again: each read moved by its own share of the waves' scroll, kept with
+// `EnhancedWaterScroll`.
+const GUST_SCALE: f32 = 0.1;
+const RIPPLE_MAP_SCALE: f32 = 0.6;
+const RIPPLE_LAYER_SCALES: vec2<f32> = vec2<f32>(0.61, 0.87);
 
 // Metres over which the finer layers give way to the coarsest, where their detail would only shimmer.
 const BROAD_NEAR: f32 = 5.0;
@@ -60,9 +62,8 @@ const HIGHLIGHT_NEAR: f32 = 512.0;
 const HIGHLIGHT_FAR: f32 = 160.0;
 
 
-// The rain's ripples: how fast each of its three layers ripples, where the second and third are moved to, and how far
-// the ripples reach.
-const RIPPLE_SPEEDS: vec3<f32> = vec3<f32>(1.05, 1.31, 1.58);
+// The rain's ripples: where the second and third of its layers are moved to, and how far the ripples reach; each
+// layer's clock is `enhanced.ripple_clocks`.
 const RIPPLE_OFFSETS: vec4<f32> = vec4<f32>(0.5, 0.25, 0.31, 0.5);
 const RIPPLE_REACH: f32 = 15.0;
 // How rough the rain's rings leave the water, by the variance of their tilt their filtering folded away.
@@ -92,8 +93,8 @@ struct EnhancedWaves {
 // The waves' height at coordinates, which its parallax reads: two scrolls of the height map, the higher.
 fn wave_height(coordinates: vec2<f32>) -> f32 {
   let at: vec2<f32> = coordinates * 0.35;
-  let first: f32 = textureSampleLevel(height_map, texture_sampler, at + enhanced.heights * vec2<f32>(0.065, 0.445), 0.0).r;
-  let second: f32 = textureSampleLevel(height_map, texture_sampler, at - enhanced.heights * vec2<f32>(0.105, 0.241), 0.0).b;
+  let first: f32 = textureSampleLevel(height_map, texture_sampler, at + enhanced.heights.xy, 0.0).r;
+  let second: f32 = textureSampleLevel(height_map, texture_sampler, at - enhanced.heights.zw, 0.0).b;
 
   return max(first, second);
 }
@@ -127,24 +128,27 @@ fn march_parallax(start: vec2<f32>, step: vec2<f32>, share: f32) -> vec3<f32> {
   return vec3<f32>(mix(at, at + step, ratio), sampled);
 }
 
-// One layer of rain ripples, each texel a ring that spreads and fades on its own clock.
-fn ripple_layer(ripple: vec4<f32>, speed: f32) -> vec2<f32> {
-  let clock: f32 = fract(ripple.w + water.time * speed);
+// One layer of rain ripples at its `clock`, each texel a ring that spreads and fades on its own clock from there.
+fn ripple_layer(ripple: vec4<f32>, layer_clock: f32) -> vec2<f32> {
+  let clock: f32 = fract(ripple.w + layer_clock);
   let spread: f32 = clamp((clock - 1.0 + ripple.x) * RIPPLE_REACH, 0.0, 4.0);
   let factor: f32 = saturate(0.7 - clock) * ripple.x * sin(spread * 3.141592) * (1.0 - smoothstep(0.0, 4.0, spread));
 
   return (ripple.yz * 2.0 - 1.0) * factor * enhanced.ripples;
 }
 
-// Three layers of ripples over the surface, fading out over fifteen metres of the bottom's distance.
-fn rain_ripples(coordinates: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>, rain: f32, distance: f32) -> vec2<f32> {
-  let first: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler, coordinates, dx, dy);
-  let second: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler, coordinates * 0.61 + RIPPLE_OFFSETS.xy, dx * 0.61,
-    dy * 0.61);
-  let third: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler, coordinates * 0.87 + RIPPLE_OFFSETS.zw, dx * 0.87,
-    dy * 0.87);
-  let ripples: vec2<f32> = ripple_layer(first, RIPPLE_SPEEDS.x * rain) + ripple_layer(second, RIPPLE_SPEEDS.y * rain) +
-    ripple_layer(third, RIPPLE_SPEEDS.z * rain);
+// Three layers of ripples over the surface at its unscrolled `coordinates`, each read moved by its share of the waves'
+// scroll, fading out over fifteen metres of the bottom's distance.
+fn rain_ripples(coordinates: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>, distance: f32) -> vec2<f32> {
+  let second_scale: f32 = RIPPLE_LAYER_SCALES.x;
+  let third_scale: f32 = RIPPLE_LAYER_SCALES.y;
+  let first: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler, coordinates + enhanced.map_offsets[0].xy, dx, dy);
+  let second: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler,
+    coordinates * second_scale + RIPPLE_OFFSETS.xy + enhanced.map_offsets[0].zw, dx * second_scale, dy * second_scale);
+  let third: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler,
+    coordinates * third_scale + RIPPLE_OFFSETS.zw + enhanced.map_offsets[1].xy, dx * third_scale, dy * third_scale);
+  let ripples: vec2<f32> = ripple_layer(first, enhanced.ripple_clocks.x) +
+    ripple_layer(second, enhanced.ripple_clocks.y) + ripple_layer(third, enhanced.ripple_clocks.z);
 
   return clamp(ripples * max(RIPPLE_REACH - distance, 0.0) * 0.0666, vec2<f32>(-1.0), vec2<f32>(1.0));
 }
@@ -160,7 +164,8 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   let along: vec3<f32> = normalize(vec3<f32>(0.0, 0.0, -1.0) + surface_normal * surface_normal.z);
   let dx: vec2<f32> = dpdx(base);
   let dy: vec2<f32> = dpdy(base);
-  var coordinates: vec2<f32> = base + enhanced.waves * vec2<f32>(0.065, 0.445);
+  // Unscrolled: each map read below adds its own share of the waves' scroll, wrapped by its repeat.
+  var coordinates: vec2<f32> = base;
   var height: f32 = 0.0;
   let distance: f32 = -(camera.view * vec4<f32>(in.world, 1.0)).z;
 
@@ -191,10 +196,12 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   var slope: vec2<f32> = vec2<f32>(0.0);
 
   for (var layer: u32 = 0u; layer < 4u; layer++) {
-    let turn: mat2x2<f32> = WAVE_TURNS[layer];
+    let turn: mat2x2<f32> = mat2x2<f32>(WAVE_TURN_COS[layer], WAVE_TURN_SIN[layer], -WAVE_TURN_SIN[layer],
+      WAVE_TURN_COS[layer]);
     let tile: f32 = WAVE_TILES[layer];
-    let run: vec2<f32> = vec2<f32>(enhanced.waves * WAVE_PACE / sqrt(tile), 0.0);
-    let texel: vec3<f32> = textureSampleGrad(wave_map, texture_sampler, turn * coordinates * tile + run,
+    let pair: vec4<f32> = enhanced.wave_layers[layer / 2u];
+    let scrolled: vec2<f32> = select(pair.xy, pair.zw, (layer & 1u) == 1u);
+    let texel: vec3<f32> = textureSampleGrad(wave_map, texture_sampler, turn * coordinates * tile + scrolled,
       turn * dx * tile, turn * dy * tile).rgb;
 
     slope += transpose(turn) * (texel.xy * 2.0 - 1.0) * weights[layer];
@@ -206,13 +213,12 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
 
   // The patches, calm where the noise is low.
   let level: vec2<f32> = vec2<f32>(in.world.x, -in.world.z);
-  let calm_noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * PATCH_SCALE + PATCH_DRIFT * enhanced.flowed,
-    0.0).r;
+  let calm_noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * PATCH_SCALE + enhanced.flow_scrolls.zw, 0.0).r;
 
   slope *= mix(1.0, mix(PATCH_CALM, 1.0, smoothstep(0.3, 0.7, calm_noise)), enhanced.variation);
 
-  let gust: vec2<f32> = textureSampleGrad(wind_map, texture_sampler, coordinates * 0.1 + vec2<f32>(enhanced.gusts_x, enhanced.gusts_y) * 0.1,
-    dx * 0.1, dy * 0.1).rg;
+  let gust: vec2<f32> = textureSampleGrad(wind_map, texture_sampler, coordinates * GUST_SCALE + enhanced.map_offsets[1].zw,
+    dx * GUST_SCALE, dy * GUST_SCALE).rg;
 
   slope = mix(slope, gust * 2.0 - 1.0, 0.1 * wind);
 
@@ -233,7 +239,7 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
       ripples = clamp(rings.tilt * vec2<f32>(1.0, -1.0) * ring_scale, vec2<f32>(-1.0), vec2<f32>(1.0));
       rain_rough = saturate(rings.variance * ring_scale * ring_scale * RINGS_ROUGHNESS);
     } else {
-      ripples = rain_ripples(coordinates * 0.6, dx * 0.6, dy * 0.6, clamp(enhanced.rain * 1.6, 0.65, 1.0),
+      ripples = rain_ripples(coordinates * RIPPLE_MAP_SCALE, dx * RIPPLE_MAP_SCALE, dy * RIPPLE_MAP_SCALE,
         bottom_distance);
     }
   }
@@ -285,11 +291,10 @@ fn vs_water(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
 // bottom's place in the level, the least of the two, sampled before the fragment can be discarded.
 fn enhanced_caustics(bottom: vec3<f32>) -> vec3<f32> {
   let place: vec2<f32> = vec2<f32>(bottom.x, -bottom.z);
-  let time: f32 = enhanced.flowed;
-  let first: vec3<f32> = saturate(textureSample(caustics_map, texture_sampler, place * 0.19 + vec2<f32>(time * 0.1, 0.0)).rgb -
-    0.1);
-  let second: vec3<f32> = saturate(textureSample(caustics_map, texture_sampler, place * 0.11 + vec2<f32>(-time * 0.07, 0.2))
-    .rgb - 0.1);
+  let first: vec3<f32> = saturate(textureSample(caustics_map, texture_sampler,
+    place * 0.19 + vec2<f32>(enhanced.flow_scrolls.x, 0.0)).rgb - 0.1);
+  let second: vec3<f32> = saturate(textureSample(caustics_map, texture_sampler,
+    place * 0.11 + vec2<f32>(-enhanced.flow_scrolls.y, 0.2)).rgb - 0.1);
 
   return min(first, second);
 }
@@ -322,7 +327,6 @@ struct GuidedOutput {
   @location(3) specular_albedo: vec4<f32>,
   @location(4) normals: vec4<f32>,
   @location(5) hit_distance: f32,
-  @location(6) bias: f32,
 };
 
 @fragment
@@ -336,7 +340,6 @@ fn fs_water_enhanced_guided(in: WaterVarying) -> GuidedOutput {
   out.specular_albedo = vec4<f32>(vec3<f32>(shaded.reflected_share), 1.0);
   out.normals = vec4<f32>(shaded.normal, shaded.roughness);
   out.hit_distance = shaded.hit_distance;
-  out.bias = RAY_GUIDE_BIAS_WATER;
 
   return out;
 }
@@ -430,8 +433,15 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let glinted: f32 = dot(highlight, LUMINANCE) / max(dot(lit, LUMINANCE), 1e-4);
   shaded.reflected_share = mix(saturate(fresnel * enhanced.reflectivity), 1.0, glinted) * seen * border * seen * seen;
   shaded.roughness = mix(GUIDE_ROUGHNESS_CALM, GUIDE_ROUGHNESS_RAIN, waves.rain_rough);
-  shaded.hit_distance = reflected_ray_length(fragment.position,
-    textureSampleLevel(reflection_clear, sky_clamp, saturate((pixel + 0.5) / size + waves.screen), 0.0).a);
+  // The distance the reflection kept at the texel nearest where the waves move its read, or at the pixel's own where
+  // that is no water: a linear read beside a reed would mix in the nothing where no water drew as a nearer hit.
+  let clear_size: vec2<f32> = vec2<f32>(textureDimensions(reflection_clear));
+  let own: vec2<f32> = (pixel + 0.5) / size;
+  let moved_kept: f32 =
+    textureLoad(reflection_clear, vec2<i32>(min(saturate(own + waves.screen) * clear_size, clear_size - 1.0)), 0).a;
+  let own_kept: f32 = textureLoad(reflection_clear, vec2<i32>(min(own * clear_size, clear_size - 1.0)), 0).a;
+
+  shaded.hit_distance = reflected_ray_length(fragment.position, select(own_kept, moved_kept, moved_kept > 0.0));
 
   return shaded;
 }
@@ -451,16 +461,22 @@ fn enhanced_colour(in: WaterVarying, tilt: vec2<f32>) -> vec3<f32> {
 }
 
 // What the enhanced water reflects, as the picture the frame's display shows it as: its reflection drawn this frame,
-// light, blurred and clear mixed by a perlin noise over the level and greyed a little, read where its waves move it;
-// the sky's picture alone while it draws none.
+// light, blurred and clear mixed by a perlin noise over the level and greyed a little, read where its waves move it
+// while that is water; the sky's picture alone while it draws none.
 fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
   if (enhanced.reflected < 0.5) {
     return enhanced_sky(reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
   }
 
-  // The blurred reflection is read where the waves move it twice as far.
-  let blurred: vec3<f32> = textureSampleLevel(reflection_blurred, sky_clamp, saturate(uv + waves.screen * 2.0), 0.0).rgb;
-  let clear: vec3<f32> = textureSampleLevel(reflection_clear, sky_clamp, saturate(uv + waves.screen), 0.0).rgb;
+  // The blurred reflection is read where the waves move it twice as far; of the water's texels alone, and where they
+  // move it off the water altogether, at the pixel's own place, as the refraction refuses a read of what stands over
+  // it.
+  let moved_blurred: vec4<f32> = read_water_reflection(reflection_blurred, saturate(uv + waves.screen * 2.0));
+  let moved_clear: vec4<f32> = read_water_reflection(reflection_clear, saturate(uv + waves.screen));
+  let blurred: vec3<f32> = select(textureSampleLevel(reflection_blurred, sky_clamp, uv, 0.0).rgb, moved_blurred.rgb,
+    moved_blurred.a > 0.0);
+  let clear: vec3<f32> =
+    select(textureSampleLevel(reflection_clear, sky_clamp, uv, 0.0).rgb, moved_clear.rgb, moved_clear.a > 0.0);
   let level: vec2<f32> = vec2<f32>(world.x, -world.z) + waves.normal.xy * 100.0;
   let noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * 0.02, 0.0).r;
   // The rain's roughness takes the clear reflection away for the blurred one.

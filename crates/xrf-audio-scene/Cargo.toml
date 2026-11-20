@@ -1,0 +1,18 @@
+[package]
+name = "xrf-audio-scene"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+rtrb = "0.4.1"
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+
+[features]
+# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
+typescript-bindings = ["specta"]
+
+[lints]
+workspace = true

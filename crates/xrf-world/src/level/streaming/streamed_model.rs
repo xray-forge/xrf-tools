@@ -3,7 +3,7 @@ use xrf_renderer_core::ProxyHandle;
 
 /// A spawned model streamed into a scene: its handle there, the visual it was read from, every place an object stands
 /// as it with the object's handle while it stands, and the skeleton its objects are posed by where it is skinned.
-pub struct StreamedModel {
+pub(crate) struct StreamedModel {
   pub handle: ProxyHandle<StaticModelProxy>,
   pub name: String,
   pub places: Vec<(StaticModelPlace, Option<ProxyHandle<StaticObjectProxy>>)>,

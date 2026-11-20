@@ -44,7 +44,7 @@ fn names_a_level_by_the_last_component_of_its_identity_in_lower_case() {
 #[test]
 fn names_nothing_for_a_directory_with_no_final_component() {
   assert_eq!(
-    LevelSource::Directory { path: String::from("") }.get_logical_directory(),
+    LevelSource::Directory { path: String::new() }.get_logical_directory(),
     None
   );
 }

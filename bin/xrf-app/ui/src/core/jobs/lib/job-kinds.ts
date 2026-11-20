@@ -8,8 +8,13 @@ import {
 import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import { GAMEDATA_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-gamedata";
-import { LEVELS_JOB_CAPTURE_CUBE, LEVELS_JOB_CAPTURE_MAP } from "@xrf/ipc/types/xrf-app-levels";
-import { SPAWN_JOB_PACK, SPAWN_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-spawn";
+import {
+  LEVELS_JOB_BUILD,
+  LEVELS_JOB_CAPTURE_CUBE,
+  LEVELS_JOB_CAPTURE_MAP,
+  LEVELS_JOB_DECOMPILE,
+} from "@xrf/ipc/types/xrf-app-levels";
+import { SPAWN_JOB_BUILD, SPAWN_JOB_PACK, SPAWN_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-spawn";
 import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import {
   TEXTURES_JOB_BUILD,
@@ -57,6 +62,11 @@ export const JOB_KINDS: Readonly<Record<JobKind, IJobKindDescriptor>> = {
     kind: ARCHIVES_JOB_PATCH,
     source: EToolId.ARCHIVES_PATCHER,
     label: "Archive patching",
+  },
+  [SPAWN_JOB_BUILD]: {
+    kind: SPAWN_JOB_BUILD,
+    source: EToolId.SPAWN_COMPILER,
+    label: "Spawn build",
   },
   [SPAWN_JOB_PACK]: {
     kind: SPAWN_JOB_PACK,
@@ -142,6 +152,16 @@ export const JOB_KINDS: Readonly<Record<JobKind, IJobKindDescriptor>> = {
     kind: LEVELS_JOB_CAPTURE_MAP,
     source: EToolId.LEVEL_VIEWER,
     label: "Level map capture",
+  },
+  [LEVELS_JOB_DECOMPILE]: {
+    kind: LEVELS_JOB_DECOMPILE,
+    source: EToolId.LEVEL_DECOMPILER,
+    label: "Level decompile",
+  },
+  [LEVELS_JOB_BUILD]: {
+    kind: LEVELS_JOB_BUILD,
+    source: EToolId.LEVEL_COMPILER,
+    label: "Level build",
   },
   [TEXTURES_JOB_SAVE]: {
     kind: TEXTURES_JOB_SAVE,

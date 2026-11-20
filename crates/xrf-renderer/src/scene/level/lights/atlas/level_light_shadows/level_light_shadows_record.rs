@@ -21,7 +21,7 @@ impl LevelLightShadows {
   /// Declares the faces this frame's `prepare` readied: each slot's arguments started from those a cull starts with,
   /// every face culled into its slot in one compute pass, then every face drawn into its square in one render pass, what
   /// the drawable `kinds` cast over those whose light casts from them.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {

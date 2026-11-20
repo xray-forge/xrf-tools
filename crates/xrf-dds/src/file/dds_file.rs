@@ -4,12 +4,14 @@ use std::path::Path;
 
 use ddsfile::{Dds, DxgiFormat};
 use image::codecs::png::PngEncoder;
-use image::{ExtendedColorType, ImageEncoder, RgbaImage};
+use image::{ExtendedColorType, GrayImage, ImageEncoder, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
+use crate::file::dds_block_decoder::DdsBlockDecoder;
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
+use crate::file::dds_sdk_alpha_decoder::DdsSdkAlphaDecoder;
 use crate::file::dds_uncompressed_decoder::DdsUncompressedDecoder;
 use crate::renderer::dds_format_support::DdsFormatSupport;
 use crate::renderer::dds_renderer::DdsRenderer;
@@ -26,6 +28,9 @@ pub struct DdsFile {
 }
 
 impl DdsFile {
+  /// The longest header, DX10 extension included: a file's first this many bytes hold its whole header.
+  pub const MAX_HEADER_SIZE: usize = DX10_HEADER_SIZE as usize;
+
   /// Reads a whole texture, payload included, from a file.
   ///
   /// # Errors
@@ -75,8 +80,7 @@ impl DdsFile {
   pub fn read_metadata_from_bytes(bytes: &[u8]) -> XrfResult<DdsMetadata> {
     let file_size: u64 = u64::try_from(bytes.len())
       .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
-    let header: &[u8] = &bytes[..bytes.len().min(DX10_HEADER_SIZE as usize)];
-    let dds: Dds = Dds::read(&mut Cursor::new(header)).map_err(|error| {
+    let dds: Dds = Self::read_header(bytes).map_err(|error| {
       XrfError::new_texture_processing_error(format!("Failed to read DDS header from memory: {error}."))
     })?;
 
@@ -93,6 +97,26 @@ impl DdsFile {
       .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
     let dds: Dds = Dds::read(&mut Cursor::new(bytes))
       .map_err(|error| XrfError::new_texture_processing_error(format!("Failed to read DDS from memory: {error}.")))?;
+
+    Self::from_parsed(dds, file_size)
+  }
+
+  /// Reads a whole texture, keeping the bytes handed over as its payload where [`Self::read_from_bytes`] copies it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes do not hold a readable DDS.
+  pub fn read_from_vec(mut bytes: Vec<u8>) -> XrfResult<Self> {
+    let file_size: u64 = u64::try_from(bytes.len())
+      .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
+    let mut dds: Dds = Self::read_header(&bytes)
+      .map_err(|error| XrfError::new_texture_processing_error(format!("Failed to read DDS from memory: {error}.")))?;
+    let header_size: usize = usize::try_from(Self::header_size(&dds))
+      .map_err(|_| XrfError::new_texture_processing_error("DDS header exceeds the supported size range"))?;
+
+    // The header read whole, so the payload is everything after it, as a read of the whole file answers it.
+    bytes.drain(..header_size);
+    dds.data = bytes;
 
     Self::from_parsed(dds, file_size)
   }
@@ -125,8 +149,8 @@ impl DdsFile {
 
   /// Decode one mip level to RGBA, for whatever wants pixels rather than the file.
   ///
-  /// Two decoders, in order. `image_dds` owns every block compressed layout and the packings it has names for; what it
-  /// refuses goes to `decode_uncompressed`, which expands a packing from the channel masks its header declares.
+  /// Two decoders, in order: `image_dds` for every block-compressed layout and the packings it names, then
+  /// `decode_uncompressed`, which expands a packing from its header's channel masks.
   /// Between them they cover every layout in the reference trees - 28,606 files across `gamedata`, `gamedata-anomaly`,
   /// `gamedata-coc`, `gamedata-cop-ee`, `gamedata-cs` and `gamedata-openxray-gunslinger`:
   ///
@@ -148,6 +172,12 @@ impl DdsFile {
   /// Returns an error when neither decoder reads the layout, when the file is a cubemap or volume, or when the
   /// requested level is not in the file.
   pub fn decode_rgba(&self, mipmap_level: u32) -> XrfResult<RgbaImage> {
+    // A flat block-compressed level, most of what a tree holds, decodes in stripes on every worker; anything that
+    // refuses takes the whole-level path below, which answers its pixels or its error as it would alone.
+    if let Some(image) = DdsBlockDecoder::decode(&self.dds, mipmap_level) {
+      return Ok(image);
+    }
+
     match image_dds::image_from_dds(&self.dds, mipmap_level) {
       Ok(image) => Ok(image),
       Err(error) => DdsUncompressedDecoder::decode(&self.dds, mipmap_level).map_err(|fallback| {
@@ -156,6 +186,19 @@ impl DdsFile {
         ))
       }),
     }
+  }
+
+  /// The base level's alpha as the X-Ray SDK's compilers read it through FreeImage 3.9: a byte a texel, top row first.
+  ///
+  /// It differs from [`Self::decode_rgba`]'s alpha where FreeImage does: DXT5 interpolated alpha rounds to nearest,
+  /// and 16-bit and 24-bit packings read opaque.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a layout FreeImage 3.9 does not load (a DX10 header, alpha-only, luminance), a level with no
+  /// texels, a block-compressed level whose sides are not whole blocks, or a payload shorter than the level.
+  pub fn decode_sdk_alpha(&self) -> XrfResult<GrayImage> {
+    DdsSdkAlphaDecoder::decode(&self.dds)
   }
 
   /// The base level as a PNG, decoded as [`Self::decode_rgba`] decodes it.
@@ -202,7 +245,22 @@ impl DdsFile {
   /// be refused, not a whitelist, and reporting an unnamed layout as broken would be an accusation rather than a
   /// finding.
   pub fn is_xray_compatible(&self) -> bool {
-    self.renderer_support(DdsRenderer::Dx9) != DdsFormatSupport::Unsupported
+    Self::is_xray_compatible_header(&self.dds)
+  }
+
+  /// [`Self::is_xray_compatible`] for a file's bytes, answered from its header alone.
+  ///
+  /// A check over a whole tree, ten gigabytes of textures, need not copy each payload. The answer and any error are
+  /// those [`Self::read_from_bytes`] would give.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes do not begin with a readable DDS header.
+  pub fn read_xray_compatibility_from_bytes(bytes: &[u8]) -> XrfResult<bool> {
+    let dds: Dds = Self::read_header(bytes)
+      .map_err(|error| XrfError::new_texture_processing_error(format!("Failed to read DDS from memory: {error}.")))?;
+
+    Ok(Self::is_xray_compatible_header(&dds))
   }
 
   /// Whether one renderer path loads this file's layout.
@@ -210,18 +268,34 @@ impl DdsFile {
   /// A file whose header names no format the modern table knows answers [`DdsFormatSupport::Unverified`]: it is a
   /// layout this crate has no claim about either way, which is not the same as one a renderer refuses.
   pub fn renderer_support(&self, renderer: DdsRenderer) -> DdsFormatSupport {
-    if let Some(header10) = &self.dds.header10 {
+    Self::header_renderer_support(&self.dds, renderer)
+  }
+
+  fn is_xray_compatible_header(dds: &Dds) -> bool {
+    Self::header_renderer_support(dds, DdsRenderer::Dx9) != DdsFormatSupport::Unsupported
+  }
+
+  /// What [`Self::renderer_support`] answers, from a header alone.
+  fn header_renderer_support(dds: &Dds, renderer: DdsRenderer) -> DdsFormatSupport {
+    if let Some(header10) = &dds.header10 {
       return renderer.supports(header10.dxgi_format);
     }
 
-    if let Some(format) = self.dds.get_d3d_format() {
+    if let Some(format) = dds.get_d3d_format() {
       return renderer.supports_d3d(format);
     }
 
-    match DxgiFormat::try_from_pixel_format(&self.dds.header.spf) {
+    match DxgiFormat::try_from_pixel_format(&dds.header.spf) {
       Some(format) => renderer.supports(format),
       None => DdsFormatSupport::Unverified,
     }
+  }
+
+  /// The header at the start of `bytes`, with the few bytes after it as its payload.
+  ///
+  /// `Dds::read` checks no payload length, so the longest header's worth of bytes yields the whole header.
+  fn read_header(bytes: &[u8]) -> Result<Dds, ddsfile::Error> {
+    Dds::read(&mut Cursor::new(&bytes[..bytes.len().min(Self::MAX_HEADER_SIZE)]))
   }
 
   fn from_parsed(dds: Dds, file_size: u64) -> XrfResult<Self> {
@@ -320,6 +394,37 @@ mod tests {
   }
 
   #[test]
+  fn answers_compatibility_from_the_header_as_the_whole_read_does() {
+    // DX10 layouts the D3D9 path loads and refuses, and a file cut short inside its header.
+    let files: Vec<DdsFile> = vec![
+      encoded_file(8, 8, DdsMipmaps::Disabled),
+      dx10_file(DxgiFormat::BC3_UNorm),
+      dx10_file(DxgiFormat::BC7_UNorm),
+      dx10_file(DxgiFormat::R32G32B32A32_Float),
+    ];
+
+    for file in files {
+      let bytes: Vec<u8> = file.write_to_bytes().expect("expect DDS bytes");
+
+      assert_eq!(
+        DdsFile::read_xray_compatibility_from_bytes(&bytes).expect("expect the header to parse"),
+        file.is_xray_compatible()
+      );
+
+      let cut: &[u8] = &bytes[..60];
+
+      assert_eq!(
+        DdsFile::read_xray_compatibility_from_bytes(cut)
+          .map(|_| ())
+          .map_err(|error| error.to_string()),
+        DdsFile::read_from_bytes(cut)
+          .map(|_| ())
+          .map_err(|error| error.to_string())
+      );
+    }
+  }
+
+  #[test]
   fn reads_the_same_metadata_from_the_header_alone() {
     // The header-only read exists so a survey can answer format questions without reading gigabytes of payload. It is
     // only worth having if it agrees with the full read, mip count and payload size included.
@@ -358,6 +463,25 @@ mod tests {
         .metadata(),
       DdsFile::read_from_path(&path).expect("expect path to parse").metadata()
     );
+  }
+
+  #[test]
+  fn reads_the_same_texture_from_bytes_handed_over() {
+    // A legacy header and a DX10 one, whose payloads start twenty bytes apart.
+    for bytes in [
+      encoded_file(64, 32, DdsMipmaps::Filtered(DdsMipFilter::Box)).write_to_bytes(),
+      dx10_file(DxgiFormat::BC7_UNorm).write_to_bytes(),
+    ] {
+      let bytes: Vec<u8> = bytes.expect("expect DDS bytes");
+      let copied: DdsFile = DdsFile::read_from_bytes(&bytes).expect("expect bytes to parse");
+      let kept: DdsFile = DdsFile::read_from_vec(bytes.clone()).expect("expect bytes to parse");
+
+      assert_eq!(kept.metadata(), copied.metadata());
+      assert_eq!(kept.get_data(), copied.get_data());
+      assert_eq!(kept.write_to_bytes().expect("expect DDS bytes"), bytes);
+    }
+
+    assert!(DdsFile::read_from_vec(b"not a DDS".to_vec()).is_err());
   }
 
   #[test]

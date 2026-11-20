@@ -8,6 +8,7 @@ use crate::contract::feature::image::resolve::render_antialiasing::RenderAntiali
 use crate::contract::feature::image::resolve::render_upscaling_settings::RenderUpscalingSettings;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::resolve::dlss::dlss_resolve::DlssResolve;
+use crate::feature::image::resolve::dlss::ngx_evaluation::NgxEvaluation;
 use crate::feature::image::resolve::dlss::ray_reconstruction_resolve::RayReconstructionResolve;
 use crate::feature::image::resolve::fsr::fsr_dispatch::FsrDispatch;
 use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
@@ -19,7 +20,6 @@ use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
 use crate::feature::image::resolve::temporal::temporal_pass::TemporalPass;
 use crate::feature::image::resolve::temporal::temporal_resolve::TemporalResolve;
 use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
-use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
@@ -32,7 +32,7 @@ impl ResolveFeature {
   /// size while it is drawn or resolved at another. DLSS reconstructs rays where asked, the GPU has it and the scene
   /// holds linear light, with the model the light asks; else it upscales alone. The light is written at
   /// `pre_exposure`, which each resolve carries its history by. Answers what the units prepared after it read.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     frame: &ViewPrepare<'_>,
     now: Instant,
@@ -109,23 +109,8 @@ impl ResolveFeature {
     self.is_sharpened =
       upscaling.sharpening > 0.0 && (render.0 < viewport.0 || self.resolve.is_some()) && self.fsr_view.is_none();
 
-    if render == viewport && self.rescale.is_none() && !self.is_sharpened {
-      self.upscaled = None;
-    } else if self
-      .upscaled
-      .as_ref()
-      .is_none_or(|[upscaled, _]| upscaled.get_size() != viewport)
-    {
-      self.upscaled = Some(["upscaled", "sharpened"].map(|label| {
-        FrameTexture::new(
-          device,
-          label,
-          viewport,
-          UpscalePass::FORMAT,
-          wgpu::TextureUsages::COPY_DST,
-        )
-      }));
-    }
+    self.shown_size = (render != viewport || self.rescale.is_some() || self.is_sharpened).then_some(viewport);
+    self.is_upscaled = Self::is_upscale_written(self.rescale, self.is_ray_reconstructed(), render, viewport);
 
     self.upscale = UpscaleUniform {
       output_size: Vec2::new(viewport.0 as f32, viewport.1 as f32),
@@ -252,7 +237,11 @@ impl ResolveFeature {
   fn prepare_dlss(
     &mut self,
     &ViewPrepare {
-      device, dlss, options, ..
+      device,
+      queue,
+      dlss,
+      options,
+      ..
     }: &ViewPrepare<'_>,
     (render, display): ((u32, u32), (u32, u32)),
   ) -> bool {
@@ -262,6 +251,15 @@ impl ResolveFeature {
       self.upscaling.dlss_preset.to_dlss(),
     );
     let key: DlssKey = (display, model, is_hdr);
+
+    // NGX refusing an evaluation at run time refuses every one after it.
+    if let Some(Resolve::Dlss(resolve)) = &mut self.resolve
+      && let Some(error) = resolve.evaluation.take_refusal()
+    {
+      log::warn!("FSR resolves in DLSS's place: {error}");
+      self.resolve = None;
+      self.refused = Some(key);
+    }
 
     if self.refused == Some(key) {
       return false;
@@ -279,15 +277,9 @@ impl ResolveFeature {
         Ok(upscaler) => {
           self.resolve = Some(Resolve::Dlss(Box::new(DlssResolve {
             upscaler,
-            output: FrameTexture::new(
-              device,
-              "dlss output",
-              display,
-              DlssResolve::FORMAT,
-              // NGX writes the output as storage and clears it with a transfer command.
-              wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
-            ),
+            output: DlssResolve::create_output(device, queue, "dlss output", display),
             is_reset: true,
+            evaluation: NgxEvaluation::default(),
           })));
         }
         Err(error) => {
@@ -321,12 +313,27 @@ impl ResolveFeature {
   /// which super resolution does where it refuses them.
   fn prepare_ray_reconstruction(
     &mut self,
-    &ViewPrepare { device, dlss, view, .. }: &ViewPrepare<'_>,
+    &ViewPrepare {
+      device,
+      queue,
+      dlss,
+      view,
+      ..
+    }: &ViewPrepare<'_>,
     (render, display): ((u32, u32), (u32, u32)),
   ) -> bool {
     let quality: DlssQuality = self.upscaling.scale.get_dlss_quality();
     let preset: DlssRayPreset = self.upscaling.ray_reconstruction_preset.to_dlss(self.is_light_physical);
     let key: RayKey = (display, quality, preset);
+
+    // NGX refusing an evaluation at run time refuses every one after it.
+    if let Some(Resolve::RayReconstruction(resolve)) = &mut self.resolve
+      && let Some(error) = resolve.evaluation.take_refusal()
+    {
+      log::warn!("DLSS upscales without reconstructing rays: {error}");
+      self.resolve = None;
+      self.refused_rays = Some(key);
+    }
 
     if self.refused_rays == Some(key) {
       return false;
@@ -348,17 +355,11 @@ impl ResolveFeature {
         Ok(reconstructor) => {
           self.resolve = Some(Resolve::RayReconstruction(Box::new(RayReconstructionResolve {
             reconstructor,
-            output: FrameTexture::new(
-              device,
-              "ray reconstruction output",
-              display,
-              DlssResolve::FORMAT,
-              // As super resolution's: NGX writes it as storage and clears it with a transfer command.
-              wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
-            ),
+            output: DlssResolve::create_output(device, queue, "ray reconstruction output", display),
             is_reset: true,
             view: Mat4::IDENTITY,
             projection: Mat4::IDENTITY,
+            evaluation: NgxEvaluation::default(),
           })));
         }
         Err(error) => {
@@ -391,7 +392,7 @@ impl ResolveFeature {
 
   /// The view and projection DLSS ray reconstruction places hits through: the frame's `view` as prepared, unjittered,
   /// since NGX takes the jitter apart.
-  pub fn get_ray_camera(view: &CameraView) -> (Mat4, Mat4) {
+  pub(crate) fn get_ray_camera(view: &CameraView) -> (Mat4, Mat4) {
     (view.view, view.projection)
   }
 }

@@ -8,7 +8,7 @@ use crate::Renderer;
 /// than listening; none before its first report.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_frame")]
-pub async fn render_describe_frame(
+pub(crate) async fn render_describe_frame(
   renderer: State<'_, Renderer>,
   viewport: RenderViewportId,
 ) -> TauriResult<Option<RenderFrameReport>> {

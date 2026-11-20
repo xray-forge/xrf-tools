@@ -23,7 +23,7 @@ const TURN_TEXELS: f32 = 0.5;
 /// (`compute_caster_model_fixed`), then snapped to the map's own texels, so moving the camera slides the map a whole
 /// texel at a time and its edges do not shimmer.
 #[derive(Clone, Copy, Debug)]
-pub struct SunCascade {
+pub(crate) struct SunCascade {
   /// What the cascade is drawn from: looking along the light, the square's width across, depth reversed.
   pub view: CameraView,
   /// Metres one texel of its map is across.
@@ -64,7 +64,7 @@ impl SunCascade {
   /// `span` is how far along the light the level stands, nearest and farthest, which its casters and receivers stand
   /// within: measured from the level rather than the camera, a caster's shadow does not come and go as the camera moves
   /// along the light.
-  pub fn fit(
+  pub(crate) fn fit(
     &mut self,
     camera: &CameraView,
     rays: &mut SunViewRays,
@@ -80,7 +80,7 @@ impl SunCascade {
     let center: Vec3 = if camera.is_orthographic() {
       let (near_plane, far_plane): (f32, f32) = camera.get_depth_range();
 
-      camera.position + look * ((near_plane + far_plane) / 2.0)
+      camera.position + look * f32::midpoint(near_plane, far_plane)
     } else {
       SunCascadePlacement::place(camera.position, look, &mut rays.rays, &near, &basis, width)
     };
@@ -127,17 +127,19 @@ impl SunCascade {
     };
   }
 
-  /// Whether a map drawn at `drawn` still holds this fit near enough to wait for its turn: drawn at the same width and
-  /// resolution over the same level, strayed from it by a sixteenth of the width at most along each axis, and under a
-  /// light turned by no more than moves a caster as far towards the sun as the map reaches `TURN_TEXELS` across. A
-  /// sharp turn moves the square further, and its view would fall out of the map until the map's turn came.
-  pub fn is_held_by(&self, drawn: &SunCascade) -> bool {
+  /// Whether a map drawn at `drawn` still holds this fit near enough to wait for its turn to be redrawn.
+  ///
+  /// It holds at the same width and resolution, within `DRIFT` of the drawn centre on each axis, under a light turned
+  /// by less than moves a caster `TURN_TEXELS` texels, and with each end of the level's span along the light moved by
+  /// less than the `DEPTH_STEP` that `fit` keeps past it, less the turn's own move. The map is sampled with the matrix
+  /// it was drawn with, so this keeps every caster and receiver the span names within its depth.
+  pub(crate) fn is_held_by(&self, drawn: &Self) -> bool {
     self.is_held_within(drawn, 1.0)
   }
 
   /// Whether a map drawn at `drawn` holds this fit within `share` of what `is_held_by` allows: a map about to stop
   /// holding has its successor drawn ahead.
-  pub fn is_held_within(&self, drawn: &SunCascade, share: f32) -> bool {
+  pub(crate) fn is_held_within(&self, drawn: &Self, share: f32) -> bool {
     let [x, y, z, width, resolution, nearest, farthest, light @ ..] = self.key;
     let [
       drawn_x,
@@ -150,14 +152,25 @@ impl SunCascade {
       drawn_light @ ..,
     ] = drawn.key;
     let slack: f32 = width * DRIFT * share;
+    let facing: f32 = Vec3::from(light).dot(Vec3::from(drawn_light));
     // The turn's sine, as a cosine this near one rounds to it.
     let turn: f32 = Vec3::from(light).cross(Vec3::from(drawn_light)).length();
+    // Where along its light the drawn map's depth starts and ends.
+    let drawn_from: f32 = drawn_z - drawn.back;
+    let drawn_to: f32 = drawn_from + drawn.far;
+    // How far the turn alone moves a point of the drawn map along the light: its reach across the light times the
+    // turn's sine, plus its reach along it times one less the cosine.
+    let moved: f32 = (drawn_x.hypot(drawn_y) + width) * turn + drawn_from.abs().max(drawn_to.abs()) * (1.0 - facing);
+    // `fit` draws a step past each end of the level's span, so an end that moved by less, the turn's move counted, is
+    // still within the map.
+    let span_slack: f32 = (width * DEPTH_STEP - moved) * share;
+    let is_end_held = |end: f32, drawn_end: f32| end == drawn_end || (end - drawn_end).abs() <= span_slack;
 
     width == drawn_width
       && resolution == drawn_resolution
-      && nearest == drawn_nearest
-      && farthest == drawn_farthest
-      && Vec3::from(light).dot(Vec3::from(drawn_light)) > 0.0
+      && is_end_held(nearest, drawn_nearest)
+      && is_end_held(farthest, drawn_farthest)
+      && facing > 0.0
       && turn <= TURN_TEXELS * share * self.texel / self.back.max(1.0)
       && [x - drawn_x, y - drawn_y, z - drawn_z]
         .iter()
@@ -166,7 +179,7 @@ impl SunCascade {
 
   /// The camera rows `first` to `last` (past the end) of its map `resolution` texels across are drawn by: its own, its
   /// projection narrowed to those rows, so their texels land where the whole map's would.
-  pub fn get_rows_view(&self, (first, last): (u32, u32), resolution: u32) -> CameraView {
+  pub(crate) fn get_rows_view(&self, (first, last): (u32, u32), resolution: u32) -> CameraView {
     let width: f32 = self.key[3];
     let half: f32 = width / 2.0;
     let texel: f32 = width / resolution.max(1) as f32;

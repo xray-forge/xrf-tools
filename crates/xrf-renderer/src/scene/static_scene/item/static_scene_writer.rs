@@ -14,13 +14,14 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::item::static_place::StaticPlace;
 use crate::scene::static_scene::item::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::surface::static_surface::StaticSurface;
+use crate::scene::static_scene::trace::static_trace_density::StaticTraceDensity;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::trace::static_trace_group::StaticTraceGroup;
 
 /// What one scene item adds, gathered before its ranges are taken: its records name each other by their indices in
 /// here, and `relocate` moves them to where its ranges put them, so each buffer gets one range an item.
 #[derive(Default)]
-pub struct StaticSceneWriter {
+pub(crate) struct StaticSceneWriter {
   pub words: [Vec<u32>; StaticLayout::COUNT],
   pub indices: Vec<u32>,
   pub clusters: Vec<StaticCluster>,
@@ -40,20 +41,21 @@ pub struct StaticSceneWriter {
   pub slot_infos: Vec<StaticSlotInfo>,
   pub cluster_slots: Vec<u32>,
   pub impostor_shaders: Vec<u16>,
-  /// Its deferred baked sections and instanced meshes, which the level's acceleration structures take.
+  /// Its deferred sections and instanced meshes for the acceleration structures, and its cut-out triangles' density
+  /// words.
   pub trace_geometries: Vec<StaticTraceGeometry>,
   pub trace_groups: Vec<StaticTraceGroup>,
+  pub trace_densities: Vec<u32>,
   /// Its strictly sorted composited runs, which a view draws back to front.
   pub sorted_runs: Vec<StaticSortedRun>,
-  /// The bounding sphere in the world of each of its sections and placed meshes drawn by a pass of its own, and what
-  /// of them it brings into sight.
+  /// World bounding spheres of its section clusters and own-pass meshes, with what each brings into sight.
   pub sights: Vec<(Vec4, StaticSight)>,
   pub capacities: [u32; StaticBatch::LIST_COUNT],
 }
 
 impl StaticSceneWriter {
   /// Appends a geometry's vertex words to its layout's and its indices to the shared ones.
-  pub fn put_words(&mut self, layout: StaticLayout, words: &[u32], indices: &[u32]) -> StaticGeometryBase {
+  pub(crate) fn put_words(&mut self, layout: StaticLayout, words: &[u32], indices: &[u32]) -> StaticGeometryBase {
     let base: StaticGeometryBase = StaticGeometryBase {
       vertex_start: (self.words[layout.get_index()].len() / StaticLayout::STRIDE as usize) as u32,
       index_start: self.indices.len() as u32,
@@ -65,8 +67,31 @@ impl StaticSceneWriter {
     base
   }
 
+  /// Appends a cut-out geometry's triangle density words and points `first_density` at them; zero otherwise.
+  pub(crate) fn put_densities(&mut self, mut geometry: StaticTraceGeometry) -> StaticTraceGeometry {
+    geometry.first_density = 0;
+
+    if geometry.is_cut_out {
+      let first: usize = geometry.first_index as usize;
+      let indices: &[u32] = self
+        .indices
+        .get(first..first + geometry.index_count as usize)
+        .unwrap_or_default();
+
+      geometry.first_density = self.trace_densities.len() as u32;
+      self.trace_densities.extend(StaticTraceDensity::measure(
+        geometry.layout,
+        &self.words[geometry.layout.get_index()],
+        geometry.vertex_start,
+        indices,
+      ));
+    }
+
+    geometry
+  }
+
   /// Puts the clusters covering one index range as one slot; answers its index and how many clusters it took.
-  pub fn put_slot(
+  pub(crate) fn put_slot(
     &mut self,
     base: &StaticGeometryBase,
     clusters: Vec<(u32, u32, Vec4)>,
@@ -112,13 +137,15 @@ impl StaticSceneWriter {
 
   /// Moves every record's references from indices in here to where the item's ranges put them; the CPU's cluster slots
   /// stay counted from the item's own first.
-  pub fn relocate(&mut self, spans: &StaticSpans) {
-    let words: [u32; StaticLayout::COUNT] = std::array::from_fn(|layout| StaticSpans::get_offset(&spans.words[layout]));
-    let indices: u32 = StaticSpans::get_offset(&spans.indices);
-    let clusters: u32 = StaticSpans::get_offset(&spans.clusters);
-    let slots: u32 = StaticSpans::get_offset(&spans.slots);
-    let places: u32 = StaticSpans::get_offset(&spans.places);
-    let impostors: u32 = StaticSpans::get_offset(&spans.impostors);
+  pub(crate) fn relocate(&mut self, spans: &StaticSpans) {
+    let words: [u32; StaticLayout::COUNT] =
+      std::array::from_fn(|layout| StaticSpans::get_offset(spans.words[layout].as_ref()));
+    let indices: u32 = StaticSpans::get_offset(spans.indices.as_ref());
+    let clusters: u32 = StaticSpans::get_offset(spans.clusters.as_ref());
+    let slots: u32 = StaticSpans::get_offset(spans.slots.as_ref());
+    let places: u32 = StaticSpans::get_offset(spans.places.as_ref());
+    let impostors: u32 = StaticSpans::get_offset(spans.impostors.as_ref());
+    let densities: u32 = StaticSpans::get_offset(spans.trace_densities.as_ref());
 
     for (cluster, layout) in self.clusters.iter_mut().zip(&self.cluster_layouts) {
       cluster.first_index += indices;
@@ -157,6 +184,10 @@ impl StaticSceneWriter {
     {
       geometry.first_index += indices;
       geometry.vertex_start += words[geometry.layout.get_index()];
+
+      if geometry.is_cut_out {
+        geometry.first_density += densities;
+      }
     }
 
     for group in &mut self.trace_groups {

@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::generic::shape::Shape;
@@ -15,28 +15,26 @@ pub struct AlifeObjectShape {
   pub shape: Vec<Shape>,
 }
 
-impl ChunkReadWrite for AlifeObjectShape {
+impl ChunkFieldReadWrite for AlifeObjectShape {
   /// Read shape object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
-      shape: Shape::read_list::<T, _>(reader)?,
+      shape: reader.read_xr_list::<T, _>()?,
     })
   }
 
   /// Write shape object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr_list::<T, _>(&self.shape)?;
-
-    Ok(())
+    writer.write_xr_list::<T, _>(&self.shape)
   }
 }
 
 impl LtxImportExport for AlifeObjectShape {
   /// Import ALife shape object data from ltx config.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -51,7 +49,7 @@ impl LtxImportExport for AlifeObjectShape {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     Shape::export_list(&self.shape, section_name, ltx);
@@ -64,7 +62,7 @@ impl LtxImportExport for AlifeObjectShape {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -88,13 +86,16 @@ mod tests {
         spawn_story_id: 527841,
       },
       shape: vec![
-        Shape::Sphere((Vector3d::new(5.5, 0.5, 11.5), 1.0)),
-        Shape::Box((
-          Vector3d::new(5.5, 12.5, 73.1),
-          Vector3d::new(5.1, 13.2, 2.3),
-          Vector3d::new(1.0, 12.0, 6.4),
-          Vector3d::new(9.2, 13.3, 3.0),
-        )),
+        Shape::Sphere(Sphere {
+          center: Vector3d::new(5.5, 0.5, 11.5),
+          radius: 1.0,
+        }),
+        Shape::Box(Affine3d {
+          x_axis: Vector3d::new(5.5, 12.5, 73.1),
+          y_axis: Vector3d::new(5.1, 13.2, 2.3),
+          z_axis: Vector3d::new(1.0, 12.0, 6.4),
+          translation: Vector3d::new(9.2, 13.3, 3.0),
+        }),
       ],
     };
 

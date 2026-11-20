@@ -1,5 +1,3 @@
-use std::cmp;
-
 use crate::condlist::Condlist;
 use crate::ltx::Ltx;
 use crate::scheme::LtxFieldDataType;
@@ -304,15 +302,13 @@ impl LtxFieldScheme {
               types_raw.join(", ")
             ))
           } else {
-            let loop_length: usize = cmp::max(values.len(), types.len());
-
-            // Validate all provided values.
-            for it in 0..loop_length {
-              let current_type: &LtxFieldDataType = types.get(it).unwrap();
+            // Every type is checked, a value missing from the end standing as empty; there are never more values
+            // than types, as checked above.
+            for (it, (current_type, current_raw)) in types.iter().zip(types_raw).enumerate() {
               let current_value: &str = values.get(it).copied().unwrap_or("");
 
               // Skip optional values with empty data, do not validate.
-              if current_value.is_empty() && LtxFieldDataType::is_field_data_optional(types_raw.get(it).unwrap()) {
+              if current_value.is_empty() && LtxFieldDataType::is_field_data_optional(current_raw) {
                 continue;
               }
 
@@ -400,8 +396,16 @@ mod tests {
     assert!(scheme.validate_u32_type(&u32::MIN.to_string()).is_ok());
     assert!(scheme.validate_u32_type(&i32::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_u32_type(&((u32::MIN as i64) - 1).to_string()).is_err());
-    assert!(scheme.validate_u32_type(&((u32::MAX as i64) + 1).to_string()).is_err());
+    assert!(
+      scheme
+        .validate_u32_type(&(i64::from(u32::MIN) - 1).to_string())
+        .is_err()
+    );
+    assert!(
+      scheme
+        .validate_u32_type(&(i64::from(u32::MAX) + 1).to_string())
+        .is_err()
+    );
 
     assert!(scheme.validate_u32_type("a").is_err());
     assert!(scheme.validate_u32_type("true").is_err());
@@ -417,8 +421,16 @@ mod tests {
     assert!(scheme.validate_i32_type(&i32::MIN.to_string()).is_ok());
     assert!(scheme.validate_i32_type(&i32::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_i32_type(&((i32::MIN as i64) - 1).to_string()).is_err());
-    assert!(scheme.validate_i32_type(&((i32::MAX as i64) + 1).to_string()).is_err());
+    assert!(
+      scheme
+        .validate_i32_type(&(i64::from(i32::MIN) - 1).to_string())
+        .is_err()
+    );
+    assert!(
+      scheme
+        .validate_i32_type(&(i64::from(i32::MAX) + 1).to_string())
+        .is_err()
+    );
 
     assert!(scheme.validate_i32_type("a").is_err());
     assert!(scheme.validate_i32_type("true").is_err());
@@ -434,8 +446,16 @@ mod tests {
     assert!(scheme.validate_u16_type(&u16::MIN.to_string()).is_ok());
     assert!(scheme.validate_u16_type(&u16::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_u16_type(&((u16::MIN as i32) - 1).to_string()).is_err());
-    assert!(scheme.validate_u16_type(&((u16::MAX as i32) + 1).to_string()).is_err());
+    assert!(
+      scheme
+        .validate_u16_type(&(i32::from(u16::MIN) - 1).to_string())
+        .is_err()
+    );
+    assert!(
+      scheme
+        .validate_u16_type(&(i32::from(u16::MAX) + 1).to_string())
+        .is_err()
+    );
 
     assert!(scheme.validate_u16_type("a").is_err());
     assert!(scheme.validate_u16_type("true").is_err());
@@ -451,8 +471,16 @@ mod tests {
     assert!(scheme.validate_i16_type(&i16::MIN.to_string()).is_ok());
     assert!(scheme.validate_i16_type(&i16::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_i16_type(&((i16::MIN as i32) - 1).to_string()).is_err());
-    assert!(scheme.validate_i16_type(&((i16::MAX as i32) + 1).to_string()).is_err());
+    assert!(
+      scheme
+        .validate_i16_type(&(i32::from(i16::MIN) - 1).to_string())
+        .is_err()
+    );
+    assert!(
+      scheme
+        .validate_i16_type(&(i32::from(i16::MAX) + 1).to_string())
+        .is_err()
+    );
 
     assert!(scheme.validate_i16_type("a").is_err());
     assert!(scheme.validate_i16_type("true").is_err());
@@ -468,8 +496,8 @@ mod tests {
     assert!(scheme.validate_u8_type(&u8::MIN.to_string()).is_ok());
     assert!(scheme.validate_u8_type(&u8::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_u8_type(&((u8::MIN as i32) - 1).to_string()).is_err());
-    assert!(scheme.validate_u8_type(&((u8::MAX as i32) + 1).to_string()).is_err());
+    assert!(scheme.validate_u8_type(&(i32::from(u8::MIN) - 1).to_string()).is_err());
+    assert!(scheme.validate_u8_type(&(i32::from(u8::MAX) + 1).to_string()).is_err());
 
     assert!(scheme.validate_u8_type("a").is_err());
     assert!(scheme.validate_u8_type("true").is_err());
@@ -485,8 +513,8 @@ mod tests {
     assert!(scheme.validate_i8_type(&i8::MIN.to_string()).is_ok());
     assert!(scheme.validate_i8_type(&i8::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_i8_type(&((i8::MIN as i32) - 1).to_string()).is_err());
-    assert!(scheme.validate_i8_type(&((i8::MAX as i32) + 1).to_string()).is_err());
+    assert!(scheme.validate_i8_type(&(i32::from(i8::MIN) - 1).to_string()).is_err());
+    assert!(scheme.validate_i8_type(&(i32::from(i8::MAX) + 1).to_string()).is_err());
 
     assert!(scheme.validate_i8_type("a").is_err());
     assert!(scheme.validate_i8_type("true").is_err());

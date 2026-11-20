@@ -33,7 +33,7 @@ describe("LevelWindAction", () => {
     expect(view.features.grass.foliage?.mode).toBe(ERenderFoliageMode.ENHANCED);
     expect(getByRole("slider", { name: "Trunk bend" })).toBeEnabled();
     expect(getByRole("slider", { name: "Grass speed" })).toBeEnabled();
-    expect(queryByRole("slider", { name: "Light through leaves" })).not.toBeInTheDocument();
+    expect(queryByRole("group", { name: "Light through leaves" })).not.toBeInTheDocument();
   });
 
   // The light through leaves is the Grass popover's, so the foliage's reset here keeps it.
@@ -54,15 +54,17 @@ describe("LevelWindAction", () => {
       },
     });
 
-    const { getByRole, findByRole, view } = renderLevelView(<LevelWindAction />, descriptor);
+    const { getByRole, findByRole, queryByRole, view } = renderLevelView(<LevelWindAction />, descriptor);
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Wind" }) });
     await findByRole("dialog", { name: "Wind" });
-    await userEvent.click(getByRole("button", { name: "Set the foliage motion back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Foliage motion: Back to the settings" }));
 
     expect(view.features.grass).toEqual({
       density: 0.5,
       foliage: { ...FOLIAGE, sssIntensity: FOLIAGE.sssIntensity + 0.25 },
     });
+    // The light through leaves and the density are the Grass popover's to reset.
+    expect(queryByRole("button", { name: "Foliage motion: Back to the settings" })).toBeNull();
   });
 });

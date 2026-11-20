@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Vector3d};
 use xrf_utils::format_path;
 
 use crate::cform::level_cform_cover::LevelCformCover;
@@ -22,13 +22,36 @@ pub struct LevelCformHeader {
   pub version: u32,
   pub vertex_count: u32,
   pub face_count: u32,
-  pub aabb_min: Vector3d<f32>,
-  pub aabb_max: Vector3d<f32>,
+  /// The box every vertex lies in, `aabb`.
+  pub bounds: Aabb,
 }
 
 impl LevelCformHeader {
   /// Byte size of the header as laid out by the engine.
   pub const SIZE: u64 = 36;
+
+  /// `CFORM_CURRENT_VERSION`, the one version the engine reads.
+  pub const CURRENT_VERSION: u32 = 4;
+
+  /// The header of `geometry` as xrLC writes it (`xrBuildCForm.cpp`): the current version, the counts and the box.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a form with no vertex, or with more vertices or faces than a 32-bit count holds.
+  pub fn of(geometry: &LevelCformGeometry) -> XrfResult<Self> {
+    let count = |count: usize, what: &str| -> XrfResult<u32> {
+      u32::try_from(count)
+        .map_err(|_| XrfError::new_invalid_error(format!("A collision form holds {count} {what}, past 32-bit counts")))
+    };
+
+    Ok(Self {
+      version: Self::CURRENT_VERSION,
+      vertex_count: count(geometry.get_vertices().len(), "vertices")?,
+      face_count: count(geometry.get_faces().len(), "faces")?,
+      bounds: Aabb::from_points(geometry.get_vertices())
+        .ok_or_else(|| XrfError::new_invalid_error("A collision form of no vertex has no box"))?,
+    })
+  }
 }
 
 impl ChunkReadWrite for LevelCformHeader {
@@ -38,8 +61,7 @@ impl ChunkReadWrite for LevelCformHeader {
       version: reader.read_u32::<T>()?,
       vertex_count: reader.read_u32::<T>()?,
       face_count: reader.read_u32::<T>()?,
-      aabb_min: reader.read_xr::<T, _>()?,
-      aabb_max: reader.read_xr::<T, _>()?,
+      bounds: reader.read_xr::<T, _>()?,
     })
   }
 
@@ -48,8 +70,7 @@ impl ChunkReadWrite for LevelCformHeader {
     writer.write_u32::<T>(self.version)?;
     writer.write_u32::<T>(self.vertex_count)?;
     writer.write_u32::<T>(self.face_count)?;
-    writer.write_xr::<T, _>(&self.aabb_min)?;
-    writer.write_xr::<T, _>(&self.aabb_max)?;
+    writer.write_xr::<T, _>(&self.bounds)?;
 
     Ok(())
   }
@@ -126,5 +147,29 @@ impl LevelCformFile {
   /// Reads the vertices and faces alone, the header read only for the counts it holds.
   pub fn read_geometry_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<LevelCformGeometry> {
     Self::read_with_geometry_from_bytes::<T>(bytes).map(|(_, geometry)| geometry)
+  }
+
+  /// Writes the header as held, then `geometry` as [`Self::read_with_geometry_from_bytes`] reads it; a file read and
+  /// written again comes back byte for byte.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the header's counts are not `geometry`'s.
+  pub fn write_with_geometry<T: ByteOrder>(
+    &self,
+    geometry: &LevelCformGeometry,
+    writer: &mut ChunkWriter,
+  ) -> XrfResult {
+    let counts: (usize, usize) = (geometry.get_vertices().len(), geometry.get_faces().len());
+
+    if (self.header.vertex_count as usize, self.header.face_count as usize) != counts {
+      return Err(XrfError::new_invalid_error(format!(
+        "A collision form's header counts {} vertices and {} faces where it holds {} and {}",
+        self.header.vertex_count, self.header.face_count, counts.0, counts.1
+      )));
+    }
+
+    writer.write_xr::<T, _>(&self.header)?;
+    geometry.write::<T>(writer)
   }
 }

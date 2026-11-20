@@ -43,4 +43,14 @@ describe("ErrorState", () => {
     expect(getByRole("alert")).toHaveTextContent("Unsupported format");
     expect(queryByRole("button")).not.toBeInTheDocument();
   });
+
+  it("draws in the viewport's inks over a scene", () => {
+    const { getByRole, getByText } = renderWithTheme(
+      <ErrorState title={"The renderer stopped"} description={"Device lost"} isOnViewport />
+    );
+
+    expect(getByRole("alert").querySelector("svg")).not.toHaveClass("text-error");
+    expect(getByText("Device lost")).toHaveClass("text-viewport-text");
+    expect(getByText("Device lost")).not.toHaveClass("text-text-secondary");
+  });
 });

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { IMenu } from "@/core/routing/menu-descriptor";
+import { IMenuExtension } from "@/core/routing/menu-extension";
 import { IToolDescriptor } from "@/core/routing/tool";
-import { IMenu, IMenuExtension } from "@/core/shell/menu/lib";
 import { FILE_MENU, HELP_MENU } from "@/core/shell/menu/menus";
 import { TOOL_CATALOG } from "@/ToolCatalog";
 

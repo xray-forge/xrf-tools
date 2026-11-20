@@ -11,7 +11,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// frame's reflection, surface and held distance, read through a filtering sampler.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct ReflectionParameters<'a> {
+pub(crate) struct ReflectionParameters<'a> {
   #[texture(d2, unfilterable)]
   pub albedo_target: GraphTexture,
   #[texture(d2, unfilterable)]

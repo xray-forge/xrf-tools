@@ -89,7 +89,7 @@ describe("ArchivesService notifications", () => {
         }),
     });
 
-    await service.extractDirectory("textures", "C:\\out");
+    await service.extractDirectory({ prefix: "textures", destination: "C:\\out", isForced: false });
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.SUCCESS);

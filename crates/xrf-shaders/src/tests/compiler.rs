@@ -52,6 +52,31 @@ fn names_the_flags_a_shader_sets() -> XrfResult {
 }
 
 #[test]
+fn answers_each_flag_by_its_bit_in_shader_xrlc() -> XrfResult {
+  // `Shader_xrLC::Flags`, low bit first: collision, rendering, optimize UV, vertex lighting, casts shadow, sharp light.
+  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(library(&[
+    shader("default", &[], 0b01_0011),
+    shader("def_vertex", &[], 0b10_1100),
+  ]))?;
+  let answers = |shader: &ShaderCompilerShader| {
+    [
+      shader.is_collidable(),
+      shader.is_rendered(),
+      shader.optimizes_uv(),
+      shader.is_vertex_lit(),
+      shader.casts_shadow(),
+      shader.is_sharply_lit(),
+    ]
+  };
+
+  assert_eq!(answers(&file.shaders[0]), [true, true, false, false, true, false]);
+  assert_eq!(answers(&file.shaders[1]), [false, false, true, true, false, true]);
+  assert_eq!(ShaderCompilerShader::FLAGS.map(|(mask, _)| mask), [1, 2, 4, 8, 16, 32]);
+
+  Ok(())
+}
+
+#[test]
 fn keeps_what_the_editor_left_past_a_name_so_a_library_rewrites_exactly() -> XrfResult {
   // `Shader_xrLC` writes its whole `char Name[128]` out of a struct it never zeroes, so vanilla's own first record
   // still carries a `0` from a name that used to be longer. Zero-padding on write would change every shipped file.

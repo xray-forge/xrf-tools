@@ -18,6 +18,8 @@ import { ELevelCaptureMode } from "@/tools/level-viewer/lib/capture/level-captur
 import { ELevelMapArea, ELevelMapLook } from "@/tools/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
+import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";
 
@@ -44,6 +46,8 @@ function mockCapture(
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
     LevelViewerCaptureResultService,
     LevelViewerCaptureService,
+    LevelViewerRecordingService,
+    LevelViewerSnapshotService,
   ]);
   const raised: Array<INotificationPayload> = [];
 
@@ -166,17 +170,17 @@ describe("LevelViewerCaptureService", () => {
     mockFlow(weather, "cutTo", () => Promise.reject(new Error("no cycle 'map'")));
     mockFlow(weather, "release");
     jest.spyOn(render.captures, "captureMap").mockImplementation(async () => {
-      timeDuring.push(weather.time);
+      timeDuring.push(weather.clock.time);
 
       return { outcome: "completed", width: 2048, height: 2048 };
     });
 
-    weather.seekTo(3600);
+    weather.clock.seekTo(3600);
     service.open();
     await service.capture();
 
     expect(timeDuring).toEqual([LEVEL_WEATHER_NOON]);
-    expect(weather.time).toBe(3600);
+    expect(weather.clock.time).toBe(3600);
     expect(raised.map((it: INotificationPayload) => it.severity)).toEqual([ENotificationSeverity.SUCCESS]);
     expect(result.captured?.mode).toBe(ELevelCaptureMode.MAP);
   });
@@ -227,7 +231,7 @@ describe("LevelViewerCaptureService", () => {
     const captured: Array<RenderCubeCapture> = [];
 
     jest.spyOn(render.captures, "captureCube").mockImplementation(async (capture: RenderCubeCapture) => {
-      pausedDuring.push(weather.control.isPaused);
+      pausedDuring.push(weather.clock.control.isPaused);
       captured.push(capture);
 
       return { outcome: "completed", width: 2048, height: 1536 };

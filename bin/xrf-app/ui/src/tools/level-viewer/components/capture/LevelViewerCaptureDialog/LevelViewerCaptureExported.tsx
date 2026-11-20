@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";

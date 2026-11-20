@@ -9,7 +9,7 @@ use crate::VisualBrowses;
 /// The roots `tool` browses in the asking window, the newest it opened.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_browse")]
-pub async fn visuals_restore_browse(
+pub(crate) async fn visuals_restore_browse(
   browses: State<'_, VisualBrowses>,
   window: InvokingWindow,
   tool: String,

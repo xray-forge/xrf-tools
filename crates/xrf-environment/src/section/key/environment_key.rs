@@ -57,7 +57,6 @@ macro_rules! declare_environment_keys {
         }
       }
 
-      #[allow(unused_imports)]
       fn get_kind(self) -> $crate::section::key::EnvironmentValueKind {
         use $crate::section::key::EnvironmentValueKind::*;
 
@@ -66,7 +65,6 @@ macro_rules! declare_environment_keys {
         }
       }
 
-      #[allow(unused_imports)]
       fn get_use(self, engine: xrf_engine_target::XrayEngine) -> $crate::section::key::EnvironmentKeyUse {
         use $crate::section::key::EnvironmentDefault::*;
         use $crate::section::key::EnvironmentKeyUse::*;

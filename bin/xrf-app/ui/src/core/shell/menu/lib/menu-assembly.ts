@@ -1,8 +1,9 @@
 import { Nullable } from "@xrf/types";
 
-import { IMenu, IMenuSection, isSameMenuSection } from "./menu-descriptor";
+import { IMenu, IMenuSection, isSameMenuSection } from "@/core/routing/menu-descriptor";
+import { IMenuExtension } from "@/core/routing/menu-extension";
+
 import { IMenuContribution, TMenuEntry } from "./menu-entry";
-import { IMenuExtension } from "./menu-extension";
 
 /** One menu as the bar draws it: its non-empty sections, each holding its entries in publication order. */
 export interface IAssembledMenu {

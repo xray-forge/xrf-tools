@@ -12,7 +12,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both:
 /// searched, accumulated over frames into the view's histories, then filtered into what combine reads.
-pub struct VbaoPass {
+pub(crate) struct VbaoPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipelines: PipelineSet<VbaoPipelines>,
@@ -41,17 +41,21 @@ impl VbaoPass {
   const MODULE: &'static str = "frame/vbao";
 
   /// The accumulations, the occlusion's and the light's: half floats.
-  pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// The light copied for the search, gathered and filtered: colour, then distance along the view where it says.
-  pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub(crate) const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// The frame's points under the search's pixels: their view depth.
-  pub const POINTS: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
-  pub const POINTS_PASS: &'static str = "vbao points";
+  pub(crate) const POINTS: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub(crate) const POINTS_PASS: &'static str = "vbao points";
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(
+    queue: &wgpu::Queue,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = VbaoParameters::create_layout(device);
@@ -90,7 +94,7 @@ impl VbaoPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout)
     }) {
@@ -99,27 +103,32 @@ impl VbaoPass {
   }
 
   /// The texel a stage reads where no history is bound.
-  pub fn get_empty(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_empty(&self) -> &wgpu::TextureView {
     &self.empty
   }
 
   /// The texel read in place of light where none is gathered.
-  pub fn get_dark(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_dark(&self) -> &wgpu::TextureView {
     &self.dark
   }
 
   /// Lays out the frame's points under the search's pixels, once for every sample that reads them.
-  pub fn record_points(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &VbaoParameters) {
+  pub(crate) fn record_points(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &VbaoParameters) {
     Self::draw(context, &self.pipelines.points, view, parameters);
   }
 
   /// Copies the light the frame's surfaces leave, at the search's size.
-  pub fn record_light_source(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &VbaoParameters) {
+  pub(crate) fn record_light_source(
+    &self,
+    context: &mut RasterContext<'_>,
+    view: &ViewBinding,
+    parameters: &VbaoParameters,
+  ) {
     Self::draw(context, &self.pipelines.light_source, view, parameters);
   }
 
   /// Searches the frame's pixels into the targets the pass draws into, gathering the light too where asked.
-  pub fn record_search(
+  pub(crate) fn record_search(
     &self,
     context: &mut RasterContext<'_>,
     gathering: VbaoGathering,
@@ -135,7 +144,7 @@ impl VbaoPass {
   }
 
   /// Blends the search with the last frame's accumulation into this frame's, the light's too where asked.
-  pub fn record_accumulate(
+  pub(crate) fn record_accumulate(
     &self,
     context: &mut RasterContext<'_>,
     gathering: VbaoGathering,
@@ -151,7 +160,7 @@ impl VbaoPass {
   }
 
   /// Filters the accumulation, or the search alone, into what combine reads: the occlusion, the light, or both.
-  pub fn record_filter(
+  pub(crate) fn record_filter(
     &self,
     context: &mut RasterContext<'_>,
     search: BitmaskSearch,

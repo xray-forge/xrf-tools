@@ -5,7 +5,7 @@ use crate::scene::texture::texture_role::TextureRole;
 
 /// What a shader table entry decides of a static surface before any of its textures is asked for: its class, alpha
 /// reference and flags, and the textures it names.
-pub struct StaticSurfacePlan<'a> {
+pub(crate) struct StaticSurfacePlan<'a> {
   pub class: StaticClass,
   pub alpha_reference: u8,
   pub flags: u32,

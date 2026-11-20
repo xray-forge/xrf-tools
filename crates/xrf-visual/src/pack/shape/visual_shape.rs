@@ -80,8 +80,8 @@ impl VisualShape {
               (v * PI).cos(),
               (u * PI * 2.0).sin() * (v * PI).sin(),
             ];
-            // Every vertex counted above fits a 16-bit index.
-            let index: u16 = mesh.positions.len() as u16;
+            let index: u16 =
+              u16::try_from(mesh.positions.len()).expect("every vertex counted above fits a 16-bit index");
 
             mesh.positions.push(normal.map(|it| it * radius));
             mesh.normals.push(normal);

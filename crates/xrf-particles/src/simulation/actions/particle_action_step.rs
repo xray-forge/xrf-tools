@@ -9,12 +9,12 @@ pub(crate) struct ParticleActionStep<'a> {
 
 impl<'a> ParticleActionStep<'a> {
   /// `P_MAXFLOAT`: a radius at or past this is unlimited, which actions test to skip their distance check.
-  pub const MAX_FLOAT: f32 = 1.0e16;
+  pub(crate) const MAX_FLOAT: f32 = 1.0e16;
 
   /// `kill_old_time`'s value before any `KillOld` runs.
-  pub const DEFAULT_KILL_OLD_TIME: f32 = 1.0;
+  pub(crate) const DEFAULT_KILL_OLD_TIME: f32 = 1.0;
 
-  pub fn new(dt: f32, rules: &'a ParticleEngineRules) -> Self {
+  pub(crate) fn new(dt: f32, rules: &'a ParticleEngineRules) -> Self {
     Self {
       dt,
       kill_old_time: Self::DEFAULT_KILL_OLD_TIME,

@@ -3,7 +3,7 @@
 /// end so exposed, then, log2, the land's average at a scale of one (the window's, the sky left out), each none until
 /// metered.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ExposureMetering {
+pub(crate) struct ExposureMetering {
   pub key: f32,
   pub bright: Option<f32>,
   pub land: Option<f32>,

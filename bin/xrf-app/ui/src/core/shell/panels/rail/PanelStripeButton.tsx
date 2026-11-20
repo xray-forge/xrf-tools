@@ -1,6 +1,6 @@
+import { IconButton } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { IconButton } from "@xrf/ui/material/icon-button";
-import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Tooltip } from "@xrf/ui/overlay";
 import { RAIL_BUTTON_SX, RailButton } from "@xrf/ui/shell/rail-button";
 import { getControlStateSx } from "@xrf/ui/theme/sx";
 import { ReactElement, useCallback } from "react";

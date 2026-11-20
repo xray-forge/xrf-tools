@@ -1,8 +1,9 @@
 import { ComponentType, ReactElement } from "react";
 
 import { IKeybindCommand } from "@/core/commands/lib/command-descriptor";
-import { IMenu } from "@/core/shell/menu/lib/menu-descriptor";
-import { IMenuExtension } from "@/core/shell/menu/lib/menu-extension";
+import { IMenu } from "@/core/routing/menu-descriptor";
+// Type-only: an extension names its owner by `EToolId`, so a value import would close a load cycle.
+import type { IMenuExtension } from "@/core/routing/menu-extension";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 /** Canonical tool identity shared by its directory, route, descriptor, and component stem. */
@@ -64,6 +65,14 @@ export enum EToolId {
   VISUALS_EXPLORER = "visuals-explorer",
   VISUALS_SEQUENCER = "visuals-sequencer",
   WEATHER_EDITOR = "weather-editor",
+}
+
+/**
+ * The route a tool answers on, read from its id rather than the catalog, which loads every tool, so a tool can open
+ * another without an import cycle.
+ */
+export function getToolRoute(tool: EToolId): string {
+  return `/${tool}`;
 }
 
 /**
@@ -161,6 +170,3 @@ export interface IToolGroup {
   icon: ReactElement;
   accent: IToolGroupAccent;
 }
-
-/** Sources that raise notifications without owning a tool of their own. */
-export const APPLICATION_SOURCE: string = "application";

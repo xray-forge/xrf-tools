@@ -28,6 +28,15 @@ export const RENDER_LIGHTING_LIMITS = {
 } as const;
 
 /**
+ * @returns Whether every value of two preview lights is the same, so setting one to the other would change nothing.
+ */
+export function isSameRenderLighting(lighting: IRenderLighting, other: IRenderLighting): boolean {
+  return (Object.keys(lighting) as Array<keyof IRenderLighting>).every(
+    (key: keyof IRenderLighting) => lighting[key] === other[key]
+  );
+}
+
+/**
  * @param lighting - An asset viewer's light, as its controls set it.
  * @returns The same, as a native viewport lights an asset in place of a weather.
  */

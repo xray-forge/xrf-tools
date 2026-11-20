@@ -1,5 +1,6 @@
 use xrf_renderer_core::{GraphBuffer, GraphTexture};
 
+use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
 use crate::feature::tracing::scene_trace::scene_trace_pass::SceneTracePass;
@@ -14,7 +15,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 /// before the water, what the static draws bind, the frame's lighting, both skies, the view's water, and the scene pass
 /// its reflection's rays are left to, with what it traces by where the device traces rays: the sky's group, the level's
 /// trace and the texture cache's group.
-pub struct WaterDraw<'a> {
+pub(crate) struct WaterDraw<'a> {
   pub targets: ViewTargetHandles,
   /// The frame as it stood before the water, which the enhanced water refracts and reflects; none for the engine's.
   pub before_water: Option<GraphTexture>,
@@ -28,6 +29,8 @@ pub struct WaterDraw<'a> {
   pub skies: [&'a wgpu::TextureView; 2],
   pub sky_sampler: &'a wgpu::Sampler,
   pub water: &'a WaterFeature,
+  /// What reduces the frame's depth into the pyramid the reflection's rays walk over.
+  pub depth_pyramid: &'a DepthPyramidPass,
   pub scene_trace: &'a SceneTracePass,
   pub traced: Option<TracedWater<'a>>,
   /// The enhanced drops' rings, which the enhanced water ripples by; a texel of nothing without them.

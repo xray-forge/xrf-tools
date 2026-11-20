@@ -14,7 +14,7 @@ pub(crate) struct GraphPassScope<'c> {
 }
 
 impl<'c> GraphPassScope<'c> {
-  pub fn get_texture(&self, texture: GraphTexture) -> GraphResolvedTexture<'c> {
+  pub(crate) fn get_texture(&self, texture: GraphTexture) -> GraphResolvedTexture<'c> {
     debug_assert!(
       self.textures.contains(&texture),
       "Pass '{}' reaches graph texture {} it did not declare",
@@ -25,7 +25,7 @@ impl<'c> GraphPassScope<'c> {
     self.resources.get_texture(texture)
   }
 
-  pub fn get_buffer(&self, buffer: GraphBuffer) -> &'c wgpu::Buffer {
+  pub(crate) fn get_buffer(&self, buffer: GraphBuffer) -> &'c wgpu::Buffer {
     debug_assert!(
       self.buffers.contains(&buffer),
       "Pass '{}' reaches graph buffer {} it did not declare",
@@ -37,7 +37,7 @@ impl<'c> GraphPassScope<'c> {
   }
 
   /// The bind group of `parameters`, from the cache, and its dynamic offsets.
-  pub fn get_bind_group<P: PassParameters>(&self, parameters: &P) -> (wgpu::BindGroup, Vec<u32>) {
+  pub(crate) fn get_bind_group<P: PassParameters>(&self, parameters: &P) -> (wgpu::BindGroup, Vec<u32>) {
     (
       self.cache.get_bind_group(self.device, parameters, self),
       parameters.list_dynamic_offsets(),

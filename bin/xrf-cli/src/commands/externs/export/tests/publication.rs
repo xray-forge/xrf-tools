@@ -32,7 +32,6 @@ fn export(root: &Path) -> CommandResult {
     &ExportCommand,
     &[
       String::from("export"),
-      String::from("-p"),
       root.join("declarations").display().to_string(),
       String::from("-d"),
       root.join("externs.json").display().to_string(),

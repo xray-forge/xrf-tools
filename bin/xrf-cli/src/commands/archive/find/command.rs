@@ -9,27 +9,24 @@ use xrf_utils::format_path;
 use super::report::ArchiveFindReport;
 use crate::commands::archive::list::ArchiveEntrySelection;
 use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedPayloadIndex;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct FindCommand;
+pub(crate) struct FindCommand;
 
 impl GenericCommand for FindCommand {
   fn operation(&self) -> &'static str {
     "find"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to an archive volume or a directory containing volumes")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Find archive entries whose logical path contains text")
-      .arg(
-        Arg::new("path")
-          .help("Path to an archive volume or a directory containing volumes")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("query")
           .help("Case-insensitive text to find in an entry's logical path")
@@ -55,9 +52,7 @@ impl GenericCommand for FindCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let started_at: Instant = Instant::now();
-    let path: &PathBuf = matches
-      .get_one("path")
-      .expect("Expected an archive path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let query: &String = matches.get_one("query").expect("Expected a query to be provided");
     let output: OutputOptions = context.get_output().clone();
 
@@ -72,7 +67,7 @@ impl GenericCommand for FindCommand {
 
     // Over the whole table, not the matches: a match shares its payload with entries the query did not name.
     let shared: Vec<ArchiveSharedPayload> = project.list_shared_payloads();
-    let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
+    let shared: ArchiveSharedPayloadIndex<'_> = ArchiveSharedPayloadIndex::new(&shared);
 
     for entry in &entries {
       let size: String = xrf_utils::format_bytes(u64::from(entry.size_real));

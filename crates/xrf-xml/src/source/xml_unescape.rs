@@ -11,7 +11,7 @@ impl XmlUnescape {
   const CDATA_END: &'static str = "]]>";
 
   /// The text a run of character data stands for: references resolved, CDATA kept as written, line ends normalized.
-  pub fn text(raw: &str) -> String {
+  pub(crate) fn text(raw: &str) -> String {
     let normalized: String = Self::normalize_line_ends(raw);
     let mut text: String = String::with_capacity(normalized.len());
     let mut rest: &str = &normalized;
@@ -38,7 +38,7 @@ impl XmlUnescape {
   }
 
   /// The value an attribute stands for: references resolved, and literal whitespace normalized to spaces as XML does.
-  pub fn attribute(raw: &str) -> String {
+  pub(crate) fn attribute(raw: &str) -> String {
     // Normalized before references resolve, so a character reference to a line break survives as one.
     let normalized: String = Self::normalize_line_ends(raw).replace(['\t', '\n'], " ");
 

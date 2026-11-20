@@ -1,9 +1,10 @@
 import { AsyncState } from "@xrf/async";
 import { LevelObject, LevelObjectShape, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button } from "@xrf/ui/material/button";
+import { CenterFocusStrongIcon } from "@xrf/ui/icons/center-focus-strong";
 import { ReactElement } from "react";
 
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
@@ -56,6 +57,14 @@ export function LevelObjectDetails({
         others
           ? `${getLevelObjectKind(object.kind).label}, ${others} more selected`
           : getLevelObjectKind(object.kind).label
+      }
+      actions={
+        <EditorIconAction
+          label={others ? "Frame selection" : "Go to"}
+          description={others ? "Stands the camera to frame every object selected" : "Stands the camera at the object"}
+          icon={<CenterFocusStrongIcon />}
+          onClick={onGoTo}
+        />
       }
     >
       <EditorPanelProperty label={"Position"} value={formatLevelPoint(toLevelObjectPosition(object.transform))} />
@@ -122,10 +131,6 @@ export function LevelObjectDetails({
           />
         )
       ) : null}
-
-      <Button className={"mt-2"} size={"small"} onClick={onGoTo}>
-        {others ? "Frame selection" : "Go to"}
-      </Button>
     </EditorPanelSection>
   );
 }

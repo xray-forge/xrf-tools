@@ -8,7 +8,7 @@ use crate::scene::static_scene::surface::static_surface::StaticSurface;
 /// surfaces they wear.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct StaticImpostorParameters {
+pub(crate) struct StaticImpostorParameters {
   #[storage]
   pub impostors: StorageArray<StaticImpostor>,
   /// Two a corner: its position and hemisphere term, then its atlas coordinate and sun term.

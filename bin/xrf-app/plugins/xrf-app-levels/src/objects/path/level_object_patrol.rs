@@ -23,7 +23,7 @@ impl From<&Patrol> for LevelObjectPatrol {
       points: patrol
         .points
         .iter()
-        .map(|point| LevelObject::to_renderer_space(&point.position))
+        .map(|point| LevelObject::convert_to_renderer_space(&point.position))
         .collect(),
       links: patrol
         .links

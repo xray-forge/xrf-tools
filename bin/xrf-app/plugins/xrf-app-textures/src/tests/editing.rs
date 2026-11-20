@@ -240,7 +240,7 @@ fn a_save_into_a_mounted_tree_commits_so_its_retained_descriptor_and_sessions_fo
   let inputs: XrayInputRecord = XrayInputRecord::new();
   let id: SessionId = SessionId::generate();
 
-  read(&search.clone().with_recording(&inputs));
+  read(&search.with_recording(&inputs));
   sessions
     .begin_fixture_open(id)
     .expect("the session opens")
@@ -379,8 +379,7 @@ fn saving_a_texture_writes_its_bytes_and_syncs_the_descriptor_format() {
 
 #[test]
 fn a_bc1_texture_names_the_format_its_own_alpha_flag_says() {
-  // `tfDXT1` and `tfADXT1` are one encoder told apart by whether the alpha means anything, so only the descriptor's
-  // own flags can say which of them a written BC1 texture is.
+  // `tfDXT1` and `tfADXT1` are both BC1; only the descriptor's alpha flag tells them apart.
   for (has_alpha, expected) in [(false, ThmFormat::Dxt1), (true, ThmFormat::Dxt1Alpha)] {
     let root: PathBuf = editing_directory(if has_alpha { "bc1_alpha" } else { "bc1_opaque" });
     let texture_path: PathBuf = root.join("ston_beton05.dds");

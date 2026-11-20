@@ -1,0 +1,214 @@
+import { LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { Nullable } from "@xrf/types";
+import { GridOnIcon } from "@xrf/ui/icons/grid-on";
+import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
+import { PaletteIcon } from "@xrf/ui/icons/palette";
+import { ViewInArIcon } from "@xrf/ui/icons/view-in-ar";
+
+import { TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND } from "@/core/level/commands";
+import { ILevelHelperOptions, isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
+import { getLevelVisibleOption, TLevelVisibleOption } from "@/core/level/lib/objects/level-object-visibility";
+import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
+import { ELevelShading, ILevelShadingChoice } from "@/core/level/lib/view/level-shading";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { EMenuEntryKind, IMenuSubmenuEntry, IMenuToggleEntry, TMenuEntry } from "@/core/shell/menu/lib";
+
+/** What the View menu is drawn from: the view as it stands and the shadings the frame offers now. */
+export interface ILevelViewerViewMenuState {
+  options: ILevelViewOptions;
+  helpers: ILevelHelperOptions;
+  shading: ELevelShading;
+  /** The shadings offered, FSR's own only while FSR draws the frame. */
+  shadings: ReadonlyArray<ILevelShadingChoice>;
+  /** Whether the settings draw any parallax for the Parallax switch to turn. */
+  isParallaxDrawn: boolean;
+}
+
+/** A heading the shadings are listed under. */
+type TLevelShadingSection = ILevelShadingChoice["section"];
+
+/** The section listed in the Shading submenu itself; every other section gets a submenu of its own. */
+const FRAME_SHADING_SECTION: TLevelShadingSection = "Frame";
+
+/**
+ * The frame's View menu entries: Shading and Overlays.
+ */
+export function toLevelViewerFrameEntries(
+  state: ILevelViewerViewMenuState,
+  viewService: LevelViewService
+): Array<TMenuEntry> {
+  return [toShadingSubmenu(state, viewService), toOverlaysSubmenu(state, viewService)];
+}
+
+/**
+ * The level objects' View menu entries: Helpers and Objects.
+ */
+export function toLevelViewerObjectEntries(
+  state: ILevelViewerViewMenuState,
+  viewService: LevelViewService
+): Array<TMenuEntry> {
+  return [toHelpersSubmenu(state, viewService), toObjectsSubmenu(state, viewService)];
+}
+
+/**
+ * The Shading submenu: the frame's own shadings, a submenu per target section, then the surface switches.
+ */
+function toShadingSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
+  const targetSections: Array<TLevelShadingSection> = [
+    ...new Set(state.shadings.map((choice: ILevelShadingChoice) => choice.section)),
+  ].filter((section: TLevelShadingSection) => section !== FRAME_SHADING_SECTION);
+
+  return {
+    kind: EMenuEntryKind.SUBMENU,
+    id: "level-viewer/shading",
+    label: "Shading",
+    icon: <PaletteIcon />,
+    sections: [
+      toShadingChoices(state, viewService, FRAME_SHADING_SECTION),
+      targetSections.map((section: TLevelShadingSection): IMenuSubmenuEntry => ({
+        kind: EMenuEntryKind.SUBMENU,
+        id: `level-viewer/shading-${toKebabCase(section)}`,
+        label: section,
+        sections: [toShadingChoices(state, viewService, section)],
+      })),
+      [
+        toOptionToggle(state, viewService, { option: "isWireframe", label: "Wireframe" }),
+        toOptionToggle(state, viewService, { option: "isBumped", label: "Bumps" }),
+        {
+          ...toOptionToggle(state, viewService, { option: "isParallaxed", label: "Parallax" }),
+          isChecked: state.options.isParallaxed && state.isParallaxDrawn,
+          isDisabled: !state.isParallaxDrawn,
+        },
+        toOptionToggle(state, viewService, { option: "isWallmarked", label: "Wall marks" }),
+      ],
+    ],
+  };
+}
+
+/** One section's shadings as choices. */
+function toShadingChoices(
+  state: ILevelViewerViewMenuState,
+  viewService: LevelViewService,
+  section: TLevelShadingSection
+): Array<TMenuEntry> {
+  return state.shadings
+    .filter((choice: ILevelShadingChoice) => choice.section === section)
+    .map((choice: ILevelShadingChoice): TMenuEntry => ({
+      kind: EMenuEntryKind.CHOICE,
+      id: `level-viewer/shade-${toKebabCase(choice.value)}`,
+      label: choice.label,
+      description: choice.description,
+      isChosen: choice.value === state.shading,
+      onChoose: () => viewService.setShading(choice.value),
+    }));
+}
+
+/** The Overlays submenu, as the toolbar's Show popover lists them. */
+function toOverlaysSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
+  return {
+    kind: EMenuEntryKind.SUBMENU,
+    id: "level-viewer/overlays",
+    label: "Overlays",
+    icon: <GridOnIcon />,
+    sections: [
+      LEVEL_OVERLAYS.map((overlay: ILevelOverlay): TMenuEntry => ({
+        ...toOptionToggle(state, viewService, { option: overlay.option, label: overlay.label }),
+        id: `level-viewer/toggle-${overlay.id}`,
+      })),
+    ],
+  };
+}
+
+/** The Helpers submenu: the master switch and look, then each kind's helper, disabled while helpers are off. */
+function toHelpersSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
+  const { helpers } = state;
+
+  return {
+    kind: EMenuEntryKind.SUBMENU,
+    id: "level-viewer/helpers",
+    label: "Helpers",
+    icon: <ViewInArIcon />,
+    sections: [
+      [
+        {
+          kind: EMenuEntryKind.TOGGLE,
+          id: "level-viewer/toggle-helpers",
+          label: "Show helpers",
+          command: TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND,
+          isChecked: helpers.isShown,
+          onToggle: viewService.toggleHelpers,
+        },
+        {
+          kind: EMenuEntryKind.TOGGLE,
+          id: "level-viewer/toggle-rest-faded",
+          label: "Fade the rest",
+          isChecked: helpers.isRestFaded,
+          onToggle: () => viewService.setHelperLook({ isRestFaded: !helpers.isRestFaded }),
+        },
+        {
+          kind: EMenuEntryKind.TOGGLE,
+          id: "level-viewer/toggle-screenshot-helped",
+          label: "Include in screenshots",
+          isChecked: helpers.isScreenshotHelped,
+          onToggle: () => viewService.setHelperLook({ isScreenshotHelped: !helpers.isScreenshotHelped }),
+        },
+      ],
+      LEVEL_OBJECT_KINDS.map((entry: LevelObjectKindEntry): TMenuEntry => {
+        const isHelped: boolean = isLevelHelperOn(helpers, entry.kind);
+
+        return {
+          kind: EMenuEntryKind.TOGGLE,
+          id: `level-viewer/toggle-${toKebabCase(entry.kind)}-helper`,
+          label: entry.label,
+          isChecked: isHelped,
+          isDisabled: !helpers.isShown,
+          onToggle: () => viewService.setHelperKinds({ isOn: !isHelped, kinds: [entry.kind] }),
+        };
+      }),
+    ],
+  };
+}
+
+/** The Objects submenu: which level object kinds are drawn, as the toolbar's Show popover lists them. */
+function toObjectsSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
+  return {
+    kind: EMenuEntryKind.SUBMENU,
+    id: "level-viewer/objects",
+    label: "Objects",
+    icon: <Inventory2Icon />,
+    sections: [
+      LEVEL_OBJECT_KINDS.flatMap((entry: LevelObjectKindEntry): Array<TMenuEntry> => {
+        const option: Nullable<TLevelVisibleOption> = getLevelVisibleOption(entry.kind);
+
+        return option ? [toOptionToggle(state, viewService, { option, label: entry.label })] : [];
+      }),
+      [toOptionToggle(state, viewService, { option: "isSpawnedReleased", label: "Released" })],
+      [
+        toOptionToggle(state, viewService, { option: "isParticled", label: "Particles" }),
+        toOptionToggle(state, viewService, { option: "isCampfireLit", label: "Campfires lit" }),
+        toOptionToggle(state, viewService, { option: "isAmbientEffectPlayed", label: "Ambient effects" }),
+      ],
+    ],
+  };
+}
+
+/** One of the view's switches as a menu row. */
+function toOptionToggle(
+  state: ILevelViewerViewMenuState,
+  viewService: LevelViewService,
+  { option, label }: { option: keyof ILevelViewOptions; label: string }
+): IMenuToggleEntry {
+  return {
+    kind: EMenuEntryKind.TOGGLE,
+    id: `level-viewer/toggle-${toKebabCase(option.replace(/^is/, ""))}`,
+    label,
+    isChecked: state.options[option],
+    onToggle: () => viewService.toggleOption(option),
+  };
+}
+
+/** A camel or title case name as an entry id's kebab case. */
+function toKebabCase(name: string): string {
+  return name.replace(/(?<=[a-z0-9])(?=[A-Z])/g, "-").toLowerCase();
+}

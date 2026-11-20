@@ -2,18 +2,24 @@
 
 mod commands;
 mod console;
+mod helpers;
 pub mod ipc;
 mod level;
 mod objects;
 mod parts;
 pub mod plugin;
+mod rawdata;
 mod render;
 mod report;
+mod scene;
+mod sound;
 mod spawn;
 #[cfg(test)]
 mod tests;
 mod viewer;
+mod visuals;
 mod weather;
 
 pub use level::SelectedLevels;
 pub use render::ShownLevels;
+pub use scene::{SelectedScenes, ShownScenes};

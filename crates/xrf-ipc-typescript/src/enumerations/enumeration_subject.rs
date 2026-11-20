@@ -18,7 +18,7 @@ impl EnumerationSubject {
   ///
   /// The two shapes are mutually exclusive: a variant carrying data disqualifies a set of identities, and a variant
   /// carrying none cannot be internally tagged.
-  pub fn of(named: &NamedDataType) -> Option<(Self, Vec<&str>)> {
+  pub(super) fn of(named: &NamedDataType) -> Option<(Self, Vec<&str>)> {
     if let Some(spellings) = Self::get_identity_spellings(named) {
       return Some((Self::Identities, spellings));
     }

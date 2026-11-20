@@ -8,7 +8,7 @@ use xrf_test_utils::GeneratedResources;
 use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 use crate::viewer::ViewerDdsExport;
-use crate::viewer::cube::{CubeExportFormat, CubeExportRequest, CubeExporter};
+use crate::viewer::export::cube::{CubeExportFormat, CubeExportRequest, CubeExporter};
 
 /// A cross of 16 pixel faces in a folder of its own, each face one flat shade by its place in the engine's order.
 fn write_cross(name: &str) -> TauriResult<(PathBuf, PathBuf)> {

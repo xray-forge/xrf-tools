@@ -8,17 +8,16 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
-use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
 use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::feature::scene::statics::cull::static_view_cull::StaticViewCull;
 use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindings;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBindings;
-use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
+use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::{StaticGbufferDraw, StaticGbufferPart};
 use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::readback::stats_readback::StatsReadback;
@@ -33,12 +32,17 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// What the camera's lens is scaled by for the frustum a sun cascade's trees are kept for: a third or so wider each way
 /// at the usual lenses, so a camera turning between the trees' redraws still finds their shadows drawn.
 const RECEIVER_WIDEN: f32 = 0.6;
+/// The first G-buffer draw's passes, a `StaticGbufferPart` each, the depth clearing the G-buffer; then the late
+/// draw's, which has no impostors.
+const GBUFFER_PASSES: [&str; 3] = ["g-buffer depth", "g-buffer", "impostors"];
+const LATE_GBUFFER_PASSES: [&str; 2] = ["late g-buffer depth", "late g-buffer"];
 
-/// The static scene as the view culls and draws it: the cull's parameters this frame, the depth pyramid the next
-/// frame's occlusion is tested against and the camera it was reduced through, the counts the cull read back, whether
-/// the wall marks are drawn, and whether its surfaces are counted for the overdraw's debug view.
-pub struct StaticsFeature {
+/// The static scene as the view culls and draws it, with the depth pyramid the next frame's occlusion is tested
+/// against.
+pub(crate) struct StaticsFeature {
   cull: StaticCullUniform,
+  /// The camera cull's lists and arguments, made with the view's first cull as large as the scene's lists.
+  camera: Option<StaticViewCull>,
   occlusion: StaticOcclusionUniform,
   /// The farthest depth's pyramid over the frame's targets.
   pyramid: Option<DepthPyramid>,
@@ -57,9 +61,10 @@ pub struct StaticsFeature {
 }
 
 impl StaticsFeature {
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     Self {
       cull: StaticCullUniform::default(),
+      camera: None,
       occlusion: bytemuck::Zeroable::zeroed(),
       pyramid: None,
       history: None,
@@ -74,20 +79,21 @@ impl StaticsFeature {
 
   /// Makes the depth pyramid over targets `width` by `height`, after they were made again: a pyramid of another size
   /// holds no depth this frame can be tested against.
-  pub fn fit(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
+  pub(crate) fn fit(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
     self.pyramid = Some(DepthPyramid::new(device, width, height));
     self.history = None;
   }
 
   /// Forgets the camera a frame that was never submitted kept as the pyramid's: the pyramid never reduced its depth.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     self.history = None;
   }
 
-  /// Takes this frame's cull of `statics` through `view` over a frame `width` by `height`, and what the occlusion tests
-  /// against.
-  pub fn prepare(
+  /// Prepares this frame's cull of `statics` through `view` over a `width` by `height` frame, and what the occlusion
+  /// tests against.
+  pub(crate) fn prepare(
     &mut self,
+    device: &wgpu::Device,
     statics: &StaticScene,
     options: &RenderViewOptions,
     view: &CameraView,
@@ -96,6 +102,8 @@ impl StaticsFeature {
     if !options.features.is_occlusion_culled {
       self.history = None;
     }
+
+    StaticViewCull::fit(&mut self.camera, device, statics.cull.get_list_bytes());
 
     // The engine's screen: the viewport's pixels, widened for a lens narrower than its 90 degrees; parallel rays are
     // drawn at their finest whatever it is.
@@ -113,10 +121,10 @@ impl StaticsFeature {
       glod_end: threshold(options.features.lod.ssa_glod_end),
       discard_below: options.features.lod.ssa_discard.powi(2) / screen,
       candidate_capacity: statics.cull.get_list_capacity(),
-      is_occluding: options.features.is_occlusion_culled as u32,
+      is_occluding: u32::from(options.features.is_occlusion_culled),
       lod_a: threshold(options.features.lod.ssa_a),
       lod_b: threshold(options.features.lod.ssa_b),
-      is_impostors: options.features.lod.is_impostors as u32,
+      is_impostors: u32::from(options.features.lod.is_impostors),
       pad: UVec4::ZERO,
       lod_origin: view.position.extend(if view.is_orthographic() { 0.0 } else { 1.0 }),
       receivers: Self::get_receivers(view),
@@ -136,7 +144,7 @@ impl StaticsFeature {
         projection: history_projection,
         size: Vec2::new(pyramid.width as f32, pyramid.height as f32),
         levels: pyramid.levels,
-        has_history: self.history.is_some() as u32,
+        has_history: u32::from(self.history.is_some()),
       };
     }
   }
@@ -165,13 +173,13 @@ impl StaticsFeature {
   }
 
   /// The cull's parameters this frame, which every cull of the view's own views reads.
-  pub fn get_cull(&self) -> &StaticCullUniform {
+  pub(crate) fn get_cull(&self) -> &StaticCullUniform {
     &self.cull
   }
 
   /// What this frame's depth pyramid holds, for a cull after the G-buffer to test against: this frame's view, the
   /// pyramid's shape, and whether it was reduced this frame at all, which only an occlusion cull does.
-  pub fn get_frame_occlusion(&self) -> StaticOcclusionUniform {
+  pub(crate) fn get_frame_occlusion(&self) -> StaticOcclusionUniform {
     StaticOcclusionUniform {
       view: self.matrices.0,
       projection: self.matrices.1,
@@ -181,20 +189,19 @@ impl StaticsFeature {
   }
 
   /// Whether a frame can be drawn: the pyramid is made with the targets.
-  pub fn is_ready(&self) -> bool {
+  pub(crate) fn is_ready(&self) -> bool {
     self.pyramid.is_some()
   }
 
   /// Keeps this frame's camera as what the pyramid it reduces holds, while it culls occlusion.
-  pub fn begin_frame(&mut self) {
+  pub(crate) fn begin_frame(&mut self) {
     if self.cull.is_occluding != 0 {
       self.history = Some(self.matrices);
     }
   }
 
-  /// The static scene's handles for this frame: its buffers, the pyramid, the cull's parameters, what the occlusion
-  /// tests against and the trees' sway pushed; none before the pyramid is made.
-  pub fn import<'a>(
+  /// The static scene's handles for this frame; none before the pyramid is made or the view first culled.
+  pub(crate) fn import<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -209,6 +216,7 @@ impl StaticsFeature {
     Some(StaticSceneHandles::import(
       GraphDeclaration::new(graph, bindings, runtime),
       statics,
+      self.camera.as_ref()?,
       &pyramid.view,
       &self.cull,
       &self.occlusion,
@@ -217,7 +225,7 @@ impl StaticsFeature {
   }
 
   /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
-  pub fn list_draw_args(&self, scene: &StaticSceneHandles) -> Vec<GraphBuffer> {
+  pub(crate) fn list_draw_args(&self, scene: &StaticSceneHandles) -> Vec<GraphBuffer> {
     if self.cull.is_occluding != 0 {
       vec![scene.args, scene.late]
     } else {
@@ -227,7 +235,7 @@ impl StaticsFeature {
 
   /// Declares the overdraw's count where the view shows it: the frame's draws replayed into `light`, which the sun and
   /// the lamps left nought, each surface adding one over every pixel it covers.
-  pub fn add_overdraw_pass<'a>(
+  pub(crate) fn add_overdraw_pass<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     ViewRecord {
@@ -266,7 +274,7 @@ impl StaticsFeature {
   /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then,
   /// while it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and
   /// drawn.
-  pub fn add_gbuffer_passes<'a>(
+  pub(crate) fn add_gbuffer_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {
@@ -289,13 +297,17 @@ impl StaticsFeature {
     let depth: GraphTexture = targets.depth;
     let is_inspected: bool = self.is_inspected;
     let is_prepassed: bool = self.is_prepassed;
-    let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
-      let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {
+    // A pass a part, so the frame times them apart.
+    let add_part = |graph: &mut FrameGraph<'a>,
+                    name: &'static str,
+                    draw_args: GraphBuffer,
+                    (part, is_clearing): (StaticGbufferPart, bool)| {
+      let color_load: wgpu::LoadOp<wgpu::Color> = if is_clearing {
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
       } else {
         wgpu::LoadOp::Load
       };
-      let depth_load: wgpu::LoadOp<f32> = if is_first {
+      let depth_load: wgpu::LoadOp<f32> = if is_clearing {
         wgpu::LoadOp::Clear(0.0)
       } else {
         wgpu::LoadOp::Load
@@ -307,9 +319,7 @@ impl StaticsFeature {
         })
         .depth(GraphDepthAttachment::new(depth, depth_load))
         .buffer(draw_args, GraphBufferAccess::Indirect);
-
-      // The first pass draws the impostors too.
-      let builder = if is_first {
+      let builder = if part == StaticGbufferPart::Impostors {
         draws.declare_impostored(builder)
       } else {
         draws.declare(builder)
@@ -323,55 +333,60 @@ impl StaticsFeature {
           StaticDrawBindings::new(view, &draws, textures),
           draw_args,
           StaticGbufferDraw {
-            is_first,
             is_inspected,
             is_prepassed,
+            part,
           },
         );
       });
     };
+    // The first draw also draws the impostors, which no occlusion sets aside, and its depth clears the G-buffer.
+    let add_draw = |graph: &mut FrameGraph<'a>, names: &[&'static str], draw_args: GraphBuffer, is_first: bool| {
+      let parts = [
+        StaticGbufferPart::Depth,
+        StaticGbufferPart::Shading,
+        StaticGbufferPart::Impostors,
+      ];
 
+      for (index, (name, part)) in names.iter().zip(parts).enumerate() {
+        add_part(&mut *graph, name, draw_args, (part, is_first && index == 0));
+      }
+    };
+
+    // The view's arguments start each frame's cull empty, from the scene's templates.
+    let reset: [GraphBuffer; 4] = [scene.args_template, scene.args, scene.late_template, scene.late];
+
+    graph
+      .add_encoder_pass("cull reset")
+      .buffer(reset[0], GraphBufferAccess::CopySource)
+      .buffer(reset[1], GraphBufferAccess::CopyDestination)
+      .buffer(reset[2], GraphBufferAccess::CopySource)
+      .buffer(reset[3], GraphBufferAccess::CopyDestination)
+      .record(move |context| {
+        let [args_template, args, late_template, late] = reset.map(|buffer| context.get_buffer(buffer));
+        let encoder: &mut wgpu::CommandEncoder = context.get_encoder();
+
+        encoder.copy_buffer_to_buffer(args_template, 0, args, 0, StaticCullScratch::ARGS_SIZE);
+        encoder.copy_buffer_to_buffer(late_template, 0, late, 0, StaticCullScratch::LATE_SIZE);
+      });
     graph
       .add_compute_pass("cull")
       .parameters(&cull)
       .record(move |context| passes.scene.cull.record_early(context, view, &cull, params));
-    add_draw(graph, "g-buffer", scene.args, true);
+    add_draw(graph, &GBUFFER_PASSES, scene.args, true);
 
     if self.cull.is_occluding == 0 {
       return;
     }
 
     let (late, late_dispatch): (GraphBuffer, GraphBuffer) = (scene.late, scene.late_dispatch);
-    // Each level as its own resource, the depth reduced into the first and each into the next.
-    let level_views: Vec<GraphTexture> = pyramid
-      .level_views
-      .iter()
-      .map(|view| bindings.import_view(&mut *graph, "depth pyramid level", view))
-      .collect();
-    let first: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: depth,
-      target_level: level_views[0],
-    };
-    let levels: Vec<PyramidLevelParameters> = level_views
-      .windows(2)
-      .map(|pair| PyramidLevelParameters {
-        source_level: pair[0],
-        target_level: pair[1],
-      })
-      .collect();
-
-    levels
-      .iter()
-      .fold(
-        graph.add_compute_pass("depth pyramid").parameters(&first),
-        |builder, level| builder.parameters(level),
-      )
-      .record(move |context| {
-        passes
-          .scene
-          .pyramid
-          .record(context, pyramid, &first, &levels, PyramidReduction::Farthest)
-      });
+    passes.scene.pyramid.add_passes(
+      &mut *graph,
+      &mut *bindings,
+      "depth pyramid",
+      (pyramid, depth),
+      PyramidReduction::Farthest,
+    );
     graph
       .add_encoder_pass("late cull dispatch")
       .buffer(late, GraphBufferAccess::CopySource)
@@ -393,11 +408,11 @@ impl StaticsFeature {
 
         passes.scene.cull.record_late(context, view, &cull, dispatch);
       });
-    add_draw(graph, "late g-buffer", late, false);
+    add_draw(graph, &LATE_GBUFFER_PASSES, late, false);
   }
 
   /// Adds the cull's counts read back, for a report a frame or more later: an effect the graph cannot see.
-  pub fn add_stats_pass<'a>(&'a self, graph: &mut FrameGraph<'a>, scene: &StaticSceneHandles) {
+  pub(crate) fn add_stats_pass<'a>(&'a self, graph: &mut FrameGraph<'a>, scene: &StaticSceneHandles) {
     let args: GraphBuffer = scene.args;
 
     graph
@@ -414,7 +429,7 @@ impl StaticsFeature {
   }
 
   /// Adds the wall marks into the G-buffer's albedo before any light, where they are drawn.
-  pub fn add_wallmark_passes<'a>(
+  pub(crate) fn add_wallmark_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     ViewRecord {
@@ -454,29 +469,31 @@ impl StaticsFeature {
     });
   }
 
+  /// The camera cull's draw arguments, its counts after them (`StaticCullScratch::STATS_OFFSET`), once it first culled.
+  #[cfg(test)]
+  pub(crate) fn get_camera_args(&self) -> Option<&wgpu::Buffer> {
+    self.camera.as_ref().map(|camera| &camera.args)
+  }
+
   /// Asks for the counts recorded with the frame just submitted.
-  pub fn request_stats(&self) {
+  pub(crate) fn request_stats(&self) {
     self.stats.request();
   }
 
   /// Drops the counts a frame that was never submitted copied out.
-  pub fn abandon_stats(&self) {
+  pub(crate) fn abandon_stats(&self) {
     self.stats.abandon();
   }
 
   /// What the latest counted frame's cull kept and hid: clusters and triangles kept, then occluded.
-  pub fn take_stats(&mut self) -> [u32; 4] {
+  pub(crate) fn take_stats(&mut self) -> [u32; 4] {
     self.stats.take()
   }
 }
 
 impl ViewFeature for StaticsFeature {
-  /// The depth pyramid.
-  fn get_memory(&self) -> u64 {
-    self.pyramid.as_ref().map_or(0, DepthPyramid::get_memory)
-  }
-
   fn release(&mut self) {
+    self.camera = None;
     self.pyramid = None;
     self.history = None;
   }

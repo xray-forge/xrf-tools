@@ -32,7 +32,7 @@ impl StaticScene {
   ///
   /// Returns an error for a handle that holds a model already, or when a buffer would outgrow what the device allows;
   /// none of it stands in the scene, though the surfaces it put and the texture slots they asked for stay.
-  pub fn add_model(
+  pub(crate) fn add_model(
     &mut self,
     context: &mut StaticItemContext<'_>,
     handle: ProxyHandle<StaticModelProxy>,
@@ -75,7 +75,7 @@ impl StaticScene {
       };
 
       if class.is_deferred() && model.skin.is_none() {
-        writer.trace_geometries.push(StaticTraceGeometry {
+        let traced: StaticTraceGeometry = writer.put_densities(StaticTraceGeometry {
           layout: StaticLayout::Model,
           first_index: base.index_start + part.indices.0,
           index_count: part.indices.1,
@@ -83,7 +83,10 @@ impl StaticScene {
           vertex_count,
           surface,
           is_cut_out: class == StaticClass::CutOut,
+          first_density: 0,
         });
+
+        writer.trace_geometries.push(traced);
       }
 
       // A row's clusters are culled one after another by one thread, so a large part is cut into several slots.
@@ -125,8 +128,8 @@ impl StaticScene {
       .put(context.device, context.queue, context.encoder, &writer);
 
     let spans: StaticSpans = self.geometry.allocate(context.device, context.queue, &writer)?;
-    let first_slot: u32 = StaticSpans::get_offset(&spans.slots);
-    let first_cluster: u32 = StaticSpans::get_offset(&spans.clusters);
+    let first_slot: u32 = StaticSpans::get_offset(spans.slots.as_ref());
+    let first_cluster: u32 = StaticSpans::get_offset(spans.clusters.as_ref());
 
     writer.relocate(&spans);
     self.geometry.write(&spans, &writer);
@@ -148,11 +151,12 @@ impl StaticScene {
         cluster_slots: writer.cluster_slots,
         sphere: model.sphere,
         bounds: model.bounds,
-        vertex_start: StaticSpans::get_offset(&spans.words[StaticLayout::Model.get_index()]) + base.vertex_start,
+        vertex_start: StaticSpans::get_offset(spans.words[StaticLayout::Model.get_index()].as_ref())
+          + base.vertex_start,
         skin: model
           .skin
           .as_ref()
-          .map(|skin| (StaticSpans::get_offset(&spans.skins), skin.bones)),
+          .map(|skin| (StaticSpans::get_offset(spans.skins.as_ref()), skin.bones)),
         trace_geometries: writer.trace_geometries,
         spans,
       },
@@ -163,7 +167,7 @@ impl StaticScene {
 
   /// Takes a model out of the scene with every object standing as it, its ranges cleared and freed; false for one
   /// already gone.
-  pub fn remove_model(&mut self, handle: ProxyHandle<StaticModelProxy>) -> bool {
+  pub(crate) fn remove_model(&mut self, handle: ProxyHandle<StaticModelProxy>) -> bool {
     if !self.models.contains(handle) {
       return false;
     }
@@ -243,7 +247,7 @@ impl StaticScene {
   }
 
   /// The largest scale a matrix stands anything at, which a sphere it moves grows by.
-  pub(super) fn to_scale(matrix: &Mat4) -> f32 {
+  pub(super) fn get_scale(matrix: &Mat4) -> f32 {
     [matrix.x_axis, matrix.y_axis, matrix.z_axis]
       .iter()
       .map(|axis| axis.truncate().length())

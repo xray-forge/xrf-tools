@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteOptional, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReadWriteOptional, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::constants::NIL;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "camelCase")]
 #[display("{year},{month},{day},{hour},{minute},{second},{millis}")]
 pub struct Time {
@@ -22,33 +22,31 @@ pub struct Time {
   pub millis: u16,
 }
 
-impl ChunkReadWriteOptional for Time {
-  /// Read optional time object from the chunk.
-  fn read_optional<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>> {
-    if reader.read_u8()? == 1 {
-      Ok(Some(Self::read::<T, _>(reader)?))
-    } else {
-      Ok(None)
+impl ChunkFieldReadWriteOptional for Time {
+  /// A flag of 1 ahead of the time, or 0 for none; any other flag is refused, as it would not write back.
+  fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
+    match reader.read_u8()? {
+      0 => Ok(None),
+      1 => Ok(Some(reader.read_xr::<T, _>()?)),
+      flag => Err(XrfError::new_invalid_error(format!(
+        "A time's flag is {flag}, where 0 stands for none and 1 for a time"
+      ))),
     }
   }
 
-  /// Write optional time object into the writer.
-  fn write_optional<T: ByteOrder>(writer: &mut ChunkWriter, time: Option<&Self>) -> XrfResult {
+  fn write_field_optional<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, time: Option<&Self>) -> XrfResult {
     if let Some(time) = time {
       writer.write_u8(1)?;
-
-      time.write::<T>(writer)?;
+      writer.write_xr::<T, _>(time)
     } else {
-      writer.write_u8(0)?;
+      writer.write_u8(0)
     }
-
-    Ok(())
   }
 }
 
-impl ChunkReadWrite for Time {
+impl ChunkFieldReadWrite for Time {
   /// Read time object from chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let year: u8 = reader.read_u8()?;
     let month: u8 = reader.read_u8()?;
     let day: u8 = reader.read_u8()?;
@@ -69,16 +67,14 @@ impl ChunkReadWrite for Time {
   }
 
   /// Write time object into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u8(self.year)?;
     writer.write_u8(self.month)?;
     writer.write_u8(self.day)?;
     writer.write_u8(self.hour)?;
     writer.write_u8(self.minute)?;
     writer.write_u8(self.second)?;
-    writer.write_u16::<T>(self.millis)?;
-
-    Ok(())
+    writer.write_u16::<T>(self.millis)
   }
 }
 
@@ -108,33 +104,25 @@ impl FromStr for Time {
       return Err(XrfError::new_parsing_error("Failed to parse time object from string"));
     }
 
+    fn field<T: FromStr>(part: &str, what: &str) -> XrfResult<T> {
+      part
+        .parse()
+        .map_err(|_| XrfError::new_parsing_error(format!("Failed to parse {what} value '{part}'")))
+    }
+
     Ok(Self {
-      year: parts[0]
-        .parse()
-        .or(Err(XrfError::new_parsing_error("Failed to parse years value")))?,
-      month: parts[1]
-        .parse()
-        .or(Err(XrfError::new_parsing_error("Failed to parse months value")))?,
-      day: parts[2]
-        .parse()
-        .or(Err(XrfError::new_parsing_error("Failed to parse days value")))?,
-      hour: parts[3]
-        .parse()
-        .or(Err(XrfError::new_parsing_error("Failed to parse hours value")))?,
-      minute: parts[4]
-        .parse()
-        .or(Err(XrfError::new_parsing_error("Failed to parse minutes value")))?,
-      second: parts[5]
-        .parse()
-        .or(Err(XrfError::new_parsing_error("Failed to parse seconds value")))?,
-      millis: parts[6]
-        .parse()
-        .or(Err(XrfError::new_parsing_error("Failed to parse millis value")))?,
+      year: field(parts[0], "years")?,
+      month: field(parts[1], "months")?,
+      day: field(parts[2], "days")?,
+      hour: field(parts[3], "hours")?,
+      minute: field(parts[4], "minutes")?,
+      second: field(parts[5], "seconds")?,
+      millis: field(parts[6], "millis")?,
     })
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl Time {
   pub fn new_mock() -> Self {
     Self {
@@ -164,11 +152,7 @@ mod tests {
 
   use crate::data::generic::time::Time;
 
-  /// Reads a chunked value from bytes rather than from a file.
-  ///
-  /// This is what an archived asset requires: a `.db` volume entry has no file to slice, so its decompressed bytes are the
-  /// only way in. Until `ChunkReadWrite` became generic over `ChunkDataSource` this could not compile at all, which is why
-  /// nothing had ever read a chunked format out of an archive.
+  // An archive entry has no file to slice, only its decompressed bytes.
   #[test]
   fn reads_from_bytes_as_well_as_from_a_file() -> XrfResult {
     let original: Time = Time {
@@ -287,6 +271,18 @@ mod tests {
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     assert_eq!(Time::read_optional::<XRayByteOrder, _>(&mut reader)?, None);
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_a_flag_other_than_0_or_1() -> XrfResult {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[2, 0, 0, 0, 0, 0, 0, 0, 0])?;
+    let error: String = Time::read_optional::<XRayByteOrder, _>(&mut reader)
+      .expect_err("a flag of 2")
+      .to_string();
+
+    assert!(error.contains("A time's flag is 2"), "{error}");
 
     Ok(())
   }

@@ -21,22 +21,19 @@ mod sdk {
     runtime: &'static str,
   }
 
-  /// On a Windows host with no `LIBCLANG_PATH` set, points bindgen at the libclang `cargo make fetch-sdks` placed in
-  /// `.sdks/libclang` and answers true; elsewhere bindgen finds the system's.
-  fn use_fetched_libclang() -> bool {
-    if cfg!(windows) && env::var_os("LIBCLANG_PATH").is_none() {
-      let fetched: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.sdks/libclang");
+  /// Whether bindgen loads the libclang `cargo make fetch-sdks` placed in `.sdks/libclang` on a Windows host, where
+  /// `.cargo/config.toml` points `LIBCLANG_PATH`; elsewhere that directory links the system's libclang.
+  fn is_libclang_fetched() -> bool {
+    let fetched: Option<PathBuf> = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("../../.sdks/libclang")
+      .canonicalize()
+      .ok();
+    let used: Option<PathBuf> = env::var_os("LIBCLANG_PATH").and_then(|path| PathBuf::from(path).canonicalize().ok());
 
-      // SAFETY: the build script runs on one thread, and bindgen reads the variable after this as it loads libclang.
-      unsafe { env::set_var("LIBCLANG_PATH", fetched) };
-
-      return true;
-    }
-
-    false
+    cfg!(windows) && fetched.is_some() && used == fetched
   }
 
-  pub fn bind() {
+  pub(crate) fn bind() {
     let sdk: PathBuf = PathBuf::from(env::var("DLSS_SDK").expect("DLSS_SDK is set; run `cargo make fetch-sdks`"));
     let vulkan: PathBuf =
       PathBuf::from(env::var("VULKAN_SDK").expect("VULKAN_SDK is set; run `cargo make fetch-sdks`"));
@@ -70,9 +67,15 @@ mod sdk {
     );
 
     match os.as_str() {
-      // The library built against the C runtime the target links: the DLL one unless it links it statically.
-      "windows" if is_crt_static => println!("cargo:rustc-link-lib=static=nvsdk_ngx_s"),
-      "windows" => println!("cargo:rustc-link-lib=static=nvsdk_ngx_d"),
+      // The library built against the target's C runtime. It reads NGX's paths from the registry, which a binary
+      // linking nothing else of advapi32 (the crate's own tests) would leave unresolved.
+      "windows" => {
+        println!(
+          "cargo:rustc-link-lib=static={}",
+          if is_crt_static { "nvsdk_ngx_s" } else { "nvsdk_ngx_d" }
+        );
+        println!("cargo:rustc-link-lib=dylib=advapi32");
+      }
       _ => {
         println!("cargo:rustc-link-lib=static=nvsdk_ngx");
         println!("cargo:rustc-link-lib=dylib=stdc++");
@@ -80,7 +83,7 @@ mod sdk {
       }
     }
 
-    let is_libclang_fetched: bool = use_fetched_libclang();
+    let is_libclang_fetched: bool = is_libclang_fetched();
 
     // Vulkan's own types come from ash, so only NGX's are generated; its static inline helpers are compiled into a
     // library of their own. The fetched libclang takes no system clang's headers: a clang on PATH of another version

@@ -3,7 +3,7 @@ use crate::contract::report::frame::render_group_cost::RenderGroupCost;
 
 /// What a span of frames cost, in milliseconds.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FrameSummary {
+pub(crate) struct FrameSummary {
   pub frames_per_second: f32,
   pub frame_time: f32,
   pub frame_time_max: f32,

@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use xrf_renderer::RenderSpawnCategory;
 
+use crate::contract::sound::world_sound_toggles::WorldSoundToggles;
 use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
 use crate::level::streaming::spawn_filter::SpawnFilter;
 
-/// What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
-/// the ambient effects, and which groups of the spawned objects stream in.
+/// What of the level's world plays, rather than what is drawn of it: weather, campfires, ambient effects, spawned
+/// objects and sound.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorldToggles {
   /// Whether the weather's rain falls and wets surfaces.
@@ -30,6 +31,8 @@ pub struct WorldToggles {
   /// The spawned objects left out whatever their group, by their index among the level's spawned objects, ascending:
   /// those the viewer hides one by one.
   pub hidden_spawn_objects: Vec<u32>,
+  /// What of the level's sound is heard while the viewport listens.
+  pub sound: WorldSoundToggles,
 }
 
 impl Default for WorldToggles {
@@ -46,6 +49,7 @@ impl Default for WorldToggles {
       is_spawned_lamps: true,
       is_spawned_released: false,
       hidden_spawn_objects: Vec::new(),
+      sound: WorldSoundToggles::default(),
     }
   }
 }

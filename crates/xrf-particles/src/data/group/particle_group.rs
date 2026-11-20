@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::assert_equal;
 
 use crate::data::group::particle_group_effect::ParticleGroupEffect;
@@ -118,6 +118,13 @@ impl ChunkReadWrite for ParticleGroup {
     name_chunk_writer.write_w1251_string(&self.name)?;
     name_chunk_writer.flush_chunk_into::<T>(writer, Self::NAME_CHUNK_ID)?;
 
+    // The SDK's authorship record follows the name, as it does in an effect.
+    if let Some(description) = &self.description {
+      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
+      description.write::<T>(&mut description_chunk_writer)?;
+      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
+    }
+
     let mut flags_chunk_writer: ChunkWriter = ChunkWriter::new();
     flags_chunk_writer.write_u32::<T>(self.flags)?;
     flags_chunk_writer.flush_chunk_into::<T>(writer, Self::FLAGS_CHUNK_ID)?;
@@ -129,12 +136,6 @@ impl ChunkReadWrite for ParticleGroup {
     let mut time_limit_chunk_writer: ChunkWriter = ChunkWriter::new();
     time_limit_chunk_writer.write_f32::<T>(self.time_limit)?;
     time_limit_chunk_writer.flush_chunk_into::<T>(writer, Self::TIME_LIMIT_CHUNK_ID)?;
-
-    if let Some(description) = &self.description {
-      let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
-      description.write::<T>(&mut description_chunk_writer)?;
-      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
-    }
 
     if let Some(effects_old) = &self.effects_old
       && !effects_old.is_empty()
@@ -150,8 +151,8 @@ impl ChunkReadWrite for ParticleGroup {
 
 impl LtxImportExport for ParticleGroup {
   /// Import particles group data from provided path.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle group section '{}' should be defined in ltx file ({})",
         section_name,
@@ -185,14 +186,14 @@ impl LtxImportExport for ParticleGroup {
   }
 
   /// Export particles group data into provided path.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set("version", self.version.to_string())
+      .set("version", self.version)
       .set("name", &self.name)
-      .set("flags", self.flags.to_string())
-      .set("time_limit", self.time_limit.to_string());
+      .set("flags", self.flags)
+      .set("time_limit", self.time_limit);
 
     ParticleGroupEffect::export_list(&self.effects, section_name, ltx)?;
 

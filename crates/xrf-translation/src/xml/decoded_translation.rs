@@ -1,6 +1,3 @@
-use std::fs;
-use std::path::Path;
-
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{XRayEncoding, decode_bytes_to_string_without_bom_handling, encode_string_to_bytes, new_utf8_encoder};
 
@@ -19,7 +16,7 @@ impl DecodedTranslation {
   /// # Errors
   ///
   /// Returns an encoding error when the bytes are UTF-16 or do not decode as the encoding they resolve to.
-  pub(crate) fn decode(identity: TranslationIdentity, data: &[u8]) -> XrfResult<Self> {
+  pub(crate) fn decode(identity: TranslationIdentity<'_>, data: &[u8]) -> XrfResult<Self> {
     let (mark, body) = Self::split_byte_order_mark(identity.file_name, data)?;
 
     // A byte order mark decides the encoding and outranks everything else, because it is the one statement about the
@@ -46,8 +43,9 @@ impl DecodedTranslation {
   /// # Errors
   ///
   /// Returns an IO error when the file cannot be read, and an encoding error when its bytes do not decode.
-  pub(crate) fn read(path: &Path) -> XrfResult<Self> {
-    Self::decode(TranslationIdentity::from_path(path), &fs::read(path)?)
+  #[cfg(test)]
+  pub(crate) fn read(path: &std::path::Path) -> XrfResult<Self> {
+    Self::decode(TranslationIdentity::from_path(path), &std::fs::read(path)?)
   }
 
   /// The bytes `text` is written back as: this table's byte order mark, then `text` in this table's encoding.

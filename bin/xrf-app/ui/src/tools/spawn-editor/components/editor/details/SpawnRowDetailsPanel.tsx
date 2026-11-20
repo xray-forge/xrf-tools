@@ -5,7 +5,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
-import { ISpawnRowSelection, SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { ISpawnRowSelection, SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 import { formatSpawnRowDetailsValue } from "./SpawnRowDetailsPanel.utils";
 
@@ -20,9 +20,9 @@ export function SpawnRowDetailsPanel({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
-  const selection: Nullable<ISpawnRowSelection> = spawnFileService.selectedRow;
+  const selection: Nullable<ISpawnRowSelection> = spawnEditorService.selectedRow;
 
   if (!selection) {
     return (
@@ -36,7 +36,7 @@ export function SpawnRowDetailsPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={selection.source}>
-      <EditorPanelSection title={"Properties"} isFirst>
+      <EditorPanelSection title={"Properties"}>
         {entries.map(([key, value]: [string, unknown]) => (
           <EditorPanelProperty key={key} label={key} value={formatSpawnRowDetailsValue(value)} isMonospace />
         ))}

@@ -1,9 +1,9 @@
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { sliderClasses } from "#/material/slider";
-import { SystemStyleObject, Theme } from "#/material/styles";
+import { sliderClasses } from "#/form/control";
 import { SLIDER_REFERENCE } from "#/theme";
+import { SystemStyleObject, Theme } from "#/theme/styles";
 
 /**
  * @param recommended - The range xrf recommends, none where the setting is not rated.

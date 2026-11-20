@@ -15,7 +15,7 @@ pub struct LevelSndStaticSound {
   pub position: Vector3d<f32>,
   pub volume: f32,
   pub frequency: f32,
-  /// Hours of the day the sound is allowed to play at all.
+  /// The window of the game's day the sound plays in, in milliseconds from midnight (`SStaticSound::Update`).
   pub active: LevelSndStaticWindow,
   /// How long one playing lasts, in milliseconds.
   pub play: LevelSndStaticWindow,

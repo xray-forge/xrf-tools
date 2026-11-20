@@ -13,7 +13,7 @@ import {
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/choice/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/choice/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 

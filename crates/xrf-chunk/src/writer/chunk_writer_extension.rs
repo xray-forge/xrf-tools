@@ -2,7 +2,7 @@ use std::io::Write;
 
 use byteorder::{ByteOrder, WriteBytesExt};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{encode_string_to_w1251_bytes, to_format_size};
+use xrf_utils::{encode_string_to_w1251_bytes, narrow_format_size};
 
 use crate::read_write::chunk_read_write::ChunkReadWrite;
 use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
@@ -82,7 +82,7 @@ impl ChunkWriter {
 
   /// Write serialized vector into vector, where u32 count N is followed by N u16 entries.
   pub fn write_u16_vector<T: ByteOrder>(&mut self, data: &[u16]) -> XrfResult<usize> {
-    let count: u32 = to_format_size(data.len(), "u16 vector length")?;
+    let count: u32 = narrow_format_size(data.len(), "u16 vector length")?;
 
     self.write_u32::<T>(count)?;
 

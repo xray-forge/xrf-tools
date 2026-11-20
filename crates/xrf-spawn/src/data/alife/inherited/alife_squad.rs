@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
@@ -36,9 +36,9 @@ impl AlifeSquad {
   const ASSIGNED_TERRAIN: &'static str = "Squad smart terrain";
 }
 
-impl ChunkReadWrite for AlifeSquad {
+impl ChunkFieldReadWrite for AlifeSquad {
   /// Read the squad from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let base: AlifeObjectOnlineOfflineGroup = reader.read_xr::<T, _>()?;
 
     ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
@@ -53,10 +53,10 @@ impl ChunkReadWrite for AlifeSquad {
   }
 
   /// Write the squad into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
 
-    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_w1251_string(&ScriptToString::format_id(self.current_target_id))?;
       writer.write_w1251_string(&ScriptToString::format_id(self.respawn_point_id))?;
       writer.write_w1251_string(ScriptToString::format_text(self.respawn_point_section.as_deref()))?;
@@ -69,8 +69,8 @@ impl ChunkReadWrite for AlifeSquad {
 
 impl LtxImportExport for AlifeSquad {
   /// Import the squad from ltx file section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -97,7 +97,7 @@ impl LtxImportExport for AlifeSquad {
   }
 
   /// Export object data into ltx file, each value as the string the script writes for it.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
@@ -142,7 +142,7 @@ mod tests {
     }
   }
 
-  /// Four strings after the group, closed by the marker counting them.
+  // Four strings after the group, closed by the marker counting them.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeSquad = new_object();

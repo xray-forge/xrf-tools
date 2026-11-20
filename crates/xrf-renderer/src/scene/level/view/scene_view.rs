@@ -9,7 +9,6 @@ use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::scene::drawable::draw::drawable_kind_readied::DrawableKindReadied;
-use crate::feature::scene::wind::wind_feature::WindFeature;
 use crate::feature::view::scene_features::SceneFeatures;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::feature::view::view_stages::ViewStages;
@@ -17,6 +16,7 @@ use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::readback::pick_pass::PickPass;
 use crate::frame::static_scene_handles::StaticSceneHandles;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::frame::targets::view_target_uses::ViewTargetUses;
 use crate::frame::targets::view_targets::ViewTargets;
@@ -29,9 +29,9 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass;
-use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::level::view::record::lighting_recorded::LightingRecorded;
 use crate::scene::level::view::record::readied_frame::ReadiedFrame;
 use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
@@ -41,7 +41,6 @@ use crate::scene::level::view::scene_output::SceneOutput;
 use crate::scene::level::view::view_frame::ViewFrame;
 use crate::scene::level::view::view_pick::ViewPick;
 use crate::scene::level::view::view_prepare::ViewPrepare;
-use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -59,33 +58,39 @@ mod scene_view_reports;
 /// across its frame's parts (`SceneFeatures`) and its stages (`ViewStages`), whose units draw in one part alone; each
 /// unit keeps what it keeps between frames. The scene (`LevelScene`) is shared by every view of it and passed in; this
 /// prepares the view's frame from it and records it into the frame's graph.
-pub struct SceneView {
+pub(crate) struct SceneView {
   /// The values every unit reads this frame.
   shared: ViewFrame,
   /// The G-buffer, depth, light and scene it draws into, once its size is known.
   targets: Option<ViewTargets>,
+  /// Whether this frame's prepare remade the targets at a new size, leaving what the old size keyed unused.
+  is_resized: bool,
   /// Its units shared across its frame's parts.
   features: SceneFeatures,
   /// Its units drawing in one part of its frame alone, by part.
   stages: ViewStages,
   /// The time its frames are drawn at: its scene's, or a step a frame of its own.
   clock: FrameClock,
+  /// Level time of the last frame, which units step from; none before the first frame and after a motion restart.
+  last_time: Option<LevelTime>,
 }
 
 impl SceneView {
   /// A view of a scene, nothing of it drawn yet.
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       shared: ViewFrame::default(),
       targets: None,
+      is_resized: false,
       features: SceneFeatures::new(device, queue, view_layout),
       stages: ViewStages::new(),
       clock: FrameClock::default(),
+      last_time: None,
     }
   }
 
   /// Asks for the textures its weather draws with: the rain's, the bolts', the flares' and the sky's.
-  pub fn request_textures(
+  pub(crate) fn request_textures(
     &mut self,
     scene: &LevelScene,
     weather_textures: &mut WeatherTextureCache,
@@ -145,17 +150,24 @@ impl SceneView {
   /// decided: the resolve's decisions, the weather and the sky, the scene, the view's own units, then the lighting.
   /// Answers what it asks of the scene, which settles every view's asks before each finishes its frame
   /// (`finish_prepare`).
-  pub fn prepare(&mut self, scene: &LevelScene, encoder: &mut FrameEncoder, frame: &ViewPrepare<'_>) -> SceneAsks {
+  pub(crate) fn prepare(
+    &mut self,
+    scene: &LevelScene,
+    encoder: &mut FrameEncoder,
+    frame: &ViewPrepare<'_>,
+  ) -> SceneAsks {
     profiling::scope!("prepare view");
 
     let (width, height) = frame.drawn;
 
-    if !self.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
+    self.is_resized = !self.targets.as_ref().is_some_and(|it| it.is_sized(width, height));
+
+    if self.is_resized {
       self.targets = Some(ViewTargets::new(frame.device, width, height));
       self.features.statics.fit(frame.device, (width, height));
     }
 
-    let level: LevelPrepare = LevelPrepare::of(scene, frame.view);
+    let level: LevelPrepare = LevelPrepare::of(scene, frame.view, self.last_time.replace(scene.get_time()));
     let now: Instant = self.clock.tick(scene.get_now());
 
     self.decide(frame, now);
@@ -175,17 +187,19 @@ impl SceneView {
     SceneAsks { lights }
   }
 
-  /// Finishes readying its frame once its scene settled every view's asks (`LevelScene::settle`): writes its lights as
-  /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined; then, every
-  /// unit knowing what it draws, keeps the engine's bloom for a distorting frame's blur and notes what the window pass
-  /// reads, with `options` and over `output` as its frame was prepared.
-  pub fn finish_prepare(
+  /// Whether this frame's [`Self::prepare`] remade the targets at a new size.
+  pub(crate) fn is_resized(&self) -> bool {
+    self.is_resized
+  }
+
+  /// Writes the lights and fills the particle quads once the scene has settled every view's asks
+  /// (`LevelScene::settle`); [`Self::finish_present`] follows.
+  pub(crate) fn finish_prepare(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
     options: &RenderViewOptions,
-    output: RenderRect,
     asks: &SceneAsks,
   ) {
     profiling::scope!("finish view");
@@ -197,17 +211,21 @@ impl SceneView {
       .particles
       .fill(&self.shared.camera, options, &mut self.features.particles);
     self.features.particles.upload(device, &mut *encoder);
+  }
 
-    let is_distorting: bool = self.is_distorting(options);
+  /// Prepares the window pass after [`Self::finish_prepare`], keeping the engine's bloom where distortion may blur it.
+  pub(crate) fn finish_present(
+    &mut self,
+    scene: &LevelScene,
+    textures: &TextureCache,
+    options: &RenderViewOptions,
+    output: RenderRect,
+  ) {
+    let distortion: ScreenTiles = self.get_distortion_tiles(options);
+    let is_blurring: bool = !distortion.is_empty() && self.is_distortion_blurring(scene, options, textures);
 
-    self.features.bloom.keep_for_distortion(is_distorting);
-    self.prepare_present(
-      options,
-      output,
-      scene.get_time().as_secs_f32(),
-      self.shared.resolve.noise_frame,
-      is_distorting,
-    );
+    self.features.bloom.keep_for_distortion(is_blurring);
+    self.prepare_present(options, output, self.shared.resolve.noise_frame, distortion);
   }
 
   /// What every other unit reads of the frame's exposure and resolve, prepared before any of them, which the view's frame
@@ -228,7 +246,7 @@ impl SceneView {
   }
 
   /// Ends a frame its graph recorded: every unit's history it wrote becomes the one the next frame keeps.
-  pub fn end_frame(&mut self) {
+  pub(crate) fn end_frame(&mut self) {
     let mut end: ViewFrameEnd<'_> = ViewFrameEnd {
       depth: self.targets.as_mut().map(|targets| &mut targets.depth),
     };
@@ -240,7 +258,7 @@ impl SceneView {
 
   /// Readies a frame for its graph, none before the view's targets are made: a pick's camera narrowed to the texel
   /// picked and the readback it is copied into while one is free, and the depth the next frame's occlusion tests.
-  pub fn begin_frame(
+  pub(crate) fn begin_frame(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -267,7 +285,7 @@ impl SceneView {
   /// readied and drawn), its shadows (the cascades, the rain's cover, the level's surface and the lamps' faces), its lighting with
   /// the reflections and the water, and what blends over it and resolves it; the pick last. Which passes run is decided
   /// by the units; each reads the view, which recording leaves as it is. The present pass reads what it leaves.
-  pub fn record<'a>(
+  pub(crate) fn record<'a>(
     &'a self,
     scene: &'a LevelScene,
     GraphDeclaration {
@@ -419,17 +437,5 @@ impl SceneView {
     }
 
     Some(output)
-  }
-
-  /// The sway the shadows see this frame: the `wind`, the trees' reach, and where they stand.
-  fn to_sway<'s>(scene: &'s StaticScene, wind: &WindFeature) -> ShadowSway<'s> {
-    let (amplitude, time): (f32, f32) = wind.get_sway();
-
-    ShadowSway {
-      amplitude,
-      reach: scene.get_sway_reach(),
-      time,
-      places: scene.list_swaying(),
-    }
   }
 }

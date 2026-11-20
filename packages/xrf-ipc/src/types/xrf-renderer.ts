@@ -1,5 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { RenderGpu } from "#/types/xrf-renderer-core";
+
 /** Pixels a cubemap's face spans on a side at most. */
 export const RENDER_CUBE_MOST_PIXELS: number = 2048;
 
@@ -57,7 +59,7 @@ export const RENDER_DEFAULT_VIEW_FEATURES: RenderViewFeatures = {
     vignetteStrength: 0.5,
   },
   corrections: { exposure: 1.0, gamma: 1.0, grading: [0.0, 0.0, 0.0], saturation: 1.0 },
-  debanding: { mode: "engine", passes: 2, radius: 48.0 },
+  debanding: { mode: "engine" },
   displayTransform: "engine",
   enhancedBloom: { blur: 3.0, exposure: 3.0, mode: "engine", sky: 0.6, threshold: 5.0, vibrance: 1.0 },
   exposure: { adaptation: 1.0, amount: 0.7, compensation: 0.0, isEnabled: true, lowLuminance: 0.0001, middleGray: 1.0 },
@@ -148,6 +150,7 @@ export const RENDER_DEFAULT_VIEW_FEATURES: RenderViewFeatures = {
     isGrassReflected: false,
     isRayBudgeted: true,
     isTraced: false,
+    isWaterFullyTraced: false,
     isWaterReflected: true,
     mode: "engine",
     probe: "fine",
@@ -273,11 +276,7 @@ export const RENDER_FEATURE_SCHEMA: RenderSettingNode = {
     shutter: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
     vignetteStrength: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
   },
-  debanding: {
-    mode: { kind: "choice", values: ["engine", "enhanced"] },
-    passes: { isInteger: true, kind: "number", max: 4.0, min: 1.0, recommended: null, wastedAbove: 2.0 },
-    radius: { isInteger: false, kind: "number", max: 128.0, min: 8.0, recommended: null, wastedAbove: null },
-  },
+  debanding: { mode: { kind: "choice", values: ["engine", "enhanced"] } },
   displayTransform: { kind: "choice", values: ["engine", "agx", "pbrNeutral"] },
   enhancedBloom: {
     blur: { isInteger: false, kind: "number", max: 5.0, min: 1.0, recommended: null, wastedAbove: null },
@@ -399,13 +398,14 @@ export const RENDER_FEATURE_SCHEMA: RenderSettingNode = {
     isGrassReflected: { kind: "flag" },
     isRayBudgeted: { kind: "flag" },
     isTraced: { kind: "flag" },
+    isWaterFullyTraced: { kind: "flag" },
     isWaterReflected: { kind: "flag" },
     mode: { kind: "choice", values: ["engine", "enhanced"] },
     probe: { kind: "choice", values: ["coarse", "fine", "finest"] },
     reach: { isInteger: true, kind: "number", max: 1000.0, min: 25.0, recommended: null, wastedAbove: null },
     skyGain: { isInteger: false, kind: "number", max: 3.0, min: 0.5, recommended: null, wastedAbove: null },
     steps: { isInteger: true, kind: "number", max: 128.0, min: 16.0, recommended: [32.0, 128.0], wastedAbove: 96.0 },
-    traceInterval: { isInteger: true, kind: "number", max: 8.0, min: 1.0, recommended: [1.0, 4.0], wastedAbove: null },
+    traceInterval: { isInteger: true, kind: "number", max: 8.0, min: 1.0, recommended: null, wastedAbove: null },
     traceRoughness: {
       isInteger: false,
       kind: "number",
@@ -519,6 +519,7 @@ export const RENDER_HELPER_ICONS: Array<RenderHelperIconEntry> = [
   { icon: "patrolPoint", material: "Place" },
   { icon: "graphPoint", material: "Hub" },
   { icon: "respawnPoint", material: "RestartAlt" },
+  { icon: "spawnPoint", material: "MyLocation" },
 ];
 
 /** Map pixels a level map spans on a side at most. */
@@ -727,8 +728,8 @@ export type RenderAppliedReport = {
   reflections: RenderAppliedReflections | null;
   /** The enhanced height fog, or none where the engine's fog alone is drawn or none at all. */
   heightFog: RenderAppliedHeightFog | null;
-  /** How hard the sky is debanded, or none where it is drawn as it is. */
-  debanding: number | null;
+  /** Whether the sky is debanded. */
+  isSkyDebanded: boolean;
   /** Which bloom is drawn, or none where the frame blooms nothing. */
   bloom: RenderBloomMode | null;
   /** The local lights, or none where they are off. */
@@ -976,23 +977,16 @@ export type RenderCubeCapture = {
 export enum ERenderDebandingMode {
   /** The engine's own: the sky as drawn. */
   ENGINE = "engine",
-  /**
-   * Sky debanding: each sky pixel averaged with neighbours scattered around it wherever they differ from it by less
-   * than a band's step.
-   */
+  /** Smooths banding in the sky's cubes and clouds by averaging each texel with neighbours less than a step apart. */
   ENHANCED = "enhanced",
 }
 
 /** Every `ERenderDebandingMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebandingMode = `${ERenderDebandingMode}`;
 
-/** Whether and how the sky's colour bands are smoothed. */
+/** Sky debanding settings. */
 export type RenderDebandingSettings = {
   mode: RenderDebandingMode;
-  /** Times a sky pixel is averaged with its neighbours, each time further out. */
-  passes: number;
-  /** Pixels around a sky pixel its neighbours are read from at most. */
-  radius: number | null;
 };
 
 /** Which picture a viewport shows: its finished frame, or one of the targets the frame was built from. */
@@ -1073,6 +1067,27 @@ export enum ERenderDebugView {
   SAMPLED_MIP = "sampledMip",
   /** The specular the sun and the lights accumulated, kept apart from their diffuse in the light target's alpha. */
   SPECULAR = "specular",
+  /**
+   * The detail slots' stored sun (`c_dir`) over their ground and tufts, sixteen greys from black to white with slot
+   * edges darkened; dim albedo grey over empty slots, above their heights or elsewhere.
+   */
+  DETAIL_SUN = "detailSun",
+  /** The detail slots' stored hemisphere (`c_hemi`), shown as `DetailSun`. */
+  DETAIL_HEMI = "detailHemi",
+  /** The detail slots' stored lamp light (`c_r`, `c_g`, `c_b`) as one colour, shown as `DetailSun`. */
+  DETAIL_LIGHT = "detailLight",
+  /**
+   * Each AI map node's standing cover over its cell: the mean of its four directions in sixteen greys, black covered
+   * to white open, cell edges darkened; dim albedo grey off the map or above a node.
+   */
+  AI_HIGH_COVER = "aiHighCover",
+  /** Each AI map node's crouching cover, shown as `AiHighCover`. */
+  AI_LOW_COVER = "aiLowCover",
+  /**
+   * How many neighbours each AI map node lacks, shown as `AiHighCover`: green for none, then yellow, orange, red and
+   * dark red for one to four.
+   */
+  AI_LINKS = "aiLinks",
   /**
    * FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
    * wind moved) in red, how disoccluded in green, how far its shading changed in blue.
@@ -1457,6 +1472,8 @@ export type RenderFrameReport = {
   meter: RenderMeterReading | null;
   /** What the frame graph made of its latest frame, none before its first. */
   graph: RenderGraphReport | null;
+  /** The long job the viewport runs, if any. */
+  job: RenderViewportJob | null;
 };
 
 /** How glass is drawn. */
@@ -1478,15 +1495,6 @@ export type RenderGlassSettings = {
   mode: RenderGlassMode;
   /** How far the enhanced glass bends what is behind it, one as designed; none draws it flat. */
   refraction: number | null;
-};
-
-/**
- * A GPU identified by its PCI vendor and device IDs. D3D12 and Vulkan report the same IDs; two identical cards share
- * one identity.
- */
-export type RenderGpu = {
-  vendor: number;
-  device: number;
 };
 
 /** A GPU a backend can draw on: its identity, its name and its driver. */
@@ -1643,6 +1651,8 @@ export enum ERenderHelperIcon {
   PATROL_POINT = "patrolPoint",
   GRAPH_POINT = "graphPoint",
   RESPAWN_POINT = "respawnPoint",
+  /** A spawn point known only by its section, before any game config is read. */
+  SPAWN_POINT = "spawnPoint",
 }
 
 /** Every `ERenderHelperIcon` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -1679,6 +1689,9 @@ export type RenderHelperOptions = {
   /** Whether the frame is dimmed and greyed wherever no marked model or selection covers it ("Fade the rest"). */
   isRestFaded: boolean;
 };
+
+/** A numbered hold that keeps the renderer's GPU started while no viewport draws. */
+export type RenderHoldId = number;
 
 /**
  * Anomaly's `img_corrections`, which `combine_2` applies to the finished frame: `r__exposure`, `r__gamma`,
@@ -2403,8 +2416,20 @@ export type RenderReflectionSettings = {
    * without ray queries reflects the sky.
    */
   isTraced: boolean;
-  /** Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. */
+  /**
+   * Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. Every
+   * interval trades how soon a reflection refreshes against the rays traced a frame, none advised over another.
+   */
   traceInterval: number;
+  /**
+   * Whether, while traced, the water traces every pixel every frame, hitting grass cards within their reach, with the
+   * screen answering only plants beyond them.
+   *
+   * This reflects what the screen cannot show (a cable's lit side, a pipe's underside, reed blades) at a ray per water
+   * pixel per frame plus a frame-sized request list. Off, the screen answers first and the trace takes its misses on
+   * its turns.
+   */
+  isWaterFullyTraced: boolean;
 };
 
 /**
@@ -2552,7 +2577,7 @@ export type RenderShadowSettings = {
   cascades: Array<number | null>;
   /** Texels each cascade's map is across. */
   resolution: number;
-  /** Texels the filter reaches from the one sampled, each way: zero for one comparison, one for a three by three. */
+  /** Filter reach in texels each way: zero for the four around the point, one for a 3x3. */
   filter: number;
   /** How far a point is moved along its normal before it is compared, in texels of its cascade. */
   bias: number | null;
@@ -2943,6 +2968,16 @@ export type RenderViewportEvent =
 /** One viewport of the renderer, numbered by the renderer as it is attached. */
 export type RenderViewportId = number;
 
+/** A viewport's long job, one at a time across all viewports: a recording, a burst, or a map or cubemap capture. */
+export enum ERenderViewportJob {
+  RECORDING = "recording",
+  BURST = "burst",
+  CAPTURE = "capture",
+}
+
+/** Every `ERenderViewportJob` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderViewportJob = `${ERenderViewportJob}`;
+
 /** Where a viewport sits in its window and what the page shows around it. */
 export type RenderViewportLayout = {
   /** The viewport element's rectangle, in device pixels of the window's client area. */
@@ -3005,7 +3040,10 @@ export type RenderWaterSettings = {
   isSoft: boolean;
   /** Whether water writes the distortion it causes, moving what is seen through it. */
   isDistorted: boolean;
-  /** How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step. */
+  /**
+   * Engine water wave height in metres (`W_POSITION_SHIFT_HEIGHT`, 1/60 at the setting's step); the enhanced water
+   * stays flat, its waves in its maps.
+   */
   waveHeight: number | null;
   /** How fast they run: `W_POSITION_SHIFT_SPEED`. */
   waveSpeed: number | null;

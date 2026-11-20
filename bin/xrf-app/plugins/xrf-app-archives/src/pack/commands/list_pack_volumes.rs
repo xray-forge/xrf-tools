@@ -7,7 +7,7 @@ use xrf_utils::{error_to_string, format_path};
 /// Volumes of this configuration's set the destination already holds.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_pack_volumes")]
-pub async fn archives_list_pack_volumes(config: ArchivePackConfig) -> TauriResult<Vec<PathBuf>> {
+pub(crate) async fn archives_list_pack_volumes(config: ArchivePackConfig) -> TauriResult<Vec<PathBuf>> {
   log::info!(
     "Listing published volumes of '{}' in {}",
     config.name,

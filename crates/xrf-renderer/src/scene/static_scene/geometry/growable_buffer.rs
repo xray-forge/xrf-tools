@@ -1,6 +1,6 @@
 /// A storage buffer appended to as a scene loads: it doubles and copies what it holds when an append outgrows it, so
 /// what the GPU already reads stays where it is.
-pub struct GrowableBuffer {
+pub(crate) struct GrowableBuffer {
   label: &'static str,
   usage: wgpu::BufferUsages,
   buffer: wgpu::Buffer,
@@ -11,7 +11,7 @@ impl GrowableBuffer {
   /// Bytes a buffer starts at, so a small scene allocates little and a large one doubles few times.
   const INITIAL: u64 = 64 * 1024;
 
-  pub fn new(device: &wgpu::Device, label: &'static str, usage: wgpu::BufferUsages) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, label: &'static str, usage: wgpu::BufferUsages) -> Self {
     let usage: wgpu::BufferUsages = usage | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC;
 
     Self {
@@ -22,12 +22,12 @@ impl GrowableBuffer {
     }
   }
 
-  pub fn get_buffer(&self) -> &wgpu::Buffer {
+  pub(crate) fn get_buffer(&self) -> &wgpu::Buffer {
     &self.buffer
   }
 
   /// Writes bytes after what the buffer holds, growing it first where they do not fit; answers where they start.
-  pub fn append(
+  pub(crate) fn append(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -49,7 +49,7 @@ impl GrowableBuffer {
   }
 
   /// Makes the buffer at least `size` bytes, keeping what it holds; it replaces nothing when it already is.
-  pub fn reserve(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, size: u64) {
+  pub(crate) fn reserve(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, size: u64) {
     if size <= self.buffer.size() {
       return;
     }

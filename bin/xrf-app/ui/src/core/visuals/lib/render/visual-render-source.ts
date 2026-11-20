@@ -14,9 +14,6 @@ export interface IVisualPose {
 /** A model standing as it was authored, which is what a surface that plays nothing shows. */
 export const BIND_POSE: IVisualPose = { frame: 0, motion: null };
 
-/** Nothing collapsed, for a surface that offers no way to collapse anything. */
-export const NO_HIDDEN_BONES: ReadonlySet<number> = new Set();
-
 /**
  * The model a viewport draws, whichever tool put it there.
  */

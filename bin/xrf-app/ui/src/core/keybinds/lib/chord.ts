@@ -1,4 +1,4 @@
-import { Optional } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 
 import { isApplePlatform } from "@/lib/env/platform";
 
@@ -35,6 +35,33 @@ const NAMED_KEYS: ReadonlyMap<string, string> = new Map([
 const KEY_LABELS: ReadonlyMap<string, string> = new Map([[" ", "Space"]]);
 
 const FUNCTION_KEY_PATTERN: RegExp = /^f([1-9]|1[0-9]|2[0-4])$/;
+
+/**
+ * A letter outside plain `a` to `z`, such as Cyrillic `п`, Greek `π` or German `ö`, read by its key's place; a symbol
+ * such as `!` or AZERTY's `&` reads as itself.
+ */
+const NON_ASCII_LETTER_PATTERN: RegExp = /^(?![a-z])\p{L}$/u;
+
+/** A letter key by its place on the keyboard, as `event.code` names it whatever the layout: `KeyG`. */
+const LETTER_CODE_PATTERN: RegExp = /^Key([A-Z])$/;
+
+/**
+ * What a US keyboard prints on each punctuation key, by its place: where a Cyrillic layout prints a letter on one, as
+ * Ukrainian `б` on the comma's, `mod+,` still reaches it.
+ */
+const PUNCTUATION_CODE_KEYS: ReadonlyMap<string, string> = new Map([
+  ["Backquote", "`"],
+  ["Backslash", "\\"],
+  ["BracketLeft", "["],
+  ["BracketRight", "]"],
+  ["Comma", ","],
+  ["Equal", "="],
+  ["Minus", "-"],
+  ["Period", "."],
+  ["Quote", "'"],
+  ["Semicolon", ";"],
+  ["Slash", "/"],
+]);
 
 /** One parsed chord, with every spelling variation already resolved. */
 export interface IKeyChord {
@@ -202,5 +229,26 @@ export function matchesChord(event: KeyboardEvent, chord: IKeyChord): boolean {
     return false;
   }
 
-  return (event.key.length === 1 ? event.key.toLowerCase() : event.key) === chord.key;
+  return toChordEventKey(event) === chord.key;
+}
+
+/**
+ * The key an event presses, as a chord spells it.
+ *
+ * @returns A lowercase character, or a canonical key name.
+ */
+function toChordEventKey(event: KeyboardEvent): string {
+  if (event.key.length !== 1) {
+    return event.key;
+  }
+
+  const character: string = event.key.toLowerCase();
+
+  if (!NON_ASCII_LETTER_PATTERN.test(character)) {
+    return character;
+  }
+
+  const letter: Nullable<RegExpExecArray> = LETTER_CODE_PATTERN.exec(event.code);
+
+  return letter ? letter[1].toLowerCase() : (PUNCTUATION_CODE_KEYS.get(event.code) ?? character);
 }

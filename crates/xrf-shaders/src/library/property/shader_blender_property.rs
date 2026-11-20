@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::library::{
   ShaderBlenderPropertyKind, ShaderBlenderPropertyValue, ShaderBlenderToken, read_shader_fixed_string,
@@ -181,7 +181,7 @@ impl ChunkReadWrite for ShaderBlenderProperty {
       ShaderBlenderPropertyValue::Bool(value) => writer.write_u32::<T>(u32::from(*value))?,
       ShaderBlenderPropertyValue::Token { selected, items } => {
         writer.write_u32::<T>(*selected)?;
-        writer.write_u32::<T>(to_format_size(items.len(), "shader blender token items")?)?;
+        writer.write_u32::<T>(narrow_format_size(items.len(), "shader blender token items")?)?;
 
         for item in items {
           writer.write_u32::<T>(item.id)?;
@@ -190,7 +190,7 @@ impl ChunkReadWrite for ShaderBlenderProperty {
       }
       ShaderBlenderPropertyValue::ClassId { selected, items } => {
         writer.write_u64::<T>(*selected)?;
-        writer.write_u32::<T>(to_format_size(items.len(), "shader blender classes")?)?;
+        writer.write_u32::<T>(narrow_format_size(items.len(), "shader blender classes")?)?;
 
         for item in items {
           writer.write_u64::<T>(*item)?;

@@ -13,7 +13,7 @@ use crate::core::terminal::TerminalOutput;
 /// drifting, per command. `-s` and `-v` are theirs across the whole CLI; a command wanting a short for something else
 /// picks another letter. `--json` and `--report` take none at all, since the callers that reach for them are scripts,
 /// which spell flags out.
-pub struct ReportingArguments;
+pub(crate) struct ReportingArguments;
 
 impl ReportingArguments {
   const SILENT: &'static str = "silent";
@@ -22,7 +22,7 @@ impl ReportingArguments {
   const REPORT: &'static str = "report";
 
   /// Declares the four on `command`, the CLI's root.
-  pub fn declare(command: Command) -> Command {
+  pub(crate) fn declare(command: Command) -> Command {
     command
       .arg(
         Arg::new(Self::SILENT)
@@ -61,10 +61,10 @@ impl ReportingArguments {
   }
 
   /// The two things a run needs of the four: where humans read it, and where machines do.
-  pub fn of(matches: &ArgMatches) -> ReportingOptions {
-    let destination: ReportDestination = Self::to_destination(matches);
+  pub(crate) fn of(matches: &ArgMatches) -> ReportingOptions {
+    let destination: ReportDestination = Self::parse_destination(matches);
     let verbosity: OutputVerbosity =
-      Self::to_verbosity(matches.get_flag(Self::SILENT), matches.get_flag(Self::VERBOSE));
+      Self::get_verbosity(matches.get_flag(Self::SILENT), matches.get_flag(Self::VERBOSE));
     let output: OutputOptions = OutputOptions::new(
       Arc::new(TerminalOutput::new(destination.is_stdout_available())),
       verbosity,
@@ -80,7 +80,7 @@ impl ReportingArguments {
   /// that silently discards half of what was asked for. Re-checking the resolved values is what makes the rule hold
   /// wherever the flags were written. Returned rather than raised so the composition root can answer it the way clap
   /// answers its own usage errors, which is the exit code a caller already knows.
-  pub fn find_conflicting_selection(matches: &ArgMatches) -> Option<(&'static str, &'static str)> {
+  pub(crate) fn find_conflicting_selection(matches: &ArgMatches) -> Option<(&'static str, &'static str)> {
     if matches.get_flag(Self::SILENT) && matches.get_flag(Self::VERBOSE) {
       return Some(("--silent", "--verbose"));
     }
@@ -93,7 +93,7 @@ impl ReportingArguments {
   }
 
   /// Where the run's report goes; clap has already refused an incompatible pair.
-  pub(super) fn to_destination(matches: &ArgMatches) -> ReportDestination {
+  pub(super) fn parse_destination(matches: &ArgMatches) -> ReportDestination {
     if matches.get_flag(Self::JSON) {
       ReportDestination::Stdout
     } else {
@@ -105,7 +105,7 @@ impl ReportingArguments {
 
   /// The verbosity the flags ask for. Silent wins; the contradictory pair never gets here, since
   /// [`Self::find_conflicting_selection`] refuses it.
-  pub(super) fn to_verbosity(is_silent: bool, is_verbose: bool) -> OutputVerbosity {
+  pub(super) fn get_verbosity(is_silent: bool, is_verbose: bool) -> OutputVerbosity {
     match (is_silent, is_verbose) {
       (true, _) => OutputVerbosity::Silent,
       (false, true) => OutputVerbosity::Verbose,

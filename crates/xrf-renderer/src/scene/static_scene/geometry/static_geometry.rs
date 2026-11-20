@@ -15,10 +15,10 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::item::static_place::StaticPlace;
 use crate::scene::static_scene::item::static_scene_writer::StaticSceneWriter;
 
-/// A static scene's geometry on the GPU: span buffers of vertices, indices, clusters, slots, places, impostors, skins
-/// and bones each item takes a range of, and the rows a store keeps dense for the cull to walk. A cull walks the
-/// clusters and impostors whole, so a range is cleared as it is freed and reads as nothing.
-pub struct StaticGeometry {
+/// A static scene's geometry on the GPU: span buffers each item takes a range of, and the dense rows the cull walks.
+///
+/// A cull walks the clusters and impostors whole, so a freed range is cleared to read as nothing.
+pub(crate) struct StaticGeometry {
   /// Each layout's vertices, which an acceleration structure reads in place where rays are traced.
   pub words: [SpanBuffer; StaticLayout::COUNT],
   pub indices: SpanBuffer,
@@ -35,6 +35,8 @@ pub struct StaticGeometry {
   /// Skinned models' links, two words a vertex, and the objects' bone matrices, three rows a bone.
   pub skins: SpanBuffer,
   pub bones: SpanBuffer,
+  /// One density word per cut-out traced triangle, for the ray's hole test (`StaticTraceDensity`).
+  pub trace_densities: SpanBuffer,
   row_records: ProxyStore<StaticRow>,
   /// Place zero, where every single draw stands: its geometry is in renderer space already. Never freed.
   origin: Span,
@@ -44,23 +46,23 @@ pub struct StaticGeometry {
 
 impl StaticGeometry {
   /// Triangles a cluster holds at most.
-  pub const CLUSTER_TRIANGLES: u32 = VisualClusters::MAX_TRIANGLES;
+  pub(crate) const CLUSTER_TRIANGLES: u32 = VisualClusters::MAX_TRIANGLES;
 
   /// Vertices one cluster's draw pulls: its triangles' corners, a short cluster's tail collapsed.
-  pub const CLUSTER_VERTICES: u32 = Self::CLUSTER_TRIANGLES * 3;
+  pub(crate) const CLUSTER_VERTICES: u32 = Self::CLUSTER_TRIANGLES * 3;
 
   /// The clusters' lane of their spheres.
-  pub const CLUSTER_SPHERES: usize = 1;
+  pub(crate) const CLUSTER_SPHERES: usize = 1;
 
   /// The impostors' lanes: their corners, their terms this frame, and the list of those drawn.
-  pub const IMPOSTOR_CORNERS: usize = 1;
-  pub const IMPOSTOR_TERMS: usize = 2;
-  pub const IMPOSTOR_LIST: usize = 3;
+  pub(crate) const IMPOSTOR_CORNERS: usize = 1;
+  pub(crate) const IMPOSTOR_TERMS: usize = 2;
+  pub(crate) const IMPOSTOR_LIST: usize = 3;
 
   /// Vectors an impostor's corners take: two a corner.
-  pub const CORNER_VECTORS: usize = StaticImpostor::CORNERS * 2;
+  pub(crate) const CORNER_VECTORS: usize = StaticImpostor::CORNERS * 2;
 
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let storage: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE;
     let words: u64 = u64::from(StaticLayout::STRIDE) * 4;
     let is_traced: bool = can_trace(device);
@@ -118,6 +120,7 @@ impl StaticGeometry {
       ),
       skins: SpanBuffer::new(device, "static model skins", 8, storage, 1 << 14),
       bones: SpanBuffer::new(device, "static bones", size_of::<Vec4>() as u64, storage, 1 << 12),
+      trace_densities: SpanBuffer::new(device, "static trace densities", 4, storage, 1 << 14),
       row_records: ProxyStore::new(),
       origin,
       is_traced,
@@ -125,47 +128,47 @@ impl StaticGeometry {
   }
 
   /// How full its pools are, as a report of the static draws has them.
-  pub fn get_pools(&self) -> RenderStaticReport {
+  pub(crate) fn get_pools(&self) -> RenderStaticReport {
     RenderStaticReport {
-      slots: Self::to_pool_use(&self.slots),
-      places: Self::to_pool_use(&self.places),
+      slots: RenderPoolUse::from(&self.slots),
+      places: RenderPoolUse::from(&self.places),
       rows: RenderPoolUse {
         used: self.row_records.len() as u32,
         capacity: self.rows.get_capacity(),
       },
-      lods: Self::to_pool_use(&self.impostors),
-      clusters: Self::to_pool_use(&self.clusters),
+      lods: RenderPoolUse::from(&self.impostors),
+      clusters: RenderPoolUse::from(&self.clusters),
       ..Default::default()
     }
   }
 
   /// Clusters the cull walks: the whole buffer, a range nothing holds reading as an empty cluster.
-  pub fn get_cluster_count(&self) -> u32 {
+  pub(crate) fn get_cluster_count(&self) -> u32 {
     self.clusters.get_capacity()
   }
 
   /// Rows the cull walks, as of the last `flush`.
-  pub fn get_row_count(&self) -> u32 {
+  pub(crate) fn get_row_count(&self) -> u32 {
     self.rows.get_count()
   }
 
   /// Impostors the cull walks: the whole buffer, a range nothing holds reading as no impostor.
-  pub fn get_impostor_count(&self) -> u32 {
+  pub(crate) fn get_impostor_count(&self) -> u32 {
     self.impostors.get_capacity()
   }
 
   /// Place zero, where every single draw stands.
-  pub fn get_origin(&self) -> u32 {
+  pub(crate) fn get_origin(&self) -> u32 {
     self.origin.get_offset()
   }
 
   /// Whether the device traces rays, so the vertices and indices are acceleration structures' input.
-  pub fn is_traced(&self) -> bool {
+  pub(crate) fn is_traced(&self) -> bool {
     self.is_traced
   }
 
   /// Uploads what was added, changed and removed since the last frame.
-  pub fn flush(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+  pub(crate) fn flush(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
     for buffer in self.list_spans_mut() {
       buffer.flush(queue);
     }
@@ -174,31 +177,32 @@ impl StaticGeometry {
   }
 
   /// Puts a row (a place and a progressive band) among the dense rows the row cull walks.
-  pub fn add_row(&mut self, row: StaticRow) -> ProxyHandle<StaticRow> {
+  pub(crate) fn add_row(&mut self, row: StaticRow) -> ProxyHandle<StaticRow> {
     self.row_records.add(row)
   }
 
   /// Takes a row out of the dense rows, the last moving into its place.
-  pub fn remove_row(&mut self, row: ProxyHandle<StaticRow>) {
+  pub(crate) fn remove_row(&mut self, row: ProxyHandle<StaticRow>) {
     self.row_records.remove(row);
   }
 
   /// Takes a range of each buffer for what a writer gathered, none where it gathered nothing; on an error, what was
   /// taken is given back.
-  pub fn allocate(
+  pub(crate) fn allocate(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     writer: &StaticSceneWriter,
   ) -> XrfResult<StaticSpans> {
     let mut spans: StaticSpans = StaticSpans::default();
-    let counts: [usize; 6] = [
+    let counts: [usize; 7] = [
       writer.indices.len(),
       writer.clusters.len(),
       writer.slots.len(),
       writer.places.len(),
       writer.impostors.len(),
       writer.skins.len() / 2,
+      writer.trace_densities.len(),
     ];
     let mut result: XrfResult<()> = Ok(());
 
@@ -214,13 +218,14 @@ impl StaticGeometry {
       }
     }
 
-    let buffers: [(&mut SpanBuffer, &mut Option<Span>); 6] = [
+    let buffers: [(&mut SpanBuffer, &mut Option<Span>); 7] = [
       (&mut self.indices, &mut spans.indices),
       (&mut self.clusters, &mut spans.clusters),
       (&mut self.slots, &mut spans.slots),
       (&mut self.places, &mut spans.places),
       (&mut self.impostors, &mut spans.impostors),
       (&mut self.skins, &mut spans.skins),
+      (&mut self.trace_densities, &mut spans.trace_densities),
     ];
 
     for ((buffer, held), count) in buffers.into_iter().zip(counts) {
@@ -240,7 +245,7 @@ impl StaticGeometry {
   }
 
   /// Queues a writer's records for the ranges taken for them.
-  pub fn write(&mut self, spans: &StaticSpans, writer: &StaticSceneWriter) {
+  pub(crate) fn write(&mut self, spans: &StaticSpans, writer: &StaticSceneWriter) {
     for (layout, words) in writer.words.iter().enumerate() {
       if let Some(span) = &spans.words[layout] {
         self.words[layout].write(span, 0, bytemuck::cast_slice(words));
@@ -276,10 +281,16 @@ impl StaticGeometry {
     if let Some(span) = &spans.skins {
       self.skins.write(span, 0, bytemuck::cast_slice(&writer.skins));
     }
+
+    if let Some(span) = &spans.trace_densities {
+      self
+        .trace_densities
+        .write(span, 0, bytemuck::cast_slice(&writer.trace_densities));
+    }
   }
 
   /// Gives an item's ranges back, the clusters and impostors cleared first, since the cull walks them whole.
-  pub fn release(&mut self, spans: StaticSpans) {
+  pub(crate) fn release(&mut self, spans: StaticSpans) {
     let StaticSpans {
       words,
       indices,
@@ -288,6 +299,7 @@ impl StaticGeometry {
       places,
       impostors,
       skins,
+      trace_densities,
     } = spans;
 
     for (layout, span) in words.into_iter().enumerate() {
@@ -311,6 +323,7 @@ impl StaticGeometry {
       (&mut self.slots, slots),
       (&mut self.places, places),
       (&mut self.skins, skins),
+      (&mut self.trace_densities, trace_densities),
     ] {
       if let Some(span) = span {
         buffer.free(span);
@@ -318,7 +331,7 @@ impl StaticGeometry {
     }
   }
 
-  fn list_spans_mut(&mut self) -> [&mut SpanBuffer; 10] {
+  fn list_spans_mut(&mut self) -> [&mut SpanBuffer; 11] {
     let [baked, tree, model] = &mut self.words;
 
     [
@@ -332,6 +345,7 @@ impl StaticGeometry {
       &mut self.impostors,
       &mut self.skins,
       &mut self.bones,
+      &mut self.trace_densities,
     ]
   }
 
@@ -348,10 +362,12 @@ impl StaticGeometry {
 
     buffer.allocate(device, queue, count as u32).map(Some)
   }
+}
 
-  /// How full a span buffer is: its elements held, and its capacity.
-  fn to_pool_use(buffer: &SpanBuffer) -> RenderPoolUse {
-    RenderPoolUse {
+/// A span buffer's elements held and its capacity.
+impl From<&SpanBuffer> for RenderPoolUse {
+  fn from(buffer: &SpanBuffer) -> Self {
+    Self {
       used: buffer.get_capacity() - buffer.get_free(),
       capacity: buffer.get_capacity(),
     }

@@ -7,8 +7,7 @@ use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
 use crate::level::SelectedLevel;
-use crate::parts::LevelSurfacesPart;
-use crate::parts::LevelTextureReference;
+use crate::parts::{LevelSurfacesPart, LevelTextureReference};
 
 /// What a change event calls what a level's surfaces' textures resolved to when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -35,12 +34,16 @@ impl LevelTexturesPart {
 
   /// The store with `textures` kept as the level's textures part, resolved from `inputs` as the level opened: the
   /// surfaces' inputs among them.
-  pub fn with(parts: SessionParts, textures: Arc<Vec<LevelTextureReference>>, inputs: XrayInputRecord) -> SessionParts {
+  pub(crate) fn with(
+    parts: SessionParts,
+    textures: Arc<Vec<LevelTextureReference>>,
+    inputs: XrayInputRecord,
+  ) -> SessionParts {
     parts.with::<Self>(textures, inputs)
   }
 
   /// The open level's textures, resolved the first time anything asks and kept, over its surfaces part.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Arc<Vec<LevelTextureReference>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Arc<Vec<LevelTextureReference>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let surfaces: Arc<Vec<XraySurfaceDescriptor>> = LevelSurfacesPart::get(current, search);
 
@@ -54,12 +57,12 @@ impl LevelTexturesPart {
   }
 
   /// The open level's textures where they were resolved already; asking resolves nothing.
-  pub fn find(current: &SessionSnapshot<SelectedLevel>) -> Option<Arc<Vec<LevelTextureReference>>> {
+  pub(crate) fn find(current: &SessionSnapshot<SelectedLevel>) -> Option<Arc<Vec<LevelTextureReference>>> {
     current.parts.get::<Self>()
   }
 
   /// Resolves every texture a level's `surfaces` bind within `scope`.
-  pub fn resolve(
+  pub(crate) fn resolve(
     level: &LevelFile,
     surfaces: &[XraySurfaceDescriptor],
     search: &XraySearch,

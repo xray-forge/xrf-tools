@@ -1,5 +1,4 @@
 import { path } from "@tauri-apps/api";
-import { exists } from "@tauri-apps/plugin-fs";
 import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
@@ -19,6 +18,7 @@ import { AssetService } from "@/core/assets/services";
 import { KeybindCommand } from "@/core/commands";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
+import { isPathPresent } from "@/core/path/presence";
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { describeEquipmentSheet, ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/sprite-equipment-packer.service";
@@ -176,7 +176,7 @@ export class SpriteEquipmentEditorService {
    * @returns Whether the sheet opened.
    */
   @BoundAction()
-  public openEquipmentProject(open: EquipmentSpriteOpen): Promise<boolean> {
+  public open(open: EquipmentSpriteOpen): Promise<boolean> {
     return flowResult(
       this.sprite.open(describeEquipmentSheet(open.sheet), (sessionId: SessionId) =>
         spriteEquipmentCommands.openSprite({ sessionId, ...open })
@@ -194,7 +194,7 @@ export class SpriteEquipmentEditorService {
       service.spriteImage.value !== null && !service.spriteImage.isLoading,
   })
   @BoundAction()
-  public reopenEquipmentProject(): Promise<boolean> {
+  public refresh(): Promise<boolean> {
     return this.reopen();
   }
 
@@ -204,7 +204,7 @@ export class SpriteEquipmentEditorService {
    * @throws {Error} When nothing is open, or the sheet cannot be repacked: refusals the action never offers.
    */
   @ExclusiveFlow("repack")
-  public *repackAndOpenProject(): TFlow {
+  public *repackAndRefresh(): TFlow {
     const { repackSourcePath, spriteImage } = this;
     const metadata: Nullable<EquipmentSpriteMetadata> = this.sprite.value;
 
@@ -254,7 +254,7 @@ export class SpriteEquipmentEditorService {
    * Lets the sheet go, and its picture with it.
    */
   @BoundAction()
-  public async closeEquipmentProject(): Promise<void> {
+  public async close(): Promise<void> {
     const image: Nullable<string> = this.picture.value?.image.src ?? null;
 
     if (await flowResult(this.sprite.close())) {
@@ -336,7 +336,7 @@ export class SpriteEquipmentEditorService {
       const [directory, extension] = yield* all([path.dirname(spritePath), path.extname(spritePath)] as const);
       const name: string = yield* call(path.basename(spritePath, extension));
       const sourcePath: string = yield* call(path.join(directory, name));
-      const isPresent: boolean = yield* call(exists(sourcePath));
+      const isPresent: boolean = yield* call(isPathPresent(sourcePath));
 
       this.repackSourcePath = isPresent ? sourcePath : null;
     } catch (error) {

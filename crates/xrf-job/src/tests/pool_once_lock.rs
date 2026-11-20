@@ -64,7 +64,7 @@ fn builds_while_a_worker_of_the_callers_pool_waits_on_it() {
     .expect("the build's second half starts");
 
   {
-    let (lock, answer) = (Arc::clone(&lock), answer.clone());
+    let (lock, answer) = (Arc::clone(&lock), answer);
 
     pool.spawn(move || {
       let _ = waiter_started.send(());

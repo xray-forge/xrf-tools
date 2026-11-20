@@ -1,7 +1,7 @@
-import { Nullable } from "@xrf/types";
+import { EditorPopoverChoiceRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material/toggle-button";
-import { ReactElement } from "react";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
+import { ReactElement, useMemo } from "react";
 
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 
@@ -13,7 +13,7 @@ interface ILevelWeatherSourceChoiceProps extends BaseComponentProps {
 }
 
 /**
- * Whether the level's weather lights it, or the keyframe set by hand; the keyframe while no cycle plays.
+ * Whether the level's weather lights it, or the keyframe set by hand, in one row; the keyframe while no cycle plays.
  */
 export function LevelWeatherSourceChoice({
   "data-testid": dataTestId = "level-weather-source-choice",
@@ -23,27 +23,24 @@ export function LevelWeatherSourceChoice({
   isPlayable,
   onChange,
 }: ILevelWeatherSourceChoiceProps): ReactElement {
+  const options: ReadonlyArray<IChoiceFormRowOption<ELevelWeatherSource>> = useMemo(
+    () => [
+      { isDisabled: !isPlayable, label: "Weather", value: ELevelWeatherSource.WEATHER },
+      { label: "Manual", value: ELevelWeatherSource.MANUAL },
+    ],
+    [isPlayable]
+  );
+
   return (
-    <ToggleButtonGroup
+    <EditorPopoverChoiceRow
       data-testid={dataTestId}
       id={id}
       className={className}
-      exclusive
-      fullWidth
-      color={"primary"}
-      size={"small"}
+      label={"Source"}
+      description={"The level's weather cycle, or one keyframe set by hand in the weather popovers."}
+      options={options}
       value={isPlayable ? source : ELevelWeatherSource.MANUAL}
-      aria-label={"Lit by"}
-      onChange={(_, next: Nullable<ELevelWeatherSource>) => {
-        if (next !== null) {
-          onChange(next);
-        }
-      }}
-    >
-      <ToggleButton value={ELevelWeatherSource.WEATHER} disabled={!isPlayable}>
-        Weather
-      </ToggleButton>
-      <ToggleButton value={ELevelWeatherSource.MANUAL}>Manual</ToggleButton>
-    </ToggleButtonGroup>
+      onChange={onChange}
+    />
   );
 }

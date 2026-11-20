@@ -1115,10 +1115,11 @@ fn fs_pick_opaque(in: GBufferVarying) -> @location(0) vec4<u32> {
   return pick_texel(in);
 }
 
-// Cut as the G-buffer cuts it, so a click between leaves picks what is behind them.
+// Cut as the G-buffer cuts it, at the texel its steep parallax marches to, so a click between leaves picks what is
+// behind them.
 @fragment
 fn fs_pick_cut_out(in: GBufferVarying) -> @location(0) vec4<u32> {
-  let at: Footprint = take_footprint(in);
+  let at: Footprint = steep_footprint(in, take_footprint(in));
 
   if (is_cut(in, base_texel(in, at), at)) {
     discard;

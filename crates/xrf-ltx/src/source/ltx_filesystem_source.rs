@@ -13,7 +13,7 @@ use crate::source::{LtxDocumentSource, LtxIncludeMask};
 
 /// Resolves and reads configs on the host filesystem, which is what an LTX file read by path uses.
 #[derive(Default)]
-pub struct LtxFilesystemSource;
+pub(crate) struct LtxFilesystemSource;
 
 impl LtxDocumentSource for LtxFilesystemSource {
   fn read_document(&self, logical_path: &str) -> XrfResult<Option<Arc<LtxDocument>>> {

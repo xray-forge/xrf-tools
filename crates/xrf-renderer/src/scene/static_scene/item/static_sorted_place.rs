@@ -5,7 +5,7 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 /// What a view draws back to front by its distance after the particles, as the engine sorts its blended objects
 /// (`mapSorted`), rather than in the order a cull lists them: a spawned object whose model's surfaces are composited
 /// over the frame, or a run of a level's strictly sorted composited clusters.
-pub struct StaticSortedPlace<'a> {
+pub(crate) struct StaticSortedPlace<'a> {
   /// Its bounding sphere in the world.
   pub sphere: Vec4,
   pub place: u32,
@@ -16,7 +16,7 @@ pub struct StaticSortedPlace<'a> {
 }
 
 impl StaticSortedPlace<'_> {
-  pub fn get_distance(&self, eye: Vec3) -> f32 {
+  pub(crate) fn get_distance(&self, eye: Vec3) -> f32 {
     self.sphere.truncate().distance(eye)
   }
 }

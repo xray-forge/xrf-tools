@@ -5,7 +5,7 @@ use crate::feature::image::smoothing::smoothing_uniform::SmoothingUniform;
 /// What FXAA reads: the scene as drawn, filtered.
 #[derive(PassParameters)]
 #[parameters(group = 0)]
-pub struct FxaaParameters<'a> {
+pub(crate) struct FxaaParameters<'a> {
   #[texture(d2, float)]
   pub frame: GraphTexture,
   #[uniform]

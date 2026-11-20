@@ -1,0 +1,136 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use xrf_chunk::{ChunkLayout, ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_editable_object::EditableObjectFile;
+use xrf_error::XrfResult;
+use xrf_level::{DetailModel, DetailVertex};
+use xrf_math::Vector3d;
+use xrf_test_utils::GeneratedResources;
+
+use crate::commands::object::compile::command::CompileCommand;
+use crate::commands::object::decompile::command::DecompileCommand;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::run_command;
+
+fn compile(source: &Path, destination: &Path, extra: &[&str]) -> CommandResult {
+  let mut arguments: Vec<String> = vec![
+    String::from("compile"),
+    source.display().to_string(),
+    String::from("--dest"),
+    destination.display().to_string(),
+    String::from("--silent"),
+  ];
+
+  arguments.extend(extra.iter().map(|it| String::from(*it)));
+
+  run_command(&CompileCommand, &arguments)
+}
+
+fn empty_object(flags: u32) -> EditableObjectFile {
+  EditableObjectFile {
+    flags,
+    flags_size: EditableObjectFile::FLAGS_SIZE,
+    class_script: None,
+    lods: None,
+    meshes: None,
+    surfaces: None,
+    bones: None,
+    embedded_motions: None,
+    motion_references: None,
+    bone_parts: None,
+    actor_transform: None,
+    description: None,
+    layout: ChunkLayout::default(),
+  }
+}
+
+fn get_error(verdict: CommandResult) -> String {
+  match verdict {
+    Ok(()) => panic!("Expect the compile to be refused"),
+    Err(error) => error.to_string(),
+  }
+}
+
+#[test]
+fn refuses_to_replace_an_ogf_without_force() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("object-compile/existing")?;
+  let source: PathBuf = root.join("model.object");
+  let destination: PathBuf = root.join("model.ogf");
+
+  empty_object(EditableObjectFile::DYNAMIC_FLAG).write_to_path::<XRayByteOrder, _>(&source)?;
+  fs::write(&destination, b"exported")?;
+
+  let error: String = get_error(compile(&source, &destination, &[]));
+
+  assert!(
+    error.contains("model.ogf") && error.contains("force"),
+    "Expect the refusal to name the OGF and ask for force: {error}"
+  );
+  assert_eq!(fs::read(&destination)?, b"exported");
+
+  Ok(())
+}
+
+#[test]
+fn compiles_a_decompiled_detail_model_back_to_its_bytes_through_the_sidecar() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("object-compile/detail")?;
+  let (model, object, compiled) = (root.join("leaf.dm"), root.join("leaf.object"), root.join("compiled.dm"));
+  // Flags and a scale range other than the editor's defaults, which only the sidecar carries across.
+  let leaf: DetailModel = DetailModel {
+    shader: String::from("details\\blend"),
+    texture: String::from("det\\det_listya"),
+    flags: 1,
+    min_scale: 0.8,
+    max_scale: 1.3,
+    vertices: [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0]]
+      .map(|position| DetailVertex {
+        position: Vector3d::from(position),
+        u: position[0],
+        v: position[1],
+      })
+      .to_vec(),
+    indices: vec![0, 1, 2],
+  };
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  leaf.write::<XRayByteOrder>(&mut writer)?;
+  fs::write(&model, writer.flush_raw_into_buffer()?)?;
+
+  let decompiled: CommandResult = run_command(
+    &DecompileCommand,
+    &[
+      "decompile",
+      &model.display().to_string(),
+      "--dest",
+      &object.display().to_string(),
+      "--silent",
+    ]
+    .map(String::from),
+  );
+
+  assert!(decompiled.is_ok(), "{decompiled:?}");
+  assert!(compile(&object, &compiled, &[]).is_ok());
+  assert_eq!(fs::read(&compiled)?, fs::read(&model)?);
+
+  Ok(())
+}
+
+#[test]
+fn refuses_an_object_without_a_mesh_and_writes_nothing() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir("object-compile/empty")?;
+  let source: PathBuf = root.join("model.object");
+  let destination: PathBuf = root.join("model.ogf");
+
+  empty_object(0).write_to_path::<XRayByteOrder, _>(&source)?;
+
+  let error: String = get_error(compile(&source, &destination, &["--force"]));
+
+  assert!(
+    error.contains("no mesh"),
+    "Expect the refusal to name the missing mesh: {error}"
+  );
+  assert!(!destination.exists());
+
+  Ok(())
+}

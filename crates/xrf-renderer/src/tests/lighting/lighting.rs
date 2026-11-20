@@ -2,10 +2,10 @@ use glam::Vec3;
 
 use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
 use crate::feature::lighting::tables::material_table::MaterialTable;
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::material_slice::material_slice;
 use crate::lighting::srgb::{authored_light, srgb_decoded, srgb_encoded};
-use crate::lighting::sun::sun_direction::to_renderer_sun_direction;
+use crate::lighting::sun::sun_direction::get_renderer_sun_direction;
 use crate::lighting::weather::render_lighting::RenderLighting;
 
 fn texel(data: &[u8], slice: u32, y: u32, x: u32) -> [u8; 2] {
@@ -111,7 +111,7 @@ fn a_linear_specular_follows_its_light() {
     sun: 2.2,
     ..RenderLightScales::default()
   };
-  let linear: f32 = to_light_specular(authored_light(lighting.get_sun_color(&scales), true), true);
+  let linear: f32 = get_light_specular(authored_light(lighting.get_sun_color(&scales), true), true);
 
   assert!((linear - 4.0 * 0.088).abs() < 1e-6, "{linear}");
   assert!(lighting.get_sun_specular(&scales) > 2.0 * linear);
@@ -161,10 +161,10 @@ fn sun_direction_normalises_and_leaves_zero_alone() {
 
 #[test]
 fn sun_direction_takes_heading_then_pitch_with_z_negated() {
-  assert_near(to_renderer_sun_direction(0.0, 0.0), [0.0, 0.0, -1.0]);
-  assert_near(to_renderer_sun_direction(90.0, 0.0), [-1.0, 0.0, 0.0]);
-  assert_near(to_renderer_sun_direction(0.0, -90.0), [0.0, -1.0, 0.0]);
-  assert_near(to_renderer_sun_direction(45.0, -45.0), [-0.5, -0.707_106_77, -0.5]);
+  assert_near(get_renderer_sun_direction(0.0, 0.0), [0.0, 0.0, -1.0]);
+  assert_near(get_renderer_sun_direction(90.0, 0.0), [-1.0, 0.0, 0.0]);
+  assert_near(get_renderer_sun_direction(0.0, -90.0), [0.0, -1.0, 0.0]);
+  assert_near(get_renderer_sun_direction(45.0, -45.0), [-0.5, -0.707_106_77, -0.5]);
 }
 
 #[test]

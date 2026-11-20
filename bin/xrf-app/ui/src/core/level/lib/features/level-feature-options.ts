@@ -8,7 +8,7 @@ import {
 import { isRecord, Nullable } from "@xrf/types";
 
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { toRenderFeatureChoice } from "@/core/render/lib/settings/choice/render-feature-choice";
+import { isSameRenderFeature, toRenderFeatureChoice } from "@/core/render/lib/settings/choice/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/choice/render-feature-overrides";
 import {
   IRenderFeatureSettings,
@@ -262,7 +262,7 @@ const LEVEL_GROUP_KEYS: {
     shutter: true,
     vignetteStrength: true,
   },
-  debanding: { mode: true, passes: true, radius: true },
+  debanding: { mode: true },
   enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
   fog: { colour: true, density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
   glass: { mode: true, refraction: true },
@@ -302,6 +302,7 @@ const LEVEL_GROUP_KEYS: {
     isGrassReflected: true,
     isRayBudgeted: true,
     isTraced: true,
+    isWaterFullyTraced: true,
     isWaterReflected: true,
     mode: true,
     probe: true,
@@ -446,6 +447,38 @@ export const LEVEL_FEATURE_TOGGLES_ON: Readonly<TLevelFeatureToggles> = {
   isShadowed: true,
   isWaterVisible: true,
 };
+
+/**
+ * @param key - A feature group the view sets part of.
+ * @param settings - What the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @param unset - What the view keeps of the group once reset, none of it by default.
+ * @returns Whether the view draws the group otherwise than the settings, which its reset would undo; a value set to
+ *   the settings' own changes nothing.
+ */
+export function isLevelFeatureSet<K extends keyof ILevelFeatureOptions & keyof IRenderFeatureSettings>(
+  key: K,
+  settings: IRenderFeatureSettings,
+  view: ILevelFeatureOptions,
+  unset: ILevelFeatureOptions[K] = toLevelFeatureOptions(null)[key]
+): boolean {
+  const after: ILevelFeatureOptions = { ...view, [key]: unset };
+
+  return !isSameRenderFeature(
+    key,
+    toLevelRendererFeatures(settings, view, LEVEL_FEATURE_TOGGLES_ON)[key],
+    toLevelRendererFeatures(settings, after, LEVEL_FEATURE_TOGGLES_ON)[key]
+  );
+}
+
+/**
+ * @param group - What the view sets of a feature group, each value on its own.
+ * @param keys - The values given back to the settings.
+ * @returns What the view keeps of the group once those follow the settings again, as a partial reset's `unset`.
+ */
+export function withoutLevelFeatureKeys<T extends object>(group: Partial<T>, keys: ReadonlyArray<keyof T>): Partial<T> {
+  return Object.fromEntries(Object.entries(group).filter(([key]) => !keys.includes(key as keyof T))) as Partial<T>;
+}
 
 /**
  * @param settings - What the renderer's settings set, for every viewport.

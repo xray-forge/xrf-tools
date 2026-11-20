@@ -15,7 +15,7 @@ use xrf_utils::format_path;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::source::{ArchivePackEntry, ArchivePackNameTable, ArchivePackOmissions, ArchivePackSource};
-use crate::path::{normalize_archive_name, to_archive_name};
+use crate::path::{normalize_archive_name, resolve_archive_name};
 
 /// What the walk has found so far, as it found it.
 ///
@@ -156,7 +156,7 @@ impl ArchivePackSourceCollector {
     }) {
       let entry: DirEntry = entry.map_err(|error| Self::walk_error(&root, error))?;
       let path: &Path = entry.path();
-      let name: String = to_archive_name(&config.source, path)?;
+      let name: String = resolve_archive_name(&config.source, path)?;
 
       if name.is_empty() {
         continue;
@@ -234,7 +234,7 @@ impl ArchivePackSourceCollector {
       return None;
     }
 
-    to_archive_name(&config.source, entry.path())
+    resolve_archive_name(&config.source, entry.path())
       .ok()
       .filter(|name| !name.is_empty() && config.is_recursively_excluded_directory(name))
   }

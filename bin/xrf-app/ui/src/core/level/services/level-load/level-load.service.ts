@@ -171,7 +171,7 @@ export class LevelLoadService {
    * @param request - The level to open, the roots it is searched in, and how the game's configs beside it are read.
    */
   @BoundAction()
-  public async load(request: LevelOpenRequest): Promise<void> {
+  public async open(request: LevelOpenRequest): Promise<void> {
     const opening: number = ++this.openings;
 
     this.request = request;
@@ -197,7 +197,7 @@ export class LevelLoadService {
    */
   public async retry(): Promise<void> {
     if (this.request) {
-      await this.load(this.request);
+      await this.open(this.request);
     }
   }
 

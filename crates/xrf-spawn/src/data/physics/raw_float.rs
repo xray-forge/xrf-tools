@@ -1,12 +1,12 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::Section;
+use xrf_ltx::LtxSectionRead;
 use xrf_math::Vector3d;
 use xrf_utils::vector_from_string_sized;
 
@@ -25,7 +25,7 @@ pub struct RawFloat(pub u32);
 #[derive(specta::Type, Serialize)]
 #[specta(inline)]
 #[serde(untagged)]
-#[allow(dead_code)]
+#[expect(dead_code, reason = "declared for the TypeScript mirror alone and never built")]
 enum RawFloatValue {
   Value(i32),
   Bits(String),
@@ -42,9 +42,7 @@ impl RawFloat {
   }
 
   /// Read `N` floats as their bits.
-  pub fn read_array<T: ByteOrder, D: ChunkDataSource, const N: usize>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<[Self; N]> {
+  pub fn read_array<T: ByteOrder, R: ChunkFieldReader, const N: usize>(reader: &mut R) -> XrfResult<[Self; N]> {
     let mut floats: [Self; N] = [Self(0); N];
 
     for float in &mut floats {
@@ -55,7 +53,7 @@ impl RawFloat {
   }
 
   /// Write floats as the bits they keep.
-  pub fn write_array<T: ByteOrder>(writer: &mut ChunkWriter, floats: &[Self]) -> XrfResult {
+  pub fn write_array<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, floats: &[Self]) -> XrfResult {
     for float in floats {
       writer.write_u32::<T>(float.0)?;
     }
@@ -64,7 +62,7 @@ impl RawFloat {
   }
 
   /// Import the `N` comma-separated floats an ltx field holds.
-  pub fn import_array<const N: usize>(section: &Section, key: &str) -> XrfResult<[Self; N]> {
+  pub fn import_array<const N: usize>(section: &impl LtxSectionRead, key: &str) -> XrfResult<[Self; N]> {
     let floats: Vec<Self> = vector_from_string_sized(&section.read_field::<String>(key)?, N)?;
 
     floats

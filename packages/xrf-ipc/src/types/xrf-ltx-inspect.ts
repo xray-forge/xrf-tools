@@ -14,6 +14,90 @@ export type LtxAnchoredFinding = {
 } & LtxFinding;
 
 /**
+ * One statement that writes a section or a field, where it is written, and how.
+ *
+ * Authored text, not a resolved value: a later patch can override or delete it. `LtxRootReader::read_sections`
+ * answers which value survives.
+ */
+export type LtxDeclaration = {
+  /** Engine identity of the config holding the statement. */
+  path: string;
+  /** The mount that supplied that config, as the inventory names it. */
+  source: string;
+  /** Whether a loose file backs that config. */
+  isPhysical: boolean;
+  /** One-based line the statement was written on. */
+  line: number;
+  /** The header the statement sits under, or is; absent for a key written before the first header. */
+  section: string | null;
+  /** That header's operation prefix: empty, `!`, `@` or `!!`. */
+  sectionOperation: string;
+  /**
+   * Whether a prefix on the statement or its header makes it a patch, read from the text alone.
+   *
+   * Standard LTX refuses patches; under DLTX one edits what an earlier config declared.
+   */
+  isPatch: boolean;
+} & LtxDeclarationStatement;
+
+/**
+ * What a declaration search asks for: a section, a field, a value, or any combination.
+ *
+ * Names match whole, as `LtxRootReader::read_sections` resolves them. Field names are case-sensitive; section names
+ * ignore case under [`Self::is_section_case_folded`]. A value matches as a case-sensitive substring of the text after
+ * `=`, since a value is usually a list or condlist and a person remembers one item of it.
+ *
+ * Headers answer only a query naming a section alone; a field or value query answers field lines. A query naming
+ * nothing matches nothing.
+ */
+export type LtxDeclarationQuery = {
+  /** Section name without its brackets or operation prefix. */
+  section: string | null;
+  /** Field name without its operation prefix. */
+  field: string | null;
+  /** Text the written value must contain. */
+  value: string | null;
+  /**
+   * Whether section names compare without regard to case, as the dialect folds them
+   * (`LtxDialect::is_folding_section_names`, true for both shipped dialects).
+   */
+  isSectionCaseFolded: boolean;
+};
+
+/** What one declaration search found across a project. */
+export type LtxDeclarationSearch = {
+  /** The query, echoed back. */
+  query: LtxDeclarationQuery;
+  /** Every matching statement, in the inventory's config order and then in document order. */
+  declarations: Array<LtxDeclaration>;
+  /** Configs that would not parse, and so declare nothing this search could see. */
+  unreadable: Array<LtxUnreadableConfig>;
+};
+
+/** Every `kind` the `LtxDeclarationStatement` union is told apart by, so a switch or a comparison names one. */
+export enum ELtxDeclarationStatement {
+  /** A section header, with the parents it names. */
+  SECTION = "section",
+  /**
+   * A field line, with its own operation prefix - empty, `!`, `>` or `<` - and its value as written.
+   *
+   * `value` is absent for a bare key, which is not the same as an empty value.
+   */
+  FIELD = "field",
+}
+
+/** The statement a declaration search matched: a section header, or one field line. */
+export type LtxDeclarationStatement =
+  /** A section header, with the parents it names. */
+  | { kind: "section"; parents: Array<string> }
+  /**
+   * A field line, with its own operation prefix - empty, `!`, `>` or `<` - and its value as written.
+   *
+   * `value` is absent for a bare key, which is not the same as an empty value.
+   */
+  | { kind: "field"; name: string; operation: string; value: string | null };
+
+/**
  * One config as written, carrying only what reading the text cannot answer.
  *
  * Keys and values are intentionally absent: a highlighter already colours them from the line itself, and a config tree
@@ -301,4 +385,15 @@ export type LtxStructureSection = {
   parents: Array<LtxStructureParent>;
   /** The scheme the resolved section is bound to, directly or through a parent. */
   scheme: LtxStructureScheme | null;
+};
+
+/**
+ * A config a declaration search could not read, and why.
+ *
+ * Recorded rather than failing the search, so one broken config does not hide what the others declare.
+ */
+export type LtxUnreadableConfig = {
+  /** Engine identity of the config. */
+  path: string;
+  error: LtxStructureParseError;
 };

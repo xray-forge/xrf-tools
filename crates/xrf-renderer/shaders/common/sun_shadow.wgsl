@@ -21,26 +21,42 @@ const OFFSET_ANY: f32 = 1e9;
 // below nought, the shadows' uniform says. Bounded by the uniform, the loops run several times slower on Vulkan.
 override SUN_FILTER_REACH: i32 = -1;
 
-// The sun's share at a point by one cascade alone, compared over the square of texels the filter reaches; the last
-// cascade fades out towards its far edge, on the side the camera looks towards, as `accum_sun_far` does.
-fn cascade_lit(maps: texture_depth_2d_array, shadows: Shadows, view: u32, clip: vec4<f32>, uv: vec2<f32>) -> f32 {
-  let size: i32 = i32(shadows.resolution);
-  let center: vec2<i32> = vec2<i32>(uv * shadows.resolution);
+// A texel's weight along one axis of the filter, `index` of the `last + 1` it spans, the point `fraction` past the
+// first's centre: the square of texels the filter reaches slid by that fraction, so the edge texels share one weight
+// between them and the shadow's edge moves with the point rather than a texel at a time.
+fn filter_weight(index: i32, last: i32, fraction: f32) -> f32 {
+  return select(select(1.0, fraction, index == last), 1.0 - fraction, index == 0);
+}
+
+// The sun's share at a point by one cascade alone: the comparisons over the square of texels the filter reaches each
+// way, slid continuously with the point (`filter_weight`), gathered four at a time through the comparison sampler
+// (`compare`, lit where the reference is no nearer the sun than the texel); the last cascade fades out towards its far
+// edge, on the side the camera looks towards, as `accum_sun_far` does. Both engines weight their taps (CoP's 7 × 7 of
+// hardware comparisons, Anomaly's PCSS); an unweighted square of single compares stepped its edge a texel at a time.
+fn cascade_lit(maps: texture_depth_2d_array, compare: sampler_comparison, shadows: Shadows, view: u32, clip: vec4<f32>,
+  uv: vec2<f32>) -> f32 {
   let reach: i32 = select(i32(shadows.filter_reach), SUN_FILTER_REACH, SUN_FILTER_REACH >= 0);
+  let at: vec2<f32> = uv * shadows.resolution - 0.5;
+  let first: vec2<f32> = floor(at) - f32(reach);
+  let fraction: vec2<f32> = at - floor(at);
+  let last: i32 = 2 * reach + 1;
   var total: f32 = 0.0;
-  var taps: f32 = 0.0;
 
-  for (var x: i32 = -reach; x <= reach; x++) {
-    for (var y: i32 = -reach; y <= reach; y++) {
-      let at: vec2<i32> = clamp(center + vec2<i32>(x, y), vec2<i32>(0), vec2<i32>(size - 1));
+  for (var y: i32 = 0; y < last; y += 2) {
+    for (var x: i32 = 0; x < last; x += 2) {
+      // The four texels about the corner between texels (x, y) and (x + 1, y + 1): `w` (x, y), `z` (x + 1, y), `x`
+      // (x, y + 1), `y` (x + 1, y + 1).
+      let corner: vec2<f32> = (first + vec2<f32>(f32(x), f32(y)) + 1.0) / shadows.resolution;
+      let compared: vec4<f32> = textureGatherCompare(maps, compare, corner, view, clip.z);
+      let across: vec2<f32> = vec2<f32>(filter_weight(x, last, fraction.x), filter_weight(x + 1, last, fraction.x));
+      let down: vec2<f32> = vec2<f32>(filter_weight(y, last, fraction.y), filter_weight(y + 1, last, fraction.y));
 
-      // Depth is reversed: a texel nearer the sun holds the larger value.
-      total += select(0.0, 1.0, clip.z >= textureLoad(maps, at, view, 0));
-      taps += 1.0;
+      total += dot(compared, vec4<f32>(across.x * down.y, across.y * down.y, across.y * down.x, across.x * down.x));
     }
   }
 
-  var lit: f32 = total / taps;
+  let side: f32 = f32(2 * reach + 1);
+  var lit: f32 = total / (side * side);
 
   if (shadows.count == view + 1u) {
     let ahead: vec4<f32> = shadows.matrices[view] * vec4<f32>(shadows.forward.xyz, 0.0);
@@ -100,20 +116,20 @@ fn sun_cascade(shadows: Shadows, position: vec3<f32>) -> u32 {
 // The point is moved along its normal first so a lit surface never shadows itself, up to twice as far where the light
 // grazes it, and as much again for each texel the filter reaches out: on a slope its outer taps read the surface's own
 // depth a texel's rise away, which striped a flat puddle on sloped ground where the bumps hid it elsewhere.
-fn sun_shadow(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>, normal: vec3<f32>, facing: f32)
-  -> f32 {
-  return sun_shadow_by(maps, shadows, position, normal, facing, OFFSET_ANY);
+fn sun_shadow(maps: texture_depth_2d_array, compare: sampler_comparison, shadows: Shadows, position: vec3<f32>,
+  normal: vec3<f32>, facing: f32) -> f32 {
+  return sun_shadow_by(maps, compare, shadows, position, normal, facing, OFFSET_ANY);
 }
 
 // The sun on a plant: as `sun_shadow`, its point moved no further than `PLANT_OFFSET_MOST` in any cascade.
-fn plant_sun_shadow(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>, normal: vec3<f32>,
-  facing: f32) -> f32 {
-  return sun_shadow_by(maps, shadows, position, normal, facing, PLANT_OFFSET_MOST);
+fn plant_sun_shadow(maps: texture_depth_2d_array, compare: sampler_comparison, shadows: Shadows, position: vec3<f32>,
+  normal: vec3<f32>, facing: f32) -> f32 {
+  return sun_shadow_by(maps, compare, shadows, position, normal, facing, PLANT_OFFSET_MOST);
 }
 
 // `sun_shadow` with its point moved `most` metres at most.
-fn sun_shadow_by(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>, normal: vec3<f32>, facing: f32,
-  most: f32) -> f32 {
+fn sun_shadow_by(maps: texture_depth_2d_array, compare: sampler_comparison, shadows: Shadows, position: vec3<f32>,
+  normal: vec3<f32>, facing: f32, most: f32) -> f32 {
   let lean: f32 = 1.0 + sqrt(1.0 - saturate(facing) * saturate(facing));
   var lit: f32 = 1.0;
   var is_blending: bool = false;
@@ -136,7 +152,7 @@ fn sun_shadow_by(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<
       continue;
     }
 
-    let view_lit: f32 = cascade_lit(maps, shadows, view, clip, uv);
+    let view_lit: f32 = cascade_lit(maps, compare, shadows, view, clip, uv);
 
     if (is_blending) {
       // At the edge the next cascade's, at the band's inner side the one that holds it.

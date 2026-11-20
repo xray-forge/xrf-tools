@@ -37,22 +37,28 @@ fn cs_light_contact(@builtin(global_invocation_id) id: vec3<u32>) {
     let pixel: LitPixel = lit_pixel(clip, texel, depth, contact.lights);
     threshold = pixel.threshold;
     let step_pixels: f32 = contact.reach / f32(max(contact.steps, 1u)) * CONTACT_SPACING;
-    var marched: u32 = 0u;
+    var contacted: u32 = 0u;
     var plane_normal: vec3<f32> = vec3<f32>(0.0);
 
-    for (var index: u32 = 0u; index < counts[pixel.cluster] && marched < pixel.contact_count; index++) {
+    for (var index: u32 = 0u; index < counts[pixel.cluster] && contacted < pixel.contact_count; index++) {
       let item: u32 = items[pixel.cluster * LIGHT_CLUSTER_CAPACITY + index];
       let record: LightRecord = records[item];
       let light: ReachingLight = reaching_light(pixel, record);
 
-      if (!is_reaching(record, light) || !is_contact_marched(pixel, light)) {
+      if (!is_reaching(record, light)) {
+        continue;
+      }
+
+      let slot: u32 = contacted;
+
+      if (!take_contact(pixel, light, &contacted)) {
         continue;
       }
 
       let to_light_point: vec3<f32> = record.position.xyz - pixel.position;
       let reach: f32 = length(to_light_point);
 
-      if (marched == 0u) {
+      if (slot == 0u) {
         plane_normal = contact_plane_normal(depth_target, texel, clip, pixel.position);
       }
 
@@ -60,8 +66,7 @@ fn cs_light_contact(@builtin(global_invocation_id) id: vec3<u32>) {
         to_light_point / reach,
         min(contact.length, reach - CONTACT_CLEARANCE), CONTACT_FALLOFF, step_pixels);
 
-      slots[marched] = contact_slot(item, lit);
-      marched++;
+      slots[slot] = contact_slot(item, lit);
     }
   }
 

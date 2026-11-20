@@ -1,7 +1,7 @@
 import { formatCount } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Checkbox } from "@xrf/ui/material/checkbox";
-import { Typography } from "@xrf/ui/material/typography";
+import { Checkbox } from "@xrf/ui/form/control";
+import { Typography } from "@xrf/ui/typography";
 import { ChangeEvent, ReactElement, useCallback, useMemo } from "react";
 
 import { LevelViewerImportRow } from "@/tools/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportRow";

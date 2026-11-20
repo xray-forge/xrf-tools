@@ -2,14 +2,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::Duration;
 
-use crate::job::EmissionGate;
-use crate::job::JobScope;
-use crate::job::LevelState;
-use crate::progress::JobProgress;
-use crate::progress::NoopSink;
-use crate::progress::ProgressLevel;
-use crate::progress::ProgressSink;
-use crate::progress::ProgressUnit;
+use crate::job::{EmissionGate, JobScope, LevelState};
+use crate::progress::{JobProgress, NoopSink, ProgressLevel, ProgressSink, ProgressUnit};
 
 /// Everything one job run shares, however many threads are doing its work.
 pub(crate) struct JobState {
@@ -73,7 +67,7 @@ impl JobState {
 
   /// Leave a level, showing whatever now sits below it.
   pub(crate) fn leave(&self, level: &Arc<LevelState>) {
-    let mut levels: RwLockWriteGuard<Vec<Arc<LevelState>>> = self.write_levels();
+    let mut levels: RwLockWriteGuard<'_, Vec<Arc<LevelState>>> = self.write_levels();
 
     // By identity rather than by position: scopes are dropped in the order they were entered, but a caller holding one
     // longer than the code around it suggests must remove its own level rather than somebody else's.

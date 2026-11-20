@@ -29,7 +29,7 @@ impl From<&LevelSpawn> for RenderLevelSpawn {
         category: category.into(),
         is_released: spawn.get_release(index).is_some(),
         visual,
-        transform: VisualTransform::of_spawn(&object.position, &object.direction).to_matrix(),
+        transform: VisualTransform::of_spawn(&object.header.position, &object.header.direction).to_matrix(),
       });
     }
 

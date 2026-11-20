@@ -1,9 +1,11 @@
 //! What a DDS file holds: its header facts, its pixels, and the two directions between the two.
 
+pub(crate) mod dds_block_decoder;
 pub(crate) mod dds_file;
 pub(crate) mod dds_format;
 pub(crate) mod dds_metadata;
 pub(crate) mod dds_png;
+pub(crate) mod dds_sdk_alpha_decoder;
 pub(crate) mod dds_uncompressed_decoder;
 
 pub use dds_file::DdsFile;

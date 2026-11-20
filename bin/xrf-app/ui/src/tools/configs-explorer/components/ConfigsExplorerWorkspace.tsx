@@ -38,6 +38,7 @@ export function ConfigsExplorerWorkspace({
 
   const onDeselect = useCallback(() => documentService.clear(), [documentService]);
 
+  // A search is about the whole project, so it outlives a deselection; the find service drops it with the project.
   const onBack = useCallback(() => {
     onDeselect();
 

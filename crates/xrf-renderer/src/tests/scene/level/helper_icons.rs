@@ -15,7 +15,7 @@ fn get_sources() -> PathBuf {
 
 /// The manifest the icons make: each by the name it serialises to, the Material icon it is drawn from and the file its
 /// picture is exported to, in the atlas's order, as the picture exporter reads it.
-fn to_manifest() -> String {
+fn format_manifest() -> String {
   let icons: Vec<Value> = RENDER_HELPER_ICONS
     .iter()
     .map(|entry| {
@@ -53,7 +53,7 @@ fn names_each_icon_as_it_serialises() {
 #[test]
 fn the_manifest_names_every_icon_in_the_atlas_order() {
   let path: PathBuf = get_sources().join("manifest.json");
-  let manifest: String = to_manifest();
+  let manifest: String = format_manifest();
 
   if std::fs::read_to_string(&path).ok().as_deref() != Some(manifest.as_str()) {
     std::fs::create_dir_all(get_sources()).expect("the icons' folder is made");
@@ -92,7 +92,7 @@ fn the_bundled_atlas_holds_a_cell_for_every_icon() {
 /// Rasterises the exported pictures into the bundled atlas, each white outlined in black, centred in its cell within
 /// its margin; run by `cargo make generate-helper-icons` after the pictures are exported.
 #[test]
-#[ignore]
+#[ignore = "rewrites the bundled atlas; run through `cargo make generate-helper-icons`"]
 fn generate_helper_icon_atlas() {
   let (width, height) = HelperIconAtlas::get_size(RENDER_HELPER_ICONS.len());
   let drawn: u32 = HelperIconAtlas::CELL - HelperIconAtlas::MARGIN * 2;

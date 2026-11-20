@@ -5,7 +5,7 @@ use xrf_level::{LevelFile, LevelShaderEntry};
 /// malformed, so the three add up to the table.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelShadersReport {
+pub(crate) struct LevelShadersReport {
   references: usize,
   lightmapped: usize,
   /// Entries the renderer skips because they name nothing.
@@ -15,7 +15,7 @@ pub struct LevelShadersReport {
 }
 
 impl LevelShadersReport {
-  pub fn of(level: &LevelFile) -> Self {
+  pub(crate) fn of(level: &LevelFile) -> Self {
     let entries: &[LevelShaderEntry] = match &level.shaders {
       Some(shaders) => &shaders.entries,
       None => &[],

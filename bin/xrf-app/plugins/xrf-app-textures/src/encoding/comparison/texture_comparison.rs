@@ -2,7 +2,9 @@ use std::path::Path;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionId;
-use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMipChain, DdsMipmaps, RgbaImage};
+use xrf_dds::{
+  DdsEncodeAttempt, DdsEncodeCandidate, DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, RgbaImage,
+};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_texture::TextureEncodingFormat;
 use xrf_utils::{error_to_string, format_path};
@@ -23,6 +25,9 @@ pub struct TextureComparison {
   /// The texture's two files on disk, or none for one served out of an archive, which has nowhere to be written.
   pub files: Option<TextureFiles>,
   pub attempts: Vec<DdsEncodeAttempt>,
+  /// BC1 with its one alpha bit cutting out texels below half, the `tfADXT1` a descriptor with alpha names; `None`
+  /// where the comparison stopped first. The comparison shows the opaque BC1, identical wherever nothing is cut out.
+  pub cut_out_bc1: Option<DdsFile>,
 }
 
 impl TextureComparison {
@@ -66,12 +71,22 @@ impl TextureComparison {
 
     job.set_detail(None);
 
+    let cut_out_bc1: Option<DdsFile> = match outcome {
+      JobOutcome::Completed => Some(
+        DdsEncoding::new(ImageFormat::BC1RgbaUnorm, request.quality.to_quality())
+          .with_cut_out()
+          .encode(&chain)
+          .map_err(error_to_string)?,
+      ),
+      JobOutcome::Cancelled => None,
+    };
     let comparison: Self = Self {
       roots: request.roots.clone(),
       source: request.source.clone(),
       label: request.source.to_label(),
       files,
       attempts,
+      cut_out_bc1,
     };
 
     Ok((comparison, TextureEncodingCurrent::of(&file.metadata()), outcome))
@@ -100,6 +115,23 @@ impl TextureComparison {
         self.label
       )
     })
+  }
+
+  /// The encoded file a save writes for `format`: the cut-out BC1 (`tfADXT1`) where the descriptor `has_alpha`, else
+  /// the candidate as compared.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the texture when this comparison did not finish encoding that format.
+  pub fn require_for_save(&self, format: TextureEncodingFormat, has_alpha: bool) -> TauriResult<&DdsFile> {
+    match (format, has_alpha, &self.cut_out_bc1) {
+      (TextureEncodingFormat::Bc1, true, Some(file)) => Ok(file),
+      (TextureEncodingFormat::Bc1, true, None) => Err(format!(
+        "The held comparison of '{}' stopped before its cut-out BC1; compare the formats again",
+        self.label
+      )),
+      _ => self.require(format),
+    }
   }
 
   /// The files a save of these encodes writes, given the descriptor the save names.

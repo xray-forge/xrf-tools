@@ -8,7 +8,7 @@ use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the particle effects a level plants.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveLevelPsStaticDescription {
   pub version: u32,
@@ -25,7 +25,7 @@ impl ArchiveLevelPsStaticDescription {
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not a placement list this reader can walk.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     Ok(Self {

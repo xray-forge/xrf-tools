@@ -1,8 +1,8 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -17,9 +17,9 @@ pub struct AlifeObjectPhSkeletonObject {
   pub skeleton: AlifeObjectSkeleton,
 }
 
-impl ChunkReadWrite for AlifeObjectPhSkeletonObject {
+impl ChunkFieldReadWrite for AlifeObjectPhSkeletonObject {
   /// Read the skeleton object from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       skeleton: reader.read_xr::<T, _>()?,
@@ -27,7 +27,7 @@ impl ChunkReadWrite for AlifeObjectPhSkeletonObject {
   }
 
   /// Write the skeleton object into the chunk.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_xr::<T, _>(&self.skeleton)?;
 
@@ -37,7 +37,7 @@ impl ChunkReadWrite for AlifeObjectPhSkeletonObject {
 
 impl LtxImportExport for AlifeObjectPhSkeletonObject {
   /// Import the skeleton object from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
@@ -45,7 +45,7 @@ impl LtxImportExport for AlifeObjectPhSkeletonObject {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
     self.skeleton.export(section_name, ltx)?;
 
@@ -88,7 +88,7 @@ mod tests {
     }
   }
 
-  /// The visual's 27 alife bytes, its name and flags, then the skeleton's animation, flags and source.
+  // The visual's 27 alife bytes, its name and flags, then the skeleton's animation, flags and source.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectPhSkeletonObject = new_object();

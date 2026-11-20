@@ -32,8 +32,9 @@ export const ARCHIVES_EXPLORER_HELP: IToolHelp = {
       "`configs` parent folder. An existing `gameplay` folder is merged into.",
   ],
   limitations: [
-    "Extraction overwrites existing destination files without asking. Directory extraction can be cancelled " +
-      "between files; files already written remain on disk.",
+    "Extracting a directory or unpacking the tree asks before replacing files already at the destination, naming " +
+      "them, and replaces them only once you agree; nothing else there is removed. Directory extraction can be " +
+      "cancelled between files; files already written remain on disk.",
     "Preview limits are 10 MB for text, 32 MB for `dds` and 64 MB for `ogg`. Larger files can still be " +
       "inspected in `File details` and extracted.",
     "`Game` and `Gamedata` modes omit volume metadata such as offsets, stored sizes and CRCs. Open archives " +

@@ -16,7 +16,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import {
   mockLevelObject,
   mockLevelPartResponses,
@@ -73,7 +73,7 @@ async function openLevel(): Promise<IOpenedLevel> {
 
   container.provision();
   await flush();
-  await service.load({
+  await service.open({
     engine: EXrayEngineChoice.VANILLA,
     isDltx: false,
     roots: createRoots(["C:\\game"]),
@@ -127,7 +127,7 @@ async function openHeld(): Promise<IHeldOpen> {
   await flush();
 
   const loading: Promise<unknown> = flowResult(
-    service.load({
+    service.open({
       engine: EXrayEngineChoice.VANILLA,
       isDltx: false,
       roots: createRoots(["C:\\game"]),
@@ -412,7 +412,7 @@ describe("LevelLoadService changes", () => {
     });
 
     const loading: Promise<unknown> = flowResult(
-      service.load({
+      service.open({
         engine: EXrayEngineChoice.VANILLA,
         isDltx: false,
         roots: createRoots(["C:\\game"]),
@@ -432,7 +432,7 @@ describe("LevelLoadService changes", () => {
   it("closes the level it held once another opens in its place", async () => {
     const { service, sessionId } = await openLevel();
 
-    await service.load({
+    await service.open({
       engine: EXrayEngineChoice.VANILLA,
       isDltx: false,
       roots: createRoots(["C:\\game"]),

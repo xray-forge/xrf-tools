@@ -7,7 +7,7 @@ use xrf_level::{LevelShaderEntry, LevelShadersChunk, LevelSurfaceMaterial, Level
 /// What `level materials` found: the level at a glance, then each shader table entry and what it lies on.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelMaterialsReport {
+pub(crate) struct LevelMaterialsReport {
   pub level: String,
   pub summary: LevelMaterialsSummary,
   pub surfaces: Vec<LevelMaterialsSurface>,
@@ -16,7 +16,7 @@ pub struct LevelMaterialsReport {
 /// The level's drawn area taken together.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelMaterialsSummary {
+pub(crate) struct LevelMaterialsSummary {
   /// Shader table entries some drawable visual draws with.
   pub surfaces: usize,
   /// Square metres every drawable visual covers.
@@ -32,7 +32,7 @@ pub struct LevelMaterialsSummary {
 /// One shader table entry and the game materials beneath it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelMaterialsSurface {
+pub(crate) struct LevelMaterialsSurface {
   /// Its index in the shader table, which visuals name it by.
   pub index: u16,
   pub shader: Option<String>,
@@ -48,7 +48,7 @@ pub struct LevelMaterialsSurface {
 /// A game material's share of a surface's covered area.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelMaterialsShare {
+pub(crate) struct LevelMaterialsShare {
   /// Its id in `gamemtl.xr`, as the collision form names it.
   pub id: u16,
   /// Its name, where the roots hold a library naming it.
@@ -58,7 +58,7 @@ pub struct LevelMaterialsShare {
 
 impl LevelMaterialsReport {
   /// The report of `survey`, its entries named from the level's shader table and its materials from `library`.
-  pub fn new(
+  pub(crate) fn new(
     level: String,
     survey: &LevelSurfaceMaterials,
     shaders: Option<&LevelShadersChunk>,

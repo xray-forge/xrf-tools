@@ -1,3 +1,5 @@
+import { ContentCopyIcon } from "@xrf/ui/icons/content-copy";
+import { FiberManualRecordIcon as RecordIcon } from "@xrf/ui/icons/fiber-manual-record";
 import { MapOutlinedIcon as MapIcon } from "@xrf/ui/icons/map-outlined";
 import { PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons/panorama-photosphere-outlined";
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons/photo-camera-outlined";
@@ -39,10 +41,41 @@ export const CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND: IKeybindCommand = defineKeyb
   label: "Capture cubemap…",
 });
 
+/**
+ * Starts or stops recording the viewport with its sound; on `shift+F9`, beside the screenshot's F9.
+ */
+export const RECORD_LEVEL_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.VIEW,
+  chords: ["shift+F9"],
+  description:
+    "Starts recording the viewport with what its camera hears to the recordings folder, or stops the recording " +
+    "running; the camera is heard whatever window takes the focus meanwhile.",
+  icon: <RecordIcon />,
+  id: "level-viewer/record",
+  label: "Record",
+});
+
+/**
+ * Copies the camera's position for Go to coordinates. On `shift+alt+c` because `mod+shift+c` is the webview's element
+ * picker.
+ */
+export const COPY_LEVEL_COORDINATES_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.VIEW,
+  chords: ["shift+alt+c"],
+  description:
+    "Puts where the camera stands on the clipboard as its readout states it, `x 0 y 0 z 0 h 0 p 0`, which Go to " +
+    "coordinates reads back.",
+  icon: <ContentCopyIcon />,
+  id: "level-viewer/copy-coordinates",
+  label: "Copy coordinates",
+});
+
 /** Commands reachable inside the level viewer, beside the root ones. */
 export const LEVEL_VIEWER_KEYBIND_COMMANDS: ReadonlyArray<IKeybindCommand> = [
   ...LEVEL_KEYBIND_COMMANDS,
+  COPY_LEVEL_COORDINATES_KEYBIND_COMMAND,
   TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND,
+  RECORD_LEVEL_KEYBIND_COMMAND,
   CAPTURE_LEVEL_MAP_KEYBIND_COMMAND,
   CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND,
 ];

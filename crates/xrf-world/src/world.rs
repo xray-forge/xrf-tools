@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+use glam::Vec3;
 use xrf_renderer::{
-  LevelParts, RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderSceneUpdate,
-  RenderViewFrame, RenderViewInput, RenderViewportId, RenderWorkers, RenderWorld,
+  LevelParts, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewportId,
+  RenderWorkers, RenderWorld,
 };
 
 use crate::contract::camera::world_camera::WorldCamera;
@@ -13,15 +14,17 @@ use crate::contract::camera::world_input_event::WorldInputEvent;
 use crate::contract::level::world_level_problems::WorldLevelProblems;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::sound::report::world_scene_sound::WorldSceneSound;
+use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_play::WorldWeatherPlay;
 use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::contract::world_toggles::WorldToggles;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
-use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::level_drive::LevelDrive;
 use crate::level::world_level::WorldLevel;
+use crate::sound::level::sound_drive::SoundDrive;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_scene::WorldScene;
 use crate::world_viewport::WorldViewport;
@@ -36,6 +39,10 @@ pub struct World {
   next_scene: u32,
   /// The pool its levels and weather are read on.
   workers: RenderWorkers,
+  /// The listener candidates in the order `get_listener` tries them: pinned, named by the host, last shown a level.
+  pinned: Option<RenderViewportId>,
+  listener: Option<RenderViewportId>,
+  last_shown: Option<RenderViewportId>,
 }
 
 impl World {
@@ -45,7 +52,64 @@ impl World {
       scenes: HashMap::new(),
       next_scene: 1,
       workers,
+      pinned: None,
+      listener: None,
+      last_shown: None,
     }
+  }
+
+  /// Hears the scene `viewport` shows from its camera from the next frame on; every other scene plays on silent. A
+  /// pinned viewport is heard over it until let go.
+  pub fn set_listener(&mut self, viewport: RenderViewportId) {
+    self.listener = Some(viewport);
+  }
+
+  /// Hears `viewport` from the next frame on whatever the host names, as a recording needs; none unpins it.
+  pub fn pin_listener(&mut self, viewport: Option<RenderViewportId>) {
+    self.pinned = viewport;
+  }
+
+  /// The sound report of the scene a viewport shows, none for a viewport showing no level.
+  pub fn report_sound(&mut self, viewport: RenderViewportId) -> Option<WorldSceneSound> {
+    let id: RenderSceneId = self.viewports.get(&viewport)?.scene?;
+    let scene: &mut WorldScene = self.scenes.get_mut(&id)?;
+
+    Some(WorldSceneSound {
+      scene: id,
+      report: scene.level.report_sound(),
+    })
+  }
+
+  /// Whether the scene a viewport shows plays sound, so a burst of it has sound to take: false for no level, or a level
+  /// whose host opened no sound outlet.
+  pub fn has_sound(&self, viewport: RenderViewportId) -> bool {
+    self
+      .viewports
+      .get(&viewport)
+      .and_then(|world| world.scene)
+      .and_then(|id| self.scenes.get(&id))
+      .is_some_and(|scene| scene.level.has_sound())
+  }
+
+  /// Does what a viewer asks of the music of the scene a viewport shows, answering whether it could; it cannot for no
+  /// level, or before the sounds are read.
+  pub fn command_music(&mut self, viewport: RenderViewportId, command: &WorldMusicCommand) -> bool {
+    let scene: Option<RenderSceneId> = self.viewports.get(&viewport).and_then(|world| world.scene);
+
+    scene
+      .and_then(|id| self.scenes.get_mut(&id))
+      .is_some_and(|scene| scene.level.command_music(command))
+  }
+
+  /// The viewport heard: the pinned one, else the one the host named, else the last shown a level, if attached.
+  pub(crate) fn get_listener(&self) -> Option<RenderViewportId> {
+    let is_attached = |viewport: &RenderViewportId| self.viewports.contains_key(viewport);
+
+    self
+      .pinned
+      .filter(is_attached)
+      .or(self.listener.filter(is_attached))
+      .or(self.last_shown.filter(is_attached))
   }
 
   /// Starts a viewport's world, publishing its camera and weather on `sink`: the one door a viewport's world opens by,
@@ -136,6 +200,7 @@ impl World {
     }
 
     self.get_viewport(viewport).scene = Some(id);
+    self.last_shown = Some(viewport);
 
     Some(id)
   }
@@ -341,39 +406,68 @@ impl RenderWorld for World {
     mut feedback: HashMap<RenderSceneId, RenderSceneFeedback>,
   ) -> HashMap<RenderSceneId, RenderSceneFrame> {
     let mut frames: HashMap<RenderSceneId, RenderSceneFrame> = HashMap::with_capacity(self.scenes.len());
+    let listener: Option<RenderViewportId> = self.get_listener();
 
     for (id, scene) in &mut self.scenes {
       // The scene told it once, so it is taken even in a frame no viewport drives the scene.
       scene.level.take_feedback(feedback.remove(id).unwrap_or_default());
 
-      let driver: Option<RenderViewportId> = scene.get_driver();
-      let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
+      let Some((driver, driving)) = scene
+        .get_driver()
+        .and_then(|driver| Some((driver, self.viewports.get(&driver)?)))
+      else {
         continue;
       };
-      let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
+      // A viewport drawing a burst of the scene hears it, at the burst's times; else the listening viewport hears the
+      // scene it shows; a scene it does not show plays on, silent, by its driver.
+      let bursting: Option<&WorldViewport> = scene
+        .viewers
+        .iter()
+        .filter_map(|viewer| self.viewports.get(viewer))
+        .find(|viewer| viewer.burst.is_some());
+      let is_audible: bool = bursting.is_some() || listener.is_some_and(|listener| scene.viewers.contains(&listener));
+      let hearing: &WorldViewport = bursting
+        .or_else(|| {
+          listener
+            .filter(|_| is_audible)
+            .and_then(|listener| self.viewports.get(&listener))
+        })
+        .unwrap_or(driving);
+      let sound: SoundDrive<'_> = SoundDrive {
+        scene: *id,
+        at: now,
+        is_audible,
+        eye: hearing.eye,
+        forward: hearing.look,
+        up: Vec3::Y,
+        game_time: hearing.get_game_time(),
+        toggles: hearing.toggles.sound,
+        ambients: hearing
+          .weather
+          .get_level()
+          .map(|_| hearing.weather.get_player().get_ambients()),
+        rain: hearing.get_rain_frame(None),
+        thunder: &hearing.thunders,
+        burst: hearing.burst,
+      };
+      let frame: RenderSceneFrame = scene.level.advance(
         now,
         LevelDrive {
+          viewport: driver,
           options: &driving.options,
           toggles: &driving.toggles,
           ambient: driving.get_ambient_frame(),
           eye: driving.eye,
         },
+        &sound,
       );
 
-      frames.insert(
-        *id,
-        RenderSceneFrame {
-          source: Arc::clone(scene.level.get_source()) as Arc<dyn RenderLevelSource>,
-          driver,
-          updates,
-          streaming: scene.level.get_progress(),
-          skeleton_segments: scene.level.list_segments(),
-          gust: effects.gust,
-          campfire_shares: effects.campfire_shares,
-          motions: effects.motions,
-          camera_hemi: effects.camera_hemi,
-        },
-      );
+      frames.insert(*id, frame);
+    }
+
+    // A strike is heard by the frame after it, or by none.
+    for world in self.viewports.values_mut() {
+      world.thunders.clear();
     }
 
     frames

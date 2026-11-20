@@ -1,6 +1,7 @@
 use serde::Serialize;
 use xrf_renderer::RenderHelperIcon;
 
+use crate::helpers::HelperColor;
 use crate::objects::{LevelObjectGroup, LevelObjectKind};
 
 /// One kind's row of the kind table: what the Outliner, the Show popover, the helpers and the map all name, colour,
@@ -27,15 +28,7 @@ pub struct LevelObjectKindEntry {
 impl LevelObjectKindEntry {
   /// The colour as sRGB floats from 0 to 1, a channel not written as two hex digits read as zero.
   pub fn get_rgb(&self) -> [f32; 3] {
-    let channel = |at: usize| -> f32 {
-      self
-        .color
-        .get(at..at + 2)
-        .and_then(|hex| u8::from_str_radix(hex, 16).ok())
-        .map_or(0.0, |value| f32::from(value) / 255.0)
-    };
-
-    [channel(1), channel(3), channel(5)]
+    HelperColor::parse_rgb(self.color)
   }
 
   /// What every spawned visual's row shares, its own kind, label and colour aside: drawn as its model, its helper off
@@ -95,7 +88,7 @@ impl LevelObjectKindEntry {
 /// anomalies red, level changers green, patrols yellow and graph points pale grey as the map has drawn them, the
 /// spawned visuals teal, characters magenta, smart covers cyan, placements muted violet and cyan, lights warm white.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
+pub(crate) const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
   LevelObjectKindEntry {
     kind: LevelObjectKind::Props,
     label: "Props",
@@ -269,6 +262,10 @@ pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
   },
 ];
 
-// A view switches the helpers a bit a kind (`RenderHelperOptions::kinds`), so a kind past the mask's width would never
-// draw; widen the mask before the table outgrows it.
-const _: () = assert!(LEVEL_OBJECT_KINDS.len() <= u32::BITS as usize);
+/// The helper kind bit, after the kind table's, that switches the sound emitter helpers: each static and zone sound's
+/// spheres at its minimum and maximum distance.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_SOUND_EMITTERS_HELPER_KIND: u32 = LEVEL_OBJECT_KINDS.len() as u32;
+
+// `RenderHelperOptions::kinds` holds one bit per kind, so a kind past its width would never draw: widen the mask first.
+const _: () = assert!(LEVEL_SOUND_EMITTERS_HELPER_KIND < u32::BITS);

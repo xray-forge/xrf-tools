@@ -1,8 +1,8 @@
 import { inject, Injectable } from "@wirestate/core";
 
 import { KeybindCommand } from "@/core/commands";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
 import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
 
 /**

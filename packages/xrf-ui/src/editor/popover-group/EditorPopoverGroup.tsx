@@ -1,8 +1,8 @@
 import { ReactElement, ReactNode } from "react";
 
 import { EditorPopoverAction } from "#/editor/popover-action";
+import { EditorPopoverContent } from "#/editor/popover-content";
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material/typography";
 
 export interface IEditorPopoverGroupProps extends BaseComponentProps {
   /** Stable accessible name of the trigger and the popover. */
@@ -12,6 +12,10 @@ export interface IEditorPopoverGroupProps extends BaseComponentProps {
   icon: ReactNode;
   /** Whether any toggle behind it is on, which is painted as a toggle that is on. */
   isActive: boolean;
+  /** Sets back what every section sets, from a button at the end of the popover's heading; none while nothing is to. */
+  onReset?: () => void;
+  /** What the reset sets them back to, its tooltip. */
+  resetLabel?: string;
   /** The toggles, each an `EditorPopoverGroupSection`. */
   children: ReactNode;
 }
@@ -27,6 +31,8 @@ export function EditorPopoverGroup({
   description,
   icon,
   isActive,
+  onReset,
+  resetLabel,
   children,
 }: IEditorPopoverGroupProps): ReactElement {
   return (
@@ -39,13 +45,9 @@ export function EditorPopoverGroup({
       icon={icon}
       isActive={isActive}
     >
-      <div className={"flex w-64 flex-col gap-2 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          {label}
-        </Typography>
-
+      <EditorPopoverContent label={label} resetLabel={resetLabel} onReset={onReset}>
         {children}
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

@@ -6,12 +6,15 @@ use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
 use xrf_utils::{format_duration, format_path};
 
-use crate::commands::packed_file::{PackedFileArguments, PackedFileDestination, PackedFileFormat};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::commands::packed_file::{
+  PackedFileArguments, PackedFileDestination, PackedFileFormat, PackedFileUnpackReport, PackedFileUnpacked,
+};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
 /// Reads one unpacked folder and writes it unpacked again, which proves the text round trip.
-pub struct ReUnpackCommand<F>(PhantomData<F>);
+pub(crate) struct ReUnpackCommand<F>(PhantomData<F>);
 
 impl<F> Default for ReUnpackCommand<F> {
   fn default() -> Self {
@@ -24,12 +27,15 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
     "re-unpack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path(format!("Unpacked {} folder", F::NOUN))
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command.about(format!(
       "Read an unpacked {} folder and write it unpacked again",
       F::NOUN
     ));
-    let command: Command = PackedFileArguments::declare_path(command, format!("Unpacked {} folder", F::NOUN));
     let command: Command =
       PackedFileArguments::declare_dest(command, format!("Folder the re-unpacked {} is written to", F::NOUN));
 
@@ -37,7 +43,7 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::path_of(matches);
+    let path: &PathBuf = InputArgument::of(matches);
     let dest: &PathBuf = PackedFileArguments::dest_of(matches);
     let output: OutputOptions = context.get_output().clone();
 
@@ -50,12 +56,12 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
     let read_duration: Duration = started_at.elapsed();
 
     // Replaced whole, as unpack replaces it: exporting into the old folder would leave its stale files beside the new.
-    PackedFileDestination::write_folder(dest, |folder| file.export(folder))?;
-
+    let unpacked: F::Unpacked = PackedFileDestination::write_folder(dest, |folder| file.export(folder))?;
     let write_duration: Duration = started_at.elapsed() - read_duration;
 
     xrf_output::verbose!(output, "Imported in {}", format_duration(read_duration));
     xrf_output::verbose!(output, "Exported in {}", format_duration(write_duration));
+    unpacked.print(&output);
     xrf_output::success!(
       output,
       "Re-unpacked {} in {}",
@@ -63,6 +69,11 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
       format_duration(started_at.elapsed())
     );
 
-    context.set_result(|| FileConversionReport::new(path, dest, read_duration, write_duration))
+    context.set_result(|| {
+      PackedFileUnpackReport::new(
+        FileConversionReport::new(path, dest, read_duration, write_duration),
+        unpacked,
+      )
+    })
   }
 }

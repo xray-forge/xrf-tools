@@ -22,7 +22,7 @@ impl TextureWatcher {
   const SETTLE: Duration = Duration::from_millis(250);
 
   /// A watcher telling `queue` what changed.
-  pub fn new(queue: RenderQueue) -> Self {
+  pub(crate) fn new(queue: RenderQueue) -> Self {
     let (sender, receiver): (Sender<String>, Receiver<String>) = channel();
     let watcher = notify::recommended_watcher(move |event: notify::Result<Event>| {
       let Ok(event) = event else {
@@ -30,7 +30,7 @@ impl TextureWatcher {
       };
 
       if matches!(event.kind, EventKind::Create(_) | EventKind::Modify(_)) {
-        for name in event.paths.iter().filter_map(|path| Self::to_texture_name(path)) {
+        for name in event.paths.iter().filter_map(|path| Self::find_texture_name(path)) {
           let _ = sender.send(name);
         }
       }
@@ -57,7 +57,7 @@ impl TextureWatcher {
   }
 
   /// Watches every root of `roots` not watched yet, and every folder under it.
-  pub fn watch(&self, roots: &XrayRoots) {
+  pub(crate) fn watch(&self, roots: &XrayRoots) {
     let Some(watcher) = &self.watcher else {
       return;
     };
@@ -68,11 +68,12 @@ impl TextureWatcher {
         continue;
       }
 
-      match watcher
+      let started: notify::Result<()> = watcher
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
-        .watch(&root.path, RecursiveMode::Recursive)
-      {
+        .watch(&root.path, RecursiveMode::Recursive);
+
+      match started {
         Ok(()) => {
           watched.insert(root.path.clone());
         }
@@ -85,12 +86,12 @@ impl TextureWatcher {
   }
 
   /// Whether a file written at `path` reloads by itself: it lies under a root watched.
-  pub fn is_watched(&self, path: &Path) -> bool {
+  pub(crate) fn is_watched(&self, path: &Path) -> bool {
     self.watcher.is_some() && self.lock_watched().iter().any(|root| path.starts_with(root))
   }
 
   /// A written file's texture name, where it is a texture: a `.dds` file's name, lowercase, without its extension.
-  pub fn to_texture_name(path: &Path) -> Option<String> {
+  pub(crate) fn find_texture_name(path: &Path) -> Option<String> {
     XrayExtension::Dds
       .matches_path(path)
       .then(|| path.file_stem())

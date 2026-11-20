@@ -7,30 +7,34 @@ use xrf_utils::HostFileName;
 
 /// A folder of the level viewer's files in the application's own data, `level-viewer/<folder>`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LevelViewerFolder {
+pub(crate) enum LevelViewerFolder {
   Views,
   Screenshots,
   Bursts,
+  Recordings,
 }
 
 impl LevelViewerFolder {
   /// The extension of the screenshots' images.
-  pub const SCREENSHOT_EXTENSION: &'static str = "png";
+  pub(crate) const SCREENSHOT_EXTENSION: &'static str = "png";
+
+  pub(crate) const RECORDING_EXTENSION: &'static str = "mp4";
 
   /// The extension of a screenshot's report beside it.
-  pub const REPORT_EXTENSION: &'static str = "json";
+  pub(crate) const REPORT_EXTENSION: &'static str = "json";
 
   /// The extension of a level view's file.
-  pub const VIEW_EXTENSION: &'static str = "json";
+  pub(crate) const VIEW_EXTENSION: &'static str = "json";
 
   /// The extension of a level map's annotations beside it.
-  pub const ANNOTATIONS_EXTENSION: &'static str = "svg";
+  pub(crate) const ANNOTATIONS_EXTENSION: &'static str = "svg";
 
   fn get_name(self) -> &'static str {
     match self {
       Self::Views => "views",
       Self::Screenshots => "screenshots",
       Self::Bursts => "bursts",
+      Self::Recordings => "recordings",
     }
   }
 
@@ -39,7 +43,7 @@ impl LevelViewerFolder {
   /// # Errors
   ///
   /// Returns an error when no data directory has a Unicode path.
-  pub fn get_path(self, directories: &AppDirectories) -> TauriResult<PathBuf> {
+  pub(crate) fn get_path(self, directories: &AppDirectories) -> TauriResult<PathBuf> {
     let root: String = directories
       .get_app_data_root()
       .ok_or_else(|| String::from("No application data directory has a Unicode path"))?;
@@ -53,7 +57,7 @@ impl LevelViewerFolder {
   /// # Errors
   ///
   /// Returns an error when the folder cannot be made.
-  pub fn make(folder: PathBuf) -> TauriResult<PathBuf> {
+  pub(crate) fn make(folder: PathBuf) -> TauriResult<PathBuf> {
     fs::create_dir_all(&folder).map_err(|error| format!("Failed to make '{}': {error}", folder.display()))?;
 
     Ok(folder)
@@ -66,11 +70,25 @@ impl LevelViewerFolder {
   /// # Errors
   ///
   /// Returns an error naming the path when it is not one, or when the folder cannot be named.
-  pub fn require_screenshot(directories: &AppDirectories, path: &Path) -> TauriResult {
+  pub(crate) fn require_screenshot(directories: &AppDirectories, path: &Path) -> TauriResult {
     if Self::is_screenshot(&Self::Screenshots.get_path(directories)?, path) {
       Ok(())
     } else {
       Err(format!("'{}' is not a screenshot of the level viewer", path.display()))
+    }
+  }
+
+  /// Refuse any path but a video directly in the recordings folder, the only files the page may delete there; checks
+  /// the path alone.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the path when it is not one, or when the folder cannot be named.
+  pub(crate) fn require_recording(directories: &AppDirectories, path: &Path) -> TauriResult {
+    if Self::is_recording(&Self::Recordings.get_path(directories)?, path) {
+      Ok(())
+    } else {
+      Err(format!("'{}' is not a recording of the level viewer", path.display()))
     }
   }
 
@@ -79,7 +97,7 @@ impl LevelViewerFolder {
   /// # Errors
   ///
   /// Returns an error naming the path when it is not a JSON file.
-  pub fn require_view_file(path: &Path) -> TauriResult {
+  pub(crate) fn require_view_file(path: &Path) -> TauriResult {
     if path.file_stem().is_some()
       && path
         .extension()
@@ -97,11 +115,25 @@ impl LevelViewerFolder {
   /// # Errors
   ///
   /// Returns an error when `name` is not one file name Windows takes, or starts with a dot.
-  pub fn find_free_screenshot(folder: &Path, name: &str) -> TauriResult<PathBuf> {
-    let name: HostFileName = HostFileName::new(name, "A screenshot's name").map_err(|error| error.to_string())?;
+  pub(crate) fn find_free_screenshot(folder: &Path, name: &str) -> TauriResult<PathBuf> {
+    Self::find_free(folder, name, Self::SCREENSHOT_EXTENSION, "screenshot")
+  }
+
+  /// The first free path in the recordings folder (`folder`) for a recording named `name`, numbered as screenshots are.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `name` is not one file name Windows takes, or starts with a dot.
+  pub(crate) fn find_free_recording(folder: &Path, name: &str) -> TauriResult<PathBuf> {
+    Self::find_free(folder, name, Self::RECORDING_EXTENSION, "recording")
+  }
+
+  /// The first free path in `folder` for `name` with `extension`, adding `-2`, `-3` and on when taken.
+  fn find_free(folder: &Path, name: &str, extension: &str, what: &str) -> TauriResult<PathBuf> {
+    let name: HostFileName = HostFileName::new(name, &format!("A {what}'s name")).map_err(|error| error.to_string())?;
 
     if name.as_str().contains(['*', '?', '"', '<', '>', '|']) || name.as_str().starts_with('.') {
-      return Err(format!("'{name}' is not a screenshot's name"));
+      return Err(format!("'{name}' is not a {what}'s name"));
     }
 
     (1..=u32::MAX)
@@ -112,10 +144,10 @@ impl LevelViewerFolder {
           format!("{name}-{index}")
         };
 
-        folder.join(format!("{stem}.{}", Self::SCREENSHOT_EXTENSION))
+        folder.join(format!("{stem}.{extension}"))
       })
       .find(|path: &PathBuf| !path.exists())
-      .ok_or_else(|| format!("No free name for the screenshot '{name}'"))
+      .ok_or_else(|| format!("No free name for the {what} '{name}'"))
   }
 
   /// The folder of the bursts folder (`folder`) a burst named `name` is written into, which must not be there yet, so
@@ -125,7 +157,7 @@ impl LevelViewerFolder {
   ///
   /// Returns an error when `name` is not one file name Windows takes or starts with a dot, or a burst of that name is
   /// there already.
-  pub fn find_new_burst(folder: &Path, name: &str) -> TauriResult<PathBuf> {
+  pub(crate) fn find_new_burst(folder: &Path, name: &str) -> TauriResult<PathBuf> {
     let name: HostFileName = HostFileName::new(name, "A burst's name").map_err(|error| error.to_string())?;
 
     if name.as_str().contains(['*', '?', '"', '<', '>', '|']) || name.as_str().starts_with('.') {
@@ -145,21 +177,29 @@ impl LevelViewerFolder {
   }
 
   /// Where the report of the screenshot at `path` stands beside it.
-  pub fn get_report_path(path: &Path) -> PathBuf {
+  pub(crate) fn get_report_path(path: &Path) -> PathBuf {
     path.with_extension(Self::REPORT_EXTENSION)
   }
 
   /// Where a level map's annotations, captured at `path`, stand beside it.
-  pub fn get_annotations_path(path: &Path) -> PathBuf {
+  pub(crate) fn get_annotations_path(path: &Path) -> PathBuf {
     path.with_extension(Self::ANNOTATIONS_EXTENSION)
   }
 
   /// Whether `path` is an image directly in the screenshots folder (`folder`).
   pub(crate) fn is_screenshot(folder: &Path, path: &Path) -> bool {
+    Self::is_in(folder, path, Self::SCREENSHOT_EXTENSION)
+  }
+
+  pub(crate) fn is_recording(folder: &Path, path: &Path) -> bool {
+    Self::is_in(folder, path, Self::RECORDING_EXTENSION)
+  }
+
+  fn is_in(folder: &Path, path: &Path, extension: &str) -> bool {
     path.parent() == Some(folder)
       && path.file_name().is_some()
       && path
         .extension()
-        .is_some_and(|extension| extension.eq_ignore_ascii_case(Self::SCREENSHOT_EXTENSION))
+        .is_some_and(|found| found.eq_ignore_ascii_case(extension))
   }
 }

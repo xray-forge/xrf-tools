@@ -10,7 +10,7 @@ use crate::commands::ogf::info::ogf_residue_report::OgfResidueReport;
 /// What `ogf info` read out of a visual.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfInfoReport {
+pub(crate) struct OgfInfoReport {
   bones: Vec<OgfBoneReport>,
   bounds: OgfBoundsReport,
   children: Vec<OgfMaterialReport>,
@@ -26,7 +26,7 @@ pub struct OgfInfoReport {
 }
 
 impl OgfInfoReport {
-  pub fn new(file: &OgfFile, unknown_chunks: Option<Vec<u32>>) -> Self {
+  pub(crate) fn new(file: &OgfFile, unknown_chunks: Option<Vec<u32>>) -> Self {
     Self {
       bones: file
         .bones

@@ -10,7 +10,7 @@ use crate::pass::view::view_binding::ViewBinding;
 
 /// The enhanced fog's scattering: the finished scene blurred down to a quarter and back up to half its size, then
 /// blended into the scene where the fog lies and the blur is brighter, into a copy the scene takes back.
-pub struct FogScatteringPass {
+pub(crate) struct FogScatteringPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   /// `smp_rtlinear`: filtered, clamped to the edge.
@@ -22,22 +22,26 @@ pub struct FogScatteringPass {
 
 impl FogScatteringPass {
   /// The blurs' targets: eight bits a channel, as the engine's blur targets are.
-  pub const BLURRED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub(crate) const BLURRED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
   /// Its stages: the blur to a quarter of the frame, the blur to half of it, the scattering, and the copy back.
-  pub const STAGES: [&'static str; 4] = [
+  pub(crate) const STAGES: [&'static str; 4] = [
     "fog scatter quarter",
     "fog scatter half",
     "fog scattering",
     "fog scattering copy",
   ];
   /// The scattering's index in [`Self::STAGES`], past the blurs.
-  pub const SCATTERING: usize = 2;
+  pub(crate) const SCATTERING: usize = 2;
 
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub(crate) fn new(
+    queue: &wgpu::Queue,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = FogScatteringParameters::create_layout(device);
@@ -80,7 +84,7 @@ impl FogScatteringPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.view_layout, &self.layout)
     }) {
@@ -89,17 +93,17 @@ impl FogScatteringPass {
   }
 
   /// The sampler its stages read with, which their parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// The texel a blur reads where no blur before it is bound.
-  pub fn get_empty(&self) -> &wgpu::TextureView {
+  pub(crate) fn get_empty(&self) -> &wgpu::TextureView {
     &self.empty
   }
 
   /// Draws the `stage` of [`Self::STAGES`] into the target the pass draws into: a blur, or the scattering.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,

@@ -5,7 +5,7 @@ use crate::feature::lighting::bitmask::bitmask_pass_names::BitmaskPassNames;
 /// What a frame's visibility-bitmask search yields: VBAO's occlusion, the indirect light, or both from one search; or
 /// RTAO's occlusion traced in the search's place, accumulated and filtered as the search's is.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct BitmaskSearch {
+pub(crate) struct BitmaskSearch {
   /// Whether its visibility is the frame's ambient occlusion.
   pub is_occluding: bool,
   /// Whether it gathers the indirect light.
@@ -16,13 +16,13 @@ pub struct BitmaskSearch {
 
 impl BitmaskSearch {
   /// The pass that copies the frame's light for the search to gather.
-  pub const SOURCE_PASS: &'static str = "indirect source";
+  pub(crate) const SOURCE_PASS: &'static str = "indirect source";
   /// The pass tracing the occlusion's rays.
-  pub const TRACE_PASS: &'static str = "rtao";
+  pub(crate) const TRACE_PASS: &'static str = "rtao";
 
   /// What the view searches for on a GPU with the `tracing` given, or none where it searches nothing: unlit,
   /// wireframe, or neither VBAO, RTAO nor the indirect light asked for.
-  pub fn new(options: &RenderViewOptions, tracing: GpuTracing) -> Option<Self> {
+  pub(crate) fn new(options: &RenderViewOptions, tracing: GpuTracing) -> Option<Self> {
     if !options.mode.is_lit || options.mode.is_wireframe {
       return None;
     }
@@ -38,7 +38,7 @@ impl BitmaskSearch {
     (search.is_occluding || search.is_lit).then_some(search)
   }
 
-  pub fn get_names(self) -> BitmaskPassNames {
+  pub(crate) fn get_names(self) -> BitmaskPassNames {
     match (self.is_occluding, self.is_lit, self.is_traced) {
       (true, true, true) => BitmaskPassNames {
         search: "indirect light",

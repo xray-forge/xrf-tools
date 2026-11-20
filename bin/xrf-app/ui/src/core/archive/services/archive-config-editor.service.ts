@@ -3,6 +3,7 @@ import { transformError } from "@xrf/errors";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
+import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Logger, Timer } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
@@ -10,9 +11,35 @@ import { Nullable } from "@xrf/types";
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 
-/** What every archive configuration carries that this editor reads: the packer's own volume ceiling. */
-export interface IArchiveEditedConfig {
-  maxVolumeSize: number;
+/**
+ * What every archive configuration carries that the shared editor reads and writes: the volumes' name, header and
+ * write options, and the packer's own volume ceiling.
+ */
+export type IArchiveEditedConfig = Pick<
+  ArchivePackConfig,
+  "name" | "header" | "mode" | "volumeExtension" | "maxVolumeSize"
+>;
+
+/**
+ * Any archive configuration editor, as the shared editor components read one: blind to what its configuration holds
+ * beyond the shared fields and to what its runs answer.
+ */
+export interface IArchiveConfigEditor<TSection extends string = string> {
+  readonly operation: Pick<JobOperation<unknown>, "job" | "cancel">;
+  readonly config: Nullable<IArchiveEditedConfig>;
+  readonly section: TSection;
+  readonly configPath: Nullable<string>;
+  readonly configName: Nullable<string>;
+  readonly error: Nullable<string>;
+  readonly isDirty: boolean;
+  readonly volumeSize: string;
+  readonly volumeSizeError: Nullable<string>;
+  readonly maxVolumeSizeMegabytes: number;
+  openSection(section: TSection): void;
+  setVolumeSize(volumeSize: string): void;
+  patchConfig(patch: Partial<IArchiveEditedConfig>): void;
+  importConfig(path: string): TFlow;
+  exportConfig(path: string): TFlow;
 }
 
 /**
@@ -21,11 +48,19 @@ export interface IArchiveEditedConfig {
  * A base class rather than a composed part, because configuration I/O and the run share one exclusive `isBusy` lane
  * on the service itself: a composed editor would hold a lane of its own and let an import land over a run.
  */
-export abstract class ArchiveConfigEditorService<TConfig extends IArchiveEditedConfig, TResult> {
+export abstract class ArchiveConfigEditorService<
+  TConfig extends IArchiveEditedConfig,
+  TResult,
+  TSection extends string,
+> implements IArchiveConfigEditor<TSection> {
   public readonly operation: JobOperation<TResult>;
 
   @Observable()
   public config: Nullable<TConfig> = null;
+
+  /** Which section of the configuration is open. */
+  @Observable()
+  public section: TSection;
 
   /** Set while a configuration file is being read or written, or while this window starts a run. */
   @Observable()
@@ -61,8 +96,10 @@ export abstract class ArchiveConfigEditorService<TConfig extends IArchiveEditedC
    */
   protected constructor(
     public readonly log: Logger,
-    kinds: ReadonlyArray<JobKind>
+    kinds: ReadonlyArray<JobKind>,
+    section: TSection
   ) {
+    this.section = section;
     this.operation = new JobOperation(log, {
       kinds,
       // A run this window did not await answers for the configuration as if it had: an I/O failure shown is past.
@@ -123,6 +160,11 @@ export abstract class ArchiveConfigEditorService<TConfig extends IArchiveEditedC
   @Computed()
   private get resolvedVolumeSize(): IResolvedArchiveVolumeSize {
     return resolveArchiveVolumeSize(this.volumeSize, this.config?.maxVolumeSize ?? 0);
+  }
+
+  @BoundAction()
+  public openSection(section: TSection): void {
+    this.section = section;
   }
 
   /**

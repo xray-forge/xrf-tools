@@ -2,10 +2,10 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::assert_equal;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleDescription {
   pub creator: String,
@@ -46,8 +46,8 @@ impl ChunkReadWrite for ParticleDescription {
 
 impl LtxImportExport for ParticleDescription {
   /// Import particle effect description data from provided path.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle effect description section '{}' should be defined in ltx file ({})",
         section_name,
@@ -72,14 +72,14 @@ impl LtxImportExport for ParticleDescription {
   }
 
   /// Export particle effect description data into provided path.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
       .set("creator", &self.creator)
       .set("editor", &self.editor)
-      .set("created_time", self.created_time.to_string())
-      .set("edit_time", self.edit_time.to_string());
+      .set("created_time", self.created_time)
+      .set("edit_time", self.edit_time);
 
     Ok(())
   }

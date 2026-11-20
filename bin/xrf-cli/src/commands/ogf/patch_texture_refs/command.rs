@@ -7,27 +7,24 @@ use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct PatchTextureRefsCommand;
+pub(crate) struct PatchTextureRefsCommand;
 
 impl GenericCommand for PatchTextureRefsCommand {
   fn operation(&self) -> &'static str {
     "patch-texture-refs"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to ogf file")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Rename a texture reference of an OGF visual")
-      .arg(
-        Arg::new("path")
-          .help("Path to ogf file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path to resulting ogf file, defaults to in place rewrite of the source file")
@@ -57,9 +54,7 @@ impl GenericCommand for PatchTextureRefsCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let from: &String = matches
       .get_one::<String>("from")

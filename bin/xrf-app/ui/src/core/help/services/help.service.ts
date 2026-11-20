@@ -4,9 +4,9 @@ import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
 import { OPEN_TOOL_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
-import { LAUNCHER_HELP } from "@/core/launcher/help";
+import { ILauncherScreen, LAUNCHER_SCREEN } from "@/core/routing/launcher-screen";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { IToolHelp } from "@/core/routing/tool";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
 
 /**
  * Owns the help for whatever is on screen, and whether it is open; it closes as the screen it was opened on goes.
@@ -18,7 +18,10 @@ export class HelpService {
 
   private stopFollowing: Nullable<() => void> = null;
 
-  public constructor(private readonly shellToolService: ShellToolService = inject(ShellToolService)) {}
+  public constructor(
+    private readonly shellToolService: ShellToolService = inject(ShellToolService),
+    private readonly launcher: ILauncherScreen = inject(LAUNCHER_SCREEN)
+  ) {}
 
   /** The help the open screen authored: the tool's, the launcher's, or none on a route nothing answers. */
   @Computed()
@@ -29,7 +32,7 @@ export class HelpService {
       return tool.help ?? null;
     }
 
-    return isLauncher ? LAUNCHER_HELP : null;
+    return isLauncher ? this.launcher.help : null;
   }
 
   /** Whether the open screen authored help at all; without it there is no affordance and no shortcut. */

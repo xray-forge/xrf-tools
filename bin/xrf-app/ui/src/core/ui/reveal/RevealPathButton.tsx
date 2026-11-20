@@ -2,9 +2,9 @@ import { systemCommands } from "@xrf/ipc/commands/system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";

@@ -65,7 +65,7 @@ impl ArchivePatcher {
 
     let started_at: Instant = Instant::now();
     let job: &JobHandle = &options.job;
-    let narrator: ArchivePatchNarrator = ArchivePatchNarrator::new(&options.output);
+    let narrator: ArchivePatchNarrator<'_> = ArchivePatchNarrator::new(&options.output);
     let scope: ArchivePatchScope = config.to_scope()?;
 
     let (base, target) = Self::mount_sides(config)?;
@@ -96,7 +96,7 @@ impl ArchivePatcher {
     let size_carried: u64 = comparison.get_carried_size();
 
     let result: ArchivePatchResult = ArchivePatchResult {
-      outcome: Self::to_outcome(job, &publication),
+      outcome: Self::get_outcome(job, &publication),
       added: comparison.added,
       modified: comparison.modified,
       unchanged: comparison.unchanged,
@@ -176,7 +176,7 @@ impl ArchivePatcher {
     comparison: &ArchivePatchComparison,
     target: &ArchivePatchWorld,
     options: &ArchivePatchOptions,
-    narrator: &ArchivePatchNarrator,
+    narrator: &ArchivePatchNarrator<'_>,
   ) -> XrfResult<ArchivePackResult> {
     let publication: ArchivePackConfig = config.to_publication();
     let carried: Vec<&str> = comparison.to_carried_names();
@@ -187,7 +187,7 @@ impl ArchivePatcher {
     )?;
 
     let guarded: ArchivePublishedSet = ArchivePacker::guard_destination(&publication, options.is_forced)?;
-    let pack_narrator: ArchivePackNarrator = ArchivePackNarrator::new(narrator.get_output());
+    let pack_narrator: ArchivePackNarrator<'_> = ArchivePackNarrator::new(narrator.get_output());
     let written: XrfResult<ArchivePackResult> = ArchivePacker::write_set(
       &publication,
       &names,
@@ -201,7 +201,7 @@ impl ArchivePatcher {
   }
 
   /// Returns the publication outcome, with cancellation taking precedence.
-  fn to_outcome(job: &JobHandle, publication: &ArchivePatchPublication) -> JobOutcome {
+  fn get_outcome(job: &JobHandle, publication: &ArchivePatchPublication) -> JobOutcome {
     if job.is_cancelled() {
       return JobOutcome::Cancelled;
     }

@@ -8,7 +8,7 @@ use xrf_texture::TextureEncodingFormat;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureEncodingSave {
+pub(crate) struct TextureEncodingSave {
   /// The comparison holding the candidate.
   pub session_id: SessionId,
   pub format: TextureEncodingFormat,

@@ -33,7 +33,6 @@ fn run(case: &str, arguments: &[&str]) -> CommandResult<(PathBuf, Value)> {
 
   let mut command: Vec<String> = vec![
     String::from("convert"),
-    String::from("-p"),
     source.display().to_string(),
     String::from("-d"),
     destination.display().to_string(),
@@ -134,7 +133,6 @@ fn refuses_a_format_it_has_no_encoder_for() -> CommandResult {
       &ConvertCommand,
       &[
         String::from("convert"),
-        String::from("-p"),
         source.display().to_string(),
         String::from("-d"),
         source.with_file_name("out.dds").display().to_string(),

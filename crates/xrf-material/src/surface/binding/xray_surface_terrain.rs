@@ -5,7 +5,7 @@ use crate::surface::XraySurfaceTerrainLayer;
 /// What `B_BmmD` lays over a terrain's base under the deferred renderers (`Blender_BmmD_deferred.cpp`): four details
 /// and their bumps, weighed by the four channels of a mask beside the base.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct XraySurfaceTerrain {
   /// The mask, the base's reference with `_mask` after it.

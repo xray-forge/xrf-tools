@@ -11,6 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = { workspace = true }
 derive_more = { workspace = true, features = ["display"] }
+glam = { workspace = true, optional = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-chunk = { workspace = true }
@@ -21,8 +22,11 @@ xrf-error = { workspace = true }
 typescript-bindings = ["specta"]
 # Exports the mock values this crate's own tests use, so a dependant tests against the same shapes.
 fixtures = []
+# Converts the vectors to and from `glam`'s, for the runtime crates that compute with `glam`.
+glam = ["dep:glam"]
 
 [dev-dependencies]
+glam = { workspace = true }
 serde_json = { workspace = true }
 xrf-test-utils = { workspace = true }
 

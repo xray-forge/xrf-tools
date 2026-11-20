@@ -1,13 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/button";
 import { DialogHeader } from "@xrf/ui/dialog/header";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/dialog/modal";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { MapOutlinedIcon as MapIcon } from "@xrf/ui/icons/map-outlined";
 import { PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons/panorama-photosphere-outlined";
-import { Button } from "@xrf/ui/material/button";
-import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
-import { Typography } from "@xrf/ui/material/typography";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback, useId, useState } from "react";
 
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";

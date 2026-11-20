@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "includeEntryExports": true,
+  "ignoreExportsUsedInFile": true,
+  "ignore": ["bin/xrf-app/app/extensions/**", "packages/xrf-ipc/src/types/**"],
+  "ignoreIssues": {
+    "packages/xrf-ui/src/theme/root/preload.ts": ["exports"]
+  },
+  "workspaces": {
+    ".": {
+      "lint-staged": {
+        "config": ["cli/hooks/lint-staged.config.mjs"]
+      }
+    },
+    "bin/xrf-app/ui": {
+      "entry": ["src/main-init.ts", "public/**/*.css"],
+      "ignoreDependencies": ["@tauri-apps/cli", "mobx-react-observer", "tailwindcss"]
+    },
+    "cli": {
+      "entry": ["package/*.mjs"]
+    },
+    "packages/xrf-ui": {
+      "entry": ["cli/*.mjs"]
+    }
+  }
+}

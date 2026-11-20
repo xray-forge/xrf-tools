@@ -98,6 +98,34 @@ describe("usePathField", () => {
     expect(getLocalStorageValue(STORAGE_KEY)).toBeNull();
   });
 
+  it("says a path is missing where it is absent or the host refuses to look at it", async () => {
+    jest.useFakeTimers();
+
+    try {
+      const { result } = renderField();
+
+      jest.mocked(exists).mockResolvedValue(false);
+      act(() => result.current.setValue("C:\\projects\\gone"));
+      await act(async () => jest.runAllTimers());
+
+      expect(result.current.error).toBe("Path does not exist");
+
+      jest.mocked(exists).mockResolvedValue(true);
+      act(() => result.current.setValue("C:\\projects\\there"));
+      await act(async () => jest.runAllTimers());
+
+      expect(result.current.error).toBeNull();
+
+      jest.mocked(exists).mockRejectedValue(new Error("forbidden path"));
+      act(() => result.current.setValue("C:\\projects\\denied"));
+      await act(async () => jest.runAllTimers());
+
+      expect(result.current.error).toBe("Path does not exist");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("fills from the seed without remembering it, and only when nothing was remembered", async () => {
     const seed = jest.fn<() => Promise<Nullable<string>>>(async () => "C:\\projects\\seeded");
 

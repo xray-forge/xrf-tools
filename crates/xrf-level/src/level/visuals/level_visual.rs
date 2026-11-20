@@ -1,11 +1,16 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_math::Matrix4x4;
 use xrf_ogf::{
   OgfChildrenLinkChunk, OgfFastpathChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk,
-  OgfSwiContainerChunk, OgfSwiDataChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
+  OgfModelType, OgfSwiContainerChunk, OgfSwiDataChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
 };
+
+use crate::geom::level_geom_file::LevelGeomFile;
+use crate::geom::window::level_geom_slide_window::LevelGeomSlideWindow;
+use crate::geom::window::level_geom_slide_window_item::LevelGeomSlideWindowItem;
+use crate::level::visuals::level_visual_windows::LevelVisualWindows;
 
 /// One visual of a compiled level, as `fsL_VISUALS` stores it.
 #[derive(Debug)]
@@ -76,6 +81,68 @@ impl LevelVisual {
   /// Whether the visual draws from the level's shared buffers at all.
   pub const fn is_drawable(&self) -> bool {
     self.geometry.is_some()
+  }
+
+  /// The first of the visual's slide windows, which holds its full detail; `None` for a visual that is not
+  /// progressive, whose every index draws.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::get_windows`].
+  pub fn get_full_detail_window(&self, geometry: &LevelGeomFile) -> XrfResult<Option<LevelGeomSlideWindow>> {
+    Ok(
+      self
+        .get_windows(geometry)?
+        .and_then(|windows| windows.get_full_detail()),
+    )
+  }
+
+  /// The visual's slide windows, finest first ([`LevelVisualWindows`]); `None` for a visual carrying none, which draws
+  /// every index.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the windows cannot be read, the named table is not in `geometry`, or a progressive visual
+  /// carries no window, which the engine asserts against (`FProgressive::Load`, `FTreeVisual_PM::Load`).
+  pub fn get_windows<'a>(&'a self, geometry: &'a LevelGeomFile) -> XrfResult<Option<LevelVisualWindows<'a>>> {
+    let windows: Option<LevelVisualWindows<'_>> = match (&self.swi, &self.swi_container) {
+      (Some(swi), _) => {
+        let swi: &OgfSwiDataChunk = swi
+          .as_ref()
+          .map_err(|error| XrfError::new_invalid_error(format!("A visual's slide windows were not read: {error}")))?;
+
+        Some(LevelVisualWindows::Own(&swi.windows))
+      }
+      (None, Some(container)) => {
+        let container: &OgfSwiContainerChunk = container.as_ref().map_err(|error| {
+          XrfError::new_invalid_error(format!("A visual's slide window table was not read: {error}"))
+        })?;
+        // `CRender::getSWI` indexes the level's tables unchecked.
+        let table: &LevelGeomSlideWindowItem = geometry
+          .slide_windows
+          .get(container.ext_swib_index as usize)
+          .ok_or_else(|| {
+            XrfError::new_invalid_error(format!(
+              "A visual draws from slide window table {} of the {} the level holds",
+              container.ext_swib_index,
+              geometry.slide_windows.len()
+            ))
+          })?;
+
+        Some(LevelVisualWindows::Table(&table.windows))
+      }
+      (None, None) => None,
+    }
+    .filter(|windows| !windows.is_empty());
+
+    if windows.is_none() && OgfModelType::from_raw(self.header.model_type).is_some_and(OgfModelType::is_progressive) {
+      return Err(XrfError::new_invalid_error(format!(
+        "A visual is {} and carries no slide window, so its full detail is unknown",
+        OgfModelType::label(self.header.model_type)
+      )));
+    }
+
+    Ok(windows)
   }
 
   /// The transform placing this visual in the level, for one stored in its own space.

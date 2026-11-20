@@ -1,21 +1,24 @@
 use std::f32::consts::FRAC_PI_2;
 
-use glam::Vec4;
+use glam::{DVec4, Vec4};
 
 use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::lighting::wind::foliage_motion::FoliageMotion;
 use crate::lighting::wind::render_wind::RenderWind;
+use crate::scene::level::level_time::LevelTime;
+use crate::scene::level::view::view_time::ViewTime;
 
-/// How far the enhanced foliage's flow fields have drifted, summed frame by frame at each frame's wind, so a change of
-/// wind changes how fast they move from then on, never where they stand.
+/// How far the enhanced foliage's flow fields have drifted.
+///
+/// Summed in `f64` at each frame's wind, so a change of wind changes their speed, never where they stand, and a frame
+/// still adds to a day's sum.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct FoliageWind {
+pub(crate) struct FoliageWind {
   /// Drifted across the engine's ground in `xy`, the trunks' clock in `z`, seconds in `w`.
-  anim: Vec4,
-  previous: Vec4,
-  /// The clock the last frame was drawn at, and the wind it was drawn in.
-  clock: Option<f32>,
+  anim: DVec4,
+  previous: DVec4,
+  /// The wind the last frame was drawn in.
   wind: Option<Vec4>,
 }
 
@@ -25,18 +28,18 @@ impl FoliageWind {
   /// The least velocity the fields drift at, so a near calm does not crawl in slow motion.
   const LEAST_VELOCITY: f32 = 200.0;
 
-  /// Moves the fields on by the seconds since the last frame at this frame's `wind`, as far as `motion` lets them;
-  /// `wetness`, from nothing to one, bends the leaves' normals harder.
-  pub fn advance(
+  /// Moves the fields on by the view's step at this frame's `wind`, as far as `motion` lets them; `wetness`, from
+  /// nothing to one, bends the leaves' normals harder.
+  pub(crate) fn advance(
     &mut self,
-    time: f32,
+    time: ViewTime,
     settings: &RenderFoliageSettings,
     wind: RenderWind,
     motion: FoliageMotion,
     wetness: f32,
   ) -> FoliageWindValues {
     let is_windy: bool = motion == FoliageMotion::Blowing;
-    let elapsed: f32 = self.clock.map_or(0.0, |clock| (time - clock).max(0.0));
+    let elapsed: f64 = time.get_advance();
     let velocity: f32 = wind
       .velocity
       .max(settings.min_speed / Self::VELOCITY_SHARE)
@@ -45,7 +48,6 @@ impl FoliageWind {
     let turn: f32 = -wind.direction + FRAC_PI_2;
     let (sine, cosine): (f32, f32) = turn.sin_cos();
 
-    self.clock = Some(time);
     self.previous = self.anim;
 
     if is_windy {
@@ -54,7 +56,9 @@ impl FoliageWind {
         velocity * sine,
         (velocity * 1.33).clamp(0.0, 1.0),
         1.0,
-      ) * elapsed;
+      )
+      .as_dvec4()
+        * elapsed;
     }
 
     let speed: f32 = if is_windy {
@@ -80,11 +84,27 @@ impl FoliageWind {
         settings.trees_speed,
         settings.trees_trunk,
         settings.trees_bend,
-        settings.is_enhanced() as u32 as f32,
+        u32::from(settings.is_enhanced()) as f32,
       ),
-      anim: self.anim,
-      previous_anim: self.previous,
-      flora: Vec4::new(0.0, 0.0, wetness, settings.is_enhanced() as u32 as f32),
+      anim: Self::get_anim(self.anim, settings.trees_trunk),
+      previous_anim: Self::get_anim(self.previous, settings.trees_trunk),
+      flora: Vec4::new(0.0, 0.0, wetness, u32::from(settings.is_enhanced()) as f32),
     }
+  }
+
+  /// The drift as `shaders/common/foliage_wind.wgsl` reads it, the trunks' clock wrapped within the period of their
+  /// `cos(phase) * sin(phase * 5)` swing at `trunk_speed`.
+  fn get_anim(anim: DVec4, trunk_speed: f32) -> Vec4 {
+    let swing: f64 = std::f64::consts::TAU / f64::from(trunk_speed);
+
+    // todo: Keep the flow fields' drift in `xy` precise past some hours of wind: the gradient noise it moves through
+    //  has no repeat to take it within, so it reaches the shader as an `f32` that steps once a frame's drift falls
+    //  under its last place; a periodic lattice with each read's own wrapped offset would.
+    Vec4::new(
+      anim.x as f32,
+      anim.y as f32,
+      LevelTime::wrap(anim.z, swing),
+      anim.w as f32,
+    )
   }
 }

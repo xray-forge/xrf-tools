@@ -34,10 +34,14 @@ use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
 use crate::feature::scene::grass::level::grass_level::GrassLevel;
 use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
 use crate::feature::scene::grass::level::grass_source::GrassSource;
+use crate::feature::scene::grass::slots::grass_slot_light_parameters::GrassSlotLightParameters;
+use crate::feature::scene::grass::slots::grass_slot_light_pass::GrassSlotLightPass;
+use crate::feature::scene::grass::slots::grass_slot_light_uniform::GrassSlotLightUniform;
 use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
 use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
 use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::frame::readback::stats_readback::StatsReadback;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
@@ -52,7 +56,7 @@ const SLOT_METERS: f32 = 2.0;
 /// A level's grass as one view plants it: every frame in a ring around its camera, the ring caching what it planted,
 /// and drawn into the G-buffer swaying in the view's wind. The ring and lists are built again when the settings outgrow
 /// them, or need less than half; a density changed plants every slot again.
-pub struct GrassView {
+pub(crate) struct GrassView {
   build: Option<GrassBuild>,
   values: GrassUniform,
   wind: GrassWind,
@@ -65,11 +69,14 @@ pub struct GrassView {
   planted: Option<(u64, i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
-  /// The cards casting the grass's shadows, while it casts them, whether the view traces them, and the metres from the
-  /// eye its sun cascades draw them to this frame, none where they draw none: traced, the cards stand further out than
-  /// the cascades they are asked in reach.
+  /// The cards standing for the grass in its shadows and in the water's every-pixel reflected rays.
   cards: Option<GrassCards>,
+  /// Whether the view traces the cards, and the mask their instance carries (`GrassCards::SHADOW_MASK`,
+  /// `GrassCards::REFLECTION_MASK`).
   is_card_traced: bool,
+  card_mask: u8,
+  /// Metres from the eye the sun cascades draw the cards to this frame, none where they draw none; traced cards may
+  /// stand further out.
   card_cascade_reach: Option<f32>,
   /// The planting as a traced hit reads it, no models while none is drawn.
   trace: TraceGrassUniform,
@@ -77,10 +84,12 @@ pub struct GrassView {
   stats: StatsReadback,
   /// How many triangles the cards' tufts asked for, read back a frame or more late, which their room is sized to.
   card_demand: StatsReadback,
+  /// What the slots' light view reads this frame, none while the view shows none.
+  slot_light: Option<GrassSlotLightUniform>,
 }
 
 impl GrassView {
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     Self {
       build: None,
       values: GrassUniform {
@@ -94,22 +103,19 @@ impl GrassView {
       is_drawn: false,
       cards: None,
       is_card_traced: false,
+      card_mask: 0,
       card_cascade_reach: None,
       trace: TraceGrassUniform::default(),
       stats: StatsReadback::new(device),
       card_demand: StatsReadback::new(device),
+      slot_light: None,
     }
-  }
-
-  /// Starts the engine's sway again from nothing, as at a view's first frame.
-  pub fn restart_wind(&mut self) {
-    self.wind = GrassWind::default();
   }
 
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
   /// them, and the cards where the grass casts shadows, traced where the view traces its light and drawn into the sun's
   /// cascades where they shadow the frame.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     device: &wgpu::Device,
     level: Option<&GrassLevel>,
@@ -125,8 +131,17 @@ impl GrassView {
       foliage,
       puddles,
       is_traced,
+      is_reflected,
       cascade_reach,
+      slot_value,
     } = *frame;
+
+    // Shown whether or not the grass is drawn: the slots stand without it.
+    self.slot_light = slot_value.map(|value| GrassSlotLightUniform {
+      grid: level.map_or(IVec4::ZERO, |level| IVec4::from_array(level.grid)),
+      value: value as u32,
+      _pad: [0; 3],
+    });
     let wind: GrassWindUniform = self
       .wind
       .advance(time, FoliageMotion::of(is_windy), strength)
@@ -143,10 +158,13 @@ impl GrassView {
       return;
     };
 
-    let is_cascaded: bool = cascade_reach.is_some();
+    // The cards stand while the grass casts shadows or the water traces every pixel; traced cards always carry the
+    // reflection bit.
+    let is_shadow_traced: bool = is_traced && settings.is_shadowed;
 
-    self.is_card_traced = is_traced;
-    self.card_cascade_reach = cascade_reach;
+    self.is_card_traced = is_shadow_traced || is_reflected;
+    self.card_cascade_reach = cascade_reach.filter(|_| settings.is_shadowed);
+    self.card_mask = GrassCards::REFLECTION_MASK | if is_shadow_traced { GrassCards::SHADOW_MASK } else { 0 };
 
     // Made again where the radius or what their tufts ask wants them to hold another number of triangles.
     let capacity: u32 = GrassCards::get_capacity(
@@ -154,7 +172,7 @@ impl GrassView {
       self.card_demand.take()[0],
     );
 
-    if !(is_traced || is_cascaded) || !settings.is_shadowed {
+    if !self.is_card_traced && self.card_cascade_reach.is_none() {
       self.cards = None;
     } else if self.cards.as_ref().is_none_or(|cards| cards.capacity != capacity) {
       self.cards = Some(GrassCards::new(device, capacity));
@@ -171,8 +189,8 @@ impl GrassView {
     let steps: i32 = (SLOT_METERS / density).ceil() as i32;
     let jitter: f32 = density / 1.7;
     let wanted: GrassBuildSize = GrassBuildSize::wanted(
-      reach as u32,
-      ((steps + 1) * (steps + 1)) as u32,
+      reach.cast_unsigned(),
+      ((steps + 1) * (steps + 1)).cast_unsigned(),
       device.limits().max_storage_buffer_binding_size,
     );
 
@@ -196,9 +214,15 @@ impl GrassView {
       return;
     };
     let eye: Vec3 = Vec3::new(camera.position.x, camera.position.y, -camera.position.z);
-    // Traced, the cards shadow as far as their radius; drawn into the cascades alone, as far as those reach.
-    let (card_reach, card_fade): (f32, f32) =
-      GrassCards::get_reach(settings, if is_traced { None } else { cascade_reach });
+    // Traced, the cards stand as far as their radius; drawn into the cascades alone, as far as those reach.
+    let (card_reach, card_fade): (f32, f32) = GrassCards::get_reach(
+      settings,
+      if self.is_card_traced {
+        None
+      } else {
+        self.card_cascade_reach
+      },
+    );
 
     self.values = GrassUniform {
       eye: eye.extend(if camera.is_orthographic() { 0.0 } else { 1.0 }),
@@ -222,7 +246,8 @@ impl GrassView {
       slope_limit,
       card_reach,
       card_fade,
-      card_slots: GrassCards::get_slots(card_reach) as i32,
+      card_slots: GrassCards::get_slots(card_reach).cast_signed(),
+      card_thin_from: GrassCards::get_thin_from(self.is_card_traced),
       ..self.values
     };
     self.sway = wind;
@@ -235,12 +260,18 @@ impl GrassView {
       height: settings.height,
       model_count: level.model_count,
       slope_limit,
-      _pad: [0.0; 3],
+      card_reach: if self.get_trace_instance().is_some() {
+        GrassCards::get_whole_reach(settings)
+      } else {
+        0.0
+      },
+      _pad: [0.0; 2],
     };
   }
 
-  /// The cards as an instance of the view's own top level, where the view traces the grass's shadows this frame.
-  pub fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'_>> {
+  /// The cards as an instance of the view's own top level, where the view traces them this frame: for the grass's
+  /// shadows, the water's reflected rays, or both.
+  pub(crate) fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'_>> {
     self
       .cards
       .as_ref()
@@ -249,13 +280,13 @@ impl GrassView {
       .map(|blas| DrawableTraceInstance {
         blas,
         custom_index: GrassCards::INSTANCE,
-        mask: GrassCards::MASK,
+        mask: self.card_mask,
       })
   }
 
   /// Records what a traced hit reads of the grass this frame: each of the level's models' colour averaged, which a hit
   /// on grassed ground blends towards; the planting as the hit reads it; and the cards the frame stood.
-  pub fn add_trace<'a>(
+  pub(crate) fn add_trace<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -318,7 +349,7 @@ impl GrassView {
 
   /// Metres from the camera the grass casts the sun's shadow to through its cascades this frame, none where it does
   /// not: as far as its cards stand, and no further than the cascades they are asked in.
-  pub fn get_cascade_reach(&self) -> Option<f32> {
+  pub(crate) fn get_cascade_reach(&self) -> Option<f32> {
     self
       .card_cascade_reach
       .filter(|_| self.cards.is_some() && self.is_drawn)
@@ -327,18 +358,18 @@ impl GrassView {
 
   /// What the grass casts into the sun's cascades every frame: its cards, out to their reach; none where it casts none
   /// there.
-  pub fn get_sun_casters(&self) -> Option<PerFrameCasters> {
+  pub(crate) fn get_sun_casters(&self) -> Option<PerFrameCasters> {
     self.get_cascade_reach().map(GrassShadowCasters::get_sun_casters)
   }
 
   /// What the grass casts into the local lights' faces: its cards, where they stand for the sun's cascades; none where
   /// they stand for none.
-  pub fn get_light_casters(&self) -> Option<LightCasters> {
+  pub(crate) fn get_light_casters(&self) -> Option<LightCasters> {
     self.get_cascade_reach().map(GrassShadowCasters::get_light_casters)
   }
 
   /// The cards of `level` as the cascades draw them, stood this frame (`cards`), where they do.
-  pub fn get_shadow_casters<'a>(
+  pub(crate) fn get_shadow_casters<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     GrassSource { pass, level }: GrassSource<'a>,
@@ -363,7 +394,7 @@ impl GrassView {
 
   /// Stands the cards of `level` about the eye, sizes the cascades' draw of them, and builds their structure where the
   /// view traces them; none where the grass casts no shadow.
-  pub fn add_cards<'a>(
+  pub(crate) fn add_cards<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     GrassSource { pass, level }: GrassSource<'a>,
@@ -391,7 +422,7 @@ impl GrassView {
       card_count: StorageValueMut::new(count),
       card_draw: StorageValueMut::new(draw),
     };
-    let tufts: u32 = GrassCards::get_window_cells(self.values.card_slots as u32) * build.size.per_cell;
+    let tufts: u32 = GrassCards::get_window_cells(self.values.card_slots.cast_unsigned()) * build.size.per_cell;
 
     graph
       .add_compute_pass("grass cards")
@@ -461,27 +492,69 @@ impl GrassView {
     Some(handles)
   }
 
+  /// Declares the slots' light view where the view shows it: each drawn pixel's slot value of `level` written over
+  /// `light`, nothing where no slot is planted or the level has no grass.
+  pub(crate) fn add_slot_light<'a>(
+    &self,
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
+    ViewRecord {
+      passes, view, handles, ..
+    }: ViewRecord<'a>,
+    level: Option<&'a GrassLevel>,
+    light: GraphTexture,
+  ) {
+    let Some(uniform) = &self.slot_light else {
+      return;
+    };
+    let pass: &'a GrassSlotLightPass = &passes.scene.grass_slot_light;
+    let empty: &'a wgpu::Buffer = pass.get_empty();
+    let parameters: GrassSlotLightParameters = GrassSlotLightParameters {
+      depth_target: handles.depth,
+      grid: StorageArray::new(bindings.import_buffer(
+        &mut *graph,
+        "grass grid",
+        level.map_or(empty, |level| &level.cells),
+      )),
+      slot_records: StorageArray::new(bindings.import_buffer(
+        &mut *graph,
+        "grass slots",
+        level.map_or(empty, |level| &level.slots),
+      )),
+      slot_light: runtime.push_uniform(uniform),
+    };
+
+    graph
+      .add_raster_pass("grass slot light")
+      .parameters(&parameters)
+      .color(GraphColorAttachment::new(light, wgpu::LoadOp::Load))
+      .record(move |context| pass.record(context, view, &parameters));
+  }
+
   /// The planting as a traced hit reads it this frame.
-  pub fn get_trace_uniform(&self) -> &TraceGrassUniform {
+  pub(crate) fn get_trace_uniform(&self) -> &TraceGrassUniform {
     &self.trace
   }
 
   /// What the ring's slots are planted under, moved each time every slot is planted again.
   #[cfg(test)]
-  pub fn get_generation(&self) -> u32 {
+  pub(crate) fn get_generation(&self) -> u32 {
     self.values.generation
   }
 
   /// Writes into `applied` the grass as planted by `settings`, none where none is.
-  pub fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderGrassSettings) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderGrassSettings) {
     applied.grass = self.get_applied(settings);
   }
 
   fn get_applied(&self, settings: &RenderGrassSettings) -> Option<RenderAppliedGrass> {
     let build = self.build.as_ref().filter(|_| self.is_drawn)?;
-    let line: u32 = self.values.reach as u32 * 2 + 1;
+    let line: u32 = self.values.reach.cast_unsigned() * 2 + 1;
     let cells: u32 = line * line;
-    let candidates: u32 = ((self.values.steps + 1) * (self.values.steps + 1)) as u32;
+    let candidates: u32 = ((self.values.steps + 1) * (self.values.steps + 1)).cast_unsigned();
 
     Some(RenderAppliedGrass {
       radius: self.values.reach as f32 * SLOT_METERS,
@@ -493,19 +566,19 @@ impl GrassView {
   }
 
   /// Asks for the cull's total and the cards' demand copied out with the frame just submitted.
-  pub fn request_stats(&self) {
+  pub(crate) fn request_stats(&self) {
     self.stats.request();
     self.card_demand.request();
   }
 
   /// Drops the copies made with a frame that was never submitted.
-  pub fn abandon_stats(&self) {
+  pub(crate) fn abandon_stats(&self) {
     self.stats.abandon();
     self.card_demand.abandon();
   }
 
   /// What a recent frame drew: the cull's latest total read back, and the most the lists hold.
-  pub fn take_report(&mut self) -> RenderDrawableReport {
+  pub(crate) fn take_report(&mut self) -> RenderDrawableReport {
     let [drawn, ..] = self.stats.take();
 
     RenderDrawableReport {
@@ -521,7 +594,7 @@ impl GrassView {
 
   /// Plants the frame's grass of `level` where it is drawn: the ring's stale cells, ahead of the frame's depth. Answers
   /// what the frame's cull, cards and draw bind of it.
-  pub fn add_planting<'a>(
+  pub(crate) fn add_planting<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -596,7 +669,7 @@ impl GrassView {
 
   /// Culls what the ring holds by the view and the frame's depth `occlusion`, into the draw arguments the planting
   /// answered, then copies its total out for reading back: an effect the graph cannot see.
-  pub fn add_cull<'a>(
+  pub(crate) fn add_cull<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     GrassSource { pass, level }: GrassSource<'a>,
@@ -640,7 +713,7 @@ impl GrassView {
 
   /// What the planting and the cull dispatch over: the ring's cells, its bands, the models and the items.
   fn get_dispatch(&self, level: &GrassLevel, build: &GrassBuild) -> GrassDispatch {
-    let line: u32 = self.values.reach as u32 * 2 + 1;
+    let line: u32 = self.values.reach.cast_unsigned() * 2 + 1;
 
     GrassDispatch {
       cells: line * line,
@@ -651,7 +724,7 @@ impl GrassView {
   }
 
   /// Declares the draw of what the frame planted (`planting`) into the G-buffer.
-  pub fn add_draw<'a>(
+  pub(crate) fn add_draw<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     GrassSource { pass, level }: GrassSource<'a>,
@@ -692,15 +765,18 @@ impl GrassView {
 }
 
 impl ViewFeature for GrassView {
-  /// The ring, lists and cards while it plants.
-  fn get_memory(&self) -> u64 {
-    self.build.as_ref().map_or(0, GrassBuild::get_memory) + self.cards.as_ref().map_or(0, GrassCards::get_memory)
-  }
-
   fn release(&mut self) {
     self.build = None;
     self.puddles = None;
     self.planted = None;
     self.cards = None;
+  }
+
+  /// Its motion restarted, the engine's sway starts again from nothing, as at a view's first frame; a cut leaves it,
+  /// which follows the time and not the camera.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.wind = GrassWind::default();
+    }
   }
 }

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use xrf_level::{LevelCformTracer, LevelLight};
+use glam::Vec3;
+use xrf_geometry::{BvhTracer, Ray, Tracer};
+use xrf_level::LevelLight;
 use xrf_math::Vector3d;
 
 use crate::data::lights::hemi_cube::HemiCube;
@@ -64,7 +66,7 @@ const SEEN_LIGHT_SHARE: f32 = 0.5;
 /// sampled direction, and the level's compiled lights (`build.lights`, `CLight_DB::LoadHemi`) that reach it unoccluded,
 /// each added to the faces it comes from.
 pub struct HemiEstimator {
-  tracer: Arc<LevelCformTracer>,
+  tracer: Arc<BvhTracer>,
   lights: Vec<LevelLight>,
   /// The sampled directions, unit length, normalised once rather than for every object.
   sky: [[f32; 3]; SKY_SAMPLES],
@@ -72,7 +74,7 @@ pub struct HemiEstimator {
 
 impl HemiEstimator {
   /// An estimator over the collision form, lit by the level's compiled lights, of which only the point ones count.
-  pub fn new(tracer: Arc<LevelCformTracer>, lights: &[LevelLight]) -> Self {
+  pub fn new(tracer: Arc<BvhTracer>, lights: &[LevelLight]) -> Self {
     Self {
       lights: lights.iter().filter(|light| light.is_point()).cloned().collect(),
       sky: SKY_DIRECTIONS.map(|direction| Vector3d::from(direction).normalize_or_zero().to_array()),
@@ -92,7 +94,10 @@ impl HemiEstimator {
     let mut open: u32 = 0;
 
     for direction in &self.sky {
-      if !self.tracer.is_blocked(&origin, &Vector3d::from(*direction), SKY_RANGE) {
+      if !self
+        .tracer
+        .is_blocked(&Ray::new(Vec3::from(&origin), Vec3::from(*direction), SKY_RANGE))
+      {
         cube.accumulate(direction, SKY_SCALE);
         open += 1;
       }
@@ -129,7 +134,10 @@ impl HemiEstimator {
       // Traced from the light to the point, as `prepare_lights` traces a light's visibility.
       let along: Vector3d<f32> = &toward / distance;
 
-      if self.tracer.is_blocked(&light.position, &along, distance) {
+      if self
+        .tracer
+        .is_blocked(&Ray::new(Vec3::from(&light.position), Vec3::from(&along), distance))
+      {
         continue;
       }
 

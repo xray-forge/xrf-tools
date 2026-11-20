@@ -1,0 +1,244 @@
+use xrf_editable_level::{
+  EditableCustomObject, EditableLevelOptions, EditableLevelValue, EditableObjectTransform, EditableSectorObject,
+  EditableShape, EditableShapeElement, EditableShapeObject,
+};
+use xrf_error::{XrfError, XrfResult};
+use xrf_math::{Aabb, Affine3d, Vector3d};
+use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
+
+use crate::level::level_decompile_context::LevelDecompileContext;
+use crate::level::parts::level_map_settings::LevelMapSettings;
+
+/// `level.ltx`, the map's settings the Build writes from the scene (`SceneBuilder::BuildLTX`), and back.
+pub(crate) struct LevelMapConversion;
+
+impl LevelMapConversion {
+  pub(crate) const FILE_NAME: &'static str = "level.ltx";
+
+  /// The name a level-bound shape takes.
+  pub(crate) const BOUND_PREFIX: &'static str = "level_bound";
+
+  /// Each game type `[map_usage]` names, by its `EGameIDs` bit, in the order `BuildLTX` writes them.
+  const GAME_TYPES: [(u16, &'static str); 6] = [
+    (1 << 1, "deathmatch"),
+    (1 << 2, "teamdeathmatch"),
+    (1 << 3, "artefacthunt"),
+    (1 << 4, "capturetheartefact"),
+    (1 << 5, "dominationzone"),
+    (1 << 6, "teamdominationzone"),
+  ];
+
+  /// The sections the Build writes itself.
+  const BUILT_SECTIONS: [&'static str; 3] = ["map_usage", "level_map", "sub_level_map"];
+
+  /// How tall the level-bound shape stands, which `level.ltx` does not keep.
+  const BOUND_HEIGHT: f32 = 1.0;
+
+  /// The settings `level.ltx` holds, as the Build writes them or a later save leaves them, in Windows-1251.
+  ///
+  /// `;` and blank lines are skipped, and a line is read up to a zero byte, which ends the build options' text.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a `bound_rect` that is not four floats, or a `[sub_level_map]` line that is not a sector's
+  /// number and a map's part.
+  pub(crate) fn decompile(bytes: &[u8]) -> XrfResult<LevelMapSettings> {
+    let text: String = decode_w1251_bytes_to_string(bytes)?;
+    let mut settings: LevelMapSettings = LevelMapSettings::default();
+    let mut section: String = String::new();
+
+    for line in text.lines() {
+      let line: &str = line.split('\0').next().unwrap_or_default().trim();
+
+      if line.is_empty() || line.starts_with(';') {
+        continue;
+      }
+
+      if let Some(name) = line.strip_prefix('[').and_then(|line| line.strip_suffix(']')) {
+        section = name.to_owned();
+      }
+
+      if !Self::BUILT_SECTIONS.contains(&section.as_str()) {
+        if !settings.build_options.is_empty() {
+          settings.build_options.push_str("\r\n");
+        }
+
+        settings.build_options.push_str(line);
+
+        continue;
+      }
+
+      if line.starts_with('[') {
+        continue;
+      }
+
+      let (key, value) = match line.split_once('=') {
+        Some((key, value)) => (key.trim(), Some(value.trim())),
+        None => (line, None),
+      };
+
+      match (section.as_str(), key, value) {
+        ("map_usage", "ver", Some(value)) => settings.map_version = Some(value.to_owned()),
+        ("map_usage", name, None) => match Self::GAME_TYPES.iter().find(|(_, known)| *known == name) {
+          Some((bit, _)) => settings.game_types |= bit,
+          None => settings.unknown_game_types.push(name.to_owned()),
+        },
+        ("level_map", "bound_rect", Some(value)) => settings.bounds = Some(Self::read_bounds(value)?),
+        ("level_map", "texture", Some(value)) => settings.texture = Some(value.to_owned()),
+        ("sub_level_map", number, Some(map)) => {
+          let parsed = number.parse::<u16>().ok().zip(map.parse::<u8>().ok());
+          let (number, map) = parsed.ok_or_else(|| {
+            XrfError::new_parsing_error(format!(
+              "[sub_level_map] '{line}' is not a sector's number and its part of the map"
+            ))
+          })?;
+
+          settings.sector_maps.insert(number, map);
+        }
+        _ => {}
+      }
+    }
+
+    if settings.game_types == 0 {
+      settings.game_types = EditableLevelOptions::SINGLE_PLAYER;
+    }
+
+    Ok(settings)
+  }
+
+  /// The level-bound shape whose box the Build takes for a map of `bounds` (lowest x and z, then highest). The object
+  /// stands at the origin with the centre in the element, so no transform moves a corner off the box's ends.
+  pub(crate) fn decompile_bound(bounds: &[f32; 4], context: &mut LevelDecompileContext) -> EditableShapeObject {
+    let [min_x, min_z, max_x, max_z] = *bounds;
+    let (centre_x, width) = Self::fit_span(min_x, max_x);
+    let (centre_z, depth) = Self::fit_span(min_z, max_z);
+
+    EditableShapeObject {
+      object: EditableCustomObject::new(
+        context.names.get_next(Self::BOUND_PREFIX),
+        EditableObjectTransform::default(),
+      ),
+      shape: EditableShape {
+        usage: EditableShape::LEVEL_BOUND_USAGE,
+        elements: vec![EditableShapeElement::Box(Affine3d {
+          x_axis: Vector3d::new(width, 0.0, 0.0),
+          y_axis: Vector3d::new(0.0, Self::BOUND_HEIGHT, 0.0),
+          z_axis: Vector3d::new(0.0, 0.0, depth),
+          translation: Vector3d::new(centre_x, 0.0, centre_z),
+        })],
+      },
+    }
+  }
+
+  /// A centre and width whose unit box ends exactly at `min` and `max` in the editor's single precision,
+  /// `±0.5 * width + centre`.
+  ///
+  /// The plain middle and span can miss by a step, which `level.ltx`'s six decimals show, so the nearest few steps
+  /// around them are tried; the plain ones where none fits.
+  fn fit_span(min: f32, max: f32) -> (f32, f32) {
+    let (centre, width) = (min + (max - min) / 2.0, max - min);
+    let steps = |value: f32| {
+      let (mut down, mut up) = (value, value);
+
+      std::iter::once(value).chain((0..Self::FIT_STEPS).flat_map(move |_| {
+        down = down.next_down();
+        up = up.next_up();
+        [down, up]
+      }))
+    };
+
+    steps(centre)
+      .flat_map(|centre| steps(width).map(move |width| (centre, width)))
+      .find(|(centre, width)| -0.5 * width + centre == min && 0.5 * width + centre == max)
+      .unwrap_or((centre, width))
+  }
+
+  /// How many single-precision steps either way [`Self::fit_span`] tries.
+  const FIT_STEPS: usize = 16;
+
+  /// `level.ltx` of a scene of `options`, its map over `bounds`' x and z, and `sectors` in the scene's order, in
+  /// Windows-1251.
+  ///
+  /// The build options' text ends with a zero byte, as `w_stringZ` writes it, so its last line runs on into the next
+  /// `;`, where a reader stops at the zero.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the text holds a character Windows-1251 has no byte for.
+  pub(crate) fn export(
+    options: &EditableLevelOptions,
+    bounds: &Aabb,
+    sectors: &[EditableSectorObject],
+  ) -> XrfResult<Vec<u8>> {
+    let mut text: String = String::new();
+
+    Self::line(&mut text, "[map_usage]");
+    Self::line(&mut text, &format!("ver={}", options.map_version));
+
+    for (bit, name) in Self::GAME_TYPES {
+      if options.game_type & bit != 0 {
+        Self::line(&mut text, name);
+      }
+    }
+
+    Self::line(&mut text, ";");
+    Self::line(&mut text, "[level_map]");
+    Self::line(
+      &mut text,
+      &format!(
+        "bound_rect = {},{},{},{}",
+        EditableLevelValue::format_f32(bounds.min.x),
+        EditableLevelValue::format_f32(bounds.min.z),
+        EditableLevelValue::format_f32(bounds.max.x),
+        EditableLevelValue::format_f32(bounds.max.z)
+      ),
+    );
+    Self::line(
+      &mut text,
+      &format!("texture = {}", Self::get_texture(&options.level_path)),
+    );
+    Self::line(&mut text, ";");
+
+    if !options.build_options.is_empty() {
+      text.push_str(&options.build_options);
+      text.push('\0');
+    }
+
+    Self::line(&mut text, ";");
+    Self::line(&mut text, "[sub_level_map]");
+
+    for (number, sector) in sectors.iter().enumerate() {
+      Self::line(&mut text, &format!("{number} = {}", sector.map_index));
+    }
+
+    encode_string_to_w1251_bytes(&text).map_err(|error| {
+      XrfError::new_encoding_error(format!(
+        "{} has text Windows-1251 cannot hold: {error}",
+        Self::FILE_NAME
+      ))
+    })
+  }
+
+  /// The map's texture the Build names for a level built into `level_path`.
+  pub(crate) fn get_texture(level_path: &str) -> String {
+    format!("map\\map_{level_path}")
+  }
+
+  fn read_bounds(value: &str) -> XrfResult<[f32; 4]> {
+    let floats: Vec<f32> = value
+      .split(',')
+      .map(|float| float.trim().parse::<f32>())
+      .collect::<Result<_, _>>()
+      .map_err(|error| XrfError::new_parsing_error(format!("bound_rect '{value}' is not four floats: {error}")))?;
+
+    floats
+      .try_into()
+      .map_err(|_| XrfError::new_parsing_error(format!("bound_rect '{value}' is not four floats")))
+  }
+
+  /// Writes `line` as `IWriter::w_string` does, ended by `\r\n`.
+  fn line(text: &mut String, line: &str) {
+    text.push_str(line);
+    text.push_str("\r\n");
+  }
+}

@@ -48,6 +48,7 @@ struct Lighting {
   fog: vec4<f32>,
   sky: vec4<f32>,
   sky_params: vec4<f32>,
+  cloud_drift: vec4<f32>,
   clouds: vec4<f32>,
   engine: vec4<f32>,
   pre_exposure: vec4<f32>,
@@ -66,6 +67,7 @@ struct Lighting {
   pictures: vec4<f32>,
   summed_light: vec4<f32>,
   display: vec4<f32>,
+  eye: vec4<f32>,
 }
 
 struct Present {
@@ -82,7 +84,6 @@ struct Present {
   is_indirect: u32,
   is_reflected: u32,
   reflection_ratio: f32,
-  deband: vec4<f32>,
   display: vec4<f32>,
   inspect: vec4<f32>,
   grain: vec4<f32>,
@@ -128,6 +129,7 @@ struct LightVolume {
 struct LightVolumes {
   noise: u32,
   scroll: f32,
+  scroll_down: f32,
 }
 
 struct GrassModel {
@@ -162,6 +164,7 @@ struct GrassParams {
   card_reach: f32,
   card_fade: f32,
   card_slots: i32,
+  card_thin_from: f32,
 }
 
 struct GrassWind {
@@ -190,6 +193,18 @@ struct TraceGrass {
   height: f32,
   model_count: u32,
   slope_limit: f32,
+  card_reach: f32,
+}
+
+struct GrassSlotLight {
+  grid: vec4<i32>,
+  value: u32,
+}
+
+struct AiMap {
+  origin: vec4<f32>,
+  cells: vec4<u32>,
+  height: f32,
 }
 
 struct Calibration {
@@ -326,6 +341,7 @@ struct ContactShadows {
   lights: u32,
   stride: u32,
   grass: vec4<f32>,
+  phase: vec2<u32>,
 }
 
 struct LightTrace {
@@ -379,13 +395,19 @@ struct TraceSwaySlot {
 }
 
 struct TraceRequest {
-  origin: vec4<f32>,
-  cone: vec2<f32>,
+  origin: array<f32, 3>,
+  reach: u32,
+  screen: vec2<u32>,
+  cone: u32,
   toward: u32,
   pixel: u32,
-  screen: vec2<u32>,
-  screen_length: f32,
   hit_end: u32,
+}
+
+struct WaterRaysFrame {
+  trace_distance: f32,
+  sky_share: f32,
+  frame: u32,
 }
 
 struct Surroundings {
@@ -417,12 +439,15 @@ struct Reflections {
   is_traced: f32,
   trace_turns: u32,
   trace_floor: f32,
+  noise_x: f32,
+  noise_y: f32,
 }
 
 struct TraceInstance {
   first_record: u32,
   place: u32,
-  pad: array<u32, 2>,
+  density_scale: f32,
+  flags: u32,
 }
 
 struct TraceRecord {
@@ -430,6 +455,7 @@ struct TraceRecord {
   vertex_start: u32,
   surface: u32,
   flags: u32,
+  first_density: u32,
 }
 
 struct Froxels {
@@ -470,11 +496,6 @@ struct EnhancedWater {
   parallax_height: f32,
   ripples: f32,
   rain: f32,
-  flowed: f32,
-  waves: f32,
-  heights: f32,
-  gusts_x: f32,
-  gusts_y: f32,
   variation: f32,
   trace_distance: f32,
   trace_turns: u32,
@@ -485,6 +506,13 @@ struct EnhancedWater {
   rings_tile: f32,
   rings_reach: f32,
   rings_strength: f32,
+  fully_traced: u32,
+  plant_reach: f32,
+  heights: vec4<f32>,
+  wave_layers: array<vec4<f32>, 2>,
+  map_offsets: array<vec4<f32>, 2>,
+  flow_scrolls: vec4<f32>,
+  ripple_clocks: vec4<f32>,
 }
 
 struct WaterBlur {
@@ -526,7 +554,7 @@ struct Wet {
   puddles: vec4<f32>,
   puddle_state: vec4<f32>,
   reach: vec4<f32>,
-  gust: vec4<f32>,
+  drift: vec4<f32>,
   water: vec4<f32>,
   relief: vec4<f32>,
   drying: vec4<f32>,

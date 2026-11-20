@@ -8,7 +8,7 @@ use xrf_vfs::XrayRoots;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct TranslationsBuildRequest {
+pub(crate) struct TranslationsBuildRequest {
   /// Where the sources are read from, through the VFS.
   pub roots: XrayRoots,
   /// Where inside those roots to look, or nothing for the whole set.

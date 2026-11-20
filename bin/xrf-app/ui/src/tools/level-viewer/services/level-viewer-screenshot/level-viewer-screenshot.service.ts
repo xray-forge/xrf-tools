@@ -1,9 +1,7 @@
-import { save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, reaction, RefObservable } from "@wirestate/mobx";
 import { cancelFlow, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
@@ -14,11 +12,13 @@ import { KeybindCommand } from "@/core/commands";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
+import { askToSave } from "@/core/path/native-dialog";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { noop } from "@/lib/callbacks/noop";
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { toLevelViewerFileStem } from "@/tools/level-viewer/lib/files/level-viewer-file-stem";
-import { copyLevelViewerImage, readLevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewer-image";
+import { readLevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewer-image";
+import { WrittenFileActions } from "@/tools/level-viewer/lib/files/written-file-actions";
 import {
   ILevelViewerScreenshot,
   ILevelViewerScreenshotReport,
@@ -28,6 +28,7 @@ import {
   ILevelViewerSnapshot,
   serializeLevelViewerSnapshot,
 } from "@/tools/level-viewer/lib/snapshot/level-viewer-snapshot";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 /** Timed reports waited for once the GPU timing is switched on: the first may still hold frames from before it. */
@@ -63,10 +64,28 @@ export class LevelViewerScreenshotService {
   /** Reports what is done with a screenshot taken: deleting, showing, copying and saving it. */
   private readonly reporter: CommandReporter = new CommandReporter(this.log);
 
+  /** Deletes, shows, copies and saves the last screenshot. */
+  private readonly shotFile: WrittenFileActions<ILevelViewerScreenshot> = new WrittenFileActions(this.reporter, {
+    nouns: { name: "screenshot" },
+    current: () => this.shot.value,
+    toPath: ({ path }) => path,
+  });
+
+  /** Shows the last screenshot's report. */
+  private readonly reportFile: WrittenFileActions<ILevelViewerScreenshotReportFile> = new WrittenFileActions(
+    this.reporter,
+    {
+      nouns: { name: "screenshot report", notice: "screenshot's report" },
+      current: () => this.report.value,
+      toPath: ({ path }) => path,
+    }
+  );
+
   public constructor(
     private readonly renderService: LevelRenderService = inject(LevelRenderService),
     private readonly snapshotService: LevelViewerSnapshotService = inject(LevelViewerSnapshotService),
-    private readonly renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
+    private readonly renderSettingsService: RenderSettingsService = inject(RenderSettingsService),
+    private readonly recordingService: LevelViewerRecordingService = inject(LevelViewerRecordingService)
   ) {}
 
   @OnDeactivation()
@@ -80,10 +99,10 @@ export class LevelViewerScreenshotService {
     return this.shot.isLoading || this.report.isLoading;
   }
 
-  /** Whether a screenshot can be taken now: a level is open and none is being taken. */
+  /** Whether a screenshot can be taken now: a level is open, none is being taken, and no recording runs. */
   @Computed()
   public get canTake(): boolean {
-    return !this.isTaking && this.snapshotService.level !== null;
+    return !this.isTaking && this.snapshotService.level !== null && !this.recordingService.isRecording;
   }
 
   /**
@@ -98,8 +117,6 @@ export class LevelViewerScreenshotService {
    * Saves the viewport's next finished frame to the screenshots folder, then its report once its frame's cost is read;
    * the passes are timed on the GPU meanwhile, the timing setting left as it is. A failure of either is noticed apart,
    * and a screenshot whose report failed is kept.
-   *
-   * One left running when the tool is left is cancelled, so it holds no screenshot a tool no longer shows.
    *
    * @returns The screenshot, or null where none was taken: no level is open, or it failed; a call while one is being
    *   taken answers that one's.
@@ -159,20 +176,7 @@ export class LevelViewerScreenshotService {
   /** Deletes the last screenshot and its report for good. */
   @ExclusiveFlow()
   public *remove(): TFlow {
-    const shot: Nullable<ILevelViewerScreenshot> = this.shot.value;
-
-    if (!shot) {
-      return;
-    }
-
-    const completion: TCommandCompletion<unknown> = yield* this.reporter.run({
-      name: "Delete screenshot",
-      subject: shot.path,
-      command: () => levelsCommands.deleteScreenshot(shot.path),
-      failure: "Could not delete the screenshot",
-    });
-
-    if (!completion.error) {
+    if (yield* this.shotFile.remove((shot: ILevelViewerScreenshot) => levelsCommands.deleteScreenshot(shot.path))) {
       this.forget();
     }
   }
@@ -180,59 +184,35 @@ export class LevelViewerScreenshotService {
   /** Shows the last screenshot selected in its folder. */
   @ExclusiveFlow()
   public *reveal(): TFlow {
-    yield* this.attempt("Show screenshot", "Could not show the screenshot", (shot) =>
-      systemCommands.revealPath(shot.path)
-    );
+    yield* this.shotFile.reveal();
   }
 
   /** Shows the last screenshot's report selected in its folder, once it is written. */
   @ExclusiveFlow()
   public *revealReport(): TFlow {
-    const report: Nullable<ILevelViewerScreenshotReportFile> = this.report.value;
-
-    if (report) {
-      yield* this.reporter.run({
-        name: "Show screenshot report",
-        subject: report.path,
-        command: () => systemCommands.revealPath(report.path),
-        failure: "Could not show the screenshot's report",
-      });
-    }
+    yield* this.reportFile.reveal();
   }
 
   /** Puts the last screenshot's path on the clipboard. */
   @ExclusiveFlow()
   public *copyPath(): TFlow {
-    yield* this.attempt("Copy screenshot path", "Could not copy the screenshot's path", (shot) =>
-      navigator.clipboard.writeText(shot.path)
-    );
+    yield* this.shotFile.copyPath();
   }
 
   /** Puts the last screenshot's image on the clipboard. */
   @ExclusiveFlow()
   public *copyImage(): TFlow {
-    yield* this.attempt("Copy screenshot", "Could not copy the screenshot", (shot) => copyLevelViewerImage(shot));
+    yield* this.shotFile.copyImage((shot: ILevelViewerScreenshot) => shot);
   }
 
   /** Copies the last screenshot where a save dialog answers. */
   @ExclusiveFlow()
   public *saveAs(): TFlow {
-    yield* this.attempt("Save screenshot as", "Could not save the screenshot", (shot) => this.saveCopy(shot));
-  }
-
-  /**
-   * Does something with the last screenshot, if any, reported as one command.
-   *
-   * @param name - What it does, as its log lines name it.
-   * @param failure - The failure notice's title.
-   * @param action - Does it with the screenshot.
-   */
-  private *attempt(name: string, failure: string, action: (shot: ILevelViewerScreenshot) => Promise<unknown>): TFlow {
-    const shot: Nullable<ILevelViewerScreenshot> = this.shot.value;
-
-    if (shot) {
-      yield* this.reporter.run({ name, subject: shot.path, command: () => action(shot), failure });
-    }
+    yield* this.shotFile.attempt(
+      "Save screenshot as",
+      "Could not save the screenshot",
+      (shot: ILevelViewerScreenshot) => this.saveCopy(shot)
+    );
   }
 
   /**
@@ -255,9 +235,9 @@ export class LevelViewerScreenshotService {
 
   /** Copies `shot` where a save dialog answers, if it answers. */
   private async saveCopy(shot: ILevelViewerScreenshot): Promise<void> {
-    const path: Nullable<string> = await save({
-      defaultPath: shot.name,
+    const path: Nullable<string> = await askToSave({
       filters: [{ extensions: [EXrayExtension.PNG], name: "PNG image" }],
+      start: shot.name,
       title: "Save screenshot as",
     });
 

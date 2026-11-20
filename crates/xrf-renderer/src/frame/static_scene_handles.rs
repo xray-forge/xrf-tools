@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
 use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::feature::scene::statics::cull::static_view_cull::StaticViewCull;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
@@ -14,10 +15,11 @@ use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
-/// The static scene's buffers as a frame graph imports them, once a frame, with the uniforms its culls and draws read
-/// pushed: what every cull and static draw of the frame binds, each view adding its own list and draw arguments.
+/// The static scene's buffers and uniforms imported into a view's frame graph, bound by every cull and static draw.
+///
+/// The camera's lists and arguments are the view's own (`StaticViewCull`); each shadow cull adds its own.
 #[derive(Clone, Copy)]
-pub struct StaticSceneHandles {
+pub(crate) struct StaticSceneHandles {
   pub clusters: GraphBuffer,
   pub spheres: GraphBuffer,
   pub slots: GraphBuffer,
@@ -29,17 +31,19 @@ pub struct StaticSceneHandles {
   pub words: [GraphBuffer; StaticLayout::COUNT],
   pub skins: GraphBuffer,
   pub bones: GraphBuffer,
+  pub trace_densities: GraphBuffer,
   pub impostors: GraphBuffer,
   pub corners: GraphBuffer,
   pub terms: GraphBuffer,
   pub impostor_list: GraphBuffer,
-  /// The camera's visible list and draw arguments, its late phase's, and what a cull's arguments start from.
+  /// The camera's visible list, draw and late-phase arguments, and the templates they are reset from.
   pub lists: GraphBuffer,
   pub args: GraphBuffer,
   pub candidates: GraphBuffer,
   pub late: GraphBuffer,
   pub late_dispatch: GraphBuffer,
   pub args_template: GraphBuffer,
+  pub late_template: GraphBuffer,
   /// The camera's depth pyramid, which its early cull tests against and its late cull after reducing it again.
   pub pyramid: GraphTexture,
   pub cull: UniformBinding<StaticCullUniform>,
@@ -48,15 +52,15 @@ pub struct StaticSceneHandles {
 }
 
 impl StaticSceneHandles {
-  /// Imports the static scene into a frame's graph once: its buffers, the camera's lists, arguments and candidates, the
-  /// occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and static draw to bind.
-  pub fn import<'r>(
+  /// Imports the static scene, the `camera` lists, the occlusion pyramid and the cull, occlusion and wind uniforms.
+  pub(crate) fn import<'r>(
     GraphDeclaration {
       graph,
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'r>,
     scene: &'r StaticScene,
+    camera: &'r StaticViewCull,
     pyramid: &'r wgpu::TextureView,
     cull: &StaticCullUniform,
     occlusion: &StaticOcclusionUniform,
@@ -85,6 +89,7 @@ impl StaticSceneHandles {
       import("static model skins", scene.geometry.skins.get_buffer()),
       import("static bones", scene.geometry.bones.get_buffer()),
     );
+    let trace_densities: GraphBuffer = import("static trace densities", scene.geometry.trace_densities.get_buffer());
     let impostors: [GraphBuffer; 4] = [
       import("static impostors", scene.geometry.impostors.get_buffer()),
       import(
@@ -100,13 +105,14 @@ impl StaticSceneHandles {
         scene.geometry.impostors.get_lane(StaticGeometry::IMPOSTOR_LIST),
       ),
     ];
-    let culled: [GraphBuffer; 6] = [
-      import("static lists", scene.cull.lists.get_buffer()),
-      import("static draw arguments", &scene.cull.args),
-      import("static candidates", scene.cull.candidates.get_buffer()),
-      import("static late arguments", &scene.cull.late),
-      import("static late dispatch", &scene.cull.late_dispatch),
+    let culled: [GraphBuffer; 7] = [
+      import("static lists", &camera.lists),
+      import("static draw arguments", &camera.args),
+      import("static candidates", &camera.candidates),
+      import("static late arguments", &camera.late),
+      import("static late dispatch", &camera.late_dispatch),
       import("static draw arguments template", &scene.cull.args_template),
+      import("static late arguments template", &scene.cull.late_template),
     ];
     let (clusters, spheres, slots, places, rows, regions, surfaces, indices) = handles;
 
@@ -122,6 +128,7 @@ impl StaticSceneHandles {
       words,
       skins: skinning.0,
       bones: skinning.1,
+      trace_densities,
       impostors: impostors[0],
       corners: impostors[1],
       terms: impostors[2],
@@ -132,6 +139,7 @@ impl StaticSceneHandles {
       late: culled[3],
       late_dispatch: culled[4],
       args_template: culled[5],
+      late_template: culled[6],
       pyramid: bindings.import_view(graph, "depth pyramid", pyramid),
       cull: runtime.push_uniform(cull),
       occlusion: runtime.push_uniform(occlusion),
@@ -140,7 +148,7 @@ impl StaticSceneHandles {
   }
 
   /// A cull into a view's own visible list and draw arguments: the camera's, or a shadow's.
-  pub fn get_cull_parameters(
+  pub(crate) fn get_cull_parameters(
     &self,
     lists: StorageArrayMut<UVec2>,
     args: StorageArrayMut<ShaderAtomicU32>,
@@ -165,13 +173,13 @@ impl StaticSceneHandles {
     }
   }
 
-  /// The camera's cull, into the scene's own list and arguments.
-  pub fn get_camera_cull(&self) -> StaticCullParameters {
+  /// The camera cull, writing the view's own list and arguments.
+  pub(crate) fn get_camera_cull(&self) -> StaticCullParameters {
     self.get_cull_parameters(StorageArrayMut::new(self.lists), StorageArrayMut::new(self.args))
   }
 
   /// Each layout's draws of what a view's visible list holds, by `StaticLayout::get_index`.
-  pub fn get_layout_draws(&self, lists: StorageArray<UVec2>) -> [StaticDrawParameters; StaticLayout::COUNT] {
+  pub(crate) fn get_layout_draws(&self, lists: StorageArray<UVec2>) -> [StaticDrawParameters; StaticLayout::COUNT] {
     self.words.map(|words| StaticDrawParameters {
       clusters: StorageArray::new(self.clusters),
       slots: StorageArray::new(self.slots),
@@ -187,7 +195,7 @@ impl StaticSceneHandles {
   }
 
   /// The camera's draws of what its cull listed, the impostors' too.
-  pub fn get_camera_draws(&self) -> StaticDraws {
+  pub(crate) fn get_camera_draws(&self) -> StaticDraws {
     StaticDraws {
       layouts: self.get_layout_draws(StorageArray::new(self.lists)),
       impostors: StaticImpostorParameters {

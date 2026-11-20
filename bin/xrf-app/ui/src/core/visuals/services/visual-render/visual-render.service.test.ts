@@ -51,7 +51,10 @@ function mockSource(overrides: Partial<IVisualRenderSource> = {}): IVisualRender
   );
 }
 
-async function mockAttached(source: IVisualRenderSource): Promise<{
+async function mockAttached(
+  source: IVisualRenderSource,
+  element: HTMLElement = document.createElement("div")
+): Promise<{
   container: Container;
   service: VisualRenderService;
   viewService: VisualViewService;
@@ -66,7 +69,7 @@ async function mockAttached(source: IVisualRenderSource): Promise<{
   ]);
   const service: VisualRenderService = container.get(VisualRenderService);
 
-  service.attach(document.createElement("div"));
+  service.attach(element);
   await flush();
 
   return { container, service, viewService: container.get(VisualViewService) };
@@ -76,6 +79,29 @@ describe("VisualRenderService", () => {
   beforeEach(() => {
     resetMockInvoke();
     resetMockChannels();
+  });
+
+  it("holds the renderer while its tool is open, before any view attaches", async () => {
+    // A tool opens by provisioning its container, so the GPU starts before any view.
+    mockIpcCommands({ [ERenderCommand.HOLD]: 7 });
+
+    const container: Container = mockContainer([
+      VisualLoadService,
+      VisualViewService,
+      VisualRenderService,
+      { factory: () => mockSource(), token: VISUAL_RENDER_SOURCE },
+    ]);
+
+    container.provision();
+    await flush();
+
+    expect(listMockInvokeCalls(ERenderCommand.HOLD)).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.ATTACH_VIEWPORT)).toHaveLength(0);
+
+    container.deprovision();
+    await flush();
+
+    expect(listMockInvokeCalls(ERenderCommand.RELEASE_HOLD)).toEqual([{ hold: 7 }]);
   });
 
   it("shows the open model's session at the toolbar's detail, and again as either changes", async () => {
@@ -140,6 +166,29 @@ describe("VisualRenderService", () => {
     service.dispose();
   });
 
+  it("sends the helpers for the scene of the model they are sized to, so a grid swaps with its model", async () => {
+    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
+    const { service } = await mockAttached(source);
+
+    function sent(): Array<unknown> {
+      return listMockInvokeCalls(ERenderCommand.SET_OVERLAYS).map(({ scene }) => scene);
+    }
+
+    expect(sent()).toEqual([SCENE]);
+
+    // The next model is read before the renderer names its scene.
+    mockIpcCommands({ [ERenderCommand.ATTACH_VIEWPORT]: VIEWPORT, [EVisualsCommand.SHOW_MODEL]: SCENE + 1 });
+    runInAction(() => {
+      source.model = mockVisualModelViews({ fit: { center: [0, 1, 0], radius: 4 } });
+      source.sessionId = "second";
+    });
+    await flush();
+
+    expect(sent()).toEqual([SCENE, SCENE + 1]);
+
+    service.dispose();
+  });
+
   // Clicking through a tree keeps the view the person turned to: only the first model a view shows is framed.
   it("frames the first model a view shows, and keeps the camera for the ones after", async () => {
     const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
@@ -167,6 +216,32 @@ describe("VisualRenderService", () => {
     expect(framings()).toEqual([2, 2]);
 
     service.dispose();
+  });
+
+  it("reveals the viewport once the model shown stands drawn whole, never on a frame of its grid", async () => {
+    // The viewport attaches while the model still opens, and draws its grid until it is shown.
+    const page: HTMLElement = document.createElement("div");
+    const element: HTMLElement = document.createElement("div");
+
+    page.style.background = "rgb(40, 50, 60)";
+    page.append(element);
+    document.body.append(page);
+
+    const { service } = await mockAttached(mockSource({ model: mockVisualModelViews(), sessionId: "first" }), element);
+
+    emit({ kind: ERenderViewportEvent.FRAME, report: { framesPerSecond: 60 } } as unknown as ViewportEvent);
+    emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: false, scene: SCENE }) });
+    await flush();
+
+    expect(page.style.background).toBe("rgb(40, 50, 60)");
+
+    emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE }) });
+    await flush();
+
+    expect(page.style.background).toBe("transparent");
+
+    service.dispose();
+    page.remove();
   });
 
   it("notes what became of the model's textures once the viewport holds it whole", async () => {

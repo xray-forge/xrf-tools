@@ -10,7 +10,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::light_encoding::LightEncoding;
@@ -21,7 +21,7 @@ use crate::pass::frame_lighting::picture_shares::PictureShares;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Lighting")]
-pub struct LightingUniform {
+pub(crate) struct LightingUniform {
   /// Towards the sun, in view space.
   pub to_sun: Vec4,
   /// The sun's colour, then its specular weight, at the pre-exposure.
@@ -49,8 +49,11 @@ pub struct LightingUniform {
   pub fog: Vec4,
   /// `sky_color`, then the blend between the keyframes' skies.
   pub sky: Vec4,
-  /// The sky's rotation, the clouds', the clouds' clock.
+  /// The sky's rotation and the clouds'; the rest unused.
   pub sky_params: Vec4,
+  /// The clouds' two layers' drift over their textures, wrapped within the repeat (`SkyFeature::get_cloud_drift`):
+  /// the first in `xy`, the second in `zw`.
+  pub cloud_drift: Vec4,
   /// The clouds' colour and cover; nothing where they are hidden.
   pub clouds: Vec4,
   /// One for Anomaly's shading, the rain's density, one where the enhanced glass draws glass in place of the
@@ -106,17 +109,19 @@ pub struct LightingUniform {
   /// How the present shows the frame (`DisplayMode::get_display`), which the game's pictures enter the scene through
   /// the inverse of (`picture_for_display` in `common/display_transform`).
   pub display: Vec4,
+  /// The eye's world position, then nothing: the height fog is taken along the ray from it (`fog_amount_at`).
+  pub eye: Vec4,
 }
 
 impl LightingUniform {
-  pub fn new(lighting: &RenderLighting, view: Mat4, options: &RenderViewOptions, frame: &LightingFrame) -> Self {
+  pub(crate) fn new(lighting: &RenderLighting, view: Mat4, options: &RenderViewOptions, frame: &LightingFrame) -> Self {
     // The direction the light travels, turned to face the sun and into view space.
     let to_sun: Vec3 = view
       .transform_vector3(-lighting.get_sun_direction())
       .normalize_or_zero();
     let fog = lighting.fog.filter(|_| options.show.is_fogged);
     let (offset, scale) = fog.map_or((0.0, 0.0), |fog| fog.get_params());
-    let flag = |is: bool| is as u32 as f32;
+    let flag = |is: bool| u32::from(is) as f32;
     let occlusion: &RenderAmbientOcclusionSettings = &options.features.ambient_occlusion;
     let height_fog: &RenderFogSettings = &options.features.fog;
     // Searched only where the view is lit and solid.
@@ -143,7 +148,7 @@ impl LightingUniform {
       Some(daylight) => {
         let sun: Vec3 = daylight.sun / std::f32::consts::PI;
 
-        (sun * pre_exposure.current).extend(to_light_specular(sun, true) * pre_exposure.current)
+        (sun * pre_exposure.current).extend(get_light_specular(sun, true) * pre_exposure.current)
       }
       None if is_anchored => {
         // The hemisphere's zenith as the irradiance pass last looked it up, the weather's stand-in cube's before.
@@ -153,7 +158,7 @@ impl LightingUniform {
           .unwrap_or_else(|| (environment * lighting.sky_irradiance).powf(2.0));
         let sun: Vec3 = anchored_light(lighting.get_sun_color(scales), zenith + ambient);
 
-        (sun * light_scale).extend(to_light_specular(sun, true) * light_scale)
+        (sun * light_scale).extend(get_light_specular(sun, true) * light_scale)
       }
       None => light(lighting.get_sun_color(scales)).extend(lighting.get_sun_specular(scales) * gain * light_scale),
     };
@@ -194,12 +199,8 @@ impl LightingUniform {
         flag(options.show.is_sky_visible),
       ),
       sky: lighting.sky.color.extend(frame.sky_blend),
-      sky_params: Vec4::new(
-        lighting.sky.rotation,
-        lighting.sky.clouds.rotation,
-        frame.clouds_time,
-        0.0,
-      ),
+      sky_params: Vec4::new(lighting.sky.rotation, lighting.sky.clouds.rotation, 0.0, 0.0),
+      cloud_drift: frame.cloud_drift,
       clouds: if options.show.is_clouded {
         lighting.sky.clouds.color
       } else {
@@ -288,12 +289,13 @@ impl LightingUniform {
         }
       },
       display: frame.display,
+      eye: view.inverse().w_axis.truncate().extend(0.0),
     }
   }
 
   /// How the light is written, as `common/lighting` reads it: a light in the engine's units scaled to its luminance at
   /// the pre-exposure (`light_scale`), and whether it is the authored levels' summed light (`is_light_summed`).
-  pub fn get_light_encoding(&self) -> LightEncoding {
+  pub(crate) fn get_light_encoding(&self) -> LightEncoding {
     LightEncoding {
       scale: self.pre_exposure.z * self.pre_exposure.x,
       is_summed: self.summed_light.x > 0.0,
@@ -302,7 +304,13 @@ impl LightingUniform {
 
   /// Whether the light stands at the anchored levels, as `is_light_anchored` in `common/lighting` reads it: the sun and
   /// the lamps shaded by the one BRDF, their specular coloured in a target of its own.
-  pub fn is_light_anchored(&self) -> bool {
+  pub(crate) fn is_light_anchored(&self) -> bool {
     self.environment.w > 0.5
+  }
+
+  /// Whether the sun has a colour; a black one, as in a weather's night between sun and moon, lights and shadows
+  /// nothing.
+  pub(crate) fn is_sunlit(&self) -> bool {
+    self.sun.truncate() != Vec3::ZERO
   }
 }

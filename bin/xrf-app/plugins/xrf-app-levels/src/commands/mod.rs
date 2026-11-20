@@ -1,4 +1,6 @@
+pub(crate) mod build_level;
 pub(crate) mod close_level;
+pub(crate) mod decompile_level;
 pub(crate) mod describe_console_defaults;
 pub(crate) mod describe_level_map;
 pub(crate) mod describe_objects;
@@ -11,4 +13,6 @@ pub(crate) mod list_levels;
 pub(crate) mod open_level;
 pub(crate) mod read_level_cycle;
 pub(crate) mod restore_level;
+pub(crate) mod scene;
 pub(crate) mod show_level;
+pub(crate) mod sound;

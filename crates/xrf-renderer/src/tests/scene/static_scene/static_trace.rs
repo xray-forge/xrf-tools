@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{PassParameters, ProxyAllocator, ProxyHandle};
+use xrf_test_utils::TestSkip;
 use xrf_visual::{
   SectorDescription, SectorGeometry, SectorPackage, SectorSection, SectorSurface, VisualClusters, VisualDrawRange,
   VisualSection,
@@ -214,7 +215,7 @@ fn create_tracing_context() -> Option<GpuContext> {
   let context: GpuContext = create_test_context("to trace with")?;
 
   if !can_trace(&context.device) {
-    eprintln!("Skipped: '{}' has no ray queries", context.adapter_name);
+    TestSkip::report(format_args!("'{}' has no ray queries", context.adapter_name));
 
     return None;
   }
@@ -479,6 +480,8 @@ fn run_probes(
       empty.clone(),
       grass.as_entire_binding(),
       empty,
+      scene.geometry.trace_densities.get_buffer().as_entire_binding(),
+      wgpu::BindingResource::Sampler(&compare),
     ])
     .collect();
   let entries: Vec<wgpu::BindGroupEntry<'_>> = resources

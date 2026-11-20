@@ -1,5 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelObjectKind, LEVEL_OBJECT_KINDS, LevelObject, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  ELevelObjectKind,
+  LEVEL_OBJECT_KINDS,
+  LEVEL_SOUND_EMITTERS_HELPER_KIND,
+  LevelObject,
+  LevelObjectKindEntry,
+} from "@xrf/ipc/types/xrf-app-levels";
 
 import { mockLevelObject, mockLevelPatrol, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_HELPER_OPTIONS } from "@/core/level/lib/objects/level-helper-options";
@@ -31,6 +37,18 @@ describe("toLevelHelperRenderOptions", () => {
     expect(options.kinds & toBit(ELevelObjectKind.ANOMALIES)).not.toBe(0);
     expect(options.kinds & toBit(ELevelObjectKind.RESTRICTORS)).toBe(0);
     expect(options.kinds & toBit(ELevelObjectKind.STALKERS)).toBe(0);
+    expect(options.kinds & (1 << LEVEL_SOUND_EMITTERS_HELPER_KIND)).toBe(0);
+  });
+
+  it("switches the sound emitters by the bit past the kind table's", () => {
+    const options = toLevelHelperRenderOptions(
+      { ...DEFAULT_LEVEL_HELPER_OPTIONS, isEmitterShown: true, isShown: true },
+      { hidden: [], hovered: null, selected: [] },
+      new Map()
+    );
+
+    expect(LEVEL_SOUND_EMITTERS_HELPER_KIND).toBe(LEVEL_OBJECT_KINDS.length);
+    expect(options.kinds & (1 << LEVEL_SOUND_EMITTERS_HELPER_KIND)).not.toBe(0);
   });
 
   // The backend names each helper by its object's place in the listing, whatever source the object comes from.

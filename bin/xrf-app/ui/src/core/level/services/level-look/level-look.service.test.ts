@@ -105,7 +105,7 @@ describe("LevelLookService", () => {
       [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(UNSET),
       [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
     });
-    await container.get(LevelLoadService).load({
+    await container.get(LevelLoadService).open({
       engine: EXrayEngineChoice.VANILLA,
       isDltx: false,
       roots: level.roots,

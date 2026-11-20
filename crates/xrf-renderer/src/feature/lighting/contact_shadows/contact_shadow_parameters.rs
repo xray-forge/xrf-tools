@@ -5,7 +5,7 @@ use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactSh
 /// What the contact shadows' march reads: the G-buffer's normals, marks and depth, and its settings.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct ContactShadowParameters {
+pub(crate) struct ContactShadowParameters {
   #[texture(d2, unfilterable)]
   pub normal_target: GraphTexture,
   #[texture(d2, unfilterable)]

@@ -59,12 +59,20 @@ export function formatParallaxStrength(strength: number): string {
   return formatPercent(strength);
 }
 
+/**
+ * @param parallax - The parallax a view resolves to.
+ * @returns Whether it displaces anything: the enhanced march, or the engine's steep parallax while that is on.
+ */
+export function isRenderParallaxDrawn(parallax: TRenderParallaxSettings): boolean {
+  return parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;
+}
+
 /** Whether the parallax is the engine's steep parallax alone, which none of the enhanced march's values tune. */
 function isEngineParallax(parallax: TRenderParallaxSettings): boolean {
   return parallax.mode === ERenderParallaxMode.ENGINE;
 }
 
-/** How each parallax setting is set, in the settings and the Shading popover alike. */
+/** How each parallax setting is set, in the settings and the Relief popover alike. */
 export const RENDER_PARALLAX_SETTINGS: TRenderSettings<TRenderParallaxSettings> = {
   blending: {
     control: ERenderSettingControl.SLIDER,
@@ -99,7 +107,6 @@ export const RENDER_PARALLAX_SETTINGS: TRenderSettings<TRenderParallaxSettings> 
   isSteep: {
     control: ERenderSettingControl.CHECKBOX,
     description: "The engine's steep parallax within 12 m on level surfaces whose texture asks for it.",
-    isEntryDescribed: true,
     label: "Steep parallax",
   },
   mode: {

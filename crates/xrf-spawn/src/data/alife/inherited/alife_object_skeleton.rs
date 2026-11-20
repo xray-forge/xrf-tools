@@ -1,11 +1,11 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObjectSkeleton {
   /// The visual's startup animation (`CSE_Visual::startup_animation`), which `CSE_PHSkeleton::STATE_Read` reads first.
@@ -32,9 +32,9 @@ impl AlifeObjectSkeleton {
   }
 }
 
-impl ChunkReadWrite for AlifeObjectSkeleton {
+impl ChunkFieldReadWrite for AlifeObjectSkeleton {
   /// Read skeleton data from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let object = Self {
       name: reader.read_w1251_string()?,
       flags: reader.read_u8()?,
@@ -47,7 +47,7 @@ impl ChunkReadWrite for AlifeObjectSkeleton {
   }
 
   /// Write skeleton data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     self.assert_no_saved_bone_data()?;
 
     writer.write_w1251_string(&self.name)?;
@@ -60,8 +60,8 @@ impl ChunkReadWrite for AlifeObjectSkeleton {
 
 impl LtxImportExport for AlifeObjectSkeleton {
   /// Import skeleton data from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -81,12 +81,12 @@ impl LtxImportExport for AlifeObjectSkeleton {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("skeleton.name", &self.name)
-      .set("skeleton.flags", self.flags.to_string())
-      .set("skeleton.source_id", self.source_id.to_string());
+      .set("skeleton.flags", self.flags)
+      .set("skeleton.source_id", self.source_id);
 
     Ok(())
   }
@@ -101,7 +101,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -222,7 +222,7 @@ mod tests {
 
     ltx
       .with_section("object")
-      .set("skeleton.flags", AlifeObjectSkeleton::FLAG_SAVED_DATA.to_string());
+      .set("skeleton.flags", AlifeObjectSkeleton::FLAG_SAVED_DATA);
 
     assert!(matches!(
       AlifeObjectSkeleton::import("object", &ltx),

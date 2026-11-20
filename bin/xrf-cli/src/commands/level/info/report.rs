@@ -10,7 +10,7 @@ use crate::commands::level::info::level_visuals_report::LevelVisualsReport;
 /// What `level info` read out of a compiled level.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelInfoReport {
+pub(crate) struct LevelInfoReport {
   header: LevelHeaderReport,
   shaders: LevelShadersReport,
   /// Absent for a level carrying no visuals chunk, which is a level that draws nothing.
@@ -23,7 +23,7 @@ pub struct LevelInfoReport {
 }
 
 impl LevelInfoReport {
-  pub fn new(
+  pub(crate) fn new(
     level: &LevelFile,
     visuals: Option<&LevelVisualsChunk>,
     geometry: Option<&LevelGeomFile>,

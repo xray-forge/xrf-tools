@@ -23,7 +23,7 @@ pub(crate) struct EnvironmentDefinitions<'a> {
 
 impl EnvironmentDefinitions<'_> {
   /// Turns a finding in a definition nothing names into a convention, saying so.
-  pub fn demote_unloaded(&self, engine: XrayEngine, findings: &mut [EnvironmentFinding]) {
+  pub(crate) fn demote_unloaded(&self, engine: XrayEngine, findings: &mut [EnvironmentFinding]) {
     let defined: HashSet<(&str, &str)> = self.list_defined();
     let loaded: HashSet<(&str, &str)> = self.list_loaded(engine);
 

@@ -33,6 +33,9 @@ export const NOTIFICATION_SEVERITY_RANK: Record<ENotificationSeverity, number> =
   [ENotificationSeverity.ERROR]: 3,
 };
 
+/** Sources that raise notifications without owning a tool of their own. */
+export const APPLICATION_SOURCE: string = "application";
+
 /**
  * Notification details supplied by an emitter.
  *

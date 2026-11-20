@@ -1,7 +1,8 @@
 import { AssetTextureDescriptor, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
-import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
+import { SelectedObjectDescription, SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
+import { EObjectInference } from "@xrf/ipc/types/xrf-rawdata";
 import {
   VisualBone,
   VisualBounds,
@@ -14,7 +15,7 @@ import {
   VisualTransform,
 } from "@xrf/ipc/types/xrf-visual";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
@@ -211,6 +212,44 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
     materials: {},
     surfaces: [],
     texturesLtx: null,
+    object: null,
+    ...overrides,
+  };
+}
+
+/**
+ * What an SDK object holds beyond its model: one surface, one bone, and a decompile's provenance.
+ */
+export function mockSelectedObject(overrides: Partial<SelectedObjectDescription> = {}): SelectedObjectDescription {
+  return {
+    surfaces: [
+      {
+        name: "crate",
+        texture: "wood\\wood_plank6",
+        shader: "models\\model",
+        compilerShader: "default",
+        gameMaterial: "default",
+        isTwoSided: false,
+        faceCount: 12,
+      },
+    ],
+    bones: [{ name: "link", parent: "", gameMaterial: "objects\\wood", shape: "Box", joint: "Rigid", mass: 10 }],
+    meshCount: 1,
+    pointCount: 8,
+    faceCount: 12,
+    smoothingGroupCount: 1,
+    motionReferences: [],
+    hasEmbeddedMotions: false,
+    classScript: null,
+    lods: null,
+    provenance: {
+      source: "C:\\gamedata\\meshes\\dynamics\\crate.ogf",
+      sourceSha256: "00",
+      tool: "xrf-cli object decompile",
+      toolVersion: "1.0.0",
+      decompiledAt: 0,
+      inferred: [EObjectInference.SURFACE_COMPILER_SHADERS, EObjectInference.SURFACE_GAME_MATERIALS],
+    },
     ...overrides,
   };
 }

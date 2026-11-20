@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 
 /// The children a visual links to rather than carries, `OGF_CHILDREN_L`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -19,7 +19,7 @@ impl OgfChildrenLinkChunk {
 impl ChunkReadWrite for OgfChildrenLinkChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let count: u32 = reader.read_u32::<T>()?;
-    let mut children: Vec<u32> = reader.new_bounded_vec(count as u64, Self::CHILD_SIZE, "ogf linked children")?;
+    let mut children: Vec<u32> = reader.new_bounded_vec(u64::from(count), Self::CHILD_SIZE, "ogf linked children")?;
 
     for _ in 0..count {
       children.push(reader.read_u32::<T>()?);
@@ -31,7 +31,14 @@ impl ChunkReadWrite for OgfChildrenLinkChunk {
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.children.len() as u32)?;
+    let count: u32 = u32::try_from(self.children.len()).map_err(|_| {
+      XrfError::new_invalid_error(format!(
+        "A visual links {} children, more than a u32 counts",
+        self.children.len()
+      ))
+    })?;
+
+    writer.write_u32::<T>(count)?;
 
     for child in &self.children {
       writer.write_u32::<T>(*child)?;

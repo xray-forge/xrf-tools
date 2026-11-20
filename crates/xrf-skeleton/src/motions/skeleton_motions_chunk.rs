@@ -3,7 +3,7 @@ use std::io::Write;
 use byteorder::{ByteOrder, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{assert_equal, to_format_size};
+use xrf_utils::{assert_equal, narrow_format_size};
 
 use crate::motions::SkeletonMotion;
 
@@ -60,7 +60,7 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
 
     for index in 1..=count {
       motions.push(
-        ChunkReader::find_required_by_id(&chunks, to_format_size(index, "skeleton motion chunk id")?)?
+        ChunkReader::find_required_by_id(&chunks, narrow_format_size(index, "skeleton motion chunk id")?)?
           .read_xr::<T, _>()?,
       );
     }
@@ -77,7 +77,7 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
 
     let mut count_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<T>(to_format_size(self.motions.len(), "skeleton motions")?)?;
+    count_writer.write_u32::<T>(narrow_format_size(self.motions.len(), "skeleton motions")?)?;
     writer.write_all(
       count_writer
         .flush_chunk_into_buffer::<T>(Self::COUNT_CHUNK_ID)?
@@ -91,7 +91,7 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
 
       writer.write_all(
         motion_writer
-          .flush_chunk_into_buffer::<T>(to_format_size(index + 1, "skeleton motion chunk id")?)?
+          .flush_chunk_into_buffer::<T>(narrow_format_size(index + 1, "skeleton motion chunk id")?)?
           .as_slice(),
       )?;
     }

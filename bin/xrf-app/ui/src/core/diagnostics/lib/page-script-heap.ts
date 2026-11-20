@@ -1,7 +1,4 @@
-import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
-
-import { IShellStatusDetail } from "@/core/shell/status-bar/shell-status-detail";
 
 /** What the page's JavaScript heap holds, as a Chromium-based webview reports it. */
 export interface IPageScriptHeap {
@@ -32,15 +29,4 @@ export function readPageScriptHeap(): Nullable<IPageScriptHeap> {
   const memory: IChromiumPerformance["memory"] = (performance as IChromiumPerformance).memory;
 
   return memory ? { used: memory.usedJSHeapSize, total: memory.totalJSHeapSize, limit: memory.jsHeapSizeLimit } : null;
-}
-
-/**
- * Memory hover row for the page's script heap against its limit.
- *
- * @returns The row, or `null` on an engine that publishes no heap.
- */
-export function readPageScriptHeapDetail(): Nullable<IShellStatusDetail> {
-  const heap: Nullable<IPageScriptHeap> = readPageScriptHeap();
-
-  return heap ? { label: "Script heap", value: `${formatBytes(heap.used)} / ${formatBytes(heap.limit)}` } : null;
 }

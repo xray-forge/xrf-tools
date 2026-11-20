@@ -88,7 +88,7 @@ impl LevelObjectsDescription {
 
       objects.push(LevelObject {
         spawn: Some(LevelObjectSpawn {
-          section: object.section.clone(),
+          section: object.header.section.clone(),
           clsid: object.clsid.clone(),
           story_id: object.inherited.get_abstract().and_then(|it| it.get_story_id()),
           release: spawn.get_release(index),
@@ -98,8 +98,8 @@ impl LevelObjectsDescription {
         ..LevelObject::new(
           LevelObjectId::Spawn { index: index as u32 },
           kind,
-          object.name.clone(),
-          VisualTransform::of_spawn(&object.position, &object.direction),
+          object.header.name.clone(),
+          VisualTransform::of_spawn(&object.header.position, &object.header.direction),
         )
       });
     }
@@ -109,12 +109,14 @@ impl LevelObjectsDescription {
         Self::add_patrol(&mut objects, path as u32, patrol);
       }
 
-      objects.extend(graph.points.iter().map(|(vertex, position)| {
+      objects.extend(graph.points.iter().map(|point| {
         LevelObject::new(
-          LevelObjectId::GraphPoint { vertex: *vertex },
+          LevelObjectId::GraphPoint {
+            vertex: point.game_vertex_id,
+          },
           LevelObjectKind::GraphPoints,
-          format!("vertex {vertex}"),
-          Self::to_place(position),
+          format!("vertex {}", point.game_vertex_id),
+          Self::get_place(&point.level_point),
         )
       }));
     }
@@ -132,8 +134,8 @@ impl LevelObjectsDescription {
   fn add_patrol(objects: &mut Vec<LevelObject>, path: u32, patrol: &Patrol) {
     let id: LevelObjectId = LevelObjectId::Patrol { path };
     let place: VisualTransform = patrol.points.first().map_or_else(
-      || Self::to_place(&Vector3d::new(0.0, 0.0, 0.0)),
-      |first| Self::to_place(&first.position),
+      || Self::get_place(&Vector3d::new(0.0, 0.0, 0.0)),
+      |first| Self::get_place(&first.position),
     );
 
     objects.push(LevelObject {
@@ -150,18 +152,18 @@ impl LevelObjectsDescription {
         },
         LevelObjectKind::Patrols,
         at.name.clone(),
-        Self::to_place(&at.position),
+        Self::get_place(&at.position),
       )
     }));
   }
 
   /// Unturned at a point of engine space, in renderer space.
-  pub(super) fn to_place(position: &Vector3d) -> VisualTransform {
+  pub(super) fn get_place(position: &Vector3d) -> VisualTransform {
     VisualTransform {
       i: Vector3d::new(1.0, 0.0, 0.0),
       j: Vector3d::new(0.0, 1.0, 0.0),
       k: Vector3d::new(0.0, 0.0, 1.0),
-      c: LevelObject::to_renderer_space(position),
+      c: LevelObject::convert_to_renderer_space(position),
     }
   }
 }

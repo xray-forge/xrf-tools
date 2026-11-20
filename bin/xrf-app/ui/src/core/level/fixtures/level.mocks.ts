@@ -21,7 +21,7 @@ import { EClsId } from "@xrf/ipc/types/xrf-spawn";
 import { SectorOutline } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";

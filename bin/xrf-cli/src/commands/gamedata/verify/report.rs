@@ -13,7 +13,7 @@ use crate::core::reports::SkippedMountReport;
 /// What a `gamedata verify` run reports to a machine.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GamedataVerifyReport {
+pub(crate) struct GamedataVerifyReport {
   /// What retention held and how it served the sweep, which no timing can show.
   cache: XrayCacheStats,
   checks: Vec<GamedataVerifyCheckReport>,
@@ -31,7 +31,7 @@ pub struct GamedataVerifyReport {
 
 impl GamedataVerifyReport {
   /// `result` as verified under `root`, with what the project's mount and reads said about the run.
-  pub fn new(
+  pub(crate) fn new(
     root: &Path,
     engine: &XrayEngineResolution,
     result: &GamedataVerificationReport,
@@ -97,7 +97,7 @@ mod tests {
     PathBuf::from("gamedata-root")
   }
 
-  fn to_json(root: &Path, report: &GamedataVerificationReport, skipped: &[XraySkippedMount]) -> serde_json::Value {
+  fn encode_json(root: &Path, report: &GamedataVerificationReport, skipped: &[XraySkippedMount]) -> serde_json::Value {
     serde_json::to_value(GamedataVerifyReport::new(
       root,
       &XrayEngineResolution::undetected(),
@@ -133,7 +133,7 @@ mod tests {
       }),
     );
 
-    let json: serde_json::Value = to_json(&root, &report, &[]);
+    let json: serde_json::Value = encode_json(&root, &report, &[]);
 
     assert_eq!(json["status"], "failed");
     assert_eq!(json["duration"], 42);
@@ -238,7 +238,7 @@ mod tests {
       reason: String::from("Failed to read archive volumes"),
     }];
 
-    let json: serde_json::Value = to_json(&root, &report, &skipped);
+    let json: serde_json::Value = encode_json(&root, &report, &skipped);
 
     // The whole address, not a root-relative one: a source that never opened may sit outside the verified root, and a
     // reader has to be able to find the path the plan named.
@@ -246,7 +246,7 @@ mod tests {
       json["skippedMounts"][0],
       serde_json::json!({
         "origin": "$arch_dir$",
-        "path": xrf_utils::to_portable_path_string(root.join("db")),
+        "path": xrf_utils::format_portable_path(root.join("db")),
         "reason": "Failed to read archive volumes",
       })
     );
@@ -257,7 +257,7 @@ mod tests {
   fn reports_full_coverage_as_an_empty_list() {
     let report: GamedataVerificationReport = GamedataVerificationReport::with_duration(Duration::from_millis(42));
 
-    let json: serde_json::Value = to_json(&root(), &report, &[]);
+    let json: serde_json::Value = encode_json(&root(), &report, &[]);
 
     assert_eq!(json["skippedMounts"], serde_json::json!([]));
   }

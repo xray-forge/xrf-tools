@@ -1,17 +1,15 @@
 import { bytesToWholeMegabytes } from "@xrf/format";
 import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material/alert";
-import { Checkbox } from "@xrf/ui/material/checkbox";
-import { FormControlLabel } from "@xrf/ui/material/form-control-label";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Alert } from "@xrf/ui/feedback";
+import { Stack } from "@xrf/ui/layout/stack";
 import { ReactElement } from "react";
 
-import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
-import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
-import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
+import { ArchiveRunConfirmSummary } from "@/core/archive/components/config-editor/ArchiveRunConfirmSummary";
+import { HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib/header";
+import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib/volume-options";
 import { isWholeDirectory } from "@/tools/archives-packer/lib/pack-config";
 
 import { PackerDirectoryChips } from "./PackerDirectoryChips";
@@ -19,7 +17,7 @@ import { PackerDirectoryChips } from "./PackerDirectoryChips";
 interface IPackerConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePackConfig;
   /** Volumes of this set the destination already holds, which packing refuses to replace unasked. */
-  publishedVolumes: Array<string>;
+  publishedVolumes: ReadonlyArray<string>;
   isForced: boolean;
   onForceChange: (isForced: boolean) => void;
 }
@@ -28,8 +26,7 @@ interface IPackerConfirmSummaryProps extends BaseComponentProps {
  * What a pack run is about to do, read from the configuration it will be given.
  *
  * Shown before packing because the selection rules are easy to get wrong in ways that only surface as a missing file
- * in game, and because a destination already holding this set is where the run turns destructive: replacing it is
- * asked for here rather than assumed.
+ * in game.
  */
 export function PackerConfirmSummary({
   "data-testid": dataTestId = "packer-confirm-summary",
@@ -44,94 +41,88 @@ export function PackerConfirmSummary({
   const volumeName: string = `${config.name}.${ARCHIVE_VOLUME_SUFFIX[config.volumeExtension]}`;
 
   return (
-    <Stack data-testid={dataTestId} id={id} className={className} spacing={1.5}>
-      <ArchiveSummaryRow label={"Source"}>
-        <ArchivePathText value={config.source} />
-      </ArchiveSummaryRow>
+    <ArchiveRunConfirmSummary
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      publishedVolumes={publishedVolumes}
+      replaceWarning={
+        `The output directory already holds ${publishedVolumes.length} volume(s) of ${volumeName}. ` +
+        "Packing writes over them and cannot put them back if it stops partway."
+      }
+      isForced={isForced}
+      onForceChange={onForceChange}
+    >
+      <EditorPanelProperty label={"Source"} value={config.source} isMonospace isInline />
 
-      <ArchiveSummaryRow label={"Output"}>
-        <ArchivePathText value={config.destination} />
-      </ArchiveSummaryRow>
+      <EditorPanelProperty label={"Output"} value={config.destination} isMonospace isInline />
 
-      <ArchiveSummaryRow label={"Volumes"}>
-        <Typography variant={"body2"}>
-          <span className={"monospace"}>{volumeName}</span>, splitting every{" "}
-          {bytesToWholeMegabytes(config.maxVolumeSize)} MB
-        </Typography>
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Volumes"}
+        value={
+          <>
+            <span className={"monospace"}>{volumeName}</span>, splitting every{" "}
+            {bytesToWholeMegabytes(config.maxVolumeSize)} MB
+          </>
+        }
+        isInline
+      />
 
-      <ArchiveSummaryRow label={"Contents"}>
-        {isWholeDirectory(config) ? (
-          <Typography variant={"body2"}>Everything under the source directory</Typography>
-        ) : (
-          <Stack spacing={0.5}>
-            {config.includeDirectories.length ? (
-              <PackerDirectoryChips directories={config.includeDirectories} recursiveSuffix={" and below"} />
-            ) : null}
-            {config.includeFiles.length ? (
-              <Typography variant={"body2"}>{config.includeFiles.join(", ")}</Typography>
-            ) : null}
-          </Stack>
-        )}
-      </ArchiveSummaryRow>
+      <EditorPanelProperty
+        label={"Contents"}
+        value={
+          isWholeDirectory(config) ? (
+            "Everything under the source directory"
+          ) : (
+            <Stack spacing={0.5}>
+              {config.includeDirectories.length ? (
+                <PackerDirectoryChips directories={config.includeDirectories} recursiveSuffix={" and below"} />
+              ) : null}
+              {config.includeFiles.length ? <span>{config.includeFiles.join(", ")}</span> : null}
+            </Stack>
+          )
+        }
+        isInline
+      />
 
       {config.excludeDirectories.length || config.excludeExtensions.length ? (
-        <ArchiveSummaryRow label={"Excluding"}>
-          <Stack spacing={0.5}>
-            {config.excludeDirectories.length ? (
-              <PackerDirectoryChips directories={config.excludeDirectories} recursiveSuffix={" and below"} />
-            ) : null}
-            {config.excludeExtensions.length ? (
-              <Typography variant={"body2"}>{config.excludeExtensions.join(", ")}</Typography>
-            ) : null}
-          </Stack>
-        </ArchiveSummaryRow>
+        <EditorPanelProperty
+          label={"Excluding"}
+          value={
+            <Stack spacing={0.5}>
+              {config.excludeDirectories.length ? (
+                <PackerDirectoryChips directories={config.excludeDirectories} recursiveSuffix={" and below"} />
+              ) : null}
+              {config.excludeExtensions.length ? <span>{config.excludeExtensions.join(", ")}</span> : null}
+            </Stack>
+          }
+          isInline
+        />
       ) : null}
 
-      <ArchiveSummaryRow label={"Compression"}>
-        <Typography variant={"body2"}>
-          {config.mode === EArchivePackMode.STORE
+      <EditorPanelProperty
+        label={"Compression"}
+        value={
+          (config.mode === EArchivePackMode.STORE
             ? "Stored, nothing compressed"
-            : "Compressed where the engine expects it"}
-          {config.isWithSkipList ? ", editor leftovers skipped" : ", keeping editor leftovers"}
-        </Typography>
-      </ArchiveSummaryRow>
+            : "Compressed where the engine expects it") +
+          (config.isWithSkipList ? ", editor leftovers skipped" : ", keeping editor leftovers")
+        }
+        isInline
+      />
 
-      <ArchiveSummaryRow label={"Mounts at"}>
-        {entryPoint ? (
-          <Typography variant={"body2"} className={"monospace"}>
-            {entryPoint}
-          </Typography>
-        ) : (
-          <Typography variant={"body2"} color={"text.secondary"}>
-            Not set
-          </Typography>
-        )}
-      </ArchiveSummaryRow>
-
-      {publishedVolumes.length ? (
-        <Alert severity={"warning"}>
-          <Stack spacing={0.5}>
-            <Typography variant={"body2"}>
-              The output directory already holds {publishedVolumes.length} volume(s) of {volumeName}. Packing writes
-              over them and cannot put them back if it stops partway.
-            </Typography>
-
-            <FormControlLabel
-              control={
-                <Checkbox size={"small"} checked={isForced} onChange={(event) => onForceChange(event.target.checked)} />
-              }
-              label={<Typography variant={"body2"}>Replace them</Typography>}
-            />
-          </Stack>
-        </Alert>
-      ) : null}
+      <EditorPanelProperty
+        label={"Mounts at"}
+        value={entryPoint ?? <span className={"text-text-secondary"}>Not set</span>}
+        isMonospace={entryPoint !== null}
+        isInline
+      />
 
       {entryPoint || config.volumeExtension === EArchiveVolumeExtension.XDB ? null : (
         <Alert severity={"error"}>
           Without an entry point the engine reads these as encrypted Shadow of Chernobyl archives.
         </Alert>
       )}
-    </Stack>
+    </ArchiveRunConfirmSummary>
   );
 }

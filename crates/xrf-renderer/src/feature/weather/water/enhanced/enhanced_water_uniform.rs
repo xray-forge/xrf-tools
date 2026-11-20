@@ -1,3 +1,4 @@
+use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
@@ -8,7 +9,7 @@ use crate::feature::weather::water::enhanced::enhanced_water_frame::EnhancedWate
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "EnhancedWater")]
-pub struct EnhancedWaterUniform {
+pub(crate) struct EnhancedWaterUniform {
   pub refraction: f32,
   pub turbidity: f32,
   pub soft_border: f32,
@@ -28,13 +29,6 @@ pub struct EnhancedWaterUniform {
   pub parallax_height: f32,
   pub ripples: f32,
   pub rain: f32,
-  /// How far the maps have scrolled: seconds at the flow, then at the normals', the heights' and the wind layer's
-  /// paces.
-  pub flowed: f32,
-  pub waves: f32,
-  pub heights: f32,
-  pub gusts_x: f32,
-  pub gusts_y: f32,
   /// How far the maps' repeat is broken.
   pub variation: f32,
   /// Metres a reflected ray the screen does not answer is traced against the level, the surfaces' reflections' distance
@@ -55,15 +49,27 @@ pub struct EnhancedWaterUniform {
   pub rings_tile: f32,
   pub rings_reach: f32,
   pub rings_strength: f32,
+  /// One where every pixel traces every frame and the screen answers only plants.
+  pub fully_traced: u32,
+  /// Metres from the eye within which the screen leaves plants to the trace's grass cards too
+  /// (`WaterFeature::follow_grass_cards`).
+  pub plant_reach: f32,
+  pub _pad: [u32; 2],
+  /// Where each of its maps' reads has scrolled to, field for field `EnhancedWaterScroll`'s.
+  pub heights: Vec4,
+  pub wave_layers: [Vec4; 2],
+  pub map_offsets: [Vec4; 2],
+  pub flow_scrolls: Vec4,
+  pub ripple_clocks: Vec4,
 }
 
 impl EnhancedWaterUniform {
   /// The settings over one `frame` of the weather, the water's flow and its reflection.
-  pub fn new(settings: &RenderEnhancedWaterSettings, frame: EnhancedWaterFrame) -> Self {
+  pub(crate) fn new(settings: &RenderEnhancedWaterSettings, frame: EnhancedWaterFrame) -> Self {
     let EnhancedWaterFrame {
       wind,
       rain,
-      flow,
+      scroll,
       is_reflected,
       has_history,
       trace,
@@ -76,26 +82,27 @@ impl EnhancedWaterUniform {
       reflectivity: settings.reflectivity,
       reflection_blur: settings.reflection_blur,
       blur_noise: settings.blur_noise,
-      reflected: is_reflected as u32 as f32,
-      history: has_history as u32 as f32,
+      reflected: u32::from(is_reflected) as f32,
+      history: u32::from(has_history) as f32,
       wind_velocity: wind.velocity,
       specular: settings.specular,
       caustics: settings.caustics,
       parallax_height: settings.parallax_height,
       ripples: settings.ripples,
       rain,
-      flowed: flow.seconds,
-      waves: flow.waves,
-      heights: flow.heights,
-      gusts_x: flow.gusts[0],
-      gusts_y: flow.gusts[1],
       variation: settings.variation,
       trace_distance: trace.distance,
       trace_turns: trace.turns,
       trace_frame: trace.frame,
       dim_turns: trace.dim_turns.max(1),
       march_steps: trace.march_steps.max(1),
+      fully_traced: u32::from(trace.is_full),
       vibrance: settings.vibrance,
+      heights: scroll.heights,
+      wave_layers: scroll.wave_layers,
+      map_offsets: scroll.map_offsets,
+      flow_scrolls: scroll.flow_scrolls,
+      ripple_clocks: scroll.ripple_clocks,
       ..Default::default()
     }
   }

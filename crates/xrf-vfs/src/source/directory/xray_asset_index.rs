@@ -5,7 +5,7 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 
-use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative, to_host_relative};
+use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative, resolve_host_relative};
 use crate::source::directory::{DirectoryAssetIndex, IndexedAsset};
 use crate::{XrayCollisionSite, XrayPathCollision};
 
@@ -56,9 +56,9 @@ impl XrayAssetIndex {
     }
 
     Ok(Self {
+      directory,
       assets,
       collisions,
-      directory,
       ignored,
     })
   }
@@ -81,7 +81,7 @@ impl XrayAssetIndex {
     let mut next: Self = self.clone();
 
     for path in deleted {
-      let logical_path: Cow<str> = normalize(path)?;
+      let logical_path: Cow<'_, str> = normalize(path)?;
 
       if next.assets.remove(logical_path.as_ref()).is_some() {
         next.promote_unreachable(&logical_path);
@@ -95,7 +95,7 @@ impl XrayAssetIndex {
         continue;
       }
 
-      let index: usize = next.directory.push(to_host_relative(&logical_path));
+      let index: usize = next.directory.push(resolve_host_relative(&logical_path));
 
       next.assets.insert(logical_path, index);
     }

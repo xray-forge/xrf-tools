@@ -3,7 +3,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 /// One progressive mesh level of detail, `FSlideWindow` in the engine (`FMesh.hpp:109`).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OgfSlideWindow {
   /// Start position in the index buffer.
   pub offset: u32,

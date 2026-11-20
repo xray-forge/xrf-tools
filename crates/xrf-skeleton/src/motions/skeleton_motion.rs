@@ -3,13 +3,13 @@ use std::io::Write;
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
+use xrf_math::{Quaternion, Vector3d};
 use xrf_utils::{assert_count_fits, new_bounded_vec};
 
-use crate::motions::{Quaternion, SkeletonBoneMotion, SkeletonMotionCursor};
+use crate::motions::{SkeletonBoneMotion, SkeletonMotionCursor};
 
 /// One motion's payload in the motions chunk, as `motions_value::load` reads chunk `n + 1`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SkeletonMotion {
   /// Prefix the payload stores ahead of its keys, preserved verbatim and never an identity.
   pub label: String,
@@ -47,7 +47,7 @@ impl SkeletonMotion {
   /// Returns an error when the payload ends early, when it does not end exactly where the last bone's keys do, or when
   /// a motion declaring no frames carries keyed streams.
   pub fn decode_bone_motions<T: ByteOrder>(&self, bone_count: usize) -> XrfResult<Vec<SkeletonBoneMotion>> {
-    let mut cursor: SkeletonMotionCursor = SkeletonMotionCursor::new(&self.keys);
+    let mut cursor: SkeletonMotionCursor<'_> = SkeletonMotionCursor::new(&self.keys);
 
     // The bone count comes from the skeleton rather than the payload, so it is bounded by the keys that remain.
     let mut bones: Vec<SkeletonBoneMotion> =
@@ -71,7 +71,11 @@ impl SkeletonMotion {
     Ok(bones)
   }
 
-  fn decode_bone<T: ByteOrder>(&self, cursor: &mut SkeletonMotionCursor, flags: u8) -> XrfResult<SkeletonBoneMotion> {
+  fn decode_bone<T: ByteOrder>(
+    &self,
+    cursor: &mut SkeletonMotionCursor<'_>,
+    flags: u8,
+  ) -> XrfResult<SkeletonBoneMotion> {
     let count: usize = self.count as usize;
     let rotations: Vec<Quaternion> = if flags & Self::ROTATION_KEYS_ABSENT != 0 {
       // A held bone stores one key and no checksum: there is nothing to interpolate between.
@@ -200,21 +204,19 @@ mod tests {
       // Rotation: a checksum the engine caches by, then one key per frame.
       bytes.write_u32::<LittleEndian>(0xDEAD_BEEF).unwrap();
 
-      for frame in 0..count {
-        for component in 0..4 {
-          bytes
-            .write_i16::<LittleEndian>((frame as i16 + 1) * (component as i16 + 1))
-            .unwrap();
+      let frames: i16 = i16::try_from(count).unwrap();
+
+      for frame in 0..frames {
+        for component in 0..4_i16 {
+          bytes.write_i16::<LittleEndian>((frame + 1) * (component + 1)).unwrap();
         }
       }
 
       bytes.write_u32::<LittleEndian>(0xFEED_FACE).unwrap();
 
-      for frame in 0..count {
-        for component in 0..3 {
-          bytes
-            .write_i16::<LittleEndian>(frame as i16 * 10 + component as i16)
-            .unwrap();
+      for frame in 0..frames {
+        for component in 0..3_i16 {
+          bytes.write_i16::<LittleEndian>(frame * 10 + component).unwrap();
         }
       }
 

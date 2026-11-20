@@ -20,7 +20,7 @@ const SHADOW_DRAW: StaticDrawPermutation = StaticDrawPermutation {
 
 /// Draws the static scene's casters into one layer of a shadow's map, depth alone: one indirect draw a batch, a
 /// view's visible clusters as instances. Both faces cast, so a surface seen edge on from the sun leaks no light.
-pub struct StaticShadowPass {
+pub(crate) struct StaticShadowPass {
   view_layout: wgpu::BindGroupLayout,
   layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
@@ -32,7 +32,7 @@ impl StaticShadowPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
@@ -58,7 +58,7 @@ impl StaticShadowPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(
         source,
@@ -73,7 +73,7 @@ impl StaticShadowPass {
   }
 
   /// Draws the `casters` a list holds of the kinds asked for.
-  pub fn record_some(
+  pub(crate) fn record_some(
     &self,
     context: &mut RasterContext<'_>,
     draw: StaticLayoutBindings<'_>,
@@ -86,7 +86,7 @@ impl StaticShadowPass {
   /// Clears one region of the map the pass draws into (a light face's tile, a band of a cascade), or restores it from
   /// the static atlas where `restore` is given, and draws the `casters` its list holds into it, the rest of the map
   /// kept: its arguments start at their offset.
-  pub fn record_tile(
+  pub(crate) fn record_tile(
     &self,
     context: &mut RasterContext<'_>,
     region: [u32; 4],
@@ -111,14 +111,14 @@ impl StaticShadowPass {
 
   /// Shifts the whole of an overhead map that moved from its copy, each texel taking its old self's depth where the map
   /// covered it before.
-  pub fn record_shift(&self, context: &mut RasterContext<'_>, shift: &OverheadShiftParameters) {
+  pub(crate) fn record_shift(&self, context: &mut RasterContext<'_>, shift: &OverheadShiftParameters) {
     context.get_pass().set_pipeline(&self.pipelines.writers[1]);
     context.bind(shift);
     context.get_pass().draw(0..3, 0..1);
   }
 
   /// Draws the `casters` a list holds into a region of the map the pass draws into, the rest of it kept.
-  pub fn record_region(
+  pub(crate) fn record_region(
     &self,
     context: &mut RasterContext<'_>,
     region: [u32; 4],
@@ -222,7 +222,7 @@ impl StaticShadowPass {
   }
 
   /// Draws into a region of the map a pass draws into alone: its texels across and down, its width and its height.
-  pub fn set_region(context: &mut RasterContext<'_>, [x, y, width, height]: [u32; 4]) {
+  pub(crate) fn set_region(context: &mut RasterContext<'_>, [x, y, width, height]: [u32; 4]) {
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_viewport(x as f32, y as f32, width as f32, height as f32, 0.0, 1.0);

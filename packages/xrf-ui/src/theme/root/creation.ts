@@ -3,10 +3,9 @@
 import type {} from "@mui/material/themeCssVarsAugmentation";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
-import { cardActionAreaClasses } from "#/material/card";
-import { inputBaseClasses, outlinedInputClasses } from "#/material/input";
-import { listItemButtonClasses } from "#/material/list";
-import { createTheme, PaletteOptions, Theme } from "#/material/styles";
+import { inputBaseClasses, outlinedInputClasses } from "#/input";
+import { cardActionAreaClasses } from "#/layout/card";
+import { listItemButtonClasses } from "#/list";
 import {
   ACCENT,
   COLOR_SCHEME_ATTRIBUTE,
@@ -30,6 +29,7 @@ import {
   toSharePercent,
   WELL_FILL,
 } from "#/theme";
+import { createTheme, PaletteOptions, Theme } from "#/theme/styles";
 
 declare module "@mui/material/styles" {
   interface TypeBackground {

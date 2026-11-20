@@ -1,9 +1,9 @@
-import { DialogFilter } from "@tauri-apps/plugin-dialog";
-import { exists } from "@tauri-apps/plugin-fs";
 import { Nullable } from "@xrf/types";
 import { IPathFieldRecents } from "@xrf/ui/form/file-picker";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { IFileFilter } from "@/core/path/file-filters";
+import { isPathPresent } from "@/core/path/presence";
 import { EToolId } from "@/core/routing/tool";
 import {
   getFieldRecentsStorageKey,
@@ -11,7 +11,6 @@ import {
   getLocalStorageValue,
   setLocalStorageValueSafe,
 } from "@/core/storage";
-import { resolveDialogStart } from "@/core/ui/form/file-picker/dialog-start";
 import { usePathState } from "@/core/ui/form/file-picker/use-path-state";
 import { IPathRecents, usePathRecents } from "@/core/ui/form/use-path-recents";
 import { IPathSeed, TPathSeed, usePathSeed } from "@/core/ui/form/use-path-seed";
@@ -24,7 +23,7 @@ export interface IPathFieldOptions {
   /** Names the field inside its own form, for example `source`. Only unique within the tool. */
   id: string;
   title?: string;
-  filters?: Nullable<Array<DialogFilter>>;
+  filters?: Nullable<Array<IFileFilter>>;
   isDirectory?: boolean;
   isSave?: boolean;
   isDisabled?: boolean;
@@ -91,9 +90,6 @@ export function usePathField({
 }: IPathFieldOptions): IPathField {
   const storageKey: string = getFieldValueStorageKey(tool, id);
 
-  // Read by the dialog resolver below, which cannot close over a value this same call produces.
-  const valueRef = useRef<Nullable<string>>(null);
-
   const [value, setPath, selectPath] = usePathState({
     title,
     filters,
@@ -101,10 +97,7 @@ export function usePathField({
     isSave,
     isDisabled,
     initial: () => getLocalStorageValue(storageKey),
-    defaultPath: () => resolveDialogStart(valueRef.current, { isSave }),
   });
-
-  valueRef.current = value;
 
   const [error, setError] = useState<Nullable<string>>(null);
 
@@ -189,10 +182,8 @@ export function usePathField({
     let isCurrent: boolean = true;
 
     const handle = setTimeout(() => {
-      exists(value)
-        .then((isPresent) => isCurrent && setError(isPresent ? null : "Path does not exist"))
-        // A failed check is not proof of absence, so it is reported as unknown rather than missing.
-        .catch(() => isCurrent && setError(null));
+      // A path the host refuses to look at is one no tool here could read either, so it reads as missing.
+      isPathPresent(value).then((isPresent) => isCurrent && setError(isPresent ? null : "Path does not exist"));
     }, VALIDATE_DEBOUNCE_MS);
 
     return () => {

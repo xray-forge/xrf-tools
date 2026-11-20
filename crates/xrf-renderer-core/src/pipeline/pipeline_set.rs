@@ -39,28 +39,6 @@ impl<T> PipelineSet<T> {
 
     Ok(())
   }
-
-  /// Makes the pipelines `set` keeps with `make` where none were made yet, or again where `cache` was invalidated since:
-  /// pipelines a pass asks for only once it draws.
-  ///
-  /// # Errors
-  ///
-  /// Returns `make`'s error, the last made kept; none are kept before the first is made, which is asked for again.
-  pub fn ask(set: &mut Option<Self>, cache: &PipelineCache, make: impl FnOnce() -> XrfResult<T>) -> XrfResult {
-    match set {
-      Some(set) => set.refresh(cache, make),
-      None => {
-        let generation: u64 = cache.get_generation();
-
-        *set = Some(Self {
-          pipelines: make()?,
-          generation,
-        });
-
-        Ok(())
-      }
-    }
-  }
 }
 
 impl<T> Deref for PipelineSet<T> {

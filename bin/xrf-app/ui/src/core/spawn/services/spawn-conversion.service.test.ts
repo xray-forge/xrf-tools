@@ -4,7 +4,7 @@ import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
 import { SessionScopeService } from "@xrf/ipc/session";
 import { listMockInvokeCalls, mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
-import { SPAWN_JOB_UNPACK, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
+import { SPAWN_JOB_UNPACK, SpawnConversionResult, SpawnConvertRequest } from "@xrf/ipc/types/xrf-app-spawn";
 
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs.service";
@@ -14,6 +14,11 @@ import { mockInjectedService, mockToolScope } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";
 
 const RESULT: SpawnConversionResult = { operation: "pack", destination: "C:\\out\\all.spawn", outcome: "completed" };
+
+/** An unforced conversion of `source` into `destination`. */
+function convert(source: string, destination: string): SpawnConvertRequest {
+  return { source, destination, isForced: false };
+}
 
 describe("SpawnConversionService", () => {
   beforeEach(() => mockIpcCommands({}));
@@ -31,10 +36,10 @@ describe("SpawnConversionService", () => {
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
 
-    await service[operation]("C:\\source", RESULT.destination);
+    await service[operation]({ source: "C:\\source", destination: RESULT.destination, isForced: true });
 
     expect(mockInvoke).toHaveBeenCalledWith(command, {
-      request: { source: "C:\\source", destination: RESULT.destination },
+      request: { source: "C:\\source", destination: RESULT.destination, isForced: true },
       jobId: expect.any(String),
       progress: expect.anything(),
     });
@@ -49,9 +54,9 @@ describe("SpawnConversionService", () => {
     mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
     const { service } = mockInjectedService(SpawnConversionService);
-    const first = service.pack("source", "output");
-    const repeated = service.pack("other", "other-output");
-    const opposite = service.unpack("output", "chunks");
+    const first = service.pack(convert("source", "output"));
+    const repeated = service.pack(convert("other", "other-output"));
+    const opposite = service.unpack(convert("output", "chunks"));
 
     expect(service.operation.isRunning).toBe(true);
     expect([
@@ -75,9 +80,9 @@ describe("SpawnConversionService", () => {
       bindings: [...mockToolScope("spawn-packer"), SpawnConversionService],
       parent: container,
     }).get(SpawnConversionService);
-    const running = service.pack("source", "output");
+    const running = service.pack(convert("source", "output"));
 
-    await nextTool.unpack("output", "chunks");
+    await nextTool.unpack(convert("output", "chunks"));
 
     expect(nextTool.operation.isRunning).toBe(true);
     expect(mockInvoke).not.toHaveBeenCalledWith(ESpawnCommand.UNPACK_FILE, expect.anything());
@@ -96,7 +101,7 @@ describe("SpawnConversionService", () => {
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
 
-    const running = service.pack("source", "output");
+    const running = service.pack(convert("source", "output"));
     const id = service.operation.job?.id;
 
     service.operation.cancel();
@@ -128,7 +133,7 @@ describe("SpawnConversionService", () => {
       },
     ];
 
-    await service.pack("source", "output");
+    await service.pack(convert("source", "output"));
 
     expect(service.operation.isRunning).toBe(true);
     expect(mockInvoke).not.toHaveBeenCalledWith(ESpawnCommand.PACK_FILE, expect.anything());
@@ -153,13 +158,13 @@ describe("SpawnConversionService", () => {
 
     const { service } = mockInjectedService(SpawnConversionService);
 
-    await service.pack("source", "output");
+    await service.pack(convert("source", "output"));
 
     expect(service.operation.error).toBe("Spawn output is busy");
     expect(service.operation.isRunning).toBe(false);
 
     mockIpcCommands({ [ESpawnCommand.PACK_FILE]: RESULT });
-    await service.pack("source", "output");
+    await service.pack(convert("source", "output"));
 
     expect(service.operation.error).toBeNull();
     expect(service.operation.result).toEqual(RESULT);
@@ -172,7 +177,7 @@ describe("SpawnConversionService", () => {
     const notices: Array<unknown> = [];
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
-    await service.pack("source", "output");
+    await service.pack(convert("source", "output"));
 
     expect(service.operation.result?.outcome).toBe("cancelled");
     expect(notices).toEqual([
@@ -194,7 +199,7 @@ describe("SpawnConversionService", () => {
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
 
-    const running = service.pack("source", "output");
+    const running = service.pack(convert("source", "output"));
 
     // Leaving the tool takes its services and releases its scope.
     container.unbind(SpawnConversionService);

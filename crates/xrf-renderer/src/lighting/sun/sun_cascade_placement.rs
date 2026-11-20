@@ -14,13 +14,13 @@ const HELD: f32 = 0.25;
 const HELD_MARGIN: f32 = 0.03;
 
 /// Where a sun cascade stands: the engine's `compute_caster_model_fixed`, held where the view allows.
-pub struct SunCascadePlacement;
+pub(crate) struct SunCascadePlacement;
 
 impl SunCascadePlacement {
   /// Places a cascade's square across the light as the engine does (`compute_caster_model_fixed`): the sides the view
   /// looks away from brought up to where the view's edges start, the first stretch of the view held in it, and the
   /// edges carried on to where they leave it, for the next cascade to start there. Returns the square's centre.
-  pub fn place(
+  pub(crate) fn place(
     center: Vec3,
     look: Vec3,
     rays: &mut [SunViewRay; 4],
@@ -59,7 +59,7 @@ impl SunCascadePlacement {
     for side in &behind {
       let nearest: f32 = rays
         .iter()
-        .map(|ray| Self::to_inside(*side, ray.origin, center, half))
+        .map(|ray| Self::get_inside(*side, ray.origin, center, half))
         .fold(FAR_BEHIND, f32::min);
 
       translation += *side * nearest;
@@ -112,7 +112,7 @@ impl SunCascadePlacement {
     let lowest: f32 = most - half;
     let highest: f32 = least + half;
     let held: f32 = if lowest > highest {
-      (least + most) / 2.0
+      f32::midpoint(least, most)
     } else {
       at.clamp(lowest, highest)
     };
@@ -132,7 +132,7 @@ impl SunCascadePlacement {
         let mut distance: f32 = width;
 
         if along <= -0.1 {
-          let leave: f32 = -Self::to_inside(normal, ray.origin, center, half) / along;
+          let leave: f32 = -Self::get_inside(normal, ray.origin, center, half) / along;
 
           distance = if leave > 0.0 || leave.abs() < EPS_S { leave } else { 0.0 };
         }
@@ -148,7 +148,7 @@ impl SunCascadePlacement {
   }
 
   /// How far inside a side of a square the point stands: the engine's `classify` against it.
-  fn to_inside(normal: Vec3, point: Vec3, center: Vec3, half: f32) -> f32 {
+  fn get_inside(normal: Vec3, point: Vec3, center: Vec3, half: f32) -> f32 {
     normal.dot(point) - normal.dot(center) + half
   }
 }

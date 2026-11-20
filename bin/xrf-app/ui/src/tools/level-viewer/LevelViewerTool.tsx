@@ -8,8 +8,8 @@ import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { SessionTool } from "@/core/session/components/SessionTool";
 
-import { LevelViewerLayout } from "./components/LevelViewerLayout";
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";
+import { LevelViewerWorkspace } from "./components/LevelViewerWorkspace";
 
 /**
  * Fly a compiled level, shown once every sector of it is read. An open that fails shows why over the empty viewport,
@@ -40,7 +40,7 @@ export function LevelViewerTool({
       isOpen={!isPickerOpen && (description !== null || loadService.level.isLoading || loadService.level.isFailed)}
       openForm={<LevelViewerOpenForm onFinished={onFinished} />}
       workspace={
-        <LevelViewerLayout
+        <LevelViewerWorkspace
           data-testid={dataTestId}
           id={id}
           className={className}

@@ -6,7 +6,7 @@ use crate::feature::weather::water::enhanced::enhanced_water_parameters::Enhance
 use crate::feature::weather::water::reflection::water_reflection_parameters::WaterReflectionParameters;
 
 /// The water passes' own groups' layouts, made once: a pipeline made again on a reload keys the cache as the last did.
-pub struct WaterParameterLayouts {
+pub(crate) struct WaterParameterLayouts {
   pub engine: wgpu::BindGroupLayout,
   pub enhanced: wgpu::BindGroupLayout,
   pub depth: wgpu::BindGroupLayout,
@@ -14,7 +14,7 @@ pub struct WaterParameterLayouts {
 }
 
 impl WaterParameterLayouts {
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     Self {
       engine: WaterSurfaceParameters::create_layout(device),
       enhanced: EnhancedWaterParameters::create_layout(device),

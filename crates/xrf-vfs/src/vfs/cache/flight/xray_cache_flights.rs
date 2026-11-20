@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 
 use crate::vfs::cache::XrayCacheKey;
@@ -7,8 +7,10 @@ use crate::vfs::cache::flight::{XrayCacheFlight, XrayCacheFlightClaim, XrayCache
 
 /// The loads a store has in progress, so concurrent requesters of one key produce one load instead of one each.
 ///
-/// This is coordination alone. Whether a key is worth coordinating, what a wait means for reported statistics, and what
-/// a released waiter does next are the store's questions, answered in [`crate::XrayAssetCache`].
+/// Coordination alone: whether a key is worth coordinating, how a wait counts in statistics, and what a released
+/// waiter does next belong to [`XrayAssetCache`].
+///
+/// [`XrayAssetCache`]: crate::vfs::cache::xray_asset_cache::XrayAssetCache
 #[derive(Debug, Default)]
 pub(crate) struct XrayCacheFlights {
   in_progress: Mutex<HashMap<XrayCacheKey, Arc<XrayCacheFlight>>>,
@@ -35,14 +37,16 @@ impl XrayCacheFlights {
     }
   }
 
-  /// Ends one flight and releases everyone waiting on it.
+  /// Ends one flight and releases everyone waiting on it, the map unlocked first so a woken waiter can claim at once.
   pub(super) fn release(&self, key: &XrayCacheKey) {
-    if let Some(flight) = self.lock().remove(key) {
+    let flight: Option<Arc<XrayCacheFlight>> = self.lock().remove(key);
+
+    if let Some(flight) = flight {
       flight.finish();
     }
   }
 
   fn lock(&self) -> MutexGuard<'_, HashMap<XrayCacheKey, Arc<XrayCacheFlight>>> {
-    self.in_progress.lock().expect("cache flights lock is never poisoned")
+    self.in_progress.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }

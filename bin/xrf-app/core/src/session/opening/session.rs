@@ -101,7 +101,7 @@ impl<T> Session<T> {
   /// Reserves publication before doing work, without invalidating the committed value's readers, answering the
   /// reservation's token.
   pub(crate) fn begin_open(&self, id: SessionId) -> u64 {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     state.reservations += 1;
     state.opening = Some((id, state.reservations));
@@ -111,7 +111,7 @@ impl<T> Session<T> {
 
   /// Gives up the reservation `token` names, keeping whatever the slot committed before it; one made since is left.
   pub(crate) fn give_up_open(&self, id: SessionId, token: u64) {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if state.opening == Some((id, token)) {
       state.opening = None;
@@ -136,8 +136,8 @@ impl<T> Session<T> {
     )
   }
 
-  /// Publishes only the newest opening as [`Self::commit_open`] does, at `revision`, the one the search it read was
-  /// taken at, keeping the inputs the value was derived from and the parts the opening read on its way.
+  /// Publishes only the newest opening, at the `revision` of the search it read, with the `inputs` its value was
+  /// derived from and the `parts` it read.
   pub(crate) fn commit_open_with(
     &self,
     id: SessionId,
@@ -153,7 +153,7 @@ impl<T> Session<T> {
       ..SessionSnapshot::new(id, value)
     });
 
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if state.opening.map(|(opening, _)| opening) != Some(id) {
       return Err(self.superseded());
@@ -198,24 +198,9 @@ impl<T> Session<T> {
     drop(self.detach(ids));
   }
 
-  /// Opens `value` as `id` at `revision` with the inputs and parts it was read with, for a test following a slot
-  /// through commits without a registry or a scope.
-  #[cfg(test)]
-  pub(crate) fn commit_fixture(
-    &self,
-    id: SessionId,
-    value: T,
-    revision: XrayRevision,
-    inputs: XrayInputRecord,
-    parts: SessionParts,
-  ) -> TauriResult<Arc<SessionSnapshot<T>>> {
-    self.begin_open(id);
-    self.commit_open_with(id, value, revision, inputs, parts)
-  }
-
   /// Detaches ownership so a caller can dispose a large value on its execution pool.
   pub(crate) fn detach(&self, ids: &[SessionId]) -> Option<Arc<SessionSnapshot<T>>> {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if state.opening.is_some_and(|(id, _)| ids.contains(&id)) {
       state.opening = None;
@@ -331,7 +316,7 @@ impl<T: Send + Sync + 'static> Session<T> {
 
         match derive(&current, assets) {
           Ok(derived) => (
-            Self::to_derived(&current, revision, derived),
+            current.with_derived(revision, derived),
             SessionRootChange::Derived,
             current.parts.list_built(),
           ),
@@ -352,7 +337,7 @@ impl<T: Send + Sync + 'static> Session<T> {
 
   /// Remembers `current` as reported stale while it is still the committed snapshot, answering whether it was.
   fn mark_stale(&self, current: &Arc<SessionSnapshot<T>>) -> bool {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if !state.opened.as_ref().is_some_and(|opened| Arc::ptr_eq(opened, current)) {
       return false;
@@ -374,7 +359,7 @@ impl<T: Send + Sync + 'static> Session<T> {
     assets: &AssetMountState,
     fan_out: &AssetFanOut,
   ) -> SessionChange {
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
     let is_under_way: bool = state
       .deriving
       .as_ref()
@@ -436,7 +421,7 @@ impl<T: Send + Sync + 'static> Session<T> {
           current.parts.list_built(),
         );
 
-        (Some(Self::to_derived(current, revision, derived)), change)
+        (Some(current.with_derived(revision, derived)), change)
       }
       Err(reason) => (None, self.to_failed(current, reason)),
     };
@@ -459,7 +444,7 @@ impl<T: Send + Sync + 'static> Session<T> {
   /// answers whether it was.
   fn settle(&self, current: &Arc<SessionSnapshot<T>>, next: Option<SessionSnapshot<T>>) -> bool {
     let next: Option<Arc<SessionSnapshot<T>>> = next.map(Arc::new);
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     Self::end_deriving(&mut state, current);
 
@@ -478,7 +463,7 @@ impl<T: Send + Sync + 'static> Session<T> {
   /// Publishes `next` only while `current` is still the committed snapshot, answering whether it did.
   fn publish_next(&self, current: &Arc<SessionSnapshot<T>>, next: SessionSnapshot<T>) -> bool {
     let next: Arc<SessionSnapshot<T>> = Arc::new(next);
-    let mut state: MutexGuard<SessionState<T>> = self.lock();
+    let mut state: MutexGuard<'_, SessionState<T>> = self.lock();
 
     if !state.opened.as_ref().is_some_and(|opened| Arc::ptr_eq(opened, current)) {
       return false;
@@ -490,22 +475,6 @@ impl<T: Send + Sync + 'static> Session<T> {
     drop(previous);
 
     true
-  }
-
-  /// The snapshot a derivation of `current` read at `revision` publishes: its identity, the derived value, and no part
-  /// but those the derivation read on its way.
-  fn to_derived(
-    current: &SessionSnapshot<T>,
-    revision: XrayRevision,
-    derived: SessionDerived<T>,
-  ) -> SessionSnapshot<T> {
-    SessionSnapshot {
-      session_id: current.session_id,
-      revision,
-      value: Arc::new(derived.value),
-      inputs: derived.inputs,
-      parts: derived.parts,
-    }
   }
 
   /// What a failed derivation of `current` reports: the session stays at the revision it had.

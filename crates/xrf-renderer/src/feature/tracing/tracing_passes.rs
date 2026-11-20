@@ -1,37 +1,22 @@
 use xrf_error::XrfResult;
 
-use crate::feature::tracing::indirect_trace::indirect_trace_parameters::IndirectTraceParameters;
 use crate::feature::tracing::indirect_trace::indirect_trace_pass::IndirectTracePass;
-use crate::feature::tracing::indirect_trace::indirect_trace_uniform::IndirectTraceUniform;
-use crate::feature::tracing::ray_guides::ray_guides_parameters::RayGuidesParameters;
 use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
-use crate::feature::tracing::reflections::draw::reflection_parameters::ReflectionParameters;
 use crate::feature::tracing::reflections::draw::reflection_pass::ReflectionPass;
-use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
-use crate::feature::tracing::reflections::trace::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::feature::tracing::rtao::rtao_pass::RtaoPass;
-use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
-use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
-use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
 use crate::feature::tracing::scene_trace::scene_trace_pass::SceneTracePass;
-use crate::feature::tracing::sun_trace::sun_trace_parameters::SunTraceParameters;
 use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
-use crate::feature::tracing::sun_trace::sun_trace_uniform::SunTraceUniform;
-use crate::feature::tracing::surroundings::surroundings_parameters::SurroundingsParameters;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
-use crate::feature::tracing::surroundings::surroundings_uniform::SurroundingsUniform;
-use crate::feature::tracing::view_trace::sway::trace_sway_parameters::TraceSwayParameters;
 use crate::feature::tracing::view_trace::sway::trace_sway_pass::TraceSwayPass;
-use crate::feature::tracing::view_trace::sway::trace_sway_slot::TraceSwaySlot;
-use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
+#[cfg(test)]
 use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes reflecting and tracing the scene: the screen reflections and the surroundings cube below them, the
 /// scene's trace and its sway, the traced sun, indirect light and occlusion, and the guides DLSS reconstructs the rays
 /// by.
-pub struct TracingPasses {
+pub(crate) struct TracingPasses {
   pub reflections: ReflectionPass,
   pub surroundings: SurroundingsPass,
   pub scene_trace: SceneTracePass,
@@ -48,7 +33,7 @@ impl TracingPasses {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(build: PassBuild<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(build: PassBuild<'_>) -> XrfResult<Self> {
     let PassBuild {
       source,
       queue,
@@ -82,7 +67,7 @@ impl TracingPasses {
   }
 
   /// Rebuilds the pipelines a shader reload made stale, each pass keeping its last good ones where a rebuild fails.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     self.reflections.refresh(source);
     self.surroundings.refresh(source);
     self.scene_trace.refresh(source);
@@ -99,10 +84,32 @@ impl TracingPasses {
   /// # Errors
   ///
   /// Returns an error when passes sharing a module declare one of its bindings otherwise.
-  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+  #[cfg(test)]
+  pub(crate) fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+    use crate::feature::tracing::indirect_trace::indirect_trace_parameters::IndirectTraceParameters;
+    use crate::feature::tracing::indirect_trace::indirect_trace_uniform::IndirectTraceUniform;
+    use crate::feature::tracing::ray_guides::ray_guides_parameters::RayGuidesParameters;
+    use crate::feature::tracing::reflections::draw::reflection_parameters::ReflectionParameters;
+    use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
+    use crate::feature::tracing::reflections::trace::reflection_trace_out_parameters::ReflectionTraceOutParameters;
+    use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
+    use crate::feature::tracing::scene_trace::requests::scene_list_parameters::SceneListParameters;
+    use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
+    use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
+    use crate::feature::tracing::scene_trace::requests::water_ray_parameters::WaterRayParameters;
+    use crate::feature::tracing::scene_trace::requests::water_rays_uniform::WaterRaysUniform;
+    use crate::feature::tracing::sun_trace::sun_trace_parameters::SunTraceParameters;
+    use crate::feature::tracing::sun_trace::sun_trace_uniform::SunTraceUniform;
+    use crate::feature::tracing::surroundings::surroundings_parameters::SurroundingsParameters;
+    use crate::feature::tracing::surroundings::surroundings_uniform::SurroundingsUniform;
+    use crate::feature::tracing::view_trace::sway::trace_sway_parameters::TraceSwayParameters;
+    use crate::feature::tracing::view_trace::sway::trace_sway_slot::TraceSwaySlot;
+    use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
+
     modules
       .declare::<TraceSwaySlot>()
       .declare::<TraceRequest>()
+      .declare::<WaterRaysUniform>()
       .declare::<SurroundingsUniform>()
       .declare::<SunTraceUniform>()
       .declare::<IndirectTraceUniform>()
@@ -115,6 +122,8 @@ impl TracingPasses {
       .add::<ReflectionParameters<'_>>("generated/frame/reflections")?
       .add::<TraceRequestParameters>("generated/common/trace_requests")?
       .add::<ReflectionSceneParameters<'_>>("generated/frame/reflection_scene")?
+      .add::<SceneListParameters>("generated/frame/scene_list")?
+      .add::<WaterRayParameters>("generated/frame/water_rays")?
       .add::<ReflectionTraceOutParameters>("generated/frame/reflection_trace_out")?
       .add::<IndirectTraceParameters<'_>>("generated/frame/indirect_trace")?
       .add::<SurroundingsParameters<'_>>("generated/frame/surroundings")?

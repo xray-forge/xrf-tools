@@ -1,9 +1,17 @@
 # xrf-cli
 
 The XRF command line: one binary over the workspace crates, grouped by domain (`archive`, `dds`, `dialog`, `docs`,
-`externs`, `gamedata`, `level`, `ltx`, `ogf`, `omf`, `particle`, `profile`, `spawn`, `sprite`, `thm`, `translation`).
-It holds no format or asset rule of its own: a command parses its arguments, calls a crate, tells a person what
-happened and deposits a typed result for `--json` or `--report`.
+`externs`, `gamedata`, `gamemtl`, `level`, `ltx`, `object`, `ogf`, `omf`, `particle`, `spawn`, `sprite`, `thm`,
+`translation`). It holds no format or asset rule of its own: a command parses its arguments, calls a crate, tells a
+person what happened and deposits a typed result for `--json` or `--report`.
+
+## Features
+
+- `gpu` (default): `level compile --backend gpu` traces the light, details and AI map rays with GPU ray queries, on
+  D3D12 where DXC's `dxcompiler.dll` sits beside the CLI and on Vulkan otherwise. Build with `--no-default-features`
+  for a CLI that links no graphics code.
+- `tracy`: records every crate's zones in a Tracy capture; build with the `tracy` profile.
+- `tracy-memory`: `tracy` plus every allocation and its call stack, for finding what holds memory; not for timing.
 
 ## Layout
 

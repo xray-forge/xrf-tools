@@ -1,22 +1,32 @@
 import { useInjection } from "@wirestate/react";
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { formatPercent, formatSeconds } from "@xrf/format";
 import { ThunderboltCollection } from "@xrf/ipc/types/xrf-environment";
 import { ERenderRainDropsMode, ERenderRainMode } from "@xrf/ipc/types/xrf-renderer";
+import { Optional } from "@xrf/types";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { WaterDropIcon } from "@xrf/ui/icons/water-drop";
 import { ReactElement } from "react";
 
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
-import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
-import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
+import {
+  LEVEL_WEATHER_RESET_LABEL,
+  useLevelWeatherReset,
+} from "@/core/level/components/weather/use-level-weather-reset";
+import { toLevelModeFeature, withoutLevelFeatureKeys } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { LEVEL_MANUAL_WEATHER_RAIN_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
+import {
+  LEVEL_MANUAL_WEATHER_RAIN_KEYS,
+  LEVEL_MANUAL_WEATHER_THUNDER_KEYS,
+} from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
@@ -29,13 +39,25 @@ import {
 import { TRenderRainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { LevelWeatherCollectionSelect } from "@/tools/level-viewer/components/weather/LevelWeatherCollectionSelect";
 
-/** What the thunder's list offers before the level's weather is read. */
-const NO_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
+/** The rain settings the drops section sets and resets. */
+const RAIN_DROPS_KEYS: ReadonlyArray<keyof TRenderRainSettings> = [
+  "drops",
+  "dropSquare",
+  "ringDistance",
+  "ringStrength",
+  "ringSize",
+];
 
 /**
- * How hard it rains, the streaks' colour, whether the drops bend the scene behind them, how far about the camera
- * they fall and how far, how strongly and how wide their rings ripple, the bolts that strike with it, and whether puddles gather on flat ground over the engine's own wetting: how many of the sites hold one, how much
- * they reflect, how far they are drawn and how strongly the rain ripples them; whether any of it happens at all.
+ * The rain settings the puddles section sets and resets: every other one, so each is reset by exactly one section.
+ */
+const RAIN_PUDDLES_KEYS: ReadonlyArray<keyof TRenderRainSettings> = (
+  Object.keys(RENDER_RAIN_SETTINGS) as Array<keyof TRenderRainSettings>
+).filter((key: keyof TRenderRainSettings) => !RAIN_DROPS_KEYS.includes(key));
+
+/**
+ * The rain popover: rain strength and colour, the drops and their rings, thunderbolts, and puddles. Each section resets
+ * its own part.
  */
 export function LevelRainAction({
   "data-testid": dataTestId = "level-rain-action",
@@ -45,20 +67,29 @@ export function LevelRainAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const { settings, features, drawn } = useLevelRenderFeatures();
-  const { set: setPuddles, reset: resetPuddles } = useLevelFeatureOverride("rain");
+  const { set } = useLevelFeatureOverride("rain");
+  const onRainReset: Optional<() => void> = useLevelWeatherReset(LEVEL_MANUAL_WEATHER_RAIN_KEYS);
+  const onThunderReset: Optional<() => void> = useLevelWeatherReset(LEVEL_MANUAL_WEATHER_THUNDER_KEYS);
+  const onDropsReset: Optional<() => void> = useLevelFeatureReset(
+    "rain",
+    withoutLevelFeatureKeys(features.rain, RAIN_DROPS_KEYS)
+  );
+  const onPuddlesReset: Optional<() => void> = useLevelFeatureReset(
+    "rain",
+    withoutLevelFeatureKeys(features.rain, RAIN_PUDDLES_KEYS)
+  );
 
   const { isRainy, isThundering } = viewService.options;
 
   // The keyframe on screen: the one set by hand, or the weather's mix, which the first edit seeds it from.
   const manual: ILevelManualWeather = weatherService.shown;
   const collections: ReadonlyArray<ThunderboltCollection> =
-    weatherService.description.value?.thunderboltCollections ?? NO_COLLECTIONS;
-  // The rain's wetting as the view draws it: whether puddles gather, and their strengths.
-  const puddles: TRenderRainSettings = toLevelModeFeature("rain", settings, features);
+    weatherService.description.value?.thunderboltCollections ?? EMPTY_ARRAY;
+  const rain: TRenderRainSettings = toLevelModeFeature("rain", settings, features);
   const isRaining: boolean = isRainy && manual.rainDensity > 0;
   const isStriking: boolean = isThundering && manual.thunderboltCollection !== "";
-  const isPuddled: boolean = puddles.mode === ERenderRainMode.ENHANCED;
-  const isRefracted: boolean = puddles.drops === ERenderRainDropsMode.ENHANCED;
+  const isPuddled: boolean = rain.mode === ERenderRainMode.ENHANCED;
+  const isRefracted: boolean = rain.drops === ERenderRainDropsMode.ENHANCED;
 
   return (
     <EditorPopoverGroup
@@ -69,12 +100,18 @@ export function LevelRainAction({
       description={[
         isRaining ? `Rain at ${formatPercent(manual.rainDensity)}` : isRainy ? "No rain" : "Rain off",
         isStriking ? `bolts of ${manual.thunderboltCollection}` : isThundering ? "no thunder" : "thunder off",
-        isPuddled ? `puddles at ${formatRainShare(puddles.puddles)} of the sites` : "no puddles",
+        isPuddled ? `puddles at ${formatRainShare(rain.puddles)} of the sites` : "no puddles",
       ].join(", ")}
       icon={<WaterDropIcon />}
       isActive={isRaining || isStriking || isPuddled}
     >
-      <EditorPopoverGroupSection label={"Rain"} isOn={isRainy} onToggle={() => viewService.toggleOption("isRainy")}>
+      <EditorPopoverGroupSection
+        label={"Rain"}
+        isOn={isRainy}
+        resetLabel={LEVEL_WEATHER_RESET_LABEL}
+        onToggle={() => viewService.toggleOption("isRainy")}
+        onReset={onRainReset}
+      >
         <LevelManualWeatherSlider
           field={"rainDensity"}
           manual={manual}
@@ -83,29 +120,31 @@ export function LevelRainAction({
         />
 
         <LevelManualWeatherVectorField field={"rainColor"} isColor manual={manual} onEdit={weatherService.editManual} />
+      </EditorPopoverGroupSection>
 
-        <CheckboxFormRow
-          label={RENDER_RAIN_SETTINGS.drops.label}
-          description={explainRenderRainDropsMode(puddles.drops)}
-          isChecked={isRefracted}
-          onChange={(isOn: boolean) =>
-            setPuddles({ drops: isOn ? ERenderRainDropsMode.ENHANCED : ERenderRainDropsMode.ENGINE })
-          }
-        />
-
+      <EditorPopoverGroupSection
+        label={RENDER_RAIN_SETTINGS.drops.label}
+        note={explainRenderRainDropsMode(rain.drops)}
+        isOn={isRefracted}
+        resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+        onToggle={() => set({ drops: isRefracted ? ERenderRainDropsMode.ENGINE : ERenderRainDropsMode.ENHANCED })}
+        onReset={onDropsReset}
+      >
         <RenderSettingEntries
           settings={RENDER_RAIN_SETTINGS}
-          names={["dropSquare", "ringDistance", "ringStrength", "ringSize", "pace"]}
-          group={puddles}
+          names={["dropSquare", "ringDistance", "ringStrength", "ringSize"]}
+          group={rain}
           features={drawn}
-          onSet={setPuddles}
+          onSet={set}
         />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection
         label={"Thunder"}
         isOn={isThundering}
+        resetLabel={LEVEL_WEATHER_RESET_LABEL}
         onToggle={() => viewService.toggleOption("isThundering")}
+        onReset={onThunderReset}
       >
         <LevelWeatherCollectionSelect
           value={manual.thunderboltCollection}
@@ -128,23 +167,21 @@ export function LevelRainAction({
         />
       </EditorPopoverGroupSection>
 
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_RAIN_KEYS} onReset={weatherService.resetManual} />
-
       <EditorPopoverGroupSection
-        label={"Puddles"}
-        description={explainRenderRainMode(puddles.mode)}
+        label={RENDER_RAIN_SETTINGS.mode.label}
+        note={explainRenderRainMode(rain.mode)}
         isOn={isPuddled}
-        onToggle={() => setPuddles({ mode: isPuddled ? ERenderRainMode.ENGINE : ERenderRainMode.ENHANCED })}
+        resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+        onToggle={() => set({ mode: isPuddled ? ERenderRainMode.ENGINE : ERenderRainMode.ENHANCED })}
+        onReset={onPuddlesReset}
       >
         <RenderSettingEntries
           settings={RENDER_RAIN_SETTINGS}
-          names={["puddles", "reflectivity", "distance", "ripples", "isReliefFlooded"]}
-          group={puddles}
+          names={["puddles", "reflectivity", "distance", "ripples", "isReliefFlooded", "pace"]}
+          group={rain}
           features={drawn}
-          onSet={setPuddles}
+          onSet={set}
         />
-
-        <LevelSettingsResetButton onReset={resetPuddles} />
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>
   );

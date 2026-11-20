@@ -36,7 +36,7 @@ import {
   WorldSurfaceSpan,
 } from "@xrf/ipc/types/xrf-world";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import {
   emitViewportEvent,
   LEVEL_SCENE,
@@ -60,6 +60,7 @@ const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 const REPORT: RenderFrameReport = {
   adapter: "Test GPU",
   backend: "d3d12",
+  job: null,
   cpuTime: 0.8,
   cpuTimes: [0.7, 0.8, 0.9],
   frameTime: 6.25,
@@ -436,7 +437,7 @@ describe("LevelRenderService", () => {
       [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
       [ELevelsCommand.SHOW_LEVEL]: LEVEL_SCENE,
     });
-    await container.get(LevelLoadService).load({
+    await container.get(LevelLoadService).open({
       engine: EXrayEngineChoice.VANILLA,
       isDltx: false,
       roots: createRoots(["C:\\game"]),

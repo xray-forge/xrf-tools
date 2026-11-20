@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
+use glam::Vec3;
 use xrf_error::XrfResult;
-use xrf_level::{LevelCformFace, LevelCformGeometry, LevelCformTracer, LevelLight};
+use xrf_geometry::BvhTracer;
+use xrf_level::LevelLight;
 use xrf_math::Vector3d;
 
 use crate::data::lights::hemi_cube::HemiCube;
@@ -11,33 +13,21 @@ use crate::pack::lights::hemi_estimator::HemiEstimator;
 const UP: usize = 1;
 const DOWN: usize = 4;
 
-fn face(vertices: [u32; 3]) -> LevelCformFace {
-  LevelCformFace {
-    is_shadow_suppressed: false,
-    is_wallmark_suppressed: false,
-    material: 0,
-    sector: 0,
-    vertices,
-  }
-}
-
 /// A roof a hundred metres across, three metres up.
-fn roof() -> XrfResult<LevelCformTracer> {
-  let geometry: LevelCformGeometry = LevelCformGeometry::new(
-    vec![
-      Vector3d::new(-50.0, 3.0, -50.0),
-      Vector3d::new(50.0, 3.0, -50.0),
-      Vector3d::new(50.0, 3.0, 50.0),
-      Vector3d::new(-50.0, 3.0, 50.0),
+fn roof() -> XrfResult<BvhTracer> {
+  Ok(BvhTracer::new(
+    &[
+      Vec3::new(-50.0, 3.0, -50.0),
+      Vec3::new(50.0, 3.0, -50.0),
+      Vec3::new(50.0, 3.0, 50.0),
+      Vec3::new(-50.0, 3.0, 50.0),
     ],
-    vec![face([0, 2, 1]), face([0, 3, 2])],
-  )?;
-
-  Ok(LevelCformTracer::new(&geometry))
+    &[[0, 2, 1], [0, 3, 2]],
+  ))
 }
 
-fn open() -> XrfResult<LevelCformTracer> {
-  Ok(LevelCformTracer::new(&LevelCformGeometry::new(Vec::new(), Vec::new())?))
+fn open() -> XrfResult<BvhTracer> {
+  Ok(BvhTracer::new(&[], &[]))
 }
 
 fn point_light(position: Vector3d<f32>) -> LevelLight {

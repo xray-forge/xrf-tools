@@ -8,7 +8,7 @@ use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
 /// and the sway.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
-pub struct GrassDrawParameters {
+pub(crate) struct GrassDrawParameters {
   #[storage]
   pub sorted: StorageArray<Vec4>,
   #[storage]

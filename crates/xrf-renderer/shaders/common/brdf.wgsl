@@ -17,6 +17,16 @@ fn lobe_alpha(roughness: f32) -> f32 {
   return roughness * roughness;
 }
 
+// The least alpha a light's lobe is taken at: Filament's least perceptual roughness, 0.045, squared. A sphere light
+// widens its lobe past it from any distance it lights (`sphere_light`), so it narrows only a light of no radius, and a
+// surface of no roughness (a calm puddle's water) never takes GGX's lobe as nought over nought.
+const DIRECT_LEAST_ALPHA: f32 = 0.002;
+
+// The alpha a light's lobe is taken at for a roughness: its square, held to `DIRECT_LEAST_ALPHA`.
+fn direct_alpha(roughness: f32) -> f32 {
+  return max(lobe_alpha(roughness), DIRECT_LEAST_ALPHA);
+}
+
 // GGX's distribution of normals at the cosine of the normal to the half vector, for a lobe of `alpha`.
 fn ggx_distribution(along: f32, alpha: f32) -> f32 {
   let alpha_squared: f32 = alpha * alpha;
@@ -97,7 +107,7 @@ struct SphereLight {
 fn sphere_light(to_centre: vec3<f32>, radius: f32, reflected: vec3<f32>, roughness: f32) -> SphereLight {
   let across: vec3<f32> = dot(to_centre, reflected) * reflected - to_centre;
   let nearest: vec3<f32> = to_centre + across * saturate(radius / max(length(across), 1e-6));
-  let alpha: f32 = lobe_alpha(roughness);
+  let alpha: f32 = direct_alpha(roughness);
   let widened: f32 = saturate(alpha + radius / (3.0 * max(length(to_centre), 1e-4)));
 
   return SphereLight(normalize(nearest), alpha * alpha / max(widened * widened, 1e-8));
@@ -125,7 +135,7 @@ fn direct_light(normal: vec3<f32>, to_eye: vec3<f32>, to_light: vec3<f32>, spher
   let glinting: f32 = saturate(dot(normal, sphere.to_light));
   let facing: f32 = max(dot(normal, to_eye), BRDF_LEAST_FACING);
   let half_way: vec3<f32> = normalize(sphere.to_light + to_eye);
-  let alpha: f32 = lobe_alpha(roughness);
+  let alpha: f32 = direct_alpha(roughness);
   let lobe: f32 = ggx_distribution(saturate(dot(normal, half_way)), alpha) *
     smith_visibility(max(glinting, BRDF_LEAST_FACING), facing, alpha) * sphere.kept;
   let fresnel: vec3<f32> = schlick_fresnel(head_on, dot(to_eye, half_way));

@@ -3,4 +3,4 @@
 mod archive_thm_file;
 mod archive_thm_thumbnail;
 
-pub use archive_thm_file::ArchiveThmFile;
+pub(crate) use archive_thm_file::ArchiveThmFile;

@@ -162,12 +162,38 @@ fn height_fog_share(state: Lighting, height: f32) -> f32 {
   return rise * rise * (3.0 - 2.0 * rise) * state.height_fog.w;
 }
 
+// The height fog's share summed over heights, an antiderivative of `height_fog_share` before its `w`: `rise`'s
+// smoothstep integrates to `r³ - r⁴ / 2` over `rise`, which falls `1 / (2 range)` a metre, and below the fog's
+// bottom the share is whole, so the sum grows a metre a metre.
+fn height_fog_summed(range: f32, height: f32) -> f32 {
+  let rise: f32 = saturate((range - height) / (2.0 * range));
+
+  return -2.0 * range * rise * rise * rise * (1.0 - 0.5 * rise) + min(height + range, 0.0);
+}
+
+// The height fog's share along the ray from the eye's height to a point's: its mean over the heights between, as a
+// straight ray crosses each height between them over an equal length (the closed form exponential height fogs take,
+// Quilez 2010; here of the smoothstep the share rises by). The point's own share where the two heights stand level.
+fn height_fog_share_along(state: Lighting, eye: f32, height: f32) -> f32 {
+  let span: f32 = height - eye;
+
+  if (abs(span) < 0.01) {
+    return height_fog_share(state, height);
+  }
+
+  let range: f32 = max(state.height_fog.x, 1e-3);
+
+  return saturate((height_fog_summed(range, height) - height_fog_summed(range, eye)) / span) * state.height_fog.w;
+}
+
 // How much fog lies between the camera and a view space point standing at a world height: the distance fog, thickened
-// by the enhanced fog's density where its height fog lies.
+// by the enhanced fog's density by the height fog the ray to it passes through (`height_fog_share_along`): a hilltop
+// seen from inside the fog keeps the fog the ray leaves through, a valley floor seen from above it only the fog the ray
+// descends into.
 fn fog_amount_at(state: Lighting, position: vec3<f32>, height: f32) -> f32 {
   let fog: f32 = fog_amount(state, position);
 
-  return saturate(fog + height_fog_share(state, height) * fog * state.height_fog.y);
+  return saturate(fog + height_fog_share_along(state, state.eye.y, height) * fog * state.height_fog.y);
 }
 
 // How much of the sky a reflection sees at a surface the hemisphere reaches `visible` of: as much, or at the authored

@@ -1,5 +1,6 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
+use crate::feature::lighting::contact_shadows::contact_shadows_recorded::ContactShadowsRecorded;
 use crate::feature::lighting::sun::sun_draw::SunDraw;
 use crate::feature::lighting::sun::sun_parameters::SunParameters;
 use crate::feature::lighting::sun::sun_pass::SunPass;
@@ -11,13 +12,14 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// and by the contact shadows; how much of it each pixel sees, which combine's glint reads; and at the anchored levels
 /// its coloured specular into the specular target.
 #[derive(Default)]
-pub struct SunFeature;
+pub(crate) struct SunFeature;
 
 impl SunFeature {
-  /// Draws the sun shadowed by the `contact_shadows` and what its trace saw (`sun_traced`), its cascades where none is
-  /// traced, filtered `filter_reach` texels each way, over the surface the wetting gives a water film at the anchored
-  /// levels. Answers how much of the sun each pixel sees.
-  pub fn add_passes<'a>(
+  /// Draws the sun shadowed by the `contact` shadows and its trace (`sun_traced`), or its cascades filtered
+  /// `filter_reach` texels each way where none is traced; answers how much of the sun each pixel sees.
+  ///
+  /// At the anchored levels it lights the water film the wetting gives the surface.
+  pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     ViewRecord {
@@ -28,12 +30,12 @@ impl SunFeature {
       ..
     }: ViewRecord<'a>,
     wet: WetTargets,
-    contact_shadows: GraphTexture,
+    contact: ContactShadowsRecorded,
     sun_traced: Option<GraphTexture>,
     filter_reach: u32,
   ) -> GraphTexture {
     let is_traced: bool = sun_traced.is_some();
-    let sun: SunParameters = SunParameters {
+    let sun: SunParameters<'_> = SunParameters {
       albedo_target: targets.albedo,
       normal_target: targets.normal,
       material_target: targets.material,
@@ -44,11 +46,13 @@ impl SunFeature {
       lighting: lit.lighting,
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
-      contact_shadows,
+      contact_shadows: contact.sun,
+      contact: contact.uniform,
       sun_traced: sun_traced
         .unwrap_or_else(|| bindings.import_view(&mut *graph, "sun untraced", passes.lighting.sun.get_untraced())),
       wet_surface: wet.surface,
       wet_reach: wet.reach,
+      shadow_compare: lit.shadow_compare,
     };
     let (width, height) = targets.size;
     let seen: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
@@ -91,10 +95,5 @@ impl SunFeature {
 }
 
 impl ViewFeature for SunFeature {
-  /// Nothing between frames: its targets are the frame's own.
-  fn get_memory(&self) -> u64 {
-    0
-  }
-
   fn release(&mut self) {}
 }

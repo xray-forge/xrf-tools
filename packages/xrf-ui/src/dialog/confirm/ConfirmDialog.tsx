@@ -1,11 +1,11 @@
 import { ReactElement, ReactNode, useId } from "react";
 
+import { Button } from "#/button";
 import { DialogHeader } from "#/dialog/header";
-import { Button } from "#/material/button";
-import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/material/dialog";
-import { Breakpoint } from "#/material/styles";
+import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/dialog/modal";
+import { Breakpoint } from "#/theme/styles";
 
-interface IConfirmDialogProps {
+export interface IConfirmDialogProps {
   isOpen: boolean;
   /** Paints the confirming button as destructive, for commands that overwrite or delete. */
   isDestructive?: boolean;

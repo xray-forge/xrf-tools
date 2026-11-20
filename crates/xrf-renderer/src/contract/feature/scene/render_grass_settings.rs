@@ -4,7 +4,7 @@ use xrf_renderer_derive::RenderSettingSchema;
 use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
 
 /// Metres grass is planted to at most, whatever a setting asks: past it the planting's buffers outgrow any device.
-pub const RENDER_MAX_GRASS_RADIUS: f32 = 512.0;
+pub(crate) const RENDER_MAX_GRASS_RADIUS: f32 = 512.0;
 
 /// The grass (`CDetailManager`): planted on the GPU around the camera as the engine plants it, and drawn into the
 /// G-buffer. The engine's are 49 metres round at a density of 0.6 (`r__detail_radius`, `r__detail_density`).

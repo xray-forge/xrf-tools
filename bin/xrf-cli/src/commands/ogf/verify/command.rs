@@ -10,28 +10,25 @@ use crate::commands::ogf::verify::ogf_verification_census::OgfVerificationCensus
 use crate::commands::ogf::verify::ogf_verification_result::OgfVerificationResult;
 use crate::commands::ogf::verify::ogf_verifier::OgfVerifier;
 use crate::commands::ogf::verify::report::OgfVerifyReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
-pub struct VerifyCommand;
+pub(crate) struct VerifyCommand;
 
 impl GenericCommand for VerifyCommand {
   fn operation(&self) -> &'static str {
     "verify"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to an ogf file or a directory to sweep")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Verify that OGF visuals can be packed for rendering")
-      .arg(
-        Arg::new("path")
-          .help("Path to an ogf file or a directory to sweep")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("root")
           .help("Additional root searched for textures after the visual's own tree, repeatable")
@@ -42,9 +39,7 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
     let roots: Vec<PathBuf> = matches
       .get_many::<PathBuf>("root")
       .map(|values| values.cloned().collect())
@@ -60,7 +55,7 @@ impl GenericCommand for VerifyCommand {
 
     OgfTextureResolver::check_roots(&roots)?;
 
-    let result: OgfVerificationResult = OgfVerifier::new(path, roots.clone()).run();
+    let result: OgfVerificationResult = OgfVerifier::new(path, roots).run();
 
     Self::print_census(&output, &result);
     ReportVerdict::print_findings(&output, &result.report);
@@ -165,13 +160,13 @@ mod tests {
     // Repeatable and ordered: an overlay is layered over a base, and sometimes over a base and the installation
     // behind it, which is the order the engine reads them in.
     assert_eq!(
-      roots(&["verify", "--path", "meshes", "--root", "base", "--root", "install"]),
+      roots(&["verify", "meshes", "--root", "base", "--root", "install"]),
       Some(vec![PathBuf::from("base"), PathBuf::from("install")])
     );
   }
 
   #[test]
   fn sweeps_one_tree_when_no_root_is_named() {
-    assert_eq!(roots(&["verify", "--path", "meshes"]), None);
+    assert_eq!(roots(&["verify", "meshes"]), None);
   }
 }

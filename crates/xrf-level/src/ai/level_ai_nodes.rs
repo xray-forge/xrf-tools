@@ -15,7 +15,7 @@ use crate::ai::level_ai_version::LevelAiVersion;
 /// compilers left behind the links, which makes [`Self::write`] give back the file it read.
 ///
 /// The decoders take the byte order because the bytes are held as the file stores them.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LevelAiNodes {
   version: LevelAiVersion,
   bytes: Vec<u8>,
@@ -44,6 +44,22 @@ impl LevelAiNodes {
       version,
       bytes: reader.read_bytes(size as usize)?,
     })
+  }
+
+  /// Nodes packed in `version`'s layout, in order: how a compiler hands its nodes over.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a node holds a value its layout has no room for ([`LevelAiNode`]'s encoder).
+  pub fn from_nodes<T: ByteOrder>(version: LevelAiVersion, nodes: &[LevelAiNode]) -> XrfResult<Self> {
+    let size: usize = version.get_node_size() as usize;
+    let mut bytes: Vec<u8> = vec![0; nodes.len() * size];
+
+    for (node, packed) in nodes.iter().zip(bytes.chunks_exact_mut(size)) {
+      node.encode::<T>(packed, &version.get_node_layout())?;
+    }
+
+    Ok(Self { version, bytes })
   }
 
   /// The layout the nodes are packed in.

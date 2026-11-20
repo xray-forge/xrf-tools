@@ -12,3 +12,4 @@
 @group(3) @binding(7) var glass_scene: texture_2d<f32>;
 @group(3) @binding(8) var scene_sampler: sampler;
 @group(3) @binding(9) var depth_target: texture_depth_2d;
+@group(3) @binding(10) var shadow_compare: sampler_comparison;

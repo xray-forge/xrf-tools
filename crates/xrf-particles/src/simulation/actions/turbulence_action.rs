@@ -18,11 +18,11 @@ pub(crate) struct TurbulenceAction {
 
 impl TurbulenceAction {
   /// `PlayEffect` starts the drift over.
-  pub fn play(&mut self) {
+  pub(crate) fn play(&mut self) {
     self.age = 0.0;
   }
 
-  pub fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&mut self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     self.age += step.dt;
 
     if pool.is_empty() {
@@ -59,7 +59,7 @@ impl From<&ParticleActionTurbulence> for TurbulenceAction {
       octaves: action.octaves,
       magnitude: action.magnitude,
       epsilon: action.epsilon,
-      offset: Vec3::from_array(action.offset.to_array()),
+      offset: Vec3::from(&action.offset),
       age: 0.0,
     }
   }

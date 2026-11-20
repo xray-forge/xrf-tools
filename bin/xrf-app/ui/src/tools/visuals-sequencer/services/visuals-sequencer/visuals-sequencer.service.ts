@@ -7,7 +7,7 @@ import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { IVisualPose } from "@/core/visuals/lib/render";
 import { VisualInspectionService } from "@/core/visuals/services/visual-inspection";
@@ -98,7 +98,7 @@ export class VisualsSequencerService extends VisualInspectionService {
   ): Promise<void> {
     this.forgetMotions();
 
-    if (await this.loadService.load(source, await this.getRoots(asset, assetRoot))) {
+    if (await this.loadService.open(source, await this.getRoots(asset, assetRoot))) {
       await flowResult(this.list());
     }
   }

@@ -6,7 +6,7 @@ use crate::contract::view::render_surface_color::RenderSurfaceColor;
 /// How a view shades what it shows: lit or as its albedo, filled or as its edges, what colours the surfaces, whether
 /// bumps bend them, and which picture it shows.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderViewMode {
   /// Whether the scene is lit, else shown as its raw albedo.

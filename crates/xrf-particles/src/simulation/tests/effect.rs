@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
+use xrf_math::Vector2d;
 
 use crate::data::effect::particle_effect::ParticleEffect;
 use crate::data::effect::particle_effect_flags::ParticleEffectFlags;
@@ -83,8 +84,8 @@ fn advances_frames_only_when_framed_and_animated() {
 
   definition.flags |= ParticleEffectFlags::FRAMED | ParticleEffectFlags::ANIMATED;
   definition.frame = Some(ParticleEffectFrame {
-    texture_size: (0.25, 0.25),
-    reserved: (0.0, 0.0),
+    texture_size: Vector2d::new(0.25, 0.25),
+    reserved: Vector2d::new(0.0, 0.0),
     frame_dimension_x: 4,
     frame_count: 16,
     frame_speed: 10.0,
@@ -109,8 +110,8 @@ fn starts_particles_on_the_first_frame_where_random_frames_count_none() {
 
   definition.flags |= ParticleEffectFlags::FRAMED | ParticleEffectFlags::RANDOM_FRAME;
   definition.frame = Some(ParticleEffectFrame {
-    texture_size: (1.0, 1.0),
-    reserved: (0.0, 0.0),
+    texture_size: Vector2d::new(1.0, 1.0),
+    reserved: Vector2d::new(0.0, 0.0),
     frame_dimension_x: 1,
     frame_count: 0,
     frame_speed: 0.0,

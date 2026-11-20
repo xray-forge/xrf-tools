@@ -1,9 +1,9 @@
 import { WorldAmbientReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
-import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { EditorPanelProperty, EditorPanelSection, EditorPanelSectionEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
+import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
 import { ReactElement } from "react";
 
 /**
@@ -36,8 +36,7 @@ interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
 }
 
 /**
- * The weather's ambient effects: what plays near the camera and how long it has left, when the next may start, and a
- * way to play one at once.
+ * The weather's ambient effects: what plays and for how long, when the next may start, and a title button to play one.
  */
 export function LevelWeatherAmbientSection({
   "data-testid": dataTestId = "level-weather-ambient-section",
@@ -50,11 +49,13 @@ export function LevelWeatherAmbientSection({
   if (!isPlayed || !ambient) {
     return (
       <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Ambient effects"}>
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
-          {isPlayed
-            ? "None until the weather plays and the level's particles are read."
-            : "Switched off in the Particles menu."}
-        </Typography>
+        <EditorPanelSectionEmpty
+          label={
+            isPlayed
+              ? "None until the weather plays and the level's particles are read."
+              : "Switched off in the Particles menu."
+          }
+        />
       </EditorPanelSection>
     );
   }
@@ -63,17 +64,27 @@ export function LevelWeatherAmbientSection({
   const remaining: number = effect?.remaining ?? 0;
 
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Ambient effects"}>
+    <EditorPanelSection
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      title={"Ambient effects"}
+      actions={
+        <EditorIconAction
+          label={"Play one now"}
+          description={isIndoors ? "None start while the camera is indoors" : "Starts one near the camera at once"}
+          icon={<PlayArrowIcon />}
+          isDisabled={isIndoors}
+          onClick={onPlay}
+        />
+      }
+    >
       <EditorPanelProperty label={"Playing"} value={effect ? `${effect.name}, ${effect.particles}` : "Nothing"} />
       {effect ? (
         <EditorPanelProperty label={"Left"} value={remaining > 0 ? formatWholeSecondsOf(remaining) : "Dying out"} />
       ) : null}
       <EditorPanelProperty label={"Next"} value={toNext(wait, effect !== null)} />
       <EditorPanelProperty label={"Camera"} value={isIndoors ? "Indoors, none start" : "Outdoors"} />
-
-      <Button className={"mt-2"} size={"small"} disabled={isIndoors} onClick={onPlay}>
-        Play one now
-      </Button>
     </EditorPanelSection>
   );
 }

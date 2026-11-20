@@ -4,7 +4,7 @@ use std::time::Duration;
 use indexmap::IndexMap;
 use serde::Serialize;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_utils::to_portable_path_string;
+use xrf_utils::format_portable_path;
 
 use crate::project::describe::translation_finding::TranslationFinding;
 use crate::project::verify::translation_verify_language_summary::TranslationVerifyLanguageSummary;
@@ -123,7 +123,7 @@ impl TranslationVerifyResult {
 
     self.findings.push(Finding::new(
       RuleId::of_static("translations.missing"),
-      Some(to_portable_path_string(path)),
+      Some(format_portable_path(path)),
       format!("Missing translation for key '{key}' in language '{language}'"),
     ));
   }

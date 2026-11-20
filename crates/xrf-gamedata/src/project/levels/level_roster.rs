@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
-use xrf_spawn::{GraphCrossTable, GraphLevel, SpawnFile, SpawnGraphsChunk, XRayByteOrder};
+use xrf_spawn::{SpawnFile, SpawnGraphsChunk, XRayByteOrder};
 
 use crate::project::levels::roster_level::RosterLevel;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
@@ -70,8 +70,7 @@ impl LevelRoster {
   fn add_graph(&mut self, source: &str, graphs: &SpawnGraphsChunk) {
     self.report_graph_duplicates(source, graphs);
 
-    for (rank, level) in Self::ranked_levels(graphs).into_iter().enumerate() {
-      let cross_table: Option<&GraphCrossTable> = graphs.cross_tables.get(rank);
+    for (level, cross_table) in graphs.get_ranked_levels() {
       let name: String = level.name.to_lowercase();
 
       if let Some(existing) = self.levels.iter().find(|it| it.name == name) {
@@ -102,15 +101,6 @@ impl LevelRoster {
         cross_table_nodes_count: cross_table.map(|it| it.nodes_count),
       });
     }
-  }
-
-  /// Order levels the way the engine does.
-  fn ranked_levels(graphs: &SpawnGraphsChunk) -> Vec<&GraphLevel> {
-    let mut levels: Vec<&GraphLevel> = graphs.levels.iter().collect();
-
-    levels.sort_by_key(|level| level.id);
-
-    levels
   }
 
   fn report_graph_duplicates(&mut self, source: &str, graphs: &SpawnGraphsChunk) {

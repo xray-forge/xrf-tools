@@ -45,7 +45,7 @@ const OTHER_PROJECT: TranslationProjectDescriptor = createProject(SECOND_ROOT, "
 
 /** Arrange the state every save starts from: a project open, and one uncommitted edit in it. */
 async function openWithEdit(service: TranslationsService): Promise<void> {
-  await flowResult(service.openProject(createRoots([FIRST_ROOT]), "source"));
+  await flowResult(service.open(createRoots([FIRST_ROOT]), "source"));
 
   service.setEdit(FILE, LANGUAGE, ID, "edited");
 }
@@ -75,7 +75,7 @@ describe("TranslationsService", () => {
       }),
     });
 
-    await service.openProject(createRoots([FIRST_ROOT]), "source");
+    await service.open(createRoots([FIRST_ROOT]), "source");
 
     expect(service.resolveValue(FILE, LANGUAGE, "lines")).toBe("first\\nsecond");
 
@@ -250,7 +250,7 @@ describe("TranslationsService", () => {
 
     // The two share one flow lane, so opening cancels the save rather than queueing behind it. The write itself is
     // already in flight and cannot be recalled; what must not survive is the marker saying this file is being written.
-    await flowResult(service.openProject(createRoots([SECOND_ROOT]), "source"));
+    await flowResult(service.open(createRoots([SECOND_ROOT]), "source"));
 
     expect(service.savingFile).toBeNull();
   });
@@ -271,7 +271,7 @@ describe("TranslationsService", () => {
 
     const previous = service.project.value;
 
-    await service.closeProject();
+    await service.close();
 
     expect(service.project.value).toBe(previous);
     expect(service.project.isLoading).toBe(false);
@@ -286,7 +286,7 @@ describe("TranslationsService", () => {
     ]);
 
     mockIpcCommands({});
-    await service.closeProject();
+    await service.close();
 
     expect(service.project.isLoading).toBe(false);
     expect(service.project.error).toBeNull();
@@ -306,7 +306,7 @@ describe("TranslationsService", () => {
 
     await openWithEdit(service);
 
-    const closing = flowResult(service.closeProject());
+    const closing = flowResult(service.close());
 
     expect(service.project.isLoading).toBe(true);
     expect(service.project.value).toEqual(PROJECT);

@@ -2,7 +2,7 @@
 name = "xrf-app-spawn"
 version = "0.1.0"
 publish = false
-description = "XRF development tools: all.spawn files opened, edited, packed and unpacked"
+description = "XRF development tools: all.spawn files opened, edited, packed and unpacked, and built from a game's levels"
 authors = ["Neloreck"]
 edition.workspace = true
 rust-version.workspace = true
@@ -18,9 +18,13 @@ tauri-specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-app-core = { workspace = true }
 xrf-chunk = { workspace = true }
+xrf-dltx = { workspace = true }
+xrf-error = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
+xrf-ltx = { workspace = true }
 xrf-spawn = { workspace = true }
+xrf-spawn-builder = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
@@ -39,6 +43,7 @@ typescript-bindings = [
   "xrf-ipc",
   "xrf-job/typescript-bindings",
   "xrf-spawn/typescript-bindings",
+  "xrf-spawn-builder/typescript-bindings",
 ]
 
 [lints]

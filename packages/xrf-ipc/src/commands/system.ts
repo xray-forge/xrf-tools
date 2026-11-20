@@ -69,13 +69,7 @@ export const systemCommands = {
     __TAURI_INVOKE<void>(ESystemCommand.REPORT_LEAVE_DECISION, { decision, unsaved }),
   /** Show a path in the desktop's own file manager. */
   revealPath: (path: string) => __TAURI_INVOKE<null>(ESystemCommand.REVEAL_PATH, { path }),
-  /**
-   * Put the calling window on screen: its page has something themed to show. A page loaded over a window already shown
-   * changes nothing.
-   *
-   * Asynchronous so it runs off the main thread: a synchronous command runs inside the webview's message callback there,
-   * and showing the window from inside it never returns on Windows.
-   */
+  /** Show the calling window once its page has drawn its first screen; a window already shown is left as it is. */
   revealWindow: () => __TAURI_INVOKE<null>(ESystemCommand.REVEAL_WINDOW),
   /**
    * Tidies the application's caches by `policy`, the settings' limits: what went unused past its age goes, then the

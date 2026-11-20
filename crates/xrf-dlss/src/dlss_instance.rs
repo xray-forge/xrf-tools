@@ -1,6 +1,16 @@
+#![cfg_attr(
+  feature = "sdk",
+  expect(
+    unsafe_code,
+    reason = "opens the Vulkan instance and device NGX needs through wgpu-hal"
+  )
+)]
+
 use std::path::Path;
 
+#[cfg(feature = "sdk")]
 use crate::dlss::Dlss;
+use crate::dlss_task::DlssTask;
 #[cfg(feature = "sdk")]
 use crate::ngx::backend::ngx_vulkan_extensions::NgxVulkanExtensions;
 #[cfg(feature = "sdk")]
@@ -50,8 +60,8 @@ impl DlssInstance {
     }
   }
 
-  /// Starts a device on `adapter`, one of this instance's, and DLSS on it where NGX is hooked in and the adapter has
-  /// what it needs.
+  /// Starts a device on `adapter`, one of this instance's, and DLSS on it where NGX is hooked in and the adapter
+  /// supports it; the device is answered while DLSS still starts.
   ///
   /// # Errors
   ///
@@ -60,15 +70,17 @@ impl DlssInstance {
     &self,
     adapter: &wgpu::Adapter,
     descriptor: &wgpu::DeviceDescriptor<'_>,
-  ) -> Result<(wgpu::Device, wgpu::Queue, Option<Dlss>), wgpu::RequestDeviceError> {
+  ) -> Result<(wgpu::Device, wgpu::Queue, DlssTask), wgpu::RequestDeviceError> {
     #[cfg(feature = "sdk")]
     if let Some(application) = &self.application
       && adapter.get_info().backend == wgpu::Backend::Dx12
     {
       let (device, queue) = pollster::block_on(adapter.request_device(descriptor))?;
-      let dlss: Option<Dlss> = (adapter.get_info().vendor == Self::NVIDIA)
-        .then(|| Dlss::start(application, adapter, (&device, &queue)))
-        .flatten();
+      let dlss: DlssTask = if adapter.get_info().vendor == Self::NVIDIA {
+        Self::launch(application, adapter, (&device, &queue))
+      } else {
+        DlssTask::none()
+      };
 
       return Ok((device, queue, dlss));
     }
@@ -77,9 +89,11 @@ impl DlssInstance {
     if let Some(application) = &self.application {
       match Self::open(application, adapter, descriptor) {
         Ok((device, queue, is_supported)) => {
-          let dlss: Option<Dlss> = is_supported
-            .then(|| Dlss::start(application, adapter, (&device, &queue)))
-            .flatten();
+          let dlss: DlssTask = if is_supported {
+            Self::launch(application, adapter, (&device, &queue))
+          } else {
+            DlssTask::none()
+          };
 
           return Ok((device, queue, dlss));
         }
@@ -89,13 +103,26 @@ impl DlssInstance {
 
     let (device, queue) = pollster::block_on(adapter.request_device(descriptor))?;
 
-    Ok((device, queue, None))
+    Ok((device, queue, DlssTask::none()))
+  }
+
+  /// Starts DLSS on `device` on a thread of its own.
+  #[cfg(feature = "sdk")]
+  fn launch(
+    application: &NgxApplication,
+    adapter: &wgpu::Adapter,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
+  ) -> DlssTask {
+    let (application, adapter, device, queue) = (application.clone(), adapter.clone(), device.clone(), queue.clone());
+
+    DlssTask::launch(move || Dlss::start(&application, &adapter, (&device, &queue)))
   }
 
   /// A Vulkan instance with NGX's instance extensions, where the loader has them; one without NGX otherwise.
   #[cfg(feature = "sdk")]
   fn hook(descriptor: &wgpu::InstanceDescriptor, application: NgxApplication) -> xrf_error::XrfResult<Self> {
     let mut is_supported: xrf_error::XrfResult<bool> = Ok(false);
+    // SAFETY: the descriptor is wgpu's own for this instance, and the callback only adds extension names.
     let raw = unsafe {
       wgpu::hal::vulkan::Instance::init_with_callback(
         &wgpu::hal::InstanceDescriptor {
@@ -115,6 +142,7 @@ impl DlssInstance {
     let is_supported: bool = is_supported?;
 
     Ok(Self {
+      // SAFETY: `raw` is the hal instance just made, handed whole to wgpu, which owns it from here.
       instance: unsafe { wgpu::Instance::from_hal::<wgpu::hal::api::Vulkan>(raw) },
       application: is_supported.then_some(application),
     })
@@ -128,9 +156,12 @@ impl DlssInstance {
     descriptor: &wgpu::DeviceDescriptor<'_>,
   ) -> xrf_error::XrfResult<(wgpu::Device, wgpu::Queue, bool)> {
     let failed = |error: String| xrf_error::XrfError::new_unexpected_error(error);
+    // SAFETY: the raw adapter is used only to open a device for wgpu to adopt below.
     let hal = unsafe { adapter.as_hal::<wgpu::hal::api::Vulkan>() }
       .ok_or_else(|| failed("the adapter is not a Vulkan one".to_string()))?;
     let mut is_supported: xrf_error::XrfResult<bool> = Ok(false);
+    // SAFETY: the features, limits and hints are the descriptor's, which the adapter was asked to meet, and the
+    // callback only adds extension names it supports.
     let opened = unsafe {
       hal.open_with_callback(
         descriptor.required_features,
@@ -143,6 +174,7 @@ impl DlssInstance {
     }
     .map_err(|error| failed(error.to_string()))?;
     let is_supported: bool = is_supported?;
+    // SAFETY: `opened` is the device just opened on this adapter with `descriptor`, handed whole to wgpu.
     let (device, queue) = unsafe { adapter.create_device_from_hal::<wgpu::hal::api::Vulkan>(opened, descriptor) }
       .map_err(|error| failed(error.to_string()))?;
 

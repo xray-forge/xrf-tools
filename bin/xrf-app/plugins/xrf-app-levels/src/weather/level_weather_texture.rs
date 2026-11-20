@@ -6,7 +6,7 @@ use crate::parts::LevelTextureReference;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelWeatherTexture {
+pub(crate) struct LevelWeatherTexture {
   /// The reference, and what it resolves to beside the level.
   pub texture: LevelTextureReference,
   /// How many keyframes of the cycles and effects name it.

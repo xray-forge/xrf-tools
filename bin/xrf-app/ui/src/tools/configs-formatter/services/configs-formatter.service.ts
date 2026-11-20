@@ -5,7 +5,7 @@ import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, ConfigsFormatRequest } fr
 import { LtxProjectFormatResult } from "@xrf/ipc/types/xrf-ltx";
 import { Logger } from "@xrf/logging";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { describeFormatOutcome } from "@/tools/configs-formatter/lib/describe-format-outcome";

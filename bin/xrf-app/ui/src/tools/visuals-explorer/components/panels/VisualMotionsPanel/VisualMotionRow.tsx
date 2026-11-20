@@ -1,9 +1,9 @@
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { VisualMotionDependency } from "@xrf/ipc/types/xrf-visual";
+import { Chip } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material/chip";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement } from "react";
 
 import { listLocatedAssets } from "@/core/assets/lib/resolution";

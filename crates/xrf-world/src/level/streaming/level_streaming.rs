@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LevelPart, LevelParts, RenderLevelDetails, RenderLevelHelpers, RenderLevelPart, RenderLoadFailure,
+  LevelPart, LevelParts, RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelPart, RenderLoadFailure,
   RenderModelFailure, RenderModelSkeleton, RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress,
   RenderWorkers, StaticModelPlace, StaticModelProxy, StaticObjectProxy, StaticSectorProxy,
 };
@@ -31,16 +31,16 @@ const SECTORS_PER_FRAME: usize = 4;
 /// Spawned models posted at most in one frame.
 const MODELS_PER_FRAME: usize = 16;
 
-/// What streams a level into its scene: the workers reading its sectors, spawned models, lights and grass, how much of
-/// what they read is posted a frame, the handles its posts name, which spawn groups stand, and what came in and what
-/// could not.
-pub struct LevelStreaming {
+/// Streams a level into its scene: its sectors, spawned models, lights, grass, helpers and AI map, read on the workers
+/// and posted a share a frame, with what could not come in.
+pub(crate) struct LevelStreaming {
   source: Arc<dyn WorldLevelSource>,
   sectors: LevelLoader,
   spawn: SpawnLoader,
   lights: LoaderOnce<LightsDescription>,
   grass: LoaderOnce<Option<RenderLevelDetails>>,
   helpers: LoaderOnce<RenderLevelHelpers>,
+  ai_map: LoaderOnce<Option<RenderLevelAiMap>>,
   /// The campfires and the object motions the lights follow, by the campfires' ids and the motions' names.
   light_campfires: Vec<u16>,
   light_motions: Vec<String>,
@@ -66,13 +66,14 @@ pub struct LevelStreaming {
 }
 
 impl LevelStreaming {
-  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       sectors: LevelLoader::start(Arc::clone(&source), workers),
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
       lights: Self::read_lights(&source, workers),
       grass: Self::read_grass(&source, workers),
       helpers: Self::read_helpers(&source, workers),
+      ai_map: Self::read_ai_map(&source, workers),
       light_campfires: Vec::new(),
       light_motions: Vec::new(),
       sector_handles: ProxyAllocator::new(),
@@ -127,15 +128,25 @@ impl LevelStreaming {
     })
   }
 
-  pub fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
+  /// Reads the level's AI map on the workers.
+  fn read_ai_map(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> LoaderOnce<Option<RenderLevelAiMap>> {
+    let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
+
+    LoaderOnce::spawn(workers, "ai map", move || {
+      source
+        .read_ai_map()
+        .inspect_err(|error| log::warn!("The level's AI map cannot be shown: {error}"))
+        .ok()
+    })
+  }
+
+  pub(crate) fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
     &self.source
   }
 
-  /// Streams on from `source`, a next source of the same level: the sectors posted stay, and those still being read
-  /// finish from the source they started from. Where `reload` names the spawn, every spawned model posted leaves the
-  /// scene with its objects and the spawn streams in again; where it names the lights or the grass, they are read again
-  /// and replace those drawn once read.
-  pub fn follow(
+  /// Streams on from `source`, a next source of the same level. Posted sectors stay and those being read finish from
+  /// their old source; the spawn, helpers, lights or grass `reload` names are read again and replace what is drawn.
+  pub(crate) fn follow(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
@@ -145,7 +156,6 @@ impl LevelStreaming {
   ) {
     self.source = source;
 
-    // The helpers are the spawned objects', so they are read again with the spawn.
     if reload.contains(LevelPart::Spawn) {
       for model in std::mem::take(&mut self.models) {
         self.release_model(animation, &model);
@@ -154,6 +164,10 @@ impl LevelStreaming {
 
       self.failed_models.clear();
       self.spawn = SpawnLoader::start(Arc::clone(&self.source), workers);
+    }
+
+    // The helpers cover spawned and placed level objects alike.
+    if reload.contains(LevelPart::Helpers) {
       self.helpers = Self::read_helpers(&self.source, workers);
     }
 
@@ -164,10 +178,14 @@ impl LevelStreaming {
     if reload.contains(LevelPart::Grass) {
       self.grass = Self::read_grass(&self.source, workers);
     }
+
+    if reload.contains(LevelPart::AiMap) {
+      self.ai_map = Self::read_ai_map(&self.source, workers);
+    }
   }
 
   /// Records the sectors and the spawned models the scene could not take in of the posts before, forgetting them.
-  pub fn take_failures(
+  pub(crate) fn take_failures(
     &mut self,
     animation: &mut LevelAnimation,
     failures: Vec<RenderSectorFailure>,
@@ -188,7 +206,7 @@ impl LevelStreaming {
 
   /// Posts this frame's changes: the spawned objects `hidden` leaves out taken out and those it no longer does stood
   /// again, the lights and the grass once read, and a few of the sectors and spawned models the workers finished.
-  pub fn stream(
+  pub(crate) fn stream(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
@@ -198,6 +216,10 @@ impl LevelStreaming {
 
     if let Some(grass) = self.grass.take() {
       updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Grass(grass)));
+    }
+
+    if let Some(ai_map) = self.ai_map.take() {
+      updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::AiMap(ai_map)));
     }
 
     if let Some(helpers) = self.helpers.take() {
@@ -268,7 +290,7 @@ impl LevelStreaming {
   }
 
   /// How far the level has streamed into its scene.
-  pub fn get_progress(&self) -> RenderStreamingProgress {
+  pub(crate) fn get_progress(&self) -> RenderStreamingProgress {
     let sectors: u32 = self.posted.len() as u32;
     let sectors_total: u32 = self.sectors.get_total();
 
@@ -288,18 +310,23 @@ impl LevelStreaming {
     }
   }
 
-  /// The campfires and the object motions the level's lights follow, by the campfires' ids and the motions' names.
-  pub fn list_light_followed(&self) -> (&[u16], &[String]) {
-    (&self.light_campfires, &self.light_motions)
+  /// The campfires the level's lights follow, by their ids.
+  pub(crate) fn list_light_campfires(&self) -> &[u16] {
+    &self.light_campfires
+  }
+
+  /// The object motions the level's lights follow, by their names.
+  pub(crate) fn list_light_motions(&self) -> &[String] {
+    &self.light_motions
   }
 
   /// How much each shader table entry draws across the sectors streamed in.
-  pub fn measure_surfaces(&self) -> Vec<WorldSurfaceGeometry> {
+  pub(crate) fn measure_surfaces(&self) -> Vec<WorldSurfaceGeometry> {
     self.surfaces.list()
   }
 
   /// What the level could not draw the way it asked, so far.
-  pub fn describe_problems(&self) -> WorldLevelProblems {
+  pub(crate) fn describe_problems(&self) -> WorldLevelProblems {
     let mut models: Vec<RenderLoadFailure> = self.spawn.list_failures();
 
     models.extend_from_slice(&self.failed_models);

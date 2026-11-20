@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read, SeekFrom};
 
 use byteorder::{ByteOrder, ReadBytesExt};
 use xrf_error::{XrfError, XrfResult};
@@ -116,13 +116,18 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   /// Read serialized vector from chunk, where u32 count N is followed by N u16 entries.
   pub fn read_u16_vector<T: ByteOrder>(&mut self) -> XrfResult<Vec<u16>> {
     let count: u32 = self.read_u32::<T>()?;
-    let mut vector: Vec<u16> = self.new_bounded_vec(count.into(), size_of::<u16>() as u64, "u16 vector")?;
 
-    for _ in 0..count {
-      vector.push(self.read_u16::<T>()?)
-    }
+    // Bounded before anything is read, so a corrupt count is refused rather than reserved.
+    xrf_utils::assert_count_fits(
+      count.into(),
+      self.read_bytes_remain(),
+      size_of::<u16>() as u64,
+      "u16 vector",
+    )?;
 
-    Ok(vector)
+    Ok(self.data.read_with(count as usize * size_of::<u16>(), |bytes| {
+      bytes.as_chunks::<2>().0.iter().map(|it| T::read_u16(it)).collect()
+    })?)
   }
 
   /// Read a float the format stored as a `u16` spread across a range, `IReader::r_float_q16`.
@@ -141,6 +146,39 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   ///
   /// Returns an error, before reading anything, when fewer than `count` bytes remain in the chunk.
   pub fn read_bytes(&mut self, count: usize) -> XrfResult<Vec<u8>> {
+    self.assert_bytes_remain(count)?;
+
+    Ok(self.data.read_bytes(count)?)
+  }
+
+  /// Hand the next `count` bytes to `visit` and move past them, without a copy where the source allows
+  /// ([`ChunkDataSource::read_with`]).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, before reading anything, when fewer than `count` bytes remain in the chunk.
+  pub fn read_with<R>(&mut self, count: usize, visit: impl FnOnce(&[u8]) -> R) -> XrfResult<R> {
+    self.assert_bytes_remain(count)?;
+
+    Ok(self.data.read_with(count, visit)?)
+  }
+
+  /// Move past the next `count` bytes without reading them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, before moving, when fewer than `count` bytes remain in the chunk.
+  pub fn skip_bytes(&mut self, count: usize) -> XrfResult {
+    self.assert_bytes_remain(count)?;
+    let offset: i64 = i64::try_from(count).expect("bytes left in a chunk fit a seek offset");
+
+    self.data.set_seek(SeekFrom::Current(offset))?;
+
+    Ok(())
+  }
+
+  /// Refuse a read of more bytes than the chunk has left.
+  fn assert_bytes_remain(&self, count: usize) -> XrfResult {
     if count as u64 > self.read_bytes_remain() {
       return Err(XrfError::new_invalid_error(format!(
         "Requested {count} bytes, but only {} remain in the chunk",
@@ -148,7 +186,15 @@ impl<D: ChunkDataSource> ChunkReader<D> {
       )));
     }
 
-    Ok(self.data.read_bytes(count)?)
+    Ok(())
+  }
+
+  /// Hand the rest of the chunk to `visit` and move past it, as [`Self::read_with`] does.
+  pub fn read_remaining_with<R>(&mut self, visit: impl FnOnce(&[u8]) -> R) -> XrfResult<R> {
+    let count: usize = usize::try_from(self.read_bytes_remain())
+      .map_err(|_| XrfError::new_invalid_error("Chunk remainder is over the platform limit"))?;
+
+    Ok(self.data.read_with(count, visit)?)
   }
 
   /// Read all remaining raw bytes.
@@ -160,13 +206,46 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     Ok(buf)
   }
 
-  /// Reads one value and proves it was the whole payload.
-  fn read_whole_payload<V>(&mut self, message: &str, read: impl FnOnce(&mut Self) -> XrfResult<V>) -> XrfResult<V> {
+  /// Reads one value and checks it was the whole payload, so no byte is dropped on a round trip.
+  ///
+  /// # Errors
+  ///
+  /// Returns `read`'s error, or `message` when bytes are left after it.
+  pub fn read_whole_payload<V>(&mut self, message: &str, read: impl FnOnce(&mut Self) -> XrfResult<V>) -> XrfResult<V> {
     let value: V = read(self)?;
 
     self.assert_read(message)?;
 
     Ok(value)
+  }
+
+  /// Reads children numbered 0, 1, 2 in order, refusing any other numbering. The SDK opens such a list with
+  /// `open_chunk(i)` up to the first missing number, so the editor would not see children past a gap.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the children are not well-formed chunks or one is out of place (named by `what`), or
+  /// `read`'s error.
+  pub fn read_numbered_children<I>(
+    &mut self,
+    what: &str,
+    mut read: impl FnMut(&mut Self) -> XrfResult<I>,
+  ) -> XrfResult<Vec<I>> {
+    let children: Vec<Self> = self.read_children()?;
+    let mut items: Vec<I> = Vec::with_capacity(children.len());
+
+    for (index, mut child) in children.into_iter().enumerate() {
+      if u64::from(child.id) != index as u64 {
+        return Err(XrfError::new_parsing_error(format!(
+          "Unexpected {what} chunk {} at position {index}, the editor numbers them from 0 without gaps",
+          child.id
+        )));
+      }
+
+      items.push(read(&mut child)?);
+    }
+
+    Ok(items)
   }
 }
 
@@ -232,10 +311,40 @@ mod tests {
   }
 
   #[test]
+  fn skips_and_lends_bytes_within_the_payload_only() -> XrfResult {
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 1, 2, 3, 4, 5, 6, 7])?;
+
+    chunk.skip_bytes(3)?;
+
+    assert_eq!(chunk.read_with(4, <[u8]>::to_vec)?, vec![3, 4, 5, 6]);
+    assert_eq!(chunk.cursor_pos(), 7);
+
+    for error in [
+      chunk.skip_bytes(2).expect_err("expect the skip to exceed the payload"),
+      chunk
+        .read_with(2, |_| ())
+        .expect_err("expect the read to exceed the payload"),
+    ] {
+      assert!(
+        error.to_string().contains("Requested 2 bytes, but only 1 remain"),
+        "Unexpected error: {error}"
+      );
+    }
+
+    assert_eq!(
+      chunk.cursor_pos(),
+      7,
+      "a refused count to leave the cursor where it was"
+    );
+
+    Ok(())
+  }
+
+  #[test]
   fn test_read_remaining() -> XrfResult {
     assert_eq!(ChunkReader::from_bytes(&[0, 1, 2])?.read_remaining()?, vec![0, 1, 2]);
     assert_eq!(ChunkReader::from_bytes(&[0])?.read_remaining()?, vec![0]);
-    // Nothing left to read is reached through an empty chunk, since a reader cannot be opened over an empty source.
+    // An empty chunk, since a reader cannot be opened over an empty source.
     let mut empty: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     assert_eq!(empty.read_remaining()?, Vec::<u8>::new());
@@ -290,7 +399,6 @@ mod tests {
     Ok(())
   }
 
-  /// A four byte record, the smallest a test needs.
   #[derive(Debug, PartialEq)]
   struct Record(u32);
 
@@ -328,6 +436,39 @@ mod tests {
       error,
       "Invalid error: Unexpected test records of 5 bytes, which does not divide into 4 byte records"
     );
+
+    Ok(())
+  }
+
+  fn children_of(ids: &[u32]) -> XrfResult<Vec<u8>> {
+    let mut parent: ChunkWriter = ChunkWriter::new();
+
+    for id in ids {
+      let mut child: ChunkWriter = ChunkWriter::new();
+
+      child.write_u32::<XRayByteOrder>(*id)?;
+      child.flush_chunk_into::<XRayByteOrder>(&mut parent.buffer, *id)?;
+    }
+
+    Ok(parent.buffer)
+  }
+
+  fn read_numbered(ids: &[u32]) -> XrfResult<Vec<u32>> {
+    ChunkReader::from_bytes(&children_of(ids)?)?
+      .read_numbered_children("test child", |child| Ok(child.read_u32::<XRayByteOrder>()?))
+  }
+
+  #[test]
+  fn reads_children_numbered_from_zero_and_refuses_a_gap_or_another_order() -> XrfResult {
+    assert_eq!(read_numbered(&[0, 1, 2])?, vec![0, 1, 2]);
+
+    for ids in [&[0, 2][..], &[1][..], &[1, 0][..]] {
+      let error: String = read_numbered(ids)
+        .expect_err("expect a numbering the editor does not open to be refused")
+        .to_string();
+
+      assert!(error.contains("test child chunk"), "{ids:?}: {error}");
+    }
 
     Ok(())
   }

@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
+use rustc_hash::FxBuildHasher;
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
 use xrf_output::OutputOptions;
@@ -48,9 +48,8 @@ impl LtxProject {
       // Do not check scheme definitions for scheme files - makes no sense.
       if Self::is_ltx_scheme_path(entry) {
         continue;
-      } else {
-        result.total_files += 1;
       }
+      result.total_files += 1;
 
       // One unreadable config must not end the run.
       // Not retained: a sweep reads every root once, and holding them all is what `is_caching_resolutions` exists to
@@ -89,7 +88,7 @@ impl LtxProject {
       xrf_output::info!(
         options.output,
         "Verified {:.2}%, {} files, {} sections, {} fields",
-        (result.checked_sections as f32 * 100.0) / result.total_sections as f32,
+        (result.checked_sections as f64 * 100.0) / result.total_sections as f64,
         result.total_files,
         result.checked_sections,
         result.checked_fields
@@ -132,7 +131,7 @@ impl LtxProject {
     // Rendered once per entry point and only when someone reads it: rendering asks the VFS where the file sits.
     let reported: Option<String> = output.map(|_| self.report_path(entry.as_str()));
 
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       found.total_sections += 1;
 
       // The file a person has to open, which the entry point stays beside.

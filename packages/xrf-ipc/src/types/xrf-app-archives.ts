@@ -1262,6 +1262,8 @@ export type ArchivesExtractRequest = {
   prefix: string;
   /** Directory to write the contents into. */
   destination: string;
+  /** Whether files the run writes may replace those already there; unforced, the run refuses before writing. */
+  isForced: boolean;
 };
 
 /** Archive packing request. */
@@ -1288,6 +1290,8 @@ export type ArchivesUnpackRequest = {
   from: string;
   /** Directory to write the contents into. */
   destination: string;
+  /** Whether files the run writes may replace those already there; unforced, the run refuses before writing. */
+  isForced: boolean;
 };
 
 /** What a sound is, once it has been located. */
@@ -1298,8 +1302,6 @@ export type AudioDescriptor = {
   sampleRate: number | null;
   /** Absent for a sound carrying no recognized X-Ray comment, where the engine uses its own defaults. */
   parameters: AudioSourceParameters | null;
-  /** What to hand the bytes over as, taken from the extension rather than from the content. */
-  mediaType: string;
 };
 
 /** The X-Ray source parameters carried in a sound's first vorbis comment. */

@@ -22,7 +22,7 @@ const VISUALS_PER_BATCH: usize = 16;
 /// than the pool's width of them running or queued at once (`LoaderFlight`), each model packed and handed to the render
 /// thread with the objects standing as it; the next batches start as the render thread takes models, once a frame.
 /// Dropped, it lets go of the batches not started yet.
-pub struct SpawnLoader {
+pub(crate) struct SpawnLoader {
   source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   /// The objects on their way from their loader, none once they came or could not be read.
@@ -42,7 +42,7 @@ pub struct SpawnLoader {
 }
 
 impl SpawnLoader {
-  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+  pub(crate) fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     let (spawn_sender, spawn_receiver) = LoaderReceiver::channel();
     let (sender, receiver) = LoaderReceiver::channel();
     let reader: Arc<dyn WorldLevelSource> = Arc::clone(&source);
@@ -72,12 +72,12 @@ impl SpawnLoader {
   }
 
   /// The visuals that could not be read so far.
-  pub fn list_failures(&self) -> Vec<RenderLoadFailure> {
+  pub(crate) fn list_failures(&self) -> Vec<RenderLoadFailure> {
     self.failures.lock().unwrap_or_else(PoisonError::into_inner).clone()
   }
 
   /// Whether the objects were read, every batch of their visuals has been read and every model it packed taken.
-  pub fn is_done(&self) -> bool {
+  pub(crate) fn is_done(&self) -> bool {
     self.reading.is_none()
       && self.get_batch_count() == self.flight.get_started() as usize
       && self.flight.is_landed()
@@ -86,7 +86,7 @@ impl SpawnLoader {
 
   /// The models finished since the last call, at most `limit` of them; takes the objects once read and starts as many
   /// more batches as finished.
-  pub fn take(&mut self, limit: usize) -> Vec<SpawnLoad> {
+  pub(crate) fn take(&mut self, limit: usize) -> Vec<SpawnLoad> {
     if let Some(spawn) = take_answer(&mut self.reading, "spawn") {
       self.spawn = spawn.map(|spawn| Arc::new(IndexedSpawn::new(spawn)));
     }

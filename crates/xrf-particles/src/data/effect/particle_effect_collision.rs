@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::assert_equal;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -54,8 +54,8 @@ impl ChunkReadWrite for ParticleEffectCollision {
 
 impl LtxImportExport for ParticleEffectCollision {
   /// Import particle effect collision data from provided path.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle effect description section '{}' should be defined in ltx file ({})",
         section_name,
@@ -79,16 +79,13 @@ impl LtxImportExport for ParticleEffectCollision {
   }
 
   /// Export particle effect collision data into provided path.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
-      .set(
-        "collide_one_minus_friction",
-        self.collide_one_minus_friction.to_string(),
-      )
-      .set("collide_resilience", self.collide_resilience.to_string())
-      .set("collide_sqr_cutoff", self.collide_sqr_cutoff.to_string());
+      .set("collide_one_minus_friction", self.collide_one_minus_friction)
+      .set("collide_resilience", self.collide_resilience)
+      .set("collide_sqr_cutoff", self.collide_sqr_cutoff);
 
     Ok(())
   }

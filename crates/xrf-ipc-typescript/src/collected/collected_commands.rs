@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use specta::Types;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::collected::PluginCommands;
 
@@ -15,13 +16,13 @@ pub(crate) struct CollectedCommands {
 impl CollectedCommands {
   /// The commands `plugin` exported.
   ///
-  /// # Panics
+  /// # Errors
   ///
-  /// Panics when the plugin exported nothing, which means its builder carries another plugin name than its surface.
-  pub(crate) fn of(&self, plugin: &str) -> &PluginCommands {
+  /// When the plugin exported nothing, which means its builder carries another plugin name than its surface.
+  pub(crate) fn of(&self, plugin: &str) -> XrfResult<&PluginCommands> {
     self
       .plugins
       .get(plugin)
-      .unwrap_or_else(|| panic!("Plugin `{plugin}` exported no commands under its own name"))
+      .ok_or_else(|| XrfError::new_invalid_error(format!("Plugin `{plugin}` exported no commands under its own name")))
   }
 }

@@ -1,14 +1,13 @@
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, Ref, RefObject, useRef } from "react";
 
+import { IconButton } from "#/button";
 import { BaseComponentProps } from "#/element-types";
 import { ClearIcon } from "#/icons/clear";
 import { SearchIcon } from "#/icons/search";
-import { IconButton } from "#/material/icon-button";
-import { InputAdornment } from "#/material/input";
-import { TextField } from "#/material/text-field";
-import { Tooltip } from "#/material/tooltip";
-import { useForkRef } from "#/material/utils";
+import { InputAdornment, TextField } from "#/input";
+import { Tooltip } from "#/overlay";
+import { useForkRef } from "#/react/fork-ref";
 
 export interface IEditorFilterInputProps extends BaseComponentProps {
   ariaLabel: string;

@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 /// Location in the TypeScript source that declares an extern.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExternSourceLocation {
   pub column: usize,
   pub line: usize,

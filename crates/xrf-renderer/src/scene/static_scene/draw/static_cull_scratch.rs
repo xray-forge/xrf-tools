@@ -3,26 +3,18 @@ use xrf_error::{XrfError, XrfResult};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::scene::static_scene::draw::static_batch::StaticBatch;
 use crate::scene::static_scene::draw::static_region::StaticRegion;
-use crate::scene::static_scene::geometry::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
 
-/// What a frame's culls of a static scene write into: the visible list, its run a draw list, the candidates the early
-/// phase sets aside, and the draw arguments, reset from templates each frame; sized by the entries each draw list may
-/// need. Every view of the scene culls into the same buffers, in the order the frame declares them.
-pub struct StaticCullScratch {
-  pub lists: GrowableBuffer,
-  /// Clusters the early phase set aside, for the late phase to test again.
-  pub candidates: GrowableBuffer,
+/// Shared starting state for every cull of a static scene: each draw list's region of the visible list, and the
+/// templates a cull's draw and late arguments are reset from.
+///
+/// Each cull (`StaticViewCull`, `ShadowCut`, a light's faces) writes its own lists and arguments.
+pub(crate) struct StaticCullScratch {
   pub regions: wgpu::Buffer,
-  pub args: wgpu::Buffer,
-  /// Each batch's late draw arguments, then the late phase's dispatch and the candidates' count.
-  pub late: wgpu::Buffer,
-  /// The late phase's dispatch, copied out of `late` so the dispatch reads no buffer it binds.
-  pub late_dispatch: wgpu::Buffer,
-  /// Every batch's draw arguments as a cull starts them, copied into a view's own before each cull of it in a frame.
+  /// Initial draw arguments of every batch, copied into a cull's own before it runs.
   pub args_template: wgpu::Buffer,
-  /// The late draw arguments as the main cull starts them.
-  late_template: wgpu::Buffer,
+  /// Initial late draw arguments, copied into a camera cull's own before it runs.
+  pub late_template: wgpu::Buffer,
   /// Entries of the visible list each draw list may need: its clusters, each counted once per place drawing it.
   capacities: [u32; StaticBatch::LIST_COUNT],
   /// The capacities the regions and the templates were last written for.
@@ -33,27 +25,27 @@ pub struct StaticCullScratch {
 
 impl StaticCullScratch {
   /// Where the cull's counts follow every draw list's arguments in their buffer.
-  pub const STATS_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
+  pub(crate) const STATS_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
 
   /// Where the impostors' draw arguments follow the cull's counts.
-  pub const IMPOSTOR_ARGS_OFFSET: u64 = Self::STATS_OFFSET + 16;
+  pub(crate) const IMPOSTOR_ARGS_OFFSET: u64 = Self::STATS_OFFSET + 16;
 
   /// Where the late phase's dispatch follows every draw list's late arguments in theirs.
-  pub const LATE_DISPATCH_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
+  pub(crate) const LATE_DISPATCH_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
 
   /// Bytes a cull's draw arguments take.
-  pub const ARGS_SIZE: u64 = Self::IMPOSTOR_ARGS_OFFSET + 16;
+  pub(crate) const ARGS_SIZE: u64 = Self::IMPOSTOR_ARGS_OFFSET + 16;
+
+  /// Bytes of the late draw arguments, including the late dispatch and the candidate count.
+  pub(crate) const LATE_SIZE: u64 = Self::LATE_DISPATCH_OFFSET + 16;
 
   /// Bytes an entry of the visible list takes.
-  pub const ENTRY_BYTES: u64 = 8;
+  pub(crate) const ENTRY_BYTES: u64 = 8;
 
   /// The most copies of the visible list one frame's buffer holds: a light's shadow faces drawn in a frame.
-  pub const MOST_LIST_COPIES: u64 = 8;
+  pub(crate) const MOST_LIST_COPIES: u64 = 8;
 
-  pub fn new(device: &wgpu::Device) -> Self {
-    let storage: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE;
-    let drawn: wgpu::BufferUsages =
-      storage | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC;
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     let buffer = |label: &str, size: u64, usage: wgpu::BufferUsages| {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -65,26 +57,13 @@ impl StaticCullScratch {
     let template: wgpu::BufferUsages = wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST;
 
     Self {
-      lists: GrowableBuffer::new(device, "static lists", storage),
-      candidates: GrowableBuffer::new(device, "static candidates", storage),
       regions: buffer(
         "static regions",
         (StaticBatch::LIST_COUNT * size_of::<StaticRegion>()) as u64,
-        storage | wgpu::BufferUsages::COPY_DST,
-      ),
-      args: buffer("static draw arguments", Self::ARGS_SIZE, drawn),
-      late: buffer("static late draw arguments", Self::LATE_DISPATCH_OFFSET + 16, drawn),
-      late_dispatch: buffer(
-        "static late dispatch",
-        12,
-        wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
       ),
       args_template: buffer("static draw arguments template", Self::ARGS_SIZE, template),
-      late_template: buffer(
-        "static late draw arguments template",
-        Self::LATE_DISPATCH_OFFSET + 16,
-        template,
-      ),
+      late_template: buffer("static late draw arguments template", Self::LATE_SIZE, template),
       capacities: [0; StaticBatch::LIST_COUNT],
       written: None,
       list_capacity: 0,
@@ -93,7 +72,7 @@ impl StaticCullScratch {
 
   /// Refuses an item whose clusters would grow the visible list, at the most copies of it one buffer holds, past what
   /// the device binds as one storage buffer; asked before the item allocates anything.
-  pub fn check_capacities(&self, device: &wgpu::Device, added: &[u32; StaticBatch::LIST_COUNT]) -> XrfResult {
+  pub(crate) fn check_capacities(&self, device: &wgpu::Device, added: &[u32; StaticBatch::LIST_COUNT]) -> XrfResult {
     let limits: wgpu::Limits = device.limits();
     let entries: u64 = self
       .capacities
@@ -116,47 +95,43 @@ impl StaticCullScratch {
   }
 
   /// Adds an item's clusters to each draw list's capacity, which sizes the lists' regions.
-  pub fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
+  pub(crate) fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, added) in self.capacities.iter_mut().zip(capacities) {
       *total += added;
     }
   }
 
   /// Takes an item's clusters back off each draw list's capacity.
-  pub fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
+  pub(crate) fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, removed) in self.capacities.iter_mut().zip(capacities) {
       *total -= removed;
     }
   }
 
-  /// Resets each draw list's arguments empty from their templates for a frame's cull to fill; the runs of the visible
-  /// list and the templates are written again only when the capacities changed.
-  pub fn prepare(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
+  /// Rewrites the regions and templates when the capacities changed since the last write.
+  pub(crate) fn prepare(&mut self, encoder: &mut FrameEncoder) {
     if self.written != Some(self.capacities) {
-      self.write(device, encoder);
+      self.write(encoder);
     }
-
-    self.reset_args(encoder, &self.args);
-    encoder.copy_buffer_to_buffer(&self.late_template, 0, &self.late, 0, Self::LATE_DISPATCH_OFFSET + 16);
   }
 
   /// Resets a cull's draw arguments empty, as every draw list's start a frame.
-  pub fn reset_args(&self, encoder: &mut wgpu::CommandEncoder, args: &wgpu::Buffer) {
+  pub(crate) fn reset_args(&self, encoder: &mut wgpu::CommandEncoder, args: &wgpu::Buffer) {
     encoder.copy_buffer_to_buffer(&self.args_template, 0, args, 0, Self::ARGS_SIZE);
   }
 
   /// Entries the visible list holds, and the candidates as many.
-  pub fn get_list_capacity(&self) -> u32 {
+  pub(crate) fn get_list_capacity(&self) -> u32 {
     self.list_capacity
   }
 
-  /// Bytes one copy of the visible list takes, at least an entry's, which each view's lists are reserved at.
-  pub fn get_list_bytes(&self) -> u64 {
+  /// Bytes of one copy of the visible list, at least one entry; every cull's lists are sized by it.
+  pub(crate) fn get_list_bytes(&self) -> u64 {
     u64::from(self.list_capacity.max(1)) * Self::ENTRY_BYTES
   }
 
   /// Writes each draw list's run of the visible list and the templates its draw arguments are reset from.
-  fn write(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
+  fn write(&mut self, encoder: &mut FrameEncoder) {
     let mut base: u32 = 0;
     let mut regions: Vec<StaticRegion> = Vec::with_capacity(StaticBatch::LIST_COUNT);
     let mut args: Vec<u32> = Vec::with_capacity(StaticBatch::LIST_COUNT * 4 + 8);
@@ -177,8 +152,6 @@ impl StaticCullScratch {
     late.extend_from_slice(&[0, 1, 1, 0]);
 
     self.list_capacity = base;
-    self.lists.reserve(device, encoder, self.get_list_bytes());
-    self.candidates.reserve(device, encoder, self.get_list_bytes());
     encoder.write_buffer(&self.regions, 0, bytemuck::cast_slice(&regions));
     encoder.write_buffer(&self.args_template, 0, bytemuck::cast_slice(&args));
     encoder.write_buffer(&self.late_template, 0, bytemuck::cast_slice(&late));

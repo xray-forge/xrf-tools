@@ -3,7 +3,7 @@ use crate::contract::feature::image::render_camera_settings::RenderCameraSetting
 
 /// What the camera draws a frame with: its settings and the view it looks through.
 #[derive(Clone, Copy, Debug)]
-pub struct CameraFrame {
+pub(crate) struct CameraFrame {
   pub settings: RenderCameraSettings,
   pub view: CameraView,
 }

@@ -1,6 +1,6 @@
 import { Channel } from "@tauri-apps/api/core";
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
-import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { BoundAction, comparer, flowResult, Observable, reaction } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
 import { all, call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
@@ -23,14 +23,15 @@ import {
 } from "@/core/jobs/lib/jobs-types";
 import { JOB_PROFILES } from "@/core/jobs/metrics";
 import { emitNotification } from "@/core/notifications/lib";
+import { PolledCommand } from "@/core/operations/lib/polled-command";
 
 /**
- * Every backend job this window started, while it is running.
+ * Every backend job this window started, while it is running, and the backend's own listing while a view shows it.
  */
 @Injectable()
 export class JobsService {
-  /** How often an adopted job is asked where it has got to. */
-  private static readonly ADOPTION_POLL_INTERVAL: number = 1000;
+  /** How often the listing, shown or following adopted jobs, asks the backend what it is doing. */
+  private static readonly LISTING_POLL_INTERVAL: number = 1000;
 
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
@@ -38,8 +39,19 @@ export class JobsService {
   @Observable()
   public jobs: Array<IJobState> = [];
 
-  /** Timer watching adopted jobs, running only while there is one to watch. */
-  private adoptionTimer: Nullable<ReturnType<typeof setInterval>> = null;
+  /**
+   * Every job the backend is running and the last few it finished, whichever window started them. A listing that
+   * cannot be read keeps the last one: a backend briefly unreadable is no sign that nothing runs.
+   */
+  public readonly listing: PolledCommand<Array<JobDescription>> = new PolledCommand(this.log, {
+    read: () => jobsCommands.list(),
+    interval: JobsService.LISTING_POLL_INTERVAL,
+    // Every answer is a new array; one describing the same jobs re-renders nothing.
+    equals: comparer.structural,
+  });
+
+  /** Stops following adopted jobs through the listing; set only while there is one to follow. */
+  private unfollowAdopted: Nullable<() => void> = null;
 
   /** Adopted jobs now reporting to a channel of this window's own, rather than to the page that started them. */
   private attached: Set<string> = new Set();
@@ -64,7 +76,7 @@ export class JobsService {
     // An adoption still in flight belongs to the provision that is ending. Letting it land would take jobs over on
     // behalf of a window that has gone, and start a timer nothing would ever stop.
     cancelFlow(this, "jobs");
-    this.stopWatchingAdopted();
+    this.stopFollowingAdopted();
   }
 
   /**
@@ -184,7 +196,7 @@ export class JobsService {
     // attaches inside the lane: a provision superseded here stops before it can point a job at a page that is going.
     yield* all(running.map((job: JobDescription) => this.attachTo(job.id)));
 
-    this.startWatchingAdopted();
+    this.startFollowingAdopted();
   }
 
   /**
@@ -218,20 +230,13 @@ export class JobsService {
   }
 
   /**
-   * Asks the backend where the adopted jobs have got to, and settles the ones that have ended.
+   * Takes where the adopted jobs have got to from a listing the backend answered, and settles the ones that have ended.
+   * A job this window started keeps its own channel's snapshots, which a listing can lag.
    *
-   * Only adopted jobs are updated from a listing. A job this window started is already receiving its own snapshots
-   * through a channel, and a listing can lag those by up to one emission interval - merging the two would let a
-   * running bar go backwards.
+   * @param listed - Every job the backend describes.
    */
-  @LatestFlow()
-  private *pollAdoptedJobs(): TFlow {
-    const listed: Nullable<Array<JobDescription>> = yield* call(this.listJobs());
-
-    if (!listed) {
-      return;
-    }
-
+  @BoundAction()
+  private followAdopted(listed: Array<JobDescription>): void {
     const byId: Map<string, JobDescription> = new Map(listed.map((job: JobDescription) => [job.id, job]));
 
     for (const job of this.jobs.filter((it: IJobState) => it.isAdopted)) {
@@ -259,7 +264,7 @@ export class JobsService {
     }
 
     if (!this.jobs.some((job: IJobState) => job.isAdopted)) {
-      this.stopWatchingAdopted();
+      this.stopFollowingAdopted();
     }
   }
 
@@ -283,19 +288,41 @@ export class JobsService {
     }
   }
 
-  private startWatchingAdopted(): void {
-    // Only where nothing is watching yet. A second timer would poll the same listing twice a second and settle every
-    // adopted job twice, announcing each outcome to the user as many times as this was called.
-    if (!this.adoptionTimer) {
-      this.adoptionTimer = setInterval(() => void this.pollAdoptedJobs(), JobsService.ADOPTION_POLL_INTERVAL);
+  /**
+   * Follows the adopted jobs through the shared listing, which a shown Jobs panel polls too, so the backend is asked
+   * once a tick whoever watches.
+   */
+  private startFollowingAdopted(): void {
+    // Only where nothing follows yet. A second follower would settle every adopted job twice, announcing each outcome
+    // to the user as many times as this was called.
+    if (this.unfollowAdopted) {
+      return;
     }
+
+    // Fired at once too: a listing a shown Jobs panel read already may hold the adopted jobs' ends, and a structurally
+    // equal one read next would never change it, leaving them shown running.
+    const stopReacting: () => void = reaction(
+      () => this.listing.value,
+      (listed: Nullable<Array<JobDescription>>) => {
+        if (listed) {
+          this.followAdopted(listed);
+        }
+      },
+      { fireImmediately: true }
+    );
+    const stopWatching: () => void = this.listing.watch();
+
+    this.unfollowAdopted = () => {
+      stopReacting();
+      stopWatching();
+    };
   }
 
-  private stopWatchingAdopted(): void {
-    if (this.adoptionTimer) {
-      clearInterval(this.adoptionTimer);
-      this.adoptionTimer = null;
-    }
+  private stopFollowingAdopted(): void {
+    const unfollow: Nullable<() => void> = this.unfollowAdopted;
+
+    this.unfollowAdopted = null;
+    unfollow?.();
   }
 
   @BoundAction()

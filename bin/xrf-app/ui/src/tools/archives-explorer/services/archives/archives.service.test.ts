@@ -55,7 +55,7 @@ describe("ArchivesService subject", () => {
 
     const service: ArchivesService = mockArchivesService([mockArchiveFileDescriptor({ name: "textures\\ui.dds" })]);
 
-    await service.closeSubject();
+    await service.close();
 
     // Closed is still restored, with nothing held: the explorer shows its open form, not its loader.
     expect(service.subject.isRestored).toBe(true);
@@ -75,7 +75,7 @@ describe("ArchivesService visual preview lifecycle", () => {
       [EVisualsCommand.CLOSE_MODEL]: () => void invoked.push(EVisualsCommand.CLOSE_MODEL),
     });
 
-    await mockArchivesService([]).closeSubject();
+    await mockArchivesService([]).close();
 
     expect(invoked).toEqual([EArchivesCommand.CLOSE_SUBJECT]);
   });
@@ -98,7 +98,7 @@ describe("ArchivesService visual preview lifecycle", () => {
     mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes([])));
     container.get(SessionScopeService).release();
     // Retired with the scope, the document is no longer the service's to close.
-    await service.closeSubject();
+    await service.close();
 
     expect(invoked).toEqual([ESessionsCommand.RELEASE_SCOPE]);
   });
@@ -151,7 +151,7 @@ describe("ArchivesService reachability", () => {
     const { service } = mockInjectedService(ArchivesService);
 
     await service.openVolumes("C:\\game\\database");
-    await service.closeSubject();
+    await service.close();
 
     expect(service.unreachable).toEqual([]);
   });

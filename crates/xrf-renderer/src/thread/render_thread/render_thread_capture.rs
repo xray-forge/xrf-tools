@@ -1,14 +1,17 @@
 use std::collections::BTreeMap;
+use std::time::Instant;
 
-use xrf_error::XrfError;
+use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
   FrameGraph, GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureAccess,
   GraphTextureDescriptor, UniformBinding,
 };
 
+use super::RenderThread;
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::capture::capture_job::CaptureJob;
+use crate::capture::record::record_shot::RecordShot;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::feature::image::present::present_parameters::PresentParameters;
 use crate::feature::image::present::present_pass::PresentPass;
@@ -25,6 +28,7 @@ use crate::scene::level::view::scene_view::SceneView;
 use crate::thread::copies::burst_copy::BurstCopy;
 use crate::thread::copies::capture_copy::CaptureCopy;
 use crate::thread::copies::capture_retry::CaptureRetry;
+use crate::thread::copies::record_copy::RecordCopy;
 use crate::thread::copies::shot_copy::ShotCopy;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::views::readied_view::ReadiedView;
@@ -33,8 +37,6 @@ use crate::viewport::render_viewport::RenderViewport;
 use crate::window::display_target::DisplayTarget;
 use crate::window::window_frame::WindowFrame;
 use crate::window::window_viewport::WindowViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   /// The captures this frame copies out of their window's image once it is composed, before it is presented, and the
@@ -51,7 +53,16 @@ impl RenderThread {
         };
 
         if let Some(reply) = viewport.take_capture() {
-          match FrameCapture::new(device, window.target.format, *shown, viewport.get_frame()) {
+          // Refused here for a swapchain the platform cannot copy from, rather than failing every window's frame.
+          let capture: XrfResult<FrameCapture> = if window.is_copyable {
+            FrameCapture::new(device, window.target.format, *shown, viewport.get_frame())
+          } else {
+            Err(XrfError::new_not_implemented_error(
+              "Capturing a window whose swapchain the platform allows no copy out of",
+            ))
+          };
+
+          match capture {
             Ok(capture) => captures.push(CaptureCopy {
               viewport: *id,
               capture,
@@ -172,6 +183,33 @@ impl RenderThread {
     shots
   }
 
+  /// The recording frames to copy out: for each viewport prepared this frame (`frames`) at least a sixtieth of a second
+  /// after its last at `now`.
+  pub(super) fn take_record_shots(
+    &mut self,
+    device: &wgpu::Device,
+    frames: &[ReadiedView],
+    now: Instant,
+  ) -> Vec<RecordCopy> {
+    profiling::scope!("record frames");
+
+    frames
+      .iter()
+      .filter_map(|frame| {
+        let shot: RecordShot = self
+          .viewports
+          .get_mut(&frame.viewport)?
+          .get_record_mut()?
+          .take_shot(device, now)?;
+
+        Some(RecordCopy {
+          viewport: frame.viewport,
+          shot,
+        })
+      })
+      .collect()
+  }
+
   /// Puts captures a window gave no image for back at the front of their viewport's, for its next presented frame;
   /// answers one whose viewport is gone.
   pub(super) fn retry_captures(&mut self, retried: Vec<CaptureRetry>) {
@@ -214,7 +252,8 @@ impl RenderThread {
         binding,
         output,
         label: "screenshot",
-        capture,
+        size: capture.get_size(),
+        format: capture.get_format(),
         helpers: capture.is_helped().then(|| view.get_helper_draws()),
       },
     );
@@ -254,7 +293,8 @@ impl RenderThread {
         binding,
         output,
         label: "capture shot",
-        capture,
+        size: capture.get_size(),
+        format: capture.get_format(),
         helpers: None,
       },
     );
@@ -302,7 +342,8 @@ impl RenderThread {
         binding,
         output,
         label: "burst frame",
-        capture: shot.get_picture(),
+        size: shot.get_picture().get_size(),
+        format: shot.get_picture().get_format(),
         helpers: None,
       },
     );
@@ -325,9 +366,50 @@ impl RenderThread {
       });
   }
 
-  /// Declares `frame`'s view's finished frame presented into a texture of its own, at its capture's size and in its
-  /// format, without overlays or the selection's outline, and with its helpers' marks and fading and their wires and
-  /// icons over it where it gives them; answers the texture, for its copy.
+  /// Declares a recording frame: the viewport's frame presented at the recording's size, as a screenshot is, then
+  /// copied into the recording's buffer. Its two passes form the recording's span in the frame timings.
+  pub(super) fn declare_record_shot<'a>(
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
+    gpu: &'a GpuState,
+    viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
+    id: RenderViewportId,
+    shot: &'a RecordShot,
+    output: Option<&SceneOutput>,
+  ) {
+    let Some(viewport) = viewports.get(&id) else {
+      return;
+    };
+    let (Some(output), Some(binding), Some(view)) = (output, viewport.get_binding(), viewport.get_shown_view()) else {
+      return;
+    };
+    let texture: GraphTexture = Self::declare_finished_frame(
+      graph,
+      runtime,
+      FinishedFrame {
+        gpu,
+        view,
+        binding,
+        output,
+        label: "record frame",
+        size: shot.get_size(),
+        format: RecordShot::FORMAT,
+        helpers: None,
+      },
+    );
+
+    graph
+      .add_encoder_pass("record frame copy")
+      .texture(texture, GraphTextureAccess::CopySource)
+      .keep()
+      .record(move |context| {
+        let texture: &wgpu::Texture = context.get_texture(texture).texture;
+
+        shot.encode(context.get_encoder(), texture);
+      });
+  }
+
+  /// Declares `frame`'s finished frame presented into its own texture, without overlays or selection outline but with
+  /// its helpers where given; returns the texture to copy.
   fn declare_finished_frame<'a>(
     graph: &mut FrameGraph<'a>,
     runtime: &mut GraphRuntime,
@@ -339,11 +421,10 @@ impl RenderThread {
       binding,
       output,
       label,
-      capture,
+      size,
+      format,
       helpers,
     } = frame;
-    let size: (u32, u32) = capture.get_size();
-    let format: wgpu::TextureFormat = capture.get_format();
     let shown: PresentUniform = match helpers {
       Some(_) => view.get_present_uniform().for_helped_screenshot(size),
       None => view.get_present_uniform().for_screenshot(size),
@@ -351,7 +432,7 @@ impl RenderThread {
     let uniform: UniformBinding<PresentUniform> = runtime.push_uniform(&shown);
     let parameters: PresentParameters<'a> = PresentParameters {
       present: uniform,
-      ..Self::to_present_parameters(gpu, output)
+      ..Self::get_present_parameters(gpu, output)
     };
     // The helpers are read against the frame's depth, placed by the capture's own size, as the window's are.
     let overlay_parameters: Option<OverlayParameters> = helpers.map(|_| OverlayParameters {
@@ -397,14 +478,14 @@ impl RenderThread {
   }
 }
 
-/// A view's finished frame a capture copies out: the GPU's passes, the view, its camera and the frame it left, the
-/// pass's name, the capture whose size and format it is drawn at, and its helpers' draws where they are drawn over it.
+/// What declaring a capture's finished frame needs: the view and its output, the pass name, size, format and helpers.
 struct FinishedFrame<'a, 'v> {
   gpu: &'a GpuState,
   view: &'v SceneView,
   binding: &'a ViewBinding,
   output: &'v SceneOutput,
   label: &'static str,
-  capture: &'v FrameCapture,
+  size: (u32, u32),
+  format: wgpu::TextureFormat,
   helpers: Option<HelperDraws<'a>>,
 }

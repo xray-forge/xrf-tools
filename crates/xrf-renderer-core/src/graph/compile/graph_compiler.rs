@@ -12,7 +12,7 @@ use crate::graph::compile::transient_slot::TransientSlot;
 use crate::graph::frame_graph::FrameGraph;
 use crate::graph::pool::{TransientBufferKey, TransientTextureKey};
 use crate::graph::record::{GraphBufferRecord, GraphPass, GraphPassWork, GraphTextureRecord};
-use crate::graph::resource::{GraphBuffer, GraphTexture};
+use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
 
 /// Turns a declared frame graph into one ready to execute.
 pub(crate) struct GraphCompiler;
@@ -23,7 +23,7 @@ impl GraphCompiler {
   /// # Errors
   ///
   /// Returns an error for a graph that cannot run, as `FrameGraph::compile` lists.
-  pub fn compile<'a>(graph: FrameGraph<'a>, options: &GraphCompileOptions) -> XrfResult<CompiledGraph<'a>> {
+  pub(crate) fn compile<'a>(graph: FrameGraph<'a>, options: &GraphCompileOptions) -> XrfResult<CompiledGraph<'a>> {
     let FrameGraph {
       textures,
       buffers,
@@ -54,8 +54,11 @@ impl GraphCompiler {
 
     Self::validate_order(&kept, &textures, &buffers)?;
 
+    let (render_passes, render_pass_count) = Self::merge(&kept, options.is_merging);
+    let freed: Vec<usize> = Self::list_freed(&render_passes);
     let texture_slots: Vec<Option<TransientSlot<TransientTextureKey>>> = Self::assign_slots(
       &kept,
+      &freed,
       textures.len(),
       |pass| pass.list_textures().map(GraphTexture::get_index).collect(),
       |index| {
@@ -67,6 +70,7 @@ impl GraphCompiler {
     );
     let buffer_slots: Vec<Option<TransientSlot<TransientBufferKey>>> = Self::assign_slots(
       &kept,
+      &freed,
       buffers.len(),
       |pass| pass.list_buffers().map(GraphBuffer::get_index).collect(),
       |index| {
@@ -79,7 +83,6 @@ impl GraphCompiler {
       },
       options.is_pooling,
     );
-    let (render_passes, render_pass_count) = Self::merge(&kept, options.is_merging);
     let encode_groups: Vec<EncodeGroup> = Self::group(&kept, &groups, options.is_grouping);
     let passes: Vec<CompiledPass<'a>> = kept
       .into_iter()
@@ -104,7 +107,8 @@ impl GraphCompiler {
     })
   }
 
-  /// A raster pass draws into attachments of one size it neither writes otherwise nor names twice.
+  /// A raster pass draws into attachments of one size it neither writes otherwise nor names twice, each naming its mip
+  /// and its layer where its texture has several.
   fn validate_pass(pass: &GraphPass<'_>, textures: &[GraphTextureRecord]) -> XrfResult {
     let GraphPassWork::Raster { colors, depth, .. } = &pass.work else {
       return Ok(());
@@ -115,6 +119,23 @@ impl GraphCompiler {
         "Raster pass '{}' has no attachment to draw into",
         pass.name
       )));
+    }
+
+    let named = colors
+      .iter()
+      .map(|color| (color.texture, color.is_mip_named, color.is_layer_named))
+      .chain(
+        depth
+          .iter()
+          .map(|depth| (depth.texture, depth.is_mip_named, depth.is_layer_named)),
+      );
+
+    for (texture, is_mip_named, is_layer_named) in named {
+      Self::validate_target(
+        pass,
+        &textures[texture.get_index()].descriptor,
+        (is_mip_named, is_layer_named),
+      )?;
     }
 
     // Each attachment, and whether the pass may also sample it: only a depth it does not write.
@@ -220,6 +241,36 @@ impl GraphCompiler {
     alive
   }
 
+  /// Refuses a target on a texture of several mips or layers that does not name which (`named`: mip, layer).
+  ///
+  /// The graph never knows which part an imported view shows, so an unnamed target would be drawn into the first mip
+  /// and layer while a pass reading the view sees its own.
+  fn validate_target(
+    pass: &GraphPass<'_>,
+    descriptor: &GraphTextureDescriptor,
+    (is_mip_named, is_layer_named): (bool, bool),
+  ) -> XrfResult {
+    let layers: u32 = match descriptor.dimension {
+      wgpu::TextureDimension::D3 => 1,
+      _ => descriptor.size.depth_or_array_layers,
+    };
+    let unnamed: Option<&str> = if layers > 1 && !is_layer_named {
+      Some("layer")
+    } else if descriptor.mip_level_count > 1 && !is_mip_named {
+      Some("mip")
+    } else {
+      None
+    };
+
+    match unnamed {
+      Some(part) => Err(XrfError::new_invalid_error(format!(
+        "Raster pass '{}' draws into '{}', of {} mips and {layers} layers, naming no {part}",
+        pass.name, descriptor.label, descriptor.mip_level_count
+      ))),
+      None => Ok(()),
+    }
+  }
+
   /// No surviving pass reads a transient before a pass before it, or it itself, has written it.
   fn validate_order(
     passes: &[GraphPass<'_>],
@@ -264,10 +315,25 @@ impl GraphCompiler {
     Ok(())
   }
 
-  /// Gives every transient a surviving pass names a slot of its key: pooled, the first whose last user came before
-  /// its own first; otherwise one of its own.
+  /// Each surviving pass's position, or the last of its render pass: what its slots are held until, since the passes
+  /// of one render pass have no barrier between them.
+  fn list_freed(render_passes: &[Option<usize>]) -> Vec<usize> {
+    let mut freed: Vec<usize> = (0..render_passes.len()).collect();
+
+    for position in (0..render_passes.len().saturating_sub(1)).rev() {
+      if render_passes[position].is_some() && render_passes[position] == render_passes[position + 1] {
+        freed[position] = freed[position + 1];
+      }
+    }
+
+    freed
+  }
+
+  /// Gives every transient a surviving pass names a slot of its key: pooled, the first held by none past the render
+  /// pass of its last user (`freed`) before its own first; otherwise one of its own.
   fn assign_slots<K: Copy + Eq + Hash>(
     passes: &[GraphPass<'_>],
+    freed: &[usize],
     count: usize,
     list: impl Fn(&GraphPass<'_>) -> Vec<usize>,
     key_of: impl Fn(usize) -> Option<K>,
@@ -297,11 +363,11 @@ impl GraphCompiler {
       let key_ends: &mut Vec<usize> = ends.entry(key).or_default();
       let ordinal: usize = match key_ends.iter().position(|end| is_pooling && *end < first) {
         Some(ordinal) => {
-          key_ends[ordinal] = last;
+          key_ends[ordinal] = freed[last];
           ordinal
         }
         None => {
-          key_ends.push(last);
+          key_ends.push(freed[last]);
           key_ends.len() - 1
         }
       };

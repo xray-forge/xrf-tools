@@ -50,6 +50,18 @@ fn a_first_comment_that_is_no_xray_block_leaves_the_engine_defaults() -> XrfResu
 }
 
 #[test]
+fn a_first_comment_too_short_for_a_version_leaves_the_engine_defaults() -> XrfResult {
+  // GAMMA's re-encoded `ambient\blowout\blowout_boom_01` carries these two bytes as its first comment.
+  for first in [vec![0x03, 0x3d], Vec::new()] {
+    let file: SoundFile = SoundFile::read_from_bytes(&sound(&[first]))?;
+
+    assert_eq!(file.metadata, SoundMetadata::EngineDefaults);
+  }
+
+  Ok(())
+}
+
+#[test]
 fn refuses_headers_libvorbis_does_not_open() {
   // `_vorbis_unpack_comment` and `_vorbis_unpack_info` both end on a set framing bit, and the identification packet's
   // block sizes must be 64 to 8192 samples, the short no longer than the long.

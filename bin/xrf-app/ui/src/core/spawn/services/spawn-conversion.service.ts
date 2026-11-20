@@ -6,10 +6,13 @@ import {
   SPAWN_JOB_PACK,
   SPAWN_JOB_UNPACK,
   SpawnConversionResult,
+  SpawnConvertRequest,
 } from "@xrf/ipc/types/xrf-app-spawn";
 import { Logger } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
 
 import { JobOperation } from "@/core/jobs/lib/job-operation";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { describeSpawnConversionOutcome } from "@/core/spawn/lib/describe-spawn-conversion-outcome";
 
 /** Standalone spawn conversions share one lane and remain visible through the root jobs service. */
@@ -24,16 +27,19 @@ export class SpawnConversionService {
   /**
    * Packs chunks into a spawn file while no spawn conversion is running.
    *
-   * @param source - Directory holding unpacked chunks.
-   * @param destination - Output spawn file.
+   * @param request - The directory holding unpacked chunks, the spawn file written, and whether a file already there
+   *   is replaced; the backend refuses otherwise.
+   * @returns How the run ended, or null where none started.
    */
   @ExclusiveFlow("operation")
-  public *pack(source: string, destination: string): TFlow {
+  public *pack(request: SpawnConvertRequest): TFlow<Nullable<TCommandCompletion<SpawnConversionResult>>> {
+    const { source, destination } = request;
+
     this.log.info("Packing spawn:", source, "to", destination);
 
-    yield* this.operation.run({
+    return yield* this.operation.run({
       kind: SPAWN_JOB_PACK,
-      invoke: (id, progress) => spawnCommands.packFile({ source, destination }, id, progress),
+      invoke: (id, progress) => spawnCommands.packFile(request, id, progress),
       describe: (outcome) => describeSpawnConversionOutcome(ESpawnConversion.PACK, source, destination, outcome),
     });
   }
@@ -41,16 +47,19 @@ export class SpawnConversionService {
   /**
    * Unpacks a spawn file while no spawn conversion is running.
    *
-   * @param source - Packed spawn file.
-   * @param destination - Directory for unpacked chunks.
+   * @param request - The packed spawn file, the directory written, and whether one already there is replaced; the
+   *   backend refuses otherwise.
+   * @returns How the run ended, or null where none started.
    */
   @ExclusiveFlow("operation")
-  public *unpack(source: string, destination: string): TFlow {
+  public *unpack(request: SpawnConvertRequest): TFlow<Nullable<TCommandCompletion<SpawnConversionResult>>> {
+    const { source, destination } = request;
+
     this.log.info("Unpacking spawn:", source, "to", destination);
 
-    yield* this.operation.run({
+    return yield* this.operation.run({
       kind: SPAWN_JOB_UNPACK,
-      invoke: (id, progress) => spawnCommands.unpackFile({ source, destination }, id, progress),
+      invoke: (id, progress) => spawnCommands.unpackFile(request, id, progress),
       describe: (outcome) => describeSpawnConversionOutcome(ESpawnConversion.UNPACK, source, destination, outcome),
     });
   }

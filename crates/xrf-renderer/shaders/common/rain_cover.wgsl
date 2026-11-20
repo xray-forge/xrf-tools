@@ -138,7 +138,7 @@ fn cover_reached(
   }
 
   if (bottom > limit || top < deepest) {
-    return own;
+    return max(own, slanted);
   }
 
   var open: f32 = 0.0;

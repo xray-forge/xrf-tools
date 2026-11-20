@@ -2,11 +2,10 @@
 //! failed source stays settled except when a person opens its roots afresh, and a retained file changed on disk is
 //! applied when its roots are looked at.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
+use std::{fs, thread};
 
 use xrf_test_utils::GeneratedResources;
 
@@ -83,7 +82,7 @@ fn reads_mounted_roots_while_others_mount() {
   host.search(&roots(&mounted)).expect("the roots mount");
 
   thread::scope(|scope| {
-    let readers: Vec<thread::ScopedJoinHandle<bool>> = (0..4)
+    let readers: Vec<thread::ScopedJoinHandle<'_, bool>> = (0..4)
       .map(|_| {
         scope.spawn(|| {
           (0..50).all(|_| {
@@ -95,7 +94,7 @@ fn reads_mounted_roots_while_others_mount() {
         })
       })
       .collect();
-    let mounters: Vec<thread::ScopedJoinHandle<bool>> = others
+    let mounters: Vec<thread::ScopedJoinHandle<'_, bool>> = others
       .iter()
       .map(|other| {
         scope.spawn(|| {
@@ -343,5 +342,5 @@ fn opening_a_missing_root_afresh_publishes_nothing() {
 
   host.search_fresh(&spec).expect("the roots are found afresh");
 
-  assert!(std::sync::Arc::ptr_eq(&before, &host.get_vfs()));
+  assert!(Arc::ptr_eq(&before, &host.get_vfs()));
 }

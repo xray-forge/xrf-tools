@@ -4,7 +4,7 @@ use xrf_particles::{ParticleActionType, ParticleGroupChild};
 /// One way an effect or group matched a query, with the query's value as the library spells it.
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(tag = "kind", content = "value", rename_all = "camelCase")]
-pub enum ParticleFindReason {
+pub(crate) enum ParticleFindReason {
   /// An effect's sprite samples the texture.
   Texture(String),
   /// An effect's sprite draws with the shader.
@@ -23,7 +23,7 @@ pub enum ParticleFindReason {
 
 impl ParticleFindReason {
   /// A group spawning the effect as a child, by when it spawns it.
-  pub fn of_child(child: ParticleGroupChild, effect: &str) -> Self {
+  pub(crate) fn of_child(child: ParticleGroupChild, effect: &str) -> Self {
     match child {
       ParticleGroupChild::Play => Self::PlayChild(effect.to_owned()),
       ParticleGroupChild::Birth => Self::BirthChild(effect.to_owned()),
@@ -32,7 +32,7 @@ impl ParticleFindReason {
   }
 
   /// The reason as text: its kind and value.
-  pub fn describe(&self) -> String {
+  pub(crate) fn describe(&self) -> String {
     match self {
       Self::Texture(texture) => format!("texture {texture}"),
       Self::Shader(shader) => format!("shader {shader}"),

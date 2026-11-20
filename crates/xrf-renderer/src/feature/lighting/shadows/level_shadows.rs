@@ -74,7 +74,8 @@ const NEAR_BLENDED: usize = 2;
 /// The first cascade that keeps a second static layer, which its next is drawn into ahead of the turn that would stale
 /// the one shown: the far ones, whose static draws cost the most.
 const BANDED_FROM: usize = 2;
-/// Bands a static layer drawn ahead is drawn in, at most one a frame, and frames a band waits at most.
+/// Bands a static layer drawn ahead, or a sweep of the trees' sway, is drawn in, one a frame at most: four frames at
+/// 120 Hz keep the sway's 30 Hz. Then the most frames a band drawn ahead waits.
 const BANDS: u32 = 4;
 const BAND_WAIT_MOST: u32 = 2;
 /// The share of what a static layer may hold past which its next is drawn ahead.
@@ -93,8 +94,8 @@ enum CascadeDraw {
   Swaying,
   /// Its kept layer copied into its map, what moves every frame over it: the trees as last drawn, waiting their turn.
   Kept,
-  /// One band of a far cascade's rows: its static layer's rows restored into its map, the trees over them, so a sway
-  /// redraw spreads over `BANDS` frames rather than landing on one.
+  /// One band of its rows: its static layer's rows restored into its map, the trees over them, so a sway redraw
+  /// spreads over `BANDS` frames.
   Banded(u32),
 }
 
@@ -143,7 +144,7 @@ struct SeenPoint {
 /// copy at the sway's interval, and the drawable kinds' casters moving every frame (the grass's cards) over a kept layer
 /// each frame.
 #[derive(Default)]
-pub struct LevelShadows {
+pub(crate) struct LevelShadows {
   /// The maps, while any cascade is drawn.
   maps: Option<SunShadowMaps>,
   /// The cascades' static layers, while any cascade is drawn and the trees sway or anything moves every frame.
@@ -171,12 +172,6 @@ impl LevelShadows {
     self.per_frame.iter().any(|landed| landed.cascades[index])
   }
 
-  /// Whether a cascade due this frame draws its trees into its kept layer: what moves every frame lands in it and the
-  /// kept layers are held.
-  fn is_kept_draw(&self, index: usize) -> bool {
-    self.kept.is_some() && self.has_moving(index)
-  }
-
   /// How many of the nearest cascades casters standing `reach` metres from the eye are drawn into: the nearest whose
   /// width covers the reach and every nearer one.
   fn get_reached_count(settings: &RenderShadowSettings, reach: f32) -> usize {
@@ -188,12 +183,12 @@ impl LevelShadows {
   }
 
   /// The maps, while any cascade is drawn.
-  pub fn get_maps(&self) -> Option<&SunShadowMaps> {
+  pub(crate) fn get_maps(&self) -> Option<&SunShadowMaps> {
     self.maps.as_ref()
   }
 
   /// Writes into `applied` the cascades `settings` ask for this frame and the maps' resolution, none without a cascade.
-  pub fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderShadowSettings) {
+  pub(crate) fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderShadowSettings) {
     let cascades: usize = settings.get_cascade_count();
 
     applied.shadows = (cascades > 0).then(|| RenderAppliedShadows {
@@ -204,13 +199,13 @@ impl LevelShadows {
   }
 
   /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
-  pub fn get_values(&self) -> &ShadowUniform {
+  pub(crate) fn get_values(&self) -> &ShadowUniform {
     &self.values
   }
 
   /// Makes the maps at the `resolution` the settings ask for while any cascade is drawn, again where it changed, so the
   /// sun binds them before the frame draws; lets them go while none is (no `resolution`).
-  pub fn prepare(&mut self, device: &wgpu::Device, resolution: Option<u32>) {
+  pub(crate) fn prepare(&mut self, device: &wgpu::Device, resolution: Option<u32>) {
     let Some(resolution) = resolution else {
       self.release();
 
@@ -232,7 +227,7 @@ impl LevelShadows {
 
   /// Forgets that the cascades this frame drew were drawn, where its frame was not submitted: each draws again, and a
   /// static layer drawn ahead starts again.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     for (index, _) in std::mem::take(&mut self.due) {
       self.cascades[index].drawn = None;
       self.cascades[index].drawn_static = None;
@@ -248,16 +243,6 @@ impl LevelShadows {
 }
 
 impl ViewFeature for LevelShadows {
-  /// The maps and the static layers, and the cascades' lists, while held.
-  fn get_memory(&self) -> u64 {
-    [&self.maps, &self.statics, &self.kept]
-      .into_iter()
-      .flatten()
-      .map(|maps| u64::from(maps.resolution).pow(2) * maps.layers.len() as u64 * 4)
-      .chain(self.cascades.iter().map(ShadowCascadeView::get_memory))
-      .sum()
-  }
-
   fn release(&mut self) {
     self.maps = None;
     self.statics = None;

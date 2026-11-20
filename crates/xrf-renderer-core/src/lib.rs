@@ -4,10 +4,10 @@
 extern crate self as xrf_renderer_core;
 
 mod alloc;
+mod device;
 mod graph;
 mod param;
 mod pipeline;
-mod profiler;
 mod shader;
 mod store;
 
@@ -18,6 +18,7 @@ pub use wgpu;
 pub use xrf_renderer_derive::{PassParameters, ShaderPermutation, ShaderStruct};
 
 pub use crate::alloc::{Span, SpanAllocator, SpanBuffer, SpanLane, SpanWrites, UploadRing, UploadSlice};
+pub use crate::device::{GpuAdapters, RayQueryAsk, RayQueryDevice, RenderGpu};
 pub use crate::graph::{
   CompiledGraph, ComputeContext, ComputePassBuilder, EncodeGroup, EncoderContext, EncoderPassBuilder, ExecutedGraph,
   ExecutedGroup, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor,
@@ -32,10 +33,9 @@ pub use crate::param::{
   UniformField,
 };
 pub use crate::pipeline::{
-  ComputePipelineDescription, PipelineCache, PipelineConstants, PipelineMap, PipelineSet, RenderPipelineDescription,
-  ShaderLines, ShaderOverride, ShaderPermutation, ShaderSource, VertexLayout,
+  ComputePipelineDescription, PipelineAsk, PipelineCache, PipelineConstants, PipelineMap, PipelineSet,
+  RenderPipelineDescription, ShaderLines, ShaderOverride, ShaderPermutation, ShaderSource, VertexLayout,
 };
-pub use crate::profiler::{send_profiler_message, start_profiler};
 pub use crate::shader::{
   GeneratedShaderFile, ShaderAddressSpace, ShaderAtomicU32, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember,
   ShaderStruct, ShaderType, max_of, round_up,

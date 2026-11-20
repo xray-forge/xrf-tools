@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { useShellMenus } from "@/core/shell/contributions";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { LevelViewerImportDialog } from "@/tools/level-viewer/components/snapshot/LevelViewerImportDialog";
 import { ILevelViewerImport, ILevelViewerSnapshotEntry } from "@/tools/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { LEVEL_VIEWER_FILE_MENU_EXTENSION } from "@/tools/level-viewer/menus";
@@ -29,14 +29,14 @@ export function LevelViewerSnapshotActions(): ReactElement {
         section: LEVEL_VIEWER_FILE_MENU_EXTENSION.sections.view,
         entries: [
           {
-            kind: "action",
+            kind: EMenuEntryKind.ACTION,
             id: "level-viewer/export-view",
             label: "Export view…",
             isDisabled,
             onSelect: () => void snapshotService.exportView(),
           },
           {
-            kind: "action",
+            kind: EMenuEntryKind.ACTION,
             id: "level-viewer/import-view",
             label: "Import view…",
             isDisabled,

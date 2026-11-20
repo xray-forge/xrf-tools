@@ -15,6 +15,7 @@ use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::feature::effects::flares::lens_flare_fade::LensFlareFade;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
@@ -27,7 +28,7 @@ use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The sun a level's viewport draws as `CLensFlare` does: the lens flare its keyframes name, faded between them, its
 /// sprite in the sky and its flares and gradient over the frame, each shown as much as the sun is.
-pub struct FlaresFeature {
+pub(crate) struct FlaresFeature {
   fade: LensFlareFade,
   /// What the flares draw this frame by.
   values: FlareUniform,
@@ -42,7 +43,7 @@ pub struct FlaresFeature {
 }
 
 impl FlaresFeature {
-  pub fn new() -> Self {
+  pub(crate) fn new() -> Self {
     Self {
       fade: LensFlareFade::new(),
       values: FlareUniform::default(),
@@ -55,7 +56,7 @@ impl FlaresFeature {
   }
 
   /// Asks for the textures of the lens flare drawn now and of the one the keyframes name, so a fade has both.
-  pub fn request(
+  pub(crate) fn request(
     &self,
     lighting: &RenderLighting,
     weather: Option<&Arc<RenderLevelWeather>>,
@@ -84,7 +85,7 @@ impl FlaresFeature {
   /// Steps the fade and notes what the flares draw by and with, their visibility made while they draw and let go of
   /// while they do not; answers the sun's sprite as the sky draws it, its texture and its colour and radius, none where
   /// no sprite is drawn.
-  pub fn prepare(&mut self, frame: &ViewPrepare<'_>, now: Instant) -> Option<SunSprite> {
+  pub(crate) fn prepare(&mut self, frame: &ViewPrepare<'_>, now: Instant) -> Option<SunSprite> {
     let sprite: Option<SunSprite> = self.prepare_drawn(frame, now);
     let device: &wgpu::Device = frame.device;
 
@@ -167,12 +168,12 @@ impl FlaresFeature {
   }
 
   /// The lens flare drawn now, faded in or out, if any.
-  pub fn get_shown(&self) -> Option<&str> {
+  pub(crate) fn get_shown(&self) -> Option<&str> {
     self.fade.get_shown()
   }
 
   /// Measures how much of the sun shows and draws the flares and the gradient, where this frame draws them.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -193,14 +194,15 @@ impl FlaresFeature {
     let pass: &FlarePass = &passes.effects.flares;
     let flares: UniformBinding<FlareUniform> = runtime.push_uniform(&self.values);
     let state: GraphBuffer = bindings.import_buffer(&mut *graph, "flare visibility", state);
-    let measure: FlareMeasureParameters = FlareMeasureParameters {
+    let measure: FlareMeasureParameters<'_> = FlareMeasureParameters {
       flares,
       state: StorageValueMut::new(state),
       depth_target: targets.depth,
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
+      shadow_compare: lit.shadow_compare,
     };
-    let draw: FlareDrawParameters = FlareDrawParameters {
+    let draw: FlareDrawParameters<'_> = FlareDrawParameters {
       flares,
       state: StorageValue::new(state),
       flare_sampler: pass.get_sampler(),
@@ -258,16 +260,21 @@ impl FlaresFeature {
 }
 
 impl ViewFeature for FlaresFeature {
-  /// The sun's visibility, eased from frame to frame while the flares draw; the textures are the weather's.
-  fn get_memory(&self) -> u64 {
-    self.state.as_ref().map_or(0, wgpu::Buffer::size)
-  }
-
   /// Lets go of its views of the weather's textures too, which would hold them past the weather textures' own
   /// eviction.
   fn release(&mut self) {
     self.state = None;
     self.textures.clear();
     self.is_drawn = false;
+  }
+
+  /// A motion restart settles the fade (`LensFlareFade::settle`) and eases the sun's visibility from none again, as at
+  /// a view's first frame; a cut leaves them, the visibility easing to the new place.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.fade.settle();
+      self.state = None;
+      self.last = None;
+    }
   }
 }

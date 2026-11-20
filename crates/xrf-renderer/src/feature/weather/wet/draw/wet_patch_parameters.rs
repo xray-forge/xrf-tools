@@ -8,7 +8,7 @@ use crate::feature::weather::wet::wet_uniform::WetUniform;
 /// settings.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct WetPatchParameters<'a> {
+pub(crate) struct WetPatchParameters<'a> {
   #[texture(d2, depth)]
   pub depth_target: GraphTexture,
   #[texture(d2, unfilterable)]

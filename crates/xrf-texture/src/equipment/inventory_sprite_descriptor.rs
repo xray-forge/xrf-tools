@@ -12,7 +12,7 @@ use crate::equipment::{
   EquipmentGridRect, EquipmentSlotClaim, INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INVENTORY_ICON_PATH,
 };
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct InventorySpriteDescriptor {
@@ -29,7 +29,7 @@ impl InventorySpriteDescriptor {
   pub fn new_list_from_ltx(ltx: &Ltx) -> Vec<Self> {
     let mut inventory_sections: Vec<Self> = Vec::new();
 
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       if let Some(inventory_section) = Self::new_optional_from_section(section_name, section) {
         inventory_sections.push(inventory_section);
       }
@@ -111,7 +111,7 @@ impl InventorySpriteDescriptor {
     let mut max_width: u32 = 0;
     let mut max_height: u32 = 0;
 
-    for (section_name, section) in ltx.iter() {
+    for (section_name, section) in ltx {
       if let Some(sprite) = Self::new_optional_from_section(section_name, section) {
         // Saturating, so a config declaring a rect past `u32` reaches the size refusal instead of wrapping small.
         max_width = max(

@@ -10,6 +10,7 @@ struct SceneHit {
   place: u32,
   position: vec3<f32>,
   to_world: mat3x3<f32>,
+  are_cards_met: bool,
 }
 
 struct SceneSurface {
@@ -33,7 +34,19 @@ const SCENE_NO_PLACE: u32 = 0xffffffffu;
 const SCENE_SUN_REACH: f32 = 1000.0;
 
 fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32, cone: SceneCone) -> SceneHit {
-  return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0), 0u, vec3<f32>(0.0), mat3x3<f32>());
+  return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0), 0u, vec3<f32>(0.0), mat3x3<f32>(), false);
+}
+
+fn trace_water_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32, cone: SceneCone) -> SceneHit {
+  return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0), 0u, vec3<f32>(0.0), mat3x3<f32>(), false);
+}
+
+fn is_scene_grass_card(hit: SceneHit) -> bool {
+  return false;
+}
+
+fn scene_card_grass(hit: SceneHit, width: f32) -> SceneGrassPassed {
+  return SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
 }
 
 fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32, cone: SceneCone, passed: u32) -> bool {

@@ -8,27 +8,39 @@ use xrf_chunk::{
   ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkSizePackedIterator, ChunkWriter,
   InMemoryChunkDataSource,
 };
-use xrf_error::XrfResult;
-use xrf_utils::to_format_size;
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{assert_length, narrow_format_size};
 
+use crate::data::graph::graph_cross_table_cell::GraphCrossTableCell;
+
+/// One level's cross table, `CGameLevelCrossTable`: a header naming the level and the game graph it was built against,
+/// then a cell for each of the level's AI nodes, in node order.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GraphCrossTable {
   pub version: u32,
+  /// The level's AI node count, which the cells match.
   pub nodes_count: u32,
+  /// The level's game vertex count.
   pub vertices_count: u32,
   pub level_guid: Uuid,
   pub game_guid: Uuid,
-  #[serde(skip)] // Does not make sense for JSON.
-  pub data: Vec<u8>,
+  #[serde(skip)] // A cell a node: millions on a level, no use in JSON.
+  pub cells: Vec<GraphCrossTableCell>,
 }
 
-// todo: Import/export list functionality?
 impl GraphCrossTable {
-  /// Export cross-tables as separate gct chunk file.
+  /// The header's bytes: version, both counts and both GUIDs.
+  pub const HEADER_SIZE: u64 = 4 + 4 + 4 + 16 + 16;
+
+  /// Import cross tables from a separate gct chunk file; an empty file, as a graph of no level exports, holds none.
   pub fn import_list<T: ByteOrder>(file: &mut File) -> XrfResult<Vec<Self>> {
     let mut cross_tables: Vec<Self> = Vec::new();
+
+    if file.metadata()?.len() == 0 {
+      return Ok(cross_tables);
+    }
 
     for cross_table_reader in ChunkSizePackedIterator::from_current(&mut ChunkReader::from_file(file.try_clone()?)?) {
       let mut cross_table_reader: ChunkReader<InMemoryChunkDataSource> = cross_table_reader?;
@@ -48,7 +60,7 @@ impl GraphCrossTable {
       let mut cross_table_writer: ChunkWriter = ChunkWriter::new();
       cross_table_writer.write_xr::<T, _>(cross_table)?;
 
-      cross_tables_writer.write_u32::<T>(to_format_size(
+      cross_tables_writer.write_u32::<T>(narrow_format_size(
         cross_table_writer.bytes_written() + 4,
         "graph cross table",
       )?)?;
@@ -82,7 +94,10 @@ impl ChunkReadWriteList for GraphCrossTable {
       let mut table_writer: ChunkWriter = ChunkWriter::new();
       table_writer.write_xr::<T, _>(table)?;
 
-      writer.write_u32::<T>(to_format_size(table_writer.bytes_written() + 4, "graph cross table")?)?;
+      writer.write_u32::<T>(narrow_format_size(
+        table_writer.bytes_written() + 4,
+        "graph cross table",
+      )?)?;
       writer.write_all(&table_writer.buffer)?;
     }
 
@@ -91,26 +106,63 @@ impl ChunkReadWriteList for GraphCrossTable {
 }
 
 impl ChunkReadWrite for GraphCrossTable {
-  /// Read cross table data from the chunk.
+  /// Read a cross table, refusing one whose cells are not one a node.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let version: u32 = reader.read_u32::<T>()?;
+    let nodes_count: u32 = reader.read_u32::<T>()?;
+    let vertices_count: u32 = reader.read_u32::<T>()?;
+    let level_guid: Uuid = Uuid::from_u128(reader.read_u128::<T>()?);
+    let game_guid: Uuid = Uuid::from_u128(reader.read_u128::<T>()?);
+    let remaining: u64 = reader.read_bytes_remain();
+
+    if remaining != u64::from(nodes_count) * GraphCrossTableCell::SIZE {
+      return Err(XrfError::new_parsing_error(format!(
+        "Cross table of level {level_guid} declares {nodes_count} nodes but holds {remaining} bytes of cells"
+      )));
+    }
+
+    // Millions of cells on a level, decoded in one pass over their bytes rather than one read per field; the check
+    // above leaves no partial cell.
+    let cells: Vec<GraphCrossTableCell> = reader.read_remaining_with(|bytes| {
+      bytes
+        .as_chunks::<{ GraphCrossTableCell::SIZE as usize }>()
+        .0
+        .iter()
+        .map(GraphCrossTableCell::decode::<T>)
+        .collect()
+    })?;
+
     Ok(Self {
-      version: reader.read_u32::<T>()?,
-      nodes_count: reader.read_u32::<T>()?,
-      vertices_count: reader.read_u32::<T>()?,
-      level_guid: Uuid::from_u128(reader.read_u128::<T>()?),
-      game_guid: Uuid::from_u128(reader.read_u128::<T>()?),
-      data: reader.read_bytes(reader.read_bytes_remain() as usize)?,
+      version,
+      nodes_count,
+      vertices_count,
+      level_guid,
+      game_guid,
+      cells,
     })
   }
 
-  /// Write cross table data into the writer.
+  /// Write a cross table, refusing one whose cells are not one a node.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    assert_length(
+      &self.cells,
+      self.nodes_count as usize,
+      "Expect a cross table cell for each node",
+    )?;
+
     writer.write_u32::<T>(self.version)?;
     writer.write_u32::<T>(self.nodes_count)?;
     writer.write_u32::<T>(self.vertices_count)?;
     writer.write_u128::<T>(self.level_guid.as_u128())?;
     writer.write_u128::<T>(self.game_guid.as_u128())?;
-    writer.write_all(&self.data)?;
+
+    let mut cells: Vec<u8> = Vec::with_capacity(self.cells.len() * GraphCrossTableCell::SIZE as usize);
+
+    for cell in &self.cells {
+      cells.extend_from_slice(&cell.encode::<T>());
+    }
+
+    writer.write_all(&cells)?;
 
     Ok(())
   }
@@ -122,13 +174,33 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
+  use byteorder::{BigEndian, ByteOrder};
   use serde_json::to_string_pretty;
-  use uuid::uuid;
-  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
+  use uuid::{Uuid, uuid};
+  use xrf_chunk::{
+    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+  };
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::graph::graph_cross_table::GraphCrossTable;
+  use crate::data::graph::graph_cross_table_cell::GraphCrossTableCell;
+
+  fn table(level_guid: Uuid, game_guid: Uuid, nodes_count: u32, vertices_count: u32) -> GraphCrossTable {
+    GraphCrossTable {
+      version: 16,
+      nodes_count,
+      vertices_count,
+      level_guid,
+      game_guid,
+      cells: (0..nodes_count)
+        .map(|node| GraphCrossTableCell {
+          game_vertex_id: (node % 7) as u16,
+          distance: node as f32 * 0.7,
+        })
+        .collect(),
+    }
+  }
 
   #[test]
   fn test_read_write_list() -> XrfResult {
@@ -136,47 +208,36 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     let original: Vec<GraphCrossTable> = vec![
-      GraphCrossTable {
-        version: 16,
-        nodes_count: 51,
-        vertices_count: 35,
-        level_guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
-        game_guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
-        data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-      },
-      GraphCrossTable {
-        version: 16,
-        nodes_count: 24,
-        vertices_count: 345,
-        level_guid: uuid!("cce55023-10b1-426f-9247-bb680e5fe0b7"),
-        game_guid: uuid!("dde55023-10b1-426f-9247-bb680e5fe0b7"),
-        data: vec![0, 1, 2, 3, 4, 5, 6],
-      },
-      GraphCrossTable {
-        version: 16,
-        nodes_count: 24,
-        vertices_count: 345,
-        level_guid: uuid!("aa125023-10b1-426f-9247-bb680e5fe0b7"),
-        game_guid: uuid!("bbe55023-10b1-426f-9247-bb680e5fe0b7"),
-        data: vec![0, 1, 2, 3],
-      },
+      table(
+        uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+        uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+        5,
+        35,
+      ),
+      table(
+        uuid!("cce55023-10b1-426f-9247-bb680e5fe0b7"),
+        uuid!("dde55023-10b1-426f-9247-bb680e5fe0b7"),
+        3,
+        345,
+      ),
+      table(
+        uuid!("aa125023-10b1-426f-9247-bb680e5fe0b7"),
+        uuid!("bbe55023-10b1-426f-9247-bb680e5fe0b7"),
+        0,
+        345,
+      ),
     ];
 
     GraphCrossTable::write_list::<XRayByteOrder>(&mut writer, &original)?;
 
-    assert_eq!(writer.bytes_written(), 166);
+    assert_eq!(writer.bytes_written(), 3 * (4 + 44) + 8 * 6);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into::<XRayByteOrder>(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
 
-    assert_eq!(bytes_written, 166);
-
     let file: FileSlice = GeneratedResources::open_slice(&GeneratedResources::sample_name(file!(), &filename))?;
-
-    assert_eq!(file.bytes_remaining(), 166 + 8);
-
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
@@ -188,40 +249,126 @@ mod tests {
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let filename: String = String::from("read_write.chunk");
     let mut writer: ChunkWriter = ChunkWriter::new();
-
-    let original: GraphCrossTable = GraphCrossTable {
-      version: 16,
-      nodes_count: 51,
-      vertices_count: 4000,
-      level_guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
-      game_guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
-      data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    };
+    let original: GraphCrossTable = table(
+      uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+      uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+      11,
+      4000,
+    );
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
-    assert_eq!(writer.bytes_written(), 55);
-
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
-      &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
-      0,
-    )?;
-
-    assert_eq!(bytes_written, 55);
-
-    let file: FileSlice = GeneratedResources::open_slice(&GeneratedResources::sample_name(file!(), &filename))?;
-
-    assert_eq!(file.bytes_remaining(), 55 + 8);
-
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?
-      .read_child_by_index(0)
-      .expect("0 index chunk to exist");
-
-    assert_eq!(GraphCrossTable::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(writer.bytes_written(), 44 + 11 * 6);
+    assert_eq!(
+      GraphCrossTable::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&writer.buffer)?)?,
+      original
+    );
 
     Ok(())
+  }
+
+  #[test]
+  fn refuses_to_write_cells_other_than_one_a_node() {
+    let mut cross_table: GraphCrossTable = table(Uuid::nil(), Uuid::nil(), 4, 1);
+
+    cross_table.nodes_count = 5;
+
+    let error: String = cross_table
+      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .expect_err("expect four cells for five nodes to be refused")
+      .to_string();
+
+    assert!(
+      error.contains("cross table cell for each node"),
+      "Unexpected error: {error}"
+    );
+  }
+
+  #[test]
+  fn refuses_to_read_cells_other_than_one_a_node() -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    table(Uuid::nil(), Uuid::nil(), 4, 1).write::<XRayByteOrder>(&mut writer)?;
+
+    // The node count raised from 4 to 5 over the same four cells.
+    writer.buffer[4] = 5;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
+    let error: String = GraphCrossTable::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect five nodes over four cells to be refused")
+      .to_string();
+
+    assert!(
+      error.contains("declares 5 nodes but holds 24 bytes"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_to_read_a_partial_cell() -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    table(Uuid::nil(), Uuid::nil(), 4, 1).write::<XRayByteOrder>(&mut writer)?;
+    writer.buffer.extend_from_slice(&[0, 0, 0]);
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
+    let error: String = GraphCrossTable::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("expect four nodes over four and a half cells to be refused")
+      .to_string();
+
+    assert!(
+      error.contains("declares 4 nodes but holds 27 bytes"),
+      "Unexpected error: {error}"
+    );
+
+    Ok(())
+  }
+
+  // An unreached cell's distance is `u32::MAX` as a float, a NaN that must come back bit for bit.
+  fn assert_table_agrees_with_cells<T: ByteOrder>() -> XrfResult {
+    let mut original: GraphCrossTable = table(Uuid::nil(), Uuid::nil(), 5, 300);
+
+    original.cells[1].game_vertex_id = 0x1234;
+    original.cells[3].distance = f32::from_bits(u32::MAX);
+    original.cells[4].distance = -0.0;
+
+    let mut table_writer: ChunkWriter = ChunkWriter::new();
+    let mut cells_writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<T>(&mut table_writer)?;
+
+    for cell in &original.cells {
+      cells_writer.write_xr::<T, _>(cell)?;
+    }
+
+    assert_eq!(
+      &table_writer.buffer[GraphCrossTable::HEADER_SIZE as usize..],
+      cells_writer.buffer.as_slice()
+    );
+
+    let read: GraphCrossTable = GraphCrossTable::read::<T, _>(&mut ChunkReader::from_bytes(&table_writer.buffer)?)?;
+    let mut cells_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&cells_writer.buffer)?;
+    let bits = |cell: &GraphCrossTableCell| (cell.game_vertex_id, cell.distance.to_bits());
+
+    assert_eq!(read.cells.len(), original.cells.len());
+
+    for (cell, expected) in read.cells.iter().zip(&original.cells) {
+      let one: GraphCrossTableCell = cells_reader.read_xr::<T, _>()?;
+
+      assert_eq!(bits(cell), bits(&one));
+      assert_eq!(bits(cell), bits(expected));
+    }
+
+    cells_reader.assert_read("Expect every cell to be read")
+  }
+
+  #[test]
+  fn reads_and_writes_cells_as_each_cell_does() -> XrfResult {
+    assert_table_agrees_with_cells::<XRayByteOrder>()?;
+    assert_table_agrees_with_cells::<BigEndian>()
   }
 
   #[test]
@@ -230,30 +377,18 @@ mod tests {
     let mut file: File = GeneratedResources::overwrite(config_path.to_str().expect("Valid path"))?;
 
     let original: Vec<GraphCrossTable> = vec![
-      GraphCrossTable {
-        version: 16,
-        nodes_count: 23,
-        vertices_count: 62,
-        level_guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
-        game_guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
-        data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-      },
-      GraphCrossTable {
-        version: 16,
-        nodes_count: 22,
-        vertices_count: 52,
-        level_guid: uuid!("cce55023-10b1-426f-9247-bb680e5fe0b7"),
-        game_guid: uuid!("dde55023-10b1-426f-9247-bb680e5fe0b7"),
-        data: vec![0, 1, 2, 3, 4, 5, 6],
-      },
-      GraphCrossTable {
-        version: 16,
-        nodes_count: 45,
-        vertices_count: 637,
-        level_guid: uuid!("aa125023-10b1-426f-9247-bb680e5fe0b7"),
-        game_guid: uuid!("bbe55023-10b1-426f-9247-bb680e5fe0b7"),
-        data: vec![0, 1, 2, 3],
-      },
+      table(
+        uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+        uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+        23,
+        62,
+      ),
+      table(
+        uuid!("cce55023-10b1-426f-9247-bb680e5fe0b7"),
+        uuid!("dde55023-10b1-426f-9247-bb680e5fe0b7"),
+        22,
+        52,
+      ),
     ];
 
     GraphCrossTable::export_list::<XRayByteOrder>(&original, &mut file)?;
@@ -268,14 +403,12 @@ mod tests {
 
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
-    let original: GraphCrossTable = GraphCrossTable {
-      version: 24,
-      nodes_count: 436,
-      vertices_count: 26324,
-      level_guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
-      game_guid: uuid!("89e55024-10b1-426f-9247-bb680e5fe0b8"),
-      data: vec![],
-    };
+    let original: GraphCrossTable = table(
+      uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+      uuid!("89e55024-10b1-426f-9247-bb680e5fe0b8"),
+      0,
+      26324,
+    );
 
     let mut file: File =
       GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
@@ -285,7 +418,6 @@ mod tests {
 
     let serialized: String = read_to_string(&mut file)?;
 
-    assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<GraphCrossTable>(&serialized)?);
 
     Ok(())

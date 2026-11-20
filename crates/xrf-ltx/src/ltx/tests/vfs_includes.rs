@@ -35,7 +35,7 @@ fn reads_include_statements_and_ignores_sections() {
     )],
   );
 
-  let includes: Vec<String> = LtxVfsSource::new(search.clone())
+  let includes: Vec<String> = LtxVfsSource::new(search)
     .read_included("configs\\system.ltx")
     .expect("includes read");
 
@@ -47,7 +47,7 @@ fn answers_an_empty_list_for_a_config_including_nothing() {
   let search: XraySearch = mount_search("none", &[("configs\\system.ltx", "[section]\nvalue = 1\n")]);
 
   assert_eq!(
-    LtxVfsSource::new(search.clone())
+    LtxVfsSource::new(search)
       .read_included("configs\\system.ltx")
       .expect("includes read"),
     Vec::<String>::new()
@@ -80,7 +80,7 @@ fn reads_include_statements_declared_after_sections() {
   );
 
   assert_eq!(
-    LtxVfsSource::new(search.clone())
+    LtxVfsSource::new(search)
       .read_included("configs\\system.ltx")
       .expect("includes read"),
     vec!["first.ltx", "second.ltx"]

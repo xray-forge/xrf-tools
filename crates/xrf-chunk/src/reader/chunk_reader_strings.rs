@@ -1,7 +1,7 @@
 use std::io::{Read, SeekFrom};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::decode_w1251_bytes_to_string;
+use xrf_utils::decode_w1251_field_to_string;
 
 use crate::reader::chunk_line::ChunkLine;
 use crate::reader::chunk_reader::ChunkReader;
@@ -58,7 +58,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
       self.give_back_read_ahead(collected.len() - end - 1)?;
       collected.truncate(end);
 
-      return Ok(decode_w1251_bytes_to_string(&collected)?);
+      return Ok(decode_w1251_field_to_string(&collected)?);
     }
   }
 
@@ -135,8 +135,8 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     self.give_back_read_ahead(collected.len() - end)?;
 
     Ok(ChunkLine {
-      value: decode_w1251_bytes_to_string(&collected[..start])?,
-      terminator: decode_w1251_bytes_to_string(&collected[start..end])?,
+      value: decode_w1251_field_to_string(&collected[..start])?,
+      terminator: decode_w1251_field_to_string(&collected[start..end])?,
     })
   }
 
@@ -173,7 +173,7 @@ mod tests {
 
   #[test]
   fn test_read_w1251_string_empty() -> XrfResult {
-    // A chunk declaring no payload, since a reader cannot be opened over an empty source.
+    // An empty chunk, since a reader cannot be opened over an empty source.
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     assert_eq!(chunk.read_bytes_remain(), 0, "Expect 0 bytes remaining");
@@ -199,6 +199,18 @@ mod tests {
     assert_eq!(chunk.read_w1251_string()?, "", "Expect empty string with terminator");
     assert_eq!(chunk.cursor_pos(), 1, "Expect 1 byte read");
     assert_eq!(chunk.read_bytes_remain(), 0, "Expect 0 bytes remaining");
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_a_string_opening_on_byte_order_mark_bytes_as_its_letters() -> XrfResult {
+    // Windows-1251 throughout: `EF BB BF` is «п»ї» and `FF FE` is «яю», never UTF-8 or UTF-16 marks.
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_bytes(&[0xef, 0xbb, 0xbf, b'a', 0, 0xff, 0xfe, b'b', b'\n'])?;
+
+    assert_eq!(chunk.read_w1251_string()?, "п»їa");
+    assert_eq!(chunk.read_w1251_line()?, line("яюb", "\n"));
 
     Ok(())
   }
@@ -267,7 +279,7 @@ mod tests {
 
   #[test]
   fn test_read_w1251_line_empty() -> XrfResult {
-    // A chunk declaring no payload, since a reader cannot be opened over an empty source.
+    // An empty chunk, since a reader cannot be opened over an empty source.
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
     assert_eq!(chunk.read_bytes_remain(), 0, "Expect 0 bytes remaining");
@@ -285,8 +297,7 @@ mod tests {
 
   #[test]
   fn refuses_a_line_the_data_ends_before_terminating() -> XrfResult {
-    // The engine would take what is left, but a field read this way is followed by more of its record: running to the
-    // end means the value has swallowed whatever came after it.
+    // The engine takes what is left, but here more of the record follows, so running to the end swallows it.
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(b"toggle")?;
 
     assert_eq!(
@@ -345,8 +356,7 @@ mod tests {
 
   #[test]
   fn reads_a_line_terminated_by_a_bare_newline() -> XrfResult {
-    // What three Gunslinger animation banks carry, and what `is_term` accepts: one `\n` ends the name, and the count
-    // that follows it is left where the record expects it.
+    // As three Gunslinger animation banks store it: one `\n` ends the name and a count follows.
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(b"toggle\n\x01\x00\x00\x00")?;
 
     assert_eq!(chunk.read_w1251_line()?, line("toggle", "\n"));
@@ -368,8 +378,7 @@ mod tests {
 
   #[test]
   fn takes_a_whole_run_of_terminators_as_one() -> XrfResult {
-    // `advance_term_string` skips every terminator it finds rather than a fixed pair, so a blank line between entries
-    // belongs to the one before it rather than opening an empty one.
+    // A blank line between entries belongs to the one before it, not to a new empty one.
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(b"abc\r\n\r\n\ncba\r\n")?;
 
     assert_eq!(chunk.read_w1251_line()?, line("abc", "\r\n\r\n\n"));
@@ -407,8 +416,6 @@ mod tests {
 
   #[test]
   fn reads_a_terminator_run_continuing_past_an_internal_buffer() -> XrfResult {
-    // The run's end is what stops the read, so a run filling the rest of a buffer has to keep the reader going rather
-    // than cut the line where the buffer happened to end.
     let mut bytes: Vec<u8> = vec![b'a'];
     bytes.extend_from_slice(&[b'\n'; STRING_READ_BUFFER_SIZE]);
     bytes.extend_from_slice(b"next");

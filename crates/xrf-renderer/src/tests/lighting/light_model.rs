@@ -1,8 +1,6 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::lighting::luminance::luminance;
-
 use crate::contract::feature::image::display::render_display_transform::RenderDisplayTransform;
 use crate::contract::feature::image::display::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::feature::image::render_exposure_settings::RenderExposureSettings;
@@ -21,7 +19,8 @@ use crate::feature::image::exposure::reading::exposure_metering::ExposureMeterin
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
-use crate::lighting::lamp::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::get_light_specular;
+use crate::lighting::luminance::luminance;
 use crate::lighting::srgb::{anchored_light, authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::lighting::unit::daylight::Daylight;
 use crate::lighting::unit::light_unit::PHYSICAL_LIGHT_UNIT;
@@ -59,7 +58,7 @@ fn lighting_at(options: &RenderViewOptions, lighting: &RenderLighting, pre_expos
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: SkyHarmonics::default(),
     },
@@ -186,7 +185,7 @@ fn only_the_physical_levels_weigh_the_specular_by_the_light() {
   );
   assert!(
     weight
-      > to_light_specular(
+      > get_light_specular(
         authored_light(lighting.get_sun_color(&engine.features.light_scales), true),
         true
       )
@@ -520,7 +519,7 @@ fn the_sky_irradiance_stands_at_its_levels() {
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: harmonics,
     };
@@ -575,7 +574,7 @@ fn the_fog_takes_the_skys_colour_only_at_the_anchored_levels() {
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: harmonics,
     };
@@ -645,7 +644,7 @@ fn metered_frame(units: LightUnits, current: f32, metering: ExposureMetering) ->
     daylight: None,
     sky_blend: 0.0,
     is_irradiance_up: false,
-    clouds_time: 0.0,
+    cloud_drift: Vec4::ZERO,
     sun_sprite: Vec4::ZERO,
     sky_harmonics: SkyHarmonics::default(),
   }

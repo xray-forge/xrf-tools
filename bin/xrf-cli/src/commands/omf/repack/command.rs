@@ -9,33 +9,30 @@ use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::{format_duration, format_path, to_portable_path_string};
+use xrf_utils::{format_duration, format_path, format_portable_path};
 
 use crate::commands::omf::repack::{OmfRepackOutcome, OmfRepackStatistics, OmfRepackVerifyReport};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 use crate::core::host_walk::HostWalk;
 use crate::core::report::ReportVerdict;
 use crate::core::reports::FileConversionReport;
 
 #[derive(Default)]
-pub struct RepackCommand;
+pub(crate) struct RepackCommand;
 
 impl GenericCommand for RepackCommand {
   fn operation(&self) -> &'static str {
     "repack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Omf file to repack, or with --verify an omf file or a directory of them")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Repack an OMF file, or verify that OMF files repack into the bytes they were read from")
-      .arg(
-        Arg::new("path")
-          .help("Omf file to repack, or with --verify an omf file or a directory of them")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Repacked omf file written")
@@ -54,9 +51,7 @@ impl GenericCommand for RepackCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid input path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     if matches.get_flag("verify") {
       return Self::verify(context, path);
@@ -140,7 +135,7 @@ impl RepackCommand {
 
   /// What one file's round trip found.
   fn finding(rule: &'static str, path: &Path, message: String) -> Finding {
-    Finding::new(RuleId::of_static(rule), Some(to_portable_path_string(path)), message)
+    Finding::new(RuleId::of_static(rule), Some(format_portable_path(path)), message)
   }
 
   /// Reads `path` and writes it repacked to `destination`.

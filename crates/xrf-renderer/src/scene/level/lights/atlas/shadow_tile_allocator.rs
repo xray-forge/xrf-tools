@@ -4,7 +4,7 @@ use crate::scene::level::lights::atlas::shadow_tile::ShadowTile;
 
 /// Hands out squares of an atlas whose sides are powers of two, as a buddy allocator does: a square is cut into four
 /// quarters to make a smaller one, and four free quarters join back into their parent.
-pub struct ShadowTileAllocator {
+pub(crate) struct ShadowTileAllocator {
   size: u32,
   min: u32,
   /// The free squares of each side, by `log2(side)`, ordered so the same requests take the same squares.
@@ -14,7 +14,7 @@ pub struct ShadowTileAllocator {
 
 impl ShadowTileAllocator {
   /// An atlas `size` texels across, cut no finer than `min`; both powers of two.
-  pub fn new(size: u32, min: u32) -> Self {
+  pub(crate) fn new(size: u32, min: u32) -> Self {
     let mut free: Vec<BTreeSet<(u32, u32)>> = vec![BTreeSet::new(); size.ilog2() as usize + 1];
 
     free[size.ilog2() as usize].insert((0, 0));
@@ -28,12 +28,12 @@ impl ShadowTileAllocator {
   }
 
   /// Texels handed out.
-  pub fn get_used(&self) -> u64 {
+  pub(crate) fn get_used(&self) -> u64 {
     self.used
   }
 
   /// A free square of a side, rounded up to a power of two no less than the least, or none where there is no room.
-  pub fn allocate(&mut self, size: u32) -> Option<ShadowTile> {
+  pub(crate) fn allocate(&mut self, size: u32) -> Option<ShadowTile> {
     let side: u32 = size.max(self.min).next_power_of_two();
 
     if side > self.size {
@@ -54,13 +54,13 @@ impl ShadowTileAllocator {
       self.free[parent - 1].insert((x + half, y + half));
     }
 
-    self.used += (side as u64) * (side as u64);
+    self.used += u64::from(side) * u64::from(side);
 
     Some(ShadowTile { x, y, size: side })
   }
 
   /// Gives a square back, joining it with its three free siblings into their parent as far up as they go.
-  pub fn release(&mut self, tile: ShadowTile) {
+  pub(crate) fn release(&mut self, tile: ShadowTile) {
     let (mut x, mut y, mut side) = (tile.x, tile.y, tile.size);
 
     debug_assert!(
@@ -68,7 +68,7 @@ impl ShadowTileAllocator {
       "{tile:?} released twice"
     );
 
-    self.used = self.used.saturating_sub((side as u64) * (side as u64));
+    self.used = self.used.saturating_sub(u64::from(side) * u64::from(side));
 
     while side < self.size {
       let parent: u32 = side * 2;

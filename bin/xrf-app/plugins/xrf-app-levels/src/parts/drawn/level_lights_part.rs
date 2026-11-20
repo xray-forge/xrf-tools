@@ -9,8 +9,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::level::SelectedLevel;
-use crate::parts::LevelTextureReference;
-use crate::parts::{LevelSpawnPart, PackedLevelLights, SpawnVisualReader};
+use crate::parts::{LevelSpawnPart, LevelSpawnVisualsPart, LevelTextureReference, PackedLevelLights};
 use crate::report::LevelReport;
 
 /// What a change event calls what a level's lights were read from when it goes stale.
@@ -33,7 +32,7 @@ impl LevelLightsPart {
   /// Collects the open level's lights, what they are read from recorded as its lights part. Where its spawn cannot be
   /// read the level keeps its own lights alone, and without configs its zones light nothing and its lamps keep their
   /// spawned flags.
-  pub fn pack(
+  pub(crate) fn pack(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,
@@ -55,14 +54,14 @@ impl LevelLightsPart {
       .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
       .inspect_err(|error| LevelReport::unreadable_animations(LightAnimFile::FILE_NAME, error))
       .ok();
-    let mut packer: LightsPacker = LightsPacker::new(animations.as_ref());
+    let mut packer: LightsPacker<'_> = LightsPacker::new(animations.as_ref());
 
     if let Some(sections) = sections {
       packer = packer.with_sections(sections);
     }
 
     match LevelSpawnPart::get(current, search) {
-      Ok(spawn) => SpawnVisualReader::with(current, search, |visuals| {
+      Ok(spawn) => LevelSpawnVisualsPart::with_reader(current, search, |visuals| {
         packer.add_objects(spawn.list_kept(), &mut |name| {
           visuals.get(name).ok().and_then(|it| it.rest.clone())
         });

@@ -1,4 +1,5 @@
 #import "common/fullscreen"
+#import "common/srgb"
 
 // FXAA 3.11 (Timothy Lottes, NVIDIA), the PC quality preset three's `FXAANode` draws: each edge found by the contrast
 // of the luma around a pixel, walked along to its ends, and the pixel blended across it by where along the edge it
@@ -16,9 +17,11 @@ const SEARCH_STEPS: u32 = 12u;
 var<private> STEPS: array<f32, 12> = array<f32, 12>(1.0, 1.0, 1.0, 1.0, 1.0, 1.5, 2.0, 2.0, 2.0, 2.0, 4.0, 8.0);
 
 // The luma edges are found by: of the colour itself, or, where the frame holds linear light, of its reversible
-// tonemap, `c / (1 + max(c))`, so a bright edge counts as it is shown.
+// tonemap, `c / (1 + max(c))`, display-encoded, so a bright edge counts as it is shown and a dark one reaches the
+// thresholds made for display values, which the tonemap alone, still linear near black, leaves it far under.
 fn luma(color: vec3<f32>) -> f32 {
-  let shown: vec3<f32> = select(color, color / (1.0 + max(color.r, max(color.g, color.b))), smoothing.linear > 0.5);
+  let encoded: vec3<f32> = srgb_encoded(color / (1.0 + max(color.r, max(color.g, color.b))));
+  let shown: vec3<f32> = select(color, encoded, smoothing.linear > 0.5);
 
   return dot(shown, vec3<f32>(0.299, 0.587, 0.114));
 }

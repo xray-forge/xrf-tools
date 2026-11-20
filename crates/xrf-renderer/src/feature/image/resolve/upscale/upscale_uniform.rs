@@ -6,7 +6,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Upscale")]
-pub struct UpscaleUniform {
+pub(crate) struct UpscaleUniform {
   pub output_size: Vec2,
   pub sharpness: f32,
   pub linear: f32,

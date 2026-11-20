@@ -2,14 +2,17 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration,
   GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, PipelineSet, RasterContext,
-  RasterPassBuilder, RenderPipelineDescription, StorageValue, UniformBinding,
+  RasterPassBuilder, RenderPipelineDescription, StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
+use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
-use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
 use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request_handles::TraceRequestHandles;
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
+use crate::feature::tracing::scene_trace::requests::water_ray_parameters::WaterRayParameters;
+use crate::feature::tracing::scene_trace::requests::water_rays::WaterRays;
+use crate::feature::tracing::scene_trace::requests::water_rays_uniform::WaterRaysUniform;
 use crate::feature::tracing::scene_trace::scene_trace_bindings::SceneTraceBindings;
 use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
@@ -32,6 +35,7 @@ use crate::feature::weather::water::reflection::water_reflection_inputs::WaterRe
 use crate::feature::weather::water::reflection::water_reflection_parameters::WaterReflectionParameters;
 use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::feature::weather::water::water_uniform::WaterUniform;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::frame::targets::texture_copy::add_texture_copy;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
@@ -54,7 +58,7 @@ struct WaterFrameHandles<'a> {
 /// each pixel draws: a depth pass writes it first, as the engine's water, drawn in its index order, lets a fold of its
 /// surface draw over a nearer one. The enhanced water reads the scene as it stood before the water, which it refracts,
 /// and while it reflects draws its reflection first, accumulated over the frames before and blurred.
-pub struct WaterPass {
+pub(crate) struct WaterPass {
   /// The view's, the bindless textures' and the static draws' layouts, which every water pipeline binds below its own.
   layouts: [wgpu::BindGroupLayout; 3],
   /// The list the reflection leaves the rays the screen does not answer in, bound at group 3.
@@ -64,15 +68,19 @@ pub struct WaterPass {
   pipelines: PipelineSet<WaterPipelines>,
   blur: WaterBlurPass,
   maps: EnhancedWaterMaps,
-  /// What a binding a pass does not read is given: a texel of nothing.
+  /// What a binding a pass does not read is given: a texel of nothing, and a ray record of nothing.
   nothing: wgpu::TextureView,
+  no_rays: WaterRays,
 }
 
 impl WaterPass {
+  /// The pass reducing the frame's depth into the pyramid the reflection's rays walk over.
+  pub(crate) const PYRAMID_PASS: &'static str = "water pyramid";
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
+  pub(crate) fn new(
     queue: &wgpu::Queue,
     source: PipelineSource<'_>,
     [view_layout, scene_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
@@ -108,6 +116,7 @@ impl WaterPass {
       blur: WaterBlurPass::new(source)?,
       maps: EnhancedWaterMaps::new(device, queue, bundle, &nothing),
       nothing,
+      no_rays: WaterRays::new(device, "water nothing", 0),
       layouts,
       request_layout,
       parameter_layouts,
@@ -116,7 +125,7 @@ impl WaterPass {
 
   /// Draws the water a view's list holds into the depth the pass draws into, its waves lifted as the frame's: an
   /// overhead map's view, its own lists and arguments.
-  pub fn record_depth(
+  pub(crate) fn record_depth(
     &self,
     context: &mut RasterContext<'_>,
     groups: WaterGroups<'_>,
@@ -128,13 +137,13 @@ impl WaterPass {
   }
 
   /// The bundled maps, which the enhanced rain's puddles and ripples read too.
-  pub fn get_maps(&self) -> &EnhancedWaterMaps {
+  pub(crate) fn get_maps(&self) -> &EnhancedWaterMaps {
     &self.maps
   }
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self.pipelines.refresh(source.cache, || {
       Self::create_pipelines(source, &self.layouts, &self.request_layout, &self.parameter_layouts)
     }) {
@@ -149,7 +158,7 @@ impl WaterPass {
   /// Declares the frame's water: the nearest surface's depth, then the engine's surface, or the enhanced water's scene
   /// copy, reflection and blur and its surface. Answers the G-buffer's depth with the nearest water's over it, which
   /// the resolve reprojects the water's pixels by.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,
@@ -251,7 +260,6 @@ impl WaterPass {
           .histories
           .get_sides()
           .map(|side| import("water reflection", &side.view)),
-        blue_noise: import("water blue noise", &self.maps.blue_noise),
       });
 
     let WaterReflected { blurred, history } = match reflection {
@@ -289,8 +297,7 @@ impl WaterPass {
         Self::begin_surface_pass(graph, draw)
           .color(GraphColorAttachment::new(guides.specular_albedo, wgpu::LoadOp::Load))
           .color(GraphColorAttachment::new(guides.normals, wgpu::LoadOp::Load))
-          .color(GraphColorAttachment::new(guides.hit_distance, wgpu::LoadOp::Load))
-          .color(GraphColorAttachment::new(guides.bias, wgpu::LoadOp::Load)),
+          .color(GraphColorAttachment::new(guides.hit_distance, wgpu::LoadOp::Load)),
         parameters,
         None,
         &frame.args,
@@ -328,10 +335,20 @@ impl WaterPass {
       nothing,
       reflection,
       histories,
-      blue_noise,
     } = inputs;
     let (width, height) = draw.targets.size;
     let [written, read]: [GraphTexture; 2] = histories;
+
+    // The frame's depth as it stands now, the grass in it, reduced to its nearest for the rays to walk over.
+    draw.depth_pyramid.add_passes(
+      &mut *graph,
+      &mut *bindings,
+      Self::PYRAMID_PASS,
+      (&reflection.pyramid, draw.targets.depth),
+      PyramidReduction::Nearest,
+    );
+
+    let nearest_depth: GraphTexture = bindings.import_view(graph, "water nearest depth", &reflection.pyramid.view);
     let current: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "water reflection current",
       width,
@@ -342,6 +359,8 @@ impl WaterPass {
       draw
         .scene_trace
         .add_reset(graph, bindings, "water reflection requests clear", &reflection.requests);
+    let rays: GraphBuffer = bindings.import_buffer(graph, "water reflection rays", &reflection.rays.records);
+    let no_rays: GraphBuffer = bindings.import_buffer(graph, "water nothing rays", &self.no_rays.records);
     let parameters: WaterReflectionParameters<'a> = WaterReflectionParameters {
       lighting: draw.lit.lighting,
       water: frame.uniform,
@@ -353,8 +372,10 @@ impl WaterPass {
       nearest_water: frame.nearest,
       water_scene: scene,
       reflection_history: read,
-      blue_noise,
+      nearest_depth,
+      material_target: draw.targets.material,
       water_current: nothing,
+      water_rays: StorageArrayMut::new(rays),
     };
 
     self.add_batch_pass(
@@ -372,41 +393,56 @@ impl WaterPass {
       |it| &it.reflection,
     );
 
-    // The rays the screen left, traced against the level's geometry, their hits written into the reflection.
+    // The rays the screen left, from the list or every pixel's records, traced into the reflection.
     if let Some(TracedWater {
       sky,
       scene: TracedScene { trace, textures },
     }) = draw.traced
     {
-      let (trace_requests, trace_request_head) = listed.to_read();
       let no_ends: GraphTexture = bindings.import_view(graph, "scene trace no ends", draw.scene_trace.get_no_ends());
+      let scene_bindings: SceneTraceBindings<'a> = SceneTraceBindings {
+        view: draw.view,
+        parameters: ReflectionSceneParameters {
+          lighting: draw.lit.lighting,
+          material_lut: draw.lit.material_lut,
+          lut_sampler: draw.lit.lut_sampler,
+          exposure: StorageValue::new(draw.lit.exposure),
+          traced_out: current,
+          ends_out: no_ends,
+          screen_scene: scene,
+          screen_depth: draw.targets.depth,
+        },
+        sky,
+        trace,
+        textures,
+      };
 
-      draw.scene_trace.add_trace(
-        graph,
-        SceneTraceRequest {
-          dispatch_label: "water scene dispatch",
-          trace_label: "water scene",
-          handles: listed,
-        },
-        SceneTraceBindings {
-          view: draw.view,
-          parameters: ReflectionSceneParameters {
-            lighting: draw.lit.lighting,
-            material_lut: draw.lit.material_lut,
-            lut_sampler: draw.lit.lut_sampler,
-            exposure: StorageValue::new(draw.lit.exposure),
-            trace_requests,
-            trace_request_head,
-            traced_out: current,
-            ends_out: no_ends,
-            screen_scene: scene,
-            screen_depth: draw.targets.depth,
+      if draw.water.is_fully_traced() {
+        let enhanced_values: &EnhancedWaterUniform = draw.water.get_enhanced_uniform();
+        let water_rays: WaterRayParameters = WaterRayParameters {
+          water_rays: StorageArray::new(rays),
+          water_rays_frame: runtime.push_uniform(&WaterRaysUniform {
+            trace_distance: enhanced_values.trace_distance,
+            sky_share: draw.water.get_uniform().reflection,
+            frame: enhanced_values.trace_frame,
+          }),
+          water_depth: frame.nearest,
+        };
+
+        draw
+          .scene_trace
+          .add_trace_pixels(graph, "water scene", draw.targets.size, scene_bindings, water_rays);
+      } else {
+        draw.scene_trace.add_trace(
+          graph,
+          SceneTraceRequest {
+            dispatch_label: "water scene dispatch",
+            trace_label: "water scene",
+            handles: listed,
           },
-          sky,
-          trace,
-          textures,
-        },
-      );
+          scene_bindings,
+        );
+      }
     }
 
     self.add_batch_pass(
@@ -420,6 +456,7 @@ impl WaterPass {
         .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
       WaterReflectionParameters {
         water_current: current,
+        water_rays: StorageArrayMut::new(no_rays),
         ..parameters
       },
       None,
@@ -428,7 +465,10 @@ impl WaterPass {
       |it| &it.reflection_resolve,
     );
 
+    // Blurred only about the tiles the water may touch: down within them, across within the rows down reads.
     let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
+    let tiles: &ScreenTiles = draw.water.get_tiles();
+    let reach: u32 = (WaterBlurUniform::REACH * ScreenTiles::ROWS).div_ceil(half.1);
     let across: GraphTexture = self.blur.add(
       graph,
       runtime,
@@ -437,6 +477,7 @@ impl WaterPass {
         source: written,
         size: half,
         way: WaterBlurUniform::ACROSS,
+        rects: tiles.grown(0, reach).get_rects(half),
       },
       enhanced,
     );
@@ -448,6 +489,7 @@ impl WaterPass {
         source: across,
         size: half,
         way: WaterBlurUniform::DOWN,
+        rects: tiles.get_rects(half),
       },
       enhanced,
     );
@@ -586,15 +628,11 @@ impl WaterPass {
       Some(ViewTargets::MOTION.into()),
     ];
     // Ray reconstruction's guides past them, replaced where the enhanced water draws.
-    let guided_targets: [Option<wgpu::ColorTargetState>; 7] = [
-      targets[0].clone(),
-      targets[1].clone(),
-      targets[2].clone(),
-      Some(RayGuidesPass::SPECULAR_ALBEDO.into()),
-      Some(RayGuidesPass::NORMALS.into()),
-      Some(RayGuidesPass::HIT_DISTANCE.into()),
-      Some(RayGuidesPass::BIAS.into()),
-    ];
+    let guided_targets: Vec<Option<wgpu::ColorTargetState>> = targets
+      .iter()
+      .cloned()
+      .chain(WaterPipelines::GUIDES.map(|format| Some(format.into())))
+      .collect();
     let reflection_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::FORMAT.into())];
     let current_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::CURRENT_FORMAT.into())];
     let describe = |label: &'static str,

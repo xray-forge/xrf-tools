@@ -5,7 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Distort")]
-pub struct DistortUniform {
+pub(crate) struct DistortUniform {
   pub strength: f32,
   pub is_blurred: u32,
 }

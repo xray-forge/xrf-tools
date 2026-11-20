@@ -1,4 +1,4 @@
-import { defineMenu, IMenu } from "@/core/shell/menu/lib";
+import { defineMenu, IMenu } from "@/core/routing/menu-descriptor";
 
 /** What the editor does with the open sprite as a whole. */
 export const SPRITE_EQUIPMENT_EDITOR_MENU: IMenu<"sprite"> = defineMenu({

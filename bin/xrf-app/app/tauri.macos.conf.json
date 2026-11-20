@@ -1,0 +1,9 @@
+{
+  "bundle": {
+    "resources": {
+      "../../../.sdks/steam-audio/libphonon.dylib": "resources/audio/steam-audio/libphonon.dylib",
+      "../../../.sdks/steam-audio/LICENSE.md": "resources/audio/steam-audio/LICENSE.md",
+      "../../../.sdks/steam-audio/THIRDPARTY.md": "resources/audio/steam-audio/THIRDPARTY.md"
+    }
+  }
+}

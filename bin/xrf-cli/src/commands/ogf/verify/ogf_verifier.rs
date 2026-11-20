@@ -9,7 +9,7 @@ use xrf_math::Vector3d;
 use xrf_ogf::OgfFile;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::{format_path, to_portable_path_string};
+use xrf_utils::{format_path, format_portable_path};
 use xrf_visual::{VisualBounds, VisualDescription, VisualPackage, VisualPacker, VisualSkipCause, VisualSubmesh};
 
 use crate::commands::ogf::verify::ogf_texture_resolver::OgfTextureResolver;
@@ -24,7 +24,7 @@ use crate::core::host_walk::HostWalk;
 const BOUNDS_TOLERANCE_RATIO: f32 = 0.01;
 const BOUNDS_TOLERANCE_FLOOR: f32 = 0.001;
 
-pub struct OgfVerifier<'a> {
+pub(crate) struct OgfVerifier<'a> {
   root: &'a Path,
   /// Roots layered behind each visual's own tree, so an overlay is measured the way the engine reads it.
   roots: Vec<PathBuf>,
@@ -35,11 +35,11 @@ impl<'a> OgfVerifier<'a> {
   /// judgement about the file.
   const SKIN_WEIGHT_TOLERANCE: f32 = 1e-3;
 
-  pub fn new(root: &'a Path, roots: Vec<PathBuf>) -> Self {
+  pub(crate) fn new(root: &'a Path, roots: Vec<PathBuf>) -> Self {
     Self { root, roots }
   }
 
-  pub fn run(&self) -> OgfVerificationResult {
+  pub(crate) fn run(&self) -> OgfVerificationResult {
     let started_at: Instant = Instant::now();
 
     let mut census: OgfVerificationCensus = OgfVerificationCensus::default();
@@ -415,6 +415,6 @@ impl<'a> OgfVerifier<'a> {
   /// Subject of a finding: the path relative to the swept root, with forward slashes, matching how
   /// gamedata verification names assets.
   fn subject(&self, path: &Path) -> String {
-    to_portable_path_string(path.strip_prefix(self.root).unwrap_or(path))
+    format_portable_path(path.strip_prefix(self.root).unwrap_or(path))
   }
 }

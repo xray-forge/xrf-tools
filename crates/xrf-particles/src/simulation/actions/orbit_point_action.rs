@@ -14,11 +14,11 @@ pub(crate) struct OrbitPointAction {
 }
 
 impl OrbitPointAction {
-  pub fn transform(&mut self, matrix: &Mat4) {
+  pub(crate) fn transform(&mut self, matrix: &Mat4) {
     self.center = matrix.transform_point3(self.center_local);
   }
 
-  pub fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep) {
+  pub(crate) fn execute(&self, pool: &mut ParticlePool, step: &ParticleActionStep<'_>) {
     let magdt: f32 = self.magnitude * step.dt;
     let max_radius_sqr: f32 = self.max_radius * self.max_radius;
     let is_limited: bool = max_radius_sqr < ParticleActionStep::MAX_FLOAT;
@@ -37,7 +37,7 @@ impl OrbitPointAction {
 
 impl From<&ParticleActionOrbitPoint> for OrbitPointAction {
   fn from(action: &ParticleActionOrbitPoint) -> Self {
-    let center: Vec3 = Vec3::from_array(action.center.to_array());
+    let center: Vec3 = Vec3::from(&action.center);
 
     Self {
       center_local: center,

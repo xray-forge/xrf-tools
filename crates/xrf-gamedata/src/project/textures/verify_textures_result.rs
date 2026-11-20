@@ -4,7 +4,7 @@ use crate::project::textures::texture_bumps_verification_result::GamedataTexture
 use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
 use crate::{Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationStatus};
 
-pub struct GamedataTexturesVerificationResult {
+pub(crate) struct GamedataTexturesVerificationResult {
   pub(crate) duration: Duration,
   findings: Vec<Finding>,
   pub(crate) texture_files: GamedataTextureFilesVerificationResult,

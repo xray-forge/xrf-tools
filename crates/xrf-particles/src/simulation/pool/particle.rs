@@ -50,7 +50,7 @@ impl Particle {
 
   /// The frame it shows, `iFloor(frame / 255)`.
   pub fn get_frame_index(&self) -> u32 {
-    (self.frame as f32 / Self::CHANNEL).floor() as u32
+    (f32::from(self.frame) / Self::CHANNEL).floor() as u32
   }
 }
 

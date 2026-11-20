@@ -1,8 +1,8 @@
 import { formatNumber } from "@xrf/format";
+import { EditorPopoverSliderRow } from "@xrf/ui/editor/popover-row";
 import { ReactElement, useCallback } from "react";
 
 import { ILevelLook } from "@/core/level/lib/look/level-look";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { ELevelLookFieldOff } from "@/tools/level-viewer/lib/look/level-look-field-off";
 import { ILevelLookField } from "@/tools/level-viewer/lib/look/level-look-fields";
 
@@ -49,7 +49,7 @@ export function LevelLookSliders({
   return (
     <div className={"flex flex-col gap-1"}>
       {fields.map((field: ILevelLookField) => (
-        <RenderValueSlider
+        <EditorPopoverSliderRow
           key={field.label}
           label={field.label}
           value={field.read(look)}

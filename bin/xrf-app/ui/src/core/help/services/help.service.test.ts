@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { LAUNCHER_HELP } from "@/core/launcher/help";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { ARCHIVES_EXPLORER_TOOL } from "@/tools/archives-explorer";
 import { LEVEL_VIEWER_TOOL } from "@/tools/level-viewer";

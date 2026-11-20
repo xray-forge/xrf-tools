@@ -15,18 +15,23 @@ README is also its crate's rustdoc page.
 | [xrf-animation-envelope](xrf-animation-envelope/README.md) | Read, write, and evaluate the scalar animation envelopes ANM and PPE share     |
 | [xrf-anm](xrf-anm/README.md)                               | Read and write object and camera motions (`.anm`, `.anm1`)                     |
 | [xrf-dds](xrf-dds/README.md)                               | Decode, encode, and compare DDS textures and mipmaps                           |
+| [xrf-editable-level](xrf-editable-level/README.md)         | Read and write the Level Editor's `.level` scenes and their `.part` files      |
+| [xrf-editable-object](xrf-editable-object/README.md)       | Read and write SDK `.object` editable objects, the source an OGF exports from  |
 | [xrf-efd](xrf-efd/README.md)                               | Read and write `.efd` evaluation function data                                 |
 | [xrf-gamemtl](xrf-gamemtl/README.md)                       | Read and write `gamemtl.xr` game materials and the pairs between them          |
 | [xrf-level](xrf-level/README.md)                           | Read compiled levels, one module per file the game ships, and write companions |
+| [xrf-level-compiler](xrf-level-compiler/README.md)         | Compile a built level in steps: geometry, details, AI map                      |
 | [xrf-light-anim](xrf-light-anim/README.md)                 | Read and write light animation libraries                                       |
 | [xrf-lzhuf](xrf-lzhuf/README.md)                           | Compress and decompress X-Ray LZHUF payloads                                   |
 | [xrf-ogf](xrf-ogf/README.md)                               | Read OGF visuals and patch them in place                                       |
 | [xrf-omf](xrf-omf/README.md)                               | Read and write `.omf` motion libraries                                         |
 | [xrf-particles](xrf-particles/README.md)                   | Read and write `particles.xr` effects, groups, and the actions that drive them |
 | [xrf-ppe](xrf-ppe/README.md)                               | Read, write and evaluate animated post-process effects (`.ppe`)                |
-| [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motion data that OGF visuals and OMF libraries share                  |
+| [xrf-rawdata](xrf-rawdata/README.md)                       | Decompile OGFs, `.dm` and level visuals into SDK `.object` files and back      |
+| [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motions and bone physics two formats share                            |
 | [xrf-sound](xrf-sound/README.md)                           | Read and edit sound parameters, validate audio, edit `senvironment.xr`         |
 | [xrf-spawn](xrf-spawn/README.md)                           | Read and write spawn sets, alife records, graphs, patrols, and artefact points |
+| [xrf-spawn-builder](xrf-spawn-builder/README.md)           | Build a game's root spawn from its levels, as xrAI `-s` does                   |
 | [xrf-thm](xrf-thm/README.md)                               | Read and write `.thm` texture descriptors, bump pairs and SDK thumbnails       |
 
 ### Archives and the virtual file system
@@ -48,6 +53,7 @@ README is also its crate's rustdoc page.
 | [xrf-engine-target](xrf-engine-target/README.md) | Name which engine a game data tree targets: vanilla or extended               |
 | [xrf-environment](xrf-environment/README.md)     | Read weather, suns, thunderbolts and ambients as the target engine reads them |
 | [xrf-export](xrf-export/README.md)               | Extract TypeScript extern contracts and render documentation                  |
+| [xrf-ini](xrf-ini/README.md)                     | Read and write INI files, plain or as `CInifile::save_as` writes them         |
 | [xrf-ltx](xrf-ltx/README.md)                     | Parse, resolve, format, and verify LTX configs                                |
 | [xrf-ltx-inspect](xrf-ltx-inspect/README.md)     | Produce config browser records and anchored findings                          |
 | [xrf-lua](xrf-lua/README.md)                     | Check LuaJIT syntax and inspect method calls                                  |
@@ -58,12 +64,13 @@ README is also its crate's rustdoc page.
 
 ### Game data, assets, and verification
 
-| Crate                                  | Purpose                                                 |
-| -------------------------------------- | ------------------------------------------------------- |
-| [xrf-gamedata](xrf-gamedata/README.md) | Validate assembled game data and asset references       |
-| [xrf-material](xrf-material/README.md) | Resolve THM dependencies and shader alpha behavior      |
-| [xrf-texture](xrf-texture/README.md)   | Build texture recipes, bump pairs, and UI sprite sheets |
-| [xrf-visual](xrf-visual/README.md)     | Prepare OGF geometry and animation data for viewers     |
+| Crate                                            | Purpose                                                  |
+| ------------------------------------------------ | -------------------------------------------------------- |
+| [xrf-gamedata](xrf-gamedata/README.md)           | Validate assembled game data and asset references        |
+| [xrf-material](xrf-material/README.md)           | Resolve THM dependencies and shader alpha behavior       |
+| [xrf-object-visual](xrf-object-visual/README.md) | Compile SDK `.object` files into models a renderer draws |
+| [xrf-texture](xrf-texture/README.md)             | Build texture recipes, bump pairs, and UI sprite sheets  |
+| [xrf-visual](xrf-visual/README.md)               | Prepare OGF geometry and animation data for viewers      |
 
 ### Rendering
 
@@ -74,6 +81,13 @@ README is also its crate's rustdoc page.
 | [xrf-renderer-derive](xrf-renderer-derive/README.md) | The derives `xrf-renderer-core` re-exports                                 |
 | [xrf-world](xrf-world/README.md)                     | Run what moves in a level each frame and hand it to the renderer           |
 | [xrf-dlss](xrf-dlss/README.md)                       | NVIDIA DLSS for the renderer's views; without the `sdk` feature, none      |
+
+### Sound
+
+| Crate                                        | Purpose                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| [xrf-audio](xrf-audio/README.md)             | Play sounds through a lock-free mixer of preallocated voices on a device |
+| [xrf-audio-scene](xrf-audio-scene/README.md) | Describe a scene's sound to the audio thread without its device          |
 
 ### Frontend bindings
 
@@ -91,9 +105,11 @@ README is also its crate's rustdoc page.
 | [xrf-env-flags](xrf-env-flags/README.md)       | Declare and read every environment variable the workspace honours |
 | [xrf-error](xrf-error/README.md)               | Share typed errors and results                                    |
 | [xrf-error-derive](xrf-error-derive/README.md) | Generate message-based error constructors                         |
+| [xrf-geometry](xrf-geometry/README.md)         | Trace rays and boxes against triangles as the engine's CDB does   |
 | [xrf-job](xrf-job/README.md)                   | Report progress, request cancellation, and plan worker limits     |
-| [xrf-math](xrf-math/README.md)                 | Vectors and matrices in the engine's layout                       |
+| [xrf-math](xrf-math/README.md)                 | Vectors, matrices and shapes in the engine's layout               |
 | [xrf-output](xrf-output/README.md)             | Route live messages and ordered worker output                     |
+| [xrf-profiler](xrf-profiler/README.md)         | Start the Tracy client a profiling build streams its zones to     |
 | [xrf-report](xrf-report/README.md)             | Finalize checks and findings into deterministic reports           |
 | [xrf-test-utils](xrf-test-utils/README.md)     | Share test resources and assertions                               |
 | [xrf-utils](xrf-utils/README.md)               | Share encoding, file publication, and formatting helpers          |

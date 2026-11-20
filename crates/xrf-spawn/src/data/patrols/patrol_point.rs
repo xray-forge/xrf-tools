@@ -4,9 +4,9 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, to_format_size};
+use xrf_utils::{assert_equal, narrow_format_size};
 
 /// `CPatrolPoint::load_raw`, `CPatrolPoint::load` in xray codebase.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -56,7 +56,7 @@ impl ChunkReadWriteList for PatrolPoint {
   /// Write list of patrol points into chunk writer.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
     for (index, point) in list.iter().enumerate() {
-      let index: u32 = to_format_size(index, "patrol point index")?;
+      let index: u32 = narrow_format_size(index, "patrol point index")?;
 
       let mut point_chunk_writer: ChunkWriter = ChunkWriter::new();
 
@@ -118,8 +118,8 @@ impl PatrolPoint {
   ///
   /// Ltx trims values, so a name padded with whitespace cannot be recovered from the `name` key. The owning patrol
   /// takes it from the section name, which keeps the padding.
-  pub fn import_named(section_name: &str, name: String, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  pub fn import_named<L: LtxRead>(section_name: &str, name: String, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Patrol point section '{}' should be defined in ltx file ({})",
         section_name,
@@ -139,8 +139,8 @@ impl PatrolPoint {
 
 impl LtxImportExport for PatrolPoint {
   /// Import patrol point data from ltx config.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Patrol point section '{}' should be defined in ltx file ({})",
         section_name,
@@ -152,14 +152,14 @@ impl LtxImportExport for PatrolPoint {
   }
 
   /// Export patrol point data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("name", &self.name)
-      .set("flags", self.flags.to_string())
-      .set("position", self.position.to_string())
-      .set("level_vertex_id", self.level_vertex_id.to_string())
-      .set("game_vertex_id", self.game_vertex_id.to_string());
+      .set("flags", self.flags)
+      .set("position", self.position)
+      .set("level_vertex_id", self.level_vertex_id)
+      .set("game_vertex_id", self.game_vertex_id);
 
     Ok(())
   }

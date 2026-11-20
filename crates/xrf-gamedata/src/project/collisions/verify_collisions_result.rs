@@ -4,7 +4,7 @@ use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 /// What one source holds that the engine cannot reach, independently of any asset kind.
 #[derive(Default)]
-pub struct GamedataCollisionsVerificationResult {
+pub(crate) struct GamedataCollisionsVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) unreachable_files_count: usize,
   pub(crate) findings: Vec<Finding>,

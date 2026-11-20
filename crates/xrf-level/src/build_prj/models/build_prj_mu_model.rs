@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::build_prj::build_prj_file::BuildPrjFile;
 use crate::build_prj::geometry::build_prj_face::BuildPrjFace;
@@ -97,13 +97,13 @@ impl BuildPrjMuModel {
     }
 
     writer.write_w1251_string(&self.name)?;
-    writer.write_u32::<T>(to_format_size(self.vertices.len(), "multi-use model vertices")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "multi-use model vertices")?)?;
 
     for vertex in &self.vertices {
       writer.write_xr::<T, _>(vertex)?;
     }
 
-    writer.write_u32::<T>(to_format_size(self.faces.len(), "multi-use model faces")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.faces.len(), "multi-use model faces")?)?;
 
     for face in &self.faces {
       writer.write_xr::<T, _>(face)?;

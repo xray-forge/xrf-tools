@@ -20,15 +20,15 @@ pub struct ArchiveReference {
 
 impl ArchiveReference {
   /// Resolves a reference the way the engine addresses `asset_type`, against the subject being browsed.
-  pub fn resolve(source: &ArchiveDescribeSource, asset_type: XrayAssetType, name: &str) -> Self {
-    match Self::to_engine_path(asset_type, name) {
+  pub fn resolve(source: &ArchiveDescribeSource<'_>, asset_type: XrayAssetType, name: &str) -> Self {
+    match Self::find_engine_path(asset_type, name) {
       Some(path) => Self::of_engine_path(source, name.to_owned(), path),
       None => Self::unresolvable(name),
     }
   }
 
   /// Looks up an engine path already in hand, for a file addressed by where it sits rather than by a name.
-  pub fn of_path(source: &ArchiveDescribeSource, path: &str) -> Self {
+  pub fn of_path(source: &ArchiveDescribeSource<'_>, path: &str) -> Self {
     Self::of_engine_path(source, path.to_owned(), path.to_owned())
   }
 
@@ -42,7 +42,7 @@ impl ArchiveReference {
     }
   }
 
-  fn of_engine_path(source: &ArchiveDescribeSource, name: String, path: String) -> Self {
+  fn of_engine_path(source: &ArchiveDescribeSource<'_>, name: String, path: String) -> Self {
     let entry: Option<String> = source.find_entry(&path);
 
     Self {
@@ -58,7 +58,7 @@ impl ArchiveReference {
   }
 
   /// The engine identity a reference of `asset_type` names, or `None` when it cannot be made into one.
-  fn to_engine_path(asset_type: XrayAssetType, reference: &str) -> Option<String> {
+  fn find_engine_path(asset_type: XrayAssetType, reference: &str) -> Option<String> {
     let rules: XrayAssetRules = asset_type.get_rules()?;
 
     XrayLogicalPath::new(&format!("{}\\{}", rules.directory, rules.to_logical_path(reference)))
@@ -76,7 +76,7 @@ mod tests {
   #[test]
   fn a_texture_reference_takes_its_directory_and_extension_from_the_kind() {
     assert_eq!(
-      ArchiveReference::to_engine_path(XrayAssetType::Dds, "act\\act_arm_1_bump").as_deref(),
+      ArchiveReference::find_engine_path(XrayAssetType::Dds, "act\\act_arm_1_bump").as_deref(),
       Some("textures\\act\\act_arm_1_bump.dds")
     );
   }
@@ -84,7 +84,7 @@ mod tests {
   #[test]
   fn a_reference_is_normalized_to_the_identity_the_engine_registers() {
     assert_eq!(
-      ArchiveReference::to_engine_path(XrayAssetType::Dds, "ACT/Act_Arm_1").as_deref(),
+      ArchiveReference::find_engine_path(XrayAssetType::Dds, "ACT/Act_Arm_1").as_deref(),
       Some("textures\\act\\act_arm_1.dds")
     );
   }
@@ -95,7 +95,7 @@ mod tests {
     // one that resolves somewhere.
     for name in ["act\\..\\..\\secret", "act\\\\arm", ".\\act\\arm"] {
       assert_eq!(
-        ArchiveReference::to_engine_path(XrayAssetType::Dds, name),
+        ArchiveReference::find_engine_path(XrayAssetType::Dds, name),
         None,
         "'{name}' is not a path"
       );

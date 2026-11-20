@@ -39,7 +39,7 @@ impl SessionPart for LevelPlacementsPart {
 
 impl LevelPlacementsPart {
   /// The open level's placements, each file read through `search` the first time they are asked for.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Arc<LevelPlacements> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Arc<LevelPlacements> {
     current.parts.get_or_record::<Self>(search, |search| {
       let source: &LevelSource = &current.source;
 

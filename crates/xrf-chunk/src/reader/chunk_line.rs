@@ -4,7 +4,7 @@
 /// X-Ray banks disagree on it - `\r\n` is usual, some carry a bare `\n` - and the engine accepts either, so a writer
 /// that re-emitted a fixed sequence would change bytes no edit targeted. A caller that preserves the value stores
 /// this beside it and passes both to [`crate::ChunkWriter::write_w1251_line`].
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChunkLine {
   pub value: String,
   /// The `\r` and `\n` bytes that ended the value, as read. Never empty: an unterminated read is an error.

@@ -1,4 +1,4 @@
-import { defineMenu, IMenu } from "@/core/shell/menu/lib";
+import { defineMenu, IMenu } from "@/core/routing/menu-descriptor";
 
 /** The window's first menu: what the open tool adds, then settings, then closing. */
 export const FILE_MENU: IMenu<"settings" | "close"> = defineMenu({

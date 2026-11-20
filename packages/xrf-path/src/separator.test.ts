@@ -4,6 +4,7 @@ import {
   findLastSeparator,
   getPathDirectory,
   getPathName,
+  getPathSeparator,
   isSamePath,
   isUnderPathPrefix,
   LOGICAL_PATH_SEPARATOR,
@@ -28,6 +29,18 @@ describe("findLastSeparator", () => {
   it("says a path with no separator has none", () => {
     expect(findLastSeparator("act.dds")).toBe(-1);
     expect(getPathName("act.dds")).toBe("act.dds");
+  });
+});
+
+describe("getPathSeparator", () => {
+  it("answers the style a path is written in, so what is built from it reads the same", () => {
+    expect(getPathSeparator("C:\\gamedata\\levels")).toBe("\\");
+    expect(getPathSeparator("C:/gamedata/levels")).toBe("/");
+    expect(getPathSeparator("C:/gamedata\\levels")).toBe("\\");
+  });
+
+  it("answers a forward slash for a path carrying neither", () => {
+    expect(getPathSeparator("levels")).toBe("/");
   });
 });
 

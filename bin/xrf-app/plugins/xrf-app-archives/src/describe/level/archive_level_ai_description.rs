@@ -3,8 +3,7 @@ use xrf_error::XrfResult;
 use xrf_level::LevelAiHeader;
 
 use crate::describe::description::ArchiveBounds;
-use crate::describe::source::ArchiveDescribeSource;
-use crate::describe::source::ArchiveEntryReader;
+use crate::describe::source::{ArchiveDescribeSource, ArchiveEntryReader};
 
 /// What a level's navigation grid covers, from the 56 bytes that say so.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -29,7 +28,7 @@ impl ArchiveLevelAiDescription {
   /// # Errors
   ///
   /// Returns an error when the entry cannot be opened, or holds fewer bytes than the header occupies.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     let mut reader: ArchiveEntryReader = source.open_entry(name)?;
     let size: u64 = reader.size();
     let header: LevelAiHeader = reader.read_leading()?;
@@ -39,7 +38,7 @@ impl ArchiveLevelAiDescription {
       nodes: header.count,
       node_size: header.size,
       node_height: header.size_y,
-      bounds: ArchiveBounds::of(&header.aabb_min, &header.aabb_max),
+      bounds: ArchiveBounds::of(&header.bounds),
       guid: header.guid.to_string(),
       size,
     })

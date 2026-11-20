@@ -1,8 +1,8 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::generic::shape::Shape;
@@ -16,29 +16,27 @@ pub struct AlifeObjectSpaceRestrictor {
   pub restrictor_type: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectSpaceRestrictor {
-  /// Read generic space restrictor data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+/// As `CSE_ALifeSpaceRestrictor::STATE_Write` writes it: the object, its shapes, then its type.
+impl ChunkFieldReadWrite for AlifeObjectSpaceRestrictor {
+  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      shape: reader.read_xr_list::<T, Shape>()?,
+      base: reader.read_xr::<T, AlifeObjectAbstract>()?,
+      shape: reader.read_xr_list::<T, _>()?,
       restrictor_type: reader.read_u8()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr_list::<T, Shape>(&self.shape)?;
-    writer.write_u8(self.restrictor_type)?;
-
-    Ok(())
+    writer.write_xr_list::<T, _>(&self.shape)?;
+    writer.write_u8(self.restrictor_type)
   }
 }
 
 impl LtxImportExport for AlifeObjectSpaceRestrictor {
   /// Import generic space restrictor data from the chunk.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -54,14 +52,14 @@ impl LtxImportExport for AlifeObjectSpaceRestrictor {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     Shape::export_list(&self.shape, section_name, ltx);
 
     ltx
       .with_section(section_name)
-      .set("space_restrictor.restrictor_type", self.restrictor_type.to_string());
+      .set("space_restrictor.restrictor_type", self.restrictor_type);
 
     Ok(())
   }
@@ -77,7 +75,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_math::Vector3d;
+  use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
@@ -101,13 +99,16 @@ mod tests {
         spawn_story_id: 25,
       },
       shape: vec![
-        Shape::Sphere((Vector3d::new(0.5, 0.5, 0.5), 1.0)),
-        Shape::Box((
-          Vector3d::new(1.1, 1.1, 3.1),
-          Vector3d::new(1.1, 2.2, 3.3),
-          Vector3d::new(4.0, 5.0, 6.4),
-          Vector3d::new(9.2, 8.3, 7.0),
-        )),
+        Shape::Sphere(Sphere {
+          center: Vector3d::new(0.5, 0.5, 0.5),
+          radius: 1.0,
+        }),
+        Shape::Box(Affine3d {
+          x_axis: Vector3d::new(1.1, 1.1, 3.1),
+          y_axis: Vector3d::new(1.1, 2.2, 3.3),
+          z_axis: Vector3d::new(4.0, 5.0, 6.4),
+          translation: Vector3d::new(9.2, 8.3, 7.0),
+        }),
       ],
       restrictor_type: 2,
     };
@@ -168,13 +169,16 @@ mod tests {
         spawn_story_id: 7546,
       },
       shape: vec![
-        Shape::Sphere((Vector3d::new(54.5, 0.5, 11.5), 1.0)),
-        Shape::Box((
-          Vector3d::new(3.5, 2.5, 73.1),
-          Vector3d::new(55.1, 1.2, 2.3),
-          Vector3d::new(51.0, 7.0, 3.4),
-          Vector3d::new(59.2, 3.3, 4.1),
-        )),
+        Shape::Sphere(Sphere {
+          center: Vector3d::new(54.5, 0.5, 11.5),
+          radius: 1.0,
+        }),
+        Shape::Box(Affine3d {
+          x_axis: Vector3d::new(3.5, 2.5, 73.1),
+          y_axis: Vector3d::new(55.1, 1.2, 2.3),
+          z_axis: Vector3d::new(51.0, 7.0, 3.4),
+          translation: Vector3d::new(59.2, 3.3, 4.1),
+        }),
       ],
       restrictor_type: 4,
     };
@@ -206,13 +210,16 @@ mod tests {
         spawn_story_id: 3,
       },
       shape: vec![
-        Shape::Sphere((Vector3d::new(54.5, 0.5, 11.5), 1.0)),
-        Shape::Box((
-          Vector3d::new(23.5, 2.5, 73.1),
-          Vector3d::new(25.1, 1.2, 2.3),
-          Vector3d::new(21.0, 7.0, 3.4),
-          Vector3d::new(26.2, 3.3, 4.1),
-        )),
+        Shape::Sphere(Sphere {
+          center: Vector3d::new(54.5, 0.5, 11.5),
+          radius: 1.0,
+        }),
+        Shape::Box(Affine3d {
+          x_axis: Vector3d::new(23.5, 2.5, 73.1),
+          y_axis: Vector3d::new(25.1, 1.2, 2.3),
+          z_axis: Vector3d::new(21.0, 7.0, 3.4),
+          translation: Vector3d::new(26.2, 3.3, 4.1),
+        }),
       ],
       restrictor_type: 6,
     };

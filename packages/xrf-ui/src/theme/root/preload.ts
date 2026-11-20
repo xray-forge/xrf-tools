@@ -1,5 +1,5 @@
-import { Theme } from "#/material/styles";
 import { toColorSchemeSelector } from "#/theme";
+import { Theme } from "#/theme/styles";
 
 import { createApplicationTheme } from "./creation";
 import { getSchemeVariables, getThemeVariables } from "./variables";

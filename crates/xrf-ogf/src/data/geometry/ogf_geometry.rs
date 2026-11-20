@@ -1,12 +1,13 @@
-use byteorder::{ByteOrder, ReadBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::data::geometry::ogf_fvf::OgfFvf;
 use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
-use crate::data::geometry::ogf_vertex::OgfVertex;
 use crate::data::geometry::ogf_vertex_data::OgfVertexData;
 use crate::data::geometry::ogf_vertices::OgfVertices;
+use crate::data::geometry::skin::ogf_skin_layout::OgfSkinLayout;
+use crate::data::geometry::skin::ogf_vertex::OgfVertex;
 use crate::data::ogf_model_type::OgfModelType;
 
 /// Geometry embedded directly in an OGF visual.
@@ -41,25 +42,14 @@ impl OgfGeometry {
     }
   }
 
-  const VERTEX_FORMAT_1_LINK: u32 = 0x12071980;
-  const VERTEX_FORMAT_2_LINK: u32 = 2 * Self::VERTEX_FORMAT_1_LINK;
-  const VERTEX_FORMAT_3_LINK: u32 = 4 * Self::VERTEX_FORMAT_1_LINK;
-  const VERTEX_FORMAT_4_LINK: u32 = 5 * Self::VERTEX_FORMAT_1_LINK;
-
-  const VERTEX_SIZE_1_LINK: usize = 60;
-  const VERTEX_SIZE_2_LINK: usize = 64;
-  const VERTEX_SIZE_3_LINK: usize = 70;
-  const VERTEX_SIZE_4_LINK: usize = 76;
-
   /// Reads the embedded vertices and indices of a visual of `model_type`, which decides how its vertex format tag is
   /// read: a skinned child's as a skin layout, any other visual's as a flexible vertex format, as the engine does.
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
     model_type: Option<OgfModelType>,
   ) -> XrfResult<Option<Self>> {
-    let is_skinned: bool = model_type.is_some_and(OgfModelType::is_skinned_geometry);
     let vertices: Option<OgfVertices> = match chunks.iter().find(|chunk| chunk.id == Self::VERTICES_CHUNK_ID) {
-      Some(chunk) => Some(Self::read_vertices::<T, D>(&mut chunk.clone(), is_skinned)?),
+      Some(chunk) => Some(Self::read_vertices::<T, D>(&mut chunk.clone(), model_type)?),
       None => None,
     };
 
@@ -85,37 +75,59 @@ impl OgfGeometry {
 
   fn read_vertices<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
-    is_skinned: bool,
+    model_type: Option<OgfModelType>,
   ) -> XrfResult<OgfVertices> {
     let vertex_format: u32 = reader.read_u32::<T>()?;
     let vertex_count: u32 = reader.read_u32::<T>()?;
-    let vertices: Vec<u8> = reader.read_remaining()?;
 
-    let data: Option<OgfVertexData> = if is_skinned {
-      match Self::skin_vertex_layout(vertex_format) {
-        Some((vertex_size, links)) => Some(OgfVertexData::Skinned(
-          Self::sized_vertices(&vertices, vertex_count, vertex_size, "skin")?
-            .map(|vertex| OgfVertex::read_from_slice::<T>(vertex, links))
-            .collect(),
-        )),
-        None => None,
+    // Decoded in place: vertices are most of a visual's bytes, and only the decoded form is kept.
+    let data: Option<OgfVertexData> = reader.read_remaining_with(|vertices| {
+      if model_type.is_some_and(OgfModelType::is_skinned_geometry) {
+        Self::decode_skinned_vertices::<T>(vertices, vertex_format, vertex_count)
+      } else {
+        Self::decode_static_vertices::<T>(vertices, vertex_format, vertex_count)
       }
-    } else {
-      match OgfFvf::from_raw(vertex_format) {
-        Some(format) => Some(OgfVertexData::Static(
-          Self::sized_vertices(&vertices, vertex_count, format.get_stride(), "static")?
-            .map(|vertex| OgfStaticVertex::read_from_slice::<T>(vertex, &format))
-            .collect(),
-        )),
-        None => None,
-      }
-    };
+    })??;
 
     Ok(OgfVertices {
       format: vertex_format,
       count: vertex_count,
       data,
     })
+  }
+
+  /// The vertices of a skinned payload, or `None` for a skin layout the format tag does not name.
+  fn decode_skinned_vertices<T: ByteOrder>(
+    vertices: &[u8],
+    vertex_format: u32,
+    vertex_count: u32,
+  ) -> XrfResult<Option<OgfVertexData>> {
+    let Some(layout) = OgfSkinLayout::of(vertex_format) else {
+      return Ok(None);
+    };
+
+    Ok(Some(OgfVertexData::Skinned(
+      Self::sized_vertices(vertices, vertex_count, layout.vertex_size, "skin")?
+        .map(|vertex| OgfVertex::read_from_slice::<T>(vertex, layout.links))
+        .collect(),
+    )))
+  }
+
+  /// The vertices of a static payload, or `None` for a flexible vertex format this does not decode.
+  fn decode_static_vertices<T: ByteOrder>(
+    vertices: &[u8],
+    vertex_format: u32,
+    vertex_count: u32,
+  ) -> XrfResult<Option<OgfVertexData>> {
+    let Some(format) = OgfFvf::from_raw(vertex_format) else {
+      return Ok(None);
+    };
+
+    Ok(Some(OgfVertexData::Static(
+      Self::sized_vertices(vertices, vertex_count, format.get_stride(), "static")?
+        .map(|vertex| OgfStaticVertex::read_from_slice::<T>(vertex, &format))
+        .collect(),
+    )))
   }
 
   /// The vertex records of a payload that is exactly `count` records of `vertex_size`, which the engine assumes.
@@ -139,21 +151,84 @@ impl OgfGeometry {
     Ok(vertices.chunks_exact(vertex_size))
   }
 
+  /// Writes a skinned child's vertices and indices as the skeleton export does: the vertices chunk tagged with the
+  /// plain link count all its vertices share, then the indices chunk.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the vertices are not all laid out in one link count, or a count outgrows a `u32`.
+  pub fn write_skinned<T: ByteOrder>(writer: &mut ChunkWriter, vertices: &[OgfVertex], indices: &[u16]) -> XrfResult {
+    let links: usize = vertices.first().map_or(1, |vertex| vertex.links.len());
+
+    if vertices.iter().any(|vertex| vertex.links.len() != links) {
+      return Err(XrfError::new_invalid_error(
+        "A skinned child's vertices are written in one link layout, the child's widest",
+      ));
+    }
+
+    let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
+
+    vertices_chunk.write_u32::<T>(Self::count(links, "links")?)?;
+    vertices_chunk.write_u32::<T>(Self::count(vertices.len(), "vertices")?)?;
+
+    for vertex in vertices {
+      vertex.write::<T>(&mut vertices_chunk)?;
+    }
+
+    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
+    Self::write_indices::<T>(writer, indices)
+  }
+
+  /// Writes a static visual's vertices and indices as the static export does: the vertices chunk tagged with
+  /// `format`'s flexible vertex format, then the indices chunk.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a vertex does not hold what `format` declares, or a count outgrows a `u32`.
+  pub fn write_static<T: ByteOrder>(
+    writer: &mut ChunkWriter,
+    format: &OgfFvf,
+    vertices: &[OgfStaticVertex],
+    indices: &[u16],
+  ) -> XrfResult {
+    let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
+
+    vertices_chunk.write_u32::<T>(format.raw)?;
+    vertices_chunk.write_u32::<T>(Self::count(vertices.len(), "vertices")?)?;
+
+    for vertex in vertices {
+      vertex.write::<T>(&mut vertices_chunk, format)?;
+    }
+
+    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
+    Self::write_indices::<T>(writer, indices)
+  }
+
+  /// The indices chunk, its count first.
+  fn write_indices<T: ByteOrder>(writer: &mut ChunkWriter, indices: &[u16]) -> XrfResult {
+    let mut indices_chunk: ChunkWriter = ChunkWriter::new();
+
+    indices_chunk.write_u32::<T>(Self::count(indices.len(), "indices")?)?;
+
+    for index in indices {
+      indices_chunk.write_u16::<T>(*index)?;
+    }
+
+    indices_chunk.flush_chunk_into::<T>(writer, Self::INDICES_CHUNK_ID)?;
+
+    Ok(())
+  }
+
+  fn count(length: usize, what: &str) -> XrfResult<u32> {
+    u32::try_from(length)
+      .map_err(|_| XrfError::new_invalid_error(format!("A child holds more {what} than a u32 counts")))
+  }
+
   fn read_indices<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u16>> {
     let indices: Vec<u16> = reader.read_u16_vector::<T>()?;
     reader.assert_read("Expect all data to be read from ogf indices")?;
 
     Ok(indices)
-  }
-
-  fn skin_vertex_layout(vertex_format: u32) -> Option<(usize, usize)> {
-    match vertex_format {
-      Self::VERTEX_FORMAT_1_LINK | 1 => Some((Self::VERTEX_SIZE_1_LINK, 1)),
-      Self::VERTEX_FORMAT_2_LINK | 2 => Some((Self::VERTEX_SIZE_2_LINK, 2)),
-      Self::VERTEX_FORMAT_3_LINK | 3 => Some((Self::VERTEX_SIZE_3_LINK, 3)),
-      Self::VERTEX_FORMAT_4_LINK | 4 => Some((Self::VERTEX_SIZE_4_LINK, 4)),
-      _ => None,
-    }
   }
 }
 
@@ -168,8 +243,71 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfGeometry;
+  use crate::data::geometry::ogf_fvf::OgfFvf;
   use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
+  use crate::data::geometry::skin::ogf_vertex::OgfVertex;
+  use crate::data::geometry::skin::ogf_vertex_link::OgfVertexLink;
+  use crate::data::geometry::skin::ogf_vertex_links::OgfVertexLinks;
   use crate::data::ogf_model_type::OgfModelType;
+
+  fn skinned(links: &[(u16, f32)], texture_u: f32) -> OgfVertex {
+    OgfVertex {
+      position: Vector3d::new(1.0, 2.0, 3.0),
+      normal: Vector3d::Y,
+      tangent: Vector3d::X,
+      binormal: Vector3d::Z,
+      texture_u,
+      texture_v: 0.5,
+      links: OgfVertexLinks::from_slice(
+        &links
+          .iter()
+          .map(|(bone, weight)| OgfVertexLink {
+            bone: *bone,
+            weight: *weight,
+          })
+          .collect::<Vec<_>>(),
+      ),
+    }
+  }
+
+  fn write_then_read(vertices: &[OgfVertex], indices: &[u16]) -> XrfResult<OgfGeometry> {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    OgfGeometry::write_skinned::<XRayByteOrder>(&mut writer, vertices, indices)?;
+
+    let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+    let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
+
+    Ok(
+      OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::SkeletonGeomdefSt))?
+        .expect("geometry chunks are present"),
+    )
+  }
+
+  #[test]
+  fn writes_skinned_vertices_in_each_layout_that_read_back_alike() -> XrfResult {
+    // Weights a binary fraction holds exactly, since a reader derives the last from the rest.
+    for vertices in [
+      vec![skinned(&[(7, 1.0)], 0.25), skinned(&[(2, 1.0)], 0.75)],
+      vec![skinned(&[(1, 0.75), (4, 0.25)], 0.25)],
+      vec![skinned(&[(1, 0.5), (3, 0.25), (2, 0.25)], 0.25)],
+    ] {
+      let geometry: OgfGeometry = write_then_read(&vertices, &[0, 0, 0])?;
+
+      assert_eq!(geometry.vertex_format, Some(vertices[0].links.len() as u32));
+      assert_eq!(geometry.get_skinned_vertices(), Some(vertices.as_slice()));
+      assert_eq!(geometry.indices, Some(vec![0, 0, 0]));
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_vertices_of_two_layouts_in_one_child() {
+    let vertices: [OgfVertex; 2] = [skinned(&[(1, 1.0)], 0.0), skinned(&[(1, 0.5), (2, 0.5)], 0.0)];
+
+    assert!(OgfGeometry::write_skinned::<XRayByteOrder>(&mut ChunkWriter::new(), &vertices, &[]).is_err());
+  }
 
   #[test]
   fn test_read() -> XrfResult {
@@ -219,6 +357,43 @@ mod tests {
     assert_eq!(vertex.texture_coordinates, vec![vec![0.25, 0.75]]);
     assert_eq!((vertex.diffuse, vertex.specular, vertex.point_size), (None, None, None));
     assert!(geometry.skin_bone_indices.is_empty());
+
+    Ok(())
+  }
+
+  #[test]
+  fn writes_static_vertices_in_their_format_that_read_back_alike() -> XrfResult {
+    let format: OgfFvf = OgfFvf::from_raw(0x112).expect("the SDK's static format decodes");
+    let vertices: Vec<OgfStaticVertex> = vec![OgfStaticVertex {
+      position: Vector3d::new(1.0, 2.0, 3.0),
+      normal: Some(Vector3d::Y),
+      point_size: None,
+      diffuse: None,
+      specular: None,
+      texture_coordinates: vec![vec![0.25, 0.75]],
+    }];
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    OgfGeometry::write_static::<XRayByteOrder>(&mut writer, &format, &vertices, &[0, 0, 0])?;
+
+    let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+    let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
+    let geometry: OgfGeometry = OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::Normal))?
+      .expect("geometry chunks are present");
+
+    assert_eq!(geometry.vertex_format, Some(0x112));
+    assert_eq!(geometry.get_static_vertices(), Some(vertices.as_slice()));
+    assert_eq!(geometry.indices, Some(vec![0, 0, 0]));
+
+    // A vertex lacking the declared normal does not write.
+    let without_normal: OgfStaticVertex = OgfStaticVertex {
+      normal: None,
+      ..vertices[0].clone()
+    };
+
+    assert!(
+      OgfGeometry::write_static::<XRayByteOrder>(&mut ChunkWriter::new(), &format, &[without_normal], &[]).is_err()
+    );
 
     Ok(())
   }

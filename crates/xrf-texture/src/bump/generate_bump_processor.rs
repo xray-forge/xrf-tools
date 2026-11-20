@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use image::{Rgba, RgbaImage};
+use rayon::prelude::*;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
@@ -47,10 +48,18 @@ impl GenerateBumpProcessor {
   ///
   /// # Errors
   ///
-  /// Returns an error when an external normal map does not match the height in size, when either half cannot be
-  /// encoded, or when either file cannot be written. A gloss too dark to be useful is reported in the result rather
-  /// than refused; see [`GenerateBumpResult::is_gloss_too_dark`].
+  /// Returns an error when the height holds no texel, a normal map or gloss mask differs from it in size, or either
+  /// half cannot be encoded or written. A gloss too dark to use is reported by
+  /// [`GenerateBumpResult::is_gloss_too_dark`], not refused.
   pub fn generate(options: &GenerateBumpOptions) -> XrfResult<GenerateBumpResult> {
+    if options.height.width() == 0 || options.height.height() == 0 {
+      return Err(XrfError::new_texture_processing_error(format!(
+        "A {} by {} height picture holds no texel to derive a bump from",
+        options.height.width(),
+        options.height.height()
+      )));
+    }
+
     let steps: JobScope = options.job.enter(TEXTURE_PHASE_GENERATE_BUMP, Some(GENERATE_STEPS));
     let [bump_path, companion_path]: [PathBuf; 2] = Self::pair_paths(&options.bump);
 
@@ -71,6 +80,8 @@ impl GenerateBumpProcessor {
 
     let normals: RgbaImage = Self::resolve_normals(options, &height)?;
 
+    // Each picture is let go once the next is made from it, a 4096 square one being 67 MB.
+    drop(height);
     steps.advance();
     options.job.set_detail(Some(String::from("Reading the gloss")));
 
@@ -87,6 +98,10 @@ impl GenerateBumpProcessor {
 
     // The first half as the engine reads it: gloss in red, and the normal's three channels reversed behind it.
     let bump: RgbaImage = Self::pack_bump(&normals, &gloss);
+
+    drop(normals);
+    drop(gloss);
+
     let encoded_bump: DdsFile = Self::encode(&bump, options)?;
 
     steps.advance();
@@ -106,6 +121,8 @@ impl GenerateBumpProcessor {
     let restored: RgbaImage = encoded_bump.decode_rgba(0)?;
     let companion: RgbaImage = Self::pack_companion(&bump, &restored, &Self::center_height(options));
 
+    drop(bump);
+    drop(restored);
     steps.advance();
     options.job.set_detail(Some(String::from("Encoding the height")));
 
@@ -177,7 +194,7 @@ impl GenerateBumpProcessor {
       GenerateBumpGloss::Constant(level) => Ok(GreyPlane::filled(
         options.height.width(),
         options.height.height(),
-        Self::to_byte(*level * 255.0),
+        Self::quantize_byte(*level * 255.0),
       )),
     }
   }
@@ -187,7 +204,7 @@ impl GenerateBumpProcessor {
   /// The reversal is what lets the shader read `Nu.wzy` as the normal, and the gloss is stored one above what it was
   /// given, which the SDK does without explanation and which matters at the dark end.
   fn pack_bump(normals: &RgbaImage, gloss: &GreyPlane) -> RgbaImage {
-    RgbaImage::from_fn(normals.width(), normals.height(), |x, y| {
+    Self::packed_by_rows(normals, |x, y| {
       let normal = normals.get_pixel(x, y).0;
       let level: u8 = gloss.get_wrapped(i64::from(x), i64::from(y));
 
@@ -202,16 +219,33 @@ impl GenerateBumpProcessor {
   /// the byte range is clamped where the SDK's `color_rgba` keeps its low eight bits; only a far larger loss than
   /// DXT5's can reach it.
   fn pack_companion(bump: &RgbaImage, restored: &RgbaImage, height: &[u8]) -> RgbaImage {
-    RgbaImage::from_fn(bump.width(), bump.height(), |x, y| {
+    Self::packed_by_rows(bump, |x, y| {
       let original = bump.get_pixel(x, y).0;
       let decoded = restored.get_pixel(x, y).0;
       let error = |channel: usize| {
-        Self::to_byte_from_int(ERROR_BIAS + 2 * (i32::from(original[channel]) - i32::from(decoded[channel])) / 3)
+        Self::clamp_byte(ERROR_BIAS + 2 * (i32::from(original[channel]) - i32::from(decoded[channel])) / 3)
       };
 
       // Reversed once more, so the error lines up channel for channel with the normal the shader rebuilds.
       Rgba([error(3), error(2), error(1), height[(y * bump.width() + x) as usize]])
     })
+  }
+
+  /// A picture the size of `like`, each pixel from `pixel`, rows filled on every worker at once.
+  fn packed_by_rows(like: &RgbaImage, pixel: impl Fn(u32, u32) -> Rgba<u8> + Sync) -> RgbaImage {
+    let (width, height): (u32, u32) = like.dimensions();
+    let mut packed: RgbaImage = RgbaImage::new(width, height);
+
+    packed
+      .par_chunks_mut(width as usize * 4)
+      .zip(0..height)
+      .for_each(|(row, y)| {
+        for (texel, x) in row.as_chunks_mut::<4>().0.iter_mut().zip(0..width) {
+          *texel = pixel(x, y).0;
+        }
+      });
+
+    packed
   }
 
   /// The height plane as it is stored: the source's red channel, which is what `DXTCompressBump` reads here rather
@@ -230,7 +264,7 @@ impl GenerateBumpProcessor {
     let scaled: Vec<u8> = GreyPlane::from_channel(&options.height, 0)
       .get_bytes()
       .iter()
-      .map(|level| Self::to_byte((f32::from(*level) * scale + EPS_S).floor()))
+      .map(|level| Self::quantize_byte((f32::from(*level) * scale + EPS_S).floor()))
       .collect();
 
     let total: u32 = scaled.iter().map(|level| u32::from(*level)).sum();
@@ -238,21 +272,21 @@ impl GenerateBumpProcessor {
     let lowest: u32 = u32::from(*scaled.iter().min().unwrap_or(&0));
     let highest: u32 = u32::from(*scaled.iter().max().unwrap_or(&0));
     let median: u32 = (9 * average + (highest - lowest) / 2 + lowest) / 10;
-    let correction: i32 = HEIGHT_CENTER - median as i32;
+    let correction: i32 = HEIGHT_CENTER - median.cast_signed();
 
     scaled
       .into_iter()
-      .map(|level| Self::to_byte_from_int(i32::from(level) + correction))
+      .map(|level| Self::clamp_byte(i32::from(level) + correction))
       .collect()
   }
 
   /// Rounds a computed level into a byte, clamping rather than wrapping at either end.
-  fn to_byte(value: f32) -> u8 {
+  fn quantize_byte(value: f32) -> u8 {
     value.clamp(0.0, 255.0) as u8
   }
 
   /// The same clamp for a value that is already whole, which is where the error and the centring land.
-  fn to_byte_from_int(value: i32) -> u8 {
+  fn clamp_byte(value: i32) -> u8 {
     value.clamp(0, 255) as u8
   }
 
@@ -327,6 +361,15 @@ mod tests {
   /// The base level of a written half, as the four channels it stores.
   fn decode(path: &PathBuf) -> XrfResult<RgbaImage> {
     DdsFile::read_from_path(path)?.decode_rgba(0)
+  }
+
+  #[test]
+  fn refuses_a_height_picture_of_no_texel() {
+    for (width, height) in [(0, 8), (8, 0)] {
+      let empty: RgbaImage = RgbaImage::new(width, height);
+
+      assert!(GenerateBumpProcessor::generate(&options("empty", empty)).is_err());
+    }
   }
 
   #[test]

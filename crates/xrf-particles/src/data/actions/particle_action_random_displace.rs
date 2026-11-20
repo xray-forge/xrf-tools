@@ -2,10 +2,10 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
-use crate::data::particle_action_type::ParticleActionType;
-use crate::data::particle_domain::ParticleDomain;
+use crate::data::actions::particle_action_type::ParticleActionType;
+use crate::data::domain::particle_domain::ParticleDomain;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,8 +34,8 @@ impl ChunkReadWrite for ParticleActionRandomDisplace {
 }
 
 impl LtxImportExport for ParticleActionRandomDisplace {
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle action section '{}' should be defined in ltx file ({})",
         section_name,
@@ -50,12 +50,12 @@ impl LtxImportExport for ParticleActionRandomDisplace {
     })
   }
 
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("action_flags", self.action_flags.to_string())
-      .set("action_type", self.action_type.to_string())
-      .set("gen_disp", self.gen_disp.to_string());
+      .set("action_flags", self.action_flags)
+      .set("action_type", self.action_type)
+      .set("gen_disp", &self.gen_disp);
 
     Ok(())
   }
@@ -73,8 +73,8 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_random_displace::ParticleActionRandomDisplace;
-  use crate::data::particle_action_type::ParticleActionType;
-  use crate::data::particle_domain::ParticleDomain;
+  use crate::data::actions::particle_action_type::ParticleActionType;
+  use crate::data::domain::particle_domain::ParticleDomain;
 
   #[test]
   fn test_read_write() -> XrfResult {

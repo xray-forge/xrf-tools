@@ -14,7 +14,7 @@ use crate::lighting::srgb::anchored_light;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "SkyHarmonics")]
-pub struct SkyHarmonics {
+pub(crate) struct SkyHarmonics {
   pub coefficients: [Vec4; 9],
 }
 
@@ -28,7 +28,7 @@ impl SkyHarmonics {
 
   /// The luminance of the sky's irradiance over π a level surface facing up takes, in the engine's units, by the look's
   /// hemisphere scale (`hemi`); none before the sky was projected.
-  pub fn get_zenith_irradiance(&self, hemi: f32) -> f32 {
+  pub(crate) fn get_zenith_irradiance(&self, hemi: f32) -> f32 {
     if !self.is_projected() {
       return 0.0;
     }
@@ -38,14 +38,14 @@ impl SkyHarmonics {
 
   /// What the authored hemisphere gives a level surface facing up, in the engine's units, as the irradiance pass looked
   /// it up (`authored_hemisphere`); none before the sky was projected.
-  pub fn get_authored_zenith(&self) -> Option<Vec3> {
+  pub(crate) fn get_authored_zenith(&self) -> Option<Vec3> {
     self.is_projected().then(|| self.get_authored_terms().1)
   }
 
   /// What the sky's own light is multiplied by, per channel, for its harmonics to stand at the light's `level` as
   /// `at_level` takes them, the look's hemisphere scale (`hemi`) in it; none where the sky is too dark to have a shape
   /// and lights evenly at the authored hemisphere's level instead.
-  pub fn get_level_scale(&self, level: RenderLightLevel, hemi: f32, ambient: Vec3) -> Option<Vec3> {
+  pub(crate) fn get_level_scale(&self, level: RenderLightLevel, hemi: f32, ambient: Vec3) -> Option<Vec3> {
     let (sky, zenith): (Vec3, Vec3) = (
       self.coefficients[0].truncate() * hemi,
       Self::get_zenith(&self.coefficients) * hemi,
@@ -110,7 +110,7 @@ impl SkyHarmonics {
   /// which a top-heavy cloudy sky lights level ground a quarter over the game's. A sky too dark to have a shape lights
   /// evenly at the authored hemisphere's level. At the anchored levels as at the authored, the hemisphere anchored over
   /// the weather's `ambient` (`anchored_light`), both in the engine's units.
-  pub fn at_level(&self, level: RenderLightLevel, hemi: f32, ambient: Vec3) -> [Vec4; 9] {
+  pub(crate) fn at_level(&self, level: RenderLightLevel, hemi: f32, ambient: Vec3) -> [Vec4; 9] {
     let Some(scale) = self.get_level_scale(level, hemi, ambient) else {
       let (authored, _) = self.get_level_terms(level, ambient);
 

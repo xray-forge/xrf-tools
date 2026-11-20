@@ -54,7 +54,7 @@ export function VisualsExplorerTool({
     const root: Nullable<string> = visualsService.containingRoot;
 
     if (root) {
-      void browseService.openRoot(root);
+      void browseService.open(root);
     }
   }, [browseService, visualsService.containingRoot]);
 
@@ -74,7 +74,7 @@ export function VisualsExplorerTool({
           tree={isBrowsing ? <VisualsMenu /> : undefined}
           isLoading={visualsService.visual.isLoading}
           error={visualsService.visual.error?.message}
-          onRetry={visualsService.retryOpen}
+          onRetry={visualsService.retry}
           onBack={onBack}
           onBrowse={isBrowsing ? undefined : onBrowse}
           onDeselect={isBrowsing ? onDeselect : null}

@@ -8,7 +8,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// the sun's shadow cascades.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
-pub struct CompositedParameters<'a> {
+pub(crate) struct CompositedParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   #[storage]
@@ -21,4 +21,7 @@ pub struct CompositedParameters<'a> {
   pub shadow_maps: GraphTexture,
   #[uniform]
   pub shadows: UniformBinding<ShadowUniform>,
+  /// The comparison the cascades' maps are filtered through (`SunPass::get_compare`).
+  #[sampler(comparison)]
+  pub shadow_compare: &'a wgpu::Sampler,
 }

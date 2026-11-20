@@ -11,7 +11,7 @@ use xrf_vfs::{XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 use crate::browse::ArchiveWorld;
 
 /// A tree of its own holding `files`, emptied first so a re-run reads what this run wrote.
-pub fn tree(case: &str, files: &[(&str, &[u8])]) -> PathBuf {
+pub(crate) fn tree(case: &str, files: &[(&str, &[u8])]) -> PathBuf {
   let root: PathBuf = GeneratedResources::path(&format!("archives/{case}"));
 
   let _ = fs::remove_dir_all(&root);
@@ -29,7 +29,7 @@ pub fn tree(case: &str, files: &[(&str, &[u8])]) -> PathBuf {
 }
 
 /// A search over `roots`, mounted as an open mounts them.
-pub fn search(roots: &XrayRoots) -> XraySearch {
+pub(crate) fn search(roots: &XrayRoots) -> XraySearch {
   let mut vfs: XrayVfs = XrayVfs::new();
   let steps: Vec<XraySearchStep> = roots
     .to_search_plan()
@@ -41,14 +41,14 @@ pub fn search(roots: &XrayRoots) -> XraySearch {
 }
 
 /// The world a search over `roots` lists, read through the same snapshot.
-pub fn world(roots: &XrayRoots) -> ArchiveWorld {
+pub(crate) fn world(roots: &XrayRoots) -> ArchiveWorld {
   let search: XraySearch = search(roots);
 
   ArchiveWorld::list(&search, search.clone())
 }
 
 /// `files` packed whole into a volume set of their own, as the directory holding its volumes.
-pub fn volumes(case: &str, files: &[(&str, &[u8])]) -> PathBuf {
+pub(crate) fn volumes(case: &str, files: &[(&str, &[u8])]) -> PathBuf {
   let source: PathBuf = tree(&format!("{case}/gamedata"), files);
   let destination: PathBuf = GeneratedResources::path(&format!("archives/{case}/db"));
   let mut config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, "gamedata");

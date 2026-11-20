@@ -2,8 +2,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, META_TYPE_FIELD, Section};
-use xrf_utils::{assert_equal, assert_length, to_format_size};
+use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
+use xrf_utils::{assert_equal, assert_length, narrow_format_size};
 
 use crate::data::group::particle_group_child::ParticleGroupChild;
 use crate::data::group::particle_group_effect_flags::ParticleGroupEffectFlags;
@@ -110,7 +110,7 @@ impl ChunkReadWriteList for ParticleGroupEffect {
 
   /// Write effects list data into the writer.
   fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
-    writer.write_u32::<T>(to_format_size(list.len(), "particle group effects")?)?;
+    writer.write_u32::<T>(narrow_format_size(list.len(), "particle group effects")?)?;
 
     for effect in list {
       effect.write::<T>(writer)?;
@@ -152,7 +152,7 @@ impl ChunkReadWrite for ParticleGroupEffect {
 
 impl ParticleGroupEffect {
   /// Import list of particles group effect data from provided path.
-  pub fn import_list(section_name: &str, ltx: &Ltx) -> XrfResult<Vec<Self>> {
+  pub fn import_list<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Vec<Self>> {
     let mut effect_index: usize = 0;
     let mut effects: Vec<Self> = Vec::new();
 
@@ -161,7 +161,7 @@ impl ParticleGroupEffect {
 
       if ltx.has_section(&action_section_name) {
         effects.push(Self::import(&action_section_name, ltx)?);
-        effect_index += 1
+        effect_index += 1;
       } else {
         break;
       }
@@ -177,8 +177,8 @@ impl ParticleGroupEffect {
   }
 
   /// Import particles group effect data from provided path.
-  pub fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  pub fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle group effect section '{}' should be defined in ltx file ({})",
         section_name,
@@ -206,16 +206,16 @@ impl ParticleGroupEffect {
   }
 
   /// Export list of particles group effect data into provided path.
-  pub fn export_list(effects_old: &[Self], section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  pub fn export_list(effects_old: &[Self], section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     for (index, effect) in effects_old.iter().enumerate() {
-      effect.export(&Self::get_effect_section(section_name, index), ltx)?
+      effect.export(&Self::get_effect_section(section_name, index), ltx)?;
     }
 
     Ok(())
   }
 
   /// Export particles group effect data into provided path.
-  pub fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  pub fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)
@@ -223,9 +223,9 @@ impl ParticleGroupEffect {
       .set("on_play_child_name", &self.on_play_child_name)
       .set("on_birth_child_name", &self.on_birth_child_name)
       .set("on_dead_child_name", &self.on_dead_child_name)
-      .set("time_0", self.time_0.to_string())
-      .set("time_1", self.time_1.to_string())
-      .set("flags", self.flags.to_string());
+      .set("time_0", self.time_0)
+      .set("time_1", self.time_1)
+      .set("flags", self.flags);
 
     Ok(())
   }

@@ -79,7 +79,7 @@ impl DialogPartners {
       .iter()
       .filter_map(|(_, _, source)| source.as_ref().ok())
       .flat_map(|source| XmlIncludes::list(source))
-      .filter_map(|name| XrayLogicalPath::normalize(&Self::to_include_path(&name)).ok())
+      .filter_map(|name| XrayLogicalPath::normalize(&Self::resolve_include_path(&name)).ok())
       .collect();
 
     let mut partners: Self = Self::default();
@@ -90,7 +90,7 @@ impl DialogPartners {
       }
 
       let document: XrfResult<XmlSourceDocument> = source
-        .and_then(|source| XmlIncludes::expand(&source, &mut |name| search.read(&Self::to_include_path(name))))
+        .and_then(|source| XmlIncludes::expand(&source, &mut |name| search.read(&Self::resolve_include_path(name))))
         .and_then(|expanded| DialogSource::decode(&expanded))
         .and_then(|decoded| XmlSourceDocument::parse(decoded.text));
 
@@ -201,7 +201,7 @@ impl DialogPartners {
   }
 
   /// The logical path of an included file, which the engine opens under `$game_config$`.
-  fn to_include_path(name: &str) -> String {
+  fn resolve_include_path(name: &str) -> String {
     format!("{}\\{name}", Self::INCLUDES_PREFIX)
   }
 

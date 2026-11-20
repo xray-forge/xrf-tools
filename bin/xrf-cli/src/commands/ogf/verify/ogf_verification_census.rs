@@ -5,7 +5,7 @@ use serde::Serialize;
 /// What a sweep counted, beside what it found.
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfVerificationCensus {
+pub(crate) struct OgfVerificationCensus {
   pub files: usize,
   pub unreadable_files: usize,
   pub files_without_geometry: usize,
@@ -40,7 +40,7 @@ pub struct OgfVerificationCensus {
 
 impl OgfVerificationCensus {
   /// Counts one more `key` in `map`.
-  pub fn count(map: &mut BTreeMap<String, usize>, key: impl Into<String>) {
+  pub(crate) fn count(map: &mut BTreeMap<String, usize>, key: impl Into<String>) {
     *map.entry(key.into()).or_default() += 1;
   }
 }

@@ -7,30 +7,26 @@ use xrf_pack::{ArchivePatchResult, ArchivePatcher};
 use crate::commands::archive::ArchiveVolumeArguments;
 use crate::commands::archive::pack_patch::archive_patch_request::ArchivePatchRequest;
 use crate::commands::archive::pack_patch::archive_patch_summary::ArchivePatchSummary;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 /// Options a configuration file also carries, so naming both would leave the winner unstated.
 const SELECTION_ARGUMENTS: [&str; 4] = ["include", "ignore", "exclude-extension", ArchiveVolumeArguments::HEADER];
 
 #[derive(Default)]
-pub struct PackPatchCommand;
+pub(crate) struct PackPatchCommand;
 
 impl GenericCommand for PackPatchCommand {
   fn operation(&self) -> &'static str {
     "pack-patch"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("What to patch: an installation, a directory of volumes, or a gamedata tree")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Pack what a gamedata tree changes about an installation into overriding *.db archive volumes")
-      .arg(
-        Arg::new("path")
-          .help("What to patch: an installation, a directory of volumes, or a gamedata tree")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("target")
           .help("Tree the patch delivers; omit to use the loose gamedata of the input itself")

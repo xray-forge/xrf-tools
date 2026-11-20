@@ -1,3 +1,8 @@
+#![cfg_attr(
+  windows,
+  expect(unsafe_code, reason = "lists WebView2's processes through its COM interfaces")
+)]
+
 use tauri::async_runtime::{Receiver, Sender, channel};
 use tauri::{AppHandle, Runtime};
 use xrf_app_core::TauriResult;
@@ -11,13 +16,13 @@ type WebviewProcessDispatch = dyn Fn(Sender<WebviewProcessListing>) -> TauriResu
 /// Asks the main window's webview which processes it runs in, on the thread its environment belongs to.
 ///
 /// Holds the application behind a closure so the state is not generic over the runtime the commands cannot name.
-pub struct WebviewProcessProbe {
+pub(crate) struct WebviewProcessProbe {
   dispatch: Box<WebviewProcessDispatch>,
 }
 
 impl WebviewProcessProbe {
   /// A probe of the main window of `application`.
-  pub fn new<R: Runtime>(application: AppHandle<R>) -> Self {
+  pub(crate) fn new<R: Runtime>(application: AppHandle<R>) -> Self {
     // The window `tauri.conf.json` declares first is the one `MainWindow::build` builds.
     let label: Option<String> = application
       .config()
@@ -32,7 +37,7 @@ impl WebviewProcessProbe {
   }
 
   /// List the webview's processes, waiting for the webview's thread to answer.
-  pub async fn list(&self) -> WebviewProcessListing {
+  pub(crate) async fn list(&self) -> WebviewProcessListing {
     let (sender, mut receiver): (Sender<WebviewProcessListing>, Receiver<WebviewProcessListing>) = channel(1);
 
     (self.dispatch)(sender)?;
@@ -94,7 +99,7 @@ impl WebviewProcessProbe {
       let collection: ICoreWebView2ProcessInfoCollection = unsafe { environment.GetProcessInfos()? };
 
       // SAFETY: as above; `count` outlives the call.
-      unsafe { collection.Count(&mut count)? };
+      unsafe { collection.Count(&raw mut count)? };
 
       let mut processes: Vec<WebviewProcess> = Vec::with_capacity(count as usize);
 
@@ -104,9 +109,11 @@ impl WebviewProcessProbe {
 
         // SAFETY: as above; `index` is below the collection's own count, and both outputs outlive the calls.
         let info: ICoreWebView2ProcessInfo = unsafe { collection.GetValueAtIndex(index)? };
+
+        // SAFETY: as above, for the one process's identity and kind.
         unsafe {
-          info.ProcessId(&mut pid)?;
-          info.Kind(&mut kind)?;
+          info.ProcessId(&raw mut pid)?;
+          info.Kind(&raw mut kind)?;
         }
 
         if let Ok(pid) = u32::try_from(pid) {

@@ -1,10 +1,11 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::path::{is_component_prefix, to_host_relative};
+use crate::path::{is_component_prefix, resolve_host_relative};
 use crate::source::directory::{DirectoryAssetIndex, XrayAssetIndex};
 use crate::{XrayAssetContainer, XrayAssetSource, XrayFileStamp, XrayPathCollision, XraySourceKind, label_from_path};
 
@@ -13,7 +14,7 @@ use crate::{XrayAssetContainer, XrayAssetSource, XrayFileStamp, XrayPathCollisio
 /// Two files inside it normalizing to one logical path are reported through [`XrayAssetSource::get_collisions`] rather than
 /// refused, since only shadowing *between* mounts has a priority order to appeal to.
 #[derive(Debug)]
-pub struct XrayDirectorySource {
+pub(crate) struct XrayDirectorySource {
   label: String,
   index: XrayAssetIndex,
 }
@@ -24,7 +25,7 @@ impl XrayDirectorySource {
   /// # Errors
   ///
   /// Returns an error when traversal fails or a path is not a valid X-Ray logical path.
-  pub fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
+  pub(crate) fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
     Self::read_ignoring(root, &[])
   }
 
@@ -36,13 +37,32 @@ impl XrayDirectorySource {
   /// # Errors
   ///
   /// Returns an error when traversal fails, or a prefix or path is not a valid X-Ray logical path.
-  pub fn read_ignoring(root: impl AsRef<Path>, ignored: &[String]) -> XrfResult<Self> {
+  pub(crate) fn read_ignoring(root: impl AsRef<Path>, ignored: &[String]) -> XrfResult<Self> {
     let root: &Path = root.as_ref();
 
     Ok(Self {
       index: XrayAssetIndex::new(DirectoryAssetIndex::read(root)?, ignored)?,
       label: label_from_path(root),
     })
+  }
+
+  /// The file on disk holding a source-relative path.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when the source holds no such path, so a caller can fall back rather than fail.
+  fn require_file(&self, path: &str) -> XrfResult<PathBuf> {
+    match self.index.find(path)? {
+      Some(asset) => Ok(asset.absolute_path()),
+      None => Err(XrfError::new_not_found_error(format!(
+        "no asset '{path}' under root {}",
+        format_path(self.get_root_path())
+      ))),
+    }
+  }
+
+  fn new_read_error(absolute: &Path, error: &std::io::Error) -> XrfError {
+    XrfError::new_asset_error(format!("failed to read '{}': {error}", format_path(absolute)))
   }
 }
 
@@ -80,25 +100,28 @@ impl XrayAssetSource for XrayDirectorySource {
   }
 
   fn read(&self, path: &str) -> XrfResult<Vec<u8>> {
-    let Some(asset) = self.index.find(path)? else {
-      // Absent, not unreadable: the distinction lets a caller fall back rather than fail.
-      return Err(XrfError::new_not_found_error(format!(
-        "no asset '{path}' under root {}",
-        format_path(self.get_root_path())
-      )));
-    };
+    let absolute: PathBuf = self.require_file(path)?;
 
-    let absolute: PathBuf = asset.absolute_path();
+    fs::read(&absolute).map_err(|error| Self::new_read_error(&absolute, &error))
+  }
 
-    fs::read(&absolute)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to read '{}': {error}", format_path(&absolute))))
+  /// Reads no further into the file than `count` bytes.
+  fn read_head(&self, path: &str, count: usize) -> XrfResult<Vec<u8>> {
+    let absolute: PathBuf = self.require_file(path)?;
+    let mut bytes: Vec<u8> = Vec::new();
+
+    File::open(&absolute)
+      .and_then(|file| file.take(count as u64).read_to_end(&mut bytes))
+      .map_err(|error| Self::new_read_error(&absolute, &error))?;
+
+    Ok(bytes)
   }
 
   /// The file indexed for a path, in the case it has on disk, or where a new one goes below the root.
   fn get_writable_path(&self, path: &str) -> Option<PathBuf> {
     match self.index.find(path).ok()? {
       Some(asset) => Some(asset.absolute_path()),
-      None => Some(self.get_root_path().join(to_host_relative(path))),
+      None => Some(self.get_root_path().join(resolve_host_relative(path))),
     }
   }
 
@@ -162,9 +185,8 @@ mod tests {
 
   use xrf_test_utils::GeneratedResources;
 
-  use crate::XrayAssetSource;
-  use crate::XraySourceKind;
   use crate::source::XrayDirectorySource;
+  use crate::{XrayAssetSource, XraySourceKind};
 
   fn source(name: &str, files: &[&str]) -> XrayDirectorySource {
     let root: PathBuf =

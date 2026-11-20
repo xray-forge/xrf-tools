@@ -1,5 +1,5 @@
 /// A uniform buffer binding.
-pub fn uniform_entry(binding: u32, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
+pub(crate) fn uniform_entry(binding: u32, visibility: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
   wgpu::BindGroupLayoutEntry {
     binding,
     visibility,

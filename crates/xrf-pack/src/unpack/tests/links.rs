@@ -155,7 +155,6 @@ fn extract_file_still_writes_to_the_linked_path_it_is_given() {
   );
 }
 
-/// An ordinary tree that is already there keeps unpacking under the strict policy too.
 #[test]
 fn unpack_writes_into_a_destination_tree_that_already_exists() {
   let directory: PathBuf = create_temporary_directory("link-existing-tree");
@@ -165,7 +164,7 @@ fn unpack_writes_into_a_destination_tree_that_already_exists() {
   fs::create_dir_all(out.join("configs")).expect("destination");
   fs::write(out.join("configs").join("system.ltx"), b"stale").expect("previous unpack");
 
-  ArchiveUnpacker::unpack_opt(&project, &out, refusing_links()).expect("unpack");
+  ArchiveUnpacker::unpack_opt(&project, &out, refusing_links().with_forced(true)).expect("unpack");
 
   assert_eq!(
     fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),

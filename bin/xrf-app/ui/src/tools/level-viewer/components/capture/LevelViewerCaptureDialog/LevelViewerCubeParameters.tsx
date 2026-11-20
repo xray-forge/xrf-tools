@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { LEVEL_CAPTURE_SETTLE_FRAMES } from "@/tools/level-viewer/lib/capture/level-capture";

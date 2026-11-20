@@ -221,16 +221,16 @@ impl LevelShadows {
         .sway
         .is_redrawn_every(frame.sway.reach, current.texel, cascade.drawn_at, interval);
     let is_kept: bool = has_moving && cascade.is_kept;
-    let can_wait: bool = frame.sway.time - cascade.drawn_at < interval * TREES_WAIT_MOST;
+    let can_wait: bool = frame.sway.can_wait(cascade.drawn_at, interval * TREES_WAIT_MOST);
     let is_trees_due: bool = is_stale || (is_swayed && !(is_kept && *is_trees_taken && can_wait));
 
     if is_kept && is_trees_due {
       *is_trees_taken = true;
     }
 
-    // A far cascade redraws its trees for the sway alone band by band, a sweep at a time, unless what moves every frame
-    // lands in it, which draws over its kept layer every frame.
-    if index >= BANDED_FROM && !has_moving && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
+    // A sway-only redraw goes band by band, unless what moves every frame lands in the cascade and draws over its kept
+    // layer each frame. A near cascade's bands are drawn when due, so its sweep keeps the sway's rate.
+    if !has_moving && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
       let band: u32 = cascade.sway_sweep.map_or(0, |(_, band)| band);
 
       return Some(Self::offer(
@@ -241,7 +241,7 @@ impl LevelShadows {
         CascadeRequest {
           draw: CascadeDraw::Banded(band),
           fit: static_fit,
-          is_urgent: false,
+          is_urgent: index < BANDED_FROM,
         },
       ));
     }

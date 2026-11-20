@@ -5,7 +5,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { LevelLoadService } from "@/core/level/services/level-load";
@@ -80,7 +80,7 @@ export function LevelViewerOpenForm({
       return;
     }
 
-    await loadService.load({
+    await loadService.open({
       engine: engine.choice,
       isDltx,
       roots: createRoots([root.value]),

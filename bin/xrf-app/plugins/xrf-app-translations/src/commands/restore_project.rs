@@ -10,7 +10,7 @@ use crate::TranslationProjects;
 /// reload.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_project")]
-pub async fn translations_restore_project(
+pub(crate) async fn translations_restore_project(
   projects: State<'_, TranslationProjects>,
   window: InvokingWindow,
   tool: String,

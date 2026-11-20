@@ -1,5 +1,3 @@
-//! Pins that formatting configs commits its rewrites, so what the app retains and the sessions reading them follow.
-
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -8,11 +6,13 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, Sessions};
 use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
+use xrf_ltx_inspect::LtxDeclarationQuery;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
 use crate::format::ConfigsFormat;
-use crate::project::{ConfigsProjects, OpenedConfigsProject};
+use crate::project::{ConfigsDeclarationSearch, ConfigsProjects, OpenedConfigsProject};
+use crate::request::ConfigsFindDeclarationsRequest;
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
 const GAME_LTX: &str = "configs\\game.ltx";
@@ -97,14 +97,14 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
   fs::write(root.join("configs/system.ltx"), "[a]\nkey = value\n").expect("config written");
   fs::write(root.join("configs/game.ltx"), "[b]\nkey = value\n").expect("config written");
 
-  let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
+  let roots: XrayRoots = XrayRoots::one(root, XrayMountMode::Directory);
   let assets: AssetMountState = AssetMountState::new();
   // Derived inline rather than on a pool, so the commit below has read the project again by the time it returns.
   let projects: ConfigsProjects = ConfigsProjects::new("configs project", &SessionScopes::default())
     .with_derivation(&assets, OpenedConfigsProject::derive);
   let search: XraySearch = assets.search(&roots).expect("the tree mounts");
   let id: SessionId = SessionId::generate();
-  let read = OpenedConfigsProject::read(&search, roots.clone(), None, false).expect("it opens");
+  let read = OpenedConfigsProject::read(&search, roots, None, false).expect("it opens");
 
   assert_eq!(read.value.descriptor.inventory.files.len(), 2);
 
@@ -125,4 +125,81 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
 
   assert_eq!(followed.revision, assets.get_vfs().get_revision(), "the session moved");
   assert_eq!(followed.descriptor.inventory.files.len(), 3);
+}
+
+#[test]
+fn a_declaration_search_compares_sections_as_the_dialect_does_and_caps_its_answer() {
+  let root: PathBuf = GeneratedResources::path("configs_find/declarations");
+
+  let _ = fs::remove_dir_all(&root);
+
+  fs::create_dir_all(root.join("configs")).expect("the tree is creatable");
+
+  // More statements writing `cost` than one answer carries, so the cut and the count both show.
+  let many: String = (0..ConfigsDeclarationSearch::MAXIMUM_DECLARATIONS + 20)
+    .map(|index| format!("[wpn_{index}]\ncost = {index}\n"))
+    .collect();
+
+  fs::write(root.join("configs/system.ltx"), format!("[wpn_ak74]\ncost = 1\n{many}")).expect("config written");
+  fs::write(root.join("configs/mod_system_a.ltx"), "![WPN_AK74]\ncost = 2\n").expect("config written");
+
+  let roots: XrayRoots = XrayRoots::one(root, XrayMountMode::Directory);
+  let search: XraySearch = AssetMountState::new().search(&roots).expect("the tree mounts");
+
+  let find = |is_dltx: bool, query: LtxDeclarationQuery| {
+    OpenedConfigsProject::read(&search, roots.clone(), None, is_dltx)
+      .expect("it opens")
+      .value
+      .find_declarations(query)
+      .expect("the search runs")
+  };
+  let section = |name: &str| LtxDeclarationQuery {
+    section: Some(String::from(name)),
+    ..LtxDeclarationQuery::default()
+  };
+
+  // Both dialects lowercase section names as the engine does, so both headers name one section.
+  let dltx: ConfigsDeclarationSearch = find(true, section("wpn_ak74"));
+  let standard: ConfigsDeclarationSearch = find(false, section("wpn_ak74"));
+
+  assert_eq!(dltx.total, 2);
+  assert!(dltx.search.query.is_section_case_folded);
+  assert_eq!(standard.total, 2);
+  assert!(standard.search.query.is_section_case_folded);
+
+  let capped: ConfigsDeclarationSearch = find(
+    false,
+    LtxDeclarationQuery {
+      field: Some(String::from("cost")),
+      ..LtxDeclarationQuery::default()
+    },
+  );
+
+  assert_eq!(capped.total, ConfigsDeclarationSearch::MAXIMUM_DECLARATIONS + 22);
+  assert_eq!(
+    capped.search.declarations.len(),
+    ConfigsDeclarationSearch::MAXIMUM_DECLARATIONS
+  );
+  assert_eq!(
+    capped.search.declarations[0].path, "configs\\mod_system_a.ltx",
+    "the first ones in project order"
+  );
+}
+
+#[test]
+fn a_declarations_search_takes_an_empty_criterion_as_not_given() {
+  let request = |section: &str, field: &str, value: &str| ConfigsFindDeclarationsRequest {
+    session_id: SessionId::generate(),
+    section: Some(String::from(section)),
+    field: Some(String::from(field)),
+    value: Some(String::from(value)),
+  };
+
+  assert!(request("", "", "").get_query().is_none(), "nothing is left to look for");
+
+  let query: LtxDeclarationQuery = request("wpn_ak74", "", "").get_query().expect("a section to look for");
+
+  assert_eq!(query.section.as_deref(), Some("wpn_ak74"));
+  assert_eq!(query.field, None);
+  assert_eq!(query.value, None);
 }

@@ -1,35 +1,31 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
 use xrf_translation::{TranslationInitializeOptions, TranslationInitializeResult, TranslationInitializer};
 use xrf_utils::format_path;
 
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct InitializeCommand;
+pub(crate) struct InitializeCommand;
 
 impl GenericCommand for InitializeCommand {
   fn operation(&self) -> &'static str {
     "initialize"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to translation folder")
+  }
+
   fn declare(&self, command: Command) -> Command {
-    command.about("Initialize translation files").arg(
-      Arg::new("path")
-        .help("Path to translation folder")
-        .short('p')
-        .long("path")
-        .required(true)
-        .value_parser(value_parser!(PathBuf)),
-    )
+    command.about("Initialize translation files")
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid path to be provided");
+    let path: &PathBuf = InputArgument::of(matches);
 
     let output: OutputOptions = context.get_output().clone();
 

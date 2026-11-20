@@ -6,16 +6,16 @@ use crate::commands::particle::list::particle_list_entry::ParticleListEntry;
 /// library's order.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ParticleListReport {
+pub(crate) struct ParticleListReport {
   entries: Vec<ParticleListEntry>,
 }
 
 impl ParticleListReport {
-  pub fn new(entries: Vec<ParticleListEntry>) -> Self {
+  pub(crate) fn new(entries: Vec<ParticleListEntry>) -> Self {
     Self { entries }
   }
 
-  pub fn entries(&self) -> &[ParticleListEntry] {
+  pub(crate) fn entries(&self) -> &[ParticleListEntry] {
     &self.entries
   }
 }

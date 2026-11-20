@@ -9,7 +9,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The engine's bloom (`phase_bloom`): the frame's high part built into the first bloom target, blurred across into the
 /// second and down back into the first, which the present adds over the frame.
-pub struct BloomPass {
+pub(crate) struct BloomPass {
   layout: wgpu::BindGroupLayout,
   /// `smp_rtlinear`: filtered, clamped to the edge.
   sampler: wgpu::Sampler,
@@ -20,7 +20,7 @@ impl BloomPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub(crate) fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = BloomParameters::create_layout(device);
@@ -39,7 +39,7 @@ impl BloomPass {
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
-  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+  pub(crate) fn refresh(&mut self, source: PipelineSource<'_>) {
     if let Err(error) = self
       .pipelines
       .refresh(source.cache, || Self::create_pipelines(source, &self.layout))
@@ -49,12 +49,12 @@ impl BloomPass {
   }
 
   /// The sampler its draws read their source with, which their parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Draws one of its stages into the target the pass draws into.
-  pub fn record(&self, context: &mut RasterContext<'_>, stage: BloomStage, parameters: &BloomParameters<'_>) {
+  pub(crate) fn record(&self, context: &mut RasterContext<'_>, stage: BloomStage, parameters: &BloomParameters<'_>) {
     context.get_pass().set_pipeline(match stage {
       BloomStage::Build => &self.pipelines.build,
       BloomStage::Across | BloomStage::Down => &self.pipelines.filter,

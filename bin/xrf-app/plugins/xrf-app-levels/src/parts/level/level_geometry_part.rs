@@ -25,7 +25,7 @@ impl SessionPart for LevelGeometryPart {
 
 impl LevelGeometryPart {
   /// The store with `geometry` kept as the level's geometry part, read from `inputs` as the level opened.
-  pub fn with(
+  pub(crate) fn with(
     parts: SessionParts,
     geometry: Arc<LevelGeomSource<InMemoryChunkDataSource>>,
     inputs: XrayInputRecord,
@@ -38,7 +38,7 @@ impl LevelGeometryPart {
   /// # Errors
   ///
   /// Returns why `level.geom` could not be read, which every later ask answers with again.
-  pub fn get(
+  pub(crate) fn get(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
   ) -> TauriResult<Arc<LevelGeomSource<InMemoryChunkDataSource>>> {
@@ -52,7 +52,10 @@ impl LevelGeometryPart {
   /// # Errors
   ///
   /// Returns why `level.geom` could not be read.
-  pub fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<LevelGeomSource<InMemoryChunkDataSource>> {
+  pub(crate) fn read(
+    source: &LevelSource,
+    search: &XraySearch,
+  ) -> TauriResult<LevelGeomSource<InMemoryChunkDataSource>> {
     LevelGeomSource::open_from_bytes::<XRayByteOrder>(source.read_file(search, LevelGeomFile::FILE_NAME)?)
       .map_err(|error| source.describe_read_failure(LevelGeomFile::FILE_NAME, &error))
   }

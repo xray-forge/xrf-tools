@@ -8,11 +8,12 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PauseIcon } from "@xrf/ui/icons/pause";
 import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
 import { RepeatIcon } from "@xrf/ui/icons/repeat";
-import { Tooltip } from "@xrf/ui/material/tooltip";
-import { Typography } from "@xrf/ui/material/typography";
+import { FrameSlider } from "@xrf/ui/media/frame-slider";
+import { Tooltip } from "@xrf/ui/overlay";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
-import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
+import { MotionPlaybackRate } from "@/core/visuals/components/preview";
 import { formatMotionTiming } from "@/core/visuals/lib/visual-motion";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 
@@ -43,7 +44,7 @@ export function VisualMotionTransport({
           onClick={onTogglePlay}
         />
 
-        <MotionFrameSlider
+        <FrameSlider
           ariaLabel={"Motion frame"}
           className={"mx-2"}
           frameCount={frames}

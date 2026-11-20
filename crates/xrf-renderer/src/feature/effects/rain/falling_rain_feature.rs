@@ -4,8 +4,6 @@ use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray, StorageValue};
 
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
-use crate::frame::jitter_guard::JitterGuard;
-
 use crate::feature::effects::over_scene::add_over_scene;
 use crate::feature::effects::rain::cover::rain_cover_shape::RainCoverShape;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
@@ -21,31 +19,33 @@ use crate::feature::effects::weather_model_buffers::WeatherModelBuffers;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::view::overhead_windows::OverheadWindows;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::weather::render_rain::RenderRain;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 use crate::pass::level_passes::LevelPasses;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;
+use crate::scene::level::view::view_time::ViewTime;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The falling rain, while the weather rains and the view shows it: the splash's model built for the level's weather,
 /// the uniform at the rain cover's window, the streak's and the splash's textures, and the drops drawn.
 #[derive(Default)]
-pub struct FallingRainFeature {
+pub(crate) struct FallingRainFeature {
   splash: Option<WeatherBuilt<WeatherModelBuffers>>,
   uniform: RainUniform,
   /// The streak's and the splash's textures, as the cache holds them when the frame is prepared.
   views: Option<[wgpu::TextureView; 2]>,
   /// How much of the rain is drawn; none while it does not rain.
   draw: Option<RainCounts>,
-  /// The rain's clock at the last frame it fell, which this frame's step is taken from.
-  last_time: Option<f32>,
   /// Where the enhanced drops' square stood from the eye last frame, eased towards the camera's way.
   aim: Option<Vec2>,
-  /// The rain's clock, run on at its pace each frame.
-  clock: f32,
+  /// The rain's clock in seconds, run on at its pace each frame, in `f64` so a frame's step still adds to a day's.
+  clock: f64,
   /// The pace and the lean it fell at last frame, eased towards the weather's.
   eased: Option<(f32, Vec3)>,
   /// The rings the enhanced drops leave where they land, made once they first fall.
@@ -57,7 +57,7 @@ impl FallingRainFeature {
   /// `time`: the splash's model built for the level's weather, the uniform at the rain cover's window and shape (in
   /// `windows`), and the textures; answers the uniform, which the wet surfaces follow, none where the weather has no
   /// rain to draw.
-  pub fn prepare(
+  pub(crate) fn prepare(
     &mut self,
     &ViewPrepare {
       device,
@@ -69,7 +69,7 @@ impl FallingRainFeature {
       ..
     }: &ViewPrepare<'_>,
     gust: AmbientGust,
-    time: f32,
+    time: ViewTime,
     windows: OverheadWindows,
   ) -> Option<RainUniform> {
     let rainfall: Option<RenderRainfall> = lighting.rain.filter(|_| options.mode.is_lit);
@@ -81,11 +81,7 @@ impl FallingRainFeature {
     self.views = None;
 
     // Held within a tenth of a second and never back, so a pause or a jump does not swing the drops' square.
-    let step: f32 = self
-      .last_time
-      .replace(time)
-      .map_or(0.0, |last| time - last)
-      .clamp(0.0, 0.1);
+    let step: f32 = time.get_step().map_or(0.0, |step| step.clamp(0.0, 0.1) as f32);
     let aim: Vec2 = RainUniform::ease_aim(self.aim, look, step);
 
     self.aim = Some(aim);
@@ -121,9 +117,9 @@ impl FallingRainFeature {
       });
 
     self.eased = Some((pace, axis));
-    self.clock += step * pace;
+    self.clock += f64::from(step * pace);
 
-    let uniform: RainUniform = target.clocked(self.clock, pace, axis);
+    let uniform: RainUniform = target.clocked(LevelTime::wrap(self.clock, RainUniform::CLOCK_PERIOD), pace, axis);
     let flat = |reference: Option<&str>| weather_textures.get_view(reference, WeatherTextureKind::Flat).clone();
 
     if uniform.is_enhanced != 0 {
@@ -148,8 +144,13 @@ impl FallingRainFeature {
     Some(uniform)
   }
 
+  /// The rain's clock in seconds at its last frame, which the wet surfaces' splashes, flow and ripples run by.
+  pub(crate) fn get_clock(&self) -> f64 {
+    self.clock
+  }
+
   /// The tile the enhanced drops' rings wrap over this frame (`RainUniform::get_rings`), none while none are drawn.
-  pub fn get_rings(&self) -> f32 {
+  pub(crate) fn get_rings(&self) -> f32 {
     match self.draw {
       Some(_) => self.uniform.get_rings(),
       None => 0.0,
@@ -157,17 +158,17 @@ impl FallingRainFeature {
   }
 
   /// Whether the rain falls this frame.
-  pub fn is_raining(&self) -> bool {
+  pub(crate) fn is_raining(&self) -> bool {
     self.draw.is_some()
   }
 
   /// Whether the enhanced splashes write into the distortion target this frame, bending the ground under them.
-  pub fn is_distorting(&self) -> bool {
+  pub(crate) fn is_distorting(&self) -> bool {
     self.uniform.is_enhanced != 0 && self.draw.is_some_and(|counts| counts.splash_indices > 0)
   }
 
   /// Follows the rain cover to where it stands once it has moved, as the drops read it.
-  pub fn follow_cover(&mut self, windows: OverheadWindows) {
+  pub(crate) fn follow_cover(&mut self, windows: OverheadWindows) {
     let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform.window = windows.cover;
@@ -176,13 +177,13 @@ impl FallingRainFeature {
 
   /// Follows how the frame is shown (`DisplayMode::get_display`), which the streaks and the engine's splashes enter the
   /// scene through.
-  pub fn follow_display(&mut self, display: Vec4) {
+  pub(crate) fn follow_display(&mut self, display: Vec4) {
     self.uniform.display = display;
   }
 
   /// Follows the level water's and the level surface's maps where `windows` gives them, none where the surfaces are not
   /// drawn, which the enhanced drops land on.
-  pub fn follow_surfaces(&mut self, windows: Option<OverheadWindows>) {
+  pub(crate) fn follow_surfaces(&mut self, windows: Option<OverheadWindows>) {
     let landing: Option<OverheadWindows> = windows.filter(|_| self.uniform.is_enhanced != 0);
 
     self.uniform.water = landing.map_or(Vec4::ZERO, |it| it.water);
@@ -192,7 +193,7 @@ impl FallingRainFeature {
 
   /// Adds the rain over the scene, falling onto `covers`: the engine's streaks and splashes, or the enhanced splashes
   /// and the distortion under the enhanced streaks, which draw after the resolve (`add_over_resolved`).
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -229,13 +230,13 @@ impl FallingRainFeature {
       passes
         .effects
         .rain
-        .record(context, view, &parameters, look.as_ref(), counts)
+        .record(context, view, &parameters, look.as_ref(), counts);
     });
   }
 
   /// Adds the enhanced streaks over a copy of the image the resolve shows (`chain`), so no history holds them; answers
   /// the copy, which the window pass shows in its place, none without enhanced rain.
-  pub fn add_over_resolved<'a>(
+  pub(crate) fn add_over_resolved<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -280,14 +281,14 @@ impl FallingRainFeature {
         passes
           .effects
           .rain
-          .record_over(context, view, &parameters, &look, streaks)
+          .record_over(context, view, &parameters, &look, streaks);
       });
 
     Some(layer)
   }
 
   /// Adds the rings the enhanced drops leave where they land on `covers`; answers them, none without them.
-  pub fn add_rings<'a>(
+  pub(crate) fn add_rings<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -382,13 +383,17 @@ impl FallingRainFeature {
 }
 
 impl ViewFeature for FallingRainFeature {
-  /// The splash's model, kept for the level's weather, and the enhanced drops' rings.
-  fn get_memory(&self) -> u64 {
-    self.splash.as_ref().map_or(0, |model| model.get().get_memory())
-      + self.rings.as_ref().map_or(0, RainRings::get_memory)
-  }
-
   fn release(&mut self) {
     *self = Self::default();
+  }
+
+  /// A motion restart starts the clock, the drops' square and the eased pace and lean over, as at a view's first frame;
+  /// a cut leaves them.
+  fn restart(&mut self, restart: ViewRestart) {
+    if restart == ViewRestart::Motion {
+      self.clock = 0.0;
+      self.aim = None;
+      self.eased = None;
+    }
   }
 }

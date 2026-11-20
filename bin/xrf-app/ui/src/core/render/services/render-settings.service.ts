@@ -4,10 +4,10 @@ import { renderCommands } from "@xrf/ipc/commands/render";
 import {
   RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderBackendAvailability,
-  RenderGpu,
   RenderGraphSettings,
   RenderSettings,
 } from "@xrf/ipc/types/xrf-renderer";
+import { RenderGpu } from "@xrf/ipc/types/xrf-renderer-core";
 import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
@@ -41,7 +41,7 @@ import {
   toRenderOutputScale,
   toRenderResolution,
 } from "@/core/render/lib/settings/device/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import {
   booleanCodec,
   FRAME_RATE_LIMIT_STORAGE_KEY,

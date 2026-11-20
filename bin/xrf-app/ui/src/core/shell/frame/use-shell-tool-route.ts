@@ -4,8 +4,8 @@ import { useCallback, useEffect } from "react";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 import { useCurrentTool } from "@/core/routing/current-tool.context";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { IToolDescriptor } from "@/core/routing/tool";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
 
 /** Keeps the shell's open tool on the route shown, and leaving it on the router, while the caller is mounted. */
 export function useShellToolRoute(): void {

@@ -7,7 +7,7 @@ import { KeybindCommandsService } from "@/core/commands";
 import { EToolGroupId, EToolId, EToolStatus, IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
-import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsService } from "@/core/settings/services/settings.service";
 import { clearLocalStorage, DEV_MODE_STORAGE_KEY, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

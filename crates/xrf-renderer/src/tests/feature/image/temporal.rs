@@ -10,6 +10,9 @@ use crate::feature::image::resolve::resolve_feature::ResolveFeature;
 use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
 use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
 use crate::feature::image::resolve::temporal_jitter::TemporalJitter;
+use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
+use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_restart::ViewRestart;
 
 #[test]
 fn halton_places_samples_as_the_radical_inverse_of_their_index() {
@@ -98,6 +101,29 @@ fn reads_textures_sharper_by_what_the_upscale_loses() {
   assert_eq!(ResolveFeature::get_bias(None, 2.0), 0.0);
 }
 
+#[test]
+fn declares_the_rescaled_frame_only_where_a_frame_writes_it() {
+  let (viewport, smaller): ((u32, u32), (u32, u32)) = ((1920, 1080), (1280, 720));
+
+  assert!(ResolveFeature::is_upscale_written(
+    Some(UpscaleStage::Easu),
+    false,
+    smaller,
+    viewport
+  ));
+  assert!(ResolveFeature::is_upscale_written(
+    Some(UpscaleStage::Downsample),
+    false,
+    (3840, 2160),
+    viewport
+  ));
+  assert!(ResolveFeature::is_upscale_written(None, true, smaller, viewport));
+  // DLSS or FSR upscaling into the viewport's size, or a temporal resolve at it.
+  assert!(!ResolveFeature::is_upscale_written(None, false, smaller, viewport));
+  assert!(!ResolveFeature::is_upscale_written(None, false, viewport, viewport));
+  assert!(!ResolveFeature::is_upscale_written(None, true, viewport, viewport));
+}
+
 // A reference's samples stand at their own places of the sequence, unresolved, read as sharp as DLSS reads them, the
 // screen-space effects' noise turned by the sample, so every instant averages the same turns.
 #[test]
@@ -138,7 +164,7 @@ fn a_restarted_resolve_jitters_from_the_first_place_again() {
 
   let first: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, None)).collect();
 
-  resolve.restart();
+  resolve.restart(ViewRestart::Motion);
 
   let again: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, None)).collect();
 
@@ -168,7 +194,7 @@ fn a_jump_or_a_sharp_turn_is_a_cut() {
   assert!(!resolve.is_cut(&at(Vec3::new(40.5, 0.0, 0.0), 0.3)));
   assert!(resolve.is_cut(&at(Vec3::new(40.5, 0.0, 0.0), 2.0)));
 
-  resolve.restart();
+  resolve.restart(ViewRestart::Motion);
 
   assert!(!resolve.is_cut(&at(Vec3::new(-100.0, 0.0, 0.0), 0.0)));
 }

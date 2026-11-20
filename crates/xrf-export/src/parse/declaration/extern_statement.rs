@@ -14,7 +14,7 @@ pub(crate) struct ExternStatement {
 
 impl ExternStatement {
   /// Whether `xray16/lib`'s `extern` would lose or fail one of two calls, `self` read before `later`.
-  pub fn writes_over(&self, later: &Self) -> bool {
+  pub(crate) fn writes_over(&self, later: &Self) -> bool {
     let is_inside: bool = Self::is_within(&later.key, &self.key) && later.key != self.key;
 
     if !(Self::is_within(&self.key, &later.key) || Self::is_within(&later.key, &self.key)) {

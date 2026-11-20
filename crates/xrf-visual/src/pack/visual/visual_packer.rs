@@ -1,9 +1,7 @@
-use xrf_math::Vector3d;
-use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, OgfVertexData};
+use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, OgfVertexData, OgfVertexLinks};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
-use crate::data::visual::bounds::visual_box::VisualBox;
-use crate::data::visual::bounds::visual_sphere::VisualSphere;
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
@@ -13,6 +11,7 @@ use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 use crate::data::visual::visual_description::VisualDescription;
 use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
+use crate::pack::buffer::visual_index_run::VisualIndexRun;
 use crate::pack::buffer::visual_index_window::VisualIndexWindow;
 use crate::pack::visual::flat_skin::FlatSkin;
 use crate::pack::visual::visual_mesh::VisualMesh;
@@ -93,7 +92,8 @@ impl VisualPacker {
         model_type_label: OgfModelType::label(Self::BUILT_MODEL_TYPE),
         texture_name: mesh.texture_name.clone(),
         shader_name: mesh.shader_name.clone(),
-        content: Self::to_content(Self::pack_mesh(&mut builder, mesh)),
+        content: Self::pack_mesh(&mut builder, mesh)
+          .map_or_else(VisualSubmeshContent::from, VisualSubmeshContent::from),
       })
       .collect();
     let computed_bounds: Option<VisualBounds> = Self::compute_bounds(&submeshes);
@@ -107,11 +107,8 @@ impl VisualPacker {
         source_file: None,
         // A built mesh declares nothing of itself: what it spans is all there is to declare.
         declared_bounds: computed_bounds.clone().unwrap_or(VisualBounds {
-          bounding_box: VisualBox {
-            min: Vector3d::ZERO,
-            max: Vector3d::ZERO,
-          },
-          bounding_sphere: VisualSphere {
+          bounding_box: Aabb::of_point(&Vector3d::ZERO),
+          bounding_sphere: Sphere {
             center: Vector3d::ZERO,
             radius: 0.0,
           },
@@ -190,18 +187,8 @@ impl VisualPacker {
       model_type_label: OgfModelType::label(model_type),
       texture_name: source.texture.as_ref().map(|it| it.texture_name.clone()),
       shader_name: source.texture.as_ref().map(|it| it.shader_name.clone()),
-      content: Self::to_content(Self::pack_geometry(builder, source, bone_count)),
-    }
-  }
-
-  /// What a submesh holds once packed: its geometry, or why it has none, verbatim.
-  fn to_content(packed: Result<VisualGeometry, VisualSkip>) -> VisualSubmeshContent {
-    match packed {
-      Ok(geometry) => VisualSubmeshContent::Packed { geometry },
-      Err(skip) => VisualSubmeshContent::Skipped {
-        cause: skip.cause,
-        reason: skip.reason,
-      },
+      content: Self::pack_geometry(builder, source, bone_count)
+        .map_or_else(VisualSubmeshContent::from, VisualSubmeshContent::from),
     }
   }
 
@@ -341,18 +328,13 @@ impl VisualPacker {
       return Ok(None);
     }
 
+    // A vertex holds no more links than the widest skin layout stores, so every one fits the four this widens to.
+    const { assert!(OgfVertexLinks::CAPACITY <= VisualSkin::LINKS) };
+
     let mut indices: Vec<u16> = Vec::with_capacity(vertices.len() * VisualSkin::LINKS);
     let mut weights: Vec<f32> = Vec::with_capacity(vertices.len() * VisualSkin::LINKS);
 
     for vertex in vertices {
-      if vertex.links.len() > VisualSkin::LINKS {
-        return Err(VisualSkip::malformed(format!(
-          "A vertex carries {} skinning links, and the format stores at most {}",
-          vertex.links.len(),
-          VisualSkin::LINKS
-        )));
-      }
-
       for link in &vertex.links {
         if link.bone as usize >= bone_count {
           return Err(VisualSkip::malformed(format!(
@@ -382,6 +364,7 @@ impl VisualPacker {
     model_type: u8,
   ) -> Result<Vec<VisualDrawRange>, VisualSkip> {
     let is_progressive: bool = OgfModelType::from_raw(model_type).is_some_and(OgfModelType::is_progressive);
+    let run: VisualIndexRun<'_> = VisualIndexRun::new(indices, u32::try_from(vertex_count).unwrap_or(u32::MAX));
 
     if !is_progressive {
       let whole: VisualDrawRange = VisualDrawRange {
@@ -389,8 +372,7 @@ impl VisualPacker {
         count: indices.len() as u32,
       };
 
-      Self::check_level(indices, whole, vertex_count)
-        .map_err(|reason| VisualSkip::malformed(format!("Drawn range {reason}")))?;
+      Self::check_level(&run, whole).map_err(|reason| VisualSkip::malformed(format!("Drawn range {reason}")))?;
 
       return Ok(vec![whole]);
     }
@@ -414,7 +396,7 @@ impl VisualPacker {
         count: u32::from(window.num_tris) * 3,
       };
 
-      match Self::check_level(indices, range, vertex_count) {
+      match Self::check_level(&run, range) {
         Ok(()) => levels.push(range),
         // The finest level is what the model is: without it there is nothing honest to draw. A coarser one is an
         // option the viewer offers, so a bad one costs the option rather than the submesh.
@@ -432,13 +414,12 @@ impl VisualPacker {
   }
 
   /// Refuses a range that leaves the index buffer or addresses a vertex the submesh does not have, saying why.
-  fn check_level(indices: &[u16], range: VisualDrawRange, vertex_count: usize) -> Result<(), String> {
-    VisualIndexWindow {
-      count: range.count,
-      offset: range.start,
-    }
-    .select(indices, u32::try_from(vertex_count).unwrap_or(u32::MAX))
-    .map(|_| ())
-    .map_err(|fault| fault.to_string())
+  fn check_level(run: &VisualIndexRun<'_>, range: VisualDrawRange) -> Result<(), String> {
+    run
+      .check(VisualIndexWindow {
+        count: range.count,
+        offset: range.start,
+      })
+      .map_err(|fault| fault.to_string())
   }
 }

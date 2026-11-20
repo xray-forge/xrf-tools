@@ -1,4 +1,5 @@
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
+use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 
 /// A submesh that produced no geometry, as the packer's internal early return.
 ///
@@ -22,6 +23,15 @@ impl VisualSkip {
     Self {
       cause: VisualSkipCause::Malformed,
       reason: reason.into(),
+    }
+  }
+}
+
+impl From<VisualSkip> for VisualSubmeshContent {
+  fn from(skip: VisualSkip) -> Self {
+    Self::Skipped {
+      cause: skip.cause,
+      reason: skip.reason,
     }
   }
 }

@@ -3,7 +3,7 @@ use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// Where one packed mesh's attributes sit inside a sector's buffer, and what to draw from them: positions as floats
 /// in renderer space, and the rest in the 32-byte vertex xrLC wrote, byte for byte but for a direction's z.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SectorGeometry {
   pub vertex_count: u32,
   pub index_count: u32,

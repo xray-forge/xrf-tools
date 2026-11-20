@@ -9,7 +9,7 @@ use crate::contract::report::scene::render_static_report::RenderStaticReport;
 /// What a view reports of its recent frames, taken at once each report round: the counts its frames recorded once read
 /// back, the sizes it draws and resolves at, how it smooths its frame, and what it draws with.
 #[derive(Default)]
-pub struct ViewReports {
+pub(crate) struct ViewReports {
   /// The static draws' pools and what the latest counted frame's cull kept and hid.
   pub static_draws: RenderStaticReport,
   pub lights: RenderLightsReport,

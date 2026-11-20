@@ -8,7 +8,7 @@ use crate::commands::level::info::level_vertex_layout_report::LevelVertexLayoutR
 /// One render geometry file, reported by the shape of its buffers.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelGeomReport {
+pub(crate) struct LevelGeomReport {
   index_buffers: usize,
   slide_windows: usize,
   indices: u64,
@@ -18,7 +18,7 @@ pub struct LevelGeomReport {
 }
 
 impl LevelGeomReport {
-  pub fn of(geometry: &LevelGeomFile) -> Self {
+  pub(crate) fn of(geometry: &LevelGeomFile) -> Self {
     let mut layouts: BTreeMap<(String, Option<u32>), (usize, u64)> = BTreeMap::new();
 
     for buffer in &geometry.vertex_buffers {
@@ -27,12 +27,12 @@ impl LevelGeomReport {
         .or_default();
 
       entry.0 += 1;
-      entry.1 += buffer.vertex_count as u64;
+      entry.1 += u64::from(buffer.vertex_count);
     }
 
     Self {
       index_buffers: geometry.index_buffers.len(),
-      indices: geometry.index_buffers.iter().map(|it| it.index_count as u64).sum(),
+      indices: geometry.index_buffers.iter().map(|it| u64::from(it.index_count)).sum(),
       layouts: layouts
         .into_iter()
         .map(|((declaration, stride), (buffers, vertices))| {

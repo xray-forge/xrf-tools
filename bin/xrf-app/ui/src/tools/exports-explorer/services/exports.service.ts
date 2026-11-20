@@ -79,19 +79,19 @@ export class ExportsService {
   }
 
   @BoundAction()
-  public openExportsProject(path: string): Promise<boolean> {
+  public open(path: string): Promise<boolean> {
     return flowResult(this.project.open(path, exportsCommands.openProject, path));
   }
 
   @BoundAction()
-  public refreshExportsProject(): Promise<boolean> {
+  public refresh(): Promise<boolean> {
     const root: Nullable<string> = this.project.value?.root ?? null;
 
     return root ? flowResult(this.project.refresh(root, exportsCommands.openProject, root)) : Promise.resolve(false);
   }
 
   @BoundAction()
-  public async closeExportsProject(): Promise<void> {
+  public async close(): Promise<void> {
     // The manifest described the project that just closed, so the next one starts without its outcome.
     if (await flowResult(this.project.close())) {
       this.manifest.reset();

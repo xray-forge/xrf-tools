@@ -2,8 +2,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
-use xrf_utils::{assert_length, to_format_size};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
+use xrf_utils::{assert_length, narrow_format_size};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -69,7 +69,7 @@ impl ChunkReadWrite for PatrolLink {
   /// Write patrol link data into chunk writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u32::<T>(self.index)?;
-    writer.write_u32::<T>(to_format_size(self.links.len(), "patrol links")?)?;
+    writer.write_u32::<T>(narrow_format_size(self.links.len(), "patrol links")?)?;
 
     for (to, weight) in &self.links {
       writer.write_u32::<T>(*to)?;
@@ -82,8 +82,8 @@ impl ChunkReadWrite for PatrolLink {
 
 impl LtxImportExport for PatrolLink {
   /// Import patrol point link from ltx config.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Patrol point link section '{}' should be defined in ltx file ({})",
         section_name,
@@ -100,7 +100,7 @@ impl LtxImportExport for PatrolLink {
       links.push((
         section.read_field(&format!("from.{link}"))?,
         section.read_field(&format!("weight.{link}"))?,
-      ))
+      ));
     }
 
     assert_length(&links, count, "Expected to import exact count of patrol links")?;
@@ -109,17 +109,17 @@ impl LtxImportExport for PatrolLink {
   }
 
   /// Export patrol link data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
-      .set("index", self.index.to_string())
-      .set("count", self.links.len().to_string());
+      .set("index", self.index)
+      .set("count", self.links.len());
 
     for (index, (from, weight)) in self.links.iter().enumerate() {
       ltx
         .with_section(section_name)
-        .set(format!("from.{index}"), from.to_string())
-        .set(format!("weight.{index}"), weight.to_string());
+        .set(format!("from.{index}"), from)
+        .set(format!("weight.{index}"), weight);
     }
 
     Ok(())

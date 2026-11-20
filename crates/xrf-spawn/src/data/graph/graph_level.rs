@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 
 /// `GameGraph::SLevel::load` in xray codebase.
@@ -50,8 +50,8 @@ impl ChunkReadWrite for GraphLevel {
 
 impl LtxImportExport for GraphLevel {
   /// Import patrols data from provided path.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Graph level section '{}' should be defined in ltx file ({})",
         section_name,
@@ -69,14 +69,14 @@ impl LtxImportExport for GraphLevel {
   }
 
   /// Export graph level data into ltx.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set("name", &self.name)
       .set("section", &self.section)
-      .set("offset", self.offset.to_string())
-      .set("id", self.id.to_string())
-      .set("guid", self.guid.to_string());
+      .set("offset", self.offset)
+      .set("id", self.id)
+      .set("guid", self.guid);
 
     Ok(())
   }

@@ -5,7 +5,7 @@ use xrf_ogf::OgfDescriptionChunk;
 /// stores.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OgfDescriptionReport {
+pub(crate) struct OgfDescriptionReport {
   built_at: u64,
   convertor: String,
   created_at: u64,
@@ -16,7 +16,7 @@ pub struct OgfDescriptionReport {
 }
 
 impl OgfDescriptionReport {
-  pub fn new(description: &OgfDescriptionChunk) -> Self {
+  pub(crate) fn new(description: &OgfDescriptionChunk) -> Self {
     Self {
       built_at: description.built_at,
       convertor: description.convertor.clone(),

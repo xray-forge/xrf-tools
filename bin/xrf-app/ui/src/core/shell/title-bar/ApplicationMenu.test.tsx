@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, RenderResult, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ReactElement } from "react";
+import { ReactElement, ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
+import { KeybindsDispatcher } from "@/core/keybinds";
 import { NotificationsService } from "@/core/notifications/services";
+import { SettingsDialog } from "@/core/settings-dialog/components/SettingsDialog";
+import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
 import { useShellMenus } from "@/core/shell/contributions";
-import { ApplicationShell } from "@/core/shell/frame/ApplicationShell";
+import { useShellToolRoute } from "@/core/shell/frame/use-shell-tool-route";
 import { useToolBusy, useToolDirty } from "@/core/shell/lifecycle";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
+import { useShellOwnMenus } from "@/core/shell/menu/use-shell-own-menus";
+import { ApplicationMenu } from "@/core/shell/title-bar/ApplicationMenu";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { SPRITE_EQUIPMENT_EDITOR_MENU } from "@/tools/sprite-equipment-editor/menus";
@@ -29,7 +34,9 @@ function SpriteMenuPublisher({ onRepack }: { onRepack: () => void }): ReactEleme
     (): Array<IMenuContribution> => [
       {
         section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,
-        entries: [{ kind: "action", id: "sprite-equipment-editor/repack", label: "Repack", onSelect: onRepack }],
+        entries: [
+          { kind: EMenuEntryKind.ACTION, id: "sprite-equipment-editor/repack", label: "Repack", onSelect: onRepack },
+        ],
       },
     ],
     [onRepack]
@@ -38,12 +45,62 @@ function SpriteMenuPublisher({ onRepack }: { onRepack: () => void }): ReactEleme
   return <div>sprite editor</div>;
 }
 
-function renderShell(content: ReactElement, route: string): RenderResult {
-  return renderWithProviders(<ApplicationShell>{content}</ApplicationShell>, {
-    bindings: [NotificationsService],
-    hasShell: true,
-    route,
-  });
+function SpriteSubmenuPublisher({ onChoose }: { onChoose: () => void }): ReactElement {
+  useShellMenus(
+    (): Array<IMenuContribution> => [
+      {
+        section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,
+        entries: [
+          {
+            kind: EMenuEntryKind.SUBMENU,
+            id: "sprite-equipment-editor/grid",
+            label: "Grid",
+            sections: [
+              [],
+              [
+                { kind: EMenuEntryKind.CHOICE, id: "test/fine", label: "Fine", isChosen: true, onChoose },
+                { kind: EMenuEntryKind.CHOICE, id: "test/coarse", label: "Coarse", isChosen: false, onChoose },
+              ],
+              [
+                {
+                  kind: EMenuEntryKind.TOGGLE,
+                  id: "test/lock",
+                  label: "Lock",
+                  command: CLOSE_TOOL_KEYBIND_COMMAND,
+                  isChecked: false,
+                  onToggle: jest.fn(),
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    ],
+    [onChoose]
+  );
+
+  return <div>sprite editor</div>;
+}
+
+/** Publishes the shell's own File and Help entries and lets Close leave the tool, as the frame does around the menu. */
+function ShellOwnMenus(): null {
+  useShellOwnMenus();
+  useShellToolRoute();
+
+  return null;
+}
+
+/** The menu beside the content, with whatever part of the shell a case reaches through it, such as settings. */
+function renderMenu(content: ReactElement, route: string, shell: ReactNode = null): RenderResult {
+  return renderWithProviders(
+    <>
+      <ShellOwnMenus />
+      <ApplicationMenu />
+      {content}
+      {shell}
+    </>,
+    { bindings: [NotificationsService], route }
+  );
 }
 
 async function openMenu(result: RenderResult, name: string): Promise<void> {
@@ -60,17 +117,15 @@ describe("ApplicationMenu", () => {
   beforeEach(() => clearLocalStorage());
 
   it("opens File at once when the menu button is clicked", async () => {
-    const result: RenderResult = renderShell(<Location />, PLANNED_ROUTE);
+    const result: RenderResult = renderMenu(<Location />, PLANNED_ROUTE);
 
     await userEvent.click(result.getByRole("button", { name: "Menu" }));
 
     expect(result.getByRole("menu", { name: "File" })).toBeInTheDocument();
-    // Inside the caption, which is what hides the breadcrumb under the bar without moving the toolbar.
-    expect(within(result.getByTestId("application-title-bar")).getByRole("menubar")).toBeInTheDocument();
   });
 
   it("closes the open tool from File and goes back to all tools", async () => {
-    const result: RenderResult = renderShell(<Location />, PLANNED_ROUTE);
+    const result: RenderResult = renderMenu(<Location />, PLANNED_ROUTE);
 
     await openMenu(result, "File");
     await userEvent.click(result.getByRole("menuitem", { name: /^Close/ }));
@@ -80,7 +135,7 @@ describe("ApplicationMenu", () => {
   });
 
   it("asks before closing a tool that holds unsaved work", async () => {
-    const result: RenderResult = renderShell(<Location dirtyCount={2} />, PLANNED_ROUTE);
+    const result: RenderResult = renderMenu(<Location dirtyCount={2} />, PLANNED_ROUTE);
 
     await openMenu(result, "File");
     await userEvent.click(result.getByRole("menuitem", { name: /^Close/ }));
@@ -90,7 +145,7 @@ describe("ApplicationMenu", () => {
   });
 
   it("offers Close only while a tool is open", async () => {
-    const result: RenderResult = renderShell(<Location />, "/");
+    const result: RenderResult = renderMenu(<Location />, "/");
 
     await openMenu(result, "File");
 
@@ -99,7 +154,7 @@ describe("ApplicationMenu", () => {
   });
 
   it("offers no Close while the open tool is busy, since leaving would strand what it runs", async () => {
-    const result: RenderResult = renderShell(<Location isBusy />, PLANNED_ROUTE);
+    const result: RenderResult = renderMenu(<Location isBusy />, PLANNED_ROUTE);
 
     await openMenu(result, "File");
 
@@ -110,7 +165,7 @@ describe("ApplicationMenu", () => {
     const onRepack = jest.fn();
     // The tool's services load before its content, as they do in the window.
     const result: RenderResult = await act(async () =>
-      renderShell(<SpriteMenuPublisher onRepack={onRepack} />, "/sprite-equipment-editor")
+      renderMenu(<SpriteMenuPublisher onRepack={onRepack} />, "/sprite-equipment-editor")
     );
 
     await result.findByText("sprite editor");
@@ -130,8 +185,30 @@ describe("ApplicationMenu", () => {
     expect(onRepack).toHaveBeenCalledTimes(1);
   });
 
+  it("draws a published submenu with its choices, its empty runs dropped and a toggle's chord", async () => {
+    const onChoose = jest.fn();
+    const result: RenderResult = await act(async () =>
+      renderMenu(<SpriteSubmenuPublisher onChoose={onChoose} />, "/sprite-equipment-editor")
+    );
+
+    await result.findByText("sprite editor");
+    await openMenu(result, "Sprite");
+    await userEvent.click(result.getByRole("menuitem", { name: "Grid" }));
+
+    const grid: HTMLElement = result.getByRole("menu", { name: "Grid" });
+
+    expect(within(grid).getAllByRole("separator")).toHaveLength(1);
+    expect(within(grid).getByRole("menuitemradio", { name: "Fine" })).toHaveAttribute("aria-checked", "true");
+    expect(within(grid).getByRole("menuitemcheckbox", { name: /^Lock/ }).textContent).toMatch(/W$/);
+
+    await userEvent.click(within(grid).getByRole("menuitemradio", { name: "Coarse" }));
+
+    expect(onChoose).toHaveBeenCalledTimes(1);
+    expect(result.getByRole("menu", { name: "Grid" })).toBeInTheDocument();
+  });
+
   it("opens from Alt pressed on its own, and not from Alt held through a click", async () => {
-    const result: RenderResult = renderShell(<Location />, PLANNED_ROUTE);
+    const result: RenderResult = renderMenu(<Location />, PLANNED_ROUTE);
 
     await userEvent.keyboard("{Alt>}");
     await userEvent.click(result.getByText(`at ${PLANNED_ROUTE}`));
@@ -146,7 +223,7 @@ describe("ApplicationMenu", () => {
   });
 
   it("lets no shortcut reach the tool while the menubar holds the keyboard", async () => {
-    const result: RenderResult = renderShell(<Location />, PLANNED_ROUTE);
+    const result: RenderResult = renderMenu(<Location />, PLANNED_ROUTE, <KeybindsDispatcher />);
 
     await userEvent.keyboard("{F10}");
     await userEvent.keyboard("{Control>}w{/Control}");
@@ -160,7 +237,7 @@ describe("ApplicationMenu", () => {
   });
 
   it("opens settings at About from Help", async () => {
-    const result: RenderResult = renderShell(<Location />, PLANNED_ROUTE);
+    const result: RenderResult = renderMenu(<Location />, PLANNED_ROUTE, <SettingsDialog />);
 
     await openMenu(result, "Help");
     await userEvent.click(result.getByRole("menuitem", { name: "About" }));

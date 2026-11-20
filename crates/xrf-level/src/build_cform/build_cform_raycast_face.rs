@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Vector2d;
 
 /// What the light and AI compilers know of one collision triangle's surface, `b_rc_face` (`communicate.h`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -14,7 +15,7 @@ pub struct BuildCformRaycastFace {
   /// The game material it is made of, by its id in `gamemtl.xr`.
   pub game_material: u32,
   /// The texture coordinates of its three corners.
-  pub texture_coordinates: [(f32, f32); 3],
+  pub texture_coordinates: [Vector2d; 3],
   pub reserved: u16,
   /// The bytes closing the record after `reserved`.
   pub trailing_padding: u16,
@@ -30,10 +31,10 @@ impl ChunkReadWrite for BuildCformRaycastFace {
     let material: u16 = reader.read_u16::<T>()?;
     let material_padding: u16 = reader.read_u16::<T>()?;
     let game_material: u32 = reader.read_u32::<T>()?;
-    let mut texture_coordinates: [(f32, f32); 3] = [(0.0, 0.0); 3];
+    let mut texture_coordinates: [Vector2d; 3] = [Vector2d::ZERO; 3];
 
     for coordinate in &mut texture_coordinates {
-      *coordinate = (reader.read_f32::<T>()?, reader.read_f32::<T>()?);
+      *coordinate = reader.read_xr::<T, _>()?;
     }
 
     Ok(Self {
@@ -51,9 +52,8 @@ impl ChunkReadWrite for BuildCformRaycastFace {
     writer.write_u16::<T>(self.material_padding)?;
     writer.write_u32::<T>(self.game_material)?;
 
-    for (u, v) in self.texture_coordinates {
-      writer.write_f32::<T>(u)?;
-      writer.write_f32::<T>(v)?;
+    for coordinate in &self.texture_coordinates {
+      writer.write_xr::<T, _>(coordinate)?;
     }
 
     writer.write_u16::<T>(self.reserved)?;

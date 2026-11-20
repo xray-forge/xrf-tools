@@ -15,7 +15,7 @@ use crate::scene::static_scene::item::static_place::StaticPlace;
 /// through.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct StaticCullParameters {
+pub(crate) struct StaticCullParameters {
   #[storage]
   pub clusters: StorageArray<StaticCluster>,
   #[storage]

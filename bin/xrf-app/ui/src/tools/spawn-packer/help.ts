@@ -16,7 +16,7 @@ export const SPAWN_PACKER_HELP: IToolHelp = {
   ],
   limitations: [
     "The source must hold unpacked spawn chunks; a gamedata directory or packed `.spawn` file is not the input.",
-    "An existing output file is overwritten.",
+    "An output file already there, in any letter case, is replaced only once you agree.",
   ],
   relatedTools: [EToolId.SPAWN_UNPACKER, EToolId.SPAWN_EDITOR],
 };

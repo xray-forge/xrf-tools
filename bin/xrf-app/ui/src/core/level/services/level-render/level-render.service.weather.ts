@@ -27,7 +27,7 @@ export class LevelRenderWeather {
    */
   @BoundAction()
   public seek(time: number): void {
-    this.weatherService.seekTo(time);
+    this.weatherService.clock.seekTo(time);
     this.context.getViewport()?.seekWeather(time);
   }
 
@@ -62,16 +62,16 @@ export class LevelRenderWeather {
 
           // The renderer's clock starts at noon: a level's first weather plays on from where its own clock stands.
           if (play && !previous) {
-            viewport.seekWeather(weatherService.time);
+            viewport.seekWeather(weatherService.clock.time);
           }
         },
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
         (): WorldWeatherControl => ({
-          ...weatherService.control,
+          ...weatherService.clock.control,
           // The keyframe set by hand stands its sun by its own angles.
-          isDynamicSun: weatherService.control.isDynamicSun && !weatherService.isManual,
+          isDynamicSun: weatherService.clock.control.isDynamicSun && !weatherService.isManual,
         }),
         (control: WorldWeatherControl) => viewport.setWeatherControl(control),
         { equals: comparer.structural, fireImmediately: true }

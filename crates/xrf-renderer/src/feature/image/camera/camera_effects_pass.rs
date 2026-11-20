@@ -8,7 +8,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The camera the resolved frame is shown through: its depth of field, its motion blur and its lens, each stage a
 /// triangle over its target. Its pipelines come from the pipeline cache, one a stage.
-pub struct CameraEffectsPass {
+pub(crate) struct CameraEffectsPass {
   layout: wgpu::BindGroupLayout,
   /// Filtered, clamped to the edge.
   sampler: wgpu::Sampler,
@@ -16,11 +16,11 @@ pub struct CameraEffectsPass {
 
 impl CameraEffectsPass {
   /// Every target: half floats, as the scene's.
-  pub const TARGET: wgpu::TextureFormat = ViewTargets::SCENE;
+  pub(crate) const TARGET: wgpu::TextureFormat = ViewTargets::SCENE;
 
   const MODULE: &'static str = "frame/camera_effects";
 
-  pub fn new(device: &wgpu::Device) -> Self {
+  pub(crate) fn new(device: &wgpu::Device) -> Self {
     Self {
       layout: CameraEffectsParameters::create_layout(device),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
@@ -33,7 +33,7 @@ impl CameraEffectsPass {
   }
 
   /// Its pipelines, one a stage at the stage's index.
-  pub fn describe_pipelines(&self) -> [RenderPipelineDescription; CameraEffectsStage::COUNT] {
+  pub(crate) fn describe_pipelines(&self) -> [RenderPipelineDescription; CameraEffectsStage::COUNT] {
     CameraEffectsStage::ALL.map(|stage| {
       RenderPipelineDescription::new(stage.get_pass(), Self::MODULE, "vs_fullscreen")
         .with_fragment(stage.get_fragment())
@@ -47,7 +47,7 @@ impl CameraEffectsPass {
   /// # Errors
   ///
   /// Returns the first stage's error where the module cannot be composed or wgpu refuses it.
-  pub fn get_pipelines(
+  pub(crate) fn get_pipelines(
     &self,
     source: PipelineSource<'_>,
   ) -> XrfResult<[wgpu::RenderPipeline; CameraEffectsStage::COUNT]> {
@@ -65,12 +65,12 @@ impl CameraEffectsPass {
   }
 
   /// The sampler its stages read with, which their parameters bind.
-  pub fn get_sampler(&self) -> &wgpu::Sampler {
+  pub(crate) fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
 
   /// Draws one of its stages with the stage's `pipeline` into the target the pass draws into.
-  pub fn record(
+  pub(crate) fn record(
     &self,
     context: &mut RasterContext<'_>,
     pipeline: &wgpu::RenderPipeline,

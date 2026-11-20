@@ -52,7 +52,7 @@ impl OgfNormalization {
     self.bytes != original
   }
 
-  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after it.
+  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after the last chunk.
   pub fn get_discarded_size(&self, original: &[u8]) -> usize {
     original.len().saturating_sub(self.bytes.len())
   }

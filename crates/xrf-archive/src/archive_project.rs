@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_format_size};
+use xrf_utils::{format_path, narrow_format_size};
 
 use crate::archive_read_policy::ArchiveReadPolicy;
 use crate::archive_read_result::ArchiveReadResult;
@@ -86,7 +86,7 @@ impl ArchiveProject {
     for (index, (archive, entries)) in archives.iter().zip(tables).enumerate() {
       // A set of more than `u32::MAX` volumes cannot be described by the format, and a silent narrowing here would
       // attribute entries to the wrong file rather than refusing the set.
-      let index: u32 = to_format_size(index, "archive volume count")?;
+      let index: u32 = narrow_format_size(index, "archive volume count")?;
       let prefix: String = archive.to_mount_prefix_below(shared_mount);
 
       // Volumes merge in order, so a later one overwrites an entry an earlier one mounted at the same place. The
@@ -125,8 +125,8 @@ impl ArchiveProject {
     Ok(Self {
       archives,
       files,
-      root,
       shadowed,
+      root,
       size_real,
     })
   }
@@ -162,7 +162,7 @@ impl ArchiveProject {
   }
 
   /// Bytes the merged name table's entries occupy as stored.
-  pub fn get_compressed_size(&self) -> u64 {
+  pub fn sum_compressed_size(&self) -> u64 {
     self.files.values().map(|file| u64::from(file.size_compressed)).sum()
   }
 

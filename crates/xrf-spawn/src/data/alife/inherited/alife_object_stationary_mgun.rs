@@ -1,12 +1,14 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::vector_to_string;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::alife::spawn_layout::SpawnLayout;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 use crate::data::physics::raw_float::RawFloat;
 
 /// A stationary machine gun, `CSE_ALifeStationaryMgun`: a visual whose update packet carries whether it fires and
@@ -23,32 +25,39 @@ pub struct AlifeObjectStationaryMgun {
 }
 
 impl AlifePacketsReadWrite for AlifeObjectStationaryMgun {
+  /// Nothing to set: whether it fires and where it aims are uninitialised in a new gun.
+  fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
+
   /// Read the gun from both packets.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
       base: spawn.read_xr::<T, _>()?,
       update_working: update.read_u8()?,
-      update_enemy_direction: RawFloat::read_array::<T, D, 3>(update)?,
+      update_enemy_direction: RawFloat::read_array::<T, _, 3>(update)?,
     })
   }
 
   /// Write the gun into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
+  ) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
 
     update.write_u8(self.update_working)?;
 
-    RawFloat::write_array::<T>(update, &self.update_enemy_direction)
+    RawFloat::write_array::<T, _>(update, &self.update_enemy_direction)
   }
-}
 
-impl LtxImportExport for AlifeObjectStationaryMgun {
   /// Import the gun from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, _: SpawnLayout) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -64,12 +73,12 @@ impl LtxImportExport for AlifeObjectStationaryMgun {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, _: SpawnLayout) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
-      .set("stationary_mgun.update_working", self.update_working.to_string())
+      .set("stationary_mgun.update_working", self.update_working)
       .set(
         "stationary_mgun.update_enemy_direction",
         vector_to_string(&self.update_enemy_direction),
@@ -83,15 +92,16 @@ impl LtxImportExport for AlifeObjectStationaryMgun {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_stationary_mgun::AlifeObjectStationaryMgun;
+  use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::data::physics::raw_float::RawFloat;
 
-  /// A gun as the game writes a new one: its working byte and aim never initialised.
+  // A new gun's working byte and aim are never initialised.
   fn new_object() -> AlifeObjectStationaryMgun {
     AlifeObjectStationaryMgun {
       base: AlifeObjectDynamicVisual {
@@ -113,11 +123,11 @@ mod tests {
     }
   }
 
-  /// A byte and three floats after the visual's empty update.
+  // A byte and three floats after the visual's empty update.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectStationaryMgun = new_object();
-    let (spawn_size, update_size, read) = original.read_back::<XRayByteOrder>()?;
+    let (spawn_size, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(
       (spawn_size, update_size, read),
@@ -127,15 +137,18 @@ mod tests {
     Ok(())
   }
 
-  /// The uninitialised aim survives text and JSON with its bits, a NaN's payload included.
+  // The uninitialised aim keeps its bits through text and JSON, a NaN's payload included.
   #[test]
   fn test_import_export() -> XrfResult {
     let original: AlifeObjectStationaryMgun = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectStationaryMgun::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectStationaryMgun::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

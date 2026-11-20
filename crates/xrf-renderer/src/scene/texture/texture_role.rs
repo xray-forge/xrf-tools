@@ -1,6 +1,6 @@
 /// What a texture is sampled as, which decides what stands in for it while it loads or where it cannot be had.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TextureRole {
+pub(crate) enum TextureRole {
   /// A diffuse, stood in for by a checker where it cannot be had, so the gap is seen.
   Base,
   /// A detail, neutral at mid grey since it is applied doubled.
@@ -22,36 +22,40 @@ pub enum TextureRole {
   TerrainHeight,
   /// A water's normal map, neutral facing straight out of the surface: two reads of it summed less one give its normal.
   WaterNormal,
+  /// A distortion map, neutral at mid grey; checked on load for blue, which blurs the frame
+  /// (`TextureCache::is_blue_free`).
+  Distortion,
 }
 
 impl TextureRole {
   /// Every role, in declaration order, so `role as usize` indexes what is kept a role.
-  pub const ALL: [TextureRole; 10] = [
-    TextureRole::Base,
-    TextureRole::Detail,
-    TextureRole::Bump,
-    TextureRole::BumpCompanion,
-    TextureRole::Hemi,
-    TextureRole::ImpostorCompanion,
-    TextureRole::Projector,
-    TextureRole::TerrainMask,
-    TextureRole::TerrainHeight,
-    TextureRole::WaterNormal,
+  pub(crate) const ALL: [Self; 11] = [
+    Self::Base,
+    Self::Detail,
+    Self::Bump,
+    Self::BumpCompanion,
+    Self::Hemi,
+    Self::ImpostorCompanion,
+    Self::Projector,
+    Self::TerrainMask,
+    Self::TerrainHeight,
+    Self::WaterNormal,
+    Self::Distortion,
   ];
 
   /// What a terrain detail's height is named by beside the detail, as the third-party pack names it, and its bump.
-  pub const HEIGHT_SUFFIX: &'static str = "_height";
-  pub const BUMP_SUFFIX: &'static str = "_bump";
+  pub(crate) const HEIGHT_SUFFIX: &'static str = "_height";
+  pub(crate) const BUMP_SUFFIX: &'static str = "_bump";
 
   /// The colour it is drawn as while its texture loads.
-  pub const fn get_neutral(self) -> [u8; 4] {
+  pub(crate) const fn get_neutral(self) -> [u8; 4] {
     match self {
-      TextureRole::Base | TextureRole::Hemi | TextureRole::Projector | TextureRole::TerrainMask => [255, 255, 255, 255],
-      TextureRole::Detail | TextureRole::TerrainHeight => [128, 128, 128, 128],
-      TextureRole::Bump => [23, 255, 128, 128],
-      TextureRole::BumpCompanion => [128, 128, 128, 0],
-      TextureRole::ImpostorCompanion => [128, 128, 0, 255],
-      TextureRole::WaterNormal => [128, 128, 255, 255],
+      Self::Base | Self::Hemi | Self::Projector | Self::TerrainMask => [255, 255, 255, 255],
+      Self::Detail | Self::TerrainHeight | Self::Distortion => [128, 128, 128, 128],
+      Self::Bump => [23, 255, 128, 128],
+      Self::BumpCompanion => [128, 128, 128, 0],
+      Self::ImpostorCompanion => [128, 128, 0, 255],
+      Self::WaterNormal => [128, 128, 255, 255],
     }
   }
 }

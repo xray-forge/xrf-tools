@@ -9,7 +9,8 @@ use xrf_pack::{
 use xrf_utils::format_path;
 
 use crate::commands::archive::{ArchiveVolumeArguments, ArchiveVolumeRequest};
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 /// The options that name the selection rules directly, which a configuration file also carries.
 const SELECTION_ARGUMENTS: [&str; 7] = [
@@ -23,24 +24,20 @@ const SELECTION_ARGUMENTS: [&str; 7] = [
 ];
 
 #[derive(Default)]
-pub struct PackCommand;
+pub(crate) struct PackCommand;
 
 impl GenericCommand for PackCommand {
   fn operation(&self) -> &'static str {
     "pack"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Directory to pack, normally a gamedata root")
+  }
+
   fn declare(&self, command: Command) -> Command {
     let command: Command = command
       .about("Pack a directory into *.db archive volumes")
-      .arg(
-        Arg::new("path")
-          .help("Directory to pack, normally a gamedata root")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("config")
           .help("Path to a packing configuration describing what to include, as *.ltx or *.json")
@@ -109,11 +106,7 @@ impl GenericCommand for PackCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: PathBuf = xrf_utils::to_absolute_path(
-      matches
-        .get_one::<PathBuf>("path")
-        .expect("Expected valid source path to be provided"),
-    )?;
+    let path: PathBuf = xrf_utils::resolve_absolute_path(InputArgument::of(matches))?;
     let volumes: ArchiveVolumeRequest = ArchiveVolumeArguments::of(matches)?;
     let destination: &PathBuf = &volumes.dest;
     let output: OutputOptions = context.get_output().clone();

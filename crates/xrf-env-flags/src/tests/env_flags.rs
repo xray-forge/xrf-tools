@@ -43,7 +43,7 @@ fn reports_only_what_a_running_binary_reads() {
 
 #[test]
 fn documents_every_variable_under_its_kind() {
-  let document: String = EnvFlags::to_markdown();
+  let document: String = EnvFlags::format_markdown();
 
   for flag in EnvFlags::ALL {
     assert!(
@@ -58,7 +58,7 @@ fn documents_every_variable_under_its_kind() {
 #[test]
 fn keeps_the_document_up_to_date() {
   let path: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../ENVIRONMENT.md");
-  let expected: String = EnvFlags::to_markdown();
+  let expected: String = EnvFlags::format_markdown();
   let current: String = fs::read_to_string(&path).unwrap_or_default().replace("\r\n", "\n");
 
   if current != expected {

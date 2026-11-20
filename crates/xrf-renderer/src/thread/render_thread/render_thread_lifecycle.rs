@@ -1,9 +1,11 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::PoisonError;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
 
+use super::RenderThread;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_libraries::GpuLibraries;
 use crate::context::library_versions::locate_dlss_runtime;
@@ -12,8 +14,6 @@ use crate::thread::gpu_state::GpuState;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::render_viewport::RenderViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   /// Detaches viewports whose page stopped listening.
@@ -39,8 +39,25 @@ impl RenderThread {
       gpu.windows.retain(|key, _| used.contains(key));
     }
 
-    if self.viewports.is_empty() && self.idle_since.is_none() {
+    self.start_idle_clock();
+  }
+
+  /// Starts the idle clock, if not running, once no viewport or hold is left.
+  pub(super) fn start_idle_clock(&mut self) {
+    if self.viewports.is_empty() && self.holds.is_empty() && self.idle_since.is_none() {
       self.idle_since = Some(Instant::now());
+    }
+  }
+
+  /// Keeps a held thread with no viewport at just the GPU and its passes: frees the unshown scenes, their textures and
+  /// the frame caches, then polls the device, since wgpu frees dropped resources only on a poll.
+  pub(super) fn keep_held(&mut self, now: Instant) {
+    self.retain_scenes(&HashSet::new());
+    self.sweep_textures(now);
+
+    if let Some(RunningGpu { gpu, runtime, .. }) = &mut self.running {
+      runtime.forget_frames();
+      let _ = gpu.context.device.poll(wgpu::PollType::Poll);
     }
   }
 
@@ -96,10 +113,11 @@ impl RenderThread {
       .unwrap_or_else(PoisonError::into_inner)
       .restart_scenes();
 
+    // Captures are released before `hide`, which would report the viewport as showing another scene.
     for viewport in self.viewports.values_mut() {
       viewport.forget_binding();
-      viewport.hide();
       viewport.release_captures();
+      viewport.hide();
     }
   }
 

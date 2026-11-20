@@ -3,7 +3,7 @@ import { resolve } from "path";
 
 import { describe, expect, it } from "@jest/globals";
 
-import { Theme } from "#/material/styles";
+import { Theme } from "#/theme/styles";
 
 import { createApplicationTheme } from "./creation";
 import { getSchemeVariables, getThemeVariables } from "./variables";

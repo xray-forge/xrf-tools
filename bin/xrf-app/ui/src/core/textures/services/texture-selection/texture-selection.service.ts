@@ -13,7 +13,7 @@ import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { createRoots } from "@/core/assets/lib";
+import { createRoots } from "@/core/assets/lib/roots";
 
 /** A texture inspection and the search roots needed to repeat it. */
 interface ITextureSelectionRequest {

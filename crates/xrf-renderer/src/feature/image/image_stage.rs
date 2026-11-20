@@ -13,25 +13,25 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 /// resolve, and the layers laid over the resolved image (the camera's). The present's distortion, the resolve, the
 /// enhanced bloom, the selection, the streaks and the exposure record between them.
 #[derive(Default)]
-pub struct ImageStage {
+pub(crate) struct ImageStage {
   smoothing: SmoothingFeature,
   camera: CameraFeature,
 }
 
 impl ImageStage {
   /// Takes this frame's smoothing and camera as the view's options ask.
-  pub fn prepare(&mut self, frame: &ViewPrepare<'_>) {
+  pub(crate) fn prepare(&mut self, frame: &ViewPrepare<'_>) {
     self.smoothing.prepare(frame);
     self.camera.prepare(frame.passes, frame.options, frame.view);
   }
 
   /// The pass smoothing the frame, where one does.
-  pub fn get_smoothing(&self) -> Option<RenderAntialiasing> {
+  pub(crate) fn get_smoothing(&self) -> Option<RenderAntialiasing> {
     self.smoothing.get_mode()
   }
 
   /// Adds the smoothing of the view's scene, answering the frame smoothed, or the scene where nothing smooths it.
-  pub fn add_smoothing<'a>(
+  pub(crate) fn add_smoothing<'a>(
     &self,
     GraphDeclaration {
       graph,
@@ -51,7 +51,7 @@ impl ImageStage {
 
   /// Lays the stage's layers over the image the resolve shows (`chain`), in order, reading the drawn depth and motion of
   /// `handles`, and answers the chain with what they laid over it, so no history carries them: the camera's effects.
-  pub fn add_over_resolved<'a>(
+  pub(crate) fn add_over_resolved<'a>(
     &'a self,
     GraphDeclaration {
       graph,

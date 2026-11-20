@@ -8,6 +8,7 @@ import { RenderPickRequest, ViewportEvent } from "#/types/xrf-app-render";
 import {
   RenderBackendAvailability,
   RenderFrameReport,
+  RenderHoldId,
   RenderLevelHit,
   RenderLibraries,
   RenderLoadReport,
@@ -43,7 +44,9 @@ export enum ERenderCommand {
   DESCRIBE_PROBLEMS = "plugin:render|describe_problems",
   DESCRIBE_TEXTURE_LOADS = "plugin:render|describe_texture_loads",
   DETACH_VIEWPORT = "plugin:render|detach_viewport",
+  HOLD = "plugin:render|hold",
   LIST_BACKENDS = "plugin:render|list_backends",
+  LISTEN_VIEWPORT = "plugin:render|listen_viewport",
   LOCATE_SPAWN_OBJECT = "plugin:render|locate_spawn_object",
   MARK_PROFILE = "plugin:render|mark_profile",
   MEASURE_SURFACES = "plugin:render|measure_surfaces",
@@ -52,6 +55,7 @@ export enum ERenderCommand {
   PLAY_AMBIENT_EFFECT = "plugin:render|play_ambient_effect",
   PLAY_WEATHER = "plugin:render|play_weather",
   PLAY_WEATHER_EFFECT = "plugin:render|play_weather_effect",
+  RELEASE_HOLD = "plugin:render|release_hold",
   SAVE_CAPTURE = "plugin:render|save_capture",
   SEEK_WEATHER = "plugin:render|seek_weather",
   SEND_INPUT = "plugin:render|send_input",
@@ -101,10 +105,20 @@ export const renderCommands = {
   /** Stop drawing a viewport; the GPU goes a few seconds after the last one. */
   detachViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>(ERenderCommand.DETACH_VIEWPORT, { viewport }),
   /**
+   * Start the renderer's GPU and keep it for the calling window's page, so a tool whose viewports come and go draws at
+   * once. Held until released, the page reloads or the window closes.
+   */
+  hold: () => __TAURI_INVOKE<RenderHoldId>(ERenderCommand.HOLD),
+  /**
    * Say which graphics backends the renderer can draw with on this machine, and on which GPU, for the settings to offer
    * only those; each is probed off the render thread.
    */
   listBackends: () => __TAURI_INVOKE<Array<RenderBackendAvailability>>(ERenderCommand.LIST_BACKENDS),
+  /**
+   * Hear the scene a viewport shows from its camera, the viewport being the focused window's active pane; every other
+   * scene plays on silent.
+   */
+  listenViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>(ERenderCommand.LISTEN_VIEWPORT, { viewport }),
   /**
    * Find a spawned object's bounding sphere in a viewport's level, centre then radius in renderer space; none until
    * its model is drawn.
@@ -137,6 +151,11 @@ export const renderCommands = {
   /** Play a weather effect over a viewport's cycle from its clock's time, or end the one playing for none. */
   playWeatherEffect: (viewport: RenderViewportId, name: string | null) =>
     __TAURI_INVOKE<void>(ERenderCommand.PLAY_WEATHER_EFFECT, { viewport, name }),
+  /**
+   * Release a hold the calling window's page took; another window's hold is left alone. The GPU stops a few seconds
+   * after the last hold and viewport go.
+   */
+  releaseHold: (hold: RenderHoldId) => __TAURI_INVOKE<void>(ERenderCommand.RELEASE_HOLD, { hold }),
   /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
   saveCapture: (viewport: RenderViewportId, path: string) =>
     __TAURI_INVOKE<null>(ERenderCommand.SAVE_CAPTURE, { viewport, path }),
@@ -149,9 +168,12 @@ export const renderCommands = {
   /** Describe a viewport's camera; described again from the same start, it keeps where it has been moved. */
   setCamera: (viewport: RenderViewportId, camera: WorldCamera) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_CAMERA, { viewport, camera }),
-  /** Set the helpers drawn over one viewport's frame. */
-  setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>) =>
-    __TAURI_INVOKE<void>(ERenderCommand.SET_OVERLAYS, { viewport, overlays }),
+  /**
+   * Set the helpers drawn over one viewport's frame: at once, or from the first frame showing `scene` (as a load report
+   * numbers it), so helpers sized to a model never stand over the one it replaces.
+   */
+  setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>, scene: number | null) =>
+    __TAURI_INVOKE<void>(ERenderCommand.SET_OVERLAYS, { viewport, overlays, scene }),
   /** Mark what of one viewport's level is selected, or nothing. */
   setSelection: (viewport: RenderViewportId, selection: RenderSelection | null) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_SELECTION, { viewport, selection }),
@@ -191,7 +213,9 @@ export interface IRenderCommandSignatures {
     ["viewport"]
   >;
   [ERenderCommand.DETACH_VIEWPORT]: IIpcCommandSignature<typeof renderCommands.detachViewport, ["viewport"]>;
+  [ERenderCommand.HOLD]: IIpcCommandSignature<typeof renderCommands.hold, []>;
   [ERenderCommand.LIST_BACKENDS]: IIpcCommandSignature<typeof renderCommands.listBackends, []>;
+  [ERenderCommand.LISTEN_VIEWPORT]: IIpcCommandSignature<typeof renderCommands.listenViewport, ["viewport"]>;
   [ERenderCommand.LOCATE_SPAWN_OBJECT]: IIpcCommandSignature<
     typeof renderCommands.locateSpawnObject,
     ["viewport", "object"]
@@ -209,11 +233,15 @@ export interface IRenderCommandSignatures {
     typeof renderCommands.playWeatherEffect,
     ["viewport", "name"]
   >;
+  [ERenderCommand.RELEASE_HOLD]: IIpcCommandSignature<typeof renderCommands.releaseHold, ["hold"]>;
   [ERenderCommand.SAVE_CAPTURE]: IIpcCommandSignature<typeof renderCommands.saveCapture, ["viewport", "path"]>;
   [ERenderCommand.SEEK_WEATHER]: IIpcCommandSignature<typeof renderCommands.seekWeather, ["viewport", "time"]>;
   [ERenderCommand.SEND_INPUT]: IIpcCommandSignature<typeof renderCommands.sendInput, ["viewport", "event"]>;
   [ERenderCommand.SET_CAMERA]: IIpcCommandSignature<typeof renderCommands.setCamera, ["viewport", "camera"]>;
-  [ERenderCommand.SET_OVERLAYS]: IIpcCommandSignature<typeof renderCommands.setOverlays, ["viewport", "overlays"]>;
+  [ERenderCommand.SET_OVERLAYS]: IIpcCommandSignature<
+    typeof renderCommands.setOverlays,
+    ["viewport", "overlays", "scene"]
+  >;
   [ERenderCommand.SET_SELECTION]: IIpcCommandSignature<typeof renderCommands.setSelection, ["viewport", "selection"]>;
   [ERenderCommand.SET_VIEW_OPTIONS]: IIpcCommandSignature<
     typeof renderCommands.setViewOptions,

@@ -40,9 +40,9 @@ impl MapTile {
   /// Its view straight down onto its area, renderer space, right engine `+x` and up engine `+z` as `CDemoRecord`'s.
   pub fn get_view(&self) -> CameraView {
     let center: Vec3 = EngineSpace::mirror(Vec3::new(
-      (self.min_x + self.max_x) * 0.5,
+      f32::midpoint(self.min_x, self.max_x),
       self.top + EYE_LIFT,
-      (self.min_z + self.max_z) * 0.5,
+      f32::midpoint(self.min_z, self.max_z),
     ));
     let up: Vec3 = EngineSpace::mirror(Vec3::Z);
     let view: Mat4 = glam::camera::rh::view::look_to_mat4(center, Vec3::NEG_Y, up);

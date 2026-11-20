@@ -46,7 +46,8 @@ fn format_bytes_as(bytes: u64, unit_index: usize) -> String {
     return format!("{bytes} B");
   }
 
-  let value: f64 = bytes as f64 / (BYTES_PER_KILOBYTE as f64).powi(unit_index as i32);
+  let exponent: i32 = i32::try_from(unit_index).expect("a unit index is one of a handful of units");
+  let value: f64 = bytes as f64 / (BYTES_PER_KILOBYTE as f64).powi(exponent);
   // The precision the UI uses: whole numbers past 100, one decimal past 10, two below that.
   let precision: usize = if value >= 100.0 {
     0

@@ -5,11 +5,12 @@ import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderLoadReport, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
-import { WorldCameraPose, WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
+import { WorldCameraPose, WorldMusicCommand, WorldSoundReport, WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
+import { toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelResident, toLevelResident } from "@/core/level/lib/render/level-resident";
 import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
@@ -57,6 +58,32 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   /** The level's weather as the viewport plays it. */
   public readonly weather: LevelRenderWeather;
 
+  /**
+   * @returns What the level's scene plays and why, as the world schedules it and the audio hears it; null while no
+   *   level is shown or no viewport is attached, and for a description that failed.
+   */
+  public describeSound(): Promise<Nullable<WorldSoundReport>> {
+    return (
+      this.viewport
+        ?.ask("describeSound", (id: RenderViewportId) => levelsCommands.describeSound(id), null)
+        .catch(() => null) ?? Promise.resolve(null)
+    );
+  }
+
+  /**
+   * @param command - How the level's music plays from now on: by the game's schedule, one track by hand, or the track
+   *   playing from a point.
+   * @returns Whether the world could: not while no level is shown, for a track the level does not have, or for a seek
+   *   between tracks.
+   */
+  public commandMusic(command: WorldMusicCommand): Promise<boolean> {
+    return (
+      this.viewport
+        ?.ask("commandMusic", (id: RenderViewportId) => levelsCommands.commandMusic(id, command), false)
+        .catch(() => false) ?? Promise.resolve(false)
+    );
+  }
+
   /** Which scene shows the open level, and whether it is revealed. */
   private readonly shown: LevelSceneShow = new LevelSceneShow({
     onLeft: () => this.leaveScene(),
@@ -85,7 +112,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       getViewport: () => this.viewport,
     };
 
-    this.camera = new LevelRenderCamera(context, { config, loadService, viewService });
+    this.camera = new LevelRenderCamera(context, {
+      config,
+      toStart: () => toLevelStartViewpoint(this.level?.bounds ?? null, loadService.start.value),
+      viewService,
+    });
     this.drawing = new LevelRenderDrawing(context, {
       config,
       loadService,
@@ -152,6 +183,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.picks.rest(point);
   }
 
+  protected onFlySpeed(steps: number): void {
+    this.camera.stepSpeed(steps);
+  }
+
   protected onDetached(): void {
     this.unlisten?.();
     this.unlisten = null;
@@ -168,7 +203,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onWeather(report: Nullable<WorldWeatherReport>): void {
-    this.weatherService.noteReport(report);
+    this.weatherService.clock.noteReport(report);
   }
 
   protected onLoad(report: RenderLoadReport): void {

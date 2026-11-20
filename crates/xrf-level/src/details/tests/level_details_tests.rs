@@ -1,5 +1,6 @@
 use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_math::{Aabb, Vector3d};
 
 use crate::details::detail_model::DetailModel;
 use crate::details::level_details_file::{DETAIL_SLOT_METERS, LevelDetailsFile, LevelDetailsHeader};
@@ -167,10 +168,13 @@ fn a_model_says_whether_the_renderer_sways_it() -> XrfResult {
 #[test]
 fn a_model_reports_the_box_its_mesh_occupies() -> XrfResult {
   let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
-  let (minimum, maximum) = library.objects[0].get_bounds().expect("a keyed mesh has bounds");
-
-  assert_eq!((minimum.x, minimum.y, minimum.z), (0.0, 0.0, 0.0));
-  assert_eq!((maximum.x, maximum.y, maximum.z), (3.0, 6.0, 9.0));
+  assert_eq!(
+    library.objects[0].get_bounds(),
+    Some(Aabb {
+      min: Vector3d::new(0.0, 0.0, 0.0),
+      max: Vector3d::new(3.0, 6.0, 9.0),
+    })
+  );
 
   Ok(())
 }

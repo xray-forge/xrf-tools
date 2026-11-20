@@ -1,9 +1,15 @@
+#![expect(
+  unsafe_code,
+  reason = "implements the renderer's unsafe window-host contract for a hidden test window"
+)]
+
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
+use crate::contract::viewport::render_hold_id::RenderHoldId;
 use crate::contract::viewport::render_viewport_event::RenderViewportEvent;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::render_event_sink::RenderEventSink;
@@ -11,9 +17,9 @@ use crate::host::render_window_host::RenderWindowHost;
 use crate::host::world::feedback::render_scene_feedback::RenderSceneFeedback;
 use crate::host::world::render_scene_frame::RenderSceneFrame;
 use crate::host::world::render_scene_id::RenderSceneId;
-use crate::host::world::render_view_frame::RenderViewFrame;
-use crate::host::world::render_view_input::RenderViewInput;
 use crate::host::world::render_world::RenderWorld;
+use crate::host::world::view::render_view_frame::RenderViewFrame;
+use crate::host::world::view::render_view_input::RenderViewInput;
 use crate::tests::support::test_bundle::TestBundle;
 use crate::tests::support::test_workers::create_workers;
 use crate::thread::queue::render_command::RenderCommand;
@@ -169,6 +175,24 @@ fn stops_letting_every_viewport_go_and_leaves_no_thread_running() {
 
   assert!(answer.recv_timeout(WAIT).is_ok());
   assert!(dropped.load(Ordering::Acquire));
+  assert_eq!(queue.wait_handled(WAIT), RenderWait::NotRunning);
+}
+
+#[test]
+fn starts_a_thread_for_a_hold_as_for_an_attach() {
+  let queue: RenderQueue = create_queue();
+
+  queue.send(RenderCommand::Release { id: RenderHoldId(1) });
+  assert_eq!(queue.wait_handled(WAIT), RenderWait::NotRunning);
+
+  // Stopped before its first turn, so no GPU starts: a device made and dropped beside other tests' devices can crash
+  // NVIDIA's driver.
+  queue.send(RenderCommand::Hold { id: RenderHoldId(1) });
+  assert_eq!(
+    queue.stop(WAIT),
+    RenderWait::Answered,
+    "the hold started a thread to answer the stop"
+  );
   assert_eq!(queue.wait_handled(WAIT), RenderWait::NotRunning);
 }
 

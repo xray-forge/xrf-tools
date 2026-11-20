@@ -5,6 +5,8 @@ use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
 use crate::contract::feature::lighting::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_LIGHTS;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::feature::effects::flares::draw::flare_pass::FlarePass;
+use crate::feature::effects::rain::draw::rain_pass::RainPass;
+use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::image::exposure::exposure_pass::ExposurePass;
@@ -13,18 +15,25 @@ use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::image::resolve::fsr::fsr_pass::FsrPass;
 use crate::feature::lighting::lights::lights_pass::LightsPass;
+use crate::feature::scene::ai_map::ai_map_field::AiMapField;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
 use crate::feature::scene::grass::grass_pass::GrassPass;
+use crate::feature::scene::grass::slots::grass_slot_value::GrassSlotValue;
 use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;
 use crate::feature::scene::statics::cull::static_cull_pass::StaticCullPass;
 use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
+use crate::feature::tracing::scene_trace::requests::water_rays::WaterRays;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
 use crate::feature::tracing::view_trace::sway::trace_sway_pass::TraceSwayPass;
 use crate::feature::weather::sky::irradiance::sky_irradiance_pass::SkyIrradiancePass;
 use crate::feature::weather::sky::prefilter::sky_prefilter_pass::SkyPrefilterPass;
 use crate::feature::weather::volumetric::froxels::froxel_pass::FroxelPass;
+use crate::feature::weather::water::enhanced::enhanced_water_scroll::EnhancedWaterScroll;
+use crate::feature::weather::water::water_uniform::WaterUniform;
 use crate::feature::weather::wet::puddles::puddle_sites_pass::PuddleSitesPass;
 use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUniform;
+use crate::feature::weather::wet::wet_uniform::WetUniform;
+use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
 use crate::pass::view::camera_uniform::CameraUniform;
@@ -42,7 +51,13 @@ use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::surface::build::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::surface::static_surface::StaticSurface;
 use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
+use crate::scene::static_scene::trace::static_trace_density::StaticTraceDensity;
+use crate::scene::static_scene::trace::static_trace_instance::StaticTraceInstance;
+use crate::scene::static_scene::trace::static_trace_record::StaticTraceRecord;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::tests::shader::fixtures::{
+  get_constant, get_float_constant, get_signed_constant, get_vector_constant, parse,
+};
 
 /// The inverse square's lamps give as much light within their reach as the engine's falloff does: the two integrated
 /// over the ball of the reach, `x` its share, `(1 - x²)` against `share · (1 - x⁴)² / x²`, each by the shell's `x²`.
@@ -88,6 +103,81 @@ fn the_cull_counts_classes_as_rust_does() {
     get_constant(&library, "static/cull", "TREE_LAYOUT"),
     StaticLayout::Tree.get_index() as u32
   );
+}
+
+#[test]
+fn the_enhanced_water_reads_its_maps_as_rust_scrolls_them() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let module: &str = "static/water_enhanced";
+
+  assert_eq!(
+    get_vector_constant(&library, module, "WAVE_TURN_COS"),
+    EnhancedWaterScroll::WAVE_TURN_COS
+  );
+  assert_eq!(
+    get_vector_constant(&library, module, "WAVE_TURN_SIN"),
+    EnhancedWaterScroll::WAVE_TURN_SIN
+  );
+  assert_eq!(
+    get_vector_constant(&library, module, "WAVE_TILES"),
+    EnhancedWaterScroll::WAVE_TILES
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "GUST_SCALE"),
+    EnhancedWaterScroll::GUST_SCALE
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "RIPPLE_MAP_SCALE"),
+    EnhancedWaterScroll::RIPPLE_MAP_SCALE
+  );
+  assert_eq!(
+    get_vector_constant(&library, module, "RIPPLE_LAYER_SCALES"),
+    EnhancedWaterScroll::RIPPLE_LAYER_SCALES
+  );
+}
+
+// Every reader must repeat a whole number of times per wrap, or the wrap would move what it draws.
+#[test]
+fn the_water_and_rain_clocks_wrap_where_their_readers_repeat() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let whole = |turns: f64| (turns - turns.round()).abs() < 1e-3;
+  let wave_turns: f64 = WaterUniform::PERIOD / std::f64::consts::TAU;
+  let scroll_rate: f32 = get_float_constant(&library, "static/water", "SCROLL_RATE");
+
+  assert!(whole(wave_turns));
+  assert!(whole(wave_turns * f64::from(scroll_rate)), "{scroll_rate}");
+
+  let (wet, period): (&str, f64) = ("frame/wet_patch", RainUniform::CLOCK_PERIOD);
+  let steps: f32 = get_float_constant(&library, wet, "FLOW_SLIDE_STEPS");
+  let ripple: f32 = get_float_constant(&library, wet, "RIPPLE_PACE");
+
+  for pace in get_vector_constant(&library, wet, "SPLASH_PACE") {
+    assert!(whole(period * f64::from(pace)), "splash {pace}");
+  }
+
+  for pace in get_vector_constant(&library, wet, "FLOW_SLIDE_PACE") {
+    for step in 1..=steps as u32 {
+      assert!(
+        whole(period * f64::from(pace) * f64::from(step) / f64::from(steps)),
+        "flow {pace} at {step}"
+      );
+    }
+  }
+
+  for speed in get_vector_constant(&library, wet, "RIPPLE_LAYER_SPEEDS") {
+    assert!(whole(period * f64::from(ripple) * f64::from(speed)), "ripple {speed}");
+  }
+}
+
+// The second noise reading drifts at half the rate.
+#[test]
+fn the_puddles_gusts_repeat_where_both_readings_do() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let tiles: Vec<f32> = get_vector_constant(&library, "frame/wet_patch", "GUST_TILES");
+  let whole = |value: f64| (value - value.round()).abs() < 1e-9;
+
+  assert!(whole(WetUniform::GUST_REPEAT / f64::from(tiles[0])));
+  assert!(whole(WetUniform::GUST_REPEAT * 0.5 / f64::from(tiles[1])));
 }
 
 /// The lamps read their shadows in texels of the atlas the renderer allocates their tiles in.
@@ -164,6 +254,17 @@ fn the_calibration_draws_its_spheres_as_rust_counts_them() {
   );
 }
 
+// `vs_ring` lays out two falls' copies per near drop.
+#[test]
+fn the_rain_rings_draw_every_near_drops_vertices() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "frame/rain", "RING_VERTICES"),
+    RainPass::RING_VERTICES
+  );
+}
+
 /// The present tells a debug view by its index as Rust numbers them, FSR's last and from the first it names on.
 #[test]
 fn the_present_numbers_debug_views_as_rust_does() {
@@ -182,6 +283,12 @@ fn the_present_numbers_debug_views_as_rust_does() {
     ("VIEW_LAMPS", RenderDebugView::LampsPerCluster),
     ("VIEW_SAMPLED_MIP", RenderDebugView::SampledMip),
     ("VIEW_SPECULAR", RenderDebugView::Specular),
+    ("VIEW_DETAIL_SUN", RenderDebugView::DetailSun),
+    ("VIEW_DETAIL_HEMI", RenderDebugView::DetailHemi),
+    ("VIEW_DETAIL_LIGHT", RenderDebugView::DetailLight),
+    ("VIEW_AI_HIGH_COVER", RenderDebugView::AiHighCover),
+    ("VIEW_AI_LOW_COVER", RenderDebugView::AiLowCover),
+    ("VIEW_AI_LINKS", RenderDebugView::AiLinks),
   ] {
     assert_eq!(
       get_constant(&library, "frame/present", name),
@@ -204,6 +311,36 @@ fn the_present_numbers_debug_views_as_rust_does() {
   assert!(RenderDebugView::FsrFrameShare.get_index() > RenderDebugView::FsrMasks.get_index());
 }
 
+#[test]
+fn the_slot_light_numbers_its_values_as_rust_does() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  for (name, value) in [
+    ("SLOT_VALUE_SUN", GrassSlotValue::Sun),
+    ("SLOT_VALUE_HEMI", GrassSlotValue::Hemi),
+    ("SLOT_VALUE_LIGHT", GrassSlotValue::Light),
+  ] {
+    assert_eq!(get_constant(&library, "grass/slot_light", name), value as u32, "{name}");
+  }
+}
+
+#[test]
+fn the_ai_map_view_numbers_its_fields_as_rust_does() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  for (name, field) in [
+    ("FIELD_HIGH_COVER", AiMapField::HighCover),
+    ("FIELD_LOW_COVER", AiMapField::LowCover),
+    ("FIELD_LINKS", AiMapField::Links),
+  ] {
+    assert_eq!(
+      get_constant(&library, "ai_map/node_field", name),
+      field as u32,
+      "{name}"
+    );
+  }
+}
+
 /// The present tells the engine's bloom from the enhanced one by the values Rust writes.
 /// The camera effects' stages reduce over the blocks and tiles Rust sizes their targets by: a motion block's shown
 /// pixels, and a depth of field tile's half-size texels and the shown pixels they span.
@@ -214,11 +351,11 @@ fn the_camera_effects_reduce_over_the_tiles_rust_sizes() {
 
   assert_eq!(
     get_signed_constant(&library, module, "MOTION_BLOCK"),
-    CameraEffectsUniform::MOTION_BLOCK as i32
+    CameraEffectsUniform::MOTION_BLOCK.cast_signed()
   );
   assert_eq!(
     get_signed_constant(&library, module, "FOCUS_TILE_TEXELS") * 2,
-    CameraEffectsUniform::FOCUS_TILE as i32
+    CameraEffectsUniform::FOCUS_TILE.cast_signed()
   );
   assert_eq!(
     get_float_constant(&library, module, "FOCUS_TILE_PIXELS"),
@@ -437,6 +574,37 @@ fn the_static_draws_read_a_vertex_s_words_where_rust_packs_them() {
   assert_eq!(get("VERTEX_EXTRA"), StaticLayout::EXTRA);
 }
 
+#[test]
+fn the_scene_trace_reads_its_records_instances_and_densities_as_rust_writes_them() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let module: &str = "common/scene_trace";
+
+  assert_eq!(
+    get_constant(&library, module, "TRACE_RECORD_CUT_OUT"),
+    StaticTraceRecord::CUT_OUT
+  );
+  assert_eq!(
+    get_constant(&library, module, "TRACE_RECORD_TREE"),
+    StaticTraceRecord::TREE
+  );
+  assert_eq!(
+    get_constant(&library, module, "TRACE_RECORD_MODEL"),
+    StaticTraceRecord::MODEL
+  );
+  assert_eq!(
+    get_constant(&library, module, "TRACE_INSTANCE_UNEVEN"),
+    StaticTraceInstance::UNEVEN
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "TRACE_DENSITY_STEPS"),
+    StaticTraceDensity::STEPS
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "TRACE_DENSITY_BIAS"),
+    StaticTraceDensity::BIAS
+  );
+}
+
 /// The impostors and the grass write the material slices Rust gives their surfaces: the default lighting model, and
 /// Blinn at full weight.
 #[test]
@@ -467,6 +635,18 @@ fn a_static_surface_is_as_large_as_its_shaders_read() {
   );
 }
 
+// No member forces vector alignment, so a frame-sized list stays a sixth smaller than at twelve words.
+#[test]
+fn a_trace_request_takes_ten_words() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(size_of::<TraceRequest>(), 40);
+  assert_eq!(
+    get_struct_size(&library, "frame/reflection_scene", "TraceRequest"),
+    size_of::<TraceRequest>() as u32
+  );
+}
+
 /// The bytes a struct of a name takes in a module, as the shader lays it out.
 fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 {
   let module: naga::Module = parse(library, name);
@@ -483,14 +663,24 @@ fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 
   layouter[handle].size
 }
 
-/// A `u32` constant's value in a module.
-fn get_constant(library: &ShaderLibrary, name: &str, constant: &str) -> u32 {
-  let module: naga::Module = parse(library, name);
+#[test]
+fn the_rays_climb_the_pyramid_as_high_as_rust_makes_it() {
+  let library: ShaderLibrary = ShaderLibrary::default();
 
-  match module.global_expressions[get_declared(&module, name, constant).init] {
-    naga::Expression::Literal(naga::Literal::U32(value)) => value,
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
+  assert_eq!(
+    get_signed_constant(&library, "common/reflection_trace", "RAY_TOP_LEVEL") + 1,
+    DepthPyramid::RAY_LEVELS.cast_signed()
+  );
+}
+
+#[test]
+fn the_water_ray_records_fill_the_room_rust_makes() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "common/water_rays", "WATER_RAY_WORDS"),
+    WaterRays::WORDS
+  );
 }
 
 /// Each compute entry dispatched by groups of a size Rust counts in declares that size: one side for a line of work,
@@ -500,7 +690,7 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
   let library: ShaderLibrary = ShaderLibrary::default();
   let line = |size: u32| [size, 1, 1];
   let square = |size: u32| [size, size, 1];
-  let entries: [(&str, &[&str], [u32; 3]); 18] = [
+  let entries: [(&str, &[&str], [u32; 3]); 19] = [
     (
       "frame/pyramid",
       &[
@@ -595,6 +785,11 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
     ),
     ("static/trace_sway", &["cs_trace_sway"], line(TraceSwayPass::WORKGROUP)),
     ("frame/reflection_scene", &["cs_scene"], line(TraceRequest::WORKGROUP)),
+    (
+      "frame/reflection_scene",
+      &["cs_water_scene"],
+      square(WaterRays::WORKGROUP),
+    ),
   ];
 
   for (name, names, size) in entries {
@@ -610,57 +805,5 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
 
       assert_eq!(declared, size, "'{name}' {entry}");
     }
-  }
-}
-
-/// An `i32` constant's value in a module.
-fn get_signed_constant(library: &ShaderLibrary, name: &str, constant: &str) -> i32 {
-  let module: naga::Module = parse(library, name);
-
-  match module.global_expressions[get_declared(&module, name, constant).init] {
-    naga::Expression::Literal(naga::Literal::I32(value)) => value,
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
-}
-
-/// The value a module declares a float constant as.
-fn get_float_constant(library: &ShaderLibrary, name: &str, constant: &str) -> f32 {
-  let module: naga::Module = parse(library, name);
-
-  to_float(&module, name, get_declared(&module, name, constant).init)
-}
-
-/// The components a module declares a float vector constant with.
-fn get_vector_constant(library: &ShaderLibrary, name: &str, constant: &str) -> Vec<f32> {
-  let module: naga::Module = parse(library, name);
-
-  match module.global_expressions[get_declared(&module, name, constant).init] {
-    naga::Expression::Compose { ref components, .. } => components
-      .iter()
-      .map(|component| to_float(&module, name, *component))
-      .collect(),
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
-}
-
-fn parse(library: &ShaderLibrary, name: &str) -> naga::Module {
-  let source: String = library.compose(name).expect("composes");
-
-  naga::front::wgsl::parse_str(&source).expect("parses")
-}
-
-fn get_declared<'m>(module: &'m naga::Module, name: &str, constant: &str) -> &'m naga::Constant {
-  module
-    .constants
-    .iter()
-    .map(|(_, declared)| declared)
-    .find(|declared| declared.name.as_deref() == Some(constant))
-    .unwrap_or_else(|| panic!("'{name}' declares no {constant}"))
-}
-
-fn to_float(module: &naga::Module, name: &str, expression: naga::Handle<naga::Expression>) -> f32 {
-  match module.global_expressions[expression] {
-    naga::Expression::Literal(naga::Literal::F32(value)) => value,
-    ref other => panic!("'{name}' holds {other:?} where a float stands"),
   }
 }

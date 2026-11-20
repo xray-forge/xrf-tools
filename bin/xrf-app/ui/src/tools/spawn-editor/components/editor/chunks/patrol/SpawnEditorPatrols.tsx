@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { SpawnPatrolsChunk } from "@xrf/ipc/types/xrf-spawn";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Tab, Tabs } from "@xrf/ui/material/tabs";
+import { Tab, Tabs } from "@xrf/ui/tabs";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/tools/spawn-editor/components/editor/chunks/SpawnChunkView";
 import { TChunkTabChange, useChunkTab } from "@/tools/spawn-editor/components/editor/chunks/use-chunk-tab";
-import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
+import { SpawnEditorService } from "@/tools/spawn-editor/services/spawn-editor.service";
 
 import { SpawnEditorPatrolLinksTable } from "./SpawnEditorPatrolLinksTable";
 import { SpawnEditorPatrolPointsTable } from "./SpawnEditorPatrolPointsTable";
@@ -20,7 +20,7 @@ export function SpawnEditorPatrols({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const spawnFileService: SpawnFileService = useInjection(SpawnFileService);
+  const spawnEditorService: SpawnEditorService = useInjection(SpawnEditorService);
 
   const [activeTab, onChangeTab]: [string, TChunkTabChange] = useChunkTab(BASE_PATH, TABS, "patrols");
 
@@ -29,7 +29,7 @@ export function SpawnEditorPatrols({
       data-testid={dataTestId}
       id={id}
       className={className}
-      chunk={spawnFileService.chunks.patrols}
+      chunk={spawnEditorService.chunks.patrols}
       render={(chunk: SpawnPatrolsChunk) => (
         <>
           <Tabs className={"mb-2 shrink-0"} value={activeTab} onChange={onChangeTab}>
@@ -45,7 +45,7 @@ export function SpawnEditorPatrols({
           </div>
         </>
       )}
-      onLoad={spawnFileService.loadPatrols}
+      onLoad={spawnEditorService.loadPatrols}
     />
   );
 }

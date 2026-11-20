@@ -23,7 +23,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 /// trees, its water over the same square, and what is placed from them each time they are drawn, kept until they are
 /// drawn again: the surface's lowest heights, and a puddle site a cell where a puddle may stand whole, clear of the
 /// level's fires; and each frame, the puddle each site holds, which the wetting draws.
-pub struct LevelSurface {
+pub(crate) struct LevelSurface {
   pub map: OverheadMap,
   pub water: OverheadMap,
   pub lowest: wgpu::TextureView,
@@ -36,13 +36,13 @@ pub struct LevelSurface {
 }
 
 impl LevelSurface {
-  pub const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
-  pub const SITES_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+  pub(crate) const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub(crate) const SITES_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
   /// Metres a cell of sites is across; the cells are the world's, not the map's, so a site stays put as the map moves
   /// by its step, which is no whole number of them.
-  pub const SITE_CELL: f32 = 6.0;
+  pub(crate) const SITE_CELL: f32 = 6.0;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     let shape: OverheadShape = OverheadShape::LEVEL_SURFACE;
     let cells: u32 = Self::get_cells(shape);
     let create = |label: &str, size: u32, format: wgpu::TextureFormat| -> wgpu::TextureView {
@@ -83,7 +83,7 @@ impl LevelSurface {
   /// Centres it and its water over the camera, offering `scheduler` a draw of each where it moved or the scene changed
   /// under it; both alike, as the sites read the water through the surface's window. Takes the level's `fires`,
   /// placing the sites again where they changed: a level's lights may stream in after its surface was drawn.
-  pub fn offer(&mut self, frame: &ShadowFrame<'_>, fires: &[Vec2], scheduler: &mut PeriodicScheduler) {
+  pub(crate) fn offer(&mut self, frame: &ShadowFrame<'_>, fires: &[Vec2], scheduler: &mut PeriodicScheduler) {
     self.map.offer(frame, scheduler);
     self.water.offer(frame, scheduler);
     self.is_fire_due = self.fires != fires;
@@ -94,7 +94,7 @@ impl LevelSurface {
   }
 
   /// Readies the draws `scheduler` granted; `encoder` takes what readying them writes.
-  pub fn commit(
+  pub(crate) fn commit(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
@@ -106,7 +106,7 @@ impl LevelSurface {
   }
 
   /// Forgets what this frame drew, where its frame was not submitted: drawn again, and the sites placed again.
-  pub fn abandon_frame(&mut self) {
+  pub(crate) fn abandon_frame(&mut self) {
     self.map.abandon_frame();
     self.water.abandon_frame();
 
@@ -116,17 +116,17 @@ impl LevelSurface {
     }
   }
 
-  pub fn get_window(&self) -> SurfaceWindow {
+  pub(crate) fn get_window(&self) -> SurfaceWindow {
     SurfaceWindow {
       window: self.map.get_window(),
-      shape: Self::to_shape(self.map.get_shape()),
+      shape: Self::pack_shape(self.map.get_shape()),
     }
   }
 
-  /// Where the puddles stood last frame as the grass plants around them: a surface's puddles and the window they cover,
-  /// or the dry stand-in (`dry`) where none is made; marked as puddles only where the `wet` surfaces draw any.
-  pub fn get_grass_puddles<'a>(
-    surface: Option<&'a LevelSurface>,
+  /// Last frame's puddles for the grass to plant around: a surface's and its window, or the `dry` stand-in where none
+  /// is made; marked as puddles only where the `wet` surfaces draw any, as far as they draw them.
+  pub(crate) fn get_grass_puddles<'a>(
+    surface: Option<&'a Self>,
     dry: &'a wgpu::TextureView,
     wet: &WetFeature,
   ) -> (&'a wgpu::TextureView, GrassPuddlesUniform) {
@@ -135,56 +135,42 @@ impl LevelSurface {
 
     (
       surface.map_or(dry, |surface| &surface.puddles),
-      if wet.has_puddles() {
-        uniform.with_puddles()
-      } else {
-        uniform
-      },
+      wet
+        .get_puddle_distance()
+        .map_or(uniform, |distance| uniform.with_puddles(distance)),
     )
   }
 
   /// The window of a surface not made yet.
-  pub fn get_unmade_window() -> SurfaceWindow {
+  pub(crate) fn get_unmade_window() -> SurfaceWindow {
     let shape: OverheadShape = OverheadShape::LEVEL_SURFACE;
 
     SurfaceWindow {
       window: OverheadMap::get_unmade_window(shape),
-      shape: Self::to_shape(shape),
+      shape: Self::pack_shape(shape),
     }
   }
 
   /// The water's window of a surface not made yet.
-  pub fn get_unmade_water_window() -> Vec4 {
+  pub(crate) fn get_unmade_water_window() -> Vec4 {
     OverheadMap::get_unmade_window(OverheadShape::LEVEL_WATER)
   }
 
   /// A surface map's texels across and the metres it reaches down, beside the metres a cell of sites is across.
-  fn to_shape(shape: OverheadShape) -> Vec4 {
+  fn pack_shape(shape: OverheadShape) -> Vec4 {
     Vec4::new(shape.resolution as f32, shape.depth, Self::SITE_CELL, 0.0)
   }
 
-  /// Bytes its two maps, its lowest heights, its sites and its puddles take.
-  pub fn get_memory(&self) -> u64 {
-    let maps: u64 = [self.map.get_shape(), self.water.get_shape()]
-      .iter()
-      .map(|shape| u64::from(shape.resolution).pow(2) * 4)
-      .sum();
-    let lowest: u64 = u64::from(self.map.get_shape().resolution).pow(2) * 4;
-    let cells: u64 = u64::from(Self::get_cells(self.map.get_shape())).pow(2);
-
-    maps + lowest + cells * 16 * 2
-  }
-
   /// The water map's centre in `x` and `z`, its half width and the height it is seen from, its shape the surface's.
-  pub fn get_water_window(&self) -> Vec4 {
+  pub(crate) fn get_water_window(&self) -> Vec4 {
     self.water.get_window()
   }
 
   /// Adds a surface's passes where the enhanced wetting places its puddles by it (`surface`, with the wet surfaces'
   /// uniform), `water` lifting the water's waves: its draws, what is placed from them, then this frame's puddles.
   /// Answers its lowest heights, its puddles and its water as the graph knows them; the dry stand-ins otherwise.
-  pub fn add_surface_passes<'a>(
-    surface: Option<&'a LevelSurface>,
+  pub(crate) fn add_surface_passes<'a>(
+    surface: Option<&'a Self>,
     GraphDeclaration {
       graph,
       bindings,
@@ -197,7 +183,7 @@ impl LevelSurface {
     let passes: LevelPasses<'a> = record.passes;
 
     if let (Some(surface), Some(wet)) = (surface, wet) {
-      let keep: PuddleKeepInputs = PuddleKeepInputs {
+      let keep: PuddleKeepInputs<'_> = PuddleKeepInputs {
         wet,
         noise: &passes.weather.water.get_maps().perlin,
         sampler: passes.weather.wet.get_sampler(),
@@ -219,7 +205,7 @@ impl LevelSurface {
   /// Declares the level surface's passes: the overhead maps where due, the puddle sites placed again where either map
   /// or the fires changed, and this frame's puddles kept. Answers the lowest heights, the puddles and the level water's
   /// depth, which the wet passes read.
-  pub fn add_passes<'a>(
+  pub(crate) fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
       graph,
@@ -315,7 +301,7 @@ impl LevelSurface {
         passes
           .weather
           .puddle_sites
-          .record(context, shape.resolution, cells, &heights, &placing)
+          .record(context, shape.resolution, cells, &heights, &placing);
       });
   }
 

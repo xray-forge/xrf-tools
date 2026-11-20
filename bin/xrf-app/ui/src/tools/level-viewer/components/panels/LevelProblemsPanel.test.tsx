@@ -45,7 +45,7 @@ async function renderProblems({ isPresent, unreadable, resident }: IRenderProble
 
   const { container, load: service, render } = mockLevelViewContainer();
 
-  await service.load({
+  await service.open({
     source: { kind: "asset", logicalPath: "levels\\zaton" },
     roots: level.roots,
     isDltx: false,

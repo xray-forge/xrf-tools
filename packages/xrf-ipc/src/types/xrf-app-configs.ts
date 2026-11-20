@@ -1,7 +1,13 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { SessionId } from "#/types/xrf-app-core";
-import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "#/types/xrf-ltx-inspect";
+import {
+  LtxAnchoredFinding,
+  LtxDeclarationSearch,
+  LtxFileStructure,
+  LtxFileText,
+  LtxInventory,
+} from "#/types/xrf-ltx-inspect";
 import { XrayRoots } from "#/types/xrf-vfs";
 
 /** Checking that a directory's configs are formatted, writing nothing. */
@@ -13,12 +19,41 @@ export const CONFIGS_JOB_FORMAT = "configs.format" as const;
 /** Verifying a directory's configs. */
 export const CONFIGS_JOB_VERIFY = "configs.verify" as const;
 
+/**
+ * What a declaration search over the open project found, cut to the first `MAXIMUM_DECLARATIONS` in project order.
+ *
+ * A common field or an empty value matches hundreds of thousands of statements on a modded install; a narrower query
+ * shows the rest.
+ */
+export type ConfigsDeclarationSearch = {
+  /** The search, its declarations cut to the first ones in project order. */
+  search: LtxDeclarationSearch;
+  /** How many declarations matched before the cut. */
+  total: number;
+};
+
 /** One config as the authored view renders it. */
 export type ConfigsDocument = {
   text: LtxFileText;
   structure: LtxFileStructure;
   /** What is wrong with this file itself: it will not parse, or an `#include` reached nothing. */
   findings: Array<LtxAnchoredFinding>;
+};
+
+/**
+ * A search for where the open project writes a section, a field or a value; an empty one is taken as not given.
+ *
+ * It carries no name comparison: the backend takes that from the project's dialect.
+ */
+export type ConfigsFindDeclarationsRequest = {
+  /** The open project searched; a closed one is refused. */
+  sessionId: SessionId;
+  /** Section name without brackets or operation prefix. */
+  section: string | null;
+  /** Field name without operation prefix. */
+  field: string | null;
+  /** Text a written value must contain. */
+  value: string | null;
 };
 
 /** What a config formatting run, or a check of one, was asked to do. */

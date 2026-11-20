@@ -2,6 +2,22 @@
 
 import { Vector3d } from "#/types/xrf-math";
 
+/** What a level's AI map held, beside what its graph check found. */
+export type LevelAiGraphCensus = {
+  nodes: number;
+  /** Links naming a node of the map, each direction counted on its own. */
+  links: number;
+  /** Links naming the node they leave, which the engine's path search cannot take. */
+  selfLinks: number;
+  /** Links whose node does not link back across the same edge. */
+  oneWayLinks: number;
+  /** The nodes such a link reaches, as xrAI's `-verify` counts its "single linked nodes". */
+  oneWayNodes: number;
+  /** Parts of the map no link joins, a link counting either way. */
+  components: number;
+  largestComponent: number;
+};
+
 /** One local override of the level's weather, `CEnvModifier` (`xrEngine/Environment_misc.cpp`). */
 export type LevelEnvModifier = {
   position: Vector3d;

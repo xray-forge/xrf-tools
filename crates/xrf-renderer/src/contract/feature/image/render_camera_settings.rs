@@ -79,4 +79,17 @@ impl RenderCameraSettings {
   pub fn is_blurred(&self) -> bool {
     self.is_motion_blurred || self.is_defocused
   }
+
+  /// The same with every effect off, for pictures stitched from several views (cubemap faces, map tiles), whose seams
+  /// per-view effects would break.
+  pub fn without_effects(&self) -> Self {
+    Self {
+      is_motion_blurred: false,
+      is_defocused: false,
+      is_vignetted: false,
+      is_grained: false,
+      is_aberrated: false,
+      ..*self
+    }
+  }
 }

@@ -5,8 +5,8 @@ use xrf_particles::ParticlesFile;
 use super::particle_list_entry::ParticleListEntry;
 use super::report::ParticleListReport;
 use crate::commands::particle::particle_names::ParticleNames;
-use crate::commands::particle::particles_file_arguments::ParticlesFileArguments;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::commands::particle::particles_file_input::ParticlesFileInput;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 const KIND_ARGUMENT: &str = "kind";
 const NAME_ARGUMENT: &str = "name";
@@ -15,15 +15,19 @@ const KIND_EFFECT: &str = "effect";
 const KIND_GROUP: &str = "group";
 
 #[derive(Default)]
-pub struct ListCommand;
+pub(crate) struct ListCommand;
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {
     "list"
   }
 
+  fn input(&self) -> CommandInput {
+    ParticlesFileInput::input()
+  }
+
   fn declare(&self, command: Command) -> Command {
-    ParticlesFileArguments::declare(command.about("List the effects and groups a particle library holds, with what each draws and plays"))
+    command.about("List the effects and groups a particle library holds, with what each draws and plays")
       .arg(
         Arg::new(KIND_ARGUMENT)
           .help("List only effects or only groups")
@@ -40,7 +44,7 @@ impl GenericCommand for ListCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let file: ParticlesFile = ParticlesFileArguments::open(matches)?;
+    let file: ParticlesFile = ParticlesFileInput::open(matches)?;
     let kind: Option<&str> = matches.get_one::<String>(KIND_ARGUMENT).map(String::as_str);
     let name: Option<String> = matches
       .get_one::<String>(NAME_ARGUMENT)

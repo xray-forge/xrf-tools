@@ -6,7 +6,7 @@ import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 
-import { describeRoots } from "@/core/assets/lib";
+import { describeRoots } from "@/core/assets/lib/roots";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 
 /**

@@ -4,7 +4,7 @@ use xrf_renderer_core::GraphTexture;
 /// the wet surface the enhanced patch writes, and the gloss the reflections' wet reach adds; a texel of nothing for
 /// each while dry.
 #[derive(Clone, Copy)]
-pub struct WetTargets {
+pub(crate) struct WetTargets {
   pub surface: GraphTexture,
   pub reach: GraphTexture,
 }

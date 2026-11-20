@@ -7,7 +7,7 @@ use xrf_dds::{DdsFile, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
-use xrf_utils::{HostDestination, HostRelativePath, format_path};
+use xrf_utils::{HostDestination, HostRelativePath, OutputFiles, format_path};
 
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
@@ -24,10 +24,17 @@ impl DescriptionSpriteUnpacker {
     let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options)?;
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
 
-    // Every name is checked before the first sprite is written, so a refused one leaves no partial output behind.
+    // Every name is checked, and every sprite already there refused unforced, before the first sprite is written, so a
+    // refusal leaves no partial output behind.
+    let mut outputs: OutputFiles = OutputFiles::new(&options.output_path);
+
     for file in &selected {
-      file.to_sprite_paths()?;
+      for path in file.to_sprite_paths()? {
+        outputs = outputs.with_file(&path.to_string());
+      }
     }
+
+    outputs.assert_free(options.is_forced)?;
 
     xrf_output::info!(options.output, "Unpacking for {} files", selected.len());
 
@@ -45,7 +52,7 @@ impl DescriptionSpriteUnpacker {
       .par_iter()
       .enumerate()
       .map(|(index, file)| {
-        let slot: OutputSlot = sequence.new_slot(index);
+        let slot: OutputSlot<'_> = sequence.new_slot(index);
         let unpacked: DescriptionSpriteResult = Self::unpack_xml_description(options, slot.get_output(), file)?;
 
         unpacking.advance();
@@ -187,6 +194,7 @@ mod tests {
       files: Vec::new(),
       is_strict,
       link_policy: Default::default(),
+      is_forced: false,
     }
   }
 
@@ -265,6 +273,7 @@ mod tests {
       files: Vec::new(),
       is_strict,
       link_policy: Default::default(),
+      is_forced: false,
     }
   }
 
@@ -322,5 +331,41 @@ mod tests {
     assert!(root.join("out").join("sheet").join("ui_icon_PDA.dds").is_file());
     assert!(root.join("out").join("sheet").join("ui icon (old).dds").is_file());
     assert_eq!(fs::read(root.join("victim.dds")).expect("sentinel"), SENTINEL);
+  }
+
+  #[test]
+  fn refuses_a_sprite_already_there_in_any_case_unless_forced() {
+    let options: DescriptionSpriteOptions = options_for_sheet("existing", &["ui_icon", "ui_other"], true);
+    let existing: PathBuf = root_of(&options).join("out").join("sheet").join("UI_Icon.dds");
+
+    fs::create_dir_all(existing.parent().expect("a sheet folder")).expect("sheet folder");
+    fs::write(&existing, SENTINEL).expect("an earlier sprite");
+
+    assert!(
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)
+        .expect_err("an earlier sprite is refused")
+        .to_string()
+        .contains("UI_Icon.dds")
+    );
+    assert_eq!(fs::read(&existing).expect("the earlier sprite"), SENTINEL);
+    assert!(
+      !root_of(&options)
+        .join("out")
+        .join("sheet")
+        .join("ui_other.dds")
+        .exists()
+    );
+
+    let forced: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      is_forced: true,
+      ..options
+    };
+
+    assert_eq!(
+      DescriptionSpriteUnpacker::unpack_xml_descriptions(&forced)
+        .expect("forced, it writes over")
+        .sprites,
+      2
+    );
   }
 }

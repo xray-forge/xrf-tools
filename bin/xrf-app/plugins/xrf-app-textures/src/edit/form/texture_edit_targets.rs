@@ -11,7 +11,7 @@ use crate::edit::TextureSaveTarget;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureEditTargets {
+pub(crate) struct TextureEditTargets {
   /// The `.thm` to write, whether or not one is there yet.
   pub descriptor: TextureSaveTarget,
   /// The `.dds` to replace when a re-encode is saved.
@@ -24,7 +24,7 @@ impl TextureEditTargets {
   /// # Errors
   ///
   /// Returns an error when either path is not Unicode, or exists and its metadata cannot be read.
-  pub fn of(texture: &XrayAsset, descriptor: Option<&XrayAsset>) -> TauriResult<Option<Self>> {
+  pub(crate) fn of(texture: &XrayAsset, descriptor: Option<&XrayAsset>) -> TauriResult<Option<Self>> {
     let Some(files) = Self::locate(texture, descriptor) else {
       return Ok(None);
     };
@@ -37,7 +37,7 @@ impl TextureEditTargets {
   /// # Errors
   ///
   /// Returns an error when either path is not Unicode, or exists and its metadata cannot be read.
-  pub fn of_paths(descriptor: &Path, texture: &Path) -> TauriResult<Self> {
+  pub(crate) fn of_paths(descriptor: &Path, texture: &Path) -> TauriResult<Self> {
     Ok(Self {
       descriptor: TextureSaveTarget::of_path(descriptor)?,
       texture: TextureSaveTarget::of_path(texture)?,
@@ -47,7 +47,7 @@ impl TextureEditTargets {
   /// The two files on disk an edit of `texture` writes, or nothing for a texture served out of an archive. The located
   /// descriptor when there is one, so a `.thm` a root override put somewhere else is the file that gets rewritten
   /// rather than a fresh one appearing beside the texture.
-  pub fn locate(texture: &XrayAsset, descriptor: Option<&XrayAsset>) -> Option<TextureFiles> {
+  pub(crate) fn locate(texture: &XrayAsset, descriptor: Option<&XrayAsset>) -> Option<TextureFiles> {
     let texture: PathBuf = texture.to_physical_path()?;
 
     Some(TextureFiles {

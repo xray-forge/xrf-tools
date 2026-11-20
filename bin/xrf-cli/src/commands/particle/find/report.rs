@@ -7,7 +7,7 @@ use crate::commands::particle::find::particle_find_match::ParticleFindMatch;
 /// in the library's order.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ParticleFindReport {
+pub(crate) struct ParticleFindReport {
   pub textures: Vec<String>,
   pub shaders: Vec<String>,
   pub actions: Vec<ParticleActionType>,

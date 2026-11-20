@@ -10,7 +10,11 @@ use crate::window::InvokingWindow;
 /// Synchronous, as `release_scope` is, so it unbinds in the order the page sent its calls.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "retain_scopes")]
-pub fn sessions_retain_scopes(scopes: State<'_, SessionScopes>, window: InvokingWindow, tools: Vec<String>) -> u32 {
+pub(crate) fn sessions_retain_scopes(
+  scopes: State<'_, SessionScopes>,
+  window: InvokingWindow,
+  tools: Vec<String>,
+) -> u32 {
   let label: &str = window.get_label();
   let live: Vec<SessionScope> = tools.into_iter().map(|tool| SessionScope::new(label, tool)).collect();
   let released: usize = scopes.retain(label, &live);

@@ -8,6 +8,9 @@ pub struct ArchiveExtractOptions {
   pub job: JobHandle,
   /// What to do with a link already below the destination.
   pub link_policy: HostLinkPolicy,
+  /// Whether the run writes over files already below the destination, names compared without case; unforced, it
+  /// refuses before writing any.
+  pub is_forced: bool,
 }
 
 impl ArchiveExtractOptions {
@@ -25,5 +28,10 @@ impl ArchiveExtractOptions {
   /// The same options, treating links below the destination as `link_policy` says.
   pub fn with_link_policy(self, link_policy: HostLinkPolicy) -> Self {
     Self { link_policy, ..self }
+  }
+
+  /// The same options, writing over files already below the destination where `is_forced`.
+  pub fn with_forced(self, is_forced: bool) -> Self {
+    Self { is_forced, ..self }
   }
 }

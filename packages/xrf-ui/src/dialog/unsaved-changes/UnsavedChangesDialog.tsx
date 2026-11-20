@@ -1,12 +1,12 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useId } from "react";
 
+import { Button } from "#/button";
 import { DialogHeader } from "#/dialog/header";
-import { Button } from "#/material/button";
-import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/material/dialog";
-import { CircularProgress } from "#/material/progress";
+import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/dialog/modal";
+import { CircularProgress } from "#/feedback";
 
-interface IUnsavedChangesDialogProps {
+export interface IUnsavedChangesDialogProps {
   isOpen: boolean;
   /** Whether a save asked for from here is still running, which holds every button until it answers. */
   isSaving?: boolean;

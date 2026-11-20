@@ -92,7 +92,7 @@ impl VisualClusterTable {
       }
     }
 
-    let boxed: [f32; 3] = [0, 1, 2].map(|axis| (min[axis] + max[axis]) / 2.0);
+    let boxed: [f32; 3] = [0, 1, 2].map(|axis| f32::midpoint(min[axis], max[axis]));
     let boxed_radius: f32 = Self::get_reach(points, boxed);
     let (ritter, ritter_radius): ([f32; 3], f32) = Self::get_ritter(points);
 
@@ -108,14 +108,14 @@ impl VisualClusterTable {
   fn get_ritter(points: &[[f32; 3]]) -> ([f32; 3], f32) {
     let far: [f32; 3] = Self::get_farthest(points, points[0]);
     let other: [f32; 3] = Self::get_farthest(points, far);
-    let mut centre: [f32; 3] = [0, 1, 2].map(|axis| (far[axis] + other[axis]) / 2.0);
+    let mut centre: [f32; 3] = [0, 1, 2].map(|axis| f32::midpoint(far[axis], other[axis]));
     let mut radius: f32 = Self::get_distance(far, other) / 2.0;
 
     for point in points {
       let distance: f32 = Self::get_distance(*point, centre);
 
       if distance > radius {
-        let grown: f32 = (radius + distance) / 2.0;
+        let grown: f32 = f32::midpoint(radius, distance);
         let shift: f32 = (grown - radius) / distance;
 
         centre = [0, 1, 2].map(|axis| centre[axis] + (point[axis] - centre[axis]) * shift);

@@ -5,14 +5,25 @@ macro_rules! for_each_levels_domain {
   ($consumer:ident) => {
     $consumer! {
       levels => "levels" {
+        build_level => crate::commands::build_level::levels_build_level,
         capture_cube => crate::viewer::commands::capture::capture_cube::levels_capture_cube,
         capture_map => crate::viewer::commands::capture::capture_map::levels_capture_map,
         close_level => crate::commands::close_level::levels_close_level,
+        close_scene => crate::commands::scene::close_scene::levels_close_scene,
+        command_music => crate::commands::sound::command_music::levels_command_music,
         copy_screenshot => crate::viewer::commands::screenshot::copy_screenshot::levels_copy_screenshot,
+        decompile_level => crate::commands::decompile_level::levels_decompile_level,
+        delete_recording => crate::viewer::commands::record::delete_recording::levels_delete_recording,
         delete_screenshot => crate::viewer::commands::screenshot::delete_screenshot::levels_delete_screenshot,
         describe_console_defaults => crate::commands::describe_console_defaults::levels_describe_console_defaults,
         describe_level_map => crate::commands::describe_level_map::levels_describe_level_map,
         describe_objects => crate::commands::describe_objects::levels_describe_objects,
+        describe_recording => crate::viewer::commands::record::describe_recording::levels_describe_recording,
+        describe_scene_binary_tools => crate::commands::scene::describe_scene_binary_tools::levels_describe_scene_binary_tools,
+        describe_scene_draw => crate::commands::scene::describe_scene_draw::levels_describe_scene_draw,
+        describe_scene_helpers => crate::commands::scene::describe_scene_helpers::levels_describe_scene_helpers,
+        describe_scene_objects => crate::commands::scene::describe_scene_objects::levels_describe_scene_objects,
+        describe_sound => crate::commands::sound::describe_sound::levels_describe_sound,
         describe_spawn_object => crate::commands::describe_spawn_object::levels_describe_spawn_object,
         describe_start => crate::commands::describe_start::levels_describe_start,
         describe_surfaces => crate::commands::describe_surfaces::levels_describe_surfaces,
@@ -23,14 +34,20 @@ macro_rules! for_each_levels_domain {
         find_screenshot_path => crate::viewer::commands::screenshot::find_screenshot_path::levels_find_screenshot_path,
         get_view_folder => crate::viewer::commands::view::get_view_folder::levels_get_view_folder,
         list_levels => crate::commands::list_levels::levels_list_levels,
+        locate_scene_object => crate::commands::scene::locate_scene_object::levels_locate_scene_object,
         open_level => crate::commands::open_level::levels_open_level,
+        open_scene => crate::commands::scene::open_scene::levels_open_scene,
         read_level_cycle => crate::commands::read_level_cycle::levels_read_level_cycle,
         read_view => crate::viewer::commands::view::read_view::levels_read_view,
         restore_level => crate::commands::restore_level::levels_restore_level,
+        restore_scene => crate::commands::scene::restore_scene::levels_restore_scene,
         save_burst => crate::viewer::commands::capture::save_burst::levels_save_burst,
         save_screenshot => crate::viewer::commands::screenshot::save_screenshot::levels_save_screenshot,
         save_view => crate::viewer::commands::view::save_view::levels_save_view,
         show_level => crate::commands::show_level::levels_show_level,
+        show_scene => crate::commands::scene::show_scene::levels_show_scene,
+        start_recording => crate::viewer::commands::record::start_recording::levels_start_recording,
+        stop_recording => crate::viewer::commands::record::stop_recording::levels_stop_recording,
         write_map_annotations => crate::viewer::commands::export::write_map_annotations::levels_write_map_annotations,
         write_screenshot_report => crate::viewer::commands::screenshot::write_screenshot_report::levels_write_screenshot_report,
       }
@@ -38,10 +55,14 @@ macro_rules! for_each_levels_domain {
         read_screenshot(path: "string") => crate::viewer::routes::read_screenshot::levels_read_screenshot,
       }
       @jobs {
+        /// Building a Level Editor scene into a level directory.
+        LEVELS_JOB_BUILD => "build",
         /// Capturing a cubemap around a viewport's camera, face by face.
         LEVELS_JOB_CAPTURE_CUBE => "capture-cube",
         /// Capturing a level map in a viewport, tile by tile.
         LEVELS_JOB_CAPTURE_MAP => "capture-map",
+        /// Decompiling a compiled level into a Level Editor scene.
+        LEVELS_JOB_DECOMPILE => "decompile",
       }
     }
   };

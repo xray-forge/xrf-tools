@@ -53,8 +53,8 @@ impl LtxSchemeReader {
         }
 
         fields.push(LtxSchemeFieldReport {
-          declared: Some(Self::to_declaration(declared, false)),
-          resolved: Self::to_resolved(resolution, name, section, field),
+          declared: Some(LtxSchemeFieldDeclaration::of(declared, false)),
+          resolved: Self::find_resolved(resolution, name, section, field),
           name: String::from(field),
         });
       }
@@ -68,8 +68,8 @@ impl LtxSchemeReader {
       }
 
       fields.push(LtxSchemeFieldReport {
-        declared: any.map(|declared| Self::to_declaration(declared, true)),
-        resolved: Self::to_resolved(resolution, name, section, field),
+        declared: any.map(|declared| LtxSchemeFieldDeclaration::of(declared, true)),
+        resolved: Self::find_resolved(resolution, name, section, field),
         name: String::from(field),
       });
     }
@@ -88,18 +88,8 @@ impl LtxSchemeReader {
     }
   }
 
-  /// One declared field, as a record something outside Rust can render.
-  fn to_declaration(declared: &LtxFieldScheme, is_any: bool) -> LtxSchemeFieldDeclaration {
-    LtxSchemeFieldDeclaration {
-      data_type: declared.data_type.to_string(),
-      is_any,
-      is_array: declared.is_array,
-      is_optional: declared.is_optional,
-    }
-  }
-
   /// What the section holds for one field, with where that value was written.
-  fn to_resolved(resolution: &LtxResolution, name: &str, section: &Section, field: &str) -> Option<LtxResolvedField> {
+  fn find_resolved(resolution: &LtxResolution, name: &str, section: &Section, field: &str) -> Option<LtxResolvedField> {
     section.get(field).map(|value| LtxResolvedField {
       key: String::from(field),
       origin: resolution.get_origin(name, field).into(),

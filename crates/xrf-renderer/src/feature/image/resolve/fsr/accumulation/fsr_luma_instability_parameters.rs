@@ -5,7 +5,7 @@ use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 /// FSR's luma instability: the dilated motion, the masks, the luma, and the lumas the frame before kept.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrLumaInstabilityParameters<'a> {
+pub(crate) struct FsrLumaInstabilityParameters<'a> {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
   #[texture(d2, unfilterable)]

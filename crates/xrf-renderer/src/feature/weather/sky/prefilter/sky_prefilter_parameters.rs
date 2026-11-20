@@ -9,7 +9,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 /// the exposure whose scale the sky is drawn on, the mip's own settings, and the mip's six faces.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct SkyPrefilterParameters<'a> {
+pub(crate) struct SkyPrefilterParameters<'a> {
   #[texture(cube, float)]
   pub sky_cube_0: GraphTexture,
   #[texture(cube, float)]

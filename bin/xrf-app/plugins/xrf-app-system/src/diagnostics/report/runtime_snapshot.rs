@@ -11,7 +11,7 @@ use crate::diagnostics::report::{DescendantUsage, MachineUsage, ProcessUsage};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RuntimeSnapshot {
+pub(crate) struct RuntimeSnapshot {
   /// Milliseconds since the epoch at which the process began, stamped in `main`.
   pub started_at: u64,
   /// Milliseconds it has been running, measured monotonically rather than by subtracting two wall-clock readings.
@@ -26,7 +26,7 @@ pub struct RuntimeSnapshot {
 
 impl RuntimeSnapshot {
   /// Reads one snapshot off a refreshed view of the machine.
-  pub fn read(system: &System, pid: Pid) -> Self {
+  pub(crate) fn read(system: &System, pid: Pid) -> Self {
     Self {
       started_at: ProcessStart::get_started_at(),
       uptime: duration_to_millis(ProcessStart::get_uptime()),

@@ -1,10 +1,9 @@
+import { Chip } from "@xrf/ui/badge";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { GRAPH_LAYOUT_DEFAULTS } from "@xrf/ui/graph";
-import { Box } from "@xrf/ui/material/box";
-import { Chip } from "@xrf/ui/material/chip";
-import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
+import { Box, Stack } from "@xrf/ui/layout/stack";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { Handle, Position } from "@xyflow/react";
 import { ReactElement } from "react";
 

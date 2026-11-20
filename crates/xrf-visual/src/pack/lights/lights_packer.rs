@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+
 use xrf_level::LevelDynamicLight;
 use xrf_light_anim::LightAnimFile;
 use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
-
 use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectTorridZone, ClsId};
 
 use crate::data::lights::light_animator_description::LightAnimatorDescription;
@@ -142,7 +142,7 @@ impl<'a> LightsPacker<'a> {
     lamp: &AlifeObjectHangingLamp,
     pose_visual: &mut dyn FnMut(&str) -> Option<Arc<VisualRestPose>>,
   ) {
-    let section: Option<&Section> = self.find_section(&object.section);
+    let section: Option<&Section> = self.find_section(&object.header.section);
 
     if !lamp.is_spawned_on_r2() || lamp.health <= 0.0 || self.is_signal_rocket(object, section) {
       return;
@@ -150,7 +150,8 @@ impl<'a> LightsPacker<'a> {
 
     let visual: Option<Arc<VisualRestPose>> = object.inherited.get_visual().and_then(pose_visual);
     let pose: Option<&VisualRestPose> = visual.as_deref();
-    let object_transform: VisualTransform = VisualTransform::of_spawn(&object.position, &object.direction);
+    let object_transform: VisualTransform =
+      VisualTransform::of_spawn(&object.header.position, &object.header.direction);
     let main: VisualTransform = Self::place_on_bone(&object_transform, pose, &lamp.light_bone);
     let ambient: VisualTransform = if lamp.light_ambient_bone.eq_ignore_ascii_case(&lamp.light_bone) {
       main.clone()
@@ -170,9 +171,9 @@ impl<'a> LightsPacker<'a> {
 
     self.lights.push(LightDescription {
       kind: if is_spot { LightKind::Spot } else { LightKind::Point },
-      position: main.c.clone(),
-      direction: Self::to_direction(&main),
-      right: main.i.clone(),
+      position: main.c,
+      direction: Self::get_direction(&main),
+      right: main.i,
       color,
       range: lamp.main_range,
       range_jitter: 0.0,
@@ -199,9 +200,9 @@ impl<'a> LightsPacker<'a> {
     if lamp.has_point_ambient() {
       self.lights.push(LightDescription {
         kind: LightKind::Point,
-        position: ambient.c.clone(),
-        direction: Self::to_direction(&ambient),
-        right: ambient.i.clone(),
+        position: ambient.c,
+        direction: Self::get_direction(&ambient),
+        right: ambient.i,
         color: color.map(|channel| channel * lamp.ambient_power),
         range: lamp.ambient_radius,
         range_jitter: 0.0,
@@ -232,7 +233,7 @@ impl<'a> LightsPacker<'a> {
   /// whose light also goes out far from the camera. One whose animation the library lacks, which the engine would
   /// refuse, lights nothing.
   pub(crate) fn add_zone(&mut self, object: &AlifeObject, torrid: Option<&AlifeObjectTorridZone>) {
-    let Some(section) = self.find_section(&object.section) else {
+    let Some(section) = self.find_section(&object.header.section) else {
       return;
     };
 
@@ -255,7 +256,11 @@ impl<'a> LightsPacker<'a> {
     else {
       return;
     };
-    let position: Vector3d = Vector3d::new(object.position.x, object.position.y + height, object.position.z);
+    let position: Vector3d = Vector3d::new(
+      object.header.position.x,
+      object.header.position.y + height,
+      object.header.position.z,
+    );
     // OpenXRay sets no values on a zone's shafts, which keep the light's own; Monolith reads the section's, which its
     // forcing then overrides.
     let volumetric: Option<LightVolumetric> =
@@ -281,9 +286,10 @@ impl<'a> LightsPacker<'a> {
       animator_scale: 1.0 / 255.0,
       is_shadowed,
       is_level: false,
-      campfire: (section.get("class").and_then(ClsId::from_class_name) == Some(ClsId::ZCFire)).then_some(object.id),
+      campfire: (section.get("class").and_then(ClsId::from_class_name) == Some(ClsId::ZCFire))
+        .then_some(object.header.id),
       zone_sphere: torrid
-        .and_then(|zone| ZoneSphere::of_custom_zone(&zone.base, (&object.position, &object.direction)))
+        .and_then(|zone| ZoneSphere::of_custom_zone(&zone.base, (&object.header.position, &object.header.direction)))
         .map(|sphere| sphere.to_renderer_space(height)),
       motion: torrid.and_then(|zone| zone.motion.get_name()).map(|name| LightMotion {
         name: name.to_owned(),
@@ -299,7 +305,7 @@ impl<'a> LightsPacker<'a> {
       Some(_) => section
         .and_then(|it| it.get("script_binding"))
         .is_some_and(|binding| binding.trim().eq_ignore_ascii_case(Self::SIGNAL_LIGHT_BINDING)),
-      None => object.section == Self::SIGNAL_LIGHT_SECTION,
+      None => object.header.section == Self::SIGNAL_LIGHT_SECTION,
     }
   }
 
@@ -360,7 +366,7 @@ impl<'a> LightsPacker<'a> {
 
   /// The engine's `xf.k`, where a light points, in the renderer's space: mirroring a transform negates the `x` and `y` of
   /// its third axis, so negating that axis gives the converted `k` back.
-  fn to_direction(transform: &VisualTransform) -> Vector3d {
+  fn get_direction(transform: &VisualTransform) -> Vector3d {
     Vector3d::new(-transform.k.x, -transform.k.y, -transform.k.z)
   }
 

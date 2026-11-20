@@ -1,13 +1,14 @@
 //! Synthetic visuals built in code, so the bytes a test reasons about are visible in the test.
 
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Cylinder, Obb, Sphere, Vector3d};
 use xrf_ogf::{
-  OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk,
-  OgfDescriptionTimeWidth, OgfFile, OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk,
-  OgfObb, OgfSlideWindow, OgfSphere, OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexData, OgfVertexLink,
+  OgfBoneIkData, OgfBonesChunk, OgfChildrenChunk, OgfDescriptionChunk, OgfDescriptionTimeWidth, OgfFile, OgfGeometry,
+  OgfHeaderChunk, OgfJointIkData, OgfKinematicsChunk, OgfSlideWindow, OgfSwiDataChunk, OgfTextureChunk, OgfVertex,
+  OgfVertexData, OgfVertexLink, OgfVertexLinks,
 };
 use xrf_skeleton::{
-  SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
+  SkeletonBoneShape, SkeletonBoneShapeKind, SkeletonJointKind, SkeletonJointLimit, SkeletonMotion,
+  SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
 };
 
 pub(crate) const MODEL_TYPE_SKELETON_ANIM: u8 = 3;
@@ -31,7 +32,7 @@ pub(crate) fn vertex(position: Vector3d, normal: Vector3d, u: f32, v: f32) -> Og
     binormal: vector(0.0, 0.0, 1.0),
     texture_u: u,
     texture_v: v,
-    links: vec![OgfVertexLink { bone: 0, weight: 1.0 }],
+    links: OgfVertexLinks::from([OgfVertexLink { bone: 0, weight: 1.0 }]),
   }
 }
 
@@ -78,12 +79,12 @@ pub(crate) fn visual(model_type: u8) -> OgfFile {
       version: 4,
       model_type,
       shader_id: 0,
-      bounding_box: OgfBox {
+      bounding_box: Aabb {
         min: vector(-1.0, -2.0, -3.0),
         max: vector(4.0, 5.0, 6.0),
       },
-      bounding_sphere: OgfSphere {
-        position: vector(1.0, 2.0, 3.0),
+      bounding_sphere: Sphere {
+        center: vector(1.0, 2.0, 3.0),
         radius: 7.0,
       },
     },
@@ -170,7 +171,7 @@ pub(crate) fn progressive_child_with_windows(windows: Vec<OgfSlideWindow>) -> Og
     geometry: Some(geometry(
       (0..6)
         .map(|index| {
-          let offset: f32 = index as f32;
+          let offset: f32 = f32::from(index);
           let position: Vector3d = match index == PROGRESSIVE_COARSE_ONLY_VERTEX {
             true => vector(100.0, 100.0, 100.0),
             false => vector(offset, offset * 2.0, offset * 3.0),
@@ -186,6 +187,15 @@ pub(crate) fn progressive_child_with_windows(windows: Vec<OgfSlideWindow>) -> Og
   }
 }
 
+/// A box with every component zero, which the conversions under test never read.
+fn empty_obb() -> Obb {
+  Obb {
+    rotation: [vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0)],
+    center: vector(0.0, 0.0, 0.0),
+    half_extents: vector(0.0, 0.0, 0.0),
+  }
+}
+
 pub(crate) fn bones(names: &[(&str, &str)]) -> OgfBonesChunk {
   OgfBonesChunk {
     bones: names
@@ -193,9 +203,7 @@ pub(crate) fn bones(names: &[(&str, &str)]) -> OgfBonesChunk {
       .map(|(name, parent)| xrf_ogf::OgfBone {
         name: String::from(*name),
         parent: String::from(*parent),
-        rotation: (vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0)),
-        translate: vector(0.0, 0.0, 0.0),
-        half_size: vector(0.0, 0.0, 0.0),
+        obb: empty_obb(),
       })
       .collect(),
   }
@@ -206,19 +214,15 @@ pub(crate) fn bind(rotation: Vector3d, position: Vector3d) -> OgfBoneIkData {
   OgfBoneIkData {
     version: 1,
     game_material: String::from("default"),
-    shape: OgfBoneShape {
-      shape_type: 0,
+    shape: SkeletonBoneShape {
+      kind: SkeletonBoneShapeKind::None,
       flags: 0,
-      box_shape: OgfObb {
-        rotate: [vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0)],
-        translate: vector(0.0, 0.0, 0.0),
-        half_size: vector(0.0, 0.0, 0.0),
-      },
-      sphere: OgfSphere {
-        position: vector(0.0, 0.0, 0.0),
+      obb: empty_obb(),
+      sphere: Sphere {
+        center: vector(0.0, 0.0, 0.0),
         radius: 0.0,
       },
-      cylinder: OgfCylinder {
+      cylinder: Cylinder {
         center: vector(0.0, 0.0, 0.0),
         direction: vector(0.0, 0.0, 0.0),
         height: 0.0,
@@ -226,10 +230,10 @@ pub(crate) fn bind(rotation: Vector3d, position: Vector3d) -> OgfBoneIkData {
       },
     },
     joint: OgfJointIkData {
-      joint_type: 4,
-      limits: core::array::from_fn(|_| OgfJointLimit {
-        limit_from: 0.0,
-        limit_to: 0.0,
+      kind: SkeletonJointKind::None,
+      limits: core::array::from_fn(|_| SkeletonJointLimit {
+        min: 0.0,
+        max: 0.0,
         spring_factor: 0.0,
         damping_factor: 0.0,
       }),

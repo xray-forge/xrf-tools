@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::pass::view::noise_turn::NoiseTurn;
@@ -8,10 +8,10 @@ use crate::pass::view::noise_turn::NoiseTurn;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Wet")]
-pub struct WetUniform {
+pub(crate) struct WetUniform {
   /// `RainDensity.x`, the falling rain's, which splashes and ripples by; none once it stops.
   pub density: f32,
-  /// Seconds the rain has fallen.
+  /// Seconds the rain has fallen, within `RainUniform::CLOCK_PERIOD`.
   pub time: f32,
   /// One on Anomaly's engine.
   pub is_extended: f32,
@@ -36,8 +36,9 @@ pub struct WetUniform {
   /// trace, rather than over the metres the engine fades its splashes over; then the metres it reaches; the rest
   /// unused.
   pub reach: Vec4,
-  /// The way and speed gusts drift across the puddles, metres a second in renderer `x` and `z`; the rest unused.
-  pub gust: Vec4,
+  /// The gusts' drift in metres along renderer `x` and `z` within `GUST_REPEAT`, then the calm waves' scroll within
+  /// their map's repeat (`WetDrift::get`).
+  pub drift: Vec4,
   /// The level's water map's centre in `x` and `z`, its half width, and the height it is seen from, laid out as the
   /// surface map's, which the ground under the water is told by.
   pub water: Vec4,
@@ -55,20 +56,23 @@ pub struct WetUniform {
 impl WetUniform {
   /// Metres a second gusts drift at for a keyframe's `wind_velocity`, a hundredth of it, and the least and most.
   const GUST_SPEED: (f32, f32, f32) = (0.01, 1.0, 12.0);
+  /// Metres the gusts' drift repeats over: a whole number of the noise's 70 m and, at half the drift, 29 m tiles
+  /// (`GUST_TILES` in `shaders/frame/wet_patch.wgsl`).
+  pub(crate) const GUST_REPEAT: f64 = 2030.0;
 
   /// Metres the wetness creeps under a cover from its wet edges once a long rain has soaked the level through.
-  pub const CREEP_MOST: f32 = 1.5;
+  pub(crate) const CREEP_MOST: f32 = 1.5;
 
   /// The way and speed gusts drift for a wind: downwind, as the rain leans, in renderer space.
-  pub fn get_gust(direction: f32, velocity: f32) -> Vec4 {
+  pub(crate) fn get_gust(direction: f32, velocity: f32) -> Vec2 {
     let (scale, least, most): (f32, f32, f32) = Self::GUST_SPEED;
     let speed: f32 = (velocity * scale).clamp(least, most);
 
-    Vec4::new(-direction.sin() * speed, -direction.cos() * speed, 0.0, 0.0)
+    Vec2::new(-direction.sin() * speed, -direction.cos() * speed)
   }
 
   /// The pixels the cover's noise is moved by on the noise's `frame`.
-  pub fn get_cover_noise(frame: u32) -> f32 {
+  pub(crate) fn get_cover_noise(frame: u32) -> f32 {
     NoiseTurn::get_gradient(frame, NoiseTurn::FRAMES)
   }
 }

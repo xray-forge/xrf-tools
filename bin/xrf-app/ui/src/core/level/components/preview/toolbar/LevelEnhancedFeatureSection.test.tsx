@@ -28,7 +28,12 @@ describe("LevelEnhancedFeatureSection", () => {
       descriptor
     );
 
-    expect(getByText(explainRenderVolumetricMode(ERenderVolumetricMode.ENGINE))).toBeInTheDocument();
+    // Said as a note under the toggle, not only on hovering it.
+    expect(
+      getByText(explainRenderVolumetricMode(ERenderVolumetricMode.ENGINE)).closest(
+        "[data-testid='editor-popover-note']"
+      )
+    ).not.toBeNull();
     expect(getByRole("slider", { name: "Intensity" })).toBeDisabled();
 
     await userEvent.click(getByRole("checkbox", { name: "Enhanced volumetric light" }));
@@ -40,7 +45,7 @@ describe("LevelEnhancedFeatureSection", () => {
     // The Base preset's own reach, which the settings keep.
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "80 m");
 
-    await userEvent.click(getByRole("button", { name: "Set the volumetric light back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Enhanced volumetric light: Back to the settings" }));
 
     expect(view.features.volumetric).toEqual({});
     expect(getByRole("slider", { name: "Intensity" })).toBeDisabled();
@@ -49,19 +54,32 @@ describe("LevelEnhancedFeatureSection", () => {
   it("sets one value of the enhanced feature for the view, the rest left to the settings", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
+    descriptor.renderSettings.setRendererOverrides({ volumetric: { mode: ERenderVolumetricMode.ENGINE } });
+
+    const { getByRole, view } = renderLevelView(<LevelEnhancedFeatureSection feature={"volumetric"} />, descriptor);
+
+    await userEvent.click(getByRole("checkbox", { name: "Enhanced volumetric light" }));
+
+    getByRole("slider", { name: "Distance" }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+
+    expect(view.features.volumetric).toEqual({ distance: 85, mode: ERenderVolumetricMode.ENHANCED });
+  });
+
+  it("offers the sky's debanding as its toggle alone", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
     descriptor.renderSettings.setRendererOverrides({ debanding: DEFAULT_RENDER_DEBANDING_SETTINGS });
 
-    const { getByRole, view } = renderLevelView(<LevelEnhancedFeatureSection feature={"debanding"} />, descriptor);
+    const { getByRole, queryAllByRole, view } = renderLevelView(
+      <LevelEnhancedFeatureSection feature={"debanding"} />,
+      descriptor
+    );
 
     await userEvent.click(getByRole("checkbox", { name: "Debanding" }));
 
-    expect(getByRole("slider", { name: "Debanding radius" })).toHaveAttribute("aria-valuetext", "48 px");
-    expect(getByRole("slider", { name: "Debanding passes" })).toHaveAttribute("aria-valuetext", "2 times");
-
-    getByRole("slider", { name: "Debanding passes" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
-
-    expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED, passes: 3 });
+    expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED });
+    expect(queryAllByRole("slider")).toHaveLength(0);
   });
 
   it("names a feature by its own toggle and values", async () => {

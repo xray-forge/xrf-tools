@@ -60,6 +60,32 @@ describe("JobsService adoption ending", () => {
     expect(settled[0].error).toBe("volume cap refuses particles.xr");
   });
 
+  // The Jobs panel read the job's end first; every later listing is the same, so only reading the one held settles it.
+  it("settles an adopted job whose end a shown listing already holds", async () => {
+    let calls: number = 0;
+
+    mockIpcCommands({
+      [JOBS_LIST_COMMAND]: () => {
+        calls += 1;
+
+        return calls === 2 ? [mockJobDescription()] : [mockJobDescription({ conclusion: "completed" })];
+      },
+      [JOBS_ATTACH_COMMAND]: true,
+    });
+
+    const { service, settled } = mockWatchedJobsService();
+    const stopPanel: () => void = service.listing.watch();
+
+    await jest.advanceTimersByTimeAsync(0);
+    await service.onProvision(1);
+    await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL * 2);
+
+    expect(settled).toHaveLength(1);
+    expect(service.jobs).toHaveLength(0);
+
+    stopPanel();
+  });
+
   it("follows an adopted job by asking, because its channel died with the page", async () => {
     mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 

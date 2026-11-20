@@ -3,7 +3,7 @@ use xrf_renderer_derive::RenderSettingSchema;
 
 /// GTAO's search: the slices it turns about a pixel and the steps it takes each way along each.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderAmbientOcclusionGtaoSettings {
   #[setting(min = 1, max = 9, recommended = [2, 6], wasted_above = 6)]

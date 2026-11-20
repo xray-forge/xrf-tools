@@ -28,7 +28,11 @@ impl<'r> GraphBindings<'r> {
     self
   }
 
-  /// Imports the texture `view` views into `graph`, declared as it is, and binds it to that view.
+  /// Imports the texture behind `view` into `graph`, declared as it is, and binds it to that view.
+  ///
+  /// A pass reading it binds `view`, but a render pass drawing into a texture of several mips or layers attaches the
+  /// mip and layer its attachment names, whatever part `view` shows. Import an array whole and name the layer a draw
+  /// goes into.
   pub fn import_view(
     &mut self,
     graph: &mut FrameGraph<'_>,

@@ -22,7 +22,7 @@ pub struct ArchiveThmBump {
 
 impl ArchiveThmBump {
   /// The bump chunk as the viewer reads it, with the texture it names resolved.
-  pub fn of(source: &ArchiveDescribeSource, bump: &ThmBumpChunk) -> Self {
+  pub fn of(source: &ArchiveDescribeSource<'_>, bump: &ThmBumpChunk) -> Self {
     Self {
       mode_label: bump.mode.label(),
       mode: bump.mode.into(),

@@ -3,16 +3,17 @@ use glam::Vec3;
 use crate::feature::lighting::shadows::cascades::shadow_prefetch::ShadowPrefetch;
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
 use crate::lighting::sun::sun_cascade::SunCascade;
+use crate::scene::level::level_time::LevelTime;
 
 /// One cascade of a level's sun shadow: its fit, the cut it is culled and drawn by, and what its map was last drawn at;
 /// and, while it keeps a static layer, which layer that is, what it was drawn at, and the next one drawn ahead.
-pub struct ShadowCascadeView {
+pub(crate) struct ShadowCascadeView {
   pub cascade: SunCascade,
   pub cut: ShadowCut,
   /// The version and what the scene held when its map was last drawn, or none before it was drawn.
   pub drawn: Option<(u64, usize)>,
-  /// The sway's time its map was last drawn at.
-  pub drawn_at: f32,
+  /// The level's clock its map was last drawn at.
+  pub drawn_at: LevelTime,
   /// The fit its map was last drawn at, which a fit strayed too far from draws again whatever its stagger.
   pub drawn_fit: SunCascade,
   /// Frames it has waited for a draw it wants.
@@ -23,11 +24,11 @@ pub struct ShadowCascadeView {
   /// Whether its kept layer holds its static layer and trees as its map was last drawn from, which a frame drawing
   /// only what moves every frame copies in.
   pub is_kept: bool,
-  /// The eye and the look its kept layer's trees were kept for, where they were kept only where the camera saw their
-  /// shadows.
+  /// The eye and look its trees were last drawn for, where they were drawn only about the camera's view: a swaying
+  /// cascade, or one whose trees went into its kept layer.
   pub received_at: Option<(Vec3, Vec3)>,
-  /// The sway's time a banded redraw of its trees started at and the band it draws next, while one runs.
-  pub sway_sweep: Option<(f32, u32)>,
+  /// The level's clock a banded redraw of its trees started at and the band it draws next, while one runs.
+  pub sway_sweep: Option<(LevelTime, u32)>,
   /// The layer of the static layers it shows, and the version and contents its static layer was drawn at, none before
   /// it was or since it went stale; and the fit it was drawn at.
   pub static_layer: u32,
@@ -41,12 +42,12 @@ pub struct ShadowCascadeView {
 }
 
 impl ShadowCascadeView {
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, index: usize) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, index: usize) -> Self {
     Self {
       cascade: SunCascade::default(),
       cut: ShadowCut::new(device, view_layout, "sun shadow"),
       drawn: None,
-      drawn_at: 0.0,
+      drawn_at: LevelTime::default(),
       drawn_fit: SunCascade::default(),
       waited: 0,
       has_drawn_moving: false,
@@ -64,20 +65,15 @@ impl ShadowCascadeView {
 
   /// Lets go of what it holds, its cut's lists and its band, and of what its map was drawn at: drawn afresh once it is
   /// asked for again.
-  pub fn release(&mut self, index: usize) {
+  pub(crate) fn release(&mut self, index: usize) {
     self.cut.release_lists();
     self.band = None;
     self.drawn = None;
     self.forget_static(index);
   }
 
-  /// The bytes of its cut's lists and its band's, while it holds them.
-  pub fn get_memory(&self) -> u64 {
-    self.cut.get_memory() + self.band.as_ref().map_or(0, ShadowCut::get_memory)
-  }
-
   /// Forgets its static layer: drawn again before it is read, from the cascade's own layer.
-  pub fn forget_static(&mut self, index: usize) {
+  pub(crate) fn forget_static(&mut self, index: usize) {
     self.static_layer = index as u32;
     self.drawn_static = None;
     self.prefetch = None;

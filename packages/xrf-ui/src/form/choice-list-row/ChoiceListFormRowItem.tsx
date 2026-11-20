@@ -1,7 +1,7 @@
 import { ReactElement, useCallback } from "react";
 
-import { ListItemButton } from "#/material/list";
-import { Tooltip } from "#/material/tooltip";
+import { ListItemButton } from "#/list";
+import { Tooltip } from "#/overlay";
 
 import { IChoiceListFormRowOption } from "./choice-list-form-row-option";
 

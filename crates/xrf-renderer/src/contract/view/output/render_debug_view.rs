@@ -64,6 +64,21 @@ pub enum RenderDebugView {
   SampledMip,
   /// The specular the sun and the lights accumulated, kept apart from their diffuse in the light target's alpha.
   Specular,
+  /// The detail slots' stored sun (`c_dir`) over their ground and tufts, sixteen greys from black to white with slot
+  /// edges darkened; dim albedo grey over empty slots, above their heights or elsewhere.
+  DetailSun,
+  /// The detail slots' stored hemisphere (`c_hemi`), shown as `DetailSun`.
+  DetailHemi,
+  /// The detail slots' stored lamp light (`c_r`, `c_g`, `c_b`) as one colour, shown as `DetailSun`.
+  DetailLight,
+  /// Each AI map node's standing cover over its cell: the mean of its four directions in sixteen greys, black covered
+  /// to white open, cell edges darkened; dim albedo grey off the map or above a node.
+  AiHighCover,
+  /// Each AI map node's crouching cover, shown as `AiHighCover`.
+  AiLowCover,
+  /// How many neighbours each AI map node lacks, shown as `AiHighCover`: green for none, then yellow, orange, red and
+  /// dark red for one to four.
+  AiLinks,
   /// FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
   /// wind moved) in red, how disoccluded in green, how far its shading changed in blue.
   FsrMasks,

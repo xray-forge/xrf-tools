@@ -75,6 +75,31 @@ fn records_a_resolved_reference_with_the_source_answering_it() {
 }
 
 #[test]
+fn reads_and_records_a_head_from_a_loose_file_and_an_archive() {
+  let (vfs, loose_id, archive_id) = loose_over_archive("head", &["textures/a.dds"], &["textures/b.dds"]);
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let search: XraySearch = search_of(&vfs, loose_id, archive_id).with_recording(&record);
+
+  assert_eq!(
+    search.read_head("textures\\a.dds", 9).expect("loose head"),
+    b"recording"
+  );
+  assert_eq!(
+    search.read_head("textures\\a.dds", 100).expect("loose whole"),
+    b"recording_head"
+  );
+  assert_eq!(search.read_head("textures\\b.dds", 3).expect("archived head"), b"arc");
+  assert_eq!(search.read_head("textures\\b.dds", 0).expect("nothing"), b"");
+  assert!(matches!(
+    search.read_head("textures\\c.dds", 4),
+    Err(xrf_error::XrfError::NotFound { .. })
+  ));
+
+  assert_eq!(record.get(&file(&search, "textures\\a.dds")), found(loose_id));
+  assert_eq!(record.get(&file(&search, "textures\\b.dds")), found(archive_id));
+}
+
+#[test]
 fn records_a_lookup_that_finds_nothing_and_its_fallback() {
   let (vfs, loose_id, archive_id) = loose_over_archive("missing", &["textures/ed/ed_not_existing_texture.dds"], &[]);
   let record: XrayInputRecord = XrayInputRecord::new();
@@ -198,7 +223,7 @@ fn records_a_read_served_from_the_cache() {
   search.read_parsed(&asset, parse).expect("first read parses");
 
   let record: XrayInputRecord = XrayInputRecord::new();
-  let recording: XraySearch = search.clone().with_recording(&record);
+  let recording: XraySearch = search.with_recording(&record);
 
   recording.read_parsed(&asset, parse).expect("second read is served");
 

@@ -4,14 +4,18 @@ use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
 
+use super::RenderThread;
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_event::CaptureEvent;
 use crate::capture::capture_job::CaptureJob;
 use crate::capture::capture_plan::CapturePlan;
+use crate::capture::record::record_event::RecordEvent;
+use crate::capture::record::record_job::RecordJob;
 use crate::contract::capture::render_burst::RenderBurst;
 use crate::contract::report::frame::render_frame_report::RenderFrameReport;
 use crate::contract::report::frame::render_memory_report::RenderMemoryReport;
+use crate::contract::report::frame::render_viewport_job::RenderViewportJob;
 use crate::contract::report::load::render_load_report::RenderLoadReport;
 use crate::contract::report::texture::render_texture_report::RenderTextureReport;
 use crate::contract::settings::gpu::render_backend::RenderBackend;
@@ -24,8 +28,6 @@ use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::capture::pending_screenshot::PendingScreenshot;
 use crate::viewport::pick::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
-
-use super::RenderThread;
 
 impl RenderThread {
   pub(super) fn handle(&mut self, command: RenderCommand) {
@@ -45,11 +47,22 @@ impl RenderThread {
         self.viewports.remove(&id);
         self.forget_unused_windows();
       }
+      RenderCommand::Hold { id } => {
+        self.holds.insert(id);
+        self.idle_since = None;
+        // A hold after a stop keeps the thread, as an attach does.
+        self.stopping = None;
+      }
+      RenderCommand::Release { id } => {
+        self.holds.remove(&id);
+        self.start_idle_clock();
+      }
       RenderCommand::Handled { reply } => {
         let _ = reply.send(());
       }
       RenderCommand::Stop { reply } => {
         self.viewports.clear();
+        self.holds.clear();
         self.forget_unused_windows();
         self.stopping = Some(reply);
       }
@@ -93,9 +106,9 @@ impl RenderThread {
           viewport.set_options(*options);
         }
       }
-      RenderCommand::Overlays { id, overlays } => {
+      RenderCommand::Overlays { id, overlays, scene } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.set_overlays(overlays);
+          viewport.set_overlays(overlays, scene);
         }
       }
       RenderCommand::Selection { id, selection } => {
@@ -206,23 +219,67 @@ impl RenderThread {
         });
       }
       RenderCommand::CaptureBurst { id, burst, events } => self.begin_burst(id, burst, events),
+      RenderCommand::Record { id, size, events } => self.begin_record(id, size, events),
+      RenderCommand::StopRecord { id } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.stop_record("The recording was stopped");
+        }
+      }
       RenderCommand::StepClock { step } => self.clock.set_step(step),
     }
   }
 
-  /// Starts a viewport's burst; refused, through `events`, where the viewport is gone, shows no level or captures, a
-  /// burst already paces the clock, or the burst cannot be drawn.
+  /// A refusal naming the running long job (recording, burst, map or cubemap capture); none while none runs.
+  ///
+  /// One long job runs at a time over all viewports: a burst paces every scene's clock and a capture replaces its
+  /// viewport's frames. Screenshots run beside any.
+  fn find_running_job(&self) -> Option<String> {
+    self.viewports.values().find_map(|viewport| {
+      let id: u32 = viewport.get_id().0;
+
+      viewport.get_job().map(|job| match job {
+        RenderViewportJob::Recording => format!("Viewport {id} is being recorded"),
+        RenderViewportJob::Burst => format!("Viewport {id} draws a burst"),
+        RenderViewportJob::Capture => format!("Viewport {id} captures a level map or cubemap"),
+      })
+    })
+  }
+
+  /// Starts recording a viewport, or sends a refusal to `events`: the viewport is gone, another long job runs, or the
+  /// size is zero or past the GPU's largest texture.
+  fn begin_record(&mut self, id: RenderViewportId, size: (u32, u32), events: Sender<RecordEvent>) {
+    let most: u32 = self.get_most_texture();
+    let refusal: Option<String> = match self.viewports.get(&id) {
+      None => Some(format!("Viewport {} is no longer drawn", id.0)),
+      Some(_) if size.0 == 0 || size.1 == 0 || size.0 > most || size.1 > most => Some(format!(
+        "A recording is 1 to {most} pixels a side, not {}×{}",
+        size.0, size.1
+      )),
+      Some(_) => self.find_running_job(),
+    };
+
+    if let Some(refusal) = refusal {
+      let _ = events.send(RecordEvent::Stopped {
+        error: XrfError::new_invalid_error(refusal),
+      });
+
+      return;
+    }
+
+    if let Some(viewport) = self.viewports.get_mut(&id) {
+      viewport.start_record(RecordJob::new(size, events));
+    }
+  }
+
+  /// Starts a viewport's burst, or sends a refusal to `events`: the viewport is gone or shows no level, another long
+  /// job runs, or the burst is invalid.
   fn begin_burst(&mut self, id: RenderViewportId, burst: RenderBurst, events: Sender<BurstEvent>) {
     let refusal: Option<String> = match self.viewports.get(&id) {
       None => Some(format!("Viewport {} is no longer drawn", id.0)),
       Some(viewport) if viewport.get_shown_scene().is_none() => {
         Some(format!("Viewport {} shows no level to burst", id.0))
       }
-      Some(viewport) if viewport.is_capturing() => Some(format!("Viewport {} captures already", id.0)),
-      Some(_) if self.viewports.values().any(RenderViewport::is_bursting) => {
-        Some(String::from("Another burst paces the frames' clock"))
-      }
-      Some(_) => None,
+      Some(_) => self.find_running_job(),
     };
 
     if let Some(refusal) = refusal {
@@ -252,8 +309,8 @@ impl RenderThread {
       })
   }
 
-  /// Starts a viewport's capture as `plan` plans it from the viewport; refused, through `events`, where the viewport is
-  /// gone, shows no level or captures already, or the capture cannot be drawn.
+  /// Starts a viewport's capture as `plan` plans it, or sends a refusal to `events`: the viewport is gone or shows no
+  /// level, another long job runs, or the plan fails.
   fn begin_capture(
     &mut self,
     id: RenderViewportId,
@@ -269,11 +326,10 @@ impl RenderThread {
         "Viewport {} shows no level to capture",
         id.0
       ))),
-      Some(viewport) if viewport.is_capturing() || viewport.is_bursting() => Err(XrfError::new_invalid_error(format!(
-        "Viewport {} captures already",
-        id.0
-      ))),
-      Some(viewport) => plan(viewport),
+      Some(viewport) => match self.find_running_job() {
+        Some(running) => Err(XrfError::new_invalid_error(running)),
+        None => plan(viewport),
+      },
     };
 
     match (planned, self.viewports.get_mut(&id)) {

@@ -8,5 +8,5 @@ pub(crate) struct ProxySlot {
 
 impl ProxySlot {
   /// A slot no item holds.
-  pub const FREE: u32 = u32::MAX;
+  pub(super) const FREE: u32 = u32::MAX;
 }

@@ -4,7 +4,7 @@ use xrf_extension::{XrayExtension, XrayExtensionOf};
 
 /// What a viewer may read out of a mounted tree, by extension and size, passed to each read it gates.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveReadPolicy {
   /// Extensions read as text and decoded from Windows-1251 for display.

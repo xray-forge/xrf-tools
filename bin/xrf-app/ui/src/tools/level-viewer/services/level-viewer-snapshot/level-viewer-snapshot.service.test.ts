@@ -41,6 +41,33 @@ describe("LevelViewerSnapshotService", () => {
     expect(snapshot.applied.isLoading).toBe(false);
   });
 
+  it("copies where the camera stands as its readout states it, which Go to reads back", async () => {
+    const { container, viewport }: ILevelViewContainerDescriptor = mockLevelViewContainer([
+      ...mockToolScope(EToolId.LEVEL_VIEWER),
+      LevelViewerSnapshotService,
+    ]);
+    const snapshot: LevelViewerSnapshotService = container.get(LevelViewerSnapshotService);
+    const writeText = jest.fn<(text: string) => Promise<void>>(() => Promise.resolve());
+    const raised: Array<INotificationPayload> = [];
+
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    container
+      .get(EventBus)
+      .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+        raised.push(event.payload as INotificationPayload)
+      );
+
+    expect(snapshot.isCameraPlaced).toBe(false);
+
+    viewport.noteCamera({ heading: Math.PI / 2, pitch: 0, position: { x: -243.75, y: 12.5, z: 87.25 } });
+    await snapshot.copyCoordinates();
+
+    expect(writeText).toHaveBeenCalledWith("x -243.8 y 12.5 z 87.3 h 90.0° p 0.0°");
+    expect(raised).toEqual([
+      expect.objectContaining({ severity: ENotificationSeverity.SUCCESS, title: "Copied the coordinates" }),
+    ]);
+  });
+
   // The dialog showed values it could not apply; its notice says why, and the dialog closes.
   it("closes an import that failed and says why from the viewer", async () => {
     const { container }: ILevelViewContainerDescriptor = mockLevelViewContainer([

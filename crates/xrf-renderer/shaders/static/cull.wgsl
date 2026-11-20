@@ -321,7 +321,9 @@ fn cs_cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workg
     let cluster: u32 = slot.first_cluster + offset;
     let sphere: vec4<f32> = placed_sphere(spheres[cluster], place);
 
-    if (is_in_frustum(sphere)) {
+    // A cluster of no whole triangle draws nothing, as `cs_cull_singles` leaves it: its draw would count its last index
+    // back from nought.
+    if (clusters[cluster].triangles != 0u && is_in_frustum(sphere)) {
       keep(slot, cluster, row.place, sphere);
     }
   }

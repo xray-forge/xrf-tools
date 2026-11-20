@@ -14,7 +14,7 @@ use crate::parts::LevelSurfacesPart;
 /// surface by the shader id a packed surface carries; resolved again where a commit let it go.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_surfaces")]
-pub async fn levels_describe_surfaces(
+pub(crate) async fn levels_describe_surfaces(
   session_id: SessionId,
   levels: State<'_, SelectedLevels>,
   assets: State<'_, AssetMountState>,

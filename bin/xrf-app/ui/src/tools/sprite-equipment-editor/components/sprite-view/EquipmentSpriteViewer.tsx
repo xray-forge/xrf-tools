@@ -2,10 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { IPanZoomPoint } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CircularProgress } from "@xrf/ui/material/progress";
-import { Typography } from "@xrf/ui/material/typography";
+import { CircularProgress } from "@xrf/ui/feedback";
 import { IImageViewportView, ImageViewport } from "@xrf/ui/media/image-viewport";
 import { cn } from "@xrf/ui/theme";
+import { Typography } from "@xrf/ui/typography";
 import { ReactElement, useCallback } from "react";
 
 import { describeEquipmentSheet, IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";

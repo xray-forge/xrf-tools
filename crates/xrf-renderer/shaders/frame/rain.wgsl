@@ -63,6 +63,10 @@ const NEVER_LANDS: f32 = 1e9;
 // The most rings of far cells about the near square, past the widest square's half side.
 const FAR_RINGS_MOST: u32 = 8u;
 
+// Vertices a near drop's rings take (`vs_ring`, `RainPass::RING_VERTICES`): its fall's ring and its last fall's, each
+// copied four times about the rings' tile, a copy a quad of two triangles.
+const RING_VERTICES: u32 = 48u;
+
 // How far through its period an enhanced drop lands, the rest waited out before it falls again, as Monolith's drops
 // are born again as they land.
 const ENHANCED_LANDING: f32 = 0.85;
@@ -377,11 +381,11 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
 @vertex
 fn vs_ring(@builtin(vertex_index) vertex_index: u32) -> RingVarying {
   let copy: u32 = (vertex_index / 6u) % 4u;
-  let ring: u32 = vertex_index / 24u;
-  let streak: u32 = ring / 2u;
+  let streak: u32 = vertex_index / RING_VERTICES;
+  let back: u32 = (vertex_index / (RING_VERTICES / 2u)) % 2u;
   var corners: array<vec2<f32>, 6> = CORNERS;
   let corner: vec2<f32> = vec2<f32>(corners[vertex_index % 6u].x, corners[vertex_index % 6u].y * 2.0 - 1.0);
-  let fall: Fall = fall_back(streak, ring % 2u);
+  let fall: Fall = fall_back(streak, back);
   let since: f32 = (fall.age - fall.landing) / rain.pace;
   let is_spreading: bool = fall.is_falling && fall.is_near && !fall.is_on_foliage && since >= 0.0 && since < RING_TIME;
   let offset: vec2<f32> = corner * (RING_START + RING_SPEED * since + RING_WAVE * 0.25) * rain.fall.w;

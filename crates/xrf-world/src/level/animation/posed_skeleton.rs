@@ -7,7 +7,7 @@ const FLOATS_PER_BONE: usize = VisualTransform::FLOATS;
 
 /// One skinned object's skeleton as the renderer poses it: its binds inverted once, the matrices it stood by the
 /// frame before, and where its joints stand now, for the overlay.
-pub struct PosedSkeleton {
+pub(crate) struct PosedSkeleton {
   bones: usize,
   binds: Vec<f32>,
   inverse_binds: Vec<Mat4>,
@@ -21,13 +21,13 @@ pub struct PosedSkeleton {
 }
 
 impl PosedSkeleton {
-  pub fn new(skeleton: &RenderModelSkeleton) -> Self {
+  pub(crate) fn new(skeleton: &RenderModelSkeleton) -> Self {
     let bones: usize = skeleton.binds.len() / FLOATS_PER_BONE;
 
     Self {
       bones,
       inverse_binds: (0..bones)
-        .map(|bone| Self::to_matrix(&skeleton.binds, bone * FLOATS_PER_BONE).inverse())
+        .map(|bone| Self::read_matrix(&skeleton.binds, bone * FLOATS_PER_BONE).inverse())
         .collect(),
       binds: skeleton.binds.clone(),
       pairs: skeleton.pairs.clone(),
@@ -40,7 +40,7 @@ impl PosedSkeleton {
   /// This frame's skin matrices as three rows a bone, from each bind to where `motion`'s `frame` stands it, or the bind
   /// pose where the frame lies outside it; a hidden bone collapses everything hanging from it to the origin. Gives the
   /// last frame's rows beside them, this frame's again on the first.
-  pub fn pose(
+  pub(crate) fn pose(
     &mut self,
     motion: Option<&RenderMotion>,
     frame: u32,
@@ -59,7 +59,7 @@ impl PosedSkeleton {
       _ => (&self.binds, 0),
     };
     let posed: Vec<Mat4> = (0..self.bones)
-      .map(|bone| Self::to_matrix(source.0, source.1 + bone * FLOATS_PER_BONE))
+      .map(|bone| Self::read_matrix(source.0, source.1 + bone * FLOATS_PER_BONE))
       .collect();
     let current: Vec<[Vec4; 3]> = posed
       .iter()
@@ -87,12 +87,12 @@ impl PosedSkeleton {
   }
 
   /// Whether the last pose drew as the one before it: until it is asked another, posing it again changes nothing.
-  pub fn is_settled(&self) -> bool {
+  pub(crate) fn is_settled(&self) -> bool {
     self.is_settled
   }
 
   /// The segments the overlay draws, child then parent, where this frame stands the joints, in model space.
-  pub fn list_segments(&self) -> Vec<(Vec3, Vec3)> {
+  pub(crate) fn list_segments(&self) -> Vec<(Vec3, Vec3)> {
     self
       .pairs
       .iter()
@@ -101,7 +101,7 @@ impl PosedSkeleton {
   }
 
   /// A bone's twelve floats as a matrix: its basis' three columns, then its translation.
-  fn to_matrix(values: &[f32], at: usize) -> Mat4 {
+  fn read_matrix(values: &[f32], at: usize) -> Mat4 {
     let read = |offset: usize| -> Vec3 {
       Vec3::new(
         values.get(at + offset).copied().unwrap_or(0.0),

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct RenderBurst {
   /// The scene's seconds, since its level began opening, its first frame is drawn at.
-  pub at: f32,
+  pub at: f64,
   /// Seconds between its frames.
   pub step: f32,
   /// Frames drawn before the first read back, for what builds over frames to settle from its restart.

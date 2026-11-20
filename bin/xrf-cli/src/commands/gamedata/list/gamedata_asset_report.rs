@@ -6,7 +6,7 @@ use xrf_vfs::{XrayAsset, XrayAssetContainer};
 /// One asset a mount resolved: its engine identity and the container that answered for it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GamedataAssetReport {
+pub(crate) struct GamedataAssetReport {
   container: String,
   is_archived: bool,
   logical_path: String,
@@ -20,13 +20,13 @@ impl GamedataAssetReport {
     };
 
     Self {
-      container: xrf_utils::to_portable_path_string(container),
+      container: xrf_utils::format_portable_path(container),
       is_archived,
       logical_path: String::from(asset.get_logical_path().as_str()),
     }
   }
 
-  pub fn list(assets: &[XrayAsset]) -> Vec<Self> {
+  pub(crate) fn list(assets: &[XrayAsset]) -> Vec<Self> {
     assets.iter().map(Self::new).collect()
   }
 }

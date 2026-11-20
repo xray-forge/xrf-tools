@@ -5,7 +5,7 @@ use crate::feature::tracing::sun_trace::sun_trace_uniform::SunTraceUniform;
 /// What the sun's traced shadow reads: the G-buffer's normals, material and depth, and the sun it traces towards.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct SunTraceParameters {
+pub(crate) struct SunTraceParameters {
   #[texture(d2, unfilterable)]
   pub normal_target: GraphTexture,
   #[texture(d2, unfilterable)]

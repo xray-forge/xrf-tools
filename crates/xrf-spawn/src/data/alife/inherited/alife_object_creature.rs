@@ -1,15 +1,17 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
 use xrf_utils::{vector_from_string, vector_to_string};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::alife::spawn_layout::SpawnLayout;
+use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 
 /// A creature, `CSE_ALifeCreatureAbstract`. Its update packet repeats its health, team, squad and group, and carries
 /// where it stands and which way its torso faces; the engine reads them over the spawn packet's, so a creature starts
@@ -48,17 +50,33 @@ impl AlifeObjectCreature {
   /// Place the creature at `position`, its torso facing `direction` as the spawn packet's angles give it: pitch about
   /// x and heading about y, as `CSE_ALifeCreatureAbstract::STATE_Read` derives the torso from `o_Angle`.
   pub fn move_to(&mut self, position: &Vector3d, direction: &Vector3d) {
-    self.update_position = position.clone();
+    self.update_position = *position;
     self.update_torso_pitch = direction.x;
     self.update_torso_yaw = direction.y;
   }
 }
 
 impl AlifePacketsReadWrite for AlifeObjectCreature {
+  /// As `CSE_ALifeCreatureAbstract::STATE_Read` leaves them: health, team, squad and group from the spawn packet, the
+  /// position, and the torso's pitch and heading from its angles. The model's heading is taken from the torso before
+  /// the torso is set, so it stays the constructor's zero, as does the roll; the timestamp and flags are uninitialised.
+  fn set_spawned_update(&mut self, header: &SpawnPacketHeader) {
+    self.update_health = self.health;
+    self.update_position = header.position;
+    self.update_model_yaw = 0.0;
+    self.update_torso_yaw = header.direction.y;
+    self.update_torso_pitch = header.direction.x;
+    self.update_torso_roll = 0.0;
+    self.update_team = self.team;
+    self.update_squad = self.squad;
+    self.update_group = self.group;
+  }
+
   /// Read a creature from both packets.
-  fn read<T: ByteOrder, D: ChunkDataSource>(
-    spawn: &mut ChunkReader<D>,
-    update: &mut ChunkReader<D>,
+  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
       base: spawn.read_xr::<T, _>()?,
@@ -85,7 +103,12 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
   }
 
   /// Write a creature into both packets.
-  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+    &self,
+    spawn: &mut S,
+    update: &mut U,
+    _: SpawnLayout,
+  ) -> XrfResult {
     spawn.write_xr::<T, _>(&self.base)?;
 
     spawn.write_u8(self.team)?;
@@ -113,12 +136,10 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
 
     Ok(())
   }
-}
 
-impl LtxImportExport for AlifeObjectCreature {
   /// Import ALife creature object from ltx config section.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L, _: SpawnLayout) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "ALife object '{}' should be defined in ltx file ({})",
         section_name,
@@ -153,15 +174,15 @@ impl LtxImportExport for AlifeObjectCreature {
   }
 
   /// Export object data into ltx file.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite, _: SpawnLayout) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
     ltx
       .with_section(section_name)
-      .set("creature.team", self.team.to_string())
-      .set("creature.squad", self.squad.to_string())
-      .set("creature.group", self.group.to_string())
-      .set("creature.health", self.health.to_string())
+      .set("creature.team", self.team)
+      .set("creature.squad", self.squad)
+      .set("creature.group", self.group)
+      .set("creature.health", self.health)
       .set(
         "creature.dynamic_out_restrictions",
         vector_to_string(&self.dynamic_out_restrictions),
@@ -170,25 +191,25 @@ impl LtxImportExport for AlifeObjectCreature {
         "creature.dynamic_in_restrictions",
         vector_to_string(&self.dynamic_in_restrictions),
       )
-      .set("creature.killer_id", self.killer_id.to_string())
-      .set("creature.game_death_time", self.game_death_time.to_string())
-      .set("creature.update_health", self.update_health.to_string())
-      .set("creature.update_timestamp", self.update_timestamp.to_string())
-      .set("creature.update_flags", self.update_flags.to_string())
-      .set("creature.update_position", self.update_position.to_string())
-      .set("creature.update_model_yaw", self.update_model_yaw.to_string())
-      .set("creature.update_torso_yaw", self.update_torso_yaw.to_string())
-      .set("creature.update_torso_pitch", self.update_torso_pitch.to_string())
-      .set("creature.update_torso_roll", self.update_torso_roll.to_string())
-      .set("creature.update_team", self.update_team.to_string())
-      .set("creature.update_squad", self.update_squad.to_string())
-      .set("creature.update_group", self.update_group.to_string());
+      .set("creature.killer_id", self.killer_id)
+      .set("creature.game_death_time", self.game_death_time)
+      .set("creature.update_health", self.update_health)
+      .set("creature.update_timestamp", self.update_timestamp)
+      .set("creature.update_flags", self.update_flags)
+      .set("creature.update_position", self.update_position)
+      .set("creature.update_model_yaw", self.update_model_yaw)
+      .set("creature.update_torso_yaw", self.update_torso_yaw)
+      .set("creature.update_torso_pitch", self.update_torso_pitch)
+      .set("creature.update_torso_roll", self.update_torso_roll)
+      .set("creature.update_team", self.update_team)
+      .set("creature.update_squad", self.update_squad)
+      .set("creature.update_group", self.update_group);
 
     Ok(())
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "mocks"))]
 impl AlifeObjectCreature {
   /// A living creature at `position`, facing along its spawn packet's direction as the SDK leaves one.
   pub fn new_mock(position: Vector3d) -> Self {
@@ -234,11 +255,12 @@ impl AlifeObjectCreature {
 mod tests {
   use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
+  use crate::data::alife::spawn_layout::SpawnLayout;
 
   fn new_object() -> AlifeObjectCreature {
     let mut object: AlifeObjectCreature = AlifeObjectCreature::new_mock(Vector3d::new(256.24, 19.81, 550.82));
@@ -252,12 +274,15 @@ mod tests {
     object
   }
 
-  /// Health, timestamp, flags, position, four angles and three bytes: `CSE_ALifeCreatureAbstract::UPDATE_Write`.
+  // Health, timestamp, flags, position, four angles and three bytes: `CSE_ALifeCreatureAbstract::UPDATE_Write`.
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectCreature = new_object();
 
-    assert_eq!(original.read_back::<XRayByteOrder>()?, (104, 40, original));
+    assert_eq!(
+      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      (104, 40, original)
+    );
 
     Ok(())
   }
@@ -281,9 +306,12 @@ mod tests {
     let original: AlifeObjectCreature = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    original.export("data", &mut ltx)?;
+    original.export("data", &mut ltx, SpawnLayout::CALL_OF_PRIPYAT)?;
 
-    assert_eq!(AlifeObjectCreature::import("data", &ltx)?, original);
+    assert_eq!(
+      AlifeObjectCreature::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
+      original
+    );
 
     Ok(())
   }

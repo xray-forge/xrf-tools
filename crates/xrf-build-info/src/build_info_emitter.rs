@@ -1,10 +1,12 @@
+#![expect(clippy::print_stdout, reason = "a build script speaks to Cargo through stdout")]
+
 use std::env;
 use std::process::{Command, Output};
 
 use jiff::{Timestamp, Unit};
 
 /// The build-script half: records what a binary should be able to say about itself, for
-/// [`build_info!`](crate::build_info) to read back.
+/// [`build_info!`](macro@crate::build_info) to read back.
 pub struct BuildInfoEmitter;
 
 impl BuildInfoEmitter {

@@ -1,8 +1,8 @@
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Divider } from "#/material/divider";
-import { List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "#/material/list";
+import { Divider } from "#/layout/stack";
+import { List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "#/list";
 import { cn } from "#/theme";
 
 export interface IEditorSideMenuItem {

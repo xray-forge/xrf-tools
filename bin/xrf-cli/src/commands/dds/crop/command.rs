@@ -1,33 +1,30 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsMipmaps, ImageFormat};
 use xrf_output::OutputOptions;
 use xrf_texture::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
-use xrf_utils::format_path;
+use xrf_utils::{OutputFiles, format_path};
 
 use super::report::DdsCropReport;
-use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::arguments::InputArgument;
+use crate::core::command::{CommandContext, CommandInput, CommandResult, GenericCommand};
 
 #[derive(Default)]
-pub struct CropCommand;
+pub(crate) struct CropCommand;
 
 impl GenericCommand for CropCommand {
   fn operation(&self) -> &'static str {
     "crop"
   }
 
+  fn input(&self) -> CommandInput {
+    CommandInput::path("Path to the dds file to read the region from")
+  }
+
   fn declare(&self, command: Command) -> Command {
     command
       .about("Crop a rectangular region out of a DDS file into a new DDS file")
-      .arg(
-        Arg::new("path")
-          .help("Path to the dds file to read the region from")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
       .arg(
         Arg::new("dest")
           .help("Path of the dds file to write")
@@ -78,12 +75,17 @@ impl GenericCommand for CropCommand {
           .requires("fit-width")
           .value_parser(value_parser!(u32)),
       )
+      .arg(
+        Arg::new("force")
+          .help("Overwrite the dds file where it already exists; without it, one there is refused before reading")
+          .short('f')
+          .long("force")
+          .action(ArgAction::SetTrue),
+      )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches
-      .get_one::<PathBuf>("path")
-      .expect("Expected valid source path to be provided");
+    let source: &PathBuf = InputArgument::of(matches);
     let output_path: &PathBuf = matches
       .get_one::<PathBuf>("dest")
       .expect("Expected valid output path to be provided");
@@ -94,6 +96,8 @@ impl GenericCommand for CropCommand {
     let height: u32 = *matches.get_one::<u32>("height").expect("Expected valid height");
 
     let output: OutputOptions = context.get_output().clone();
+
+    OutputFiles::of_path(output_path).assert_free(matches.get_flag("force"))?;
 
     let options: CropTextureOptions = CropTextureOptions {
       source: source.clone(),

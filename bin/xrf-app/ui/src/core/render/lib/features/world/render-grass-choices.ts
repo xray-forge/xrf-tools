@@ -62,7 +62,7 @@ export function formatGrassRadius(radius: number): string {
 /** @returns How many of the sun's nearest cascades the grass's cards are drawn into, none for the contact shadows. */
 export function formatGrassShadowCascades(cascades: number): string {
   if (cascades <= 0) {
-    return "contact only";
+    return "none";
   }
 
   return cascades === 1 ? "1 cascade" : `${formatNumber(cascades, 0)} cascades`;
@@ -125,6 +125,7 @@ export const RENDER_GRASS_SETTINGS: TRenderSettings<TRenderGrassSettings> = {
   isAligned: {
     control: ERenderSettingControl.CHECKBOX,
     description: "Stands each tuft along its ground's slope rather than straight up.",
+    entryLabel: "Follow slope",
     label: "Aligned to the ground",
   },
   isEnabled: {
@@ -151,6 +152,7 @@ export const RENDER_GRASS_SETTINGS: TRenderSettings<TRenderGrassSettings> = {
     description:
       "How many of the sun's nearest cascades draw the grass's own shadows, as far as the radius; the contact " +
       "shadows shade the rest.",
+    entryLabel: "Cascades",
     format: formatGrassShadowCascades,
     isInert: isUnshadowedGrass,
     label: "Shadow cascades",
@@ -159,6 +161,7 @@ export const RENDER_GRASS_SETTINGS: TRenderSettings<TRenderGrassSettings> = {
   shadowRadius: {
     control: ERenderSettingControl.SLIDER,
     description: "How far from the camera the grass casts shadows, fading out over the last fifth.",
+    entryLabel: "Radius",
     format: formatGrassRadius,
     isInert: isUnshadowedGrass,
     label: "Shadow radius",
@@ -214,14 +217,15 @@ export const RENDER_FOLIAGE_SETTINGS: TRenderSettings<TRenderFoliageSettings> = 
     label: "Mode",
     options: RENDER_FOLIAGE_MODE_OPTIONS,
   },
-  sssColor: toFoliageSlider(
-    "Sun colour through leaves",
-    toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.sssColor, 0.05)
-  ),
-  sssIntensity: toFoliageSlider(
-    "Light through leaves",
-    toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.sssIntensity, 0.05)
-  ),
+  // The Grass popover heads these two "Light through leaves".
+  sssColor: {
+    ...toFoliageSlider("Sun colour through leaves", toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.sssColor, 0.05)),
+    entryLabel: "Sun colour",
+  },
+  sssIntensity: {
+    ...toFoliageSlider("Light through leaves", toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.sssIntensity, 0.05)),
+    entryLabel: "Strength",
+  },
   treesBend: toFoliageSlider("Trunk bend", toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.treesBend, 0.05)),
   treesSpeed: toFoliageSlider("Branches speed", toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.treesSpeed, 0.1)),
   treesTrunk: toFoliageSlider("Trunk speed", toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.treesTrunk, 0.01)),

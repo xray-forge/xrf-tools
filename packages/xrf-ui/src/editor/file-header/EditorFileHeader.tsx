@@ -4,8 +4,8 @@ import { EditorIconAction } from "#/editor/icon-action";
 import { BaseComponentProps } from "#/element-types";
 import { CloseIcon } from "#/icons/close";
 import { DescriptionOutlinedIcon } from "#/icons/description-outlined";
-import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
+import { Typography } from "#/typography";
 
 interface IEditorFileHeaderProps extends BaseComponentProps {
   /** What is open, as the engine names it, which is the whole path rather than the last segment of it. */

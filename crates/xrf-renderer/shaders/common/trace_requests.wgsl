@@ -1,4 +1,5 @@
 #import "common/reflection_trace"
+#import "common/trace_turns"
 #import "generated/common/trace_requests"
 
 // The list a pass leaves the rays it cannot answer in for the scene pass (`TraceRequestParameters`, group 3), the
@@ -8,17 +9,6 @@
 // `share`, then the share.
 fn trace_request_screen(answer: vec3<f32>, share: f32) -> vec2<u32> {
   return vec2<u32>(pack2x16float(answer.rg * share), pack2x16float(vec2<f32>(answer.b * share, share)));
-}
-
-// The turn of `turns` a pixel traces on: its place in an 8 × 8 ordered dither, so each turn takes exactly one in
-// `turns` of them, every one within a 4 × 2 block, and no turn passes the list's room.
-fn trace_turn_of(cell: vec2<u32>, turns: u32) -> u32 {
-  let x: u32 = cell.x & 7u;
-  let mixed: u32 = x ^ (cell.y & 7u);
-  let place: u32 = ((mixed & 1u) << 5u) | ((x & 1u) << 4u) | ((mixed & 2u) << 2u) | ((x & 2u) << 1u) |
-    ((mixed & 4u) >> 1u) | ((x & 4u) >> 2u);
-
-  return place * turns / 64u;
 }
 
 // What a list's pixels stretch their turns by this frame, so the rays they ask fit its room (`keep_trace_wait`), as the

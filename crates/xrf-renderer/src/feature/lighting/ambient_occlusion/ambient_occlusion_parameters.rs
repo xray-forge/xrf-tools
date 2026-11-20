@@ -5,7 +5,7 @@ use crate::feature::lighting::ambient_occlusion::ambient_occlusion_uniform::Ambi
 /// What a stage of the ambient occlusion reads: the normals and depth, its settings, and the other occlusion target.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct AmbientOcclusionParameters {
+pub(crate) struct AmbientOcclusionParameters {
   #[texture(d2, unfilterable)]
   pub normal_target: GraphTexture,
   #[texture(d2, depth)]

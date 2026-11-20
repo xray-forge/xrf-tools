@@ -23,6 +23,18 @@ impl AttachmentViewCache {
       .retain(|_, (_, last_frame)| frame - *last_frame <= Self::MAX_IDLE_FRAMES);
   }
 
+  /// Drops the views the current frame did not ask for, and their hold on their textures.
+  pub(crate) fn forget_unused(&mut self) {
+    let frame: u64 = self.frame;
+
+    self.views.retain(|_, (_, last_frame)| *last_frame == frame);
+  }
+
+  /// Drops every view, and its hold on its texture, for a renderer drawing no frames.
+  pub(crate) fn clear(&mut self) {
+    self.views.clear();
+  }
+
   /// The two-dimensional view of `texture`'s `mip_level` and `array_layer`, made the first time a frame asks for it.
   pub(crate) fn get_view(
     &mut self,

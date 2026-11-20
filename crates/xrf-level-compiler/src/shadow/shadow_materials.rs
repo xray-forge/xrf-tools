@@ -1,0 +1,317 @@
+use std::path::PathBuf;
+
+use rayon::prelude::*;
+use xrf_chunk::XRayByteOrder;
+use xrf_dds::{DdsFile, GrayImage};
+use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::TraceHit;
+use xrf_math::Vector2d;
+use xrf_thm::{ThmFile, ThmTextureParamChunk};
+use xrf_utils::format_path;
+
+use crate::input::compiler_shaders::CompilerShaders;
+use crate::input::compiler_textures::CompilerTextures;
+#[cfg(test)]
+use crate::shadow::shadow_class::ShadowClass;
+#[cfg(test)]
+use crate::shadow::shadow_class_counts::ShadowClassCounts;
+use crate::shadow::shadow_face::ShadowFace;
+use crate::shadow::shadow_materials_request::ShadowMaterialsRequest;
+use crate::shadow::shadow_texture::ShadowTexture;
+
+/// How each ray model face meets a light ray, as the SDK's lighters read it from `build.prj`, `shaders_xrlc.xr` and the
+/// textures (`xrLoad`, `xrLC_Light/global_calculation_data.cpp`; `getLastRP_Scale`, `detail_slot_calculate.cpp`):
+///
+/// - a face whose material's compiler shader casts no shadow passes the ray;
+/// - a face whose texture has an alpha channel, by its `.thm`, is dimmed through that alpha, unless the texture is a
+///   `lod\` one or the merged impostors' atlas, whose image the compilers never load;
+/// - every other face blocks it.
+///
+/// Faces are known by their index into the ray model, the tracer's face index.
+#[derive(Clone, Debug)]
+pub(crate) struct ShadowMaterials {
+  /// One per ray model face.
+  faces: Vec<ShadowFace>,
+  /// The texture and texture coordinates of each face dimming through alpha.
+  alpha_faces: Vec<ShadowAlphaFace>,
+  /// The textures alpha faces name, each once.
+  textures: Vec<ShadowTexture>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ShadowAlphaFace {
+  /// By its index among the loaded textures.
+  texture: u32,
+  coordinates: [Vector2d; 3],
+}
+
+/// One `build.prj` material's part in a light ray.
+#[derive(Clone, Copy, Debug)]
+enum ShadowMaterial {
+  Passes,
+  Opaque,
+  Alpha(ShadowImageSource),
+}
+
+/// An alpha texture to load: its index in `build.prj`, and its size by its `.thm`.
+#[derive(Clone, Copy, Debug)]
+struct ShadowImageSource {
+  texture: usize,
+  size: [u32; 2],
+}
+
+impl ShadowMaterials {
+  /// The folder whose textures' images the compilers never load (`xrLC_Light/global_calculation_data.cpp`).
+  const LOD_FOLDER: &'static str = "lod\\";
+
+  /// Reads a level's shadow materials: every texture's `.thm`, and the image of each alpha texture a face casting
+  /// shadows names, decoded as the compilers' image library decodes it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the SDK's compilers stop: a texture with no `.thm` or none describing a texture under the
+  /// roots, a compiler shader the library lacks, a face naming a material `build.prj` does not hold or one with no
+  /// compiler shader, an alpha image missing, unreadable, or of another size than its `.thm` gives.
+  pub(crate) fn load(request: &ShadowMaterialsRequest<'_>) -> XrfResult<Self> {
+    let names: Vec<String> = request
+      .project
+      .textures
+      .iter()
+      .map(|texture| CompilerTextures::get_name(&texture.name.value))
+      .collect();
+    let alpha_sizes: Vec<Option<[u32; 2]>> = Self::read_alpha_sizes(&names, request.textures)?;
+    let materials: Vec<Option<ShadowMaterial>> = Self::classify_materials(request, &alpha_sizes)?;
+    let mut faces: Vec<ShadowFace> = Vec::with_capacity(request.faces.len());
+    let mut alpha_faces: Vec<ShadowAlphaFace> = Vec::new();
+    // Each project texture's index among the loaded textures, and the textures loaded, in order.
+    let mut texture_slots: Vec<Option<u32>> = vec![None; names.len()];
+    let mut loaded: Vec<ShadowImageSource> = Vec::new();
+
+    for (index, face) in request.faces.iter().enumerate() {
+      let material: ShadowMaterial = materials
+        .get(usize::from(face.material))
+        .copied()
+        .flatten()
+        .ok_or_else(|| {
+          XrfError::new_invalid_error(format!(
+            "Ray model face {index} names material {}, which build.prj does not hold or gives no compiler shader",
+            face.material
+          ))
+        })?;
+
+      faces.push(match material {
+        ShadowMaterial::Passes => ShadowFace::Passes,
+        ShadowMaterial::Opaque => ShadowFace::Opaque,
+        ShadowMaterial::Alpha(source) => {
+          let slot: u32 = *texture_slots[source.texture].get_or_insert_with(|| {
+            loaded.push(source);
+
+            (loaded.len() - 1) as u32
+          });
+
+          alpha_faces.push(ShadowAlphaFace {
+            texture: slot,
+            coordinates: face.texture_coordinates,
+          });
+
+          ShadowFace::Alpha((alpha_faces.len() - 1) as u32)
+        }
+      });
+    }
+
+    let textures: Vec<ShadowTexture> = loaded
+      .par_iter()
+      .map(|source| Self::read_texture(&names[source.texture], source.size, request.textures))
+      .collect::<XrfResult<_>>()?;
+
+    Ok(Self {
+      faces,
+      alpha_faces,
+      textures,
+    })
+  }
+
+  /// Every one of `face_count` faces blocking light, for a test's ray model.
+  #[cfg(test)]
+  pub(crate) fn new_opaque(face_count: usize) -> Self {
+    Self {
+      faces: vec![ShadowFace::Opaque; face_count],
+      alpha_faces: Vec::new(),
+      textures: Vec::new(),
+    }
+  }
+
+  /// How a ray model face meets a light ray.
+  ///
+  /// # Panics
+  ///
+  /// Panics when `face` is not a face of the ray model these were loaded for.
+  #[cfg(test)]
+  pub(crate) fn get_class(&self, face: u32) -> ShadowClass {
+    match self.faces[face as usize] {
+      ShadowFace::Passes => ShadowClass::Passes,
+      ShadowFace::Opaque => ShadowClass::Opaque,
+      ShadowFace::Alpha(_) => ShadowClass::Alpha,
+    }
+  }
+
+  /// How much of a light ray the face it hits stops: 0 for a face passing it, 1 for one blocking it, and the alpha at
+  /// the hit's texture coordinates for an alpha one, weighted by its barycentrics as the SDK weighs them; how much
+  /// passes is the tracing's rules' (`RayRules::get_transmittance`).
+  ///
+  /// # Panics
+  ///
+  /// Panics when the hit's face is not a face of the ray model these were loaded for.
+  pub(crate) fn get_opacity(&self, hit: &TraceHit) -> f32 {
+    match self.faces[hit.face as usize] {
+      ShadowFace::Passes => 0.0,
+      ShadowFace::Opaque => 1.0,
+      ShadowFace::Alpha(index) => self.textures[self.alpha_faces[index as usize].texture as usize]
+        .get_opacity(self.get_alpha_coordinates(index, hit)),
+    }
+  }
+
+  /// An alpha face's texture coordinates at a hit, weighted by its barycentrics as the SDK weighs them.
+  fn get_alpha_coordinates(&self, index: u32, hit: &TraceHit) -> Vector2d {
+    let face: &ShadowAlphaFace = &self.alpha_faces[index as usize];
+    let [first, second, third] = &face.coordinates;
+    let weight: f32 = 1.0 - hit.u - hit.v;
+
+    Vector2d {
+      x: first.x * weight + second.x * hit.u + third.x * hit.v,
+      y: first.y * weight + second.y * hit.u + third.y * hit.v,
+    }
+  }
+
+  /// How many ray model faces are of each class.
+  #[cfg(test)]
+  pub(crate) fn count_classes(&self) -> ShadowClassCounts {
+    self
+      .faces
+      .iter()
+      .fold(ShadowClassCounts::default(), |mut counts, face| {
+        match face {
+          ShadowFace::Passes => counts.passes += 1,
+          ShadowFace::Opaque => counts.opaque += 1,
+          ShadowFace::Alpha(_) => counts.alpha += 1,
+        }
+
+        counts
+      })
+  }
+
+  /// The textures alpha faces dim light through, in the order faces first name them.
+  #[cfg(any(feature = "gpu", test))]
+  pub(crate) fn get_textures(&self) -> &[ShadowTexture] {
+    &self.textures
+  }
+
+  /// Each ray model face's part, an alpha face's index among [`Self::get_alpha_faces`].
+  #[cfg(feature = "gpu")]
+  pub(crate) fn get_faces(&self) -> &[ShadowFace] {
+    &self.faces
+  }
+
+  /// Each face dimming through alpha: its texture's index among [`Self::get_textures`], and its corners' texture
+  /// coordinates.
+  #[cfg(feature = "gpu")]
+  pub(crate) fn get_alpha_faces(&self) -> impl Iterator<Item = (u32, [Vector2d; 3])> {
+    self.alpha_faces.iter().map(|face| (face.texture, face.coordinates))
+  }
+
+  /// Each texture's size where the compilers load its image for its alpha, by its `.thm`: an alpha channel, and
+  /// neither the merged impostors' atlas, which they take as having alpha but no image, nor a `lod\` texture.
+  fn read_alpha_sizes(names: &[String], roots: &[PathBuf]) -> XrfResult<Vec<Option<[u32; 2]>>> {
+    let mut missing: Vec<&str> = Vec::new();
+    let mut sizes: Vec<Option<[u32; 2]>> = Vec::with_capacity(names.len());
+
+    for name in names {
+      if name == CompilerTextures::UNLOADED {
+        sizes.push(None);
+        continue;
+      }
+
+      let parameters: Option<ThmTextureParamChunk> = CompilerTextures::find(roots, name, "thm")?
+        .map(|path| ThmFile::read_from_path::<XRayByteOrder, _>(&path))
+        .transpose()?
+        .and_then(|thumbnail| thumbnail.texture_param);
+      let Some(parameters) = parameters else {
+        missing.push(name);
+        sizes.push(None);
+        continue;
+      };
+
+      sizes.push(
+        (parameters.format.has_alpha_channel() && !name.starts_with(Self::LOD_FOLDER))
+          .then_some([parameters.width, parameters.height]),
+      );
+    }
+
+    match missing.as_slice() {
+      [] => Ok(sizes),
+      [first, ..] => Err(XrfError::new_not_found_error(format!(
+        "{} of the textures build.prj names have no .thm describing a texture under the texture roots, such as {first}",
+        missing.len()
+      ))),
+    }
+  }
+
+  /// Each `build.prj` material's part in a light ray, `None` for one with no compiler shader: its compiler shader's
+  /// shadow flag ([`CompilerShaders`]), then its texture's alpha.
+  fn classify_materials(
+    request: &ShadowMaterialsRequest<'_>,
+    alpha_sizes: &[Option<[u32; 2]>],
+  ) -> XrfResult<Vec<Option<ShadowMaterial>>> {
+    let shaders: CompilerShaders = CompilerShaders::resolve(request.project, request.library)?;
+    let mut materials: Vec<Option<ShadowMaterial>> = Vec::with_capacity(request.project.materials.len());
+
+    for (index, material) in request.project.materials.iter().enumerate() {
+      // A face names its material in 16 bits, so a material past them is one no face reaches.
+      let Some(shader) = u16::try_from(index).ok().and_then(|index| shaders.get(index)) else {
+        materials.push(None);
+        continue;
+      };
+      let texture: usize = usize::from(material.texture);
+      let Some(alpha_size) = alpha_sizes.get(texture) else {
+        return Err(XrfError::new_invalid_error(format!(
+          "build.prj material {index} names texture {texture}, which it does not hold"
+        )));
+      };
+
+      materials.push(Some(if !shader.casts_shadow() {
+        ShadowMaterial::Passes
+      } else {
+        match *alpha_size {
+          Some(size) => ShadowMaterial::Alpha(ShadowImageSource { texture, size }),
+          None => ShadowMaterial::Opaque,
+        }
+      }));
+    }
+
+    Ok(materials)
+  }
+
+  /// An alpha texture's image, its alpha decoded as the compilers' image library decodes it.
+  fn read_texture(name: &str, size: [u32; 2], roots: &[PathBuf]) -> XrfResult<ShadowTexture> {
+    let path: PathBuf = CompilerTextures::find(roots, name, "dds")?.ok_or_else(|| {
+      XrfError::new_not_found_error(format!("The alpha texture {name} has no .dds under the texture roots"))
+    })?;
+    let alpha: GrayImage = DdsFile::read_from_path(&path)?.decode_sdk_alpha()?;
+
+    if alpha.dimensions() != (size[0], size[1]) {
+      return Err(XrfError::new_invalid_error(format!(
+        "{} is {} by {}, and its .thm says {} by {}",
+        format_path(&path),
+        alpha.width(),
+        alpha.height(),
+        size[0],
+        size[1]
+      )));
+    }
+
+    Ok(ShadowTexture {
+      name: name.to_owned(),
+      alpha,
+    })
+  }
+}

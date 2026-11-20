@@ -29,6 +29,29 @@ fn list_drivers(world: &mut World) -> HashMap<RenderSceneId, Option<RenderViewpo
 }
 
 #[test]
+fn hears_the_pinned_viewport_whatever_takes_the_focus_until_let_go() {
+  let mut world: World = World::new(create_workers());
+  let (recorded, other) = (RenderViewportId(1), RenderViewportId(2));
+
+  world.attach(recorded, Box::new(SilentSink));
+  world.attach(other, Box::new(SilentSink));
+  world.set_listener(recorded);
+  world.pin_listener(Some(recorded));
+  world.set_listener(other);
+
+  assert_eq!(world.get_listener(), Some(recorded));
+
+  world.pin_listener(None);
+
+  assert_eq!(world.get_listener(), Some(other));
+
+  world.pin_listener(Some(recorded));
+  world.detach(recorded);
+
+  assert_eq!(world.get_listener(), Some(other));
+}
+
+#[test]
 fn viewports_showing_one_opening_share_its_scene_driven_by_the_first() {
   let mut world: World = World::new(create_workers());
   let (first, second) = (RenderViewportId(1), RenderViewportId(2));

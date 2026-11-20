@@ -6,9 +6,10 @@ use xrf_environment::{ThunderboltSettingsKey, WeatherMix};
 use xrf_math::{EPS_L, EPS_S};
 use xrf_renderer::{
   EngineSpace, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGlow, RenderThunderboltStrike,
-  WeatherRandom, to_interpolated_color,
+  WeatherRandom, get_interpolated_color,
 };
 
+use crate::weather::thunder::strike_thunder::StrikeThunder;
 use crate::weather::thunder::thunder_flash::ThunderFlash;
 use crate::weather::thunder::thunder_play::ThunderPlay;
 
@@ -40,7 +41,7 @@ struct Strike {
 /// `CEffect_Thunderbolt`: a strike every period while the weather names a collection, a random bolt of it each time,
 /// across the sky from the sun, at the far plane, down to the ground; and, while it strikes, the colour it lights the
 /// frame with. It runs on real time, as the engine's global time does, so bolts strike on a paused clock too.
-pub struct WeatherThunder {
+pub(crate) struct WeatherThunder {
   random: WeatherRandom,
   /// Whether the weather struck last frame, `bEnabled`.
   is_enabled: bool,
@@ -48,30 +49,39 @@ pub struct WeatherThunder {
   next: Duration,
   strike: Option<Strike>,
   advanced_at: Option<Duration>,
+  /// The strikes that thundered and were not taken yet.
+  thunders: Vec<StrikeThunder>,
 }
 
 impl WeatherThunder {
-  pub fn new(seed: u64) -> Self {
+  pub(crate) fn new(seed: u64) -> Self {
     Self {
       random: WeatherRandom::new(seed),
       is_enabled: false,
       next: Duration::ZERO,
       strike: None,
       advanced_at: None,
+      thunders: Vec::new(),
     }
   }
 
+  /// Takes the strikes that thundered since the last take.
+  pub(crate) fn take_thunders(&mut self) -> std::vec::Drain<'_, StrikeThunder> {
+    self.thunders.drain(..)
+  }
+
   /// Forgets any strike and when the next was due, as a weather taken afresh does.
-  pub fn reset(&mut self) {
+  pub(crate) fn reset(&mut self) {
     self.is_enabled = false;
     self.strike = None;
     self.advanced_at = None;
+    self.thunders.clear();
   }
 
   /// `OnFrame`: schedules a strike as the weather starts to name a collection while `play` lets it strike, strikes
   /// when one is due, and plays the strike under way. `now` is its real clock and `view` in engine space; none while no
   /// strike is under way.
-  pub fn advance(
+  pub(crate) fn advance(
     &mut self,
     thunder: &RenderThunder,
     mix: &WeatherMix,
@@ -106,7 +116,7 @@ impl WeatherThunder {
 
     strike.time += step;
 
-    let flash: ThunderFlash = Self::to_flash(strike, thunder, &mut self.random);
+    let flash: ThunderFlash = Self::roll_flash(strike, thunder, &mut self.random);
 
     if is_over {
       self.strike = None;
@@ -128,7 +138,7 @@ impl WeatherThunder {
     let lasting: f32 = mix.thunderbolt_duration;
     let life: f32 = lasting + random.between(-lasting * 0.5, lasting * 0.5);
     let (name, bolt) = palette[((random.next_fraction() * palette.len() as f32) as usize).min(palette.len() - 1)];
-    let sun_heading: f32 = Self::to_heading(Vec3::from(mix.sun_direction));
+    let sun_heading: f32 = Self::get_heading(Vec3::from(mix.sun_direction));
     let far: f32 = mix.far_plane;
     let period: f32 = mix.thunderbolt_period;
     let altitude: f32 = random.between(settings.altitude[0], settings.altitude[1]);
@@ -140,7 +150,7 @@ impl WeatherThunder {
       far * settings.min_distance,
       far * ThunderboltSettingsKey::MAX_DIST_FACTOR,
     );
-    let toward: Vec3 = Self::to_direction(longitude, altitude);
+    let toward: Vec3 = Self::get_direction(longitude, altitude);
     let position: Vec3 = view + toward * distance;
     let deviation: Vec3 = Vec3::new(
       random.between(-settings.tilt, settings.tilt),
@@ -148,18 +158,21 @@ impl WeatherThunder {
       random.between(-settings.tilt, settings.tilt),
     );
     // `setXYZi`, which is `setHPB(-y, -x, -z)`; the light falls down the matrix's second axis.
-    let [i, j, k] = Self::to_rotation_rows(-deviation.y, -deviation.x, -deviation.z);
+    let [i, j, k] = Self::get_rotation_rows(-deviation.y, -deviation.x, -deviation.z);
     let down: Vec3 = -j;
-    let size: f32 = Self::to_ground(position, down, far * 2.0);
+    let size: f32 = Self::get_ground_distance(position, down, far * 2.0);
 
-    self.next = Self::get_moment(
-      now,
-      if random.next_fraction() < settings.second_probability {
-        lasting + SECOND_DELAY
-      } else {
-        period + random.between(-period * 0.3, period * 0.3)
-      },
-    );
+    // A strike followed at once by a second is silent; any other thunders.
+    if random.next_fraction() < settings.second_probability {
+      self.next = Self::get_moment(now, lasting + SECOND_DELAY);
+    } else {
+      self.next = Self::get_moment(now, period + random.between(-period * 0.3, period * 0.3));
+      self.thunders.push(StrikeThunder {
+        bolt: name.clone(),
+        position,
+        distance,
+      });
+    }
 
     Strike {
       name: name.clone(),
@@ -174,7 +187,7 @@ impl WeatherThunder {
     }
   }
 
-  fn to_flash(strike: &Strike, thunder: &RenderThunder, random: &mut WeatherRandom) -> ThunderFlash {
+  fn roll_flash(strike: &Strike, thunder: &RenderThunder, random: &mut WeatherRandom) -> ThunderFlash {
     let progress: f32 = if strike.life > 0.0 {
       strike.time / strike.life
     } else {
@@ -187,7 +200,7 @@ impl WeatherThunder {
       .color
       .and_then(|index| thunder.animators.get(index))
       .map_or(Vec3::ZERO, |animator| {
-        to_interpolated_color(
+        get_interpolated_color(
           animator,
           (progress.rem_euclid(1.0) * animator.frame_count as f32).floor(),
         )
@@ -250,12 +263,12 @@ impl WeatherThunder {
   }
 
   /// `Fvector::setHP`: the direction a heading and a pitch point along, in engine space.
-  fn to_direction(heading: f32, pitch: f32) -> Vec3 {
+  fn get_direction(heading: f32, pitch: f32) -> Vec3 {
     Vec3::new(-pitch.cos() * heading.sin(), pitch.sin(), pitch.cos() * heading.cos())
   }
 
   /// `Fvector::getHP`'s heading: a direction straight up or down has none, and reads as zero.
-  fn to_heading(direction: Vec3) -> f32 {
+  fn get_heading(direction: Vec3) -> f32 {
     if direction.x.abs() < EPS_S && direction.z.abs() < EPS_S {
       0.0
     } else {
@@ -264,7 +277,7 @@ impl WeatherThunder {
   }
 
   /// `Fmatrix::setHPB`'s first three rows.
-  fn to_rotation_rows(h: f32, p: f32, b: f32) -> [Vec3; 3] {
+  fn get_rotation_rows(h: f32, p: f32, b: f32) -> [Vec3; 3] {
     let (sh, ch, sp, cp, sb, cb) = (h.sin(), h.cos(), p.sin(), p.cos(), b.sin(), b.cos());
     let (cc, cs, sc, ss) = (ch * cb, ch * sb, sh * cb, sh * sb);
 
@@ -277,7 +290,7 @@ impl WeatherThunder {
 
   /// `RayPick` where the level's own geometry is not at hand: how far down the bolt reaches the ground plane, `y = 0`,
   /// within a range, or the range where it never does.
-  fn to_ground(from: Vec3, down: Vec3, range: f32) -> f32 {
+  fn get_ground_distance(from: Vec3, down: Vec3, range: f32) -> f32 {
     if down.y.abs() < 1e-6 {
       return range;
     }

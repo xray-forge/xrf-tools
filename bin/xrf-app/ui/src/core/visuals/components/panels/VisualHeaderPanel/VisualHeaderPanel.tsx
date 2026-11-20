@@ -27,7 +27,7 @@ export function VisualHeaderPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Header"}>
-      <EditorPanelSection title={"Model"} isFirst>
+      <EditorPanelSection title={"Model"}>
         <EditorPanelProperty label={"Format version"} value={description.version} />
         <EditorPanelProperty label={"Type"} value={description.modelTypeLabel} />
         <EditorPanelProperty label={"Type id"} value={description.modelType} />

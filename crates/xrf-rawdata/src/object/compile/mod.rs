@@ -1,0 +1,17 @@
+pub(crate) mod bounds;
+pub(crate) mod detail;
+pub(crate) mod geometry;
+pub(crate) mod motion;
+pub(crate) mod object_compile;
+pub(crate) mod object_compile_options;
+pub(crate) mod object_compile_report;
+pub(crate) mod object_compile_request;
+pub(crate) mod object_compile_source;
+pub(crate) mod object_compiler;
+pub(crate) mod ogf_export_chunks;
+pub(crate) mod rigid;
+pub(crate) mod skeleton;
+pub(crate) mod tangent_method;
+
+#[cfg(test)]
+mod tests;

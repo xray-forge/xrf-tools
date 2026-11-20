@@ -6,7 +6,7 @@ use xrf_output::OutputVerbosity;
 use xrf_utils::HostLinkPolicy;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::core::arguments::{JobsArgument, LinkPolicyArgument, ReportingArguments, XrayRootsArguments};
+use crate::core::arguments::{InputArgument, JobsArgument, LinkPolicyArgument, ReportingArguments, XrayRootsArguments};
 use crate::core::report::{ReportDestination, ReportingOptions};
 
 fn parse_reporting(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
@@ -30,15 +30,15 @@ fn parse_nested(root: &[&str], operation: &[&str]) -> ArgMatches {
 #[test]
 fn reads_the_destination_a_caller_selected() {
   assert_eq!(
-    ReportingArguments::to_destination(&parse_reporting(&[]).unwrap()),
+    ReportingArguments::parse_destination(&parse_reporting(&[]).unwrap()),
     ReportDestination::None
   );
   assert_eq!(
-    ReportingArguments::to_destination(&parse_reporting(&["--json"]).unwrap()),
+    ReportingArguments::parse_destination(&parse_reporting(&["--json"]).unwrap()),
     ReportDestination::Stdout
   );
   assert_eq!(
-    ReportingArguments::to_destination(&parse_reporting(&["--report", "out.json"]).unwrap()),
+    ReportingArguments::parse_destination(&parse_reporting(&["--report", "out.json"]).unwrap()),
     ReportDestination::File(PathBuf::from("out.json"))
   );
 }
@@ -71,9 +71,9 @@ fn names_a_conflicting_pair_however_it_was_written() {
 
 #[test]
 fn maps_the_verbosity_flags() {
-  assert_eq!(ReportingArguments::to_verbosity(true, false), OutputVerbosity::Silent);
-  assert_eq!(ReportingArguments::to_verbosity(false, true), OutputVerbosity::Verbose);
-  assert_eq!(ReportingArguments::to_verbosity(false, false), OutputVerbosity::Normal);
+  assert_eq!(ReportingArguments::get_verbosity(true, false), OutputVerbosity::Silent);
+  assert_eq!(ReportingArguments::get_verbosity(false, true), OutputVerbosity::Verbose);
+  assert_eq!(ReportingArguments::get_verbosity(false, false), OutputVerbosity::Normal);
 }
 
 #[test]
@@ -170,24 +170,46 @@ fn follows_links_on_a_command_without_the_flag() {
   );
 }
 
-fn parse_roots(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
-  XrayRootsArguments::declare(Command::new("list").no_binary_name(true), "a root", "a subtree")
-    .try_get_matches_from(arguments)
+fn parse_input(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
+  InputArgument::declare(Command::new("info").no_binary_name(true), "a volume".into()).try_get_matches_from(arguments)
 }
 
 #[test]
+fn reads_the_input_from_its_positional_slot() {
+  let matches: ArgMatches = parse_input(&["archive.db"]).expect("the arguments parse");
+
+  assert_eq!(InputArgument::of(&matches), &PathBuf::from("archive.db"));
+}
+
+/// Both refusals are clap's, so they end the run with the usage exit every other bad argument has.
+#[test]
+fn refuses_a_missing_input_and_the_flag_it_replaced() {
+  assert_eq!(
+    parse_input(&[]).expect_err("the input is required").kind(),
+    clap::error::ErrorKind::MissingRequiredArgument
+  );
+  assert_eq!(
+    parse_input(&["--path", "archive.db"])
+      .expect_err("the flag is gone")
+      .kind(),
+    clap::error::ErrorKind::UnknownArgument
+  );
+}
+
+fn parse_roots(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
+  XrayRootsArguments::declare(
+    Command::new("list").no_binary_name(true),
+    String::from("a root"),
+    String::from("a subtree"),
+  )
+  .try_get_matches_from(arguments)
+}
+
+/// The roots keep the order they were given in, which is their layering: the first is searched first.
+#[test]
 fn layers_every_path_as_one_source_and_reads_the_prefix() {
-  let matches: ArgMatches = parse_roots(&[
-    "-p",
-    "mod",
-    "-p",
-    "game",
-    "--source",
-    "directory",
-    "--prefix",
-    "configs",
-  ])
-  .expect("the arguments parse");
+  let matches: ArgMatches =
+    parse_roots(&["mod", "game", "--source", "directory", "--prefix", "configs"]).expect("the arguments parse");
   let roots: XrayRoots = XrayRootsArguments::of(&matches).expect("the roots");
 
   assert_eq!(
@@ -206,7 +228,7 @@ fn layers_every_path_as_one_source_and_reads_the_prefix() {
 
 #[test]
 fn reads_the_containing_installation_unless_told_otherwise_and_refuses_other_modes() {
-  let matches: ArgMatches = parse_roots(&["-p", "game"]).expect("the arguments parse");
+  let matches: ArgMatches = parse_roots(&["game"]).expect("the arguments parse");
 
   assert_eq!(
     XrayRootsArguments::source_of(&matches).expect("the source"),
@@ -214,7 +236,7 @@ fn reads_the_containing_installation_unless_told_otherwise_and_refuses_other_mod
   );
   assert_eq!(XrayRootsArguments::prefix_of(&matches), None);
   assert_eq!(
-    parse_roots(&["-p", "game", "--source", "nowhere"])
+    parse_roots(&["game", "--source", "nowhere"])
       .expect_err("the mode is refused")
       .kind(),
     clap::error::ErrorKind::InvalidValue

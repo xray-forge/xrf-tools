@@ -5,7 +5,7 @@ use xrf_ltx::{LtxProjectFormatResult, LtxProjectVerifyResult};
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 #[derive(Default)]
-pub struct GamedataLtxVerificationResult {
+pub(crate) struct GamedataLtxVerificationResult {
   pub(crate) duration: Duration,
   pub(crate) findings: Vec<Finding>,
   pub(crate) format_result: LtxProjectFormatResult,

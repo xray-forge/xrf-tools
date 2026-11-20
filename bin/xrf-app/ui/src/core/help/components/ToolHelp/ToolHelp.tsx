@@ -4,10 +4,11 @@ import { XrfMark } from "@xrf/ui/brand";
 import { ReactElement } from "react";
 
 import { getBuildKind, PRODUCT_NAME } from "@/core/configs";
-import { ToolHelpButton, ToolHelpDialog } from "@/core/help/components";
+import { ToolHelpButton } from "@/core/help/components/ToolHelp/ToolHelpButton";
+import { ToolHelpDialog } from "@/core/help/components/ToolHelp/ToolHelpDialog";
 import { HelpService } from "@/core/help/services/help.service";
+import { ShellToolService } from "@/core/routing/services/shell-tool.service";
 import { IToolDescriptor, IToolHelp } from "@/core/routing/tool";
-import { ShellToolService } from "@/core/shell/services/shell-tool";
 
 /**
  * The current screen's help: the rail control and the dialog.

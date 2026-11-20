@@ -1,0 +1,251 @@
+use std::collections::HashMap;
+
+use xrf_editable_object::{EditableBone, EditableMesh, EditableObjectFile, EditableSurface};
+use xrf_error::{XrfError, XrfResult};
+use xrf_geometry::{Mesh, MeshVertex, SplitPartition, TangentBasis, VertexCacheOrder, VertexPacker, VertexPacking};
+use xrf_math::Aabb;
+
+use crate::object::compile::geometry::object_bounds::ObjectBounds;
+use crate::object::compile::geometry::source::mesh_surface_faces::MeshSurfaceFaces;
+use crate::object::compile::object_compile_options::ObjectCompileOptions;
+use crate::object::compile::skeleton::breakable_parts::BreakableParts;
+use crate::object::compile::skeleton::mikktspace_basis::MikkTSpaceBasis;
+use crate::object::compile::skeleton::skeleton_geometry::SkeletonGeometry;
+use crate::object::compile::skeleton::skeleton_split::SkeletonSplit;
+use crate::object::compile::skeleton::skin_corner::SkinCorner;
+use crate::object::compile::tangent_method::TangentMethod;
+
+/// Builds a skeleton object's splits as `CExportSkeleton::PrepareGeometry` does, its tangent pass included.
+///
+/// Faces are walked surface by surface in the object's surface order, the nearest record of the export's walk by
+/// memory address. Each face goes to the split of its surface's shader, texture and breakable part, a two-sided one
+/// again mirrored; a face whose corners all follow one bone lists it twice, the copy weightless. Each split takes the
+/// tangent pass ([`TangentBasis`] or [`MikkTSpaceBasis`]) and the vertex cache order ([`VertexCacheOrder`]).
+pub(crate) struct SkeletonGeometryBuilder {
+  splits: Vec<PendingSplit>,
+  bounds: Aabb,
+  parts: Vec<u16>,
+  is_breakable: bool,
+}
+
+/// A split as its faces pack: what it is made of and the bones it names, and the packer holding its vertices.
+struct PendingSplit {
+  split: SkeletonSplit,
+  packer: VertexPacker,
+}
+
+impl SkeletonGeometryBuilder {
+  /// Bones a skeleton object can hold (`PrepareGeometry`).
+  const MAX_BONES: usize = 64;
+
+  /// The splits of `object`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the export fails: no mesh, no bone or more than [`Self::MAX_BONES`], a surface the object
+  /// does not have or with other than one texture coordinate set, a corner following no bone, a face spanning two
+  /// breakable parts; and where a mesh does not hold together.
+  pub(crate) fn build(object: &EditableObjectFile, options: &ObjectCompileOptions) -> XrfResult<SkeletonGeometry> {
+    let meshes: &[EditableMesh] = object.meshes.as_deref().unwrap_or_default();
+    let bones: &[EditableBone] = object.bones.as_deref().unwrap_or_default();
+    let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
+
+    let Some(bounds) = ObjectBounds::of(meshes) else {
+      return Err(XrfError::new_invalid_error("A skeleton object holds no mesh to export"));
+    };
+
+    if bones.is_empty() || bones.len() > Self::MAX_BONES {
+      return Err(XrfError::new_invalid_error(format!(
+        "A skeleton object exports with 1 to {} bones, not {}",
+        Self::MAX_BONES,
+        bones.len()
+      )));
+    }
+
+    // `GetBoneIndexByWMap` takes the first bone a weight map names.
+    let mut bone_of_map: HashMap<&str, u16> = HashMap::with_capacity(bones.len());
+
+    for (bone, index) in bones.iter().zip(0..) {
+      bone_of_map.entry(bone.definition.weight_map.as_str()).or_insert(index);
+    }
+    let parts: Vec<u16> = BreakableParts::of(bones);
+    let mut builder: Self = Self {
+      splits: Vec::new(),
+      bounds,
+      is_breakable: parts.iter().any(|part| *part != 0),
+      parts,
+    };
+
+    for mesh in meshes {
+      let corners: Vec<[SkinCorner; 3]> = SkinCorner::of_mesh(mesh, &bone_of_map)?;
+
+      for walked in MeshSurfaceFaces::in_export_order(mesh, surfaces)? {
+        for face in walked.faces {
+          builder.add_face(walked.surface, &corners[*face as usize])?;
+        }
+      }
+    }
+
+    builder.finish(options.tangents)
+  }
+
+  /// A builder of splits from faces handed in one by one ([`Self::add_face`]), their vertices packed within `bounds`,
+  /// all of one breakable part: what a part the Level Editor cuts out of a level to break (`SBPart::Export`) builds its
+  /// children with, the `CExportSkeletonCustom` it derives from.
+  pub(crate) fn of_faces(bounds: Aabb) -> Self {
+    Self {
+      splits: Vec::new(),
+      bounds,
+      parts: Vec::new(),
+      is_breakable: false,
+    }
+  }
+
+  /// Adds a face of `surface` to the split of its shader, texture and breakable part, and again mirrored where the
+  /// surface is two-sided.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a corner following no bone or a face spanning two breakable parts.
+  pub(crate) fn add_face(&mut self, surface: &EditableSurface, corners: &[SkinCorner; 3]) -> XrfResult {
+    let link_count: usize = corners.iter().map(|corner| corner.weights.len()).max().unwrap_or(0);
+
+    if corners.iter().any(|corner| corner.weights.is_empty()) {
+      return Err(XrfError::new_invalid_error(format!(
+        "A face of surface '{}' has a corner following no bone",
+        surface.name
+      )));
+    }
+
+    let mut vertices: [MeshVertex; 3] = corners.clone().map(|corner| corner.into_vertex(link_count == 1));
+    let part: u16 = self.get_part(&vertices)?;
+    let split: usize = self.find_split(surface, part);
+    let PendingSplit { split, packer } = &mut self.splits[split];
+
+    split.link_count = split.link_count.max(u8::try_from(link_count).unwrap_or(u8::MAX));
+    split.used_bones.extend(
+      vertices
+        .iter()
+        .flat_map(|vertex| vertex.bones.iter().map(|bone| bone.bone)),
+    );
+    packer.add_face(&mut vertices)?;
+
+    if surface.is_two_sided() {
+      for vertex in &mut vertices {
+        vertex.normal = -&vertex.normal;
+      }
+
+      let [first, second, third] = vertices;
+
+      packer.add_face(&mut [first, third, second])?;
+    }
+
+    Ok(())
+  }
+
+  /// The breakable part a face's bones belong to, all of them one part or the export refuses the object.
+  fn get_part(&self, vertices: &[MeshVertex; 3]) -> XrfResult<u16> {
+    if !self.is_breakable {
+      return Ok(0);
+    }
+
+    let mut bones: Vec<u16> = vertices
+      .iter()
+      .flat_map(|vertex| vertex.bones.iter().map(|bone| bone.bone))
+      .collect();
+
+    bones.sort_unstable();
+    bones.dedup();
+
+    let part: u16 = self.parts[usize::from(bones[0])];
+
+    if bones.iter().any(|bone| self.parts[usize::from(*bone)] != part) {
+      return Err(XrfError::new_invalid_error(
+        "A face spans two breakable parts, which the export cannot split",
+      ));
+    }
+
+    Ok(part)
+  }
+
+  /// The split of `surface`'s shader and texture and `part`, made when first needed (`FindSplit`).
+  fn find_split(&mut self, surface: &EditableSurface, part: u16) -> usize {
+    let found: Option<usize> = self.splits.iter().position(|PendingSplit { split, .. }| {
+      split.shader == surface.shader && split.texture == surface.texture && split.part == part
+    });
+
+    found.unwrap_or_else(|| {
+      self.splits.push(PendingSplit {
+        split: SkeletonSplit {
+          shader: surface.shader.clone(),
+          texture: surface.texture.clone(),
+          part,
+          link_count: 0,
+          used_bones: Vec::new(),
+          vertices: Vec::new(),
+          faces: Vec::new(),
+        },
+        packer: VertexPacker::new(&self.bounds, &VertexPacking::SKELETON),
+      });
+
+      self.splits.len() - 1
+    })
+  }
+
+  /// The splits that kept a face, each through the tangent pass `tangents` names (see [`TangentBasis`] and
+  /// [`MikkTSpaceBasis`]), cut where it outgrows one child (see [`SplitPartition`]), each child ordered for the vertex
+  /// cache (see [`VertexCacheOrder`]) and with its bones listed once.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where the tangent pass cannot read a split's faces.
+  pub(crate) fn finish(self, tangents: TangentMethod) -> XrfResult<SkeletonGeometry> {
+    let mut dropped_faces: usize = 0;
+    let mut splits: Vec<SkeletonSplit> = Vec::with_capacity(self.splits.len());
+
+    for PendingSplit { mut split, packer } in self.splits {
+      dropped_faces += packer.get_dropped_faces();
+
+      if packer.get_faces().is_empty() {
+        continue;
+      }
+
+      let mended: Mesh<u32> = match tangents {
+        TangentMethod::ActorEditor => TangentBasis::mend(packer.into_mesh())?,
+        TangentMethod::MikkTSpace => MikkTSpaceBasis::generate(packer.into_mesh())?,
+      };
+      let children: Vec<Mesh<u16>> = SplitPartition::cut(mended);
+      let is_cut: bool = children.len() > 1;
+
+      split.used_bones.sort_unstable();
+      split.used_bones.dedup();
+
+      for child in children {
+        let Mesh { vertices, faces } = VertexCacheOrder::apply(child);
+        // A whole split keeps the bones its faces named, the dropped ones' included, as the export lists them; a cut
+        // one's children each list the bones their own vertices follow.
+        let used_bones: Vec<u16> = if is_cut {
+          let mut bones: Vec<u16> = vertices
+            .iter()
+            .flat_map(|vertex| vertex.bones.iter().map(|bone| bone.bone))
+            .collect();
+
+          bones.sort_unstable();
+          bones.dedup();
+          bones
+        } else {
+          split.used_bones.clone()
+        };
+
+        splits.push(SkeletonSplit {
+          used_bones,
+          vertices,
+          faces,
+          ..split.clone()
+        });
+      }
+    }
+
+    Ok(SkeletonGeometry { splits, dropped_faces })
+  }
+}

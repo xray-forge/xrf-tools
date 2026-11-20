@@ -4,7 +4,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::{assert_equal, decode_bytes_from_base64, encode_bytes_to_base64};
 
 use crate::data::editor::particle_editor_action::ParticleEditorAction;
@@ -13,7 +13,7 @@ use crate::data::editor::particle_editor_action::ParticleEditorAction;
 ///
 /// The engine never reads this chunk, so a library whose editor data does not decode still plays; the bytes are kept
 /// whole and decoded on request through [`Self::read_actions`]. Every shipped library's decodes.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleEffectEditorData {
   pub value: Vec<u8>,
@@ -70,8 +70,8 @@ impl ChunkReadWrite for ParticleEffectEditorData {
 
 impl LtxImportExport for ParticleEffectEditorData {
   /// Import particle effect description data from provided path.
-  fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
-    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Particle effect editor data section '{}' should be defined in ltx file ({})",
         section_name,
@@ -93,7 +93,7 @@ impl LtxImportExport for ParticleEffectEditorData {
   }
 
   /// Export particle effect editor data into provided path.
-  fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
+  fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
     ltx
       .with_section(section_name)
       .set(META_TYPE_FIELD, Self::META_TYPE)

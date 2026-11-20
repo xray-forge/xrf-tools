@@ -1,4 +1,4 @@
-use xrf_utils::to_format_size;
+use xrf_utils::narrow_format_size;
 
 use crate::vorbis::vorbis_packet_reader::VorbisPacketReader;
 
@@ -21,7 +21,7 @@ impl VorbisComment {
       return Err(String::from("Ogg stream does not contain a Vorbis comment packet"));
     }
 
-    let mut reader: VorbisPacketReader = VorbisPacketReader::new(&packet[Self::MAGIC.len()..]);
+    let mut reader: VorbisPacketReader<'_> = VorbisPacketReader::new(&packet[Self::MAGIC.len()..]);
     let vendor_length: usize = reader.read_length("vendor length")?;
     let vendor: Vec<u8> = reader.read_bytes(vendor_length, "vendor string")?.to_vec();
     let comments_count: u32 = reader.read_u32("comments count")?;
@@ -81,7 +81,7 @@ impl VorbisComment {
   }
 
   fn write_length(packet: &mut Vec<u8>, length: usize, what: &str) -> Result<(), String> {
-    let length: u32 = to_format_size(length, what).map_err(|error| error.to_string())?;
+    let length: u32 = narrow_format_size(length, what).map_err(|error| error.to_string())?;
 
     packet.extend_from_slice(&length.to_le_bytes());
 

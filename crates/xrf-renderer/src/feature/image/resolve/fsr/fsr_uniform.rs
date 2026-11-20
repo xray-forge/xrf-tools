@@ -8,7 +8,7 @@ use crate::feature::image::resolve::fsr::fsr_dispatch::FsrDispatch;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Fsr")]
-pub struct FsrUniform {
+pub(crate) struct FsrUniform {
   pub render_size: Vec2,
   pub display_size: Vec2,
   /// In FSR's sense, the renderer's jitter turned: a drawn texel `m` stands at `m + 0.5 - jitter`.
@@ -33,10 +33,10 @@ pub struct FsrUniform {
 
 impl FsrUniform {
   /// AMD's default `fVelocityFactor`: the history's weight falls to its least at half a 4K pixel of motion.
-  pub const VELOCITY_FACTOR: f32 = 1.0;
+  pub(crate) const VELOCITY_FACTOR: f32 = 1.0;
 
   /// The constants for a `dispatch`, its jitter `y` down, seen through `view`'s lens.
-  pub fn new(dispatch: FsrDispatch, view: &CameraView) -> Self {
+  pub(crate) fn new(dispatch: FsrDispatch, view: &CameraView) -> Self {
     let (near, far): (f32, f32) = view.get_depth_range();
     let shading: (u32, u32) = Self::get_shading_size(dispatch.render);
     let render: Vec2 = Vec2::new(dispatch.render.0 as f32, dispatch.render.1 as f32);
@@ -66,7 +66,7 @@ impl FsrUniform {
   }
 
   /// The same over colour written at a pre-exposure `delta` times the last frame's.
-  pub fn with_delta_pre_exposure(self, delta: f32) -> Self {
+  pub(crate) fn with_delta_pre_exposure(self, delta: f32) -> Self {
     Self {
       delta_pre_exposure: delta,
       ..self
@@ -74,7 +74,7 @@ impl FsrUniform {
   }
 
   /// The shading change's size for a drawing: half of it, truncated, never none.
-  pub fn get_shading_size((width, height): (u32, u32)) -> (u32, u32) {
+  pub(crate) fn get_shading_size((width, height): (u32, u32)) -> (u32, u32) {
     ((width / 2).max(1), (height / 2).max(1))
   }
 }

@@ -4,7 +4,7 @@ use crate::host::weather::render_weather_model::RenderWeatherModel;
 
 /// A model the weather draws, on the GPU: rain's splash, which every landing drop draws a copy of, or a thunderbolt.
 /// Its vertices in renderer space, a position then a coordinate each, and its indices.
-pub struct WeatherModelBuffers {
+pub(crate) struct WeatherModelBuffers {
   pub vertices: wgpu::Buffer,
   pub indices: wgpu::Buffer,
   pub index_count: u32,
@@ -12,7 +12,7 @@ pub struct WeatherModelBuffers {
 
 impl WeatherModelBuffers {
   /// The model as the weather draws it; an empty one for none, which draws nothing.
-  pub fn new(device: &wgpu::Device, model: Option<&RenderWeatherModel>) -> Self {
+  pub(crate) fn new(device: &wgpu::Device, model: Option<&RenderWeatherModel>) -> Self {
     // A model naming a vertex it does not hold draws nothing.
     let model: Option<&RenderWeatherModel> = model.filter(|model| {
       let count: usize = (model.positions.len() / 3).min(model.uvs.len() / 2);
@@ -32,7 +32,7 @@ impl WeatherModelBuffers {
           ]
         })
         .collect();
-      let indices = model.indices.iter().map(|index| *index as u32).collect();
+      let indices = model.indices.iter().map(|index| u32::from(*index)).collect();
 
       (vertices, indices)
     });
@@ -50,9 +50,5 @@ impl WeatherModelBuffers {
       indices: buffer("weather model indices", bytemuck::cast_slice(&indices)),
       index_count,
     }
-  }
-
-  pub fn get_memory(&self) -> u64 {
-    self.vertices.size() + self.indices.size()
   }
 }

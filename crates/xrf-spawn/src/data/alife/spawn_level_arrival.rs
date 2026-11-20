@@ -21,9 +21,9 @@ impl SpawnLevelArrival {
       .unwrap_or(&changer.dest_level_name)
       .eq_ignore_ascii_case(level)
       .then(|| Self {
-        angles: changer.dest_direction.clone(),
+        angles: changer.dest_direction,
         changer: name.to_owned(),
-        position: changer.dest_position.clone(),
+        position: changer.dest_position,
       })
   }
 }
