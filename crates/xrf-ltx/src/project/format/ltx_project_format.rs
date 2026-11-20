@@ -6,7 +6,7 @@ use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes, form
 use xrf_vfs::{XrayTransaction, require_writable_path};
 
 use crate::ltx::Ltx;
-use crate::project::{LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult};
+use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 impl LtxProject {
   /// Formats every project LTX file with explicit options, rewriting the ones not formatted yet in one commit of the
@@ -44,8 +44,6 @@ impl LtxProject {
     let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
     let mut rewrites: Vec<(PathBuf, Vec<u8>)> = Vec::new();
 
-    xrf_output::heading!(options.output, "Formatting {} file(s)", files.len());
-
     result.startup_duration = options.job.elapsed();
 
     let formatting: JobScope = options
@@ -68,8 +66,6 @@ impl LtxProject {
       if existing == formatted {
         result.valid_files += 1;
       } else {
-        xrf_output::info!(options.output, "Formatted: {}", format_path(&file));
-
         result.invalid_files += 1;
         result.to_format.push(file.clone());
         // The read decodes Windows-1251, so the rewrite goes back in that encoding.
@@ -88,14 +84,6 @@ impl LtxProject {
 
     result.duration = options.job.elapsed();
 
-    xrf_output::info!(
-      options.output,
-      "Formatted {}/{} files in {}",
-      result.invalid_files,
-      result.total_files,
-      xrf_utils::format_duration(result.duration)
-    );
-
     Ok(result)
   }
 
@@ -110,8 +98,6 @@ impl LtxProject {
   /// Returns an error when a config cannot be read or parsed.
   pub fn check_format_all_files_opt(&self, options: LtxFormatOptions) -> XrfResult<LtxProjectFormatResult> {
     let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
-
-    xrf_output::heading!(options.output, "Checking {} file(s)", self.ltx_files.len());
 
     // Its own loop rather than `LtxFilesFormatter::check_format_opt`, because it reads through the project's virtual
     // filesystem where that one reads host files. The two therefore have to be instrumented separately.
@@ -136,13 +122,11 @@ impl LtxProject {
       let formatted: bool =
         decode_w1251_bytes_to_string(&contents)? == self.read_document(logical_path)?.to_formatted();
 
-      result.record_checked(self.path_of(logical_path), formatted, &options);
+      result.record_checked(self.path_of(logical_path), formatted);
       checking.advance();
     }
 
     result.duration = options.job.elapsed();
-
-    LtxFilesFormatter::report_check(&result, &options);
 
     Ok(result)
   }

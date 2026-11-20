@@ -20,8 +20,6 @@ impl LtxFilesFormatter {
   pub fn format_opt(files: &[PathBuf], options: LtxFormatOptions) -> XrfResult<LtxProjectFormatResult> {
     let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
 
-    xrf_output::heading!(options.output, "Formatting {} file(s)", files.len());
-
     result.startup_duration = options.job.elapsed();
 
     let formatting: JobScope = options
@@ -43,8 +41,6 @@ impl LtxFilesFormatter {
       if Ltx::format_file(file, true)? {
         result.invalid_files += 1;
         result.to_format.push(file.clone());
-
-        xrf_output::info!(options.output, "Formatted: {}", format_path(file));
       } else {
         result.valid_files += 1;
       }
@@ -57,14 +53,6 @@ impl LtxFilesFormatter {
 
     result.duration = options.job.elapsed();
 
-    xrf_output::info!(
-      options.output,
-      "Formatted {}/{} files in {}",
-      result.invalid_files,
-      result.total_files,
-      xrf_utils::format_duration(result.duration)
-    );
-
     Ok(result)
   }
 
@@ -75,8 +63,6 @@ impl LtxFilesFormatter {
   /// Returns an error when a file cannot be read or parsed.
   pub fn check_format_opt(files: &[PathBuf], options: LtxFormatOptions) -> XrfResult<LtxProjectFormatResult> {
     let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
-
-    xrf_output::heading!(options.output, "Checking {} file(s)", files.len());
 
     result.startup_duration = options.job.elapsed();
 
@@ -92,13 +78,11 @@ impl LtxFilesFormatter {
         break;
       }
 
-      result.record_checked(file.clone(), Ltx::is_formatted(&fs::read(file)?)?, &options);
+      result.record_checked(file.clone(), Ltx::is_formatted(&fs::read(file)?)?);
       checking.advance();
     }
 
     result.duration = options.job.elapsed();
-
-    Self::report_check(&result, &options);
 
     Ok(result)
   }
@@ -111,33 +95,6 @@ impl LtxFilesFormatter {
   /// Check format of provided LTX files with default options.
   pub fn check_format(files: &[PathBuf]) -> XrfResult<LtxProjectFormatResult> {
     Self::check_format_opt(files, LtxFormatOptions::default())
-  }
-}
-
-impl LtxFilesFormatter {
-  /// Report resulting statistics of a check run.
-  ///
-  /// Shared with [`crate::LtxProject::check_format_all_files_opt`], which reads its configs through a VFS rather than from
-  /// files but reports the same way.
-  pub(crate) fn report_check(result: &LtxProjectFormatResult, options: &LtxFormatOptions) {
-    let duration: String = xrf_utils::format_duration(result.duration);
-
-    if result.invalid_files == 0 {
-      xrf_output::success!(
-        options.output,
-        "All {} files are formatted, checked in {}",
-        result.total_files,
-        duration
-      );
-    } else {
-      xrf_output::warning!(
-        options.output,
-        "Format issues with {}/{} files in {}",
-        result.invalid_files,
-        result.total_files,
-        duration
-      );
-    }
   }
 }
 

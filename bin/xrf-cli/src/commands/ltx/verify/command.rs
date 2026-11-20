@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{ArgMatches, Command};
 use xrf_job::JobHandle;
-use xrf_ltx::{LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
+use xrf_ltx::{LtxProject, LtxProjectVerifyResult, LtxRunPrinter, LtxVerifyOptions};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
@@ -47,10 +47,8 @@ impl GenericCommand for VerifyCommand {
     // would leave archived includes unresolved and report their sections as missing, so the scope a person picks is the
     // path they name rather than a flag.
     let project: LtxProject = LtxProjectOpening::open(path, matches, &output)?;
-    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions {
-      output: output.clone(),
-      job,
-    })?;
+    let result: LtxProjectVerifyResult =
+      LtxRunPrinter::verify(&project, LtxVerifyOptions::default().with_job(job), &output)?;
     let report: LtxVerifyReport = LtxVerifyReport::new(&project, &result);
 
     ReportVerdict::print_findings(&output, report.report());

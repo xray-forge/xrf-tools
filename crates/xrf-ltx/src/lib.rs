@@ -25,7 +25,7 @@ pub use crate::finding::{LtxFinding, LtxFindingKind};
 pub use crate::ltx::{Ltx, Section};
 pub use crate::project::{
   LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions,
-  LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxVerifyOptions,
+  LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxRunPrinter, LtxVerifyOptions,
 };
 pub use crate::scheme::{
   LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionFieldSchemes, LtxSectionScheme, LtxSectionSchemes,

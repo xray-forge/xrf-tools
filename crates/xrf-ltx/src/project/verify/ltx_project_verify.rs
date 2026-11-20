@@ -5,7 +5,6 @@ use indexmap::IndexSet;
 use rustc_hash::FxBuildHasher;
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
-use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
@@ -21,9 +20,17 @@ impl LtxProject {
   /// - All included files exist or `.ts` counterpart is declared
   /// - All the inherited sections are valid and declared before inherit attempt
   pub fn verify_entries_opt(&self, options: LtxVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
-    let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
+    self.verify_entries_traced(options, |_, _, _| {})
+  }
 
-    xrf_output::heading!(options.output, "Verify path: {}", format_path(&self.root));
+  /// The same sweep, calling `on_field_checked` with the entry point, section and field of each field it checks
+  /// against a scheme, for a caller tracing the run. It runs inside the per-field loop, so it must stay cheap.
+  pub fn verify_entries_traced(
+    &self,
+    options: LtxVerifyOptions,
+    mut on_field_checked: impl FnMut(&XrayLogicalPath, &str, &str),
+  ) -> XrfResult<LtxProjectVerifyResult> {
+    let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
 
     // Captured where the per-file work begins, so what came before it - mounting, indexing, assembling this project -
     // is named rather than lost.
@@ -65,48 +72,12 @@ impl LtxProject {
         }
       };
 
-      result.absorb(self.verify_resolved_opt(entry, &resolved, Some(&options.output)));
+      result.absorb(self.verify_resolved_traced(entry, &resolved, &mut on_field_checked));
     }
 
     result.duration = options.job.elapsed();
 
-    for finding in &result.findings {
-      xrf_output::error!(options.output, "{}", self.with_reported_paths(finding));
-    }
-
-    xrf_output::info!(
-      options.output,
-      "Checked {} files, {} sections in {}",
-      self.ltx_files.len(),
-      result.total_sections,
-      xrf_utils::format_duration(result.duration)
-    );
-
-    if result.total_sections == 0 {
-      xrf_output::info!(options.output, "No LTX sections were verified");
-    } else {
-      xrf_output::info!(
-        options.output,
-        "Verified {:.2}%, {} files, {} sections, {} fields",
-        (result.checked_sections as f64 * 100.0) / result.total_sections as f64,
-        result.total_files,
-        result.checked_sections,
-        result.checked_fields
-      );
-    }
-
-    xrf_output::info!(options.output, "Found {} finding(s)", result.findings.len());
-
     Ok(result)
-  }
-
-  /// Verifies one entry point that the caller has already resolved.
-  ///
-  /// The door for a surface inspecting a single config: it holds a resolution for its own reasons and must not pay for
-  /// a second one, and it wants the findings of that root alone rather than of the tree around it. The sweep above is
-  /// this same check in a loop, so the two can never disagree about a file.
-  pub fn verify_resolved(&self, entry: &XrayLogicalPath, resolution: &LtxResolution) -> LtxEntryVerification {
-    self.verify_resolved_opt(entry, resolution, None)
   }
 
   /// The same finding with its entry point and file named by the path a person can act on: the file on disk when it
@@ -119,17 +90,25 @@ impl LtxProject {
     }
   }
 
-  /// The section-and-field check itself over one resolved config, and what its dialect said while resolving it.
-  fn verify_resolved_opt(
+  /// Verifies one entry point that the caller has already resolved: its sections against their schemes, and what its
+  /// dialect said while resolving it.
+  ///
+  /// The door for a surface inspecting a single config: it holds a resolution for its own reasons and must not pay for
+  /// a second one, and it wants the findings of that root alone rather than of the tree around it. The sweep above is
+  /// this same check in a loop, so the two can never disagree about a file.
+  pub fn verify_resolved(&self, entry: &XrayLogicalPath, resolution: &LtxResolution) -> LtxEntryVerification {
+    self.verify_resolved_traced(entry, resolution, &mut |_, _, _| {})
+  }
+
+  /// The same check, calling `on_field_checked` for each field it judges against a scheme.
+  fn verify_resolved_traced(
     &self,
     entry: &XrayLogicalPath,
     resolution: &LtxResolution,
-    output: Option<&OutputOptions>,
+    on_field_checked: &mut dyn FnMut(&XrayLogicalPath, &str, &str),
   ) -> LtxEntryVerification {
     let ltx: &Ltx = &resolution.ltx;
     let mut found: LtxEntryVerification = LtxEntryVerification::default();
-    // Rendered once per entry point and only when someone reads it: rendering asks the VFS where the file sits.
-    let reported: Option<String> = output.map(|_| self.report_path(entry.as_str()));
 
     for (section_name, section) in ltx {
       found.total_sections += 1;
@@ -162,9 +141,7 @@ impl LtxProject {
             .get(field_name)
             .or_else(|| scheme_definition.fields.get(LTX_SYMBOL_ANY))
           {
-            if let (Some(output), Some(reported)) = (output, &reported) {
-              xrf_output::verbose!(output, "Checking {} [{}] {}", reported, section_name, field_name);
-            }
+            on_field_checked(entry, section_name, field_name);
 
             found.checked_fields += 1;
 

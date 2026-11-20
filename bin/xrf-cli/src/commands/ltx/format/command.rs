@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_job::JobHandle;
-use xrf_ltx::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult};
+use xrf_ltx::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult, LtxRunPrinter};
 use xrf_output::OutputOptions;
 
 use crate::commands::ltx::format::ltx_format_selection::LtxFormatSelection;
@@ -52,12 +52,16 @@ impl GenericCommand for FormatCommand {
 
     Self::report_selection(&output, &selection, is_check, paths.len());
 
-    let options: LtxFormatOptions = LtxFormatOptions { output, job };
+    LtxRunPrinter::print_format_start(selection.files.len(), is_check, &output);
+
+    let options: LtxFormatOptions = LtxFormatOptions::default().with_job(job);
     let result: LtxProjectFormatResult = if is_check {
       LtxFilesFormatter::check_format_opt(&selection.files, options)?
     } else {
       LtxFilesFormatter::format_opt(&selection.files, options)?
     };
+
+    LtxRunPrinter::print_format_result(&result, is_check, &output);
 
     // Deposited in both modes, before a check's verdict becomes an outcome.
     context.set_result(|| LtxFormatReport::new(&result, &selection.declined))?;

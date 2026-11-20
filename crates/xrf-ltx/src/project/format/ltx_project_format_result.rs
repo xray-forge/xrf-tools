@@ -3,9 +3,6 @@ use std::time::Duration;
 
 use serde::Serialize;
 use xrf_job::JobOutcome;
-use xrf_utils::format_path;
-
-use crate::project::LtxFormatOptions;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Default, Serialize)]
@@ -47,15 +44,13 @@ impl LtxProjectFormatResult {
     }
   }
 
-  /// Records the verdict for one checked config and reports it.
+  /// Records the verdict for one checked config.
   ///
   /// Shared by the file-based formatter and the project check, which differ only in how they obtain the contents.
-  pub(crate) fn record_checked(&mut self, path: PathBuf, is_formatted: bool, options: &LtxFormatOptions) {
+  pub(crate) fn record_checked(&mut self, path: PathBuf, is_formatted: bool) {
     if is_formatted {
       self.valid_files += 1;
     } else {
-      xrf_output::info!(options.output, "Not formatted: {}", format_path(&path));
-
       self.invalid_files += 1;
       self.to_format.push(path);
     }

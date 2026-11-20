@@ -13,7 +13,7 @@ use xrf_vfs::{
 };
 
 use crate::finding::LtxFindingKind;
-use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
+use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions, LtxVerifyOptions};
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
   Ok(GeneratedResources::create_dir(&format!("project/{name}"))?)
@@ -232,6 +232,44 @@ value = 1
   assert_eq!(result.findings.len(), 1);
   assert_eq!(result.findings[0].kind, LtxFindingKind::Unreadable);
   assert_eq!(result.findings[0].entry, "broken.ltx", "{:?}", result.findings);
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn a_traced_verification_names_each_field_it_checks_and_counts_the_same() -> XrfResult {
+  let root: PathBuf = create_root("traced")?;
+
+  fs::write(root.join("ammo.scheme.ltx"), "[$ammo]\ncost = u32\nbox_size = u8\n")?;
+  fs::write(
+    root.join("ammo.ltx"),
+    "[ammo_9x18]\n$scheme = $ammo\ncost = 10\nbox_size = 300\n",
+  )?;
+
+  let project: LtxProject = LtxProject::open_at_path_opt(
+    &root,
+    LtxProjectOptions {
+      is_with_schemes_check: true,
+      ..Default::default()
+    },
+  )?;
+  let mut traced: Vec<(String, String, String)> = Vec::new();
+  let result = project.verify_entries_traced(LtxVerifyOptions::default(), |entry, section, field| {
+    traced.push((entry.to_string(), section.to_string(), field.to_string()));
+  })?;
+
+  assert_eq!(traced.len(), result.checked_fields);
+  assert!(
+    traced.contains(&(
+      String::from("ammo.ltx"),
+      String::from("ammo_9x18"),
+      String::from("box_size")
+    )),
+    "{traced:?}"
+  );
+  assert_eq!(result.findings.len(), 1, "box_size = 300 does not fit a u8");
 
   fs::remove_dir_all(root)?;
 
