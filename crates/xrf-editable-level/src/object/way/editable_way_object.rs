@@ -51,15 +51,27 @@ impl EditableWayObject {
     Some((number(point)?, number(link)?))
   }
 
-  /// Whether every link leads to another point of the way: `CWayPoint::CreateLink` drops a link to its own point, and a
-  /// link past the points names none.
+  /// Whether every link leads to another point of the way: `CWayPoint::CreateLink` drops a link to its own point, a link
+  /// past the points names none, and a link from or to a point past 9999 has a key `%4d` cannot read back.
   ///
   /// # Errors
   ///
   /// Returns an invalid error naming the way, the point and the link.
   pub fn check_links(&self) -> XrfResult {
+    // The first point number a link key's four digits cannot spell.
+    const UNKEYED: usize = 10_000;
+
     for (index, point) in self.points.iter().enumerate() {
       for link in &point.links {
+        if index.max(link.to) >= UNKEYED {
+          return Err(XrfError::new_invalid_error(format!(
+            "Way '{}' point {index} links to point {}, past the {UNKEYED} points a link key's {} digits number",
+            self.object.name,
+            link.to,
+            Self::LINK_KEY_DIGITS
+          )));
+        }
+
         if link.to == index {
           return Err(XrfError::new_invalid_error(format!(
             "Way '{}' point {index} links to itself, a link the editor drops",

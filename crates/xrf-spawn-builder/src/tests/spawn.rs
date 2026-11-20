@@ -2,7 +2,7 @@ use uuid::Uuid;
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
-use xrf_math::{Aabb, Vector3d};
+use xrf_math::{Aabb, AiNodePosition, Vector3d};
 use xrf_spawn::{
   AlifeGraphPoint, GraphCrossTableCell, LevelSpawnFile, LevelSpawnObject, SpawnPacket, SpawnPacketHeader,
   SpawnSectionClasses,
@@ -150,13 +150,20 @@ fn finds_the_node_nearest_at_or_under_a_position_in_its_cell() -> XrfResult {
 // The engine's `vertex_plane_y` takes its height from `vertex_position`, so both lookups must agree.
 #[test]
 fn takes_a_node_plane_through_its_own_position() -> XrfResult {
-  let map: SpawnAiMap = map()?;
+  // 257 is the first packed height whose division and reciprocal multiply land an ulp apart, at an extent of 10.
+  let nodes: [LevelAiNode; 1] = [node(0, 257, NONE, NONE)];
+  let map: SpawnAiMap = SpawnAiMap::new(
+    LevelAiHeader {
+      count: 1,
+      ..map()?.get_header().clone()
+    },
+    &LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &nodes)?,
+  )?;
+  let position: Vector3d = map.get_node_position(0);
 
-  for node in 0..map.get_node_count() as u32 {
-    let position: Vector3d = map.get_node_position(node);
-
-    assert_eq!(map.get_plane_y(node, position.x, position.z), position.y, "node {node}");
-  }
+  assert_eq!(position.y, AiNodePosition::unpack_height_as_built(257, 0.0, 10.0));
+  assert_ne!(position.y, AiNodePosition::unpack_height(257, 0.0, 10.0));
+  assert_eq!(map.get_plane_y(0, position.x, position.z), position.y);
 
   Ok(())
 }

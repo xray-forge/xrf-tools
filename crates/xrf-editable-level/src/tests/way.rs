@@ -5,7 +5,7 @@ use xrf_math::Vector3d;
 use crate::tests::fixtures::{GUID, way_part_text};
 use crate::{
   EditableLevelPart, EditableLevelValue, EditableObjectPart, EditableSceneTool, EditableSpawnPointObject,
-  EditableTextPart, EditableWayLink, EditableWayObject,
+  EditableTextPart, EditableWayLink, EditableWayObject, EditableWayPoint,
 };
 
 fn read_ways(text: &str) -> XrfResult<EditableObjectPart<EditableWayObject>> {
@@ -101,8 +101,9 @@ fn refuses_a_way_the_editor_does_not_load() -> XrfResult {
     (("link_wp_   2_   0", "3.000000, 1.000000"), "a link to a missing point"),
     (("link_wp_   0_   0", "1.000000"), "a link of one float"),
     (("link_wp_   2_   0", "2.000000, 1.000000"), "a link to its own point"),
+    // Point 2 exists and the link to point 0 is valid: only the five digits refuse it.
     (
-      ("link_wp_10000_   0", "1.000000, 1.000000"),
+      ("link_wp_00002_   0", "0.000000, 1.000000"),
       "a point number past four digits",
     ),
     (("link_wp_   2_   x", "1.000000, 1.000000"), "no link number"),
@@ -135,6 +136,25 @@ fn checks_that_every_link_leads_to_another_point_of_the_way() -> XrfResult {
     probability: 1.0,
   });
   way.check_links()?;
+
+  // Point 10000's key would take five digits, which the editor's `%4d` reads short.
+  let mut long: EditableWayObject = way.clone();
+  let last: EditableWayPoint = long.points[0].clone();
+
+  long.points.resize(10_001, last);
+  long.points[10_000].links = vec![EditableWayLink {
+    to: 1,
+    probability: 1.0,
+  }];
+
+  assert!(long.check_links().is_err(), "a link from point 10000 is refused");
+
+  long.points[10_000].links.clear();
+  long.points[9_999].links = vec![EditableWayLink {
+    to: 1,
+    probability: 1.0,
+  }];
+  long.check_links()?;
 
   Ok(())
 }
