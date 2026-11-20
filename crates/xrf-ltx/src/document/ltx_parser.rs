@@ -363,10 +363,9 @@ impl LtxParser<'_> {
     if remainder.is_empty() {
       Ok((section, None, None))
     } else if let Some(remainder) = remainder.strip_prefix(LTX_SYMBOL_INHERIT) {
-      let (inherited, comment) = match remainder.find(LTX_SYMBOL_COMMENT) {
-        Some(position) => (&remainder[0..position], Some(&remainder[position + 1..])),
-        None => (remainder, None),
-      };
+      // Cut as a field's value is, at `;` or `//`, so a comment never reads as a parent's name.
+      let inherited: &str = Self::strip_engine_comment(remainder);
+      let comment: Option<&str> = Self::strip_comment_marker(&remainder[inherited.len()..]);
 
       let inherited: Vec<&str> = inherited
         .split(',')
@@ -377,19 +376,24 @@ impl LtxParser<'_> {
       Ok((
         section,
         if inherited.is_empty() { None } else { Some(inherited) },
-        comment.map(str::trim),
+        comment.filter(|it| !it.is_empty()),
       ))
     } else {
       // Anything else after the brackets is no part of the header, and the engine reads past it: shipped configs write
       // column captions there (`[m_dog_step_params]   fwdleftleg ...`). Kept whole as the header's comment, so a
       // reformat writes it back behind a `;` rather than dropping any of it.
-      let comment: &str = remainder
-        .strip_prefix(LTX_SYMBOL_COMMENT)
-        .unwrap_or(remainder)
-        .trim_start();
+      let comment: &str = Self::strip_comment_marker(remainder).unwrap_or(remainder);
 
       Ok((section, None, (!comment.is_empty()).then_some(comment)))
     }
+  }
+
+  /// The text of a comment `rest` opens with `;` or `//`, trimmed; none where it opens with neither.
+  fn strip_comment_marker(rest: &str) -> Option<&str> {
+    rest
+      .strip_prefix(LTX_SYMBOL_COMMENT)
+      .or_else(|| rest.strip_prefix("//"))
+      .map(str::trim)
   }
 
   /// Parse the file an include statement names, and its comment.
@@ -437,10 +441,7 @@ impl LtxParser<'_> {
     }
 
     let kept: &str = Self::strip_engine_comment(line);
-    let comment: Option<&str> = line[kept.len()..]
-      .strip_prefix(LTX_SYMBOL_COMMENT)
-      .or_else(|| line[kept.len()..].strip_prefix("//"))
-      .map(str::trim);
+    let comment: Option<&str> = Self::strip_comment_marker(&line[kept.len()..]);
     let data: &str = kept.trim();
 
     let (key, value) = match data.split_once('=') {
@@ -580,6 +581,19 @@ mod test {
         .parse_section_from_line("[section] : a,  b    ;   commented phrase ")
         .unwrap(),
       ("section", Some(vec!("a", "b")), Some("commented phrase"))
+    );
+  }
+
+  // The engine cuts a header at `//` as it cuts a value, so the comment names no parent.
+  #[test]
+  fn test_read_section_with_inherited_slash_comment() {
+    let parser: LtxParser<'_> = Default::default();
+
+    assert_eq!(
+      parser
+        .parse_section_from_line("[section] : a, b // the base sections")
+        .unwrap(),
+      ("section", Some(vec!("a", "b")), Some("the base sections"))
     );
   }
 

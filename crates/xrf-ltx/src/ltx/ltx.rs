@@ -169,9 +169,11 @@ impl Ltx {
     }
   }
 
-  /// Delete the first section with key, return the properties if it exists
+  /// Delete the section named `section` in any case, as [`Self::section`] finds it, returning it where it existed.
   pub fn delete(&mut self, section: &str) -> Option<Section> {
-    self.sections.shift_remove(section)
+    let stored: String = self.get_stored_name(section).into_owned();
+
+    self.sections.shift_remove(&stored)
   }
 
   /// Delete the key from the section, return the value if key exists or None

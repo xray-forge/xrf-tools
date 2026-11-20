@@ -486,6 +486,11 @@ fn section_names_fold_as_the_engine_folds_them() -> XrfResult {
   );
   assert!(Ltx::read_from_str("[Weapon]\n[weapon]\n").is_err());
 
+  let mut deleted: Ltx = ltx;
+
+  assert!(deleted.delete("WEAPON").is_some(), "deleted as it is found");
+  assert!(!deleted.has_section("weapon"));
+
   Ok(())
 }
 
