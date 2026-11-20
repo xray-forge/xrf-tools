@@ -29,9 +29,7 @@ impl<'a> SoundFilesVerifier<'a> {
     self.options.job.check_cancelled()?;
 
     let outcome: GamedataAssetSweepOutcome = GamedataAssetSweep::new(self.options)
-      .run(self.sound_paths, |options, path| {
-        self.verify_sound(options, path).into_iter().collect()
-      })?;
+      .run(self.sound_paths, |path| self.verify_sound(path).into_iter().collect())?;
 
     self.options.job.check_cancelled()?;
 
@@ -43,22 +41,18 @@ impl<'a> SoundFilesVerifier<'a> {
   }
 
   /// The finding decoding one sound raises, read through the VFS so an archived sound is decoded too.
-  fn verify_sound(&self, options: &GamedataProjectVerifyOptions, path: &str) -> Option<Finding> {
-    xrf_output::verbose!(options.output, "Verify sound: {path}");
-
+  fn verify_sound(&self, path: &str) -> Option<Finding> {
     let error = self
       .project
       .read_bytes(path)
       .and_then(|bytes| {
-        if options.is_strict {
+        if self.options.is_strict {
           SoundFile::read_strictly_from_bytes(&bytes)
         } else {
           SoundFile::read_from_bytes(&bytes)
         }
       })
       .err()?;
-
-    xrf_output::error!(options.output, "Sound is not valid: {path} - {error}");
 
     Some(GamedataFindingFactory::for_asset(
       GamedataVerificationRule::SoundsFiles,

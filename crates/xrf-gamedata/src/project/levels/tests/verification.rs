@@ -34,7 +34,7 @@ fn passes_on_a_consistent_level_tree() {
   assert_eq!(result.checked_levels_count, 1);
   assert_eq!(
     result.get_summary(),
-    "1/1 level bundles valid; 2/2 level shader references valid"
+    "1 graph levels, 1/1 level bundles valid; 2/2 level shader references valid"
   );
 }
 
@@ -410,7 +410,6 @@ fn fails_the_check_when_the_game_graph_cannot_be_read() {
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     root,
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .unwrap();

@@ -39,8 +39,6 @@ impl<'a> GamedataCheck<'a> for WeaponsVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataWeaponVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify weapons:");
-
     let started_at: Instant = Instant::now();
     let resolved: Arc<LtxResolution> = self.project.ltx_project.system_ltx()?;
     let system_ltx: &Ltx = &resolved.ltx;
@@ -54,15 +52,11 @@ impl<'a> GamedataCheck<'a> for WeaponsVerifier<'a> {
     // Sections are independent once `system.ltx` is assembled: each reads its own visuals, sounds and animations and
     // writes nothing back.
     let outcome: GamedataAssetSweepOutcome =
-      GamedataAssetSweep::new(self.options).run(&weapons, |options, (section_name, section)| {
-        xrf_output::verbose!(options.output, "Verify weapon ltx config [{section_name}]");
-
+      GamedataAssetSweep::new(self.options).run(&weapons, |(section_name, section)| {
         self
           .verify_weapon(system_ltx, section_name, section)
           .into_iter()
           .map(|message| {
-            xrf_output::error!(options.output, "{message}");
-
             GamedataFindingFactory::for_asset(GamedataVerificationRule::WeaponsValidation, &system_ltx_path, message)
           })
           .collect()
@@ -71,14 +65,6 @@ impl<'a> GamedataCheck<'a> for WeaponsVerifier<'a> {
     self.options.job.check_cancelled()?;
 
     let duration: Duration = started_at.elapsed();
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata weapons in {}, {}/{} valid",
-      xrf_utils::format_duration(duration),
-      outcome.checked_count - outcome.invalid_count,
-      outcome.checked_count
-    );
 
     Ok(GamedataWeaponVerificationResult {
       duration,

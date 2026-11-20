@@ -3,7 +3,6 @@ use std::sync::Arc;
 use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver};
-use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_thm::{ThmFile, ThmTrailingBytes};
 use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayResolution, XraySearch};
 
@@ -43,29 +42,22 @@ impl<'a> TextureBumpsVerifier<'a> {
     let descriptors: Vec<XrayAsset> = self.project.entries_of_type(AssetType::Thm);
     let search: &XraySearch = self.project.search();
 
-    // Descriptors are read in parallel; the sequence releases what each one says in path order.
-    let sequence: OutputSequence = OutputSequence::new(&self.options.output, descriptors.len());
-
     let verifications: Vec<TextureBumpVerification> = descriptors
       .par_iter()
-      .enumerate()
       .filter(|_| !self.options.job.is_cancelled())
-      .map(|(index, descriptor)| {
-        let slot: OutputSlot<'_> = sequence.new_slot(index);
-        let output: &OutputOptions = slot.get_output();
+      .map(|descriptor| {
         let path: &str = descriptor.get_logical_path().as_str();
 
         // Read once for both: what the material comes to, and what the file holds past its chunks' fields.
         let file: XrfResult<Arc<ThmFile>> = XrayMaterialResolver::read_descriptor(search, descriptor);
         let verification: TextureBumpVerification = Self::verify_descriptor(
-          output,
           path,
           &XrayMaterialResolver::describe_read_descriptor(search, descriptor, &file),
         );
 
         match &file {
           Ok(file) if !file.trailing.is_empty() => {
-            verification.with_trailing_bytes(Self::describe_trailing(output, path, &file.trailing))
+            verification.with_trailing_bytes(Self::describe_trailing(path, &file.trailing))
           }
           _ => verification,
         }
@@ -107,18 +99,13 @@ impl<'a> TextureBumpsVerifier<'a> {
   }
 
   /// What one descriptor's material comes to as findings, and which count it belongs in.
-  fn verify_descriptor(
-    output: &OutputOptions,
-    path: &str,
-    material: &XrayMaterialDescriptor,
-  ) -> TextureBumpVerification {
+  fn verify_descriptor(path: &str, material: &XrayMaterialDescriptor) -> TextureBumpVerification {
     match &material.declaration {
       XrayMaterialDeclaration::NoDescriptor
       | XrayMaterialDeclaration::NoBumpChunk
       | XrayMaterialDeclaration::Disabled { .. } => TextureBumpVerification::undeclared(),
       XrayMaterialDeclaration::Unreadable { reason } => {
         // Reported by the descriptor rather than silently treated as declaring no bump.
-        xrf_output::info!(output, "Texture descriptor is not readable: {path} - {reason}");
 
         TextureBumpVerification::undeclared().with_finding(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::TexturesRead,
@@ -130,24 +117,15 @@ impl<'a> TextureBumpsVerifier<'a> {
         label,
         declared_bump: Some(bump_name),
         ..
-      } => {
-        xrf_output::info!(
-          output,
-          "Texture descriptor declares bump the engine skips for its type: {path} -> {bump_name} ({label})"
-        );
-
-        TextureBumpVerification::invalid().with_finding(GamedataFindingFactory::for_asset(
-          GamedataVerificationRule::TexturesBumpDeclaration,
-          path,
-          format!(
-            "Texture descriptor declares bump '{bump_name}' but its texture type '{label}' is skipped by the engine"
-          ),
-        ))
-      }
+      } => TextureBumpVerification::invalid().with_finding(GamedataFindingFactory::for_asset(
+        GamedataVerificationRule::TexturesBumpDeclaration,
+        path,
+        format!(
+          "Texture descriptor declares bump '{bump_name}' but its texture type '{label}' is skipped by the engine"
+        ),
+      )),
       XrayMaterialDeclaration::TypeDisqualified { .. } => TextureBumpVerification::undeclared(),
       XrayMaterialDeclaration::EmptyName { mode } => {
-        xrf_output::info!(output, "Texture descriptor asks for a bump with an empty name: {path}");
-
         TextureBumpVerification::invalid().with_finding(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::TexturesBumpDeclaration,
           path,
@@ -167,8 +145,6 @@ impl<'a> TextureBumpsVerifier<'a> {
           TextureBumpVerification::bound(is_bump_missing, is_companion_missing);
 
         if let Some(bound) = Self::describe_substitution(&bump.bump) {
-          xrf_output::info!(output, "Texture descriptor declares missing bump: {path} -> {name}");
-
           return verification.with_finding(GamedataFindingFactory::for_asset(
             GamedataVerificationRule::TexturesBump,
             path,
@@ -177,12 +153,6 @@ impl<'a> TextureBumpsVerifier<'a> {
         }
 
         if let Some(bound) = Self::describe_substitution(&bump.companion) {
-          xrf_output::warning!(
-            output,
-            "Texture descriptor declares bump without its companion: {path} -> {}",
-            bump.companion.reference
-          );
-
           verification = verification.with_finding(GamedataFindingFactory::for_asset(
             GamedataVerificationRule::TexturesBumpCompanion,
             path,
@@ -199,7 +169,7 @@ impl<'a> TextureBumpsVerifier<'a> {
   }
 
   /// The warning for a descriptor holding bytes past its chunks' fields, naming how many and after which chunks.
-  fn describe_trailing(output: &OutputOptions, path: &str, trailing: &[ThmTrailingBytes]) -> Finding {
+  fn describe_trailing(path: &str, trailing: &[ThmTrailingBytes]) -> Finding {
     let ignored: usize = trailing.iter().map(|trailing| trailing.data.len()).sum();
     let chunks: String = trailing
       .iter()
@@ -207,11 +177,6 @@ impl<'a> TextureBumpsVerifier<'a> {
       .collect::<Vec<_>>()
       .join(", ");
     let bytes: &str = if ignored == 1 { "byte" } else { "bytes" };
-
-    xrf_output::warning!(
-      output,
-      "Texture descriptor carries bytes the engine never reads: {path} - {chunks}"
-    );
 
     GamedataFindingFactory::for_asset(
       GamedataVerificationRule::TexturesChunkResidue,

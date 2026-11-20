@@ -2,13 +2,11 @@ use std::time::Instant;
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_error::{XrfError, XrfResult};
-use xrf_output::{OutputSequence, OutputSlot, OutputVerbosity};
-use xrf_utils::format_path;
 
 use crate::project::gamedata_check_schedule::GamedataCheckSchedule;
 use crate::{
-  GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationReport,
-  GamedataVerificationType,
+  GamedataEvent, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport,
+  GamedataVerificationReport, GamedataVerificationType,
 };
 
 /// How many checks may be working at once while somebody is reading.
@@ -25,27 +23,22 @@ impl GamedataProject {
       return Err(XrfError::new_unexpected_error("No gamedata checks to perform provided"));
     }
 
-    xrf_output::info!(
-      options.output,
-      "Verifying gamedata project: {}",
-      format_path(self.root())
-    );
-
-    xrf_output::info!(
-      options.output,
-      "Verifying modules: \n  -{}",
-      checks.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n  -")
-    );
-
-    xrf_output::info!(options.output, "");
+    options.emit(GamedataEvent::Started {
+      root: self.root(),
+      checks: &checks,
+    });
 
     let started_at: Instant = Instant::now();
     let mut result: GamedataVerificationReport = GamedataVerificationReport::default();
 
     // First, and outside the progress scope below: neither coverage nor reachability is one of the kinds a caller
     // selects, and both are decided by what mounting already did rather than by work worth counting.
-    result.add_report(GamedataVerificationType::Coverage.run(self, options));
-    result.add_report(GamedataVerificationType::Collisions.run(self, options));
+    for always_run in [GamedataVerificationType::Coverage, GamedataVerificationType::Collisions] {
+      let report: GamedataVerificationCheckReport = always_run.run(self, options);
+
+      options.emit(GamedataEvent::CheckFinished { report: &report });
+      result.add_report(report);
+    }
 
     // One level over the selected checks, advanced once per finished check and by nothing else. A check running alone
     // nests its own levels inside it, so a lone LTX check reads as `checks 0/1` above `verify 400/2000`; checks running
@@ -57,22 +50,22 @@ impl GamedataProject {
     // eight of the fifteen are strictly serial, and on Anomaly they account for 6.7 of the 15 seconds a sweep takes.
     // Overlapping them lets that time hide inside the checks that do fan out, rather than being added to them.
     //
-    // Their output does not run together. Each check writes into its listed position and the sequence releases those
-    // positions in selection order, so a sweep says the same things in the same order however its workers were
-    // scheduled — which is the contract `--jobs` states and what the reports are compared on.
-    let sequence: OutputSequence = OutputSequence::new(&options.output, checks.len());
+    // What they find does not run together. Each wave's reports are handed out in selection order once the wave is
+    // done, so a sweep says the same things in the same order however its workers were scheduled — which is the
+    // contract `--jobs` states and what the reports are compared on.
     let schedule: GamedataCheckSchedule = GamedataCheckSchedule::default();
 
-    // A silent run has no reader to release output to, so it pays nothing for one: the window buys responsiveness, and
-    // where nobody is watching that is not worth a slower sweep. A scripted or piped run is exactly this case.
-    let window: usize = match options.output.get_verbosity() {
-      OutputVerbosity::Silent => checks.len(),
-      OutputVerbosity::Normal | OutputVerbosity::Verbose => CHECK_WINDOW,
+    // A run nobody listens to has no reader to hand reports to, so it pays nothing for one: the window buys
+    // responsiveness, and where nobody is watching that is not worth a slower sweep. A scripted run is this case.
+    let window: usize = if options.listener.is_some() {
+      CHECK_WINDOW
+    } else {
+      checks.len()
     };
 
     // Waves rather than all at once, and the outer loop is intentionally sequential: a wave finishes before the next
-    // starts, so the positions it holds are released together and a run says something every second or so instead of
-    // saying nothing and then everything.
+    // starts, so its reports are handed out together and a run says something every second or so instead of saying
+    // nothing and then everything.
     let mut reports: Vec<Option<GamedataVerificationCheckReport>> = Vec::with_capacity(checks.len());
 
     for (wave, released_together) in checks.chunks(window).enumerate() {
@@ -88,14 +81,11 @@ impl GamedataProject {
             return None;
           }
 
-          let slot: OutputSlot<'_> = sequence.new_slot(index);
-
           schedule.enter(&options.job, index, *check);
 
           let report: GamedataVerificationCheckReport = check.run(
             self,
             &GamedataProjectVerifyOptions {
-              output: slot.get_output().clone(),
               job: if is_alone {
                 options.job.clone()
               } else {
@@ -111,6 +101,10 @@ impl GamedataProject {
           Some(report)
         })
         .collect();
+
+      for report in released.iter().flatten() {
+        options.emit(GamedataEvent::CheckFinished { report });
+      }
 
       reports.append(&mut released);
     }
@@ -135,13 +129,15 @@ impl GamedataProject {
 #[cfg(test)]
 mod tests {
   use std::path::PathBuf;
+  use std::sync::{Arc, Mutex};
 
   use xrf_ltx_project::LtxProject;
   use xrf_vfs::{XraySearch, XrayVfs};
 
   use super::GamedataProject;
   use crate::{
-    GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationStatus, GamedataVerificationType,
+    GamedataEvent, GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationStatus,
+    GamedataVerificationType,
   };
 
   /// A project with nothing mounted, for asserting which checks run rather than what they find.
@@ -171,12 +167,39 @@ mod tests {
     }
   }
 
+  /// What a listener hears is the run's start, then each check as it finishes, in the order of the report.
+  #[test]
+  fn hands_out_each_finished_check_in_report_order() {
+    let project: GamedataProject = empty_project();
+    let heard: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let recorded: Arc<Mutex<Vec<String>>> = Arc::clone(&heard);
+    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
+      checks: vec![GamedataVerificationType::Levels, GamedataVerificationType::Spawns],
+      listener: Some(Arc::new(move |event: &GamedataEvent<'_>| {
+        recorded.lock().expect("record").push(match event {
+          GamedataEvent::Started { checks, .. } => format!("started {}", checks.len()),
+          GamedataEvent::CheckFinished { report } => report.get_verification_type().to_string(),
+        });
+      })),
+      ..Default::default()
+    };
+
+    let report = project.verify(&options).expect("Expected verification to complete");
+    let reported: Vec<String> = report
+      .get_checks()
+      .iter()
+      .map(|check| check.get_verification_type().to_string())
+      .collect();
+
+    assert_eq!(heard.lock().expect("heard")[0], "started 2");
+    assert_eq!(heard.lock().expect("heard")[1..], reported);
+  }
+
   #[test]
   fn runs_each_selected_check_once_in_request_order() {
     let project: GamedataProject = empty_project();
     let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
       checks: vec![GamedataVerificationType::Levels, GamedataVerificationType::Levels],
-      output: xrf_output::OutputOptions::default(),
       ..Default::default()
     };
 

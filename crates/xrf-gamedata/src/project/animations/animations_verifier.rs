@@ -33,8 +33,6 @@ impl<'a> GamedataCheck<'a> for AnimationsVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataAnimationsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify animations:");
-
     let started_at: Instant = Instant::now();
 
     let player_hud_animations: GamedataPlayerHudAnimationsVerificationResult =
@@ -64,13 +62,6 @@ impl<'a> GamedataCheck<'a> for AnimationsVerifier<'a> {
       player_hud_animations,
       post_process_effects,
     };
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata animations in {}, {}",
-      xrf_utils::format_duration(result.duration),
-      result.get_summary()
-    );
 
     self.options.job.check_cancelled()?;
 

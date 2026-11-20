@@ -6,7 +6,6 @@ use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_gamemtl::GameMtlFile;
 use xrf_ltx::Ltx;
-use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath};
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
@@ -78,23 +77,9 @@ impl<'a> SoundReferencesVerifier<'a> {
         found
       });
 
-    for (reported, outcome) in outcomes {
-      match outcome {
-        Ok(found) => {
-          xrf_output::verbose!(
-            self.options.output,
-            "Verified sound references in {}",
-            format_path(&reported)
-          );
-
-          result.merge(found);
-        }
-        Err(error) => xrf_output::verbose!(
-          self.options.output,
-          "Skipping ltx entry in sound reference check: {} - {}",
-          format_path(&reported),
-          error
-        ),
+    for (_, outcome) in outcomes {
+      if let Ok(found) = outcome {
+        result.merge(found);
       }
     }
   }

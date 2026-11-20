@@ -3,12 +3,10 @@ use std::sync::Arc;
 
 use xrf_engine_target::XrayEngineChoice;
 use xrf_ltx::LtxDialect;
-use xrf_output::OutputOptions;
 
 pub struct GamedataProjectReadOptions {
   pub root: PathBuf,
   pub ignored: Vec<String>,
-  pub output: OutputOptions,
   pub is_strict: bool,
   /// Whether the project accounts for every asset it physically reads.
   pub is_tracing_reads: bool,
@@ -41,7 +39,6 @@ impl Default for GamedataProjectReadOptions {
       ignored: Vec::new(),
       is_strict: false,
       is_tracing_reads: false,
-      output: OutputOptions::default(),
       root: PathBuf::new(),
     }
   }

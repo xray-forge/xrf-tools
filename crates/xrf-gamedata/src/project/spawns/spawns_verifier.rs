@@ -26,11 +26,7 @@ impl<'a> GamedataCheck<'a> for SpawnsVerifier<'a> {
     let started_at: Instant = Instant::now();
     let spawn_paths: Vec<String> = self.project.spawn_paths();
 
-    xrf_output::heading!(self.options.output, "{} {}", "Verify spawns:", spawn_paths.len());
-
     if spawn_paths.is_empty() {
-      xrf_output::info!(self.options.output, "No spawn files found in gamedata root");
-
       return Ok(GamedataSpawnsVerificationResult {
         duration: started_at.elapsed(),
         findings: Vec::new(),
@@ -58,14 +54,6 @@ impl<'a> GamedataCheck<'a> for SpawnsVerifier<'a> {
 
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
 
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata spawn files in {}, {}/{} are valid",
-      xrf_utils::format_duration(duration),
-      total_spawns - invalid_spawns,
-      total_spawns
-    );
-
     self.options.job.check_cancelled()?;
 
     Ok(GamedataSpawnsVerificationResult {
@@ -81,19 +69,10 @@ impl SpawnsVerifier<'_> {
   /// The finding reading one spawn file raises, addressed by its logical path and read through the VFS, so an archived
   /// spawn file is verified too.
   fn verify_spawn(&self, path: &str) -> Option<Finding> {
-    xrf_output::verbose!(self.options.output, "Verify spawn file: {}", path);
-
     let error = self
       .project
       .read_parsed(path, SpawnFile::read_from_chunk::<XRayByteOrder, _>)
       .err()?;
-
-    xrf_output::error!(
-      self.options.output,
-      "Spawn file validation failed: {} -> {}",
-      path,
-      error
-    );
 
     Some(GamedataFindingFactory::for_asset(
       GamedataVerificationRule::SpawnsRead,

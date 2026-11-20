@@ -31,8 +31,6 @@ impl<'a> GamedataCheck<'a> for EnvironmentVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataEnvironmentVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify environment:");
-
     let started_at: Instant = Instant::now();
     let engine: XrayEngine = self.project.engine.engine;
     let read: EnvironmentReadOptions = EnvironmentReadOptions::default()
@@ -54,30 +52,12 @@ impl<'a> GamedataCheck<'a> for EnvironmentVerifier<'a> {
 
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
 
-    for finding in &findings {
-      xrf_output::error!(
-        self.options.output,
-        "{}: {}",
-        finding.message(),
-        finding.subject().unwrap_or_default()
-      );
-    }
-
     let configs: BTreeSet<&str> = catalog.configs.iter().map(String::as_str).collect();
     let checked_configs_count: u32 = u32::try_from(configs.union(&invalid).count())
       .map_err(|_| XrfError::new_verify_error("Environment config count exceeds the supported result range"))?;
     let invalid_configs_count: u32 = u32::try_from(invalid.len())
       .map_err(|_| XrfError::new_verify_error("Environment config count exceeds the supported result range"))?;
     let duration = started_at.elapsed();
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified environment configs as {} in {}, {}/{} valid",
-      engine,
-      xrf_utils::format_duration(duration),
-      checked_configs_count - invalid_configs_count,
-      checked_configs_count
-    );
 
     Ok(GamedataEnvironmentVerificationResult {
       duration,

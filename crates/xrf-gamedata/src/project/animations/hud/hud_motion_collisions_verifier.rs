@@ -25,8 +25,6 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
   pub(crate) fn verify(&self) -> XrfResult<GamedataHudMotionCollisionsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::verbose!(self.options.output, "Verify hud motion collisions");
-
     let resolved: Arc<LtxResolution> = self.project.ltx_project.system_ltx()?;
     let system_ltx: &Ltx = &resolved.ltx;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
@@ -52,13 +50,6 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
 
     let collisions_count: u32 = u32::try_from(messages.len())
       .map_err(|_| XrfError::new_verify_error("Motion collision count exceeds the supported result range"))?;
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata hud motion namespaces, {} collisions across {} huds",
-      collisions_count,
-      checked_huds_count,
-    );
 
     let mut findings: Vec<Finding> = messages
       .into_iter()

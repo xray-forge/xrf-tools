@@ -45,7 +45,8 @@ impl GamedataCheckResult for GamedataLevelsVerificationResult {
     }
 
     format!(
-      "{}/{} level bundles valid; {}/{} level shader references valid",
+      "{} graph levels, {}/{} level bundles valid; {}/{} level shader references valid",
+      self.roster_levels_count,
       self.checked_levels_count - self.invalid_levels_count,
       self.checked_levels_count,
       self.checked_references_count - self.invalid_references_count,
@@ -89,7 +90,7 @@ mod tests {
     assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
     assert_eq!(
       result.get_summary(),
-      "5/5 level bundles valid; 1204/1204 level shader references valid"
+      "5 graph levels, 5/5 level bundles valid; 1204/1204 level shader references valid"
     );
   }
 
@@ -117,7 +118,7 @@ mod tests {
     assert_eq!(report.get_checks()[0].get_findings(), [finding]);
     assert_eq!(
       report.get_checks()[0].get_summary(),
-      "0/0 level bundles valid; 0/0 level shader references valid"
+      "1 graph levels, 0/0 level bundles valid; 0/0 level shader references valid"
     );
   }
 }

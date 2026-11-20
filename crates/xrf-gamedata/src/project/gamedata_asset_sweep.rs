@@ -1,6 +1,5 @@
 use rayon::prelude::*;
 use xrf_error::XrfResult;
-use xrf_output::{OutputSequence, OutputSlot};
 use xrf_utils::narrow_format_size;
 
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
@@ -16,8 +15,8 @@ impl<'a> GamedataAssetSweep<'a> {
     Self { options }
   }
 
-  /// Runs `verify` over every item, handing each the run's options with that item's own output, and gathers what they
-  /// found. No item starts after cancellation; the caller checks it once the sweep returns.
+  /// Runs `verify` over every item and gathers what they found, ordered so the outcome does not depend on how the
+  /// items were scheduled. No item starts after cancellation; the caller checks it once the sweep returns.
   ///
   /// # Errors
   ///
@@ -25,20 +24,12 @@ impl<'a> GamedataAssetSweep<'a> {
   pub(crate) fn run<T, F>(&self, items: &[T], verify: F) -> XrfResult<GamedataAssetSweepOutcome>
   where
     T: Sync,
-    F: Fn(&GamedataProjectVerifyOptions, &T) -> Vec<Finding> + Sync,
+    F: Fn(&T) -> Vec<Finding> + Sync,
   {
-    let sequence: OutputSequence = OutputSequence::new(&self.options.output, items.len());
-
     let findings_per_item: Vec<Vec<Finding>> = items
       .par_iter()
-      .enumerate()
       .filter(|_| !self.options.job.is_cancelled())
-      .map(|(index, item)| {
-        // Held until the item is done: the slot releases its position when dropped.
-        let slot: OutputSlot<'_> = sequence.new_slot(index);
-
-        verify(&self.options.with_output(slot.get_output().clone()), item)
-      })
+      .map(&verify)
       .collect();
 
     let invalid_count: usize = findings_per_item.iter().filter(|findings| !findings.is_empty()).count();

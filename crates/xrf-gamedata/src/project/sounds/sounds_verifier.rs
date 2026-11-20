@@ -7,7 +7,7 @@ use crate::project::gamedata_check::GamedataCheck;
 use crate::project::sounds::sound_files_verifier::SoundFilesVerifier;
 use crate::project::sounds::sound_references_verifier::SoundReferencesVerifier;
 use crate::project::sounds::sounds_verification_result::GamedataSoundsVerificationResult;
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions};
+use crate::{GamedataProject, GamedataProjectVerifyOptions};
 
 pub(crate) struct SoundsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
@@ -23,8 +23,6 @@ impl<'a> GamedataCheck<'a> for SoundsVerifier<'a> {
 
   fn verify(&self) -> XrfResult<GamedataSoundsVerificationResult> {
     self.options.job.check_cancelled()?;
-
-    xrf_output::heading!(self.options.output, "Verify sounds:");
 
     let started_at: Instant = Instant::now();
 
@@ -42,13 +40,6 @@ impl<'a> GamedataCheck<'a> for SoundsVerifier<'a> {
 
     let result: GamedataSoundsVerificationResult =
       GamedataSoundsVerificationResult::new(started_at.elapsed(), sound_files, sound_references);
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata sounds in {}, {}",
-      xrf_utils::format_duration(result.duration),
-      result.get_summary()
-    );
 
     self.options.job.check_cancelled()?;
 

@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use xrf_animation_envelope::AnimationEnvelope;
 use xrf_error::XrfResult;
-use xrf_output::OutputOptions;
 
 use crate::project::animations::envelopes::envelope_animation::EnvelopeAnimation;
 use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
@@ -39,17 +38,9 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
       .collect();
 
     let outcome: GamedataAssetSweepOutcome =
-      GamedataAssetSweep::new(self.options).run(&paths, |options, path| self.verify_file(&options.output, path))?;
+      GamedataAssetSweep::new(self.options).run(&paths, |path| self.verify_file(path))?;
 
     self.options.job.check_cancelled()?;
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata {}, {}/{} valid",
-      F::PLURAL_NAME,
-      outcome.checked_count - outcome.invalid_count,
-      outcome.checked_count,
-    );
 
     Ok(GamedataEnvelopeAnimationsVerificationResult {
       checked_files_count: outcome.checked_count,
@@ -62,9 +53,7 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
   /// What is wrong with one file: that it does not read, or else that it does not write back to the bytes it was read
   /// from, which of its channels evaluate to something other than a finite number, and what the engine refuses while
   /// it plays the file.
-  fn verify_file(&self, output: &OutputOptions, path: &str) -> Vec<Finding> {
-    xrf_output::verbose!(output, "Verify {}: {}", F::NAME, path);
-
+  fn verify_file(&self, path: &str) -> Vec<Finding> {
     let read: XrfResult<(Vec<u8>, F)> = self
       .project
       .read_bytes(path)
@@ -73,8 +62,6 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
     let (bytes, file) = match read {
       Ok(read) => read,
       Err(error) => {
-        xrf_output::info!(output, "Failed to read {} '{}': {}", F::NAME, path, error);
-
         return vec![GamedataFindingFactory::for_asset(
           F::READ_RULE,
           path,
@@ -111,10 +98,6 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
 
     for (rule, message) in file.find_playback_refusals() {
       findings.push(GamedataFindingFactory::for_asset(rule, path, message));
-    }
-
-    if !findings.is_empty() {
-      xrf_output::info!(output, "Invalid {}: {}", F::NAME, path);
     }
 
     findings

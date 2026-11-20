@@ -55,7 +55,6 @@ fn installation_with_unreadable_volumes(name: &str, broken: &[(&str, &str)]) -> 
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     root: root.clone(),
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .expect("the readable part of the installation opens");
@@ -66,7 +65,6 @@ fn installation_with_unreadable_volumes(name: &str, broken: &[(&str, &str)]) -> 
 fn options(checks: Vec<GamedataVerificationType>) -> GamedataProjectVerifyOptions {
   GamedataProjectVerifyOptions {
     checks,
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   }
 }
@@ -200,7 +198,6 @@ fn does_not_treat_a_declared_alias_omitted_while_planning_as_lost_coverage() {
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     root: root.clone(),
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .expect("the installation opens");

@@ -26,7 +26,6 @@ fn project(tree: &FixtureTree) -> GamedataProject {
 
   GamedataProject::open(&GamedataProjectReadOptions {
     root: tree.root().to_path_buf(),
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .expect("project opens")

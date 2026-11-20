@@ -10,9 +10,7 @@ use xrf_vfs::XraySearch;
 use crate::project::gamedata_check::GamedataCheck;
 use crate::project::shaders::gamedata_shader_source_loader::GamedataShaderSourceLoader;
 use crate::project::shaders::verify_shaders_result::GamedataShadersVerificationResult;
-use crate::{
-  GamedataCheckResult, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule,
-};
+use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Logical directory holding the renderer shader trees.
 pub(crate) const SHADERS_DIRECTORY: &str = "shaders";
@@ -54,8 +52,6 @@ impl<'a> ShadersVerifier<'a> {
 
   /// Every renderer's shader tree, a source that does not read failing only itself.
   pub(crate) fn verify_renderers(&self) -> GamedataShadersVerificationResult {
-    xrf_output::heading!(self.options.output, "Verify renderer shaders:");
-
     let started_at: Instant = Instant::now();
 
     let mut result: GamedataShadersVerificationResult = GamedataShadersVerificationResult::default();
@@ -72,23 +68,10 @@ impl<'a> ShadersVerifier<'a> {
 
     result.duration = started_at.elapsed();
 
-    xrf_output::info!(
-      self.options.output,
-      "Verified renderer shaders in {}, {}",
-      xrf_utils::format_duration(result.duration),
-      result.get_summary()
-    );
-
     result
   }
 
   fn verify_renderer(&self, renderer: ShaderRenderer, result: &mut GamedataShadersVerificationResult) {
-    xrf_output::verbose!(
-      self.options.output,
-      "Verify {} renderer shaders",
-      renderer.display_name()
-    );
-
     // Built with `\` rather than by joining host paths, so the prefix and every finding path read the same on Linux as on
     // Windows. `xrf-shaders` wants a `Path`, but the value inside it is an engine identity.
     let renderer_prefix: String = format!("{SHADERS_DIRECTORY}\\{}", renderer.directory_name());
@@ -112,11 +95,6 @@ impl<'a> ShadersVerifier<'a> {
     if entries.is_empty() {
       // Specific to OpenXray
       if renderer == ShaderRenderer::OpenGl {
-        xrf_output::verbose!(
-          self.options.output,
-          "Skip OpenGL renderer shaders, the renderer root is not present"
-        );
-
         return;
       }
 
@@ -314,10 +292,7 @@ mod tests {
   fn validates_d3d11_scripts_and_renderer_then_root_includes() -> XrfResult {
     let root: PathBuf = create_gamedata_root("d3d11")?;
     let shaders: PathBuf = root.join(SHADERS_DIRECTORY);
-    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
-      output: xrf_output::OutputOptions::default(),
-      ..Default::default()
-    };
+    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions::default();
 
     write_file(
       &shaders.join("r3/basic.s"),
@@ -343,10 +318,7 @@ mod tests {
   #[test]
   fn skips_a_missing_open_gl_renderer_root() -> XrfResult {
     let root: PathBuf = create_gamedata_root("missing-open-gl")?;
-    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
-      output: xrf_output::OutputOptions::default(),
-      ..Default::default()
-    };
+    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions::default();
 
     fs::remove_dir(root.join(SHADERS_DIRECTORY).join("gl"))?;
     write_file(
@@ -373,10 +345,7 @@ mod tests {
   fn reports_lua_include_and_cycle_problems_together() -> XrfResult {
     let root: PathBuf = create_gamedata_root("static-problems")?;
     let shaders: PathBuf = root.join(SHADERS_DIRECTORY);
-    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
-      output: xrf_output::OutputOptions::default(),
-      ..Default::default()
-    };
+    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions::default();
 
     write_file(&shaders.join("r3/basic.s"), "function normal(s) end\n")?;
     write_file(&shaders.join("gl/invalid.s"), "function normal(\n")?;

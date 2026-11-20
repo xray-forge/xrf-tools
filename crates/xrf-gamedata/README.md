@@ -109,7 +109,7 @@ and `get_all()` list them; each parses from its CLI name.
 - A check named twice runs once, at its first position.
 - Without a readable material library, only `materials` fails; `levels`, `meshes`, `particles-usage` and `sounds` skip
   what they would resolve against it.
-- The options also carry strictness, live output, and a job handle.
+- The options also carry strictness, a job handle, and an optional `listener` for the run's events.
 
 Two checks always run first and cannot be deselected:
 
@@ -141,8 +141,8 @@ Keep these verdicts apart when turning a result into an exit code or a UI messag
   and so on) built through one trait; `GamedataVerificationType::run` builds and runs any of them.
 - The project lends each check only what all checks share: the search, the config tree, the spawn files and the
   material library.
-- A check over many independent assets runs one sweep: it verifies each in parallel, releases output in item order,
-  counts items with findings, and orders findings by asset.
+- A check over many independent assets runs one sweep: it verifies each in parallel, counts items with findings, and
+  orders findings by asset.
 - Every problem is a finding naming what is wrong and where, never a logged reason with a bare "invalid".
 
 ## Progress and execution
@@ -151,10 +151,11 @@ Keep these verdicts apart when turning a result into an exit code or a UI messag
   and running checks stop at their next iteration.
 - Progress is one `checks` level, advanced per finished check. A check running alone reports its own levels beneath it;
   checks running together report none.
-- Checks run together on the caller's Rayon pool: a few at a time while output is being read, all at once when output
-  is silent. Put an execution limit around the whole operation, as [xrf-job](../xrf-job/README.md) describes.
-- Live messages go through `OutputOptions`. Each check's output is released in selection order, so a run reports the
-  same things in the same order however its workers were scheduled.
+- Checks run together on the caller's Rayon pool: a few at a time while a listener is attached, all at once without
+  one. Put an execution limit around the whole operation, as [xrf-job](../xrf-job/README.md) describes.
+- The checks print nothing. The listener hears `GamedataEvent::Started`, then one `CheckFinished` per check carrying
+  its report, in selection order however the workers were scheduled. `GamedataRunPrinter::new_listener` prints them as
+  the CLI does: each check's heading, each finding as `subject: message`, and its summary.
 
 ## Errors
 

@@ -6,13 +6,10 @@ use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlPair};
 use xrf_ltx::Ltx;
 use xrf_spawn::{AlifeObjectInherited, SpawnFile, XRayByteOrder};
-use xrf_utils::format_path;
 
 use crate::project::gamedata_check::GamedataCheck;
 use crate::project::materials::verify_materials_result::GamedataMaterialsVerificationResult;
-use crate::{
-  GamedataCheckResult, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule,
-};
+use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies the game material library against what the engine asserts on while loading it, and every name the engine,
 /// configs and spawn objects resolve against it.
@@ -31,8 +28,6 @@ impl<'a> GamedataCheck<'a> for MaterialsVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataMaterialsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify materials:");
-
     let started_at: Instant = Instant::now();
     let mut result: GamedataMaterialsVerificationResult = GamedataMaterialsVerificationResult::default();
 
@@ -49,8 +44,6 @@ impl<'a> GamedataCheck<'a> for MaterialsVerifier<'a> {
         self.verify_spawns(&library, &mut result);
       }
       Err(error) => {
-        xrf_output::error!(self.options.output, "Game material library was not read: {error}");
-
         result.findings.push(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::MaterialsLibrary,
           GameMtlFile::FILE_NAME,
@@ -63,13 +56,6 @@ impl<'a> GamedataCheck<'a> for MaterialsVerifier<'a> {
       .findings
       .sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
     result.duration = started_at.elapsed();
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata materials in {}, {}",
-      xrf_utils::format_duration(result.duration),
-      result.get_summary()
-    );
 
     self.options.job.check_cancelled()?;
 
@@ -194,20 +180,12 @@ impl MaterialsVerifier<'_> {
         found
       });
 
-    for (reported, outcome) in outcomes {
-      match outcome {
-        Ok(found) => {
-          result.checked_references_count += found.checked_references_count;
-          result.invalid_references_count += found.invalid_references_count;
-          result.findings.extend(found.findings);
-        }
-        // Malformed ltx files are reported by the generic ltx check, not this one.
-        Err(error) => xrf_output::verbose!(
-          self.options.output,
-          "Skipping ltx entry in materials check: {} - {}",
-          format_path(&reported),
-          error
-        ),
+    // Malformed ltx files are reported by the generic ltx check, not this one.
+    for (_, outcome) in outcomes {
+      if let Ok(found) = outcome {
+        result.checked_references_count += found.checked_references_count;
+        result.invalid_references_count += found.invalid_references_count;
+        result.findings.extend(found.findings);
       }
     }
   }
@@ -248,13 +226,7 @@ impl MaterialsVerifier<'_> {
       }) {
         Ok(spawn) => spawn,
         // An unreadable spawn file is the spawns check's finding, not this one's.
-        Err(error) => {
-          xrf_output::verbose!(
-            self.options.output,
-            "Skipping spawn file in materials check: {spawn_path} - {error}"
-          );
-          continue;
-        }
+        Err(_) => continue,
       };
 
       for object in &spawn.alife_spawn.objects {

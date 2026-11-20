@@ -33,17 +33,10 @@ impl<'a> GamedataCheck<'a> for LevelsVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataLevelsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify levels:");
-
     let started_at: Instant = Instant::now();
     let mut roster: LevelRoster = LevelRoster::read(self.project, &self.options.job)?;
 
     if !roster.has_source() {
-      xrf_output::info!(
-        self.options.output,
-        "No spawn files carrying a game graph found in gamedata root, level roster is unknown"
-      );
-
       return Ok(GamedataLevelsVerificationResult::skipped(started_at.elapsed()));
     }
 
@@ -63,8 +56,6 @@ impl<'a> GamedataCheck<'a> for LevelsVerifier<'a> {
 
     for name in &bundles {
       self.options.job.check_cancelled()?;
-
-      xrf_output::verbose!(self.options.output, "Verify level bundle: {name}");
 
       let bundle: LevelBundle<'_> = LevelBundle::new(self.project, name, &self.options.job);
       let level = roster.find(name);
@@ -112,17 +103,6 @@ impl<'a> GamedataCheck<'a> for LevelsVerifier<'a> {
       checked_references_count,
       invalid_references_count,
     };
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata levels in {}, {} graph levels, {}/{} level bundles valid, {}/{} shader references valid",
-      xrf_utils::format_duration(result.duration),
-      result.roster_levels_count,
-      result.checked_levels_count - result.invalid_levels_count,
-      result.checked_levels_count,
-      result.checked_references_count - result.invalid_references_count,
-      result.checked_references_count,
-    );
 
     self.options.job.check_cancelled()?;
 

@@ -9,7 +9,7 @@ use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsV
 use crate::project::meshes::mesh_assets_verifier::MeshAssetsVerifier;
 use crate::project::meshes::shader_library_verifier::ShaderLibraryVerifier;
 use crate::project::meshes::verify_meshes_result::GamedataMeshesVerificationResult;
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions};
+use crate::{GamedataProject, GamedataProjectVerifyOptions};
 
 pub(crate) struct MeshesVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
@@ -25,8 +25,6 @@ impl<'a> GamedataCheck<'a> for MeshesVerifier<'a> {
 
   fn verify(&self) -> XrfResult<GamedataMeshesVerificationResult> {
     self.options.job.check_cancelled()?;
-
-    xrf_output::heading!(self.options.output, "Verify meshes:");
 
     let started_at: Instant = Instant::now();
 
@@ -45,13 +43,6 @@ impl<'a> GamedataCheck<'a> for MeshesVerifier<'a> {
 
     let result: GamedataMeshesVerificationResult =
       GamedataMeshesVerificationResult::from_checks(started_at.elapsed(), shader_library, mesh_assets);
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata meshes in {}, {}",
-      xrf_utils::format_duration(result.duration),
-      result.get_summary()
-    );
 
     self.options.job.check_cancelled()?;
 

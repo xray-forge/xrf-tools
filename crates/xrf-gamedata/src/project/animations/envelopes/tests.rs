@@ -97,7 +97,6 @@ fn open_project(name: &str, files: &[(&str, Vec<u8>)]) -> (PathBuf, GamedataProj
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     root: root.clone(),
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .unwrap();

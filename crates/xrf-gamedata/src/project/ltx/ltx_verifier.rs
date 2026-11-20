@@ -4,7 +4,7 @@ use std::time::Instant;
 use xrf_error::XrfResult;
 use xrf_ltx_project::{
   LtxFinding, LtxFindingKind, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult,
-  LtxRunPrinter, LtxVerifyOptions,
+  LtxVerifyOptions,
 };
 
 use crate::project::gamedata_check::GamedataCheck;
@@ -27,8 +27,6 @@ impl<'a> GamedataCheck<'a> for LtxVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataLtxVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify LTX files");
-
     let started_at: Instant = Instant::now();
 
     let format_result: LtxProjectFormatResult = self.verify_format()?;
@@ -37,12 +35,6 @@ impl<'a> GamedataCheck<'a> for LtxVerifier<'a> {
       Self::collect_findings(&self.project.ltx_project, &format_result, &verification_result);
 
     let duration = started_at.elapsed();
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata ltx files in {}",
-      xrf_utils::format_duration(duration),
-    );
 
     self.options.job.check_cancelled()?;
 
@@ -103,30 +95,19 @@ impl LtxVerifier<'_> {
   fn verify_format(&self) -> XrfResult<LtxProjectFormatResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify LTX files formatting");
-
-    let ltx_project: &LtxProject = &self.project.ltx_project;
-
-    LtxRunPrinter::print_format_start(ltx_project.ltx_files.len(), true, &self.options.output);
-
-    let result: LtxProjectFormatResult =
-      ltx_project.check_format_all_files_opt(LtxFormatOptions::default().with_job(self.options.job.clone()))?;
-
-    LtxRunPrinter::print_format_result(&result, true, &self.options.output);
-
-    Ok(result)
+    self
+      .project
+      .ltx_project
+      .check_format_all_files_opt(LtxFormatOptions::default().with_job(self.options.job.clone()))
   }
 
   fn verify_schemes(&self) -> XrfResult<LtxProjectVerifyResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify LTX schemas");
-
-    LtxRunPrinter::verify(
-      &self.project.ltx_project,
-      LtxVerifyOptions::default().with_job(self.options.job.clone()),
-      &self.options.output,
-    )
+    self
+      .project
+      .ltx_project
+      .verify_entries_opt(LtxVerifyOptions::default().with_job(self.options.job.clone()))
   }
 }
 

@@ -17,7 +17,6 @@ $game_data$     = true  | true  | $fs_root$ | gamedata\\
 fn options(root: PathBuf) -> GamedataProjectReadOptions {
   GamedataProjectReadOptions {
     root,
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   }
 }
@@ -78,7 +77,6 @@ fn opens_when_an_ignore_hides_the_root_config() {
   let root: PathBuf = install("ignored_configs");
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     ignored: vec![String::from("configs")],
-    output: xrf_output::OutputOptions::default(),
     root: root.clone(),
     ..Default::default()
   })
@@ -92,7 +90,6 @@ fn opens_when_an_ignore_hides_the_root_config() {
   // A prefix that hides something else is none of the gate's business.
   let project = GamedataProject::open(&GamedataProjectReadOptions {
     ignored: vec![String::from("textures\\wip")],
-    output: xrf_output::OutputOptions::default(),
     root: root.clone(),
     ..Default::default()
   });

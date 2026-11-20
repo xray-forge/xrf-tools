@@ -29,8 +29,6 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
   pub(crate) fn verify(&self) -> XrfResult<GamedataPlayerHudAnimationsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::verbose!(self.options.output, "Verify player hud animations");
-
     let resolved: Arc<LtxResolution> = self.project.ltx_project.system_ltx()?;
     let system_ltx: &Ltx = &resolved.ltx;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
@@ -83,19 +81,8 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
 
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
 
-    for finding in &findings {
-      xrf_output::error!(self.options.output, "{}", finding.message());
-    }
-
     let checked_huds_count: u32 = narrow_format_size(player_hud_sections.len(), "Checked player HUD sections")?;
     let invalid_huds_count: u32 = narrow_format_size(invalid_hands.len(), "Invalid player HUD sections")?;
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata player HUD sections, {}/{} valid",
-      checked_huds_count - invalid_huds_count,
-      checked_huds_count,
-    );
 
     Ok(GamedataPlayerHudAnimationsVerificationResult {
       checked_huds_count,

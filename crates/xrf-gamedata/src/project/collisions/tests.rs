@@ -101,7 +101,6 @@ fn project(collisions: Vec<XrayPathCollision>) -> GamedataProject {
 fn options(checks: Vec<GamedataVerificationType>) -> GamedataProjectVerifyOptions {
   GamedataProjectVerifyOptions {
     checks,
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   }
 }

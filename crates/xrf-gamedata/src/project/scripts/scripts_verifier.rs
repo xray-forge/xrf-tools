@@ -29,8 +29,6 @@ impl<'a> GamedataCheck<'a> for ScriptsVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataScriptsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify scripts:");
-
     let started_at: Instant = Instant::now();
     let script_paths: Vec<String> = self
       .project
@@ -41,29 +39,11 @@ impl<'a> GamedataCheck<'a> for ScriptsVerifier<'a> {
       .collect();
 
     let outcome: GamedataAssetSweepOutcome = GamedataAssetSweep::new(self.options)
-      .run(&script_paths, |options, path| {
-        self.verify_script(options, path).into_iter().collect()
-      })?;
+      .run(&script_paths, |path| self.verify_script(path).into_iter().collect())?;
 
     self.options.job.check_cancelled()?;
 
     let duration: Duration = started_at.elapsed();
-
-    if outcome.checked_count > 0 {
-      xrf_output::info!(
-        self.options.output,
-        "Verified gamedata scripts in {}, {}/{} valid",
-        xrf_utils::format_duration(duration),
-        outcome.checked_count - outcome.invalid_count,
-        outcome.checked_count
-      );
-    } else {
-      xrf_output::info!(
-        self.options.output,
-        "Check gamedata scripts in {}, no scripts found",
-        xrf_utils::format_duration(duration),
-      );
-    }
 
     Ok(GamedataScriptsVerificationResult {
       duration,
@@ -86,9 +66,7 @@ impl ScriptsVerifier<'_> {
 
   /// The finding one script raises: it does not read, or LuaJIT rejects it. Read through the VFS, so an archived script
   /// is parsed rather than reported missing.
-  fn verify_script(&self, options: &GamedataProjectVerifyOptions, path: &str) -> Option<Finding> {
-    xrf_output::verbose!(options.output, "Verify script: {path}");
-
+  fn verify_script(&self, path: &str) -> Option<Finding> {
     let code: String = match self
       .project
       .read_bytes(path)
@@ -96,8 +74,6 @@ impl ScriptsVerifier<'_> {
     {
       Ok(code) => code,
       Err(error) => {
-        xrf_output::error!(options.output, "Script was not read: {path} - {error}");
-
         return Some(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::ScriptsRead,
           path,
@@ -107,8 +83,6 @@ impl ScriptsVerifier<'_> {
     };
 
     let error = XRayLuaScript::verify(Path::new(path), &code).err()?;
-
-    xrf_output::info!(options.output, "Script is not valid: {path}");
 
     Some(GamedataFindingFactory::for_asset(
       GamedataVerificationRule::ScriptsSyntax,

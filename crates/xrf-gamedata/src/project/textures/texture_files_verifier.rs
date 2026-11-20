@@ -29,9 +29,7 @@ impl<'a> TextureFilesVerifier<'a> {
       .collect();
 
     let outcome: GamedataAssetSweepOutcome = GamedataAssetSweep::new(self.options)
-      .run(&texture_paths, |options, path| {
-        self.verify_texture(options, path).into_iter().collect()
-      })?;
+      .run(&texture_paths, |path| self.verify_texture(path).into_iter().collect())?;
 
     self.options.job.check_cancelled()?;
 
@@ -53,29 +51,19 @@ impl<'a> TextureFilesVerifier<'a> {
     DdsFile::read_xray_compatibility_from_bytes(&project.read_head(path, DdsFile::MAX_HEADER_SIZE)?)
   }
 
-  fn verify_texture(&self, options: &GamedataProjectVerifyOptions, path: &str) -> Option<Finding> {
-    xrf_output::verbose!(options.output, "Verify texture: {path}");
-
+  fn verify_texture(&self, path: &str) -> Option<Finding> {
     match Self::is_xray_compatible(self.project, path) {
       Ok(true) => None,
-      Ok(false) => {
-        xrf_output::info!(options.output, "Texture is not valid: {path}");
-
-        Some(GamedataFindingFactory::for_asset(
-          GamedataVerificationRule::TexturesValidation,
-          path,
-          "Texture uses an unsupported format",
-        ))
-      }
-      Err(error) => {
-        xrf_output::info!(options.output, "Texture verification failed: {path} - {error}");
-
-        Some(GamedataFindingFactory::for_asset(
-          GamedataVerificationRule::TexturesRead,
-          path,
-          error.to_string(),
-        ))
-      }
+      Ok(false) => Some(GamedataFindingFactory::for_asset(
+        GamedataVerificationRule::TexturesValidation,
+        path,
+        "Texture uses an unsupported format",
+      )),
+      Err(error) => Some(GamedataFindingFactory::for_asset(
+        GamedataVerificationRule::TexturesRead,
+        path,
+        error.to_string(),
+      )),
     }
   }
 }

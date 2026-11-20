@@ -28,7 +28,6 @@ fn verify(name: &str, system_ltx: &str, sounds: &[&str]) -> GamedataWeaponVerifi
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     root: root.clone(),
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .unwrap();

@@ -39,7 +39,6 @@ fn open_project_with_materials(
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     root: root.clone(),
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .unwrap();

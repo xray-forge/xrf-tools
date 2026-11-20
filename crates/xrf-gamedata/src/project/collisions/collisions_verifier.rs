@@ -27,37 +27,18 @@ impl<'a> GamedataCheck<'a> for CollisionsVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataCollisionsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify path collisions:");
-
     let started_at: Instant = Instant::now();
     let collisions: Vec<XrayPathCollision> = self.project.collisions();
 
     let findings: Vec<Finding> = collisions
       .iter()
       .take_while(|_| !self.options.job.is_cancelled())
-      .map(|collision| {
-        xrf_output::info!(
-          self.options.output,
-          "File cannot be reached: {}, {} answers '{}'",
-          collision.unreachable,
-          collision.kept,
-          collision.logical_path
-        );
-
-        Self::path_collision_finding(collision)
-      })
+      .map(Self::path_collision_finding)
       .collect();
 
     self.options.job.check_cancelled()?;
 
     let duration: Duration = started_at.elapsed();
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata path collisions in {}, {} unreachable file(s)",
-      xrf_utils::format_duration(duration),
-      collisions.len()
-    );
 
     Ok(GamedataCollisionsVerificationResult {
       duration,

@@ -116,11 +116,6 @@ impl<'a> LevelReconciliationVerifier<'a> {
           .ltx_project
           .read_full_in_search(self.project.search(), path)
         else {
-          xrf_output::verbose!(
-            self.options.output,
-            "Skipping unreadable level maps configuration: {path}"
-          );
-
           continue;
         };
 

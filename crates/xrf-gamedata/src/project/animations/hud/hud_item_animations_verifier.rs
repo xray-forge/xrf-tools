@@ -35,8 +35,6 @@ impl<'a> HudItemAnimationsVerifier<'a> {
   pub(crate) fn verify(&self) -> XrfResult<GamedataHudItemAnimationsVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::verbose!(self.options.output, "Verify hud item animations");
-
     let resolved: Arc<LtxResolution> = self.project.ltx_project.system_ltx()?;
     let system_ltx: &Ltx = &resolved.ltx;
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
@@ -48,7 +46,7 @@ impl<'a> HudItemAnimationsVerifier<'a> {
 
     // Each section is verified once, reading its model and omf files a single time.
     let outcome: GamedataAssetSweepOutcome =
-      GamedataAssetSweep::new(self.options).run(&item_sections, |_, (section_name, section)| {
+      GamedataAssetSweep::new(self.options).run(&item_sections, |(section_name, section)| {
         self
           .verify_item_animations(section_name, section)
           .into_iter()
@@ -59,13 +57,6 @@ impl<'a> HudItemAnimationsVerifier<'a> {
       })?;
 
     self.options.job.check_cancelled()?;
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata hud items, {}/{} valid",
-      outcome.checked_count - outcome.invalid_count,
-      outcome.checked_count,
-    );
 
     Ok(GamedataHudItemAnimationsVerificationResult {
       checked_items_count: outcome.checked_count,

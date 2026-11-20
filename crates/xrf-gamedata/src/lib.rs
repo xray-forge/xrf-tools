@@ -2,6 +2,7 @@
 
 pub(crate) mod project;
 
+pub use project::events::{GamedataEvent, GamedataListener, GamedataRunPrinter};
 pub use project::gamedata_check_result::*;
 pub(crate) use project::gamedata_finding_factory::GamedataFindingFactory;
 pub use project::gamedata_project::*;

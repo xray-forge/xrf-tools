@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
-use xrf_utils::format_path;
 use xrf_vfs::XraySkippedMount;
 
 use crate::project::coverage::verify_coverage_result::GamedataCoverageVerificationResult;
@@ -34,39 +33,20 @@ impl<'a> GamedataCheck<'a> for CoverageVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataCoverageVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify declared source coverage:");
-
     let started_at: Instant = Instant::now();
     let skipped: &[XraySkippedMount] = self.project.skipped_mounts();
 
-    // Warned rather than merely stated, and before the checks below run, because it changes how every one of their
-    // counts must be read.
+    // Findings rather than a count, and reported before any other check, because an unopened source changes how every
+    // other check's counts must be read.
     let findings: Vec<Finding> = skipped
       .iter()
       .take_while(|_| !self.options.job.is_cancelled())
-      .map(|skipped| {
-        xrf_output::warning!(
-          self.options.output,
-          "Declared source could not be opened: {} at {}: {}",
-          skipped.origin,
-          format_path(&skipped.path),
-          skipped.reason
-        );
-
-        Self::skipped_mount_finding(skipped)
-      })
+      .map(Self::skipped_mount_finding)
       .collect();
 
     self.options.job.check_cancelled()?;
 
     let duration: Duration = started_at.elapsed();
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified declared source coverage in {}, {} unopened source(s)",
-      xrf_utils::format_duration(duration),
-      skipped.len()
-    );
 
     Ok(GamedataCoverageVerificationResult {
       duration,

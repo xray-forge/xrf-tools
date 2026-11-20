@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-use xrf_output::OutputOptions;
-
 use crate::project::gamedata_verification_type::GamedataVerificationType;
+use crate::{GamedataEvent, GamedataListener};
 
 #[derive(Clone, Default)]
 pub struct GamedataProjectVerifyOptions {
-  pub output: OutputOptions,
+  /// What hears the run's events: its start, and each check as it finishes. Nothing hears them by default.
+  pub listener: Option<GamedataListener>,
   /// Where progress goes and where cancellation comes from.
   pub job: xrf_job::JobHandle,
   pub is_strict: bool,
@@ -14,11 +14,6 @@ pub struct GamedataProjectVerifyOptions {
 }
 
 impl GamedataProjectVerifyOptions {
-  /// The same options, saying what this worker says through `output`.
-  pub fn with_output(&self, output: OutputOptions) -> Self {
-    Self { output, ..self.clone() }
-  }
-
   pub fn selected_checks(&self) -> Vec<GamedataVerificationType> {
     let mut seen: HashSet<GamedataVerificationType> = HashSet::with_capacity(self.checks.len());
 
@@ -35,6 +30,13 @@ impl GamedataProjectVerifyOptions {
       })
       .filter(|check| seen.insert(*check))
       .collect()
+  }
+
+  /// Hands `event` to the listener, if any.
+  pub(crate) fn emit(&self, event: GamedataEvent<'_>) {
+    if let Some(listener) = &self.listener {
+      listener(&event);
+    }
   }
 }
 

@@ -351,7 +351,6 @@ impl GamedataFixture {
 
     let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
       root: self.root,
-      output: xrf_output::OutputOptions::default(),
       ..Default::default()
     })
     .unwrap();

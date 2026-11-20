@@ -36,7 +36,6 @@ fn install(name: &str) -> PathBuf {
 fn open(root: PathBuf) -> GamedataProject {
   GamedataProject::open(&GamedataProjectReadOptions {
     root,
-    output: xrf_output::OutputOptions::default(),
     ..Default::default()
   })
   .expect("installation opens")
@@ -46,7 +45,6 @@ fn verify(project: &GamedataProject, checks: Vec<GamedataVerificationType>) {
   project
     .verify(&GamedataProjectVerifyOptions {
       checks,
-      output: xrf_output::OutputOptions::default(),
       ..Default::default()
     })
     .expect("selected checks run");

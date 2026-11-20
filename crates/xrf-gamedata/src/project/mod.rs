@@ -2,6 +2,7 @@ pub(crate) mod animations;
 pub(crate) mod collisions;
 pub(crate) mod coverage;
 pub(crate) mod environment;
+pub(crate) mod events;
 pub(crate) mod gamedata_asset_sweep;
 pub(crate) mod gamedata_asset_sweep_outcome;
 pub(crate) mod gamedata_check;

@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_gamedata::{
-  GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationReport,
-  GamedataVerificationType,
+  GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataRunPrinter,
+  GamedataVerificationReport, GamedataVerificationType,
 };
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
@@ -84,7 +84,6 @@ impl GenericCommand for VerifyCommand {
     let open_options: GamedataProjectReadOptions = GamedataProjectReadOptions {
       root: root.clone(),
       ignored,
-      output: output.clone(),
       is_strict,
       is_tracing_reads: matches.get_flag("trace-reads"),
       dialect: LtxDialectArgument::of(matches),
@@ -93,7 +92,7 @@ impl GenericCommand for VerifyCommand {
 
     // Created before the project opens, so the reported total covers mounting and indexing.
     let verify_options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
-      output: output.clone(),
+      listener: Some(GamedataRunPrinter::new_listener(&output)),
       is_strict,
       checks,
       job: CliJob::for_output(&output),

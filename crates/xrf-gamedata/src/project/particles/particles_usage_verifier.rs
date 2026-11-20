@@ -8,7 +8,6 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_ltx::Ltx;
 use xrf_particles::ParticlesFile;
 use xrf_spawn::{SpawnFile, XRayByteOrder};
-use xrf_utils::format_path;
 
 use crate::project::gamedata_check::GamedataCheck;
 use crate::project::particles::verify_particles_usage_result::GamedataParticlesUsageVerificationResult;
@@ -31,8 +30,6 @@ impl<'a> GamedataCheck<'a> for ParticlesUsageVerifier<'a> {
   fn verify(&self) -> XrfResult<GamedataParticlesUsageVerificationResult> {
     self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(self.options.output, "Verify particles usage:");
-
     let started_at: Instant = Instant::now();
     let particle_names: HashSet<String> = self.read_particle_names()?;
 
@@ -46,17 +43,6 @@ impl<'a> GamedataCheck<'a> for ParticlesUsageVerifier<'a> {
       .findings
       .sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
     result.duration = started_at.elapsed();
-
-    xrf_output::info!(
-      self.options.output,
-      "Verified gamedata particles usage in {}, {}/{} valid references, {}/{} spawn files inspected, {} unparsed custom data sections",
-      xrf_utils::format_duration(result.duration),
-      result.checked_references_count - result.invalid_references_count,
-      result.checked_references_count,
-      result.checked_spawn_files_count - result.unreadable_spawn_files_count,
-      result.checked_spawn_files_count,
-      result.unparsed_custom_data_count
-    );
 
     self.options.job.check_cancelled()?;
 
@@ -112,29 +98,12 @@ impl ParticlesUsageVerifier<'_> {
         found
       });
 
-    for (reported, outcome) in outcomes {
-      match outcome {
-        Ok(found) => {
-          for finding in &found.findings {
-            xrf_output::error!(
-              self.options.output,
-              "{} ({})",
-              finding.message(),
-              format_path(&reported)
-            );
-          }
-
-          result.checked_references_count += found.checked_references_count;
-          result.invalid_references_count += found.invalid_references_count;
-          result.findings.extend(found.findings);
-        }
-        // Malformed ltx files are reported by the generic ltx check, not this one.
-        Err(error) => xrf_output::verbose!(
-          self.options.output,
-          "Skipping ltx entry in particles usage check: {} - {}",
-          format_path(&reported),
-          error
-        ),
+    // Malformed ltx files are reported by the generic ltx check, not this one.
+    for (_, outcome) in outcomes {
+      if let Ok(found) = outcome {
+        result.checked_references_count += found.checked_references_count;
+        result.invalid_references_count += found.invalid_references_count;
+        result.findings.extend(found.findings);
       }
     }
   }
@@ -152,13 +121,6 @@ impl ParticlesUsageVerifier<'_> {
       }) {
         Ok(spawn_file) => spawn_file,
         Err(error) => {
-          xrf_output::error!(
-            self.options.output,
-            "Could not inspect spawn file for particle usage: {} - {}",
-            spawn_path,
-            error
-          );
-
           result.findings.push(GamedataFindingFactory::for_asset(
             GamedataVerificationRule::ParticlesUsageSpawn,
             spawn_path,
@@ -185,13 +147,6 @@ impl ParticlesUsageVerifier<'_> {
         match Ltx::read_from_str(custom_data) {
           Ok(ltx) => self.verify_ltx(particle_names, &ltx, Path::new(spawn_path), result),
           Err(error) => {
-            xrf_output::error!(
-              self.options.output,
-              "Could not parse spawn custom data for particle usage: {} - {}",
-              spawn_path,
-              error
-            );
-
             result.findings.push(GamedataFindingFactory::for_asset(
               GamedataVerificationRule::ParticlesUsageSpawnCustomData,
               spawn_path,
@@ -223,12 +178,6 @@ impl ParticlesUsageVerifier<'_> {
       result.checked_references_count += 1;
 
       if !particle_names.contains(&Self::normalize_particle_name(reference)) {
-        xrf_output::error!(
-          self.options.output,
-          "Unknown particle reference: collide particles of {pairs_count} pairs = {reference} ({})",
-          GameMtlFile::FILE_NAME
-        );
-
         result.findings.push(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::ParticlesUsageReference,
           GameMtlFile::FILE_NAME,
