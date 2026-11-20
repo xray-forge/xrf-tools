@@ -21,7 +21,7 @@
     "@xrf/types": "workspace:*"
   },
   "peerDependencies": {
-    "react": "^19.3.1"
+    "react": "catalog:"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -30,12 +30,12 @@
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
-    "@types/react": "^19.3.0",
+    "@types/react": "catalog:",
     "@typescript/native": "catalog:",
     "eslint": "catalog:",
     "jest": "catalog:",
     "prettier": "catalog:",
-    "react": "^19.3.1",
+    "react": "catalog:",
     "typescript": "catalog:",
     "@xrf/toolchain": "workspace:*"
   }

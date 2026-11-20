@@ -11,16 +11,28 @@ catalog:
   "@swc/core": ^1.16.22
   "@swc/jest": ^0.2.39
   "@tailwindcss/vite": 4.3.5
+  "@tauri-apps/api": ^2.12.5
+  "@testing-library/jest-dom": ^7.0.1
+  "@testing-library/react": ^16.3.3
+  "@testing-library/user-event": ^14.6.10
   "@types/node": ^24.19.2
+  "@types/react": ^19.3.0
+  "@types/react-dom": ^19.3.0
   "@typescript/native": npm:typescript@^7.0.2
   "@vitejs/plugin-react": ^6.3.0
+  "@wirestate/core": 1.0.0
+  "@wirestate/mobx": 1.0.0
+  "@wirestate/react": 1.0.0
   "@xyflow/react": ^12.12.1
   date-fns: ^4.4.0
   eslint: ^10.14.0
   jest: ^30.5.2
   jest-environment-jsdom: ^30.5.2
+  mobx: ^6.16.1
   prettier: ^3.10.1
   prettier-plugin-tailwindcss: 0.8.1
+  react: ^19.3.1
+  react-dom: ^19.3.1
   tailwindcss: 4.3.5
   typescript: npm:@typescript/typescript6@^6.0.2
   vite: ^8.3.8
