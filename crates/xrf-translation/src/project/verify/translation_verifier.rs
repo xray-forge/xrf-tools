@@ -175,7 +175,7 @@ impl TranslationVerifier {
         }
       }
 
-      for problem in TranslationTableCompiler::inspect(subject, parsed, language)? {
+      for problem in TranslationTableCompiler::inspect(subject, parsed, language) {
         xrf_output::error!(options.output, "{}: {}", subject, problem.message);
 
         result.problems.push(problem);

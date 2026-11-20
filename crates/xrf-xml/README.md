@@ -142,31 +142,9 @@ fn main() -> xrf_error::XrfResult {
   to 1024 bytes), a name the document's encoding cannot decode, a missing include, or nesting past 128 levels.
 - `XmlIncludes::list` skips malformed directives instead.
 
-## Generate XML
+## Write XML
 
-`XmlSerializer::serialize` renders a Serde model with two-space indentation, LF newlines and expanded empty elements. It
-adds no XML declaration and does no byte encoding or file writing.
-
-```rust
-use serde::Serialize;
-use xrf_xml::XmlSerializer;
-
-#[derive(Serialize)]
-#[serde(rename = "root")]
-struct Root {
-  value: String,
-}
-
-fn main() -> xrf_error::XrfResult {
-  let output: String = XmlSerializer::serialize(&Root { value: String::new() })?;
-
-  assert_eq!(output, "<root>\n  <value></value>\n</root>");
-
-  Ok(())
-}
-```
-
-Escaping:
+A crate writing XML builds the text itself and escapes each value it splices in:
 
 - `XmlEscape::text` escapes `&`, `<`, and the `>` of a `]]>`. Every other `>`, quote and apostrophe stays raw, as
   shipped data writes them.
@@ -176,11 +154,10 @@ Escaping:
 
 ## Errors
 
-| Error                     | Cause                                                      |
-| ------------------------- | ---------------------------------------------------------- |
-| `XrfError::Parsing`       | Malformed XML, nesting past the limit, a refused DTD       |
-| `XrfError::Encoding`      | An unsupported encoding label, or bytes that do not decode |
-| `XrfError::Serialization` | A Serde failure                                            |
+| Error                | Cause                                                      |
+| -------------------- | ---------------------------------------------------------- |
+| `XrfError::Parsing`  | Malformed XML, nesting past the limit, a refused DTD       |
+| `XrfError::Encoding` | An unsupported encoding label, or bytes that do not decode |
 
 ## Checks
 

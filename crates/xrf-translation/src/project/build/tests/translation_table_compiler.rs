@@ -150,7 +150,7 @@ fn inspecting_reports_every_problem_rather_than_the_first() {
   translations.extend(source("st_fine", "eng", "Fine"));
 
   let findings: Vec<TranslationFinding> =
-    TranslationTableCompiler::inspect(SUBJECT, &translations, TranslationLanguage::English).unwrap();
+    TranslationTableCompiler::inspect(SUBJECT, &translations, TranslationLanguage::English);
   let rules: Vec<&str> = findings.iter().map(|finding| finding.rule.as_str()).collect();
 
   assert_eq!(rules, vec!["translations.unencodable", "translations.overlong"]);
@@ -158,7 +158,27 @@ fn inspecting_reports_every_problem_rather_than_the_first() {
   assert!(findings[1].message.contains("'st_long'"));
   assert!(
     TranslationTableCompiler::inspect(SUBJECT, &source("st_fine", "eng", "Fine"), TranslationLanguage::English)
-      .unwrap()
       .is_empty()
+  );
+}
+
+#[test]
+fn renders_the_table_layout_and_escapes_only_what_xml_requires() {
+  let mut translations: TranslationJson = source("st_a&b<c>d\"e'f\tg", "eng", "t&u<v>w\"x'y ]]> z");
+
+  translations.extend(source("st_empty", "eng", ""));
+
+  // `>` and quotes in text stay raw, as shipped string tables write them; the attribute also escapes its own quote.
+  assert_eq!(
+    TranslationTableCompiler::render(&translations, TranslationLanguage::English, false),
+    "<?xml version=\"1.0\" encoding=\"windows-1251\" ?>\n\n<string_table>\n  <string id=\"st_a&amp;b&lt;c>d&quot;e'f&#9;g\">\n    <text>t&amp;u&lt;v>w\"x'y ]]&gt; z</text>\n  </string>\n  <string id=\"st_empty\">\n    <text></text>\n  </string>\n</string_table>"
+  );
+}
+
+#[test]
+fn renders_an_empty_table_as_one_element() {
+  assert_eq!(
+    TranslationTableCompiler::render(&TranslationJson::new(), TranslationLanguage::English, false),
+    "<?xml version=\"1.0\" encoding=\"windows-1251\" ?>\n\n<string_table></string_table>"
   );
 }
