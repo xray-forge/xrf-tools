@@ -8592,8 +8592,6 @@ dependencies = [
 name = "xrf-error"
 version = "0.1.0"
 dependencies = [
- "image",
- "serde_json",
  "thiserror 2.0.21",
  "xrf-error-derive",
 ]

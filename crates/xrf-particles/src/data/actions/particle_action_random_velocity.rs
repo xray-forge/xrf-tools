@@ -67,7 +67,7 @@ mod tests {
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -141,7 +141,7 @@ mod tests {
     let mut file: File =
       GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
+    file.write_all(to_string_pretty(&original).map_serde_err()?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
     let serialized: String = read_to_string(&mut file)?;
@@ -149,7 +149,7 @@ mod tests {
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(
       original,
-      serde_json::from_str::<ParticleActionRandomVelocity>(&serialized)?
+      serde_json::from_str::<ParticleActionRandomVelocity>(&serialized).map_serde_err()?
     );
 
     Ok(())

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_error::XrfResult;
+use xrf_error::{MapXrfErr, XrfResult};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackHeaderEntry};
 
@@ -27,7 +27,7 @@ impl ArchivePackConfigJson {
   ///
   /// Returns a parse error for malformed JSON, an unknown key, or a value of the wrong shape.
   pub fn parse(source: &[u8]) -> XrfResult<Self> {
-    Ok(serde_json::from_slice(source)?)
+    serde_json::from_slice(source).map_serde_err()
   }
 
   /// Render it as JSON text.
@@ -36,7 +36,7 @@ impl ArchivePackConfigJson {
   ///
   /// Returns a serialization error, which the shapes above cannot actually produce.
   pub fn render(&self) -> XrfResult<String> {
-    let mut rendered: String = serde_json::to_string_pretty(self)?;
+    let mut rendered: String = serde_json::to_string_pretty(self).map_serde_err()?;
 
     rendered.push('\n');
 

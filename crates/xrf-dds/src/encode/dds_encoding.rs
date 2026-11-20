@@ -2,7 +2,7 @@ use ddsfile::{Caps, Caps2, D3DFormat, Dds, NewD3dParams};
 use image::RgbaImage;
 use image_dds::{ImageFormat, Mipmaps, Quality, Surface, SurfaceRgba8};
 use rayon::prelude::*;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::{MapXrfErr, XrfError, XrfResult};
 
 use crate::encode::dds_bc1_cut_out::DdsBc1CutOut;
 use crate::encode::dds_surface_levels::DdsSurfaceLevels;
@@ -86,14 +86,12 @@ impl DdsEncoding {
           mipmap_levels: (surface.mipmaps > 1).then_some(surface.mipmaps),
           caps2: is_cube.then_some(Caps2::CUBEMAP | Caps2::CUBEMAP_ALLFACES),
         })
-        .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+        .map_texture_processing_err()?;
 
         dds.data = surface.data;
         dds
       }
-      None => surface
-        .to_dds()
-        .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?,
+      None => surface.to_dds().map_texture_processing_err()?,
     };
 
     // A cube is a complex surface whether or not its faces carry levels, which Direct3D's loaders ask of its header;
@@ -123,7 +121,7 @@ impl DdsEncoding {
         let mut data: Vec<u8> = stripe
           .encode(self.format, self.quality, Mipmaps::FromSurface)
           .map(|surface| surface.data)
-          .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+          .map_texture_processing_err()?;
 
         if is_cut_out {
           DdsBc1CutOut::apply(&mut data, stripe.data, stripe.width, stripe.height);
@@ -174,7 +172,7 @@ mod tests {
   use ddsfile::Dds;
   use image::{Rgba, RgbaImage};
   use image_dds::{ImageFormat, Quality, SurfaceRgba8};
-  use xrf_error::{XrfError, XrfResult};
+  use xrf_error::{MapXrfErr, XrfResult};
 
   use super::DdsEncoding;
   use crate::encode::dds_encode_candidate::DdsEncodeCandidate;
@@ -275,8 +273,7 @@ mod tests {
         candidate.label()
       );
 
-      let dds: Dds =
-        Dds::read(&mut bytes.as_slice()).map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+      let dds: Dds = Dds::read(&mut bytes.as_slice()).map_texture_processing_err()?;
 
       // A DX10 header counts one cube of six faces; a legacy one has no count.
       assert!(
@@ -285,8 +282,8 @@ mod tests {
         candidate.label()
       );
 
-      let surface: SurfaceRgba8<Vec<u8>> = SurfaceRgba8::decode_layers_mipmaps_dds(&dds, 0..6, 0..1)
-        .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+      let surface: SurfaceRgba8<Vec<u8>> =
+        SurfaceRgba8::decode_layers_mipmaps_dds(&dds, 0..6, 0..1).map_texture_processing_err()?;
 
       for face in 0..6u8 {
         let red: u8 = surface.data[usize::from(face) * 16 * 16 * 4];

@@ -147,7 +147,7 @@ mod tests {
   use xrf_chunk::{
     ChunkReadWrite, ChunkReadWriteOptional, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
   };
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::generic::time::Time;
@@ -340,13 +340,13 @@ mod tests {
     let mut file: File =
       GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
+    file.write_all(to_string_pretty(&original).map_serde_err()?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
     let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
-    assert_eq!(original, serde_json::from_str::<Time>(&serialized)?);
+    assert_eq!(original, serde_json::from_str::<Time>(&serialized).map_serde_err()?);
 
     Ok(())
   }

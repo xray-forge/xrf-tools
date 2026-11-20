@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_utils::{LineEndings, StagedFile, format_path};
 
 use crate::manifest::extern_export::ExternExport;
@@ -26,7 +26,7 @@ impl ExternManifest {
   /// Returns an error when JSON serialization fails.
   pub fn render(&self, format: ExternFormat, line_endings: Option<LineEndings>) -> XrfResult<String> {
     let content: String = match format {
-      ExternFormat::Json => serde_json::to_string_pretty(self)?,
+      ExternFormat::Json => serde_json::to_string_pretty(self).map_serde_err()?,
       ExternFormat::Xml => ExternXmlRenderer::render(self),
       ExternFormat::Html => ExternHtmlRenderer::render(self),
     };

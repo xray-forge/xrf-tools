@@ -57,7 +57,7 @@ mod tests {
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_test_utils::GeneratedResources;
 
@@ -148,12 +148,15 @@ mod tests {
     let mut file: File =
       GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
+    file.write_all(to_string_pretty(&original).map_serde_err()?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
     let serialized: String = read_to_string(&mut file)?;
 
-    assert_eq!(serde_json::from_str::<AlifeObjectTrader>(&serialized)?, original);
+    assert_eq!(
+      serde_json::from_str::<AlifeObjectTrader>(&serialized).map_serde_err()?,
+      original
+    );
 
     Ok(())
   }

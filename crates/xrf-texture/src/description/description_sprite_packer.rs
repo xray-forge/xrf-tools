@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use image::{GenericImage, ImageBuffer, Rgba, RgbaImage};
 use xrf_dds::DdsFile;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 
@@ -100,7 +100,7 @@ impl DescriptionSpritePacker {
 
           result
             .copy_from(&texture_dds, texture.x, texture.y)
-            .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+            .map_texture_processing_err()?;
 
           placed += 1;
         }

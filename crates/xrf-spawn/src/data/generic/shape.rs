@@ -170,7 +170,7 @@ mod tests {
   use byteorder::ReadBytesExt;
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -375,10 +375,13 @@ mod tests {
     ] {
       let mut file: File = GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), name))?;
 
-      file.write_all(to_string_pretty(&original)?.as_bytes())?;
+      file.write_all(to_string_pretty(&original).map_serde_err()?.as_bytes())?;
       file.seek(SeekFrom::Start(0))?;
 
-      assert_eq!(original, serde_json::from_str::<Shape>(&read_to_string(&mut file)?)?);
+      assert_eq!(
+        original,
+        serde_json::from_str::<Shape>(&read_to_string(&mut file)?).map_serde_err()?
+      );
     }
 
     Ok(())

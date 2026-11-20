@@ -91,7 +91,7 @@ impl AlifePacketsReadWrite for AlifeObjectStationaryMgun {
 #[cfg(test)]
 mod tests {
   use xrf_chunk::XRayByteOrder;
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
 
   use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
@@ -158,7 +158,8 @@ mod tests {
     let original: AlifeObjectStationaryMgun = new_object();
 
     assert_eq!(
-      serde_json::from_str::<AlifeObjectStationaryMgun>(&serde_json::to_string(&original)?)?,
+      serde_json::from_str::<AlifeObjectStationaryMgun>(&serde_json::to_string(&original).map_serde_err()?)
+        .map_serde_err()?,
       original
     );
 

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_editable_level::EditableSpawnPointObject;
-use xrf_error::XrfResult;
+use xrf_error::{MapXrfErr, XrfResult};
 use xrf_level::{LevelEnvModFile, LevelEnvModifier};
 use xrf_math::Vector3d;
 use xrf_rawdata::{LevelDecompileRequest, LevelSceneProvenance};
@@ -69,7 +69,7 @@ fn writes_the_scene_its_parts_and_its_sidecar() -> XrfResult {
   decompile(&root.join("level"), &destination, &[]).expect("the level decompiles");
 
   let sidecar: LevelSceneProvenance =
-    serde_json::from_slice(&fs::read(root.join("scenes/test_level.level.xrf.json"))?)?;
+    serde_json::from_slice(&fs::read(root.join("scenes/test_level.level.xrf.json"))?).map_serde_err()?;
 
   assert!(destination.is_file());
   assert!(root.join("scenes/test_level/spawn.part").is_file());
@@ -135,7 +135,7 @@ fn reads_no_root_spawn_where_the_default_one_is_absent() -> XrfResult {
   decompile(&root.join("level"), &destination, &[]).expect("the level decompiles");
 
   let sidecar: LevelSceneProvenance =
-    serde_json::from_slice(&fs::read(root.join("scenes/test_level.level.xrf.json"))?)?;
+    serde_json::from_slice(&fs::read(root.join("scenes/test_level.level.xrf.json"))?).map_serde_err()?;
 
   assert_eq!(sidecar.root_spawn, None);
 

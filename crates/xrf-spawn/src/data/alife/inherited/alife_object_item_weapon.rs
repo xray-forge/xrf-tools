@@ -223,7 +223,7 @@ impl AlifeObjectItemWeapon {
 #[cfg(test)]
 mod tests {
   use xrf_chunk::{ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
@@ -330,7 +330,8 @@ mod tests {
     let original: AlifeObjectItemWeapon = AlifeObjectItemWeapon::new_mock(Vector3d::new(4.0, 5.0, 6.0));
 
     assert_eq!(
-      serde_json::from_str::<AlifeObjectItemWeapon>(&serde_json::to_string(&original)?)?,
+      serde_json::from_str::<AlifeObjectItemWeapon>(&serde_json::to_string(&original).map_serde_err()?)
+        .map_serde_err()?,
       original
     );
 

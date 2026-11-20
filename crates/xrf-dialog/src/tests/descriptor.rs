@@ -1,4 +1,4 @@
-use xrf_error::XrfResult;
+use xrf_error::{MapXrfErr, XrfResult};
 
 use crate::conversation::dialog_element_kind::DialogElementKind;
 use crate::dialog_file::DialogFile;
@@ -170,7 +170,7 @@ fn serializes_element_kinds_as_camel_case() -> XrfResult {
   // The wire contract the frontend switches on; `ScriptText` reaching TypeScript as `ScriptText`
   // would not match the generated union.
   let descriptor: DialogDescriptor = describe()?;
-  let json: String = serde_json::to_string(&phrase(&descriptor, "1"))?;
+  let json: String = serde_json::to_string(&phrase(&descriptor, "1")).map_serde_err()?;
 
   assert!(json.contains(r#""kind":"scriptText""#), "unexpected payload: {json}");
   assert!(json.contains(r#""kind":"giveInfo""#), "unexpected payload: {json}");

@@ -127,7 +127,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyMonster {
 #[cfg(test)]
 mod tests {
   use xrf_chunk::{ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
@@ -191,7 +191,8 @@ mod tests {
     let original: AlifeClearSkyMonster = AlifeClearSkyMonster::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
     assert_eq!(
-      serde_json::from_str::<AlifeClearSkyMonster>(&serde_json::to_string(&original)?)?,
+      serde_json::from_str::<AlifeClearSkyMonster>(&serde_json::to_string(&original).map_serde_err()?)
+        .map_serde_err()?,
       original
     );
 

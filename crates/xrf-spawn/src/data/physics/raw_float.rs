@@ -164,7 +164,7 @@ impl Visitor<'_> for RawFloatVisitor {
 
 #[cfg(test)]
 mod tests {
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
 
   use crate::data::physics::raw_float::RawFloat;
 
@@ -176,7 +176,7 @@ mod tests {
       assert_eq!(value.to_string(), format!("0x{bits:08x}"));
       assert_eq!(value.to_string().parse::<RawFloat>()?, value);
       assert_eq!(
-        serde_json::from_str::<RawFloat>(&serde_json::to_string(&value)?)?,
+        serde_json::from_str::<RawFloat>(&serde_json::to_string(&value).map_serde_err()?).map_serde_err()?,
         value
       );
     }
@@ -191,8 +191,14 @@ mod tests {
 
       assert_eq!(raw.to_string(), value.to_string());
       assert_eq!(raw.to_string().parse::<RawFloat>()?, raw);
-      assert_eq!(serde_json::to_string(&raw)?, serde_json::to_string(&value)?);
-      assert_eq!(serde_json::from_str::<RawFloat>(&serde_json::to_string(&raw)?)?, raw);
+      assert_eq!(
+        serde_json::to_string(&raw).map_serde_err()?,
+        serde_json::to_string(&value).map_serde_err()?
+      );
+      assert_eq!(
+        serde_json::from_str::<RawFloat>(&serde_json::to_string(&raw).map_serde_err()?).map_serde_err()?,
+        raw
+      );
     }
 
     Ok(())
@@ -200,8 +206,14 @@ mod tests {
 
   #[test]
   fn reads_a_whole_number_from_json() -> XrfResult {
-    assert_eq!(serde_json::from_str::<RawFloat>("3")?, RawFloat::from(3.0));
-    assert_eq!(serde_json::from_str::<RawFloat>("-2")?, RawFloat::from(-2.0));
+    assert_eq!(
+      serde_json::from_str::<RawFloat>("3").map_serde_err()?,
+      RawFloat::from(3.0)
+    );
+    assert_eq!(
+      serde_json::from_str::<RawFloat>("-2").map_serde_err()?,
+      RawFloat::from(-2.0)
+    );
 
     Ok(())
   }

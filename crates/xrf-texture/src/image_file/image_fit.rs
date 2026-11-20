@@ -2,7 +2,7 @@ use std::path::Path;
 
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImage, ImageBuffer, Rgba, RgbaImage};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_utils::format_path;
 
 /// Makes an image exactly the size something else needs it.
@@ -55,11 +55,13 @@ impl ImageFit {
       )));
     }
 
-    centered.copy_from(
-      &rescaled_image,
-      (width - rescaled_width) / 2,
-      (height - rescaled_height) / 2,
-    )?;
+    centered
+      .copy_from(
+        &rescaled_image,
+        (width - rescaled_width) / 2,
+        (height - rescaled_height) / 2,
+      )
+      .map_texture_processing_err()?;
 
     Ok(centered.into())
   }

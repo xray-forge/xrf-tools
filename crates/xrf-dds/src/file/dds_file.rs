@@ -5,7 +5,7 @@ use std::path::Path;
 use ddsfile::{Dds, DxgiFormat};
 use image::codecs::png::PngEncoder;
 use image::{ExtendedColorType, GrayImage, ImageEncoder, RgbaImage};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
 use crate::file::dds_block_decoder::DdsBlockDecoder;
@@ -230,10 +230,7 @@ impl DdsFile {
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut bytes: Vec<u8> = Vec::new();
 
-    self
-      .dds
-      .write(&mut bytes)
-      .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+    self.dds.write(&mut bytes).map_texture_processing_err()?;
 
     Ok(bytes)
   }

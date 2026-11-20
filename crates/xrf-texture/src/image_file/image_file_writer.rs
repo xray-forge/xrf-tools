@@ -2,7 +2,7 @@ use std::path::Path;
 
 use image::{ImageFormat, RgbaImage};
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat as DDSImageFormat, Quality};
-use xrf_error::XrfResult;
+use xrf_error::{MapXrfErr, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
@@ -32,7 +32,9 @@ impl ImageFileWriter {
   }
 
   pub(crate) fn write_png(path: &Path, image: &RgbaImage) -> XrfResult {
-    Ok(image.save_with_format(path, ImageFormat::Png)?)
+    image
+      .save_with_format(path, ImageFormat::Png)
+      .map_texture_processing_err()
   }
 
   /// Warn when the sheet about to be written at `path` is shaped differently from the one it replaces.

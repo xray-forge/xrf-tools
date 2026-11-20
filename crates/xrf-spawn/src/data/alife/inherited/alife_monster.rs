@@ -100,7 +100,7 @@ impl AlifePacketsReadWrite for AlifeMonster {
 #[cfg(test)]
 mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
@@ -210,7 +210,7 @@ mod tests {
     let original: AlifeMonster = AlifeMonster::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
     assert_eq!(
-      serde_json::from_str::<AlifeMonster>(&serde_json::to_string(&original)?)?,
+      serde_json::from_str::<AlifeMonster>(&serde_json::to_string(&original).map_serde_err()?).map_serde_err()?,
       original
     );
 

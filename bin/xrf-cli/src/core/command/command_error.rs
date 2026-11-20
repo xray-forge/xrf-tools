@@ -80,7 +80,7 @@ impl From<IoError> for CommandError {
 
 impl From<serde_json::Error> for CommandError {
   fn from(value: serde_json::Error) -> Self {
-    Self::Execution(value.into())
+    Self::Execution(XrfError::new_serde_error(value.to_string()))
   }
 }
 

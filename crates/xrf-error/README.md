@@ -62,7 +62,8 @@ Match on the variant when behavior depends on the cause; the `Display` text is f
 | `NotImplemented`        | The requested operation or format variant is not supported                      |
 | `Cancelled`             | The operation stopped at a safe boundary because cancellation was requested     |
 | `Unexpected`            | An internal state that should not occur                                         |
-| `Serde`, `Generic`      | Converted from `serde_json` and boxed `dyn Error` failures                      |
+| `Serde`                 | A JSON value cannot be read or written                                          |
+| `Generic`               | Converted from boxed `dyn Error` failures                                       |
 
 `Cancelled` is control flow, not a failure. It lets a cancellation check use `?` and stop a parallel iterator. An
 operation catches its own `Cancelled` and reports what it completed, so a `Cancelled` reaching a caller means a missed
@@ -70,14 +71,26 @@ catch. See [xrf-job](../xrf-job/README.md) for cancellation.
 
 ## Conversions
 
-`?` converts these errors through the `From` impls beside [the variants](src/xrf_error.rs):
+`?` converts these standard library errors through the `From` impls beside [the variants](src/xrf_error.rs):
 
 | Source                         | Variant             |
 | ------------------------------ | ------------------- |
 | `std::io::Error`               | `Io`, with its kind |
-| `serde_json::Error`            | `Serde`             |
-| `image::ImageError`            | `TextureProcessing` |
 | `Box<dyn Error + Send + Sync>` | `Generic`           |
+
+Map a `serde_json` or `image` error at the call with [`MapXrfErr`](src/map_xrf_err.rs): `map_serde_err()` gives
+`Serde` and `map_texture_processing_err()` gives `TextureProcessing`. They have no `From` impl because xrf-error does
+not depend on those libraries, and Rust's orphan rule keeps a dependent crate from adding one. Call the trait only on
+another library's error: on an `XrfResult` it compiles and replaces the variant.
+
+```rust
+use xrf_error::{MapXrfErr, XrfError};
+
+// A JSON reader would call `serde_json::from_str(text)` here; this crate has no `serde_json` to call.
+let parsed: Result<u32, &str> = Err("expected value at line 1 column 1");
+
+assert!(matches!(parsed.map_serde_err(), Err(XrfError::Serde { .. })));
+```
 
 Any other error needs an explicit `map_err` to the variant that describes it. Wrapping everything as `Invalid` loses
 distinctions callers act on, such as a missing file (`Io` with `ErrorKind::NotFound`) against an unreadable one.

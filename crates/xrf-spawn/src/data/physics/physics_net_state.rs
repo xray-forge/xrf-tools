@@ -272,7 +272,7 @@ impl PhysicsNetState {
 mod tests {
   use byteorder::WriteBytesExt;
   use xrf_chunk::{ChunkReadWriteOptional, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
@@ -346,7 +346,7 @@ mod tests {
       Some(state.clone())
     );
     assert_eq!(
-      serde_json::from_str::<PhysicsNetState>(&serde_json::to_string(&state)?)?,
+      serde_json::from_str::<PhysicsNetState>(&serde_json::to_string(&state).map_serde_err()?).map_serde_err()?,
       state
     );
 

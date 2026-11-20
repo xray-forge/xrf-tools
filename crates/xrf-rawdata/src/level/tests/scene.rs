@@ -9,7 +9,7 @@ use xrf_editable_level::{
   EditableLevelScene, EditableObjectPart, EditableSpawnPointObject, EditableWayObject,
 };
 use xrf_editable_object::EditableObjectFile;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_job::{JobHandle, ProgressSink, RecordingSink};
 use xrf_level::{
   LevelEnvModFile, LevelEnvModifier, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelGameWay, LevelGameWayLink,
@@ -408,7 +408,7 @@ fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
 
   let read: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level_path)?;
   let sidecar: LevelSceneProvenance =
-    serde_json::from_slice(&std::fs::read(output.join("test_level.level.xrf.json"))?)?;
+    serde_json::from_slice(&std::fs::read(output.join("test_level.level.xrf.json"))?).map_serde_err()?;
 
   assert_eq!(read.level.write_to_bytes()?, decompiled.scene.level.write_to_bytes()?);
   assert_eq!(read.tools.len(), decompiled.scene.tools.len());

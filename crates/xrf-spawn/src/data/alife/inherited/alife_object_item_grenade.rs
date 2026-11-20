@@ -59,7 +59,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemGrenade {
 #[cfg(test)]
 mod tests {
   use xrf_chunk::XRayByteOrder;
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
 
@@ -106,7 +106,8 @@ mod tests {
     let original: AlifeObjectItemGrenade = new_object();
 
     assert_eq!(
-      serde_json::from_str::<AlifeObjectItemGrenade>(&serde_json::to_string(&original)?)?,
+      serde_json::from_str::<AlifeObjectItemGrenade>(&serde_json::to_string(&original).map_serde_err()?)
+        .map_serde_err()?,
       original
     );
 

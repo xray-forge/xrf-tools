@@ -92,7 +92,7 @@ impl AlifeObjectOnlineOfflineGroup {
 #[cfg(test)]
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
 
   use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
@@ -137,7 +137,8 @@ mod tests {
     let original: AlifeObjectOnlineOfflineGroup = AlifeObjectOnlineOfflineGroup::new_mock(vec![6511]);
 
     assert_eq!(
-      serde_json::from_str::<AlifeObjectOnlineOfflineGroup>(&serde_json::to_string(&original)?)?,
+      serde_json::from_str::<AlifeObjectOnlineOfflineGroup>(&serde_json::to_string(&original).map_serde_err()?)
+        .map_serde_err()?,
       original
     );
 

@@ -166,7 +166,7 @@ mod tests {
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
+  use xrf_error::{MapXrfErr, XrfResult};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::domain::particle_domain::ParticleDomain;
@@ -225,20 +225,23 @@ mod tests {
     let mut file: File =
       GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
+    file.write_all(to_string_pretty(&original).map_serde_err()?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
     let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
-    assert_eq!(original, serde_json::from_str::<ParticleDomain>(&serialized)?);
+    assert_eq!(
+      original,
+      serde_json::from_str::<ParticleDomain>(&serialized).map_serde_err()?
+    );
 
     Ok(())
   }
 
   #[test]
   fn test_serializes_each_pair_as_an_array() -> XrfResult {
-    let value: serde_json::Value = serde_json::to_value(ParticleDomain::new_mock())?;
+    let value: serde_json::Value = serde_json::to_value(ParticleDomain::new_mock()).map_serde_err()?;
 
     assert_eq!(value["coordinates"].as_array().map(Vec::len), Some(2));
     assert_eq!(value["coordinates"][0]["x"], 1.5);

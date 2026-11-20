@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use image::{DynamicImage, GenericImage, ImageBuffer, Rgba};
 use xrf_dds::DdsFile;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
@@ -84,7 +84,7 @@ impl EquipmentSpritePacker {
         &sprite,
       );
 
-      image.copy_from(&sprite, x, y)?;
+      image.copy_from(&sprite, x, y).map_texture_processing_err()?;
       count += 1;
     }
 
@@ -205,7 +205,7 @@ impl EquipmentSpritePacker {
   /// Read rescaled png or dds icon to inject into one large equipment file.
   pub fn read_sprite_from_path(path: &Path, width: u32, height: u32) -> XrfResult<DynamicImage> {
     let image: DynamicImage = if XrayExtension::Png.matches_path(path) {
-      ImageFileReader::decode(path)?
+      ImageFileReader::decode(path).map_texture_processing_err()?
     } else {
       DdsFile::read_from_path(path)?.decode_rgba(0)?.into()
     };
