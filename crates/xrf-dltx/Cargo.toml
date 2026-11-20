@@ -16,6 +16,7 @@ xrf-extension = { workspace = true }
 xrf-ltx = { workspace = true }
 
 [dev-dependencies]
+xrf-ltx-project = { workspace = true }
 xrf-test-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 

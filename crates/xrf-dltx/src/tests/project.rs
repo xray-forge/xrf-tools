@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
+use xrf_ltx::{Ltx, LtxDialect, LtxResolution, LtxStandardDialect};
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 

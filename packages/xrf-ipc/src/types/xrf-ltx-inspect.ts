@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { LtxFinding } from "#/types/xrf-ltx";
+import { LtxFinding } from "#/types/xrf-ltx-project";
 
 /**
  * One finding, placed at the line a person has to open.

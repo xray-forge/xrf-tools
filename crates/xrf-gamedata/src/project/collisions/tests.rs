@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxProject, LtxProjectOptions};
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_vfs::{
   XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayLogicalPath, XrayLookupScope, XrayPathCollision,
   XraySearch, XraySourceKind, XrayVfs,

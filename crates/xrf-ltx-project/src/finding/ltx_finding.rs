@@ -1,8 +1,8 @@
 use std::fmt::{Display, Formatter};
 
 use serde::Serialize;
+use xrf_ltx::LtxResolutionDiagnostic;
 
-use crate::dialect::LtxResolutionDiagnostic;
 use crate::finding::LtxFindingKind;
 
 /// One thing wrong with a config tree, placed at the entry point it was found under and the config it is about.
@@ -107,8 +107,10 @@ impl Display for LtxFinding {
 
 #[cfg(test)]
 mod tests {
+
+  use xrf_ltx::LtxResolutionDiagnostic;
+
   use super::LtxFinding;
-  use crate::LtxResolutionDiagnostic;
 
   #[test]
   fn names_the_declaring_config_beside_the_entry_point_that_reached_it() {

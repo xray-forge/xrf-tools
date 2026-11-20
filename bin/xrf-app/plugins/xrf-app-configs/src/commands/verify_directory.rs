@@ -8,7 +8,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobPhase, JobRegistry, JobStart};
 use xrf_dltx::DltxDialect;
 use xrf_job::{JobProgress, JobScope};
-use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
+use xrf_ltx_project::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 
 use crate::ipc::configs::CONFIGS_JOB_VERIFY;
 use crate::request::ConfigsVerifyRequest;

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use xrf_job::JobOutcome;
-use xrf_ltx::{LtxFinding, LtxFindingKind, LtxProject, LtxProjectVerifyResult};
+use xrf_ltx_project::{LtxFinding, LtxFindingKind, LtxProject, LtxProjectVerifyResult};
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 
 /// What an `ltx verify` run reports to a machine: how much of the project it judged, and the shared report whose one

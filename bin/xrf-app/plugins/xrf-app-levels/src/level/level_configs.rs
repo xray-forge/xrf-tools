@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use xrf_app_core::TauriResult;
-use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions};
+use xrf_ltx::LtxDialect;
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_vfs::{XrayRoots, XraySearch};
 
 use crate::level::SelectedLevel;

@@ -10,7 +10,7 @@ Pripyat and OpenXRay do not. The crate exports one name: `DltxDialect`.
 
 ```rust,no_run
 use xrf_dltx::DltxDialect;
-use xrf_ltx::{LtxProject, LtxProjectOptions};
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 
 fn main() -> xrf_error::XrfResult {
   let options = LtxProjectOptions::default().with_dialect(DltxDialect::select(true));

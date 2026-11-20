@@ -1,7 +1,8 @@
 //! Where each kind of finding lands, which is the whole reason this crate exists between the core and a viewer.
 
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxFinding, LtxFindingKind, LtxResolution, LtxResolutionDiagnostic};
+use xrf_ltx::{LtxResolution, LtxResolutionDiagnostic};
+use xrf_ltx_project::{LtxFinding, LtxFindingKind};
 
 use crate::findings::LtxAnchoredFinding;
 use crate::ltx_root_reader::LtxRootReader;

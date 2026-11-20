@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_ltx::LtxFinding;
+use xrf_ltx_project::LtxFinding;
 
 /// One finding, placed at the line a person has to open.
 ///

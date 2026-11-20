@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use xrf_job::{JobHandle, JobProgress, RecordingSink};
-use xrf_ltx::{LtxFormatOptions, LtxVerifyOptions};
+use xrf_ltx_project::{LtxFormatOptions, LtxVerifyOptions};
 use xrf_test_utils::GeneratedResources;
 
 use crate::project::gamedata_project_verify::PHASE_CHECKS;

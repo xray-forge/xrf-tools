@@ -5,14 +5,12 @@ use indexmap::IndexSet;
 use rustc_hash::FxBuildHasher;
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
+use xrf_ltx::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, Ltx, LtxResolution};
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::dialect::LtxResolution;
 use crate::finding::LtxFinding;
-use crate::ltx::Ltx;
 use crate::project::{LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
-use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
 
 impl LtxProject {
   /// Verify all the entries in current ltx project.

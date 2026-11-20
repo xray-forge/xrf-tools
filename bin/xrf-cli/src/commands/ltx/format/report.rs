@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_ltx::LtxProjectFormatResult;
+use xrf_ltx_project::LtxProjectFormatResult;
 
 /// What a formatting run, or a check of one, did: the formatter's result, and the archived configs it declined, which a
 /// run over an installation cannot rewrite in place.

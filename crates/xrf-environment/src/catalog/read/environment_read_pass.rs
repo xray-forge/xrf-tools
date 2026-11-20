@@ -4,7 +4,8 @@ use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_job::JobScope;
-use xrf_ltx::{LtxProject, LtxResolution};
+use xrf_ltx::LtxResolution;
+use xrf_ltx_project::LtxProject;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::catalog::environment_catalog::EnvironmentCatalog;

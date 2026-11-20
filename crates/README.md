@@ -54,8 +54,9 @@ README is also its crate's rustdoc page.
 | [xrf-environment](xrf-environment/README.md)     | Read weather, suns, thunderbolts and ambients as the target engine reads them |
 | [xrf-export](xrf-export/README.md)               | Extract TypeScript extern contracts and render documentation                  |
 | [xrf-ini](xrf-ini/README.md)                     | Read and write INI files, plain or as `CInifile::save_as` writes them         |
-| [xrf-ltx](xrf-ltx/README.md)                     | Parse, resolve, format, and verify LTX configs                                |
+| [xrf-ltx](xrf-ltx/README.md)                     | Parse, resolve and format LTX configs, with no VFS                            |
 | [xrf-ltx-inspect](xrf-ltx-inspect/README.md)     | Produce config browser records and anchored findings                          |
+| [xrf-ltx-project](xrf-ltx-project/README.md)     | Read an LTX config tree through the VFS, and verify and format it             |
 | [xrf-lua](xrf-lua/README.md)                     | Check LuaJIT syntax and inspect method calls                                  |
 | [xrf-shaders](xrf-shaders/README.md)             | Parse shader scripts and resolve source imports                               |
 | [xrf-translation](xrf-translation/README.md)     | Import, edit, build, and verify translations                                  |

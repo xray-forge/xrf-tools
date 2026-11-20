@@ -1,11 +1,12 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use xrf_app_core::TauriResult;
-use xrf_ltx::{LtxDocumentSource, LtxEntryVerification, LtxProject};
+use xrf_ltx::LtxDocumentSource;
 use xrf_ltx_inspect::{
   LtxAnchoredFinding, LtxDeclarationQuery, LtxDeclarationReader, LtxDeclarationSearch, LtxFileStructure, LtxFileText,
   LtxResolvedIndex, LtxRootReader, LtxTextReader,
 };
+use xrf_ltx_project::{LtxEntryVerification, LtxProject};
 use xrf_utils::{decode_w1251_bytes_to_string, error_to_string};
 use xrf_vfs::XrayLogicalPath;
 

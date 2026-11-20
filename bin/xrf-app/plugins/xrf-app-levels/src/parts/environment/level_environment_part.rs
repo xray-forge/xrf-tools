@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_environment::{EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather};
-use xrf_ltx::LtxProject;
+use xrf_ltx_project::LtxProject;
 use xrf_vfs::XraySearch;
 
 use crate::level::{LevelConfigs, SelectedLevel};

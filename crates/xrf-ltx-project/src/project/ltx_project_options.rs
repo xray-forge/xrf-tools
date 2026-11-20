@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::dialect::{LtxDialect, LtxStandardDialect};
+use xrf_ltx::{LtxDialect, LtxStandardDialect};
 
 /// How a project is opened: which rules resolve it, what assembling it checks, and what it keeps.
 #[derive(Clone)]

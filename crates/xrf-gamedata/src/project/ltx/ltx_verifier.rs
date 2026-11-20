@@ -2,7 +2,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{
+use xrf_ltx_project::{
   LtxFinding, LtxFindingKind, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult,
   LtxRunPrinter, LtxVerifyOptions,
 };
@@ -134,7 +134,7 @@ impl LtxVerifier<'_> {
 mod tests {
   use std::path::PathBuf;
 
-  use xrf_ltx::{LtxFinding, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult};
+  use xrf_ltx_project::{LtxFinding, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult};
   use xrf_test_utils::GeneratedResources;
 
   use super::LtxVerifier;

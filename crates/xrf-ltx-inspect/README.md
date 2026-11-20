@@ -1,6 +1,6 @@
 # xrf-ltx-inspect
 
-Turns an [xrf-ltx](../xrf-ltx/README.md) project into serializable records for config browsers: inventory, structure,
+Turns an [xrf-ltx-project](../xrf-ltx-project/README.md) project into serializable records for config browsers: inventory, structure,
 resolved fields, scheme reports, source lines, and findings anchored to lines.
 
 The records feed the desktop app's configs explorer and `xrf-cli ltx list`, `find` and `inspect`.
@@ -13,8 +13,8 @@ The records feed the desktop app's configs explorer and `xrf-cli ltx list`, `fin
 ## Inspect a resolved root
 
 ```rust,no_run
-use xrf_ltx::LtxProject;
 use xrf_ltx_inspect::{LtxInventoryReader, LtxRootReader};
+use xrf_ltx_project::LtxProject;
 
 fn main() -> xrf_error::XrfResult {
   let project = LtxProject::open_at_path("gamedata/configs")?;
@@ -144,7 +144,7 @@ fn main() {
 
 ## Findings and errors
 
-A finding is the core's `xrf_ltx::LtxFinding`; this crate only adds the line.
+A finding is the project layer's `xrf_ltx_project::LtxFinding`; this crate only adds the line.
 
 - `read_findings` places what verifying a root found (`LtxEntryVerification::findings`, which already include the
   dialect's resolution diagnostics) on source lines.

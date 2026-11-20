@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{ArgMatches, Command};
 use xrf_job::JobHandle;
-use xrf_ltx::{LtxProject, LtxProjectVerifyResult, LtxRunPrinter, LtxVerifyOptions};
+use xrf_ltx_project::{LtxProject, LtxProjectVerifyResult, LtxRunPrinter, LtxVerifyOptions};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 

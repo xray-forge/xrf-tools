@@ -9,7 +9,8 @@ use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_job::JobHandle;
-use xrf_ltx::{Ltx, LtxProject, LtxProjectOptions};
+use xrf_ltx::Ltx;
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;
 use xrf_vfs::{
   XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLogicalPath, XrayMountMode, XrayPathCollision,

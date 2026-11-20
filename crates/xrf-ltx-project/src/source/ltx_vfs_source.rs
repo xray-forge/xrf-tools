@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_ltx::{Ltx, LtxDocument, LtxDocumentSource, LtxIncludeMask};
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
-use crate::document::LtxDocument;
-use crate::ltx::Ltx;
 use crate::project::LtxReadCounters;
-use crate::source::{LtxDocumentSource, LtxIncludeMask, LtxListingCache};
+use crate::source::LtxListingCache;
 
 /// Resolves and reads includes through a search, so whatever records the search's reads records a config's too.
 pub(crate) struct LtxVfsSource<'a> {

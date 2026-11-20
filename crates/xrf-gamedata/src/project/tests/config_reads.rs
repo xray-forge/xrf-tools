@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_ltx::LtxReadCountersSnapshot;
+use xrf_ltx_project::LtxReadCountersSnapshot;
 use xrf_test_utils::GeneratedResources;
 
 use crate::{GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationType};

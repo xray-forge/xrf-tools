@@ -40,6 +40,7 @@ members = [
   "crates/xrf-light-anim",
   "crates/xrf-ltx",
   "crates/xrf-ltx-inspect",
+  "crates/xrf-ltx-project",
   "crates/xrf-lua",
   "crates/xrf-lzhuf",
   "crates/xrf-material",
@@ -172,6 +173,7 @@ xrf-level-compiler = { path = "crates/xrf-level-compiler" }
 xrf-light-anim = { path = "crates/xrf-light-anim" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-ltx-inspect = { path = "crates/xrf-ltx-inspect" }
+xrf-ltx-project = { path = "crates/xrf-ltx-project" }
 xrf-lua = { path = "crates/xrf-lua" }
 xrf-lzhuf = { path = "crates/xrf-lzhuf" }
 xrf-material = { path = "crates/xrf-material" }

@@ -8,10 +8,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
+use xrf_ltx::{Ltx, LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use xrf_test_utils::GeneratedResources;
-use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XraySearch, XrayVfs};
 
-use crate::ltx::Ltx;
+use crate::source::LtxVfsSource;
 
 /// Builds a config tree and mounts it, returning the VFS and an all-mounts scope.
 fn mount(name: &str, files: &[(&str, &str)]) -> (Arc<XrayVfs>, XrayLookupScope) {
@@ -31,11 +32,20 @@ fn mount(name: &str, files: &[(&str, &str)]) -> (Arc<XrayVfs>, XrayLookupScope) 
   (Arc::new(vfs), XrayLookupScope::all())
 }
 
-/// Reads a config through a search searching one scope, under standard rules.
+/// Reads a config through a search searching one scope, under standard rules, by its engine identity as a project
+/// names it.
 fn read(vfs: &Arc<XrayVfs>, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
-  Ltx::read_from_search_standard(
-    &XraySearch::new(Arc::clone(vfs)).with_step("configs", scope.clone()),
-    logical_path,
+  let search: XraySearch = XraySearch::new(Arc::clone(vfs)).with_step("configs", scope.clone());
+  let logical_path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;
+
+  Ok(
+    LtxStandardDialect
+      .resolve(
+        logical_path.as_str(),
+        &LtxVfsSource::new(search),
+        LtxResolveRequest::plain(),
+      )?
+      .ltx,
   )
 }
 

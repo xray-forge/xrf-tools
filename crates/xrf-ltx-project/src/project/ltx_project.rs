@@ -4,15 +4,14 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_ltx::{
+  LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, Ltx, LtxDialect, LtxDocument, LtxDocumentSource, LtxResolution,
+  LtxResolveRequest, LtxSchemeParser, LtxSectionSchemes, LtxStandardDialect, SYSTEM_LTX_FILENAME,
+};
 use xrf_vfs::{XrayAssetType, XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayRoots, XraySearch, XrayVfs};
 
-use crate::dialect::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
-use crate::document::LtxDocument;
-use crate::ltx::Ltx;
 use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot, LtxResolvedRoot};
-use crate::scheme::{LtxSchemeParser, LtxSectionSchemes};
-use crate::source::{LtxDocumentSource, LtxListingCache, LtxVfsSource};
-use crate::syntax::{LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
+use crate::source::{LtxListingCache, LtxVfsSource};
 
 /// An LTX project over one VFS scope. Files use logical paths for both loose and archived configs.
 #[derive(Debug)]
@@ -302,7 +301,13 @@ impl LtxProject {
     };
 
     let ltx_scheme_declarations: LtxSectionSchemes = if options.is_with_schemes_check {
-      LtxSchemeParser::parse_from_search(&search, &ltx_scheme_file_entries)?
+      LtxSchemeParser::parse_from_source(
+        &LtxVfsSource::new(search.clone()),
+        &ltx_scheme_file_entries
+          .iter()
+          .map(XrayLogicalPath::as_str)
+          .collect::<Vec<&str>>(),
+      )?
     } else {
       Default::default()
     };

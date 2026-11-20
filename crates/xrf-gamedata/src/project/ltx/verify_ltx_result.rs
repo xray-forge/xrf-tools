@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use xrf_ltx::{LtxProjectFormatResult, LtxProjectVerifyResult};
+use xrf_ltx_project::{LtxProjectFormatResult, LtxProjectVerifyResult};
 
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
@@ -41,7 +41,7 @@ impl GamedataCheckResult for GamedataLtxVerificationResult {
 
 #[cfg(test)]
 mod tests {
-  use xrf_ltx::{LtxFinding, LtxProjectVerifyResult};
+  use xrf_ltx_project::{LtxFinding, LtxProjectVerifyResult};
 
   use super::GamedataLtxVerificationResult;
   use crate::{

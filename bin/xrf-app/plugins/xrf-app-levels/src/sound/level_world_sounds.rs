@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use xrf_app_core::session::SessionSnapshot;
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxProject, LtxResolution};
+use xrf_ltx::LtxResolution;
+use xrf_ltx_project::LtxProject;
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 use xrf_world::{WorldLevelSounds, WorldMusicTrack};
 

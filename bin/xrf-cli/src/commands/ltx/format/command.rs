@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_job::JobHandle;
-use xrf_ltx::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult, LtxRunPrinter};
+use xrf_ltx_project::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult, LtxRunPrinter};
 use xrf_output::OutputOptions;
 
 use crate::commands::ltx::format::ltx_format_selection::LtxFormatSelection;

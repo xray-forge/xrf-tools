@@ -1,10 +1,11 @@
 use indexmap::map::Entry;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
-use xrf_vfs::{XrayLogicalPath, XraySearch};
 
+use crate::dialect::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
 use crate::ltx::{Ltx, Section};
 use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSectionScheme, LtxSectionSchemes};
+use crate::source::LtxDocumentSource;
 use crate::syntax::{LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME, VIRTUAL_LTX_PATH};
 
 /// Parser of LTX scheme definitions.
@@ -12,16 +13,19 @@ use crate::syntax::{LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME
 pub struct LtxSchemeParser {}
 
 impl LtxSchemeParser {
-  /// Parses LTX section schemes from logical paths a search reaches.
+  /// Parses the section schemes `files` declare, each resolved under standard rules through `source`.
   ///
   /// # Errors
   ///
-  /// Returns an error when a scheme cannot be read or contains invalid, duplicate, or malformed declarations.
-  pub fn parse_from_search(search: &XraySearch, files: &[XrayLogicalPath]) -> XrfResult<LtxSectionSchemes> {
+  /// Returns an error when a scheme cannot be read or contains invalid, duplicate, or malformed declarations, a
+  /// duplicate being one that any two of the files repeat.
+  pub fn parse_from_source<P: AsRef<str>>(source: &dyn LtxDocumentSource, files: &[P]) -> XrfResult<LtxSectionSchemes> {
     let mut schemes: LtxSectionSchemes = Default::default();
 
     for file in files {
-      Self::absorb(&mut schemes, &Ltx::read_from_search_standard(search, file.as_str())?)?;
+      let resolved: LtxResolution = LtxStandardDialect.resolve(file.as_ref(), source, LtxResolveRequest::plain())?;
+
+      Self::absorb(&mut schemes, &resolved.ltx)?;
     }
 
     Ok(schemes)

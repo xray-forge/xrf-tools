@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::XrayEngine;
-use xrf_ltx::{LtxProject, LtxProjectOptions};
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_test_utils::GeneratedResources;
 
 use crate::{EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, EnvironmentRule};

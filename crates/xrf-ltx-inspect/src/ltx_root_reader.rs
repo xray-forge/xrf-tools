@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxDocumentSource, LtxFinding, LtxResolution, LtxSectionSchemes};
+use xrf_ltx::{LtxDocumentSource, LtxResolution, LtxSectionSchemes};
+use xrf_ltx_project::LtxFinding;
 
 use crate::findings::{LtxAnchoredFinding, LtxFindingAnchor};
 use crate::resolved::{LtxResolvedIndex, LtxResolvedReader, LtxResolvedSection};
@@ -130,7 +131,7 @@ impl<'a> LtxRootReader<'a> {
 
   /// Everything wrong with the root, each finding placed at its line.
   ///
-  /// `findings` is what verifying the root answered (`xrf_ltx::LtxProject::verify_resolved`), which already holds what
+  /// `findings` is what verifying the root answered (`xrf_ltx_project::LtxProject::verify_resolved`), which already holds what
   /// the dialect said while resolving it.
   ///
   /// # Errors

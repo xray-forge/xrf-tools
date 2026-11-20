@@ -2,7 +2,7 @@ use std::path::Path;
 
 use clap::ArgMatches;
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxProject, LtxProjectOptions};
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_output::OutputOptions;
 
 use crate::commands::ltx::ltx_installation::LtxInstallation;

@@ -7984,6 +7984,7 @@ dependencies = [
  "xrf-job",
  "xrf-ltx",
  "xrf-ltx-inspect",
+ "xrf-ltx-project",
  "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",
@@ -8116,6 +8117,7 @@ dependencies = [
  "xrf-level-compiler",
  "xrf-light-anim",
  "xrf-ltx",
+ "xrf-ltx-project",
  "xrf-material",
  "xrf-math",
  "xrf-object-visual",
@@ -8210,6 +8212,7 @@ dependencies = [
  "xrf-ipc",
  "xrf-job",
  "xrf-ltx",
+ "xrf-ltx-project",
  "xrf-output",
  "xrf-texture",
  "xrf-utils",
@@ -8433,6 +8436,7 @@ dependencies = [
  "xrf-level-compiler",
  "xrf-ltx",
  "xrf-ltx-inspect",
+ "xrf-ltx-project",
  "xrf-material",
  "xrf-math",
  "xrf-ogf",
@@ -8507,6 +8511,7 @@ dependencies = [
  "xrf-error",
  "xrf-extension",
  "xrf-ltx",
+ "xrf-ltx-project",
  "xrf-test-utils",
  "xrf-vfs",
 ]
@@ -8582,6 +8587,7 @@ dependencies = [
  "xrf-extension",
  "xrf-job",
  "xrf-ltx",
+ "xrf-ltx-project",
  "xrf-math",
  "xrf-test-utils",
  "xrf-utils",
@@ -8657,6 +8663,7 @@ dependencies = [
  "xrf-job",
  "xrf-level",
  "xrf-ltx",
+ "xrf-ltx-project",
  "xrf-lua",
  "xrf-material",
  "xrf-math",
@@ -8830,18 +8837,11 @@ dependencies = [
  "criterion 0.8.2",
  "hashbrown 0.17.1",
  "indexmap 2.14.2",
- "profiling",
- "rayon",
  "rustc-hash 2.1.3",
- "serde",
- "specta",
  "xrf-error",
  "xrf-extension",
- "xrf-job",
- "xrf-output",
  "xrf-test-utils",
  "xrf-utils",
- "xrf-vfs",
 ]
 
 [[package]]
@@ -8852,6 +8852,26 @@ dependencies = [
  "specta",
  "xrf-error",
  "xrf-ltx",
+ "xrf-ltx-project",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-ltx-project"
+version = "0.1.0"
+dependencies = [
+ "indexmap 2.14.2",
+ "profiling",
+ "rayon",
+ "rustc-hash 2.1.3",
+ "serde",
+ "specta",
+ "xrf-error",
+ "xrf-job",
+ "xrf-ltx",
+ "xrf-output",
+ "xrf-test-utils",
+ "xrf-utils",
  "xrf-vfs",
 ]
 

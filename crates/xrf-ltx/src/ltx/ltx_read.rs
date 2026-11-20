@@ -4,13 +4,12 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{decode_w1251_bytes_to_string, format_path, read_as_string_from_w1251_encoded};
-use xrf_vfs::{XrayLogicalPath, XraySearch};
 
 use crate::binding::LtxRead;
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
 use crate::ltx::{Ltx, Section};
-use crate::source::{LtxFilesystemSource, LtxVfsSource};
+use crate::source::LtxFilesystemSource;
 
 impl LtxRead for Ltx {
   type Section = Section;
@@ -51,27 +50,6 @@ impl Ltx {
   /// Returns an error when the config or a file it includes cannot be read, or when standard rules refuse the tree.
   pub fn read_from_file_standard<P: AsRef<Path>>(path: P) -> XrfResult<Self> {
     Self::read_from_file_with_dialect(path, &LtxStandardDialect)
-  }
-
-  /// Read a config through a search under standard rules, merging its includes and flattening inheritance.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the search does not reach the config or a file it includes, its bytes are not valid
-  /// Windows-1251, or standard rules refuse the tree.
-  pub(crate) fn read_from_search_standard(search: &XraySearch, logical_path: &str) -> XrfResult<Self> {
-    // Normalized first, so the location the config records is its engine identity rather than the spelling asked for.
-    let logical_path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;
-
-    Ok(
-      LtxStandardDialect
-        .resolve(
-          logical_path.as_str(),
-          &LtxVfsSource::new(search.clone()),
-          LtxResolveRequest::plain(),
-        )?
-        .ltx,
-    )
   }
 
   /// Read one config file under standard rules, recording where it was read from, without reading what it includes.
@@ -139,7 +117,7 @@ impl Ltx {
   /// # Errors
   ///
   /// Returns an error when the bytes cannot be decoded or parsed.
-  pub(crate) fn is_formatted(bytes: &[u8]) -> XrfResult<bool> {
+  pub fn is_formatted(bytes: &[u8]) -> XrfResult<bool> {
     let existing: String = decode_w1251_bytes_to_string(bytes)?;
 
     Ok(existing == Self::format_from_str(&existing)?)

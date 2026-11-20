@@ -3,11 +3,12 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxDocumentSource, LtxProject, LtxResolution, fold_section_name};
+use xrf_ltx::{LtxDocumentSource, LtxResolution, fold_section_name};
 use xrf_ltx_inspect::{
   LtxDeclarationQuery, LtxDeclarationReader, LtxInventory, LtxInventoryReader, LtxResolvedDiagnostic, LtxResolvedField,
   LtxResolvedFieldOrigin, LtxResolvedSection, LtxRootReader,
 };
+use xrf_ltx_project::LtxProject;
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;

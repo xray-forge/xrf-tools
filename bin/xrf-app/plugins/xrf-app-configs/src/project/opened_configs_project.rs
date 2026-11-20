@@ -4,8 +4,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionSnapshot};
 use xrf_dltx::DltxDialect;
-use xrf_ltx::{LtxDocumentSource, LtxProject, LtxProjectOptions};
+use xrf_ltx::LtxDocumentSource;
 use xrf_ltx_inspect::{LtxInventory, LtxInventoryReader};
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_utils::{error_to_string, format_path};
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 

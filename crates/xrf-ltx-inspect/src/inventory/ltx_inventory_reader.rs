@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxDocument, LtxDocumentSource, LtxProject};
+use xrf_ltx::{Ltx, LtxDocument, LtxDocumentSource};
+use xrf_ltx_project::LtxProject;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
 
 use crate::inventory::{LtxInventory, LtxInventoryFile, LtxInventoryRole};

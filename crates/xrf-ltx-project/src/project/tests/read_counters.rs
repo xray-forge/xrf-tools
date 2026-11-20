@@ -5,12 +5,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
+use xrf_ltx::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::dialect::LtxResolution;
-use crate::ltx::Ltx;
 use crate::project::{LtxProject, LtxProjectOptions, LtxReadCountersSnapshot};
+use crate::source::LtxVfsSource;
 
 /// Writes a four-file tree: an entry point including two files, one of which includes a third.
 ///
@@ -164,7 +164,11 @@ fn a_read_outside_the_project_is_not_counted() -> XrfResult {
   let before: LtxReadCountersSnapshot = project.get_read_counters();
 
   // The counters describe what the project did, so a caller reaching past it for a plain VFS read stays invisible.
-  Ltx::read_from_search_standard(project.search(), "second.ltx")?;
+  LtxStandardDialect.resolve(
+    "second.ltx",
+    &LtxVfsSource::new(project.search().clone()),
+    LtxResolveRequest::plain(),
+  )?;
 
   assert_eq!(project.get_read_counters(), before);
 

@@ -8,7 +8,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
 use xrf_job::JobProgress;
-use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
+use xrf_ltx_project::{LtxFormatOptions, LtxProjectFormatResult};
 
 use crate::format::ConfigsFormat;
 use crate::ipc::configs::CONFIGS_JOB_FORMAT;

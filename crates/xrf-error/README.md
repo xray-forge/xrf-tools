@@ -99,7 +99,7 @@ distinctions callers act on, such as a missing file (`Io` with `ErrorKind::NotFo
 
 - `XrfError` does not serialize. An IPC command or CLI report carries it as its `Display` text.
 - A problem in the data being judged is a finding, not an error: each domain has its own finding type
-  (`xrf_ltx::LtxFinding`, `xrf_environment::EnvironmentFinding`). A config that breaks its scheme is a finding;
+  (`xrf_ltx_project::LtxFinding`, `xrf_environment::EnvironmentFinding`). A config that breaks its scheme is a finding;
   `LtxScheme` means the scheme file itself cannot be read.
 - The crate does not log errors, choose exit codes, or decide how a UI shows them.
 

@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
+use xrf_ltx::Ltx;
 use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes, format_path};
 use xrf_vfs::{XrayTransaction, require_writable_path};
 
-use crate::ltx::Ltx;
 use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 impl LtxProject {

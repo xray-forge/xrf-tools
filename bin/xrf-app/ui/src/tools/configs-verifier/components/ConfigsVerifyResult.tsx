@@ -1,5 +1,5 @@
 import { formatCount, formatDuration } from "@xrf/format";
-import { LtxFinding, LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
+import { LtxFinding, LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx-project";
 import { CommandResult, CommandResultFindings, ICommandResultStat } from "@xrf/ui/command-result";
 import { GridColDef } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";

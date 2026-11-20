@@ -25,6 +25,7 @@ profiling = { workspace = true }
 rayon = { workspace = true }
 walkdir = { workspace = true }
 xrf-archive = { workspace = true }
+xrf-ltx-project = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }

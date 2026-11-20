@@ -2,7 +2,7 @@ import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, ConfigsFormatRequest } from "@xrf/ipc/types/xrf-app-configs";
-import { LtxProjectFormatResult } from "@xrf/ipc/types/xrf-ltx";
+import { LtxProjectFormatResult } from "@xrf/ipc/types/xrf-ltx-project";
 import { Logger } from "@xrf/logging";
 
 import { createRoots } from "@/core/assets/lib/roots";

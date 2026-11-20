@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
+use xrf_ltx::Ltx;
 use xrf_utils::format_path;
 
-use crate::ltx::Ltx;
 use crate::project::{LtxFormatOptions, LtxProjectFormatResult};
 
 /// Formatter of arbitrary sets of LTX files.

@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use xrf_error::XrfResult;
 
-use crate::dialect::LtxResolution;
+use xrf_ltx::LtxResolution;
 
 /// One root's resolved value, and the right to produce it.
 ///
@@ -57,9 +57,8 @@ mod test {
   use std::thread;
 
   use xrf_error::{XrfError, XrfResult};
+  use xrf_ltx::{Ltx, LtxResolution};
 
-  use crate::dialect::LtxResolution;
-  use crate::ltx::Ltx;
   use crate::project::LtxResolvedRoot;
 
   #[test]

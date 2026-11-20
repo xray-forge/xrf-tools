@@ -16,6 +16,7 @@ xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-job = { workspace = true }
 xrf-ltx = { workspace = true }
+xrf-ltx-project = { workspace = true }
 xrf-math = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }

@@ -14,7 +14,7 @@ It also mixes a cycle at a time of day as the engine does; the level viewer's we
 ```rust,no_run
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{EnvironmentCatalog, EnvironmentReader, WeatherDescriptor};
-use xrf_ltx::LtxProject;
+use xrf_ltx_project::LtxProject;
 
 fn main() -> xrf_error::XrfResult {
   let project = LtxProject::open_at_path("gamedata/configs")?;

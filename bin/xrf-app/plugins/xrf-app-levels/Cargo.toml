@@ -46,6 +46,7 @@ xrf-level = { workspace = true }
 xrf-level-compiler = { workspace = true, features = ["gpu"] }
 xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
+xrf-ltx-project = { workspace = true }
 xrf-material = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-object-visual = { workspace = true }
@@ -97,7 +98,7 @@ typescript-bindings = [
   "xrf-job/typescript-bindings",
   "xrf-level/typescript-bindings",
   "xrf-level-compiler/typescript-bindings",
-  "xrf-ltx/typescript-bindings",
+  "xrf-ltx-project/typescript-bindings",
   "xrf-material/typescript-bindings",
   "xrf-math/typescript-bindings",
   "xrf-rawdata/typescript-bindings",

@@ -13,6 +13,7 @@ serde = { workspace = true }
 specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 xrf-chunk = { workspace = true }
+xrf-ltx-project = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-engine-target = { workspace = true }

@@ -12,26 +12,15 @@ path = "src/lib.rs"
 [dependencies]
 hashbrown = { version = "0.17.1", default-features = false }
 indexmap = { workspace = true }
-profiling = { workspace = true }
-rayon = { workspace = true }
 rustc-hash = "2.1.3"
-serde = { workspace = true }
-specta = { workspace = true, optional = true }
-xrf-vfs = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
-xrf-job = { workspace = true }
 xrf-utils = { workspace = true }
-xrf-output = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
 xrf-test-utils = { workspace = true }
 xrf-utils = { workspace = true, features = ["staging-faults"] }
-
-[features]
-# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
-typescript-bindings = ["specta", "xrf-job/typescript-bindings"]
 
 # Throughput of the character-at-a-time parser, which the profile put at 614ms of an 11,965ms Anomaly sweep.
 [[bench]]

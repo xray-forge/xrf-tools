@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
 use clap::{ArgMatches, Command};
-use xrf_ltx::{LtxDocumentSource, LtxProject};
+use xrf_ltx::LtxDocumentSource;
 use xrf_ltx_inspect::{LtxInventory, LtxInventoryFile, LtxInventoryReader, LtxInventoryRole};
+use xrf_ltx_project::LtxProject;
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 

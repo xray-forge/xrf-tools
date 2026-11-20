@@ -4,7 +4,7 @@ import { EConfigsCommand } from "@xrf/ipc/commands/configs";
 import { SessionScopeService } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
-import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
+import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx-project";
 
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs.service";

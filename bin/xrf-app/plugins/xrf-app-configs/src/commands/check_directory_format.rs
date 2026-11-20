@@ -7,7 +7,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobStart};
 use xrf_job::JobProgress;
-use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
+use xrf_ltx_project::{LtxFormatOptions, LtxProjectFormatResult};
 
 use crate::format::ConfigsFormat;
 use crate::ipc::configs::{CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT};

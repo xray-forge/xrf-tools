@@ -4,9 +4,7 @@ pub(crate) mod binding;
 pub(crate) mod condlist;
 pub(crate) mod dialect;
 pub(crate) mod document;
-pub(crate) mod finding;
 pub(crate) mod ltx;
-pub(crate) mod project;
 pub(crate) mod scheme;
 pub(crate) mod source;
 pub(crate) mod syntax;
@@ -21,17 +19,13 @@ pub use crate::dialect::{
   LtxStandardDialect, LtxTextInterner,
 };
 pub use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
-pub use crate::finding::{LtxFinding, LtxFindingKind};
 pub use crate::ltx::{Ltx, Section};
-pub use crate::project::{
-  LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions,
-  LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxRunPrinter, LtxVerifyOptions,
-};
 pub use crate::scheme::{
   LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionFieldSchemes, LtxSectionScheme, LtxSectionSchemes,
 };
-pub use crate::source::LtxDocumentSource;
+pub use crate::source::{LtxDocumentSource, LtxIncludeMask};
 pub use crate::syntax::{
-  LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME, fold_section_name,
-  read_engine_bool, read_engine_float, read_engine_floats, scan_engine_float,
+  LTX_SCHEME_EXTENSION, LTX_SCHEME_FIELD, LTX_SCHEME_LTX_FILENAME, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD,
+  LTX_SYMBOL_SCHEME, SYSTEM_LTX_FILENAME, fold_section_name, read_engine_bool, read_engine_float, read_engine_floats,
+  scan_engine_float,
 };

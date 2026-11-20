@@ -1,7 +1,7 @@
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_error::XrfError;
-use xrf_ltx::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
+use xrf_ltx_project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayRoots, XraySearch, XrayTransaction};
 

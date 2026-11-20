@@ -4,12 +4,14 @@ pub const LTX_SCHEME_FIELD: &str = "$scheme";
 
 pub(crate) const LTX_SCHEME_STRICT_FIELD: &str = "$strict";
 
-pub(crate) const LTX_SCHEME_LTX_FILENAME: &str = "scheme.ltx";
+/// File name of a scheme file that declares schemes for the configs beside it.
+pub const LTX_SCHEME_LTX_FILENAME: &str = "scheme.ltx";
 
 /// Root config the engine loads, which every project entry point chain reaches.
-pub(crate) const SYSTEM_LTX_FILENAME: &str = "system.ltx";
+pub const SYSTEM_LTX_FILENAME: &str = "system.ltx";
 
-pub(crate) const LTX_SCHEME_EXTENSION: &str = ".scheme.ltx";
+/// File name suffix of a scheme file, `*.scheme.ltx`.
+pub const LTX_SCHEME_EXTENSION: &str = ".scheme.ltx";
 
 pub(crate) const LTX_SYMBOL_COMMENT: char = ';';
 

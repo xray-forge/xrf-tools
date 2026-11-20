@@ -5,8 +5,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, Sessions};
-use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
 use xrf_ltx_inspect::LtxDeclarationQuery;
+use xrf_ltx_project::{LtxFormatOptions, LtxProjectFormatResult};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 

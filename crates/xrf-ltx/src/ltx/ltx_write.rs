@@ -18,8 +18,13 @@ impl LtxWrite for Ltx {
 }
 
 impl Ltx {
-  /// Format single LTX file by provided path
-  pub(crate) fn format_file<P: AsRef<Path>>(filename: P, write: bool) -> XrfResult<bool> {
+  /// Whether the file at `filename` differs from its canonical rendering, rewriting it in that rendering when `write`
+  /// is set.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the file cannot be read, decoded as Windows-1251 or parsed, or the rewrite fails.
+  pub fn format_file<P: AsRef<Path>>(filename: P, write: bool) -> XrfResult<bool> {
     let formatted: String = Self::format_from_file(&filename)?;
     let existing: String =
       read_as_string_from_w1251_encoded(&mut fs::OpenOptions::new().read(true).open(filename.as_ref())?)?;

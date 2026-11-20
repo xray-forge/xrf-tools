@@ -1,5 +1,6 @@
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxDocument, LtxDocumentSource, LtxFieldOrigin, LtxFinding, LtxFindingKind, LtxResolution};
+use xrf_ltx::{LtxDocument, LtxDocumentSource, LtxFieldOrigin, LtxResolution};
+use xrf_ltx_project::{LtxFinding, LtxFindingKind};
 
 use crate::findings::LtxAnchoredFinding;
 use crate::structure::{LtxDocumentScan, LtxFileStructure};

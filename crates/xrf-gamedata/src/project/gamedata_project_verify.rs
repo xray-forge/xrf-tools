@@ -136,7 +136,7 @@ impl GamedataProject {
 mod tests {
   use std::path::PathBuf;
 
-  use xrf_ltx::LtxProject;
+  use xrf_ltx_project::LtxProject;
   use xrf_vfs::{XraySearch, XrayVfs};
 
   use super::GamedataProject;
