@@ -42,10 +42,14 @@ export function EditorPopoverNumberRow({
   // set back to it after each keystroke, so an emptied field or a lone minus sign could never be typed.
   const [text, setText] = useState<string>(() => toText(value));
 
+  // The owner's number over what was typed, unless what was typed spells it.
+  const reconcile = useCallback(
+    () => setText((current: string) => (current.trim() && Number(current) === value ? current : toText(value))),
+    [value]
+  );
+
   // A value set from elsewhere replaces what was typed; the one just typed keeps its spelling.
-  useEffect(() => {
-    setText((current: string) => (current.trim() && Number(current) === value ? current : toText(value)));
-  }, [value]);
+  useEffect(reconcile, [reconcile]);
 
   const onTextChange = useCallback(
     (typed: string) => {
@@ -74,6 +78,8 @@ export function EditorPopoverNumberRow({
       isReadOnly={isReadOnly}
       isDisabled={isDisabled}
       onChange={onChange ? onTextChange : undefined}
+      // An edit left empty, half typed, or at a number the owner refused shows the owner's value again.
+      onBlur={reconcile}
     />
   );
 }

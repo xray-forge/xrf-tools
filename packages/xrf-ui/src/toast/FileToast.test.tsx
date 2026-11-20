@@ -68,6 +68,37 @@ describe("FileToast", () => {
     expect(onDelete).not.toHaveBeenCalled();
   });
 
+  it("times the next file's toast out after one opened from under the focus", () => {
+    jest.useFakeTimers();
+
+    const { getByRole, queryByRole, rerender } = renderToast();
+    const open: HTMLElement = getByRole("button", { name: "Open the screenshot" });
+
+    fireEvent.focus(open);
+    fireEvent.click(open);
+
+    expect(queryByRole("status")).toBeNull();
+
+    rerender(
+      <FileToast
+        file={`${FILE}.next`}
+        title={"Screenshot saved"}
+        name={"next.png"}
+        details={"1920 × 1080 · 2.1 MB"}
+        preview={<img alt={""} />}
+        onReveal={jest.fn()}
+        onCopyPath={jest.fn()}
+        onDelete={jest.fn()}
+      />
+    );
+
+    expect(queryByRole("status")).not.toBeNull();
+
+    act(() => void jest.advanceTimersByTime(10_000));
+
+    expect(queryByRole("status")).toBeNull();
+  });
+
   it("opens what its preview shows and goes as it does", () => {
     const onOpen = jest.fn();
     const { getByRole, queryByRole } = renderToast(onOpen);

@@ -22,6 +22,8 @@ export interface IEditorPopoverTextRowProps extends BaseComponentProps {
   isDisabled?: boolean;
   /** Absent for a value that is only shown, which reads it read-only. */
   onChange?: (value: string) => void;
+  /** Told as the field loses focus, the edit done. */
+  onBlur?: () => void;
 }
 
 /**
@@ -39,6 +41,7 @@ export function EditorPopoverTextRow({
   isReadOnly = false,
   isDisabled = false,
   onChange,
+  onBlur,
 }: IEditorPopoverTextRowProps): ReactElement {
   return (
     <EditorPopoverRow id={id} className={className} label={label} description={description} isDisabled={isDisabled}>
@@ -65,6 +68,7 @@ export function EditorPopoverTextRow({
             },
           }}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onChange?.(event.target.value)}
+          onBlur={onBlur}
         />
       )}
     </EditorPopoverRow>

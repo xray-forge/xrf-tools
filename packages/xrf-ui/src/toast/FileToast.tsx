@@ -107,6 +107,18 @@ export function FileToast({
     setDeleteArmed(false);
   }, [file]);
 
+  const isShown: boolean = file !== null && shownFile === file;
+
+  // A toast put away under the pointer or the focus, by its own Open or Delete, hears no leave or blur; the next one
+  // starts as nothing rests on it, or it would never time out.
+  useEffect(() => {
+    if (!isShown) {
+      setHovered(false);
+      setFocused(false);
+      setDeleteArmed(false);
+    }
+  }, [isShown]);
+
   useEffect(() => {
     if (shownFile === null || isHovered || isFocused) {
       return;
@@ -117,7 +129,7 @@ export function FileToast({
     return () => clearTimeout(timeout);
   }, [isFocused, isHovered, shownFile]);
 
-  if (file === null || shownFile !== file) {
+  if (file === null || !isShown) {
     return <></>;
   }
 

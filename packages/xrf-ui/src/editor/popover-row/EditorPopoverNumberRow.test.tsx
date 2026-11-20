@@ -47,6 +47,25 @@ describe("EditorPopoverNumberRow", () => {
     expect(field).toHaveValue(3);
   });
 
+  it("shows the owner's value again once an edit it refused or left empty loses focus", () => {
+    // The owner keeps 2 whatever is typed, as one clamping to a range would.
+    const { getByRole } = renderWithTheme(<EditorPopoverNumberRow label={"Scale"} value={2} onChange={jest.fn()} />);
+    const field: HTMLElement = getByRole("spinbutton", { name: "Scale" });
+
+    fireEvent.change(field, { target: { value: "9" } });
+
+    expect(field).toHaveValue(9);
+
+    fireEvent.blur(field);
+
+    expect(field).toHaveValue(2);
+
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.blur(field);
+
+    expect(field).toHaveValue(2);
+  });
+
   it("shows a value there is no number for empty, and one it cannot change read-only", () => {
     const { getByRole } = renderWithTheme(<EditorPopoverNumberRow label={"Fade"} value={null} />);
     const field: HTMLElement = getByRole("spinbutton", { name: "Fade" });
