@@ -15,6 +15,8 @@ mod level_follow;
 mod level_map;
 mod level_objects;
 mod level_placements;
+#[cfg(windows)]
+mod level_recordings;
 mod level_source;
 mod level_start;
 mod level_viewer_folder;

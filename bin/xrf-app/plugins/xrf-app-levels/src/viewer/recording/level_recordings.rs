@@ -23,14 +23,14 @@ impl LevelRecordings {
     self.active.lock().unwrap_or_else(PoisonError::into_inner)
   }
 
-  /// Whether a recording runs or is starting; never blocks, so the async runtime may call it.
+  /// Whether a recording is seen running; never blocks, so the async runtime may call it. A quick refusal only: a slot
+  /// held by a start, a stop or a window's release reads as free, and a start's own check under [`Self::lock`] decides.
   #[cfg(windows)]
   pub(crate) fn is_recording(&self) -> bool {
     let active = match self.active.try_lock() {
       Ok(active) => active,
       Err(TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
-      // A start holds the slot while its recorder opens.
-      Err(TryLockError::WouldBlock) => return true,
+      Err(TryLockError::WouldBlock) => return false,
     };
 
     active.as_ref().is_some_and(|recorder| !recorder.is_ended())

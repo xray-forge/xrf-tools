@@ -92,8 +92,13 @@ impl RecordWriter {
     }
   }
 
-  /// Join the early-ended writer thread and keep its error for `finish`.
+  /// Join the early-ended writer thread and keep its error for `finish`; once kept, every later write answers it, not
+  /// that the thread is gone.
   fn take_error(&mut self) -> String {
+    if let Some(failure) = &self.failure {
+      return failure.clone();
+    }
+
     let failure: String = Self::join(self.thread.take())
       .err()
       .unwrap_or_else(|| String::from("The recording ended early"));
