@@ -9,7 +9,7 @@ use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 /// (`do_connect_faces_by_faces_edge_flags`). Each group gets its own vertex, its normal the normalised sum of its
 /// faces' normals in the order the group took them (`normalFromAdj`).
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryNormals {
+pub struct GeometryNormals {
   /// Each vertex's place, as the mesh's vertex it was split from.
   pub positions: Vec<Vector3d>,
   pub normals: Vec<Vector3d>,
@@ -22,7 +22,7 @@ impl GeometryNormals {
   ///
   /// Vertices are taken in order, and a split stops its groups' faces sharing an edge through it, so it decides what
   /// later vertices find joined, as in xrLC.
-  pub(crate) fn of(mesh: &GeometryMesh) -> Self {
+  pub fn of(mesh: &GeometryMesh) -> Self {
     let face_normals: Vec<Vector3d> = mesh
       .faces
       .iter()
@@ -124,7 +124,7 @@ impl GeometryNormals {
 
   /// `Face::CalcNormal`: `(v1 - v0) × (v2 - v1)` divided by its length and normalised again, or normalised in double
   /// precision where shorter than `EPS_S`.
-  pub(crate) fn get_face_normal([a, b, c]: &[Vector3d; 3]) -> Vector3d {
+  pub fn get_face_normal([a, b, c]: &[Vector3d; 3]) -> Vector3d {
     let along: Vector3d = b - a;
     let across: Vector3d = c - b;
     let cross: Vector3d = along.cross(&across);

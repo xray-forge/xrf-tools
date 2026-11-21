@@ -20,7 +20,7 @@ impl GeometryMesh {
   /// Returns an error for what xrLC would stop on or read past: a face naming a missing vertex or material, a game
   /// material past its limit, a material naming a missing texture or shader, or smoothing flags missing or not one a
   /// face. It names a few of each kind with their counts.
-  pub(crate) fn load(project: &BuildPrjFile) -> XrfResult<Self> {
+  pub fn load(project: &BuildPrjFile) -> XrfResult<Self> {
     Self::check(project)?;
 
     let smoothing: &[u32] = project.smoothing_groups.as_deref().unwrap_or_default();

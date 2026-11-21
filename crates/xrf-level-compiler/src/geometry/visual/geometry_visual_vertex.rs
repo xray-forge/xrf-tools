@@ -6,7 +6,7 @@ use crate::light::point::light_color::LightColor;
 /// One vertex of a visual before it is quantized, `OGF_Vertex`. A weld keeps the first corner's light, as
 /// `OGF_Vertex::similar` does not compare it.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct GeometryVisualVertex {
+pub struct GeometryVisualVertex {
   pub position: Vector3d,
   pub normal: Vector3d,
   pub basis: GeometryBasis,

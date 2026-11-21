@@ -9,7 +9,7 @@ use crate::input::compiler_texture::CompilerTexture;
 
 /// What a level's lightmap charts are cut, sized and masked by: each face's corners over the split vertices, normal
 /// and area, each material's light density and whether it is lightmapped, and the bake's density and jitter.
-pub(crate) struct LightChartScene<'a> {
+pub struct LightChartScene<'a> {
   pub(crate) mesh: &'a GeometryMesh,
   pub(crate) normals: &'a GeometryNormals,
   /// Each face's normal, `Face::N` (`Face::CalcNormal`).

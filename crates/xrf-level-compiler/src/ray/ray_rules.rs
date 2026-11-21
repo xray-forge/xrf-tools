@@ -6,7 +6,7 @@ use crate::ray::ray_alpha::RayAlpha;
 /// face stop it, how much an alpha texel lets through, whether it passes its point's own face, and whether a face the
 /// GPU meets counts only where the CPU's test (`Triangle::cross`) meets it too.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct RayRules {
+pub struct RayRules {
   pub(crate) facing: Facing,
   pub(crate) alpha: RayAlpha,
   /// Read by the GPU alone: the CPU's lighters pass a point's own face through their opacity.

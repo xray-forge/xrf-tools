@@ -2,7 +2,7 @@
 /// thread's initial seed of 1.
 ///
 /// xrAI never seeds it, so the same draws in the same order give the shipped result.
-pub(crate) struct SpawnRandom {
+pub struct SpawnRandom {
   state: u32,
 }
 
@@ -12,12 +12,12 @@ impl SpawnRandom {
   const MAX: u64 = (1 << Self::BITS) - 1;
 
   /// The stream a thread starts with.
-  pub(crate) fn new() -> Self {
+  pub fn new() -> Self {
     Self { state: 1 }
   }
 
   /// `rand`: `holdrand * 214013 + 2531011`, bits 16 to 30.
-  pub(crate) fn draw(&mut self) -> u32 {
+  pub fn draw(&mut self) -> u32 {
     self.state = self.state.wrapping_mul(214_013).wrapping_add(2_531_011);
 
     (self.state >> 16) & Self::MAX as u32
@@ -26,7 +26,7 @@ impl SpawnRandom {
   /// `_Random_shuffle`: each element from the second swapped with one at a drawn index up to its own.
   ///
   /// The draw widens 15 bits at a time, within 32 bits, while its range is below the element's count.
-  pub(crate) fn shuffle<T>(&mut self, items: &mut [T]) {
+  pub fn shuffle<T>(&mut self, items: &mut [T]) {
     for index in 2..=items.len() as u64 {
       let (mut range, mut value): (u64, u64) = (Self::MAX, u64::from(self.draw()));
 

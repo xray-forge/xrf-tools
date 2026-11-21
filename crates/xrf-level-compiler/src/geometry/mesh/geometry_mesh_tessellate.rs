@@ -6,7 +6,7 @@ use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 
 impl GeometryMesh {
   /// The longest edge xrLC leaves whole, `aht_max_edge`: `c_SS_maxsize / 2.5`, 12.8 m.
-  pub(crate) const LONGEST_EDGE: f32 = 32.0 / 2.5;
+  pub const LONGEST_EDGE: f32 = 32.0 / 2.5;
 
   /// The first pass of `CBuild::xrPhase_AdaptiveHT` (`u_Tesselate`), the only one that changes geometry, run at every
   /// quality: each face with an edge of [`Self::LONGEST_EDGE`] or more is cut at the middle of its longest, with every
@@ -15,7 +15,7 @@ impl GeometryMesh {
   /// Faces are taken in order, halves appended and taken in their turn; a face of an area under `EPS_L` is left whole.
   /// A half keeps its face's back-face flag and outer edges' softness, the new edge between halves is soft, and the cut
   /// faces are dropped at the end, the others keeping their order.
-  pub(crate) fn tessellate(&mut self) -> usize {
+  pub fn tessellate(&mut self) -> usize {
     let mut around: Vec<Vec<u32>> = self.get_faces_around_vertices();
     let mut is_cut: Vec<bool> = vec![false; self.faces.len()];
     let mut face: usize = 0;

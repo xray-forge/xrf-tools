@@ -13,20 +13,20 @@ use crate::input::compiler_textures::CompilerTextures;
 /// not a `lod\` texture, and its size then wins over the `.thm`'s. The merged impostors' atlas, `level_lods`, has no
 /// `.thm` read: 1024 a side, alpha, no image.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct CompilerTexture {
+pub struct CompilerTexture {
   /// The name cut at its first dot and lowered (`CompilerTextures::get_name`), as visuals name it.
   pub name: String,
   pub width: u32,
   pub height: u32,
   pub has_alpha: bool,
   /// Whether xrLC loaded its image (`THM.HasSurface`).
-  pub(crate) has_image: bool,
-  pub(crate) is_implicitly_lit: bool,
+  pub has_image: bool,
+  pub is_implicitly_lit: bool,
 }
 
 impl CompilerTexture {
   /// The atlas's side, which xrLC sets for it.
-  pub(crate) const UNLOADED_SIDE: u32 = 1024;
+  pub const UNLOADED_SIDE: u32 = 1024;
 
   /// The folder of textures whose images xrLC never loads.
   const LOD_FOLDER: &'static str = "lod\\";
@@ -36,7 +36,7 @@ impl CompilerTexture {
   /// # Errors
   ///
   /// Returns an error listing the textures with no texture `.thm`, or for an image xrLC loads that cannot be read.
-  pub(crate) fn resolve_all(project: &BuildPrjFile, roots: &[PathBuf]) -> XrfResult<Vec<Self>> {
+  pub fn resolve_all(project: &BuildPrjFile, roots: &[PathBuf]) -> XrfResult<Vec<Self>> {
     let mut missing: Vec<String> = Vec::new();
     let mut textures: Vec<Self> = Vec::with_capacity(project.textures.len());
 
@@ -99,7 +99,7 @@ impl CompilerTexture {
   }
 
   /// Whether faces of it are opaque to xrLC (`CacheOpacity`): no alpha, or alpha with no image loaded.
-  pub(crate) fn is_opaque(&self) -> bool {
+  pub fn is_opaque(&self) -> bool {
     !self.has_alpha || !self.has_image
   }
 }

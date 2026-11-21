@@ -60,7 +60,7 @@ struct LightPass<'a> {
 /// and are halved. Where xrLC jitters from its global random source, this seeds by model, placement, vertex and
 /// sample, so a compile is repeatable. Both ray models are xrLC's own ([`XrlcTracer`]).
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct LightModels {
+pub struct LightModels {
   /// Each model's vertices' light, by model in `build.prj`'s order and vertex as its normals pass splits them.
   pub models: Vec<Vec<LightColor>>,
   /// Each placement's, in `build.prj`'s order.
@@ -69,13 +69,13 @@ pub(crate) struct LightModels {
 
 impl LightModels {
   /// Samples a vertex above draft quality.
-  pub(crate) const SAMPLES: u32 = 6;
+  pub const SAMPLES: u32 = 6;
 
   /// Samples a vertex at draft quality.
-  pub(crate) const DRAFT_SAMPLES: u32 = 1;
+  pub const DRAFT_SAMPLES: u32 = 1;
 
   /// The cone a sample's normal is jittered within.
-  pub(crate) const JITTER_DEGREES: f32 = 30.0;
+  pub const JITTER_DEGREES: f32 = 30.0;
 
   /// How far along its normal the last sample steps, the first not at all.
   const SAMPLE_REACH: f32 = 0.2;
@@ -86,7 +86,7 @@ impl LightModels {
   /// # Errors
   ///
   /// Returns an error for a model face naming a vertex the model lacks or a material of no compiler shader.
-  pub(crate) fn get_model_faces(project: &BuildPrjFile, shaders: &CompilerShaders) -> XrfResult<LightModelFaces> {
+  pub fn get_model_faces(project: &BuildPrjFile, shaders: &CompilerShaders) -> XrfResult<LightModelFaces> {
     let mut faces: Vec<BuildCformRaycastFace> = Vec::new();
     let mut starts: Vec<usize> = Vec::with_capacity(project.mu_models.len());
 
@@ -116,7 +116,7 @@ impl LightModels {
   /// # Errors
   ///
   /// Returns an error where a model cannot be loaded or a placement names a model the project lacks.
-  pub(crate) fn of(input: &LightModelsInput<'_>) -> XrfResult<Self> {
+  pub fn of(input: &LightModelsInput<'_>) -> XrfResult<Self> {
     let LightModelsInput {
       project,
       shaders,
@@ -388,7 +388,7 @@ impl LightModels {
   }
 
   /// `vfComputeLinearRegression`: the least-squares line `b = a * scale + bias`, in double precision.
-  pub(crate) fn regress(a: &[f64], b: &[f64]) -> (f32, f32) {
+  pub fn regress(a: &[f64], b: &[f64]) -> (f32, f32) {
     let count: f64 = a.len() as f64;
     let sum_a: f64 = a.iter().sum();
     let sum_b: f64 = b.iter().sum();
@@ -410,7 +410,7 @@ impl LightModels {
   }
 
   /// `simple_optimize`: the line moved a seventh at a time toward the mean of `b` over `a`, while its mean error falls.
-  pub(crate) fn optimize(a: &[f64], b: &[f64], start_scale: f32, start_bias: f32) -> (f32, f32) {
+  pub fn optimize(a: &[f64], b: &[f64], start_scale: f32, start_bias: f32) -> (f32, f32) {
     let count: f64 = a.len() as f64;
     let (mut scale, mut bias): (f64, f64) = (f64::from(start_scale), f64::from(start_bias));
     let mut error: f64 = f64::from(f32::MAX);

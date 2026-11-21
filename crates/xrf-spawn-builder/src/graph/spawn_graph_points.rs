@@ -8,7 +8,7 @@ use crate::map::spawn_ai_map::SpawnAiMap;
 
 /// A level's graph points in `level.spawn` order, `load_graph_points`, with the ones left out and why.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct SpawnGraphPoints {
+pub struct SpawnGraphPoints {
   pub points: Vec<SpawnGraphPoint>,
   pub removed: Vec<SpawnRemovedGraphPoint>,
 }
@@ -18,7 +18,7 @@ impl SpawnGraphPoints {
   const TOO_CLOSE_SQUARED: f32 = 0.001;
 
   /// The graph points among a level's spawn list, each placed on the node under it.
-  pub(crate) fn read(objects: &[AlifeObject], map: &SpawnAiMap) -> Self {
+  pub fn read(objects: &[AlifeObject], map: &SpawnAiMap) -> Self {
     let mut graph_points: Self = Self::default();
 
     for object in objects {

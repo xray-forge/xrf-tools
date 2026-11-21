@@ -7,7 +7,7 @@ use xrf_math::{Aabb, AiNodePosition, Vector3d};
 
 /// A level's AI map, `CLevelGraph`: its nodes in file order, sorted by packed cell, with the lookups that place points
 /// on nodes.
-pub(crate) struct SpawnAiMap {
+pub struct SpawnAiMap {
   header: LevelAiHeader,
   grid: LevelAiGrid,
   nodes: Vec<LevelAiNode>,
@@ -22,7 +22,7 @@ impl SpawnAiMap {
   ///
   /// Returns an error when the header's grid does not unpack ([`LevelAiHeader::get_grid`]) or its node count differs
   /// from the nodes held.
-  pub(crate) fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Self> {
+  pub fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Self> {
     let grid: LevelAiGrid = header.get_grid()?;
     let nodes: Vec<LevelAiNode> = nodes.iter_nodes().collect();
 
@@ -37,21 +37,21 @@ impl SpawnAiMap {
     Ok(Self { header, grid, nodes })
   }
 
-  pub(crate) fn get_header(&self) -> &LevelAiHeader {
+  pub fn get_header(&self) -> &LevelAiHeader {
     &self.header
   }
 
-  pub(crate) fn get_node_count(&self) -> usize {
+  pub fn get_node_count(&self) -> usize {
     self.nodes.len()
   }
 
   /// The nodes a node links to, skipping `u24::MAX` and links past the map.
-  pub(crate) fn get_neighbours(&self, node: u32) -> impl Iterator<Item = u32> + '_ {
+  pub fn get_neighbours(&self, node: u32) -> impl Iterator<Item = u32> + '_ {
     self.nodes[node as usize].get_neighbours(self.nodes.len() as u32)
   }
 
   /// `vertex_plane_y`: the height at `x`, `z` of the node's plane through [`Self::get_node_position`].
-  pub(crate) fn get_plane_y(&self, node: u32, x: f32, z: f32) -> f32 {
+  pub fn get_plane_y(&self, node: u32, x: f32, z: f32) -> f32 {
     let point: Vector3d<f32> = self.get_node_position(node);
     let normal: Vector3d<f32> = self.nodes[node as usize].get_normal();
 
@@ -59,7 +59,7 @@ impl SpawnAiMap {
   }
 
   /// `valid_vertex_position`: whether the position lies over the map's grid, its box grown by half a cell.
-  pub(crate) fn is_valid_position(&self, position: &Vector3d<f32>) -> bool {
+  pub fn is_valid_position(&self, position: &Vector3d<f32>) -> bool {
     let (min, max) = (&self.header.bounds.min, &self.header.bounds.max);
     let half: f32 = self.header.size * 0.5;
 
@@ -77,7 +77,7 @@ impl SpawnAiMap {
   /// `None` for an empty cell.
   ///
   /// The caller checks the position lies over the grid.
-  pub(crate) fn find_node(&self, position: &Vector3d<f32>) -> Option<u32> {
+  pub fn find_node(&self, position: &Vector3d<f32>) -> Option<u32> {
     let packed: u32 = self.get_packed_xz(position.x, position.z);
     let first: usize = self.nodes.partition_point(|node| node.packed_xz < packed);
 
@@ -110,14 +110,14 @@ impl SpawnAiMap {
   }
 
   /// `inside(vertex, position)`: whether the position lies over the grid in the node's cell.
-  pub(crate) fn is_inside(&self, node: u32, position: &Vector3d<f32>) -> bool {
+  pub fn is_inside(&self, node: u32, position: &Vector3d<f32>) -> bool {
     self.is_valid_position(position)
       && self.nodes[node as usize].packed_xz == self.get_packed_xz(position.x, position.z)
   }
 
   /// `CLevelGraph::vertex(u32(-1), position)`: [`Self::find_node`], else [`Self::find_nearest_node`] for an empty
   /// cell or a position off the grid.
-  pub(crate) fn place(&self, position: &Vector3d<f32>) -> u32 {
+  pub fn place(&self, position: &Vector3d<f32>) -> u32 {
     self
       .is_valid_position(position)
       .then(|| self.find_node(position))
@@ -132,7 +132,7 @@ impl SpawnAiMap {
   /// first ring whose cells all lie farther across the ground than the best contour distance so far: the floor
   /// distance never exceeds the contour distance, so no node past it can come nearer. The engine's walk skips a node
   /// by the same floor and margin, which keeps rounding from passing over an equal; both find the same node.
-  pub(crate) fn find_nearest_node(&self, position: &Vector3d<f32>) -> u32 {
+  pub fn find_nearest_node(&self, position: &Vector3d<f32>) -> u32 {
     let (columns, rows): (i64, i64) = (i64::from(self.grid.get_column_length()), self.get_row_length());
     let (centre_x, centre_z) = self.grid.find_cell(position.x, position.z);
 
@@ -192,7 +192,7 @@ impl SpawnAiMap {
   /// [`Self::find_nearest_node`] as the engine walks it, every node in turn: the first node whose cell contour comes
   /// nearest. A node whose cell is clearly farther across the ground than the best so far is skipped unmeasured; the
   /// margin keeps rounding from skipping an equal.
-  pub(crate) fn find_nearest_node_by_scan(&self, position: &Vector3d<f32>) -> u32 {
+  pub fn find_nearest_node_by_scan(&self, position: &Vector3d<f32>) -> u32 {
     let half: f64 = f64::from(self.header.size) / 2.0;
     let across = |from: f32, to: f32| (f64::from(to - from).abs() - half).max(0.0);
     let (mut nearest, mut nearest_distance): (u32, f32) = (0, f32::MAX);
@@ -322,7 +322,7 @@ impl SpawnAiMap {
   }
 
   /// A node's cell along x and z, `unpack_xz` into whole cells.
-  pub(crate) fn get_node_cell(&self, node: u32) -> (i64, i64) {
+  pub fn get_node_cell(&self, node: u32) -> (i64, i64) {
     let packed: i64 = i64::from(self.nodes[node as usize].packed_xz);
 
     (packed / self.get_row_length(), packed % self.get_row_length())
@@ -332,7 +332,7 @@ impl SpawnAiMap {
   /// ([`AiNodePosition::unpack_height_as_built`]).
   ///
   /// Every lookup here takes a node's height from it, as the engine's do.
-  pub(crate) fn get_node_position(&self, node: u32) -> Vector3d<f32> {
+  pub fn get_node_position(&self, node: u32) -> Vector3d<f32> {
     let (x, z) = self.get_node_xz(node);
     let height: f32 = AiNodePosition::unpack_height_as_built(
       self.nodes[node as usize].packed_y,
@@ -344,7 +344,7 @@ impl SpawnAiMap {
   }
 
   /// Where a node's cell centre stands across the ground, `unpack_xz`.
-  pub(crate) fn get_node_xz(&self, node: u32) -> (f32, f32) {
+  pub fn get_node_xz(&self, node: u32) -> (f32, f32) {
     self.grid.unpack(self.nodes[node as usize].packed_xz)
   }
 
@@ -354,7 +354,7 @@ impl SpawnAiMap {
   /// Each step takes the first link, never straight back, whose cell the line crosses (`Fbox2::pick_exact`) and whose
   /// centre comes no farther from `to`. A walk circling cells equally far from `to`, which never returns in the
   /// engine, gives up after as many steps as there are nodes.
-  pub(crate) fn find_straight_walk(&self, start: u32, from: (f32, f32), to: (f32, f32)) -> Option<u32> {
+  pub fn find_straight_walk(&self, start: u32, from: (f32, f32), to: (f32, f32)) -> Option<u32> {
     let target: u32 = self.get_packed_xz(to.0, to.1);
 
     if self.nodes[start as usize].packed_xz == target {
@@ -416,7 +416,7 @@ impl SpawnAiMap {
   }
 
   /// The nodes, in node order, whose cells lie across the ground within `bounds` grown by a cell.
-  pub(crate) fn get_nodes_within(&self, bounds: &Aabb) -> Vec<u32> {
+  pub fn get_nodes_within(&self, bounds: &Aabb) -> Vec<u32> {
     let size: f32 = self.grid.get_cell_size();
     let (min_x, min_z) = self.grid.find_cell(bounds.min.x - size, bounds.min.z - size);
     let (max_x, max_z) = self.grid.find_cell(bounds.max.x + size, bounds.max.z + size);

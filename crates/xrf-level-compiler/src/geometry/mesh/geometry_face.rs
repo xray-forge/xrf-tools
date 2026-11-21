@@ -2,7 +2,7 @@ use xrf_math::{Vector2d, Vector3d};
 
 /// One face of a level's static geometry as xrLC works on it (`Face`).
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryFace {
+pub struct GeometryFace {
   /// Its corners, by index into the mesh's vertices.
   pub vertices: [u32; 3],
   /// The base texture coordinate at each corner.
@@ -20,23 +20,23 @@ pub(crate) struct GeometryFace {
 
 impl GeometryFace {
   /// The flag marking the back of a two-sided surface, `backface_flag`.
-  pub(crate) const BACK_FACE: u32 = 1 << 3;
+  pub const BACK_FACE: u32 = 1 << 3;
 
   /// The corners each edge runs between, `edge2idx`.
-  pub(crate) const EDGES: [[usize; 2]; 3] = [[0, 1], [1, 2], [2, 0]];
+  pub const EDGES: [[usize; 2]; 3] = [[0, 1], [1, 2], [2, 0]];
 
   /// Whether the face is the back of a two-sided surface, `is_backface`.
-  pub(crate) fn is_back_face(&self) -> bool {
+  pub fn is_back_face(&self) -> bool {
     self.smoothing & Self::BACK_FACE != 0
   }
 
   /// Whether edge `edge` is soft, its bit clear, `is_soft_edge`.
-  pub(crate) fn is_soft_edge(&self, edge: usize) -> bool {
+  pub fn is_soft_edge(&self, edge: usize) -> bool {
     self.smoothing & (1 << self.get_edge_bit(edge)) == 0
   }
 
   /// Sets edge `edge` soft or hard, `set_soft_edge`.
-  pub(crate) fn set_soft_edge(&mut self, edge: usize, is_soft: bool) {
+  pub fn set_soft_edge(&mut self, edge: usize, is_soft: bool) {
     let bit: u32 = 1 << self.get_edge_bit(edge);
 
     if is_soft {
@@ -47,7 +47,7 @@ impl GeometryFace {
   }
 
   /// Marks the face as a back face or not, `set_backface`.
-  pub(crate) fn set_back_face(&mut self, is_back_face: bool) {
+  pub fn set_back_face(&mut self, is_back_face: bool) {
     if is_back_face {
       self.smoothing |= Self::BACK_FACE;
     } else {
@@ -56,12 +56,12 @@ impl GeometryFace {
   }
 
   /// The face's corners in place.
-  pub(crate) fn get_corners(&self, positions: &[Vector3d]) -> [Vector3d; 3] {
+  pub fn get_corners(&self, positions: &[Vector3d]) -> [Vector3d; 3] {
     self.vertices.map(|vertex| positions[vertex as usize])
   }
 
   /// The corner `vertex` is at, if the face has it, `VIndex`.
-  pub(crate) fn get_corner(&self, vertex: u32) -> Option<usize> {
+  pub fn get_corner(&self, vertex: u32) -> Option<usize> {
     self.vertices.iter().position(|corner| *corner == vertex)
   }
 

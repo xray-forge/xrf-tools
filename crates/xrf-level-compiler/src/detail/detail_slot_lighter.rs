@@ -18,7 +18,7 @@ use crate::ray::ray_scene::RayScene;
 /// Lights one planted slot as xrDO_Light's `LightThread::Execute` does, its arithmetic in the same order, but every
 /// shadow ray a full query with no remembered blocker: planned ([`Self::plan`]), traced, then finished
 /// ([`Self::finish`]).
-pub(crate) struct DetailSlotLighter<'a> {
+pub struct DetailSlotLighter<'a> {
   pub(crate) header: &'a LevelDetailsHeader,
   pub(crate) scene: RayScene<'a>,
   /// The lights of each role.

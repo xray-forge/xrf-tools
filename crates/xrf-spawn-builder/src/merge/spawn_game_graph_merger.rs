@@ -17,11 +17,11 @@ use crate::merge::spawn_skipped_connection::SpawnSkippedConnection;
 ///
 /// Levels go in ascending id order, each level's vertices numbered after those of the levels before. The graph GUID is
 /// derived from the content, so the same levels give the same graph.
-pub(crate) struct SpawnGameGraphMerger;
+pub struct SpawnGameGraphMerger;
 
 impl SpawnGameGraphMerger {
   /// `XRAI_CURRENT_VERSION`, the version of the graph and its cross tables.
-  pub(crate) const VERSION: u8 = 10;
+  pub const VERSION: u8 = 10;
 
   /// Merges the levels' graphs, drawing level points from `random`, the build's one stream, which the zones'
   /// artefact points draw from next.
@@ -30,7 +30,7 @@ impl SpawnGameGraphMerger {
   ///
   /// Returns an error when two levels share an id or a name, a level's graph or cross table does not match its points
   /// and map, a connection names a graph point its level lacks, or the graph exceeds its format's counts.
-  pub(crate) fn merge(levels: &[SpawnMergeLevel<'_>], random: &mut SpawnRandom) -> XrfResult<SpawnGameGraphMerge> {
+  pub fn merge(levels: &[SpawnMergeLevel<'_>], random: &mut SpawnRandom) -> XrfResult<SpawnGameGraphMerge> {
     let mut ordered: Vec<&SpawnMergeLevel<'_>> = levels.iter().collect();
 
     ordered.sort_by_key(|level| level.id);

@@ -9,7 +9,7 @@ use crate::map::spawn_ai_map::SpawnAiMap;
 /// One level as the game graph merge takes it: its `game_levels.ltx` entry, AI map, graph points, game graph and
 /// cross table.
 #[derive(Clone)]
-pub(crate) struct SpawnMergeLevel<'a> {
+pub struct SpawnMergeLevel<'a> {
   /// The level's `[levels]` section, `level<id>` in vanilla.
   pub section: String,
   pub name: String,
@@ -26,7 +26,7 @@ pub(crate) struct SpawnMergeLevel<'a> {
 
 impl SpawnMergeLevel<'_> {
   /// The level's GUID, from its `level.ai`.
-  pub(crate) fn get_guid(&self) -> Uuid {
+  pub fn get_guid(&self) -> Uuid {
     self.map.get_header().guid
   }
 }

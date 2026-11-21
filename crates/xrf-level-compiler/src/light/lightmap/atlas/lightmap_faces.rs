@@ -3,7 +3,7 @@ use xrf_math::Vector2d;
 /// Each face's lightmap: the page its chart sits on and its corners' coordinates there, by index into the mesh's faces;
 /// none for a face no chart holds.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct LightmapFaces {
+pub struct LightmapFaces {
   pub pages: Vec<Option<u32>>,
   pub coordinates: Vec<[Vector2d; 3]>,
 }

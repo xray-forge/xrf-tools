@@ -2,7 +2,7 @@ use xrf_level::LevelDetailsLight;
 
 /// What the detail lighter does with one slot (`LightThread::Execute`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum DetailSlotFate {
+pub enum DetailSlotFate {
   /// It plants nothing, and is left as it is.
   Unplanted,
   /// It plants something at zero density in every corner: its corners are cleared and it is left unlit.

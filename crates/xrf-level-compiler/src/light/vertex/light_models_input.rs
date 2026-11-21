@@ -10,7 +10,7 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 ///
 /// [`LightModels::of`]: crate::light::vertex::light_models::LightModels::of
 #[derive(Clone, Copy)]
-pub(crate) struct LightModelsInput<'a> {
+pub struct LightModelsInput<'a> {
   pub project: &'a BuildPrjFile,
   pub shaders: &'a CompilerShaders,
   pub lights: &'a LightSources,

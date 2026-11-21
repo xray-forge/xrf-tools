@@ -2,7 +2,7 @@ use xrf_math::Vector3d;
 
 /// A level's graph point as a game vertex is built from it, `CGameGraphBuilder::load_graph_point`.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct SpawnGraphPoint {
+pub struct SpawnGraphPoint {
   pub name: String,
   pub position: Vector3d<f32>,
   pub node: u32,

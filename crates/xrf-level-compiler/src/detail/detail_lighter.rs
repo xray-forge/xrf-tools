@@ -17,11 +17,11 @@ use crate::ray::ray_device::RayDevice;
 ///
 /// Unlike xrDO_Light, every shadow ray is a full query, never first a test of the face that last blocked the light, so
 /// the result is the same whatever the order and thread count.
-pub(crate) struct DetailLighter;
+pub struct DetailLighter;
 
 impl DetailLighter {
   /// What a job reports the lighting under: the grid's slots.
-  pub(crate) const PROGRESS_SLOTS: &'static str = "slots";
+  pub const PROGRESS_SLOTS: &'static str = "slots";
 
   /// The request's details lit over the installed pool, their shadow rays traced by the request's backend.
   ///
@@ -30,7 +30,7 @@ impl DetailLighter {
   /// Returns [`xrf_error::XrfError::Cancelled`] when the job is cancelled; and, for the GPU backend, an error when this
   /// build has none, no GPU traces rays, or the GPU fails. `Auto` falls back to the CPU when the GPU does not start,
   /// but fails with a GPU that fails once started, as the slots it lit are already counted.
-  pub(crate) fn light(request: &DetailLightRequest<'_>, job: &JobHandle) -> XrfResult<DetailLighting> {
+  pub fn light(request: &DetailLightRequest<'_>, job: &JobHandle) -> XrfResult<DetailLighting> {
     let details: &LevelDetailsFile = request.details;
     let lights: LightSources = LightSources::from_file(request.lights);
     let lighter: DetailSlotLighter<'_> = DetailSlotLighter {
@@ -121,11 +121,7 @@ impl DetailLighter {
   }
 
   /// The slot of `words` in grid cell `cell`: its fate where that needs no ray, else its plan.
-  pub(crate) fn plan(
-    lighter: &DetailSlotLighter<'_>,
-    cell: usize,
-    words: &[u32; LevelDetailsSlot::WORDS],
-  ) -> DetailSlotStage {
+  pub fn plan(lighter: &DetailSlotLighter<'_>, cell: usize, words: &[u32; LevelDetailsSlot::WORDS]) -> DetailSlotStage {
     if !LevelDetailsSlot::of(words).is_planted() {
       return DetailSlotStage::Met(DetailSlotFate::Unplanted);
     }

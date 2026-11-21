@@ -18,7 +18,7 @@ use crate::ray::ray_lamp_mode::RayLampMode;
 ///
 /// Rays are numbered in group order: a light's rays together, one for each point it gives anything, in point order.
 #[derive(Clone, Debug)]
-pub(crate) struct LightPlan {
+pub struct LightPlan {
   pub(crate) light_point: LightPoint,
   /// Each role's lights the points take, by index among the lights of that role.
   pub(crate) selected: LightRoles<Vec<u32>>,

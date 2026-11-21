@@ -5,7 +5,7 @@ use xrf_math::{Aabb, EPS_L, Vector3d};
 /// The box is xrLC's exactly. The sphere is the smaller of the box-centred one and Ritter's; xrLC also tries two
 /// minimal spheres, so its radius may be smaller, and a larger sphere only culls later.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct GeometryBounds {
+pub struct GeometryBounds {
   pub bounds: Aabb,
   pub center: Vector3d,
   pub radius: f32,

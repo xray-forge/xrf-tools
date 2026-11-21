@@ -34,7 +34,7 @@ use crate::light::vertex::light_reference::LightReference;
 /// within a material. A reference places each visual as a [`GeometryTree`], and a [`GeometryLod`] where its model
 /// names one.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryModels {
+pub struct GeometryModels {
   /// Each `build.prj` multi-use model, in its order.
   pub models: Vec<GeometryModel>,
   /// Each reference's placements, in reference order, a model's visuals in theirs.
@@ -50,7 +50,7 @@ impl GeometryModels {
   ///
   /// Returns an error for a model whose faces xrLC would read past, a face of a material with no compiler shader or a
   /// missing one, or a reference or model naming a missing model or LOD.
-  pub(crate) fn build(
+  pub fn build(
     project: &BuildPrjFile,
     shaders: &CompilerShaders,
     textures: &[CompilerTexture],
@@ -142,7 +142,7 @@ impl GeometryModels {
   /// # Errors
   ///
   /// Returns an error when a visual's vertices cannot be packed.
-  pub(crate) fn pack(
+  pub fn pack(
     &self,
     geometry: &mut LevelGeomPacker,
     slide_windows: &mut Vec<LevelGeomSlideWindowItem>,

@@ -2,7 +2,7 @@ use xrf_math::Vector3d;
 
 /// One `[levels]` entry of `configs/game_levels.ltx`, as `read_levels` takes it.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct SpawnGameLevel {
+pub struct SpawnGameLevel {
   /// Its section, `level108` for vanilla's zaton.
   pub section: String,
   /// Its directory under `levels/`.

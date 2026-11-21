@@ -27,7 +27,7 @@ impl GeometryMesh {
   ///
   /// Returns an error listing the faces xrLC would refuse: an area under `EPS` or none at all, base coordinates
   /// spanning under `Self::TEXTURE_SPAN`, or no normal to be had.
-  pub(crate) fn optimize(&mut self, weld_distance: f32) -> XrfResult<GeometryOptimization> {
+  pub fn optimize(&mut self, weld_distance: f32) -> XrfResult<GeometryOptimization> {
     let welded: Vec<u32> = self.weld(weld_distance);
     let mut optimization: GeometryOptimization = GeometryOptimization {
       welded_vertices: welded

@@ -29,7 +29,7 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 /// order and test each ray first against the light's remembered blocker (`rayTrace`'s `L.tri`), so where the tree
 /// loses a ray at a corner, the previous vertex's blocker can still stop it. Each run of `Self::REMEMBERED_RUN`
 /// vertices is lit in order the same way.
-pub(crate) struct LightVertices;
+pub struct LightVertices;
 
 impl LightVertices {
   /// Vertices lit in order by one lighter, which remembers each light's last blocker from one to the next.
@@ -37,7 +37,7 @@ impl LightVertices {
 
   /// The light of each of `normals`' split vertices of `mesh`, by index, the welded vertices' sky terms `hemispheres`,
   /// the level's ray model in `tracer`.
-  pub(crate) fn of(
+  pub fn of(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
     shaders: &CompilerShaders,

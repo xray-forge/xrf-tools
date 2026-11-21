@@ -8,7 +8,7 @@ use crate::geometry::mesh::geometry_face::GeometryFace;
 /// `GeometryNormals::of`. Later steps read the face order, so it is kept as xrLC keeps it: a removed face leaves the
 /// others in order, an added one goes last.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryMesh {
+pub struct GeometryMesh {
   pub vertices: Vec<Vector3d>,
   pub faces: Vec<GeometryFace>,
   /// The box around every `build.prj` vertex, used or not, `scene_bb`: what the weld lays its grid over.
@@ -17,7 +17,7 @@ pub(crate) struct GeometryMesh {
 
 impl GeometryMesh {
   /// The faces about each vertex in face order: `m_adjacents`, which xrLC sorts by face address, its creation order.
-  pub(crate) fn get_faces_around_vertices(&self) -> Vec<Vec<u32>> {
+  pub fn get_faces_around_vertices(&self) -> Vec<Vec<u32>> {
     let mut around: Vec<Vec<u32>> = vec![Vec::new(); self.vertices.len()];
 
     for (index, face) in self.faces.iter().enumerate() {

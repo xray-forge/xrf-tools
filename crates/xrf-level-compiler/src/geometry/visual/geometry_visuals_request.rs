@@ -14,7 +14,7 @@ use crate::light::point::light_color::LightColor;
 ///
 /// [`GeometryVisuals::build`]: crate::geometry::visual::geometry_visuals::GeometryVisuals::build
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct GeometryVisualsRequest<'a> {
+pub struct GeometryVisualsRequest<'a> {
   pub mesh: &'a GeometryMesh,
   pub normals: &'a GeometryNormals,
   pub coordinates: &'a GeometryBaseCoordinates,

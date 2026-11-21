@@ -4,7 +4,7 @@ use xrf_math::Vector3d;
 /// A face corner's tangent and binormal as xrLC keeps them after its tangent-basis pass, `base_basis`: each a byte a
 /// component, `x`, `y`, `z`, from `[-1, 1]` to `[0, 255]`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct GeometryBasis {
+pub struct GeometryBasis {
   pub tangent: [u8; 3],
   pub binormal: [u8; 3],
 }

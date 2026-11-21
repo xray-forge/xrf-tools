@@ -27,20 +27,15 @@ use crate::shadow::shadow_materials::ShadowMaterials;
 /// vertex's light with the threads in step and otherwise depends on their timing.
 ///
 /// [`GeometryRayModel::build_welded`]: crate::geometry::collision::geometry_ray_model::GeometryRayModel::build_welded
-pub(crate) struct LightHemisphere;
+pub struct LightHemisphere;
 
 impl LightHemisphere {
   /// `u_SmoothVertColors(5)`.
-  pub(crate) const SMOOTHING_ROUNDS: usize = 5;
+  pub const SMOOTHING_ROUNDS: usize = 5;
 
   /// The sky term of each of `mesh`'s vertices, by index, the sky's lights `sky`, the welded mesh's ray model in
   /// `tracer`.
-  pub(crate) fn of(
-    mesh: &GeometryMesh,
-    sky: &[LightSource],
-    tracer: &XrlcTracer,
-    shadows: &ShadowMaterials,
-  ) -> Vec<f32> {
+  pub fn of(mesh: &GeometryMesh, sky: &[LightSource], tracer: &XrlcTracer, shadows: &ShadowMaterials) -> Vec<f32> {
     let face_normals: Vec<Vector3d> = mesh
       .faces
       .iter()

@@ -19,7 +19,7 @@ use crate::input::compiler_shaders::CompilerShaders;
 /// repeating the corners of one taken before it, as the smoothing split leaves them, is left out, so a double-sided
 /// face's back stays apart from its front. A face's record holds its material, game material and base coordinates (a
 /// static face's from `GeometryBaseCoordinates`); its handle, xrLC's face address that no reader uses, is its index.
-pub(crate) struct GeometryRayModel;
+pub struct GeometryRayModel;
 
 impl GeometryRayModel {
   /// The ray model of `mesh`, split as `normals` with `coordinates`, and `project`'s multi-use references.
@@ -29,7 +29,7 @@ impl GeometryRayModel {
   /// Returns an error when `normals` or `coordinates` is not of `mesh`'s faces, and where xrLC would read past a table:
   /// a reference naming a missing model, a placed model with no vertex or without a smoothing flag a face, or a model
   /// face naming a missing vertex or a material of no compiler shader.
-  pub(crate) fn build(
+  pub fn build(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
     coordinates: &GeometryBaseCoordinates,
@@ -57,7 +57,7 @@ impl GeometryRayModel {
   /// # Errors
   ///
   /// As [`Self::build`], for the references.
-  pub(crate) fn build_welded(
+  pub fn build_welded(
     mesh: &GeometryMesh,
     project: &BuildPrjFile,
     shaders: &CompilerShaders,
@@ -71,7 +71,7 @@ impl GeometryRayModel {
   }
 
   /// Each of `mesh`'s faces' index in [`Self::build`]'s form, none for one left out.
-  pub(crate) fn get_static_faces(
+  pub fn get_static_faces(
     mesh: &GeometryMesh,
     normals: &GeometryNormals,
     shaders: &CompilerShaders,

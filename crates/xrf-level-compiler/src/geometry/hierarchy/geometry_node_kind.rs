@@ -1,6 +1,6 @@
 /// What a node of a level's visual tree is (`g_tree`'s `OGF_Base` kinds).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum GeometryNodeKind {
+pub enum GeometryNodeKind {
   /// A static visual, by index into [`crate::geometry::visual::geometry_visuals::GeometryVisuals::visuals`].
   Visual(u32),
   /// A multi-use placement, by index into [`crate::geometry::model::geometry_models::GeometryModels::trees`].

@@ -13,14 +13,14 @@ use crate::geometry::surface::geometry_normals::GeometryNormals;
 /// The mender ([`TangentBasis::mend_in_place`]) gets one vertex per split vertex and base coordinate
 /// (`fill_mender_input`), and each corner takes its vertex's directions back quantized ([`GeometryBasis::of`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct GeometryTangents {
+pub struct GeometryTangents {
   /// Each face of the mesh, in its order, its three corners' bases.
   pub faces: Vec<[GeometryBasis; 3]>,
 }
 
 impl GeometryTangents {
   /// The bases of `mesh`'s faces over the vertices `normals` split them into, with `coordinates`.
-  pub(crate) fn of(mesh: &GeometryMesh, normals: &GeometryNormals, coordinates: &GeometryBaseCoordinates) -> Self {
+  pub fn of(mesh: &GeometryMesh, normals: &GeometryNormals, coordinates: &GeometryBaseCoordinates) -> Self {
     let mut vertices: Vec<MeshVertex> = Vec::new();
     let mut numbered: HashMap<(u32, [u32; 2]), u32> = HashMap::new();
     let faces: Vec<[u32; 3]> = normals

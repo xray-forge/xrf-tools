@@ -10,7 +10,7 @@ use crate::light::lightmap::chart::lightmap_orientation::LightmapOrientation;
 /// within the smoothing angle of one face, projected along their mean normal onto a plane, and the texels a side that
 /// plane takes at the bake's density.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct LightChart {
+pub struct LightChart {
   /// Its faces, by index into the mesh's faces, in the order they were placed on it (`UVpolys`).
   pub(crate) faces: Vec<u32>,
   /// The normal it is projected along.

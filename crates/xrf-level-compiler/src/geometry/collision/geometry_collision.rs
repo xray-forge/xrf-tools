@@ -14,7 +14,7 @@ use crate::input::compiler_shaders::CompilerShaders;
 /// transform (`export_cform_game`), corners packed over the static faces' box. A face keeps its game material, cut to
 /// the form's 14 bits, and its sector: its material's, or a model face's reference's. The two flag bits, uninitialised
 /// in xrLC and set by the engine on load, are written clear.
-pub(crate) struct GeometryCollision;
+pub struct GeometryCollision;
 
 impl GeometryCollision {
   /// The collision form of `mesh` and `project`'s multi-use references, by `shaders`.
@@ -23,7 +23,7 @@ impl GeometryCollision {
   ///
   /// Returns an error where xrLC would read past a table (a reference naming a missing model, a model face naming a
   /// missing vertex or a material of no compiler shader), and for a level with no colliding static face.
-  pub(crate) fn build(
+  pub fn build(
     mesh: &GeometryMesh,
     project: &BuildPrjFile,
     shaders: &CompilerShaders,

@@ -14,7 +14,7 @@ use crate::root::spawn_root_level::SpawnRootLevel;
 
 /// A level's files read from its directory, with what `CGameGraphBuilder` builds from the level alone before the
 /// merge: its graph points, cross table and game graph.
-pub(crate) struct SpawnLevelFiles {
+pub struct SpawnLevelFiles {
   map: SpawnAiMap,
   /// The objects of `level.spawn`, typed once for the graph points and the entities both.
   objects: Vec<AlifeObject>,
@@ -26,7 +26,7 @@ pub(crate) struct SpawnLevelFiles {
 
 impl SpawnLevelFiles {
   /// Whether a directory holds `level.ai`, `level.spawn` and `level.game`.
-  pub(crate) fn is_complete(directory: &Path) -> bool {
+  pub fn is_complete(directory: &Path) -> bool {
     [
       LevelAiFile::FILE_NAME,
       LevelSpawnFile::FILE_NAME,
@@ -42,7 +42,7 @@ impl SpawnLevelFiles {
   ///
   /// Returns an error naming the level when a file does not read or its graph cannot be built, as when no AI map path
   /// reaches a graph point from its neighbours.
-  pub(crate) fn read(directory: &Path, name: &str, classes: &SpawnSectionClasses) -> XrfResult<Self> {
+  pub fn read(directory: &Path, name: &str, classes: &SpawnSectionClasses) -> XrfResult<Self> {
     Self::read_unnamed(directory, classes)
       .map_err(|error| XrfError::new_invalid_error(format!("Level {name}: {error}")))
   }
@@ -52,7 +52,7 @@ impl SpawnLevelFiles {
   /// # Errors
   ///
   /// Returns an error when a packet does not read as its class.
-  pub(crate) fn read_objects(spawn: &LevelSpawnFile, classes: &SpawnSectionClasses) -> XrfResult<Vec<AlifeObject>> {
+  pub fn read_objects(spawn: &LevelSpawnFile, classes: &SpawnSectionClasses) -> XrfResult<Vec<AlifeObject>> {
     spawn
       .objects
       .iter()
@@ -61,7 +61,7 @@ impl SpawnLevelFiles {
   }
 
   /// The build's input for this level under its entry in the game's level list.
-  pub(crate) fn get_input(&self, level: &SpawnGameLevel) -> SpawnRootLevel<'_> {
+  pub fn get_input(&self, level: &SpawnGameLevel) -> SpawnRootLevel<'_> {
     SpawnRootLevel {
       merge: SpawnMergeLevel {
         section: level.section.clone(),

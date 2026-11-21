@@ -3,7 +3,7 @@ use xrf_level::LevelLightRole;
 /// One value for each role a light plays, the static lights' colour, the sky's hemisphere and the sun, always visited
 /// in [`LevelLightRole::ALL`]'s order, which the compilers sum each role's light in.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct LightRoles<T> {
+pub struct LightRoles<T> {
   pub rgb: T,
   pub hemi: T,
   pub sun: T,
@@ -11,7 +11,7 @@ pub(crate) struct LightRoles<T> {
 
 impl<T> LightRoles<T> {
   /// Each role's value as `make` gives it, asked in [`LevelLightRole::ALL`]'s order.
-  pub(crate) fn from_fn(mut make: impl FnMut(LevelLightRole) -> T) -> Self {
+  pub fn from_fn(mut make: impl FnMut(LevelLightRole) -> T) -> Self {
     Self {
       rgb: make(LevelLightRole::Rgb),
       hemi: make(LevelLightRole::Hemi),
@@ -20,7 +20,7 @@ impl<T> LightRoles<T> {
   }
 
   /// The value of `role`.
-  pub(crate) fn get(&self, role: LevelLightRole) -> &T {
+  pub fn get(&self, role: LevelLightRole) -> &T {
     match role {
       LevelLightRole::Rgb => &self.rgb,
       LevelLightRole::Hemi => &self.hemi,
@@ -29,7 +29,7 @@ impl<T> LightRoles<T> {
   }
 
   /// The value of `role`, to change.
-  pub(crate) fn get_mut(&mut self, role: LevelLightRole) -> &mut T {
+  pub fn get_mut(&mut self, role: LevelLightRole) -> &mut T {
     match role {
       LevelLightRole::Rgb => &mut self.rgb,
       LevelLightRole::Hemi => &mut self.hemi,
@@ -38,12 +38,12 @@ impl<T> LightRoles<T> {
   }
 
   /// Each role's value turned by `turn`, in [`LevelLightRole::ALL`]'s order.
-  pub(crate) fn map<U>(&self, mut turn: impl FnMut(LevelLightRole, &T) -> U) -> LightRoles<U> {
+  pub fn map<U>(&self, mut turn: impl FnMut(LevelLightRole, &T) -> U) -> LightRoles<U> {
     LightRoles::from_fn(|role| turn(role, self.get(role)))
   }
 
   /// Each role with its value, in [`LevelLightRole::ALL`]'s order.
-  pub(crate) fn iter(&self) -> impl Iterator<Item = (LevelLightRole, &T)> {
+  pub fn iter(&self) -> impl Iterator<Item = (LevelLightRole, &T)> {
     LevelLightRole::ALL.into_iter().map(|role| (role, self.get(role)))
   }
 }

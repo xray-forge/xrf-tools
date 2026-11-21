@@ -9,7 +9,7 @@ use crate::geometry::visual::geometry_visual_vertex::GeometryVisualVertex;
 /// One visual as xrLC builds it from a split (`Flex2OGF`): its dress, its welded vertices and faces, and the fast
 /// path's positions for an opaque surface.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryVisual {
+pub struct GeometryVisual {
   /// The `build.prj` material of its faces.
   pub material: u16,
   pub sector: u16,
@@ -17,7 +17,7 @@ pub(crate) struct GeometryVisual {
   pub textures: Vec<String>,
   /// Its shader table entry, `<render shader>/<texture>,<texture>...` (`OGF::Save`).
   pub shader: String,
-  pub(crate) light: GeometryVisualLight,
+  pub light: GeometryVisualLight,
   pub vertices: Vec<GeometryVisualVertex>,
   pub faces: Vec<[u16; 3]>,
   /// The fast path's positions and faces (`fast_path_data`), empty for a surface with alpha.
@@ -25,28 +25,22 @@ pub(crate) struct GeometryVisual {
   pub fast_faces: Vec<[u16; 3]>,
   /// A progressive visual's windows over its faces, and over its fast path's where it has one; none for a static one.
   pub windows: Option<Vec<ProgressiveWindow>>,
-  pub(crate) fast_windows: Option<Vec<ProgressiveWindow>>,
+  pub fast_windows: Option<Vec<ProgressiveWindow>>,
 }
 
 impl GeometryVisual {
   /// Fewer faces than this are not worth making progressive (`c_PM_FaceLimit`).
-  pub(crate) const PROGRESSIVE_FACE_LIMIT: usize = 128;
+  pub const PROGRESSIVE_FACE_LIMIT: usize = 128;
 
   /// The share of a static visual's vertices its windows must step through for it to be made progressive
   /// (`c_PM_MetricLimit_static`).
-  pub(crate) const STATIC_METRIC_LIMIT: f32 = 0.10;
+  pub const STATIC_METRIC_LIMIT: f32 = 0.10;
 
   /// The same for a multi-use model's visual (`c_PM_MetricLimit_mu`).
-  pub(crate) const MODEL_METRIC_LIMIT: f32 = 0.05;
+  pub const MODEL_METRIC_LIMIT: f32 = 0.05;
 
   /// A visual of no geometry yet.
-  pub(crate) fn new(
-    material: u16,
-    sector: u16,
-    textures: Vec<String>,
-    shader: String,
-    light: GeometryVisualLight,
-  ) -> Self {
+  pub fn new(material: u16, sector: u16, textures: Vec<String>, shader: String, light: GeometryVisualLight) -> Self {
     Self {
       material,
       sector,
@@ -65,7 +59,7 @@ impl GeometryVisual {
   /// `OGF::MakeProgressive`: a visual of [`Self::PROGRESSIVE_FACE_LIMIT`] faces or more made progressive
   /// ([`ProgressiveMesh`]) where its windows step through at least `metric_limit` of its vertices. Its fast path
   /// follows over positions alone, with no limit; where that fails, the visual stays as it was.
-  pub(crate) fn make_progressive(&mut self, metric_limit: f32) {
+  pub fn make_progressive(&mut self, metric_limit: f32) {
     if self.faces.len() < Self::PROGRESSIVE_FACE_LIMIT {
       return;
     }
@@ -116,7 +110,7 @@ impl GeometryVisual {
   }
 
   /// Its triangles at full detail: a progressive visual's index buffer holds every level's run.
-  pub(crate) fn get_triangle_count(&self) -> usize {
+  pub fn get_triangle_count(&self) -> usize {
     self
       .windows
       .as_ref()
@@ -142,7 +136,7 @@ impl GeometryVisual {
   /// # Errors
   ///
   /// Returns an error for a 65,537th vertex, past the 16-bit indices, where xrLC wraps onto another vertex.
-  pub(crate) fn add_face(
+  pub fn add_face(
     &mut self,
     corners: [GeometryVisualVertex; 3],
     texel: &[Vector2d],
@@ -270,7 +264,7 @@ impl GeometryVisual {
   /// `OGF::Optimize` for a compiler shader that optimizes coordinates: each group of faces joined by shared vertices
   /// has its base coordinates moved by the whole tiles nearest the middle of their span. The span's upper end starts
   /// from the smallest positive float, as xrLC's does.
-  pub(crate) fn shift_texture_coordinates(&mut self) {
+  pub fn shift_texture_coordinates(&mut self) {
     let mut is_vertex_taken: Vec<bool> = vec![false; self.vertices.len()];
     let mut is_face_taken: Vec<bool> = vec![false; self.faces.len()];
 

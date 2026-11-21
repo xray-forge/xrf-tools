@@ -9,14 +9,14 @@ use crate::geometry::surface::geometry_normals::GeometryNormals;
 /// A corner takes the first coordinate already registered at its split vertex within `EPS` on both axes
 /// (`find_same_vertex`), so faces meeting at a vertex with coordinates a rounding apart come out with the same one.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryBaseCoordinates {
+pub struct GeometryBaseCoordinates {
   /// Each face of the mesh, in its order, its three corners' coordinates.
   pub faces: Vec<[Vector2d; 3]>,
 }
 
 impl GeometryBaseCoordinates {
   /// The base coordinates of `mesh`'s faces over the vertices `normals` split them into.
-  pub(crate) fn of(mesh: &GeometryMesh, normals: &GeometryNormals) -> Self {
+  pub fn of(mesh: &GeometryMesh, normals: &GeometryNormals) -> Self {
     let mut registered: Vec<Vec<Vector2d>> = vec![Vec::new(); normals.positions.len()];
     let faces: Vec<[Vector2d; 3]> = mesh
       .faces

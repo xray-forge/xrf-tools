@@ -10,7 +10,7 @@ use crate::map::spawn_ai_map::SpawnAiMap;
 /// far, so a tie stays with the earlier point; a point always takes its own node. Unreached nodes keep the first
 /// vertex and a distance of `u32::MAX`. xrAI keeps a distance row per graph point (zaton: 317 rows of 1.85 M), but
 /// reads back only the owner's distance, so this keeps that alone.
-pub(crate) struct SpawnCrossTable;
+pub struct SpawnCrossTable;
 
 impl SpawnCrossTable {
   /// The cells of a level's cross table for graph points on `nodes`, in vertex order, vertices numbered from 0.
@@ -18,7 +18,7 @@ impl SpawnCrossTable {
   /// # Errors
   ///
   /// Returns an error when there are more graph points than a game vertex id holds, or a node is not one of the map's.
-  pub(crate) fn build(map: &SpawnAiMap, nodes: &[u32]) -> XrfResult<Vec<GraphCrossTableCell>> {
+  pub fn build(map: &SpawnAiMap, nodes: &[u32]) -> XrfResult<Vec<GraphCrossTableCell>> {
     let count: usize = map.get_node_count();
 
     if nodes.len() > usize::from(u16::MAX) + 1 {

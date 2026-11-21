@@ -24,7 +24,7 @@ use crate::light::point::light_color::LightColor;
 /// its base coordinate for an implicitly lit texture, else its chart's, or the draft lightmap's (`LightDraft`) without
 /// a bake. Faces keep the order they were taken in, where xrLC strips them.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryVisuals {
+pub struct GeometryVisuals {
   pub visuals: Vec<GeometryVisual>,
 }
 
@@ -35,7 +35,7 @@ impl GeometryVisuals {
   ///
   /// Returns an error for a missing material, texture or render shader, a material of no compiler shader, or a split
   /// welding into more vertices than 16-bit indices reach.
-  pub(crate) fn build(request: &GeometryVisualsRequest<'_>) -> XrfResult<Self> {
+  pub fn build(request: &GeometryVisualsRequest<'_>) -> XrfResult<Self> {
     let GeometryVisualsRequest {
       mesh,
       normals,
@@ -159,7 +159,7 @@ impl GeometryVisuals {
   /// # Errors
   ///
   /// Returns an error when a visual's vertices cannot be packed.
-  pub(crate) fn pack(
+  pub fn pack(
     &self,
     geometry: &mut LevelGeomPacker,
     fast: &mut LevelGeomPacker,

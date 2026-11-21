@@ -22,14 +22,14 @@ use crate::geometry::visual::geometry_visuals::GeometryVisuals;
 /// (by volume, the first of equals). The root is the last node grown, or the sector's one node. A portal is listed in
 /// both its sectors.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeometryHierarchy {
+pub struct GeometryHierarchy {
   pub nodes: Vec<GeometryNode>,
   pub sectors: Vec<GeometrySector>,
 }
 
 impl GeometryHierarchy {
   /// The smallest size a hierarchy node starts from, `c_SS_maxsize / 4`.
-  pub(crate) const FIRST_SIZE: f32 = 8.0;
+  pub const FIRST_SIZE: f32 = 8.0;
 
   /// The tree of `visuals` and `models`, with `project`'s portals.
   ///
@@ -37,7 +37,7 @@ impl GeometryHierarchy {
   ///
   /// Returns an error for a sector holding no visual, or a portal naming a sector past the last or the same sector on
   /// both sides, which xrLC asserts on.
-  pub(crate) fn build(visuals: &GeometryVisuals, models: &GeometryModels, project: &BuildPrjFile) -> XrfResult<Self> {
+  pub fn build(visuals: &GeometryVisuals, models: &GeometryModels, project: &BuildPrjFile) -> XrfResult<Self> {
     let mut points: GeometryHierarchyPoints = GeometryHierarchyPoints::default();
     let mut nodes: Vec<GeometryNode> = Vec::new();
 
