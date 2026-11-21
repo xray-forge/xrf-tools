@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_editable_level::EditableSceneTool;
 use xrf_error::XrfResult;
 use xrf_level::{LevelFogVolFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile, LevelWallmarksFile};
@@ -27,39 +26,39 @@ impl LevelSceneStep for LevelCompanionStep {
     LevelWallmarksFile::FILE_NAME,
   ];
 
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     _options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
-    if let Some(file) = sources.take_read(LevelPsStaticFile::FILE_NAME, LevelPsStaticFile::read_from_bytes::<T>)? {
+    if let Some(file) = sources.take_read(LevelPsStaticFile::FILE_NAME, LevelPsStaticFile::read_from_bytes)? {
       let part = LevelParticleConversion::decompile(&file, &mut draft.context)?;
 
       draft.add(part.to_scene_tool()?, &[LevelPsStaticFile::FILE_NAME], sources);
     }
 
-    if let Some(file) = sources.take_read(LevelSndStaticFile::FILE_NAME, LevelSndStaticFile::read_from_bytes::<T>)? {
+    if let Some(file) = sources.take_read(LevelSndStaticFile::FILE_NAME, LevelSndStaticFile::read_from_bytes)? {
       let part = LevelSoundSourceConversion::decompile(&file, &mut draft.context)?;
 
       draft.infer_if(!part.objects.is_empty(), &[LevelSceneInference::SoundSourceDistances]);
       draft.add(part.to_scene_tool()?, &[LevelSndStaticFile::FILE_NAME], sources);
     }
 
-    if let Some(file) = sources.take_read(LevelSndEnvFile::FILE_NAME, LevelSndEnvFile::read_from_bytes::<T>)? {
+    if let Some(file) = sources.take_read(LevelSndEnvFile::FILE_NAME, LevelSndEnvFile::read_from_bytes)? {
       let part = LevelSoundEnvironmentConversion::decompile(&file, &mut draft.context)?;
 
       draft.add(part.to_scene_tool()?, &[LevelSndEnvFile::FILE_NAME], sources);
     }
 
-    if let Some(file) = sources.take_read(LevelFogVolFile::FILE_NAME, LevelFogVolFile::read_from_bytes::<T>)? {
+    if let Some(file) = sources.take_read(LevelFogVolFile::FILE_NAME, LevelFogVolFile::read_from_bytes)? {
       let part = LevelFogVolumeConversion::decompile(&file, &mut draft.context)?;
 
       draft.add(part.to_scene_tool()?, &[LevelFogVolFile::FILE_NAME], sources);
     }
 
-    if let Some(file) = sources.take_read(LevelWallmarksFile::FILE_NAME, LevelWallmarksFile::read_from_bytes::<T>)? {
+    if let Some(file) = sources.take_read(LevelWallmarksFile::FILE_NAME, LevelWallmarksFile::read_from_bytes)? {
       let tool = LevelWallmarkConversion::decompile(&file)?;
-      let scene_tool: EditableSceneTool = tool.to_scene_tool::<T>(draft.context.guid)?;
+      let scene_tool: EditableSceneTool = tool.to_scene_tool(draft.context.guid)?;
 
       draft.infer_if(!tool.slots.is_empty(), &[LevelSceneInference::WallmarkBrush]);
       draft.add(scene_tool, &[LevelWallmarksFile::FILE_NAME], sources);

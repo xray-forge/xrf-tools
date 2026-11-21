@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_editable_level::EditableDetailObjectTool;
 use xrf_error::XrfResult;
@@ -334,7 +333,7 @@ fn exports_the_planted_details_with_their_atlas() -> XrfResult {
       objects.join("detail").join(format!("{name}.object")),
       ObjectDecompiler::decompile_detail(&quad(size, |u, v| (u, v)))?
         .object
-        .write_to_bytes::<XRayByteOrder>()?,
+        .write_to_bytes()?,
     )?;
   }
 
@@ -355,7 +354,7 @@ fn exports_the_planted_details_with_their_atlas() -> XrfResult {
   let tool: EditableDetailObjectTool = LevelDetailConversion::decompile(&file, &library(), None)?
     .tool
     .expect("both found");
-  let exported: LevelBuildDetails = LevelBuildDetails::export::<XRayByteOrder>(
+  let exported: LevelBuildDetails = LevelBuildDetails::export(
     &tool,
     &mut LevelBuildLibrary::new(&[objects], &[]),
     &LevelBuildTextures::new(Some(&textures), &[]),

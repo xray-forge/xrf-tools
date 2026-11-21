@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -54,7 +53,7 @@ fn level(sectors: &[Vec<u8>], portals: &[Vec<u8>]) -> XrfResult<Vec<u8>> {
 
 #[test]
 fn test_reads_sectors_and_the_portals_they_name() -> XrfResult {
-  let read: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(level(
+  let read: LevelFile = LevelFile::read_from_bytes(level(
     &[sector(&[0, 1], 7)?, sector(&[1], 9)?],
     &[portal(0, 1, 4), portal(1, 0, 3)],
   )?)?;
@@ -79,7 +78,7 @@ fn test_reads_sectors_and_the_portals_they_name() -> XrfResult {
 
 #[test]
 fn test_a_portal_keeps_the_vectors_past_its_count_and_hands_back_only_the_polygon() -> XrfResult {
-  let read: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(level(&[sector(&[0], 0)?], &[portal(0, 0, 3)])?)?;
+  let read: LevelFile = LevelFile::read_from_bytes(level(&[sector(&[0], 0)?], &[portal(0, 0, 3)])?)?;
   let portals: &LevelPortalsChunk = read.portals.as_ref().expect("a level with portals");
   let portal: &LevelPortal = &portals.portals[0];
 
@@ -101,15 +100,14 @@ fn test_a_portal_keeps_the_vectors_past_its_count_and_hands_back_only_the_polygo
 #[test]
 fn test_a_count_no_polygon_could_have_is_told_apart() -> XrfResult {
   for count in [0, 1, 2, 7, u32::MAX] {
-    let read: LevelFile =
-      LevelFile::read_from_bytes::<XRayByteOrder>(level(&[sector(&[0], 0)?], &[portal(0, 0, count)])?)?;
+    let read: LevelFile = LevelFile::read_from_bytes(level(&[sector(&[0], 0)?], &[portal(0, 0, count)])?)?;
     let portal: &LevelPortal = &read.portals.as_ref().expect("a level with portals").portals[0];
 
     assert!(!portal.is_polygon(), "a count of {count} is not a polygon");
   }
 
   // A count past the room hands back nothing rather than stale vectors.
-  let read: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(level(&[sector(&[0], 0)?], &[portal(0, 0, 7)])?)?;
+  let read: LevelFile = LevelFile::read_from_bytes(level(&[sector(&[0], 0)?], &[portal(0, 0, 7)])?)?;
 
   assert_eq!(read.portals.expect("portals").portals[0].get_polygon(), None);
 
@@ -123,7 +121,7 @@ fn test_refuses_a_portals_chunk_that_does_not_divide_into_records() -> XrfResult
   short.truncate(short.len() - 1);
 
   assert!(
-    LevelFile::read_from_bytes::<XRayByteOrder>(level(&[sector(&[0], 0)?], &[short])?).is_err(),
+    LevelFile::read_from_bytes(level(&[sector(&[0], 0)?], &[short])?).is_err(),
     "a partial record is refused rather than read as a whole one"
   );
 
@@ -138,7 +136,7 @@ fn test_refuses_a_sector_missing_either_of_its_chunks() -> XrfResult {
   bytes.extend(chunk(LevelSectorsChunk::CHUNK_ID, &chunk(0, &body)?)?);
 
   assert!(
-    LevelFile::read_from_bytes::<XRayByteOrder>(bytes).is_err(),
+    LevelFile::read_from_bytes(bytes).is_err(),
     "a sector without a root is refused, as the engine asserts on it"
   );
 
@@ -149,7 +147,7 @@ fn test_refuses_a_sector_missing_either_of_its_chunks() -> XrfResult {
   bytes.extend(chunk(LevelSectorsChunk::CHUNK_ID, &chunk(0, &body)?)?);
 
   assert!(
-    LevelFile::read_from_bytes::<XRayByteOrder>(bytes).is_err(),
+    LevelFile::read_from_bytes(bytes).is_err(),
     "a sector without a portal list is refused too"
   );
 

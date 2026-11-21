@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::lights::level_light::LevelLight;
@@ -44,7 +44,7 @@ fn a_light_list_reads_every_chunk_as_the_run_of_lights_it_is() -> XrfResult {
 
   bytes.extend(lights_chunk(LevelLightsChunk::HEMI_CHUNK_ID, &[1, 1, 1])?);
 
-  let file: LevelLightsFile = LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelLightsFile = LevelLightsFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.chunks.len(), 2);
   assert_eq!(file.get_lights_count(), 5);
@@ -61,7 +61,7 @@ fn only_the_point_lights_of_the_header_chunk_reach_the_runtime() -> XrfResult {
 
   bytes.extend(lights_chunk(LevelLightsChunk::HEMI_CHUNK_ID, &[1, 3, 1])?);
 
-  let file: LevelLightsFile = LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelLightsFile = LevelLightsFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.get_lights_count(), 5);
   assert_eq!(file.get_hemi_lights().count(), 2);
@@ -76,7 +76,7 @@ fn reads_each_role_s_lights_from_its_own_chunk_point_and_directional_alike() -> 
   bytes.extend(lights_chunk(LevelLightRole::Hemi.get_chunk_id(), &[0, 0, 1])?);
   bytes.extend(lights_chunk(LevelLightRole::Sun.get_chunk_id(), &[0])?);
 
-  let file: LevelLightsFile = LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelLightsFile = LevelLightsFile::read_from_bytes(bytes)?;
   let kinds = |role: LevelLightRole| -> Vec<u16> { file.get_role_lights(role).map(|light| light.kind).collect() };
 
   assert_eq!(kinds(LevelLightRole::Rgb), [LevelLight::KIND_POINT]);
@@ -99,7 +99,7 @@ fn a_chunk_that_is_not_whole_lights_is_kept_verbatim_rather_than_refused() -> Xr
 
   bytes.extend(lights_chunk(LevelLightsChunk::HEMI_CHUNK_ID, &[1])?);
 
-  let file: LevelLightsFile = LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelLightsFile = LevelLightsFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(file.chunks.len(), 2);
   assert_eq!(
@@ -114,7 +114,7 @@ fn a_chunk_that_is_not_whole_lights_is_kept_verbatim_rather_than_refused() -> Xr
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes, "an unread chunk must survive a rewrite");
 
@@ -128,11 +128,11 @@ fn a_light_list_is_written_back_byte_for_byte() -> XrfResult {
   bytes.extend(lights_chunk(LevelLightsChunk::HEMI_CHUNK_ID, &[1, 1])?);
   bytes.extend(lights_chunk(2, &[1])?);
 
-  let file: LevelLightsFile = LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelLightsFile = LevelLightsFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 

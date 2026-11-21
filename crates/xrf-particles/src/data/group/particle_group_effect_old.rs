@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::{assert_equal, assert_length, narrow_format_size};
@@ -30,14 +29,14 @@ impl ParticleGroupEffectOld {
 
 impl ChunkReadWriteList for ParticleGroupEffectOld {
   /// Read list of old effect groups data from chunk reader.
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
+    let count: u32 = reader.read_u32()?;
 
     let mut effects: Vec<Self> =
       reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "old particle group effects")?;
 
     for _ in 0..count {
-      effects.push(Self::read::<T, _>(reader)?);
+      effects.push(Self::read(reader)?);
     }
 
     assert_length(
@@ -51,11 +50,11 @@ impl ChunkReadWriteList for ParticleGroupEffectOld {
   }
 
   /// Write old effects list data into the writer.
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(list.len(), "old particle group effects")?)?;
+  fn write_list(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
+    writer.write_u32(narrow_format_size(list.len(), "old particle group effects")?)?;
 
     for effect in list {
-      effect.write::<T>(writer)?;
+      effect.write(writer)?;
     }
 
     Ok(())
@@ -64,25 +63,25 @@ impl ChunkReadWriteList for ParticleGroupEffectOld {
 
 impl ChunkReadWrite for ParticleGroupEffectOld {
   /// Read old group effect from chunk reader binary data.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let particle_group = Self {
       name: reader.read_w1251_string()?,
       on_play_child_name: reader.read_w1251_string()?,
-      time_0: reader.read_f32::<T>()?,
-      time_1: reader.read_f32::<T>()?,
-      flags: reader.read_u32::<T>()?,
+      time_0: reader.read_f32()?,
+      time_1: reader.read_f32()?,
+      flags: reader.read_u32()?,
     };
 
     Ok(particle_group)
   }
 
   /// Write old effect data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
     writer.write_w1251_string(&self.on_play_child_name)?;
-    writer.write_f32::<T>(self.time_0)?;
-    writer.write_f32::<T>(self.time_1)?;
-    writer.write_u32::<T>(self.flags)?;
+    writer.write_f32(self.time_0)?;
+    writer.write_f32(self.time_1)?;
+    writer.write_u32(self.flags)?;
 
     Ok(())
   }
@@ -173,9 +172,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{
-    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
-  };
+  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -211,11 +208,11 @@ mod tests {
       },
     ];
 
-    ParticleGroupEffectOld::write_list::<XRayByteOrder>(&mut writer, &original)?;
+    ParticleGroupEffectOld::write_list(&mut writer, &original)?;
 
     assert_eq!(writer.bytes_written(), 200);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -230,10 +227,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(
-      ParticleGroupEffectOld::read_list::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(ParticleGroupEffectOld::read_list(&mut reader)?, original);
 
     Ok(())
   }
@@ -251,11 +245,11 @@ mod tests {
       flags: 1392,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 58);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -270,7 +264,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(ParticleGroupEffectOld::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(ParticleGroupEffectOld::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -373,7 +367,7 @@ mod tests {
   fn rejects_effect_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
 
-    let error: String = ParticleGroupEffectOld::read_list::<XRayByteOrder, _>(&mut reader)
+    let error: String = ParticleGroupEffectOld::read_list(&mut reader)
       .expect_err("expect the declared effect count to exceed the chunk")
       .to_string();
 

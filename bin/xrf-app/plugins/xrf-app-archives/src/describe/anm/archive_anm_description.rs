@@ -1,6 +1,5 @@
 use serde::Serialize;
 use xrf_anm::{AnmChannel, AnmFile};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
 use crate::describe::animation::ArchiveAnimationChannel;
@@ -37,9 +36,7 @@ impl ArchiveAnmDescription {
   /// Returns an error when the entry's bytes cannot be read, or when they are not an object motion this reader can
   /// walk - a version it does not implement, or a payload not accounting for six envelopes.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    Ok(Self::of(&AnmFile::read_from_bytes::<XRayByteOrder>(
-      source.read_bytes(name)?,
-    )?))
+    Ok(Self::of(&AnmFile::read_from_bytes(source.read_bytes(name)?)?))
   }
 
   /// What an animation already in hand says about itself.

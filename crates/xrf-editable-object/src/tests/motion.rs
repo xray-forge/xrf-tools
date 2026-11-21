@@ -1,5 +1,5 @@
 use xrf_animation_envelope::AnimationEnvelope;
-use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_skeleton::SkeletonMotionMark;
 
@@ -15,12 +15,11 @@ fn channel(values: &[f32]) -> AnimationEnvelope {
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  channel.write::<XRayByteOrder>(&mut writer).expect("the channel writes");
+  channel.write(&mut writer).expect("the channel writes");
 
   let bytes: Vec<u8> = writer.flush_raw_into_buffer().expect("the channel writes");
 
-  AnimationEnvelope::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&bytes).expect("the channel reads"))
-    .expect("the channel reads")
+  AnimationEnvelope::read(&mut ChunkReader::from_bytes(&bytes).expect("the channel reads")).expect("the channel reads")
 }
 
 fn bone(name: &str, flags: u8) -> EditableBoneMotion {
@@ -58,7 +57,7 @@ fn motion(marks: Vec<SkeletonMotionMark>) -> EditableMotion {
 
 // An older SDK's layout: the version field changed and no marks count after the last bone.
 fn written_as(version: u16, motion: &EditableMotion) -> XrfResult<Vec<u8>> {
-  let mut bytes: Vec<u8> = EditableMotion::write_list::<XRayByteOrder>(std::slice::from_ref(motion))?;
+  let mut bytes: Vec<u8> = EditableMotion::write_list(std::slice::from_ref(motion))?;
   // The count, then the name and its terminator, then the first and last frames and the rate.
   let at: usize = 4 + motion.name.len() + 1 + 12;
 
@@ -80,7 +79,7 @@ fn reads_back_the_motions_it_writes() -> XrfResult {
   ];
 
   assert_eq!(
-    EditableMotion::read_list::<XRayByteOrder>(&EditableMotion::write_list::<XRayByteOrder>(&motions)?)?,
+    EditableMotion::read_list(&EditableMotion::write_list(&motions)?)?,
     motions
   );
   assert_eq!(motions[0].get_length(), 31);
@@ -91,7 +90,7 @@ fn reads_back_the_motions_it_writes() -> XrfResult {
 
 #[test]
 fn reads_a_version_6_motion_which_stores_no_marks() -> XrfResult {
-  let read: Vec<EditableMotion> = EditableMotion::read_list::<XRayByteOrder>(&written_as(6, &motion(Vec::new()))?)?;
+  let read: Vec<EditableMotion> = EditableMotion::read_list(&written_as(6, &motion(Vec::new()))?)?;
 
   assert_eq!(
     read,
@@ -106,7 +105,7 @@ fn reads_a_version_6_motion_which_stores_no_marks() -> XrfResult {
 
 #[test]
 fn refuses_a_version_the_sdk_does_not_read() -> XrfResult {
-  let error: String = EditableMotion::read_list::<XRayByteOrder>(&written_as(3, &motion(Vec::new()))?)
+  let error: String = EditableMotion::read_list(&written_as(3, &motion(Vec::new()))?)
     .expect_err("expect version 3 to be refused")
     .to_string();
 

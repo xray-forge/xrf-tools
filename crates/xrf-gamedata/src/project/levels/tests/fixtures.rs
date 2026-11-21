@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use uuid::{Uuid, uuid};
-use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_math::{Aabb, Vector3d};
@@ -84,7 +84,7 @@ pub(crate) fn chunk_bytes(id: u32, payload: &[u8]) -> Vec<u8> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   writer.write_all(payload).unwrap();
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(id).unwrap()
+  writer.flush_chunk_into_buffer(id).unwrap()
 }
 
 pub(crate) fn level_file_bytes(version: u16, with_shaders: bool, references: &[&str]) -> Vec<u8> {
@@ -94,7 +94,7 @@ pub(crate) fn level_file_bytes(version: u16, with_shaders: bool, references: &[&
     xrlc_version: version,
     xrlc_quality: 1,
   }
-  .write::<XRayByteOrder>(&mut header_writer)
+  .write(&mut header_writer)
   .unwrap();
 
   let mut bytes: Vec<u8> = chunk_bytes(
@@ -111,7 +111,7 @@ pub(crate) fn level_file_bytes(version: u16, with_shaders: bool, references: &[&
         .map(|reference| LevelShaderEntry::parse(reference))
         .collect(),
     }
-    .write::<XRayByteOrder>(&mut shaders_writer)
+    .write(&mut shaders_writer)
     .unwrap();
 
     bytes.extend(chunk_bytes(
@@ -137,7 +137,7 @@ pub(crate) fn ai_map_bytes(version: u32, count: u32, guid: Uuid) -> Vec<u8> {
     },
     guid,
   }
-  .write::<XRayByteOrder>(&mut writer)
+  .write(&mut writer)
   .unwrap();
 
   writer.flush_raw_into_buffer().unwrap()
@@ -155,7 +155,7 @@ pub(crate) fn cform_bytes(version: u32) -> Vec<u8> {
       max: Vector3d::new(1.0, 1.0, 1.0),
     },
   }
-  .write::<XRayByteOrder>(&mut writer)
+  .write(&mut writer)
   .unwrap();
 
   writer.flush_raw_into_buffer().unwrap()
@@ -174,7 +174,7 @@ pub(crate) fn cform_faces_bytes(materials: &[u16]) -> Vec<u8> {
       max: Vector3d::new(0.0, 0.0, 0.0),
     },
   }
-  .write::<XRayByteOrder>(&mut writer)
+  .write(&mut writer)
   .unwrap();
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer().unwrap();
@@ -222,7 +222,7 @@ pub(crate) fn spawn_graph_bytes(levels: &[(&str, u8, Uuid)], cross_tables: Vec<G
     cross_tables,
   };
 
-  graphs.write::<XRayByteOrder>(&mut graphs_writer).unwrap();
+  graphs.write(&mut graphs_writer).unwrap();
 
   chunk_bytes(
     SpawnGraphsChunk::CHUNK_ID,

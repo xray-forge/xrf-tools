@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
@@ -24,13 +23,13 @@ impl AnySpawnFile {
   ///
   /// Returns an error when the file cannot be opened or walked as chunks, a root spawn does not read, or the file is
   /// neither kind.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> =
       ChunkReader::from_file(File::open(path.as_ref())?)?.read_children()?;
 
-    match SpawnFileKind::of_chunks::<T, _>(&chunks) {
-      SpawnFileKind::Root => Ok(Self::Root(Box::new(SpawnFile::read_from_chunks::<T, _>(&chunks)?))),
-      SpawnFileKind::Level => LevelSpawnFile::read_from_chunks::<T, _>(chunks)
+    match SpawnFileKind::of_chunks(&chunks) {
+      SpawnFileKind::Root => Ok(Self::Root(Box::new(SpawnFile::read_from_chunks(&chunks)?))),
+      SpawnFileKind::Level => LevelSpawnFile::read_from_chunks(chunks)
         .map(Self::Level)
         .map_err(|error| {
           XrfError::new_invalid_error(format!(
@@ -47,10 +46,10 @@ impl AnySpawnFile {
   /// # Errors
   ///
   /// Returns an error when `path` is not a folder, holds neither kind's files or both, or its files do not import.
-  pub fn import_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+  pub fn import_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     match SpawnFileKind::of_folder(path.as_ref())? {
-      SpawnFileKind::Root => Ok(Self::Root(Box::new(SpawnFile::import_from_path::<T, _>(path)?))),
-      SpawnFileKind::Level => LevelSpawnFile::import_from_path::<T, _>(path).map(Self::Level),
+      SpawnFileKind::Root => Ok(Self::Root(Box::new(SpawnFile::import_from_path(path)?))),
+      SpawnFileKind::Level => LevelSpawnFile::import_from_path(path).map(Self::Level),
     }
   }
 }
@@ -60,7 +59,6 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{XrfError, XrfResult};
   use xrf_math::Vector3d;
   use xrf_test_utils::GeneratedResources;
@@ -77,12 +75,9 @@ mod tests {
   fn reads_a_root_spawn_as_its_kind() -> XrfResult {
     let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/root")?.join("all.spawn");
 
-    EmptySpawnFile::build().write_to_path::<XRayByteOrder, _>(&path)?;
+    EmptySpawnFile::build().write_to_path(&path)?;
 
-    assert!(matches!(
-      AnySpawnFile::read_from_path::<XRayByteOrder, _>(&path)?,
-      AnySpawnFile::Root(_)
-    ));
+    assert!(matches!(AnySpawnFile::read_from_path(&path)?, AnySpawnFile::Root(_)));
 
     Ok(())
   }
@@ -104,9 +99,9 @@ mod tests {
       }],
     };
 
-    list.write_to_path::<XRayByteOrder, _>(&path)?;
+    list.write_to_path(&path)?;
 
-    let AnySpawnFile::Level(read) = AnySpawnFile::read_from_path::<XRayByteOrder, _>(&path)? else {
+    let AnySpawnFile::Level(read) = AnySpawnFile::read_from_path(&path)? else {
       panic!("Expected a level's spawn list");
     };
 
@@ -122,7 +117,7 @@ mod tests {
     // One chunk holding four bytes: a container, but neither a root's header nor a spawn packet.
     fs::write(&path, [7, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4])?;
 
-    let error: String = AnySpawnFile::read_from_path::<XRayByteOrder, _>(&path)
+    let error: String = AnySpawnFile::read_from_path(&path)
       .expect_err("neither kind")
       .to_string();
 
@@ -140,18 +135,18 @@ mod tests {
     let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/root_folder")?;
     let spawn: SpawnFile = EmptySpawnFile::build();
 
-    spawn.export_to_path::<XRayByteOrder, _>(&path)?;
+    spawn.export_to_path(&path)?;
 
     assert_eq!(SpawnFileKind::of_folder(&path)?, SpawnFileKind::Root);
 
-    let AnySpawnFile::Root(imported) = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)? else {
+    let AnySpawnFile::Root(imported) = AnySpawnFile::import_from_path(&path)? else {
       panic!("Expected a root spawn");
     };
     let mut written: Vec<u8> = Vec::new();
     let mut rewritten: Vec<u8> = Vec::new();
 
-    spawn.write_to::<XRayByteOrder>(&mut written)?;
-    imported.write_to::<XRayByteOrder>(&mut rewritten)?;
+    spawn.write_to(&mut written)?;
+    imported.write_to(&mut rewritten)?;
 
     assert_eq!(rewritten, written);
 
@@ -168,9 +163,9 @@ mod tests {
       ],
     };
 
-    list.export_to_path::<XRayByteOrder, _>(&path)?;
+    list.export_to_path(&path)?;
 
-    let AnySpawnFile::Level(imported) = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)? else {
+    let AnySpawnFile::Level(imported) = AnySpawnFile::import_from_path(&path)? else {
       panic!("Expected a level's spawn list");
     };
 
@@ -185,7 +180,7 @@ mod tests {
 
     fs::write(path.join("notes.txt"), "unrelated")?;
 
-    let neither: String = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)
+    let neither: String = AnySpawnFile::import_from_path(&path)
       .expect_err("a folder of neither kind")
       .to_string();
 
@@ -194,10 +189,10 @@ mod tests {
       "{neither}"
     );
 
-    EmptySpawnFile::build().export_to_path::<XRayByteOrder, _>(&path)?;
-    LevelSpawnFile { objects: Vec::new() }.export_to_path::<XRayByteOrder, _>(&path)?;
+    EmptySpawnFile::build().export_to_path(&path)?;
+    LevelSpawnFile { objects: Vec::new() }.export_to_path(&path)?;
 
-    let both: String = AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path)
+    let both: String = AnySpawnFile::import_from_path(&path)
       .expect_err("a folder of both kinds")
       .to_string();
 
@@ -212,7 +207,7 @@ mod tests {
     let path: PathBuf = GeneratedResources::create_dir("any_spawn_file/missing_folder")?.join("absent");
 
     assert!(matches!(
-      AnySpawnFile::import_from_path::<XRayByteOrder, _>(&path),
+      AnySpawnFile::import_from_path(&path),
       Err(XrfError::Io { .. })
     ));
 

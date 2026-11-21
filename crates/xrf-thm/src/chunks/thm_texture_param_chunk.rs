@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::texture::thm_format::ThmFormat;
@@ -59,28 +58,28 @@ impl Default for ThmTextureParamChunk {
 }
 
 impl ChunkReadWrite for ThmTextureParamChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      format: ThmFormat::from(reader.read_u32::<T>()?),
-      flags: ThmTextureFlags::from(reader.read_u32::<T>()?),
-      border_color: reader.read_u32::<T>()?,
-      fade_color: reader.read_u32::<T>()?,
-      fade_amount: reader.read_u32::<T>()?,
-      mip_filter: ThmMipFilter::from(reader.read_u32::<T>()?),
-      width: reader.read_u32::<T>()?,
-      height: reader.read_u32::<T>()?,
+      format: ThmFormat::from(reader.read_u32()?),
+      flags: ThmTextureFlags::from(reader.read_u32()?),
+      border_color: reader.read_u32()?,
+      fade_color: reader.read_u32()?,
+      fade_amount: reader.read_u32()?,
+      mip_filter: ThmMipFilter::from(reader.read_u32()?),
+      width: reader.read_u32()?,
+      height: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.format.into())?;
-    writer.write_u32::<T>(self.flags.raw())?;
-    writer.write_u32::<T>(self.border_color)?;
-    writer.write_u32::<T>(self.fade_color)?;
-    writer.write_u32::<T>(self.fade_amount)?;
-    writer.write_u32::<T>(self.mip_filter.into())?;
-    writer.write_u32::<T>(self.width)?;
-    writer.write_u32::<T>(self.height)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.format.into())?;
+    writer.write_u32(self.flags.raw())?;
+    writer.write_u32(self.border_color)?;
+    writer.write_u32(self.fade_color)?;
+    writer.write_u32(self.fade_amount)?;
+    writer.write_u32(self.mip_filter.into())?;
+    writer.write_u32(self.width)?;
+    writer.write_u32(self.height)?;
 
     Ok(())
   }

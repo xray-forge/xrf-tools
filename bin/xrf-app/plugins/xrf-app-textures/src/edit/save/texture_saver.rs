@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, FileStamp};
-use xrf_chunk::XRayByteOrder;
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_thm::{ThmFile, ThmFormat};
 use xrf_utils::{StagedFile, error_to_string, format_path};
@@ -76,7 +75,7 @@ impl TextureSaver {
     synced_format: Option<ThmFormat>,
   ) -> TauriResult<Vec<u8>> {
     let existing: Option<ThmFile> = match save.target.expected {
-      Some(_) => Some(ThmFile::read_from_path::<XRayByteOrder, _>(&path).map_err(error_to_string)?),
+      Some(_) => Some(ThmFile::read_from_path(&path).map_err(error_to_string)?),
       None => None,
     };
 

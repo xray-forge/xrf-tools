@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_animation_envelope::AnimationEnvelope;
 use xrf_editable_object::{EditableBone, EditableBoneMotion, EditableMotion, EditableObjectFile};
 use xrf_error::{XrfError, XrfResult};
@@ -35,12 +34,12 @@ impl MotionExport {
   ///
   /// Returns an error for a motion moving the object through its root, which is not compiled yet, bone parts that do
   /// not hold every bone once, a motion on a part past them, or stored motions that do not read.
-  pub(crate) fn of<T: ByteOrder>(object: &EditableObjectFile) -> XrfResult<Option<Self>> {
+  pub(crate) fn of(object: &EditableObjectFile) -> XrfResult<Option<Self>> {
     if object.motion_references.as_ref().is_some_and(|it| !it.is_empty()) {
       return Ok(None);
     }
 
-    let motions: Vec<EditableMotion> = object.get_embedded_motions::<T>()?;
+    let motions: Vec<EditableMotion> = object.get_embedded_motions()?;
 
     if motions.is_empty() {
       return Ok(None);
@@ -59,7 +58,7 @@ impl MotionExport {
       motions: SkeletonMotionsChunk {
         motions: motions
           .iter()
-          .map(|motion| Self::sample::<T>(motion, bones, &hierarchy, &placement))
+          .map(|motion| Self::sample(motion, bones, &hierarchy, &placement))
           .collect::<XrfResult<_>>()?,
       },
       parameters: SkeletonMotionParametersChunk {
@@ -75,7 +74,7 @@ impl MotionExport {
   }
 
   /// One motion's keys: every bone posed at each frame from its first to its last, `t = frame / fps`.
-  fn sample<T: ByteOrder>(
+  fn sample(
     motion: &EditableMotion,
     bones: &[EditableBone],
     hierarchy: &SkeletonHierarchy,
@@ -127,7 +126,7 @@ impl MotionExport {
     let mut keys: Vec<u8> = Vec::new();
 
     for (rotations, translations) in rotations.iter().zip(&translations) {
-      MotionKeys::write::<T>(&mut keys, rotations, translations)?;
+      MotionKeys::write(&mut keys, rotations, translations)?;
     }
 
     Ok(SkeletonMotion {

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -15,14 +14,14 @@ pub struct AlifeSmartZone {
 
 impl ChunkFieldReadWrite for AlifeSmartZone {
   /// Read generic ALife smart zone object from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
+      base: reader.read_xr()?,
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
 
     Ok(())
   }
@@ -46,7 +45,7 @@ impl LtxImportExport for AlifeSmartZone {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -89,12 +88,11 @@ mod tests {
       },
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 106);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 106);
 
@@ -104,7 +102,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeSmartZone::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeSmartZone::read(&mut reader)?, original);
 
     Ok(())
   }

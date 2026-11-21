@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// How far one axis of a joint turns and how it springs back, `SJointLimit`.
@@ -20,20 +19,20 @@ impl SkeletonJointLimit {
 }
 
 impl ChunkReadWrite for SkeletonJointLimit {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      min: reader.read_f32::<T>()?,
-      max: reader.read_f32::<T>()?,
-      spring_factor: reader.read_f32::<T>()?,
-      damping_factor: reader.read_f32::<T>()?,
+      min: reader.read_f32()?,
+      max: reader.read_f32()?,
+      spring_factor: reader.read_f32()?,
+      damping_factor: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.min)?;
-    writer.write_f32::<T>(self.max)?;
-    writer.write_f32::<T>(self.spring_factor)?;
-    writer.write_f32::<T>(self.damping_factor)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.min)?;
+    writer.write_f32(self.max)?;
+    writer.write_f32(self.spring_factor)?;
+    writer.write_f32(self.damping_factor)?;
 
     Ok(())
   }

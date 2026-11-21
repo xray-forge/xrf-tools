@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -43,14 +42,14 @@ impl AlifePacketsReadWrite for AlifeActor {
   }
 
   /// Read actor data from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectActor::read::<T, _, _>(spawn, update, layout)?,
-      start_position_filled: ScriptSaveMarker::read_or_constructed::<T, _, _>(
+      base: AlifeObjectActor::read(spawn, update, layout)?,
+      start_position_filled: ScriptSaveMarker::read_or_constructed(
         spawn,
         Self::SCRIPT_CLASS,
         || 0,
@@ -60,15 +59,15 @@ impl AlifePacketsReadWrite for AlifeActor {
   }
 
   /// Write actor data into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    ScriptSaveMarker::write::<T, _>(spawn, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write(spawn, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.start_position_filled)
     })
   }
@@ -103,7 +102,6 @@ impl AlifePacketsReadWrite for AlifeActor {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -124,7 +122,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeActor = new_object();
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (_, update_size, read) = original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61, original));
 

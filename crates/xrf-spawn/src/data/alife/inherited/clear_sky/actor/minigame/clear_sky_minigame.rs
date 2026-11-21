@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -63,7 +62,7 @@ impl ClearSkyMinigame {
 }
 
 impl ChunkFieldReadWrite for ClearSkyMinigame {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let name: String = reader.read_w1251_string()?;
     let profile: String = reader.read_w1251_string()?;
     let state: String = reader.read_w1251_string()?;
@@ -72,28 +71,28 @@ impl ChunkFieldReadWrite for ClearSkyMinigame {
       name,
       state,
       game: match profile.as_str() {
-        ClearSkyCrowKiller::PROFILE => ClearSkyMinigameGame::CrowKiller(reader.read_xr::<T, _>()?),
-        ClearSkyShooting::PROFILE => ClearSkyMinigameGame::Shooting(reader.read_xr::<T, _>()?),
+        ClearSkyCrowKiller::PROFILE => ClearSkyMinigameGame::CrowKiller(reader.read_xr()?),
+        ClearSkyShooting::PROFILE => ClearSkyMinigameGame::Shooting(reader.read_xr()?),
         other => return Err(Self::new_unknown_profile_error(other)),
       },
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
     writer.write_w1251_string(self.game.get_profile())?;
     writer.write_w1251_string(&self.state)?;
 
     match &self.game {
-      ClearSkyMinigameGame::CrowKiller(game) => writer.write_xr::<T, _>(game),
-      ClearSkyMinigameGame::Shooting(game) => writer.write_xr::<T, _>(game),
+      ClearSkyMinigameGame::CrowKiller(game) => writer.write_xr(game),
+      ClearSkyMinigameGame::Shooting(game) => writer.write_xr(game),
     }
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
 
   use crate::data::alife::inherited::clear_sky::actor::minigame::clear_sky_minigame::ClearSkyMinigame;
@@ -101,7 +100,7 @@ mod tests {
   #[test]
   fn refuses_a_profile_the_manager_does_not_load() -> XrfResult {
     let error: String = ChunkReader::<InMemoryChunkDataSource>::from_bytes(b"test\0CMGDarts\0valiable\0")?
-      .read_xr::<XRayByteOrder, ClearSkyMinigame>()
+      .read_xr::<ClearSkyMinigame>()
       .expect_err("an unknown profile")
       .to_string();
 

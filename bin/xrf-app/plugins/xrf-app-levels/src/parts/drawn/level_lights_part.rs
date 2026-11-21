@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_light_anim::LightAnimFile;
 use xrf_ltx::Ltx;
 use xrf_material::XrayTextureScope;
@@ -51,7 +50,7 @@ impl LevelLightsPart {
     let started: Instant = Instant::now();
     let animations: Option<LightAnimFile> = search
       .read(LightAnimFile::FILE_NAME)
-      .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
+      .and_then(LightAnimFile::read_from_bytes)
       .inspect_err(|error| LevelReport::unreadable_animations(LightAnimFile::FILE_NAME, error))
       .ok();
     let mut packer: LightsPacker<'_> = LightsPacker::new(animations.as_ref());

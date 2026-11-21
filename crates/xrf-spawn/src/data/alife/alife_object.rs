@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{
   ChunkDataSource, ChunkFieldReader, ChunkFieldReplay, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkWriter,
@@ -69,8 +68,8 @@ impl AlifeObject {
   /// # Errors
   ///
   /// Returns an error when the payload is not its section's class, or the writer refuses a value.
-  pub fn write_update_packet<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    self.write_packets::<T, _, _>(&mut ChunkWriter::new(), writer)
+  pub fn write_update_packet<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    self.write_packets(&mut ChunkWriter::new(), writer)
   }
 
   /// The object as a fresh server entity holds it, read back from its own spawn packet ([`Self::read_spawn_packet`]):
@@ -80,12 +79,12 @@ impl AlifeObject {
   /// # Errors
   ///
   /// Returns an error when the object's spawn packet does not write, or does not read back as its class.
-  pub fn get_fresh_entity<T: ByteOrder>(&self) -> XrfResult<Self> {
+  pub fn get_fresh_entity(&self) -> XrfResult<Self> {
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    self.write_spawn_packet::<T, _>(&mut spawn)?;
+    self.write_spawn_packet(&mut spawn)?;
 
-    Self::read_spawn_packet_as::<T, _>(&mut ChunkReader::from_bytes(&spawn.buffer)?, |_, _| {
+    Self::read_spawn_packet_as(&mut ChunkReader::from_bytes(&spawn.buffer)?, |_, _| {
       Ok(self.clsid.clone())
     })
   }
@@ -118,8 +117,8 @@ impl AlifeObject {
   /// # Errors
   ///
   /// Returns an error when the packet is not a spawn packet of a known class, or its state does not read whole.
-  pub fn read_spawn_packet<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    Self::read_spawn_packet_by::<T, _>(reader, &SpawnSectionClasses::default())
+  pub fn read_spawn_packet<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    Self::read_spawn_packet_by(reader, &SpawnSectionClasses::default())
   }
 
   /// Reads an object from its spawn packet alone, bytes or fields, typed as `classes` gives its section. Its update
@@ -129,20 +128,16 @@ impl AlifeObject {
   /// # Errors
   ///
   /// Returns an error when the packet is not a spawn packet of a known class, or its state does not read whole.
-  pub fn read_spawn_packet_by<T: ByteOrder, R: ChunkFieldReader>(
-    reader: &mut R,
-    classes: &SpawnSectionClasses,
-  ) -> XrfResult<Self> {
-    Self::read_spawn_packet_as::<T, _>(reader, |section, dialect| classes.get_cls_id(section, dialect))
+  pub fn read_spawn_packet_by<R: ChunkFieldReader>(reader: &mut R, classes: &SpawnSectionClasses) -> XrfResult<Self> {
+    Self::read_spawn_packet_as(reader, |section, dialect| classes.get_cls_id(section, dialect))
   }
 
   /// The spawn packet alone, its class as `cls_id` answers for its section and dialect.
-  fn read_spawn_packet_as<T: ByteOrder, R: ChunkFieldReader>(
+  fn read_spawn_packet_as<R: ChunkFieldReader>(
     reader: &mut R,
     cls_id: impl FnOnce(&str, ScriptDialect) -> XrfResult<ClsId>,
   ) -> XrfResult<Self> {
-    let mut object: Self =
-      Self::read_packets::<T, _, _>(reader, &mut ChunkFieldReplay::new(&mut ZeroedUpdateFields), cls_id)?;
+    let mut object: Self = Self::read_packets(reader, &mut ChunkFieldReplay::new(&mut ZeroedUpdateFields), cls_id)?;
 
     object.inherited.set_spawned_update(&object.header);
 
@@ -154,18 +149,18 @@ impl AlifeObject {
   /// # Errors
   ///
   /// Returns an error when the payload is not its section's class, or the writer refuses a value.
-  pub fn write_spawn_packet<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    self.write_packets::<T, _, _>(writer, &mut ChunkWriter::new())
+  pub fn write_spawn_packet<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    self.write_packets(writer, &mut ChunkWriter::new())
   }
 
   /// The spawn packet from `spawn`, its class's update fields from `update`, the class as `cls_id` answers for its
   /// section and dialect.
-  fn read_packets<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read_packets<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     cls_id: impl FnOnce(&str, ScriptDialect) -> XrfResult<ClsId>,
   ) -> XrfResult<Self> {
-    let header: SpawnPacketHeader = spawn.read_xr::<T, _>()?;
+    let header: SpawnPacketHeader = spawn.read_xr()?;
     let layout: SpawnLayout = SpawnLayout::from(&header);
     let dialect: ScriptDialect = layout.script_dialect();
     let clsid: ClsId = cls_id(&header.section, dialect)?;
@@ -173,9 +168,8 @@ impl AlifeObject {
 
     assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
 
-    let inherited: AlifeObjectInherited = header.read_state::<T, _, _>(spawn, |spawn| {
-      AlifeObjectInherited::read::<T, _, _>(spawn, update, &class, layout)
-    })?;
+    let inherited: AlifeObjectInherited =
+      header.read_state(spawn, |spawn| AlifeObjectInherited::read(spawn, update, &class, layout))?;
 
     Ok(Self {
       header,
@@ -185,17 +179,11 @@ impl AlifeObject {
   }
 
   /// The spawn packet into `spawn`, its class's update fields into `update`.
-  fn write_packets<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
-    &self,
-    spawn: &mut S,
-    update: &mut U,
-  ) -> XrfResult {
+  fn write_packets<S: ChunkFieldWriter, U: ChunkFieldWriter>(&self, spawn: &mut S, update: &mut U) -> XrfResult {
     self.assert_class_matches_payload()?;
-    spawn.write_xr::<T, _>(&self.header)?;
-    SpawnPacketHeader::write_state::<T, _>(spawn, |spawn| {
-      self
-        .inherited
-        .write::<T, _, _>(spawn, update, SpawnLayout::from(&self.header))
+    spawn.write_xr(&self.header)?;
+    SpawnPacketHeader::write_state(spawn, |spawn| {
+      self.inherited.write(spawn, update, SpawnLayout::from(&self.header))
     })
   }
 }
@@ -203,9 +191,9 @@ impl AlifeObject {
 impl ChunkReadWrite for AlifeObject {
   /// Read the object's two chunks: the spawn packet behind its length, then the update packet behind its length and
   /// `M_UPDATE`, each read whole.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut spawn_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_SPAWN_CHUNK_ID)?;
-    let data_length: u16 = spawn_reader.read_u16::<T>()?;
+    let data_length: u16 = spawn_reader.read_u16()?;
 
     assert_equal(
       u64::from(data_length) + 2,
@@ -214,8 +202,8 @@ impl ChunkReadWrite for AlifeObject {
     )?;
 
     let mut update_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_UPDATE_CHUNK_ID)?;
-    let update_data_length: u16 = update_reader.read_u16::<T>()?;
-    let update_action: u16 = update_reader.read_u16::<T>()?;
+    let update_data_length: u16 = update_reader.read_u16()?;
+    let update_action: u16 = update_reader.read_u16()?;
 
     assert_equal(
       u64::from(update_data_length) + 2,
@@ -228,8 +216,7 @@ impl ChunkReadWrite for AlifeObject {
       "Expect only net_update actions in ALife object update data",
     )?;
 
-    let object: Self =
-      Self::read_packets::<T, _, _>(&mut spawn_reader, &mut update_reader, ClsId::from_dialect_section)?;
+    let object: Self = Self::read_packets(&mut spawn_reader, &mut update_reader, ClsId::from_dialect_section)?;
 
     spawn_reader.assert_read("Expect ALife object spawn data to be read")?;
     update_reader.assert_read("Expect ALife object update data to hold only its class's update fields")?;
@@ -240,26 +227,26 @@ impl ChunkReadWrite for AlifeObject {
 
   /// Write the object's two chunks: the spawn packet, `Spawn_Write`'s header and state, and the update packet, each
   /// behind its length.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut spawn: ChunkWriter = ChunkWriter::new();
     let mut update: ChunkWriter = ChunkWriter::new();
 
-    self.write_packets::<T, _, _>(&mut spawn, &mut update)?;
+    self.write_packets(&mut spawn, &mut update)?;
 
     let mut spawn_chunk: ChunkWriter = ChunkWriter::new();
     let mut update_chunk: ChunkWriter = ChunkWriter::new();
 
-    spawn_chunk.write_u16::<T>(narrow_format_size(spawn.bytes_written(), "alife object spawn data")?)?;
+    spawn_chunk.write_u16(narrow_format_size(spawn.bytes_written(), "alife object spawn data")?)?;
     spawn_chunk.write_all(&spawn.buffer)?;
-    update_chunk.write_u16::<T>(narrow_format_size(
+    update_chunk.write_u16(narrow_format_size(
       update.bytes_written() + size_of::<u16>(),
       "alife object update data",
     )?)?;
-    update_chunk.write_u16::<T>(NET_ACTION_UPDATE)?;
+    update_chunk.write_u16(NET_ACTION_UPDATE)?;
     update_chunk.write_all(&update.buffer)?;
 
-    writer.write_all(&spawn_chunk.flush_chunk_into_buffer::<T>(Self::DATA_SPAWN_CHUNK_ID)?)?;
-    writer.write_all(&update_chunk.flush_chunk_into_buffer::<T>(Self::DATA_UPDATE_CHUNK_ID)?)?;
+    writer.write_all(&spawn_chunk.flush_chunk_into_buffer(Self::DATA_SPAWN_CHUNK_ID)?)?;
+    writer.write_all(&update_chunk.flush_chunk_into_buffer(Self::DATA_UPDATE_CHUNK_ID)?)?;
 
     Ok(())
   }
@@ -301,9 +288,8 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::PathBuf;
 
-  use byteorder::{ByteOrder, WriteBytesExt};
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayBytes, XRayWrite};
   use xrf_error::{MapXrfErr, XrfError, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
@@ -353,25 +339,25 @@ mod tests {
   fn binary_read_returns_error_for_unknown_section() -> XrfResult {
     let mut object_data_writer: ChunkWriter = ChunkWriter::new();
 
-    new_unknown_section_header().write::<XRayByteOrder>(&mut object_data_writer)?;
+    new_unknown_section_header().write(&mut object_data_writer)?;
 
     let mut spawn_data_writer: ChunkWriter = ChunkWriter::new();
-    spawn_data_writer.write_u16::<XRayByteOrder>(object_data_writer.bytes_written() as u16)?;
+    spawn_data_writer.write_u16(object_data_writer.bytes_written() as u16)?;
     spawn_data_writer.write_all(&object_data_writer.flush_raw_into_buffer()?)?;
 
     // An empty update packet: its length, then `M_UPDATE`.
     let mut update_data_writer: ChunkWriter = ChunkWriter::new();
-    update_data_writer.write_u16::<XRayByteOrder>(2)?;
-    update_data_writer.write_u16::<XRayByteOrder>(NET_ACTION_UPDATE)?;
+    update_data_writer.write_u16(2)?;
+    update_data_writer.write_u16(NET_ACTION_UPDATE)?;
 
-    let mut bytes: Vec<u8> = spawn_data_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+    let mut bytes: Vec<u8> = spawn_data_writer.flush_chunk_into_buffer(0)?;
 
-    bytes.extend(update_data_writer.flush_chunk_into_buffer::<XRayByteOrder>(1)?);
+    bytes.extend(update_data_writer.flush_chunk_into_buffer(1)?);
 
     let path: PathBuf = GeneratedResources::write("alife_object/unknown_clsid.chunk", bytes)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_file(File::open(&path)?)?;
-    let result: XrfResult<AlifeObject> = AlifeObject::read::<XRayByteOrder, _>(&mut reader);
+    let result: XrfResult<AlifeObject> = AlifeObject::read(&mut reader);
 
     drop(reader);
     fs::remove_file(path)?;
@@ -452,13 +438,12 @@ mod tests {
       })),
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     // The outfit's update packet is its physics state, then its quantised condition: 55 bytes past its action.
     assert_eq!(writer.bytes_written(), 223);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 223);
 
@@ -468,7 +453,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeObject::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeObject::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -649,7 +634,7 @@ mod tests {
 
     assert_eq!(
       original
-        .write::<XRayByteOrder>(&mut writer)
+        .write(&mut writer)
         .expect_err("expect the inherited data to exceed its size field")
         .to_string(),
       "Invalid error: spawn packet state exceeds the u16 format limit"
@@ -666,7 +651,7 @@ mod tests {
 
     assert_eq!(
       original
-        .write::<XRayByteOrder>(&mut writer)
+        .write(&mut writer)
         .expect_err("expect the spawn data to exceed its size field")
         .to_string(),
       "Invalid error: alife object spawn data exceeds the u16 format limit"
@@ -685,11 +670,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
-    let read: AlifeObject = AlifeObject::read::<XRayByteOrder, _>(&mut reader)?;
+      ChunkReader::from_vec(writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
+    let read: AlifeObject = AlifeObject::read(&mut reader)?;
     let AlifeObjectInherited::SeActor(actor) = &read.inherited else {
       panic!("Expected an actor payload");
     };
@@ -716,10 +701,10 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write_spawn_packet::<XRayByteOrder, _>(&mut writer)?;
+    original.write_spawn_packet(&mut writer)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: AlifeObject = AlifeObject::read_spawn_packet::<XRayByteOrder, _>(&mut reader)?;
+    let read: AlifeObject = AlifeObject::read_spawn_packet(&mut reader)?;
     let AlifeObjectInherited::SeStalker(stalker) = &read.inherited else {
       panic!("Expected a stalker payload");
     };
@@ -727,7 +712,7 @@ mod tests {
 
     assert!(reader.is_ended());
     assert_eq!(read.header, original.header);
-    assert_eq!(original.get_fresh_entity::<XRayByteOrder>()?, read);
+    assert_eq!(original.get_fresh_entity()?, read);
     assert_eq!(creature.update_position, Vector3d::new(-40.0, 5.5, 120.0));
     assert_eq!((creature.update_torso_yaw, creature.update_torso_pitch), (1.25, -0.1));
     assert_eq!(creature.update_health, creature.health);
@@ -735,7 +720,7 @@ mod tests {
 
     let mut rewritten: ChunkWriter = ChunkWriter::new();
 
-    read.write_spawn_packet::<XRayByteOrder, _>(&mut rewritten)?;
+    read.write_spawn_packet(&mut rewritten)?;
 
     assert_eq!(rewritten.buffer, writer.buffer);
 
@@ -762,8 +747,7 @@ mod tests {
       update_state: PhysicsClosingState::Absent,
     }));
 
-    let AlifeObjectInherited::CseAlifeObjectPhysic(physic) = original.get_fresh_entity::<XRayByteOrder>()?.inherited
-    else {
+    let AlifeObjectInherited::CseAlifeObjectPhysic(physic) = original.get_fresh_entity()?.inherited else {
       panic!("Expected a physic object payload");
     };
 
@@ -795,11 +779,11 @@ mod tests {
 
       let mut writer: ChunkWriter = ChunkWriter::new();
 
-      original.write::<XRayByteOrder>(&mut writer)?;
+      original.write(&mut writer)?;
 
       let mut reader: ChunkReader<InMemoryChunkDataSource> =
-        ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
-      let read: AlifeObject = AlifeObject::read::<XRayByteOrder, _>(&mut reader)?;
+        ChunkReader::from_vec(writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
+      let read: AlifeObject = AlifeObject::read(&mut reader)?;
       let creature: &AlifeObjectCreature = match &read.inherited {
         AlifeObjectInherited::SeStalker(stalker) => &stalker.base.base.base.base,
         AlifeObjectInherited::SeMonster(monster) => &monster.base.base.base,
@@ -910,16 +894,12 @@ mod tests {
 
       let mut writer: ChunkWriter = ChunkWriter::new();
 
-      original.write::<XRayByteOrder>(&mut writer)?;
+      original.write(&mut writer)?;
 
       let mut reader: ChunkReader<InMemoryChunkDataSource> =
-        ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+        ChunkReader::from_vec(writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
 
-      assert_eq!(
-        AlifeObject::read::<XRayByteOrder, _>(&mut reader)?,
-        original,
-        "{section}"
-      );
+      assert_eq!(AlifeObject::read(&mut reader)?, original, "{section}");
     }
 
     Ok(())
@@ -999,7 +979,7 @@ mod tests {
 
     let mut inherited_writer: ChunkWriter = ChunkWriter::new();
 
-    original.inherited.write::<XRayByteOrder, _, _>(
+    original.inherited.write(
       &mut inherited_writer,
       &mut ChunkWriter::new(),
       SpawnLayout::from(&original.header),
@@ -1009,17 +989,17 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
-    let bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+    let bytes: Vec<u8> = writer.flush_chunk_into_buffer(0)?;
 
     // The inherited payload ends the spawn chunk, so its size prefix is the two bytes before it. Eight bytes of outer
     // chunk header, then the spawn chunk's own header, then its payload.
-    let spawn_end: usize = 16 + XRayByteOrder::read_u32(&bytes[12..16]) as usize;
+    let spawn_end: usize = 16 + XRayBytes::read_u32(&bytes[12..16]) as usize;
     let prefix_at: usize = spawn_end - inherited_length - 2;
 
     assert_eq!(
-      XRayByteOrder::read_u16(&bytes[prefix_at..prefix_at + 2]),
+      XRayBytes::read_u16(&bytes[prefix_at..prefix_at + 2]),
       inherited_length as u16 + 2,
       "Expect the inherited size prefix at the computed offset"
     );
@@ -1027,13 +1007,13 @@ mod tests {
     for size in [0u16, 1u16] {
       let mut corrupted: Vec<u8> = bytes.clone();
 
-      XRayByteOrder::write_u16(&mut corrupted[prefix_at..prefix_at + 2], size);
+      XRayBytes::write_u16(&mut corrupted[prefix_at..prefix_at + 2], size);
 
       let mut reader: ChunkReader<InMemoryChunkDataSource> =
         ChunkReader::from_bytes(&corrupted)?.read_child_by_index(0)?;
 
-      let error: XrfError = AlifeObject::read::<XRayByteOrder, _>(&mut reader)
-        .expect_err("expect the inherited size prefix to be rejected");
+      let error: XrfError =
+        AlifeObject::read(&mut reader).expect_err("expect the inherited size prefix to be rejected");
 
       assert_eq!(
         error.to_string(),
@@ -1055,12 +1035,12 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+      ChunkReader::from_vec(writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeObject::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeObject::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -1073,7 +1053,7 @@ mod tests {
     original.header.section = String::from("medkit");
 
     let error: String = original
-      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .write(&mut ChunkWriter::new())
       .expect_err("a graph point payload under an item section")
       .to_string();
 
@@ -1089,7 +1069,7 @@ mod tests {
     header.version = version;
     header.game_type = u16::MAX;
     header.script_version = 8;
-    header.write::<XRayByteOrder>(&mut writer)?;
+    header.write(&mut writer)?;
     writer.write_all(&GameWrittenPackets::bytes(state))?;
 
     Ok(writer.buffer)
@@ -1097,12 +1077,12 @@ mod tests {
 
   fn read_clear_sky_packet(packet: &[u8], absent_keys: &[&str]) -> XrfResult<AlifeObject> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(packet)?;
-    let object: AlifeObject = AlifeObject::read_spawn_packet::<XRayByteOrder, _>(&mut reader)?;
+    let object: AlifeObject = AlifeObject::read_spawn_packet(&mut reader)?;
     let mut writer: ChunkWriter = ChunkWriter::new();
     let mut ltx: Ltx = Ltx::new();
 
     assert!(reader.is_ended());
-    object.write_spawn_packet::<XRayByteOrder, _>(&mut writer)?;
+    object.write_spawn_packet(&mut writer)?;
     assert_eq!(writer.buffer, packet);
     object.export("object", &mut ltx)?;
 
@@ -1435,7 +1415,7 @@ mod tests {
     clear_sky.header.script_version = 12;
 
     let error: String = clear_sky
-      .write_spawn_packet::<XRayByteOrder, _>(&mut ChunkWriter::new())
+      .write_spawn_packet(&mut ChunkWriter::new())
       .expect_err("a Clear Sky monster under a Call of Pripyat header")
       .to_string();
 
@@ -1453,7 +1433,7 @@ mod tests {
     call_of_pripyat.inherited = AlifeObjectInherited::SeMonster(Box::new(AlifeMonster::new_mock(Vector3d::ZERO)));
 
     let error: String = call_of_pripyat
-      .write_spawn_packet::<XRayByteOrder, _>(&mut ChunkWriter::new())
+      .write_spawn_packet(&mut ChunkWriter::new())
       .expect_err("a Call of Pripyat monster under a Clear Sky header")
       .to_string();
 
@@ -1474,7 +1454,7 @@ mod tests {
     // The script version is the header's last fixed field before the client data's size and the spawn id.
     packet[header_size - 6] = 7;
 
-    let error: String = AlifeObject::read_spawn_packet::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&packet)?)
+    let error: String = AlifeObject::read_spawn_packet(&mut ChunkReader::from_bytes(&packet)?)
       .expect_err("script version 7")
       .to_string();
 
@@ -1489,26 +1469,26 @@ mod tests {
     let original: AlifeObject = new_graph_point_object();
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
-    let mut bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
-    let update_at: usize = 16 + XRayByteOrder::read_u32(&bytes[12..16]) as usize;
+    let mut bytes: Vec<u8> = writer.flush_chunk_into_buffer(0)?;
+    let update_at: usize = 16 + XRayBytes::read_u32(&bytes[12..16]) as usize;
 
     // One stray byte: the outer chunk, the update chunk and its length each grow by one.
     bytes.push(7);
 
     for at in [4, update_at + 4] {
-      let size: u32 = XRayByteOrder::read_u32(&bytes[at..at + 4]);
+      let size: u32 = XRayBytes::read_u32(&bytes[at..at + 4]);
 
-      XRayByteOrder::write_u32(&mut bytes[at..at + 4], size + 1);
+      XRayBytes::write_u32(&mut bytes[at..at + 4], size + 1);
     }
 
-    let length: u16 = XRayByteOrder::read_u16(&bytes[update_at + 8..update_at + 10]);
+    let length: u16 = XRayBytes::read_u16(&bytes[update_at + 8..update_at + 10]);
 
-    XRayByteOrder::write_u16(&mut bytes[update_at + 8..update_at + 10], length + 1);
+    XRayBytes::write_u16(&mut bytes[update_at + 8..update_at + 10], length + 1);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?.read_child_by_index(0)?;
-    let error: String = AlifeObject::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = AlifeObject::read(&mut reader)
       .expect_err("a stray update byte")
       .to_string();
 

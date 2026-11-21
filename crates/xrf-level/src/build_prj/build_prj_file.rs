@@ -2,9 +2,8 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
@@ -87,8 +86,8 @@ impl BuildPrjFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a build project this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Build project was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -101,8 +100,8 @@ impl BuildPrjFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a build project this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand.
@@ -110,8 +109,8 @@ impl BuildPrjFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a build project this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -120,7 +119,7 @@ impl BuildPrjFile {
   ///
   /// Returns an error when a chunk is unknown, repeated, absent (smoothing groups aside) or not wholly read, or the
   /// version is one no compiler reads.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut ids: HashSet<u32> = HashSet::new();
 
@@ -140,7 +139,7 @@ impl BuildPrjFile {
       }
     }
 
-    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32_payload::<T>()?;
+    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32_payload()?;
 
     if !(Self::SOC_VERSION..=Self::CURRENT_VERSION).contains(&version) {
       return Err(XrfError::new_invalid_error(format!(
@@ -149,13 +148,13 @@ impl BuildPrjFile {
     }
 
     let mut params_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PARAMS_CHUNK_ID)?;
-    let params: BuildPrjParams = params_chunk.read_xr::<T, _>()?;
+    let params: BuildPrjParams = params_chunk.read_xr()?;
 
     params_chunk.assert_read("Expect all data to be read from build project params")?;
 
     let smoothing_groups: Option<Vec<u32>> =
       match ChunkReader::find_optional_by_id(&chunks, Self::SMOOTHING_GROUPS_CHUNK_ID) {
-        Some(mut chunk) => Some(Self::read_smoothing_groups::<T, D>(&mut chunk)?),
+        Some(mut chunk) => Some(Self::read_smoothing_groups::<D>(&mut chunk)?),
         None => None,
       };
 
@@ -164,14 +163,14 @@ impl BuildPrjFile {
     let mut light_controls: Vec<BuildPrjLightControl> = Vec::new();
 
     while !light_controls_chunk.is_ended() {
-      light_controls.push(light_controls_chunk.read_xr::<T, _>()?);
+      light_controls.push(light_controls_chunk.read_xr()?);
     }
 
     let mut mu_models_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::MU_MODELS_CHUNK_ID)?;
     let mut mu_models: Vec<BuildPrjMuModel> = Vec::new();
 
     while !mu_models_chunk.is_ended() {
-      mu_models.push(BuildPrjMuModel::read::<T, _>(
+      mu_models.push(BuildPrjMuModel::read(
         &mut mu_models_chunk,
         Self::has_smoothing_groups(version),
       )?);
@@ -180,56 +179,56 @@ impl BuildPrjFile {
     Ok(Self {
       version,
       params,
-      vertices: Self::read_records::<T, D, _>(&chunks, Self::VERTICES_CHUNK_ID, Self::VERTEX_SIZE, "vertices")?,
-      faces: Self::read_records::<T, D, _>(&chunks, Self::FACES_CHUNK_ID, BuildPrjFace::SERIALIZED_SIZE, "faces")?,
+      vertices: Self::read_records::<D, _>(&chunks, Self::VERTICES_CHUNK_ID, Self::VERTEX_SIZE, "vertices")?,
+      faces: Self::read_records::<D, _>(&chunks, Self::FACES_CHUNK_ID, BuildPrjFace::SERIALIZED_SIZE, "faces")?,
       smoothing_groups,
-      materials: Self::read_records::<T, D, _>(
+      materials: Self::read_records::<D, _>(
         &chunks,
         Self::MATERIALS_CHUNK_ID,
         BuildPrjMaterial::SERIALIZED_SIZE,
         "materials",
       )?,
-      render_shaders: Self::read_records::<T, D, _>(
+      render_shaders: Self::read_records::<D, _>(
         &chunks,
         Self::RENDER_SHADERS_CHUNK_ID,
         BuildPrjShader::SERIALIZED_SIZE,
         "render shaders",
       )?,
-      compiler_shaders: Self::read_records::<T, D, _>(
+      compiler_shaders: Self::read_records::<D, _>(
         &chunks,
         Self::COMPILER_SHADERS_CHUNK_ID,
         BuildPrjShader::SERIALIZED_SIZE,
         "compiler shaders",
       )?,
-      textures: Self::read_records::<T, D, _>(
+      textures: Self::read_records::<D, _>(
         &chunks,
         Self::TEXTURES_CHUNK_ID,
         BuildPrjTexture::SERIALIZED_SIZE,
         "textures",
       )?,
-      glows: Self::read_records::<T, D, _>(&chunks, Self::GLOWS_CHUNK_ID, BuildPrjGlow::SERIALIZED_SIZE, "glows")?,
-      portals: Self::read_records::<T, D, _>(
+      glows: Self::read_records::<D, _>(&chunks, Self::GLOWS_CHUNK_ID, BuildPrjGlow::SERIALIZED_SIZE, "glows")?,
+      portals: Self::read_records::<D, _>(
         &chunks,
         Self::PORTALS_CHUNK_ID,
         BuildPrjPortal::SERIALIZED_SIZE,
         "portals",
       )?,
       light_controls,
-      static_lights: Self::read_records::<T, D, _>(
+      static_lights: Self::read_records::<D, _>(
         &chunks,
         Self::STATIC_LIGHTS_CHUNK_ID,
         LevelDynamicLight::SERIALIZED_SIZE,
         "static lights",
       )?,
-      dynamic_lights: Self::read_records::<T, D, _>(
+      dynamic_lights: Self::read_records::<D, _>(
         &chunks,
         Self::DYNAMIC_LIGHTS_CHUNK_ID,
         BuildPrjDynamicLight::SERIALIZED_SIZE,
         "dynamic lights",
       )?,
-      lods: Self::read_records::<T, D, _>(&chunks, Self::LODS_CHUNK_ID, BuildPrjLod::SERIALIZED_SIZE, "impostors")?,
+      lods: Self::read_records::<D, _>(&chunks, Self::LODS_CHUNK_ID, BuildPrjLod::SERIALIZED_SIZE, "impostors")?,
       mu_models,
-      mu_references: Self::read_records::<T, D, _>(
+      mu_references: Self::read_records::<D, _>(
         &chunks,
         Self::MU_REFERENCES_CHUNK_ID,
         BuildPrjMuReference::SERIALIZED_SIZE,
@@ -244,7 +243,7 @@ impl BuildPrjFile {
   ///
   /// Returns an error when a multi-use model's smoothing groups disagree with the version, a record does not fit its
   /// fields, or the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if let Some(model) = self
       .mu_models
       .iter()
@@ -269,43 +268,43 @@ impl BuildPrjFile {
 
     let mut version: ChunkWriter = ChunkWriter::new();
 
-    version.write_u32::<T>(self.version)?;
-    version.flush_chunk_into::<T>(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
+    version.write_u32(self.version)?;
+    version.flush_chunk_into(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
 
-    Self::write_records::<T, _>(writer, Self::PARAMS_CHUNK_ID, std::slice::from_ref(&self.params))?;
-    Self::write_records::<T, _>(writer, Self::VERTICES_CHUNK_ID, &self.vertices)?;
-    Self::write_records::<T, _>(writer, Self::FACES_CHUNK_ID, &self.faces)?;
+    Self::write_records(writer, Self::PARAMS_CHUNK_ID, std::slice::from_ref(&self.params))?;
+    Self::write_records(writer, Self::VERTICES_CHUNK_ID, &self.vertices)?;
+    Self::write_records(writer, Self::FACES_CHUNK_ID, &self.faces)?;
 
     if let Some(groups) = &self.smoothing_groups {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
       for group in groups {
-        chunk.write_u32::<T>(*group)?;
+        chunk.write_u32(*group)?;
       }
 
-      chunk.flush_chunk_into::<T>(&mut writer.buffer, Self::SMOOTHING_GROUPS_CHUNK_ID)?;
+      chunk.flush_chunk_into(&mut writer.buffer, Self::SMOOTHING_GROUPS_CHUNK_ID)?;
     }
 
-    Self::write_records::<T, _>(writer, Self::MATERIALS_CHUNK_ID, &self.materials)?;
-    Self::write_records::<T, _>(writer, Self::RENDER_SHADERS_CHUNK_ID, &self.render_shaders)?;
-    Self::write_records::<T, _>(writer, Self::COMPILER_SHADERS_CHUNK_ID, &self.compiler_shaders)?;
-    Self::write_records::<T, _>(writer, Self::TEXTURES_CHUNK_ID, &self.textures)?;
-    Self::write_records::<T, _>(writer, Self::GLOWS_CHUNK_ID, &self.glows)?;
-    Self::write_records::<T, _>(writer, Self::PORTALS_CHUNK_ID, &self.portals)?;
-    Self::write_records::<T, _>(writer, Self::LIGHT_CONTROLS_CHUNK_ID, &self.light_controls)?;
-    Self::write_records::<T, _>(writer, Self::STATIC_LIGHTS_CHUNK_ID, &self.static_lights)?;
-    Self::write_records::<T, _>(writer, Self::DYNAMIC_LIGHTS_CHUNK_ID, &self.dynamic_lights)?;
-    Self::write_records::<T, _>(writer, Self::LODS_CHUNK_ID, &self.lods)?;
+    Self::write_records(writer, Self::MATERIALS_CHUNK_ID, &self.materials)?;
+    Self::write_records(writer, Self::RENDER_SHADERS_CHUNK_ID, &self.render_shaders)?;
+    Self::write_records(writer, Self::COMPILER_SHADERS_CHUNK_ID, &self.compiler_shaders)?;
+    Self::write_records(writer, Self::TEXTURES_CHUNK_ID, &self.textures)?;
+    Self::write_records(writer, Self::GLOWS_CHUNK_ID, &self.glows)?;
+    Self::write_records(writer, Self::PORTALS_CHUNK_ID, &self.portals)?;
+    Self::write_records(writer, Self::LIGHT_CONTROLS_CHUNK_ID, &self.light_controls)?;
+    Self::write_records(writer, Self::STATIC_LIGHTS_CHUNK_ID, &self.static_lights)?;
+    Self::write_records(writer, Self::DYNAMIC_LIGHTS_CHUNK_ID, &self.dynamic_lights)?;
+    Self::write_records(writer, Self::LODS_CHUNK_ID, &self.lods)?;
 
     let mut mu_models: ChunkWriter = ChunkWriter::new();
 
     for model in &self.mu_models {
-      model.write::<T>(&mut mu_models)?;
+      model.write(&mut mu_models)?;
     }
 
-    mu_models.flush_chunk_into::<T>(&mut writer.buffer, Self::MU_MODELS_CHUNK_ID)?;
+    mu_models.flush_chunk_into(&mut writer.buffer, Self::MU_MODELS_CHUNK_ID)?;
 
-    Self::write_records::<T, _>(writer, Self::MU_REFERENCES_CHUNK_ID, &self.mu_references)?;
+    Self::write_records(writer, Self::MU_REFERENCES_CHUNK_ID, &self.mu_references)?;
 
     Ok(())
   }
@@ -316,18 +315,18 @@ impl BuildPrjFile {
   }
 
   /// Reads the packed run of records chunk `id` holds.
-  fn read_records<T: ByteOrder, D: ChunkDataSource, R: ChunkReadWrite>(
+  fn read_records<D: ChunkDataSource, R: ChunkReadWrite>(
     chunks: &[ChunkReader<D>],
     id: u32,
     record_size: u64,
     what: &str,
   ) -> XrfResult<Vec<R>> {
     ChunkReader::find_required_by_id(chunks, id)?
-      .read_xr_records::<T, R>(record_size, &format!("build project {what} chunk"))
+      .read_xr_records::<R>(record_size, &format!("build project {what} chunk"))
   }
 
   /// Reads the smoothing groups chunk, a packed run of words no record type wraps.
-  fn read_smoothing_groups<T: ByteOrder, D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
+  fn read_smoothing_groups<D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
     let size: u64 = chunk.read_bytes_remain();
 
     if !size.is_multiple_of(4) {
@@ -339,21 +338,21 @@ impl BuildPrjFile {
     let mut words: Vec<u32> = chunk.new_bounded_vec(size / 4, 4, "build project smoothing groups")?;
 
     for _ in 0..size / 4 {
-      words.push(chunk.read_u32::<T>()?);
+      words.push(chunk.read_u32()?);
     }
 
     Ok(words)
   }
 
   /// Writes `records` as one chunk under `id`.
-  fn write_records<T: ByteOrder, R: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, records: &[R]) -> XrfResult {
+  fn write_records<R: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, records: &[R]) -> XrfResult {
     let mut chunk: ChunkWriter = ChunkWriter::new();
 
     for record in records {
-      chunk.write_xr::<T, _>(record)?;
+      chunk.write_xr(record)?;
     }
 
-    chunk.flush_chunk_into::<T>(&mut writer.buffer, id)?;
+    chunk.flush_chunk_into(&mut writer.buffer, id)?;
 
     Ok(())
   }

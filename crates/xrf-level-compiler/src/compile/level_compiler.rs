@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobScope};
 use xrf_level::{BuildCformFile, BuildPrjFile, LevelLightsFile};
@@ -47,7 +46,7 @@ impl LevelCompiler {
     let project: Option<BuildPrjFile> = steps
       .iter()
       .any(|step| step.is_reading_textures(request.ai_covers))
-      .then(|| BuildPrjFile::read_from_path::<XRayByteOrder, _>(&request.level.join(BuildPrjFile::FILE_NAME)))
+      .then(|| BuildPrjFile::read_from_path(&request.level.join(BuildPrjFile::FILE_NAME)))
       .transpose()?;
 
     Self::check_textures_and_outputs(request, &steps, project.as_ref())?;

@@ -1,6 +1,4 @@
-use xrf_chunk::{
-  ChunkField, ChunkFieldReadWrite, ChunkFieldRecorder, ChunkFieldReplay, ChunkReadWrite, ChunkWriter, XRayByteOrder,
-};
+use xrf_chunk::{ChunkField, ChunkFieldReadWrite, ChunkFieldRecorder, ChunkFieldReplay, ChunkReadWrite, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 use xrf_math::{Sphere, Vector3d};
@@ -58,7 +56,7 @@ fn write_text(packet: &SpawnPacket<AlifeObjectSpaceRestrictor>) -> XrfResult<Str
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
   let mut ini: IniFile = IniFile::default();
 
-  packet.write_fields::<XRayByteOrder, _>(&mut recorder)?;
+  packet.write_fields(&mut recorder)?;
   LevelSpawnDataFields::write_section(&recorder.into_fields(), ini.section_mut(SECTION))?;
 
   ini.write_to_string_as(&IniFormat::XRAY_SAVE_AS)
@@ -69,7 +67,7 @@ fn read_text(text: &str) -> XrfResult<SpawnPacket<AlifeObjectSpaceRestrictor>> {
   let section: &IniSection = ini.section_required(SECTION)?;
   let mut fields: LevelSpawnDataFields<'_> = LevelSpawnDataFields::new(section);
   let packet: SpawnPacket<AlifeObjectSpaceRestrictor> =
-    SpawnPacket::read_fields::<XRayByteOrder, _>(&mut ChunkFieldReplay::new(&mut fields))?;
+    SpawnPacket::read_fields(&mut ChunkFieldReplay::new(&mut fields))?;
 
   fields.assert_read()?;
 
@@ -111,7 +109,7 @@ fn reads_spawn_data_back_into_the_same_packet() -> XrfResult {
   let write_binary = |packet: &SpawnPacket<AlifeObjectSpaceRestrictor>| -> XrfResult<Vec<u8>> {
     let mut bytes: ChunkWriter = ChunkWriter::new();
 
-    packet.write::<XRayByteOrder>(&mut bytes)?;
+    packet.write(&mut bytes)?;
 
     Ok(bytes.buffer)
   };
@@ -164,7 +162,7 @@ fn write_entity(entity: &AlifeObject) -> XrfResult<IniSection> {
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
   let mut section: IniSection = IniSection::new("spawndata");
 
-  entity.write_spawn_packet::<XRayByteOrder, _>(&mut recorder)?;
+  entity.write_spawn_packet(&mut recorder)?;
   LevelSpawnDataFields::write_section(&recorder.into_fields(), &mut section)?;
 
   Ok(section)
@@ -173,11 +171,11 @@ fn write_entity(entity: &AlifeObject) -> XrfResult<IniSection> {
 #[test]
 fn reads_the_visual_a_packet_names() -> XrfResult {
   assert_eq!(
-    LevelSpawnDataFields::read_visual::<XRayByteOrder>(&write_entity(&breakable("dynamics\\box\\box_wood_01"))?)?,
+    LevelSpawnDataFields::read_visual(&write_entity(&breakable("dynamics\\box\\box_wood_01"))?)?,
     Some(String::from("dynamics\\box\\box_wood_01"))
   );
   assert_eq!(
-    LevelSpawnDataFields::read_visual::<XRayByteOrder>(&write_entity(&breakable(""))?)?,
+    LevelSpawnDataFields::read_visual(&write_entity(&breakable(""))?)?,
     None,
     "a packet naming no visual"
   );
@@ -185,11 +183,11 @@ fn reads_the_visual_a_packet_names() -> XrfResult {
   let mut restrictor_data: IniSection = IniSection::new("spawndata");
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
 
-  restrictor().write_fields::<XRayByteOrder, _>(&mut recorder)?;
+  restrictor().write_fields(&mut recorder)?;
   LevelSpawnDataFields::write_section(&recorder.into_fields(), &mut restrictor_data)?;
 
   assert_eq!(
-    LevelSpawnDataFields::read_visual::<XRayByteOrder>(&restrictor_data)?,
+    LevelSpawnDataFields::read_visual(&restrictor_data)?,
     None,
     "a restrictor is drawn as nothing"
   );
@@ -207,8 +205,8 @@ fn refuses_the_visual_of_a_packet_that_does_not_read() -> XrfResult {
     LevelSpawnDataFields::format_value(&ChunkField::U8(0)),
   );
 
-  assert!(LevelSpawnDataFields::read_visual::<XRayByteOrder>(&data).is_err());
-  assert!(LevelSpawnDataFields::read_visual::<XRayByteOrder>(&IniSection::new("spawndata")).is_err());
+  assert!(LevelSpawnDataFields::read_visual(&data).is_err());
+  assert!(LevelSpawnDataFields::read_visual(&IniSection::new("spawndata")).is_err());
 
   Ok(())
 }

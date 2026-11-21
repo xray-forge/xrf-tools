@@ -1,7 +1,6 @@
 //! The thumbnails of the SDK's other subjects: sounds, objects and groups, and telling them from a texture's.
 
 use image::{Rgba, RgbaImage};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
 use crate::tests::fixtures::{descriptor, raw_chunk, read_chunk_ids};
@@ -23,15 +22,15 @@ fn a_sound_thumbnail_round_trips_in_the_sdk_order() -> XrfResult {
     game_type: 0x8020_0000,
     ..ThmSoundFile::new_sound()
   };
-  let bytes: Vec<u8> = sound.write_to_bytes::<XRayByteOrder>()?;
+  let bytes: Vec<u8> = sound.write_to_bytes()?;
 
-  assert_eq!(ThmSoundFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?, sound);
+  assert_eq!(ThmSoundFile::read_from_bytes(bytes.clone())?, sound);
   assert_eq!(
     read_chunk_ids(&bytes),
     [0x0810, 0x0813, 0x1000, 0x1001, 0x1002],
     "version, type, parameters, base volume, AI distance, as ESoundThumbnail::Save writes them"
   );
-  assert_eq!(ThmKind::detect::<XRayByteOrder>(bytes)?, Some(ThmKind::Sound));
+  assert_eq!(ThmKind::detect(bytes)?, Some(ThmKind::Sound));
 
   Ok(())
 }
@@ -54,12 +53,12 @@ fn an_older_sound_thumbnail_falls_back_as_the_sdk_reads_it() -> XrfResult {
     ),
   ]
   .concat();
-  let sound: ThmSoundFile = ThmSoundFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let sound: ThmSoundFile = ThmSoundFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(sound.get_base_volume(), 1.0);
   assert_eq!(sound.get_max_ai_distance(), 50.0);
   assert_eq!(
-    sound.write_to_bytes::<XRayByteOrder>()?,
+    sound.write_to_bytes()?,
     bytes,
     "chunks it lacked are not invented on the way back"
   );
@@ -76,8 +75,8 @@ fn an_object_thumbnail_round_trips_with_its_preview() -> XrfResult {
     extra: Vec::new(),
     trailing: Vec::new(),
   };
-  let bytes: Vec<u8> = object.write_to_bytes::<XRayByteOrder>()?;
-  let read: ThmObjectFile = ThmObjectFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let bytes: Vec<u8> = object.write_to_bytes()?;
+  let read: ThmObjectFile = ThmObjectFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(read, object);
   assert_eq!(read.thumbnail.decode()?, preview());
@@ -86,7 +85,7 @@ fn an_object_thumbnail_round_trips_with_its_preview() -> XrfResult {
     [0x0810, 0x8000_0811, 0x0813, 0x0816],
     "the preview compressed, as EObjectThumbnail::Save writes it"
   );
-  assert_eq!(ThmKind::detect::<XRayByteOrder>(bytes)?, Some(ThmKind::Object));
+  assert_eq!(ThmKind::detect(bytes)?, Some(ThmKind::Object));
 
   Ok(())
 }
@@ -100,24 +99,21 @@ fn a_group_thumbnail_is_told_from_an_objects_by_its_version() -> XrfResult {
     extra: Vec::new(),
     trailing: Vec::new(),
   };
-  let bytes: Vec<u8> = group.write_to_bytes::<XRayByteOrder>()?;
+  let bytes: Vec<u8> = group.write_to_bytes()?;
 
-  assert_eq!(ThmGroupFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?, group);
-  assert_eq!(ThmKind::detect::<XRayByteOrder>(bytes.clone())?, Some(ThmKind::Group));
-  assert!(ThmObjectFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert_eq!(ThmGroupFile::read_from_bytes(bytes.clone())?, group);
+  assert_eq!(ThmKind::detect(bytes.clone())?, Some(ThmKind::Group));
+  assert!(ThmObjectFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }
 
 #[test]
 fn detects_a_texture_descriptor_and_refuses_reading_it_as_another_kind() -> XrfResult {
-  assert_eq!(ThmKind::detect::<XRayByteOrder>(descriptor())?, Some(ThmKind::Texture));
-  assert!(ThmSoundFile::read_from_bytes::<XRayByteOrder>(descriptor()).is_err());
-  assert!(ThmObjectFile::read_from_bytes::<XRayByteOrder>(descriptor()).is_err());
-  assert_eq!(
-    ThmKind::detect::<XRayByteOrder>(raw_chunk(0x0810, &0x0099u16.to_le_bytes()))?,
-    None
-  );
+  assert_eq!(ThmKind::detect(descriptor())?, Some(ThmKind::Texture));
+  assert!(ThmSoundFile::read_from_bytes(descriptor()).is_err());
+  assert!(ThmObjectFile::read_from_bytes(descriptor()).is_err());
+  assert_eq!(ThmKind::detect(raw_chunk(0x0810, &0x0099u16.to_le_bytes()))?, None);
 
   Ok(())
 }

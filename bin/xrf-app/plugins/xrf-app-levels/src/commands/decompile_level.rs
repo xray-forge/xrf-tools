@@ -7,7 +7,6 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
 use xrf_build_info::BuildInfo;
-use xrf_chunk::XRayByteOrder;
 use xrf_job::{JobOutcome, JobProgress};
 use xrf_rawdata::{LevelDecompileRequest, LevelSceneDecompiler};
 use xrf_utils::format_path;
@@ -51,7 +50,7 @@ pub(crate) async fn levels_decompile_level(
     .run(
       &execution,
       start,
-      move |job| match LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
+      move |job| match LevelSceneDecompiler::decompile_to_path(
         &request,
         "xrf-app level decompiler",
         &tool_version,

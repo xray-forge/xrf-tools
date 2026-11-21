@@ -2,7 +2,6 @@ use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
@@ -54,10 +53,7 @@ impl<'a> GamedataCheck<'a> for ParticlesVerifier<'a> {
 
 impl ParticlesVerifier<'_> {
   fn verify_library(&self, path: &str) -> Vec<Finding> {
-    match self
-      .project
-      .read_parsed(path, ParticlesFile::read_from_chunk::<XRayByteOrder, _>)
-    {
+    match self.project.read_parsed(path, ParticlesFile::read_from_chunk) {
       Ok(library) => self.verify_effect_textures(&library, path),
       Err(error) => {
         vec![GamedataFindingFactory::for_asset(

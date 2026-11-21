@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::build_prj::build_prj_name::BuildPrjName;
@@ -24,21 +23,21 @@ impl BuildPrjTexture {
 }
 
 impl ChunkReadWrite for BuildPrjTexture {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       name: BuildPrjName::read(reader, BuildPrjName::LONG_SIZE)?,
-      width: reader.read_u32::<T>()?,
-      height: reader.read_u32::<T>()?,
-      has_alpha: reader.read_u32::<T>()?,
-      surface: reader.read_u32::<T>()?,
+      width: reader.read_u32()?,
+      height: reader.read_u32()?,
+      has_alpha: reader.read_u32()?,
+      surface: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.name.write(writer, BuildPrjName::LONG_SIZE)?;
 
     for value in [self.width, self.height, self.has_alpha, self.surface] {
-      writer.write_u32::<T>(value)?;
+      writer.write_u32(value)?;
     }
 
     Ok(())

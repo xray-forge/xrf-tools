@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkFieldReader;
 use xrf_error::{XrfError, XrfResult};
 
@@ -24,13 +23,8 @@ impl ScriptAbsentState {
   /// # Errors
   ///
   /// Returns an error when the reader fails or the value is not `absent`.
-  pub(crate) fn read_u16<T: ByteOrder, R: ChunkFieldReader>(
-    reader: &mut R,
-    owner: &str,
-    field: &str,
-    absent: u16,
-  ) -> XrfResult {
-    Self::assert_absent(owner, field, &reader.read_u16::<T>()?, &absent)
+  pub(crate) fn read_u16<R: ChunkFieldReader>(reader: &mut R, owner: &str, field: &str, absent: u16) -> XrfResult {
+    Self::assert_absent(owner, field, &reader.read_u16()?, &absent)
   }
 
   /// Read a string `field` of `owner`, refusing any text but `absent`.
@@ -55,7 +49,7 @@ impl ScriptAbsentState {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
 
   use crate::data::generic::script_absent_state::ScriptAbsentState;
@@ -65,7 +59,7 @@ mod tests {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(b"\x00\xff\xff\x00nil\0")?;
 
     ScriptAbsentState::read_u8(&mut reader, "test", "count", 0)?;
-    ScriptAbsentState::read_u16::<XRayByteOrder, _>(&mut reader, "test", "id", u16::MAX)?;
+    ScriptAbsentState::read_u16(&mut reader, "test", "id", u16::MAX)?;
 
     let error: String = ScriptAbsentState::read_u8(&mut reader, "se_test", "squads count", 3)
       .expect_err("a count the spawn does not hold")

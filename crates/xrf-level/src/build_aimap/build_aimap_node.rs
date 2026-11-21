@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{AiNodePosition, Vector3d};
 
@@ -44,21 +43,21 @@ impl BuildAimapNode {
   /// # Errors
   ///
   /// Returns an error when the node is truncated.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, has_wide_links: bool) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, has_wide_links: bool) -> XrfResult<Self> {
     let mut links: [u32; 4] = [0; 4];
 
     for link in &mut links {
       *link = if has_wide_links {
-        reader.read_u32::<T>()?
+        reader.read_u32()?
       } else {
-        reader.read_u24::<T>()?
+        reader.read_u24()?
       };
     }
 
     Ok(Self {
       links,
-      plane: reader.read_u16::<T>()?,
-      position: reader.read_xr::<T, _>()?,
+      plane: reader.read_u16()?,
+      position: reader.read_xr()?,
     })
   }
 
@@ -67,21 +66,21 @@ impl BuildAimapNode {
   /// # Errors
   ///
   /// Returns an error when a link is too wide for three bytes, or the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter, has_wide_links: bool) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter, has_wide_links: bool) -> XrfResult {
     for link in self.links {
       if has_wide_links {
-        writer.write_u32::<T>(link)?;
+        writer.write_u32(link)?;
       } else if link > Self::NARROW_LINK_MASK {
         return Err(XrfError::new_invalid_error(format!(
           "AI map link {link} does not fit the three bytes a version-1 map gives it"
         )));
       } else {
-        writer.write_u24::<T>(link)?;
+        writer.write_u24(link)?;
       }
     }
 
-    writer.write_u16::<T>(self.plane)?;
-    writer.write_xr::<T, _>(&self.position)?;
+    writer.write_u16(self.plane)?;
+    writer.write_xr(&self.position)?;
 
     Ok(())
   }

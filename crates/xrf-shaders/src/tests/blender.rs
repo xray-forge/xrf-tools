@@ -1,6 +1,6 @@
 //! What writing a blender back produces, and what its knob lookups answer.
 
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 use crate::fixtures::ShaderBlenderFixture;
@@ -8,13 +8,13 @@ use crate::library::{ShaderBlender, ShaderBlenderPropertyKind, ShaderBlenderProp
 use crate::tests::fixtures;
 
 fn read(bytes: &[u8]) -> XrfResult<ShaderBlender> {
-  ShaderBlender::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(bytes)?)
+  ShaderBlender::read(&mut ChunkReader::from_bytes(bytes)?)
 }
 
 fn write(blender: &ShaderBlender) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  blender.write::<XRayByteOrder>(&mut writer)?;
+  blender.write(&mut writer)?;
 
   writer.flush_raw_into_buffer()
 }

@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Color, Vector3d};
 
@@ -80,34 +79,34 @@ impl LevelDynamicLight {
 }
 
 impl ChunkReadWrite for LevelDynamicLight {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      controller: reader.read_u32::<T>()?,
-      kind: reader.read_u32::<T>()?,
-      diffuse: reader.read_xr::<T, _>()?,
-      specular: reader.read_xr::<T, _>()?,
-      ambient: reader.read_xr::<T, _>()?,
-      position: reader.read_xr::<T, _>()?,
-      direction: reader.read_xr::<T, _>()?,
-      range: reader.read_f32::<T>()?,
-      falloff: reader.read_f32::<T>()?,
-      attenuation_0: reader.read_f32::<T>()?,
-      attenuation_1: reader.read_f32::<T>()?,
-      attenuation_2: reader.read_f32::<T>()?,
-      theta: reader.read_f32::<T>()?,
-      phi: reader.read_f32::<T>()?,
+      controller: reader.read_u32()?,
+      kind: reader.read_u32()?,
+      diffuse: reader.read_xr()?,
+      specular: reader.read_xr()?,
+      ambient: reader.read_xr()?,
+      position: reader.read_xr()?,
+      direction: reader.read_xr()?,
+      range: reader.read_f32()?,
+      falloff: reader.read_f32()?,
+      attenuation_0: reader.read_f32()?,
+      attenuation_1: reader.read_f32()?,
+      attenuation_2: reader.read_f32()?,
+      theta: reader.read_f32()?,
+      phi: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.controller)?;
-    writer.write_u32::<T>(self.kind)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.controller)?;
+    writer.write_u32(self.kind)?;
 
-    self.diffuse.write::<T>(writer)?;
-    self.specular.write::<T>(writer)?;
-    self.ambient.write::<T>(writer)?;
-    self.position.write::<T>(writer)?;
-    self.direction.write::<T>(writer)?;
+    self.diffuse.write(writer)?;
+    self.specular.write(writer)?;
+    self.ambient.write(writer)?;
+    self.position.write(writer)?;
+    self.direction.write(writer)?;
 
     for value in [
       self.range,
@@ -118,7 +117,7 @@ impl ChunkReadWrite for LevelDynamicLight {
       self.theta,
       self.phi,
     ] {
-      writer.write_f32::<T>(value)?;
+      writer.write_f32(value)?;
     }
 
     Ok(())

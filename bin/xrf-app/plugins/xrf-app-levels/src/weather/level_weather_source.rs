@@ -1,5 +1,4 @@
 use xrf_app_core::TauriResult;
-use xrf_chunk::XRayByteOrder;
 use xrf_environment::EnvironmentCatalog;
 use xrf_level::DetailModel;
 use xrf_material::XrayTextureScope;
@@ -29,6 +28,6 @@ impl LevelWeatherSource<'_> {
   pub fn read_model(&self, logical_path: &str) -> TauriResult<DetailModel> {
     let bytes: Vec<u8> = self.search.read(logical_path).map_err(error_to_string)?;
 
-    DetailModel::read_from_bytes::<XRayByteOrder>(bytes).map_err(error_to_string)
+    DetailModel::read_from_bytes(bytes).map_err(error_to_string)
   }
 }

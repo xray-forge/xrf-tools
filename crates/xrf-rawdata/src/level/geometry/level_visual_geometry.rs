@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelGeomSource, LevelShaderEntry, LevelShadersChunk, LevelVertex, LevelVisual};
@@ -75,7 +74,7 @@ impl LevelVisualGeometry {
   /// # Errors
   ///
   /// Returns an error when the shader row is not a shader reference, or the geometry or its window cannot be read.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read<D: ChunkDataSource>(
     visual: &LevelVisual,
     shaders: &LevelShadersChunk,
     source: &LevelGeomSource<D>,
@@ -99,13 +98,13 @@ impl LevelVisualGeometry {
         }
       },
     };
-    let vertices: Vec<LevelVertex> = source.read_vertices::<T>(
+    let vertices: Vec<LevelVertex> = source.read_vertices(
       container.vertex_buffer_id,
       container.vertex_base,
       container.vertex_count,
     )?;
     let indices: Vec<u16> = source
-      .read_full_detail_indices::<T>(visual)?
+      .read_full_detail_indices(visual)?
       .expect("a visual with a geometry container has indices");
 
     Ok(Some(Self {

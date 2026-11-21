@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -38,10 +37,10 @@ impl AlifeSquad {
 
 impl ChunkFieldReadWrite for AlifeSquad {
   /// Read the squad from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    let base: AlifeObjectOnlineOfflineGroup = reader.read_xr::<T, _>()?;
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let base: AlifeObjectOnlineOfflineGroup = reader.read_xr()?;
 
-    ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
+    ScriptSaveMarker::read(reader, Self::SCRIPT_CLASS, |reader| {
       Ok(Self {
         base,
         current_target_id: ScriptToString::parse_id(&reader.read_w1251_string()?, Self::TARGET)?,
@@ -53,10 +52,10 @@ impl ChunkFieldReadWrite for AlifeSquad {
   }
 
   /// Write the squad into the chunk.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
 
-    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_w1251_string(&ScriptToString::format_id(self.current_target_id))?;
       writer.write_w1251_string(&ScriptToString::format_id(self.respawn_point_id))?;
       writer.write_w1251_string(ScriptToString::format_text(self.respawn_point_section.as_deref()))?;
@@ -125,7 +124,7 @@ impl LtxImportExport for AlifeSquad {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
 
@@ -148,13 +147,13 @@ mod tests {
     let original: AlifeSquad = new_object();
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(&writer.buffer[31..], b"nil\0812\0spawn_stalker\0nil\0\x1a\0".as_slice());
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
-    assert_eq!(AlifeSquad::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeSquad::read(&mut reader)?, original);
     reader.assert_read("Expect the squad to be read whole")?;
 
     Ok(())

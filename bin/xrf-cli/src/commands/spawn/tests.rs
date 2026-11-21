@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_spawn::{AnySpawnFile, LevelSpawnFile, XRayByteOrder};
+use xrf_spawn::{AnySpawnFile, LevelSpawnFile};
 use xrf_test_utils::GeneratedResources;
 
 use crate::commands::packed_file::{PackCommand, ReUnpackCommand, RepackCommand, UnpackCommand, VerifyCommand};
@@ -144,7 +144,7 @@ fn unpacks_a_level_spawn_list_and_packs_it_back_byte_for_byte() -> CommandResult
 fn reports_a_root_spawns_unpack_as_the_conversion_alone() -> CommandResult {
   let root: PathBuf = GeneratedResources::create_dir("spawn/unpack_root")?;
 
-  new_root_spawn().write_to_path::<XRayByteOrder, _>(&root.join("all.spawn"))?;
+  new_root_spawn().write_to_path(&root.join("all.spawn"))?;
 
   let report: Value = run_for_result(
     &UnpackCommand::<AnySpawnFile>::default(),

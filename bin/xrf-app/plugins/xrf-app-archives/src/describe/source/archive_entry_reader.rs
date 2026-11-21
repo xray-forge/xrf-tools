@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReadWrite, ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 use xrf_spawn::{SpawnFileKind, SpawnHeaderChunk};
 
@@ -31,8 +31,8 @@ impl ArchiveEntryReader {
   /// Returns an error when the entry holds fewer bytes than the value occupies.
   pub fn read_leading<C: ChunkReadWrite>(&mut self) -> XrfResult<C> {
     match self {
-      Self::Sliced(reader) => C::read::<XRayByteOrder, _>(reader),
-      Self::Held(reader) => C::read::<XRayByteOrder, _>(reader),
+      Self::Sliced(reader) => C::read(reader),
+      Self::Held(reader) => C::read(reader),
     }
   }
 
@@ -70,8 +70,8 @@ impl ArchiveEntryReader {
   /// Returns an error when the entry is not a chunked container.
   pub fn read_spawn_header(&mut self) -> XrfResult<Option<SpawnHeaderChunk>> {
     Ok(match self {
-      Self::Sliced(reader) => SpawnFileKind::read_root_header::<XRayByteOrder, _>(&reader.read_children()?),
-      Self::Held(reader) => SpawnFileKind::read_root_header::<XRayByteOrder, _>(&reader.read_children()?),
+      Self::Sliced(reader) => SpawnFileKind::read_root_header(&reader.read_children()?),
+      Self::Held(reader) => SpawnFileKind::read_root_header(&reader.read_children()?),
     })
   }
 }

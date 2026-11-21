@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -57,7 +56,7 @@ impl ShaderBlenderProperty {
   }
 
   /// Reads the payload of one type, which is the only part of a property whose width the type does not fix outright.
-  fn read_value<T: ByteOrder, D: ChunkDataSource>(
+  fn read_value<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     kind: ShaderBlenderPropertyKind,
   ) -> XrfResult<ShaderBlenderPropertyValue> {
@@ -69,27 +68,25 @@ impl ShaderBlenderProperty {
       ShaderBlenderPropertyKind::Object => ShaderBlenderPropertyValue::Object(Self::read_text(reader)?),
       ShaderBlenderPropertyKind::Text => ShaderBlenderPropertyValue::Text(Self::read_text(reader)?),
       ShaderBlenderPropertyKind::Integer => ShaderBlenderPropertyValue::Integer {
-        value: reader.read_i32::<T>()?,
-        minimum: reader.read_i32::<T>()?,
-        maximum: reader.read_i32::<T>()?,
+        value: reader.read_i32()?,
+        minimum: reader.read_i32()?,
+        maximum: reader.read_i32()?,
       },
       ShaderBlenderPropertyKind::Float => ShaderBlenderPropertyValue::Float {
-        value: reader.read_f32::<T>()?,
-        minimum: reader.read_f32::<T>()?,
-        maximum: reader.read_f32::<T>()?,
+        value: reader.read_f32()?,
+        minimum: reader.read_f32()?,
+        maximum: reader.read_f32()?,
       },
-      ShaderBlenderPropertyKind::Bool => ShaderBlenderPropertyValue::Bool(reader.read_u32::<T>()? != 0),
-      ShaderBlenderPropertyKind::Token => Self::read_token::<T, D>(reader)?,
-      ShaderBlenderPropertyKind::ClassId => Self::read_class_id::<T, D>(reader)?,
+      ShaderBlenderPropertyKind::Bool => ShaderBlenderPropertyValue::Bool(reader.read_u32()? != 0),
+      ShaderBlenderPropertyKind::Token => Self::read_token::<D>(reader)?,
+      ShaderBlenderPropertyKind::ClassId => Self::read_class_id::<D>(reader)?,
     })
   }
 
   /// Reads a token list: the selected id, the entry count, and that many `(id, label)` entries.
-  fn read_token<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<ShaderBlenderPropertyValue> {
-    let selected: u32 = reader.read_u32::<T>()?;
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_token<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<ShaderBlenderPropertyValue> {
+    let selected: u32 = reader.read_u32()?;
+    let count: u32 = reader.read_u32()?;
     let mut items: Vec<ShaderBlenderToken> = reader.new_bounded_vec(
       u64::from(count),
       ShaderBlenderPropertyKind::TOKEN_ITEM_SIZE as u64,
@@ -98,7 +95,7 @@ impl ShaderBlenderProperty {
 
     for _ in 0..count {
       items.push(ShaderBlenderToken {
-        id: reader.read_u32::<T>()?,
+        id: reader.read_u32()?,
         label: Self::read_text(reader)?,
       });
     }
@@ -110,16 +107,14 @@ impl ShaderBlenderProperty {
   /// first of (`xrEngine/Properties.h`).
   ///
   /// No blender of the corpus carries one, so this layout follows the engine's struct rather than a witness.
-  fn read_class_id<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<ShaderBlenderPropertyValue> {
-    let selected: u64 = reader.read_u64::<T>()?;
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_class_id<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<ShaderBlenderPropertyValue> {
+    let selected: u64 = reader.read_u64()?;
+    let count: u32 = reader.read_u32()?;
     let mut items: Vec<u64> =
       reader.new_bounded_vec(u64::from(count), size_of::<u64>() as u64, "shader blender classes")?;
 
     for _ in 0..count {
-      items.push(reader.read_u64::<T>()?);
+      items.push(reader.read_u64()?);
     }
 
     Ok(ShaderBlenderPropertyValue::ClassId { selected, items })
@@ -140,17 +135,17 @@ impl ShaderBlenderProperty {
 }
 
 impl ChunkReadWrite for ShaderBlenderProperty {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let kind: ShaderBlenderPropertyKind = ShaderBlenderPropertyKind::of(reader.read_u32::<T>()?)?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let kind: ShaderBlenderPropertyKind = ShaderBlenderPropertyKind::of(reader.read_u32()?)?;
 
     Ok(Self {
       name: reader.read_w1251_string()?,
-      value: Self::read_value::<T, D>(reader, kind)?,
+      value: Self::read_value::<D>(reader, kind)?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.value.kind().raw())?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.value.kind().raw())?;
     writer.write_w1251_string(&self.name)?;
 
     match &self.value {
@@ -165,35 +160,35 @@ impl ChunkReadWrite for ShaderBlenderProperty {
         minimum,
         maximum,
       } => {
-        writer.write_i32::<T>(*value)?;
-        writer.write_i32::<T>(*minimum)?;
-        writer.write_i32::<T>(*maximum)?;
+        writer.write_i32(*value)?;
+        writer.write_i32(*minimum)?;
+        writer.write_i32(*maximum)?;
       }
       ShaderBlenderPropertyValue::Float {
         value,
         minimum,
         maximum,
       } => {
-        writer.write_f32::<T>(*value)?;
-        writer.write_f32::<T>(*minimum)?;
-        writer.write_f32::<T>(*maximum)?;
+        writer.write_f32(*value)?;
+        writer.write_f32(*minimum)?;
+        writer.write_f32(*maximum)?;
       }
-      ShaderBlenderPropertyValue::Bool(value) => writer.write_u32::<T>(u32::from(*value))?,
+      ShaderBlenderPropertyValue::Bool(value) => writer.write_u32(u32::from(*value))?,
       ShaderBlenderPropertyValue::Token { selected, items } => {
-        writer.write_u32::<T>(*selected)?;
-        writer.write_u32::<T>(narrow_format_size(items.len(), "shader blender token items")?)?;
+        writer.write_u32(*selected)?;
+        writer.write_u32(narrow_format_size(items.len(), "shader blender token items")?)?;
 
         for item in items {
-          writer.write_u32::<T>(item.id)?;
+          writer.write_u32(item.id)?;
           Self::write_text(writer, &item.label)?;
         }
       }
       ShaderBlenderPropertyValue::ClassId { selected, items } => {
-        writer.write_u64::<T>(*selected)?;
-        writer.write_u32::<T>(narrow_format_size(items.len(), "shader blender classes")?)?;
+        writer.write_u64(*selected)?;
+        writer.write_u32(narrow_format_size(items.len(), "shader blender classes")?)?;
 
         for item in items {
-          writer.write_u64::<T>(*item)?;
+          writer.write_u64(*item)?;
         }
       }
     }

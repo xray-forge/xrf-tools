@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_level_compiler::{LevelCompileReport, LevelCompileRequest, LevelCompiler};
@@ -58,12 +57,11 @@ impl LevelBuildRun {
       ),
       None => Ok(()),
     };
-    let report: LevelBuildReport =
-      match LevelBuildExporter::build_to_directory_checked::<XRayByteOrder>(&self.build, job, check) {
-        Ok(report) => report,
-        Err(_) if job.is_cancelled() => return Ok(Self::cancelled(None)),
-        Err(error) => return Err(error),
-      };
+    let report: LevelBuildReport = match LevelBuildExporter::build_to_directory_checked(&self.build, job, check) {
+      Ok(report) => report,
+      Err(_) if job.is_cancelled() => return Ok(Self::cancelled(None)),
+      Err(error) => return Err(error),
+    };
     let compiled: Option<LevelCompileReport> = match self
       .compile
       .as_ref()

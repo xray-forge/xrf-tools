@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -18,20 +17,20 @@ impl OgfSwiDataChunk {
 }
 
 impl ChunkReadWrite for OgfSwiDataChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let reserved: [u32; 4] = [
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
+      reader.read_u32()?,
+      reader.read_u32()?,
+      reader.read_u32()?,
+      reader.read_u32()?,
     ];
 
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut windows: Vec<OgfSlideWindow> =
       reader.new_bounded_vec(count.into(), OgfSlideWindow::MIN_SERIALIZED_SIZE, "ogf slide windows")?;
 
     for _ in 0..count {
-      windows.push(reader.read_xr::<T, _>()?);
+      windows.push(reader.read_xr()?);
     }
 
     reader.assert_read("Expect all data to be read from ogf swi data")?;
@@ -39,15 +38,15 @@ impl ChunkReadWrite for OgfSwiDataChunk {
     Ok(Self { reserved, windows })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for value in &self.reserved {
-      writer.write_u32::<T>(*value)?;
+      writer.write_u32(*value)?;
     }
 
-    writer.write_u32::<T>(narrow_format_size(self.windows.len(), "ogf slide windows")?)?;
+    writer.write_u32(narrow_format_size(self.windows.len(), "ogf slide windows")?)?;
 
     for window in &self.windows {
-      window.write::<T>(writer)?;
+      window.write(writer)?;
     }
 
     Ok(())
@@ -58,7 +57,7 @@ impl ChunkReadWrite for OgfSwiDataChunk {
 mod tests {
   use std::io::Write;
 
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -69,9 +68,9 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), name);
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    chunk.write::<XRayByteOrder>(&mut writer)?;
+    chunk.write(&mut writer)?;
 
-    let contents: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfSwiDataChunk::CHUNK_ID)?;
+    let contents: Vec<u8> = writer.flush_chunk_into_buffer(OgfSwiDataChunk::CHUNK_ID)?;
     let mut file = GeneratedResources::overwrite(&filename)?;
 
     file.write_all(&contents)?;
@@ -84,7 +83,7 @@ mod tests {
       .next()
       .expect("expect the written chunk to be present");
 
-    OgfSwiDataChunk::read::<XRayByteOrder, _>(&mut reader)
+    OgfSwiDataChunk::read(&mut reader)
   }
 
   #[test]
@@ -139,7 +138,7 @@ mod tests {
       num_tris: 8,
       num_verts: 9,
     }
-    .write::<XRayByteOrder>(&mut writer)?;
+    .write(&mut writer)?;
 
     assert_eq!(writer.flush_raw_into_buffer()?.len(), 8);
 
@@ -152,7 +151,7 @@ mod tests {
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
       ChunkReader::from_bytes(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255])?;
 
-    let error: String = OgfSwiDataChunk::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = OgfSwiDataChunk::read(&mut reader)
       .expect_err("expect the declared window count to exceed the chunk")
       .to_string();
 

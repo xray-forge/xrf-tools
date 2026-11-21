@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::field::chunk_field_reader::ChunkFieldReader;
@@ -14,22 +13,22 @@ pub trait ChunkFieldReadWrite: Sized {
   /// # Errors
   ///
   /// Returns an error when the reader does not hold the value.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self>;
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self>;
 
   /// # Errors
   ///
   /// Returns an error when the writer refuses a value.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult;
 }
 
 impl<F: ChunkFieldReadWrite> ChunkReadWrite for F {
   #[inline]
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Self::read_fields::<T, _>(reader)
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    Self::read_fields(reader)
   }
 
   #[inline]
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.write_fields::<T, _>(writer)
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.write_fields(writer)
   }
 }

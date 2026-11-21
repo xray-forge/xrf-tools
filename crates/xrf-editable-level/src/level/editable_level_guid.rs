@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use xrf_chunk::{XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_ini::IniSection;
 
@@ -38,19 +38,19 @@ impl EditableLevelGuid {
   /// # Errors
   ///
   /// Returns an error when fewer than 16 bytes remain.
-  pub fn read<T: ByteOrder>(reader: &mut impl Read) -> XrfResult<Self> {
+  pub fn read(reader: &mut impl Read) -> XrfResult<Self> {
     Ok(Self {
-      g0: reader.read_u64::<T>()?,
-      g1: reader.read_u64::<T>()?,
+      g0: reader.read_u64()?,
+      g1: reader.read_u64()?,
     })
   }
 
   /// # Errors
   ///
   /// Returns an error when the writer fails.
-  pub fn write<T: ByteOrder>(&self, writer: &mut impl Write) -> XrfResult {
-    writer.write_u64::<T>(self.g0)?;
-    writer.write_u64::<T>(self.g1)?;
+  pub fn write(&self, writer: &mut impl Write) -> XrfResult {
+    writer.write_u64(self.g0)?;
+    writer.write_u64(self.g1)?;
 
     Ok(())
   }

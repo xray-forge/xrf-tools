@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -30,32 +29,32 @@ impl BuildPrjPortal {
 }
 
 impl ChunkReadWrite for BuildPrjPortal {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let sector_front: u16 = reader.read_u16::<T>()?;
-    let sector_back: u16 = reader.read_u16::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let sector_front: u16 = reader.read_u16()?;
+    let sector_back: u16 = reader.read_u16()?;
     let mut vertex_slots: [Vector3d<f32>; Self::MAXIMUM_VERTICES] = [const { Vector3d::ZERO }; Self::MAXIMUM_VERTICES];
 
     for slot in &mut vertex_slots {
-      *slot = reader.read_xr::<T, _>()?;
+      *slot = reader.read_xr()?;
     }
 
     Ok(Self {
       sector_front,
       sector_back,
       vertex_slots,
-      vertex_count: reader.read_u32::<T>()?,
+      vertex_count: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.sector_front)?;
-    writer.write_u16::<T>(self.sector_back)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.sector_front)?;
+    writer.write_u16(self.sector_back)?;
 
     for slot in &self.vertex_slots {
-      writer.write_xr::<T, _>(slot)?;
+      writer.write_xr(slot)?;
     }
 
-    writer.write_u32::<T>(self.vertex_count)?;
+    writer.write_u32(self.vertex_count)?;
 
     Ok(())
   }

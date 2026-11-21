@@ -1,9 +1,8 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::{format_path, narrow_format_size};
@@ -46,8 +45,8 @@ impl BuildAimapFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not an editor AI map this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Build AI map was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -60,8 +59,8 @@ impl BuildAimapFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not an editor AI map this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand.
@@ -69,8 +68,8 @@ impl BuildAimapFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not an editor AI map this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -78,7 +77,7 @@ impl BuildAimapFile {
   /// # Errors
   ///
   /// Returns an error when a chunk is absent, unknown or not wholly read, or the version is one xrAI does not load.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     if let Some(chunk) = chunks
@@ -91,21 +90,21 @@ impl BuildAimapFile {
       )));
     }
 
-    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload::<T>()?;
+    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload()?;
     let has_wide_links: bool = Self::has_wide_links(version)?;
 
     let mut bounds_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::BOX_CHUNK_ID)?;
-    let bounds: Aabb = bounds_chunk.read_xr::<T, _>()?;
+    let bounds: Aabb = bounds_chunk.read_xr()?;
 
     bounds_chunk.assert_read("Expect all data to be read from build AI map box")?;
 
     let mut params_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PARAMS_CHUNK_ID)?;
-    let params: BuildAimapParams = params_chunk.read_xr::<T, _>()?;
+    let params: BuildAimapParams = params_chunk.read_xr()?;
 
     params_chunk.assert_read("Expect all data to be read from build AI map params")?;
 
     let mut nodes_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::NODES_CHUNK_ID)?;
-    let count: u32 = nodes_chunk.read_u32::<T>()?;
+    let count: u32 = nodes_chunk.read_u32()?;
     let mut nodes: Vec<BuildAimapNode> = nodes_chunk.new_bounded_vec(
       u64::from(count),
       BuildAimapNode::get_serialized_size(has_wide_links),
@@ -113,7 +112,7 @@ impl BuildAimapFile {
     )?;
 
     for _ in 0..count {
-      nodes.push(BuildAimapNode::read::<T, _>(&mut nodes_chunk, has_wide_links)?);
+      nodes.push(BuildAimapNode::read(&mut nodes_chunk, has_wide_links)?);
     }
 
     nodes_chunk.assert_read("Expect all data to be read from build AI map nodes")?;
@@ -132,33 +131,33 @@ impl BuildAimapFile {
   ///
   /// Returns an error when the version is one this does not write, a link does not fit its version, or the writer
   /// refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let has_wide_links: bool = Self::has_wide_links(self.version)?;
 
     let mut version: ChunkWriter = ChunkWriter::new();
 
-    version.write_u16::<T>(self.version)?;
-    version.flush_chunk_into::<T>(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
+    version.write_u16(self.version)?;
+    version.flush_chunk_into(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
 
     let mut bounds: ChunkWriter = ChunkWriter::new();
 
-    bounds.write_xr::<T, _>(&self.bounds)?;
-    bounds.flush_chunk_into::<T>(&mut writer.buffer, Self::BOX_CHUNK_ID)?;
+    bounds.write_xr(&self.bounds)?;
+    bounds.flush_chunk_into(&mut writer.buffer, Self::BOX_CHUNK_ID)?;
 
     let mut params: ChunkWriter = ChunkWriter::new();
 
-    params.write_xr::<T, _>(&self.params)?;
-    params.flush_chunk_into::<T>(&mut writer.buffer, Self::PARAMS_CHUNK_ID)?;
+    params.write_xr(&self.params)?;
+    params.flush_chunk_into(&mut writer.buffer, Self::PARAMS_CHUNK_ID)?;
 
     let mut nodes: ChunkWriter = ChunkWriter::new();
 
-    nodes.write_u32::<T>(narrow_format_size(self.nodes.len(), "build AI map nodes")?)?;
+    nodes.write_u32(narrow_format_size(self.nodes.len(), "build AI map nodes")?)?;
 
     for node in &self.nodes {
-      node.write::<T>(&mut nodes, has_wide_links)?;
+      node.write(&mut nodes, has_wide_links)?;
     }
 
-    nodes.flush_chunk_into::<T>(&mut writer.buffer, Self::NODES_CHUNK_ID)?;
+    nodes.flush_chunk_into(&mut writer.buffer, Self::NODES_CHUNK_ID)?;
 
     Ok(())
   }

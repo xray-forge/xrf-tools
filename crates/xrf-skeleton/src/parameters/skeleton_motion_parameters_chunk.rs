@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::parameters::{SkeletonMotionDefinition, SkeletonPart};
@@ -71,18 +70,18 @@ impl SkeletonMotionParametersChunk {
 }
 
 impl ChunkReadWrite for SkeletonMotionParametersChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let version: u16 = reader.read_u16::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let version: u16 = reader.read_u16()?;
 
     Self::assert_version(version, "read")?;
 
     let parts: Vec<SkeletonPart> = reader
-      .read_xr_list::<T, _>()
+      .read_xr_list()
       .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton parts: {error}")))?;
 
     Self::assert_parts(&parts)?;
 
-    let motions: Vec<SkeletonMotionDefinition> = SkeletonMotionDefinition::read_list::<T, _>(reader, version)
+    let motions: Vec<SkeletonMotionDefinition> = SkeletonMotionDefinition::read_list(reader, version)
       .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton motion definitions: {error}")))?;
 
     reader.assert_read("Expect all data to be read from skeleton motion parameters chunk")?;
@@ -94,17 +93,17 @@ impl ChunkReadWrite for SkeletonMotionParametersChunk {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     Self::assert_version(self.version, "write")?;
     Self::assert_parts(&self.parts)?;
 
-    writer.write_u16::<T>(self.version)?;
+    writer.write_u16(self.version)?;
 
     writer
-      .write_xr_list::<T, _>(&self.parts)
+      .write_xr_list(&self.parts)
       .map_err(|error| XrfError::new_serialization_error(format!("Failed to write skeleton parts: {error}")))?;
 
-    SkeletonMotionDefinition::write_list::<T>(writer, &self.motions, self.version).map_err(|error| {
+    SkeletonMotionDefinition::write_list(writer, &self.motions, self.version).map_err(|error| {
       XrfError::new_serialization_error(format!("Failed to write skeleton motion definitions: {error}"))
     })?;
 
@@ -114,8 +113,7 @@ impl ChunkReadWrite for SkeletonMotionParametersChunk {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::WriteBytesExt;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayWrite};
   use xrf_error::XrfResult;
 
   use crate::parameters::{SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonPart};
@@ -141,7 +139,7 @@ mod tests {
   fn write(chunk: &SkeletonMotionParametersChunk) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    chunk.write::<XRayByteOrder>(&mut writer)?;
+    chunk.write(&mut writer)?;
 
     writer.flush_raw_into_buffer()
   }
@@ -150,17 +148,15 @@ mod tests {
   fn write_unchecked(parts: &[SkeletonPart]) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    writer.write_u16::<XRayByteOrder>(SkeletonMotionParametersChunk::MAXIMUM_VERSION)?;
-    writer.write_xr_list::<XRayByteOrder, _>(parts)?;
-    SkeletonMotionDefinition::write_list::<XRayByteOrder>(&mut writer, &[], 4)?;
+    writer.write_u16(SkeletonMotionParametersChunk::MAXIMUM_VERSION)?;
+    writer.write_xr_list(parts)?;
+    SkeletonMotionDefinition::write_list(&mut writer, &[], 4)?;
 
     writer.flush_raw_into_buffer()
   }
 
   fn read(bytes: &[u8]) -> XrfResult<SkeletonMotionParametersChunk> {
-    SkeletonMotionParametersChunk::read::<XRayByteOrder, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(
-      bytes,
-    )?)
+    SkeletonMotionParametersChunk::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(bytes)?)
   }
 
   #[test]

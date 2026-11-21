@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
@@ -46,7 +45,7 @@ fn write_ground_thm(level: &Path, flags: ThmTextureFlags) -> XrfResult {
     ..ThmTextureParamChunk::default()
   });
   std::fs::create_dir_all(&textures)?;
-  thumbnail.write_to_path::<XRayByteOrder, _>(&textures.join("ground.thm"))
+  thumbnail.write_to_path(&textures.join("ground.thm"))
 }
 
 fn request(level: &Path, steps: &[LevelCompileStep]) -> LevelCompileRequest {

@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, AssetSource, AssetTextureDescriptor};
-use xrf_chunk::XRayByteOrder;
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDescriptor, XrayMaterialResolver, XrayTextureScope};
 use xrf_thm::ThmFile;
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayRoots, XraySearch};
@@ -179,14 +178,11 @@ impl TextureDescription {
 
   /// Reads a located `.thm`, or nothing when its bytes cannot be reached or are not a descriptor.
   fn read_descriptor(search: &XraySearch, asset: &XrayAsset) -> Option<ThmFile> {
-    ThmFile::read_from_bytes::<XRayByteOrder>(search.read_asset(asset).ok()?).ok()
+    ThmFile::read_from_bytes(search.read_asset(asset).ok()?).ok()
   }
 
   /// Reads a `.thm` straight off disk, for a file no mount holds.
   fn read_descriptor_from_path(path: &Path) -> Option<ThmFile> {
-    path
-      .is_file()
-      .then(|| ThmFile::read_from_path::<XRayByteOrder, _>(&path).ok())
-      .flatten()
+    path.is_file().then(|| ThmFile::read_from_path(&path).ok()).flatten()
   }
 }

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionSnapshot;
-use xrf_chunk::XRayByteOrder;
 use xrf_environment::{EnvironmentCatalog, LevelWeather, SunTable, WeatherCycle, WeatherCycleId, WeatherKey};
 use xrf_level::{LevelEnvModFile, LevelEnvModifier};
 use xrf_vfs::XraySearch;
@@ -122,7 +121,7 @@ impl LevelEnvironment {
       .read_optional_file(search, LevelWeatherPart::ENV_MOD_FILE)
       .and_then(|bytes| {
         bytes
-          .map(|bytes| LevelEnvModFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))
+          .map(|bytes| LevelEnvModFile::read_from_bytes(bytes).map_err(|error| error.to_string()))
           .transpose()
       })
       .inspect_err(|error| LevelReport::unreadable_modifiers(&current.source, error))

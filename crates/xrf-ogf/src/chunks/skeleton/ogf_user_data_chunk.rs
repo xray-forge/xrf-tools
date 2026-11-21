@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::{decode_w1251_field_to_string, encode_string_to_bytes, new_windows1251_encoder};
@@ -16,7 +15,7 @@ impl OgfUserDataChunk {
 }
 
 impl ChunkReadWrite for OgfUserDataChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let bytes: Vec<u8> = reader.read_remaining()?;
 
     Ok(Self {
@@ -24,7 +23,7 @@ impl ChunkReadWrite for OgfUserDataChunk {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_all(&encode_string_to_bytes(&self.user_data, new_windows1251_encoder())?)?;
 
     Ok(())

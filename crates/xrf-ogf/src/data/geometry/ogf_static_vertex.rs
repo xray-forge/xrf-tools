@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::ChunkWriter;
+use xrf_chunk::{ChunkWriter, XRayBytes, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -20,19 +19,27 @@ pub struct OgfStaticVertex {
 
 impl OgfStaticVertex {
   /// Read one vertex out of a slice exactly [`OgfFvf::get_stride`] long.
-  pub fn read_from_slice<T: ByteOrder>(vertex: &[u8], format: &OgfFvf) -> Self {
+  pub fn read_from_slice(vertex: &[u8], format: &OgfFvf) -> Self {
     let mut cursor: &[u8] = vertex;
 
     Self {
-      position: Self::take_vector::<T>(&mut cursor),
-      normal: format.has_normal.then(|| Self::take_vector::<T>(&mut cursor)),
-      point_size: format.has_point_size.then(|| T::read_f32(Self::take(&mut cursor))),
-      diffuse: format.has_diffuse.then(|| T::read_u32(Self::take(&mut cursor))),
-      specular: format.has_specular.then(|| T::read_u32(Self::take(&mut cursor))),
+      position: Self::take_vector(&mut cursor),
+      normal: format.has_normal.then(|| Self::take_vector(&mut cursor)),
+      point_size: format
+        .has_point_size
+        .then(|| XRayBytes::read_f32(Self::take(&mut cursor))),
+      diffuse: format.has_diffuse.then(|| XRayBytes::read_u32(Self::take(&mut cursor))),
+      specular: format
+        .has_specular
+        .then(|| XRayBytes::read_u32(Self::take(&mut cursor))),
       texture_coordinates: format
         .texture_coordinate_sizes
         .iter()
-        .map(|size| (0..*size).map(|_| T::read_f32(Self::take(&mut cursor))).collect())
+        .map(|size| {
+          (0..*size)
+            .map(|_| XRayBytes::read_f32(Self::take(&mut cursor)))
+            .collect()
+        })
         .collect(),
     }
   }
@@ -43,7 +50,7 @@ impl OgfStaticVertex {
   ///
   /// Returns an error when the vertex does not hold what `format` declares: a field it lacks or carries beyond it, or a
   /// texture coordinate set of another size.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter, format: &OgfFvf) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter, format: &OgfFvf) -> XrfResult {
     let is_laid_out: bool = format.has_normal == self.normal.is_some()
       && format.has_point_size == self.point_size.is_some()
       && format.has_diffuse == self.diffuse.is_some()
@@ -61,40 +68,40 @@ impl OgfStaticVertex {
       )));
     }
 
-    Self::write_vector::<T>(writer, &self.position)?;
+    Self::write_vector(writer, &self.position)?;
 
     if let Some(normal) = &self.normal {
-      Self::write_vector::<T>(writer, normal)?;
+      Self::write_vector(writer, normal)?;
     }
 
     if let Some(point_size) = self.point_size {
-      writer.write_f32::<T>(point_size)?;
+      writer.write_f32(point_size)?;
     }
 
     for color in [self.diffuse, self.specular].into_iter().flatten() {
-      writer.write_u32::<T>(color)?;
+      writer.write_u32(color)?;
     }
 
     for value in self.texture_coordinates.iter().flatten() {
-      writer.write_f32::<T>(*value)?;
+      writer.write_f32(*value)?;
     }
 
     Ok(())
   }
 
-  fn write_vector<T: ByteOrder>(writer: &mut ChunkWriter, vector: &Vector3d) -> XrfResult {
-    writer.write_f32::<T>(vector.x)?;
-    writer.write_f32::<T>(vector.y)?;
-    writer.write_f32::<T>(vector.z)?;
+  fn write_vector(writer: &mut ChunkWriter, vector: &Vector3d) -> XrfResult {
+    writer.write_f32(vector.x)?;
+    writer.write_f32(vector.y)?;
+    writer.write_f32(vector.z)?;
 
     Ok(())
   }
 
-  fn take_vector<T: ByteOrder>(cursor: &mut &[u8]) -> Vector3d {
+  fn take_vector(cursor: &mut &[u8]) -> Vector3d {
     Vector3d::new(
-      T::read_f32(Self::take(cursor)),
-      T::read_f32(Self::take(cursor)),
-      T::read_f32(Self::take(cursor)),
+      XRayBytes::read_f32(Self::take(cursor)),
+      XRayBytes::read_f32(Self::take(cursor)),
+      XRayBytes::read_f32(Self::take(cursor)),
     )
   }
 

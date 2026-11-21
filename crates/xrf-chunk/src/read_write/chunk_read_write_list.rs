@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::reader::chunk_reader::ChunkReader;
@@ -10,7 +9,7 @@ use crate::writer::chunk_writer::ChunkWriter;
 /// The format decides how the list is framed (a count, one child chunk per entry, records up to the end), which is why
 /// this is its own trait rather than a blanket implementation over [`crate::ChunkReadWrite`].
 pub trait ChunkReadWriteList: Sized {
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>>;
+  fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>>;
 
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult;
+  fn write_list(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult;
 }

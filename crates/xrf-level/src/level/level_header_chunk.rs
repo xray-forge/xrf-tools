@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// `hdrLEVEL` in c++ codebase, stored in the `fsL_HEADER` chunk of the `level` file.
@@ -17,17 +16,17 @@ impl LevelHeaderChunk {
 
 impl ChunkReadWrite for LevelHeaderChunk {
   /// Read level header data from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      xrlc_version: reader.read_u16::<T>()?,
-      xrlc_quality: reader.read_u16::<T>()?,
+      xrlc_version: reader.read_u16()?,
+      xrlc_quality: reader.read_u16()?,
     })
   }
 
   /// Write level header data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.xrlc_version)?;
-    writer.write_u16::<T>(self.xrlc_quality)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.xrlc_version)?;
+    writer.write_u16(self.xrlc_quality)?;
 
     Ok(())
   }
@@ -35,7 +34,7 @@ impl ChunkReadWrite for LevelHeaderChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -51,11 +50,11 @@ mod tests {
       xrlc_quality: 1,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 4);
 
-    writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       LevelHeaderChunk::CHUNK_ID,
     )?;
@@ -66,7 +65,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(LevelHeaderChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(LevelHeaderChunk::read(&mut reader)?, original);
 
     Ok(())
   }

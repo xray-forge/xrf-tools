@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -33,35 +32,31 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
   }
 
   /// Read a physic object from both packets, the state closing the update packet as [`PhysicsClosingState`] keeps it.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
-    spawn: &mut S,
-    update: &mut U,
-    _: SpawnLayout,
-  ) -> XrfResult<Self> {
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U, _: SpawnLayout) -> XrfResult<Self> {
     Ok(Self {
-      base: spawn.read_xr::<T, _>()?,
-      skeleton: spawn.read_xr::<T, _>()?,
-      physic_type: spawn.read_u32::<T>()?,
-      mass: spawn.read_f32::<T>()?,
+      base: spawn.read_xr()?,
+      skeleton: spawn.read_xr()?,
+      physic_type: spawn.read_u32()?,
+      mass: spawn.read_f32()?,
       fixed_bones: spawn.read_w1251_string()?,
-      update_state: PhysicsClosingState::read::<T, _>(update)?,
+      update_state: PhysicsClosingState::read(update)?,
     })
   }
 
   /// Write a physic object into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     _: SpawnLayout,
   ) -> XrfResult {
-    spawn.write_xr::<T, _>(&self.base)?;
-    spawn.write_xr::<T, _>(&self.skeleton)?;
-    spawn.write_u32::<T>(self.physic_type)?;
-    spawn.write_f32::<T>(self.mass)?;
+    spawn.write_xr(&self.base)?;
+    spawn.write_xr(&self.skeleton)?;
+    spawn.write_u32(self.physic_type)?;
+    spawn.write_f32(self.mass)?;
     spawn.write_w1251_string(&self.fixed_bones)?;
 
-    self.update_state.write::<T, _>(update)
+    self.update_state.write(update)
   }
 
   /// Import ALife physic object data from ltx config section.
@@ -103,8 +98,7 @@ impl AlifePacketsReadWrite for AlifeObjectPhysic {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::ReadBytesExt;
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -151,10 +145,7 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectPhysic = new_object();
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (88, 54, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (88, 54, original));
 
     Ok(())
   }
@@ -165,10 +156,7 @@ mod tests {
 
     original.update_state = PhysicsClosingState::Unset;
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (88, 1, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (88, 1, original));
 
     Ok(())
   }
@@ -181,7 +169,7 @@ mod tests {
     let mut update: ChunkWriter = ChunkWriter::new();
 
     original.update_state = PhysicsClosingState::Absent;
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
+    original.write(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert!(update.buffer.is_empty());
 
@@ -189,14 +177,10 @@ mod tests {
     // The packet's length and `M_UPDATE` action, which `AlifeObject` reads, leaving nothing behind them.
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[2, 0, 0, 0])?;
 
-    update_reader.read_u32::<XRayByteOrder>()?;
+    update_reader.read_u32()?;
 
     assert_eq!(
-      AlifeObjectPhysic::read::<XRayByteOrder, _, _>(
-        &mut spawn_reader,
-        &mut update_reader,
-        SpawnLayout::CALL_OF_PRIPYAT
-      )?,
+      AlifeObjectPhysic::read(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?,
       original
     );
 
@@ -216,7 +200,7 @@ mod tests {
     original.update_state = PhysicsClosingState::Set(state);
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?,
       (88, 1 + 36 + 16 + 24 + 1, original)
     );
 

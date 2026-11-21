@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::env_mod::level_env_mod_file::LevelEnvModFile;
@@ -37,7 +37,7 @@ fn file_bytes(version: u32, modifiers: &[Option<u16>]) -> XrfResult<Vec<u8>> {
 
 #[test]
 fn an_environment_modifier_carries_the_flag_word_its_version_admits() -> XrfResult {
-  let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes::<XRayByteOrder>(file_bytes(0x0017, &[Some(0b110)])?)?;
+  let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes(file_bytes(0x0017, &[Some(0b110)])?)?;
 
   assert_eq!(file.version, 0x0017);
   assert_eq!(file.modifiers.len(), 1);
@@ -53,7 +53,7 @@ fn an_environment_modifier_carries_the_flag_word_its_version_admits() -> XrfResu
 #[test]
 fn a_modifier_below_the_flag_version_mixes_in_everything() -> XrfResult {
   // `use_flags.one()` runs before the read, so a file too old to carry the word uses every value.
-  let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes::<XRayByteOrder>(file_bytes(0x0015, &[None])?)?;
+  let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes(file_bytes(0x0015, &[None])?)?;
 
   assert_eq!(file.modifiers[0].use_flags, None);
   assert_eq!(file.modifiers[0].get_used_parameters().len(), 6);
@@ -64,7 +64,7 @@ fn a_modifier_below_the_flag_version_mixes_in_everything() -> XrfResult {
 #[test]
 fn a_file_carrying_only_a_version_carries_no_modifiers_rather_than_failing() -> XrfResult {
   // Which is what most shipped levels are: a version chunk and nothing else.
-  let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes::<XRayByteOrder>(file_bytes(0x0017, &[])?)?;
+  let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes(file_bytes(0x0017, &[])?)?;
 
   assert!(file.modifiers.is_empty());
 
@@ -75,11 +75,11 @@ fn a_file_carrying_only_a_version_carries_no_modifiers_rather_than_failing() -> 
 fn a_modifier_list_is_written_back_byte_for_byte() -> XrfResult {
   for (version, modifiers) in [(0x0017u32, vec![Some(0b110)]), (0x0015, vec![None]), (0x0017, vec![])] {
     let bytes: Vec<u8> = file_bytes(version, &modifiers)?;
-    let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+    let file: LevelEnvModFile = LevelEnvModFile::read_from_bytes(bytes.clone())?;
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    file.write::<XRayByteOrder>(&mut writer)?;
+    file.write(&mut writer)?;
 
     assert_eq!(writer.buffer, bytes, "version {version:#06x} did not round trip");
   }

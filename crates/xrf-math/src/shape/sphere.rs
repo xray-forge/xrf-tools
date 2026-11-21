@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -23,16 +22,16 @@ impl Sphere {
 /// float `CSE_Shape::cform_write` gives an ini stream.
 impl ChunkFieldReadWrite for Sphere {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      center: reader.read_xr::<T, _>()?,
-      radius: reader.read_f32::<T>()?,
+      center: reader.read_xr()?,
+      radius: reader.read_f32()?,
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.center)?;
-    writer.write_f32::<T>(self.radius)
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.center)?;
+    writer.write_f32(self.radius)
   }
 }

@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::{AnimationInterpolation, AnimationShape};
@@ -31,9 +30,9 @@ impl AnimationKey {
   /// # Errors
   ///
   /// Returns an error when the payload ends inside the key.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let value: f32 = reader.read_f32::<T>()?;
-    let time: f32 = reader.read_f32::<T>()?;
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let value: f32 = reader.read_f32()?;
+    let time: f32 = reader.read_f32()?;
     let shape: AnimationShape = AnimationShape::from(reader.read_u8()?);
 
     Ok(Self {
@@ -43,7 +42,7 @@ impl AnimationKey {
       interpolation: if shape.is_stepped() {
         AnimationInterpolation::default()
       } else {
-        AnimationInterpolation::read::<T, D>(reader)?
+        AnimationInterpolation::read::<D>(reader)?
       },
     })
   }
@@ -53,17 +52,17 @@ impl AnimationKey {
   /// # Errors
   ///
   /// Returns an error when the payload ends inside the key.
-  pub fn read_wide<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let value: f32 = reader.read_f32::<T>()?;
-    let time: f32 = reader.read_f32::<T>()?;
+  pub fn read_wide<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let value: f32 = reader.read_f32()?;
+    let time: f32 = reader.read_f32()?;
     // Narrowed the way the engine does, which keeps only the low byte.
-    let shape: AnimationShape = AnimationShape::from((reader.read_u32::<T>()? & 0xff) as u8);
+    let shape: AnimationShape = AnimationShape::from((reader.read_u32()? & 0xff) as u8);
 
     Ok(Self {
       value,
       time,
       shape,
-      interpolation: AnimationInterpolation::read_wide::<T, D>(reader)?,
+      interpolation: AnimationInterpolation::read_wide::<D>(reader)?,
     })
   }
 
@@ -72,13 +71,13 @@ impl AnimationKey {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.value)?;
-    writer.write_f32::<T>(self.time)?;
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.value)?;
+    writer.write_f32(self.time)?;
     writer.write_u8(self.shape.into())?;
 
     if !self.shape.is_stepped() {
-      self.interpolation.write::<T>(writer)?;
+      self.interpolation.write(writer)?;
     }
 
     Ok(())
@@ -87,7 +86,7 @@ impl AnimationKey {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
 
   use crate::{AnimationInterpolation, AnimationKey, AnimationShape};
@@ -120,13 +119,13 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 9);
     assert_eq!(writer.buffer, [0, 0, 192, 63, 0, 0, 0, 64, 4]);
 
     let mut reader = ChunkReader::from_vec(writer.buffer)?;
-    let key: AnimationKey = AnimationKey::read::<XRayByteOrder, _>(&mut reader)?;
+    let key: AnimationKey = AnimationKey::read(&mut reader)?;
 
     assert_eq!(key, original);
     reader.assert_read("Expect the stepped key to end after its shape")?;
@@ -144,14 +143,14 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.buffer, [0, 0, 192, 63, 0, 0, 0, 64, 4]);
 
     let mut reader = ChunkReader::from_vec(writer.buffer)?;
 
     assert_eq!(
-      AnimationKey::read::<XRayByteOrder, _>(&mut reader)?,
+      AnimationKey::read(&mut reader)?,
       AnimationKey {
         interpolation: AnimationInterpolation::default(),
         ..original
@@ -175,13 +174,13 @@ mod tests {
       let mut expected: Vec<u8> = new_interpolated_key_bytes();
 
       expected[8] = shape;
-      original.write::<XRayByteOrder>(&mut writer)?;
+      original.write(&mut writer)?;
 
       assert_eq!(writer.bytes_written(), 23);
       assert_eq!(writer.buffer, expected);
 
       let mut reader = ChunkReader::from_vec(writer.buffer)?;
-      let key: AnimationKey = AnimationKey::read::<XRayByteOrder, _>(&mut reader)?;
+      let key: AnimationKey = AnimationKey::read(&mut reader)?;
 
       assert_eq!(key, original);
       reader.assert_read("Expect all interpolated key fields to be read")?;
@@ -201,7 +200,7 @@ mod tests {
     assert_eq!(bytes.len(), 40);
 
     let mut reader = ChunkReader::from_vec(bytes)?;
-    let key: AnimationKey = AnimationKey::read_wide::<XRayByteOrder, _>(&mut reader)?;
+    let key: AnimationKey = AnimationKey::read_wide(&mut reader)?;
 
     assert_eq!(
       key,
@@ -229,13 +228,13 @@ mod tests {
     for length in 1..bytes.len() {
       let mut reader = ChunkReader::from_vec(bytes[..length].to_vec())?;
 
-      assert!(AnimationKey::read::<XRayByteOrder, _>(&mut reader).is_err());
+      assert!(AnimationKey::read(&mut reader).is_err());
     }
 
     for length in 1..40 {
       let mut reader = ChunkReader::from_vec(vec![0; length])?;
 
-      assert!(AnimationKey::read_wide::<XRayByteOrder, _>(&mut reader).is_err());
+      assert!(AnimationKey::read_wide(&mut reader).is_err());
     }
 
     Ok(())

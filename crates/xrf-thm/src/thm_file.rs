@@ -2,9 +2,8 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
@@ -81,8 +80,8 @@ impl ThmFile {
 }
 
 impl ThmFile {
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "THM file was not read: {}, error: {}",
         format_path(path.as_ref()),
@@ -91,23 +90,23 @@ impl ThmFile {
     })?)
   }
 
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads a descriptor from bytes already in hand.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads a descriptor from a chunk reader over any data source, keeping what a chunk holds past its fields.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut file: Self = Self::default();
 
     for mut chunk in reader.read_children_including_compressed()? {
       let is_folded: bool = match chunk.id {
         Self::VERSION_CHUNK_ID if file.version.is_none() => {
-          file.version = Some(chunk.read_u16::<T>()?);
+          file.version = Some(chunk.read_u16()?);
           true
         }
         id if ThmThumbnailChunk::matches(id) && file.thumbnail.is_none() => {
@@ -115,27 +114,27 @@ impl ThmFile {
           true
         }
         Self::THUMBNAIL_TYPE_CHUNK_ID if file.thumbnail_type.is_none() => {
-          file.thumbnail_type = Some(chunk.read_u32::<T>()?);
+          file.thumbnail_type = Some(chunk.read_u32()?);
           true
         }
         ThmTextureParamChunk::CHUNK_ID if file.texture_param.is_none() => {
-          file.texture_param = Some(chunk.read_xr::<T, _>()?);
+          file.texture_param = Some(chunk.read_xr()?);
           true
         }
         Self::TEXTURE_TYPE_CHUNK_ID if file.texture_type.is_none() => {
-          file.texture_type = Some(ThmTextureType::from(chunk.read_u32::<T>()?));
+          file.texture_type = Some(ThmTextureType::from(chunk.read_u32()?));
           true
         }
         ThmDetailChunk::CHUNK_ID if file.detail.is_none() => {
-          file.detail = Some(chunk.read_xr::<T, _>()?);
+          file.detail = Some(chunk.read_xr()?);
           true
         }
         ThmMaterialChunk::CHUNK_ID if file.material.is_none() => {
-          file.material = Some(chunk.read_xr::<T, _>()?);
+          file.material = Some(chunk.read_xr()?);
           true
         }
         ThmBumpChunk::CHUNK_ID if file.bump.is_none() => {
-          file.bump = Some(chunk.read_xr::<T, _>()?);
+          file.bump = Some(chunk.read_xr()?);
           true
         }
         Self::EXT_NORMAL_MAP_CHUNK_ID if file.ext_normal_map_name.is_none() => {
@@ -158,72 +157,68 @@ impl ThmFile {
 
 impl ThmFile {
   /// Writes the descriptor to a path, creating the directories leading to it.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     Ok(StagedFile::write_creating_directories(
       path.as_ref(),
-      &self.write_to_bytes::<T>()?,
+      &self.write_to_bytes()?,
     )?)
   }
 
   /// The descriptor as the bytes of a file.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut bytes)?;
+    self.write_to(&mut bytes)?;
 
     Ok(bytes)
   }
 
   /// Writes the descriptor into the writer.
-  pub fn write_to<T: ByteOrder>(&self, destination: &mut dyn Write) -> XrfResult {
+  pub fn write_to(&self, destination: &mut dyn Write) -> XrfResult {
     if let Some(version) = self.version {
-      self.write_chunk::<T>(destination, Self::VERSION_CHUNK_ID, |writer| {
-        Ok(writer.write_u16::<T>(version)?)
+      self.write_chunk(destination, Self::VERSION_CHUNK_ID, |writer| {
+        Ok(writer.write_u16(version)?)
       })?;
     }
 
     if let Some(thumbnail) = &self.thumbnail {
-      self.write_chunk::<T>(destination, thumbnail.to_chunk_id(), |writer| thumbnail.write(writer))?;
+      self.write_chunk(destination, thumbnail.to_chunk_id(), |writer| thumbnail.write(writer))?;
     }
 
     if let Some(thumbnail_type) = self.thumbnail_type {
-      self.write_chunk::<T>(destination, Self::THUMBNAIL_TYPE_CHUNK_ID, |writer| {
-        Ok(writer.write_u32::<T>(thumbnail_type)?)
+      self.write_chunk(destination, Self::THUMBNAIL_TYPE_CHUNK_ID, |writer| {
+        Ok(writer.write_u32(thumbnail_type)?)
       })?;
     }
 
     if let Some(texture_param) = &self.texture_param {
-      self.write_chunk::<T>(destination, ThmTextureParamChunk::CHUNK_ID, |writer| {
-        writer.write_xr::<T, _>(texture_param)
+      self.write_chunk(destination, ThmTextureParamChunk::CHUNK_ID, |writer| {
+        writer.write_xr(texture_param)
       })?;
     }
 
     if let Some(texture_type) = self.texture_type {
-      self.write_chunk::<T>(destination, Self::TEXTURE_TYPE_CHUNK_ID, |writer| {
-        Ok(writer.write_u32::<T>(texture_type.into())?)
+      self.write_chunk(destination, Self::TEXTURE_TYPE_CHUNK_ID, |writer| {
+        Ok(writer.write_u32(texture_type.into())?)
       })?;
     }
 
     if let Some(detail) = &self.detail {
-      self.write_chunk::<T>(destination, ThmDetailChunk::CHUNK_ID, |writer| {
-        writer.write_xr::<T, _>(detail)
-      })?;
+      self.write_chunk(destination, ThmDetailChunk::CHUNK_ID, |writer| writer.write_xr(detail))?;
     }
 
     if let Some(material) = &self.material {
-      self.write_chunk::<T>(destination, ThmMaterialChunk::CHUNK_ID, |writer| {
-        writer.write_xr::<T, _>(material)
+      self.write_chunk(destination, ThmMaterialChunk::CHUNK_ID, |writer| {
+        writer.write_xr(material)
       })?;
     }
 
     if let Some(bump) = &self.bump {
-      self.write_chunk::<T>(destination, ThmBumpChunk::CHUNK_ID, |writer| {
-        writer.write_xr::<T, _>(bump)
-      })?;
+      self.write_chunk(destination, ThmBumpChunk::CHUNK_ID, |writer| writer.write_xr(bump))?;
     }
 
     if let Some(name) = &self.ext_normal_map_name {
-      self.write_chunk::<T>(destination, Self::EXT_NORMAL_MAP_CHUNK_ID, |writer| {
+      self.write_chunk(destination, Self::EXT_NORMAL_MAP_CHUNK_ID, |writer| {
         writer.write_w1251_string(name)?;
 
         Ok(())
@@ -231,23 +226,23 @@ impl ThmFile {
     }
 
     if let Some(fade_delay) = self.fade_delay {
-      self.write_chunk::<T>(destination, Self::FADE_DELAY_CHUNK_ID, |writer| {
+      self.write_chunk(destination, Self::FADE_DELAY_CHUNK_ID, |writer| {
         Ok(writer.write_u8(fade_delay)?)
       })?;
     }
 
-    ThmChunks::write_extra::<T>(destination, &self.extra)
+    ThmChunks::write_extra(destination, &self.extra)
   }
 
   /// Frames a folded chunk's fields as a chunk of `id`, the bytes read past them after, so that the order above reads
   /// as the order on disk.
-  fn write_chunk<T: ByteOrder>(
+  fn write_chunk(
     &self,
     destination: &mut dyn Write,
     id: u32,
     fill: impl FnOnce(&mut ChunkWriter) -> XrfResult,
   ) -> XrfResult {
-    ThmChunks::write::<T>(destination, id, &self.trailing, fill)
+    ThmChunks::write(destination, id, &self.trailing, fill)
   }
 }
 

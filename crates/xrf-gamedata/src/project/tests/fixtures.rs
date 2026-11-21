@@ -1,11 +1,11 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial, GameMtlPair};
 
 /// The bytes of a game material library, as a project holds it.
 pub(crate) fn game_materials_bytes(library: &GameMtlFile) -> Vec<u8> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  library.write::<XRayByteOrder>(&mut writer).unwrap();
+  library.write(&mut writer).unwrap();
 
   writer.flush_raw_into_buffer().unwrap()
 }

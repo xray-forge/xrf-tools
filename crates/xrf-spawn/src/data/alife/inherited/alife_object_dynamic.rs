@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -15,15 +14,15 @@ pub struct AlifeObjectDynamic {
 
 impl ChunkFieldReadWrite for AlifeObjectDynamic {
   /// Read dynamic object data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
+      base: reader.read_xr()?,
     })
   }
 
   /// Write dynamic object data into the writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
 
     Ok(())
   }
@@ -51,7 +50,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -77,12 +76,11 @@ mod tests {
       },
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 38);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 38);
 
@@ -91,7 +89,7 @@ mod tests {
     assert_eq!(file.bytes_remaining(), 38 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-    let read_object: AlifeObjectDynamic = AlifeObjectDynamic::read::<XRayByteOrder, _>(&mut reader)?;
+    let read_object: AlifeObjectDynamic = AlifeObjectDynamic::read(&mut reader)?;
 
     assert_eq!(read_object, original);
 

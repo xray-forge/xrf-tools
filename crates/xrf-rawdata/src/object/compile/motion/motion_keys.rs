@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, WriteBytesExt};
+use xrf_chunk::XRayWrite;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Quaternion, Vector3d};
 
@@ -36,11 +36,7 @@ impl MotionKeys {
   ///
   /// Returns an error for a run of no frames, or of more rotations than translations or fewer, and when the bytes do
   /// not write.
-  pub(crate) fn write<T: ByteOrder>(
-    output: &mut Vec<u8>,
-    rotations: &[[i16; 4]],
-    translations: &[Vector3d],
-  ) -> XrfResult {
+  pub(crate) fn write(output: &mut Vec<u8>, rotations: &[[i16; 4]], translations: &[Vector3d]) -> XrfResult {
     let frames: usize = translations.len();
 
     if frames == 0 || rotations.len() != frames {
@@ -80,18 +76,18 @@ impl MotionKeys {
       let mut keys: Vec<u8> = Vec::with_capacity(rotations.len() * 8);
 
       for component in rotations.iter().flatten() {
-        keys.write_i16::<T>(*component)?;
+        keys.write_i16(*component)?;
       }
 
-      Self::write_checked::<T>(output, &keys)?;
+      Self::write_checked(output, &keys)?;
     } else {
       for component in rotations[0] {
-        output.write_i16::<T>(component)?;
+        output.write_i16(component)?;
       }
     }
 
     if !is_moving {
-      return Self::write_vector::<T>(output, &mean);
+      return Self::write_vector(output, &mean);
     }
 
     let (steps, lowest, highest): (f32, i32, i32) = if is_wide {
@@ -111,32 +107,32 @@ impl MotionKeys {
         let key: i32 = Self::truncate(steps * (value - center) / reach).clamp(lowest, highest);
 
         if is_wide {
-          keys.write_i16::<T>(key as i16)?;
+          keys.write_i16(key as i16)?;
         } else {
           keys.write_i8(key as i8)?;
         }
       }
     }
 
-    Self::write_checked::<T>(output, &keys)?;
-    Self::write_vector::<T>(
+    Self::write_checked(output, &keys)?;
+    Self::write_vector(
       output,
       &Vector3d::new(reach.x / steps, reach.y / steps, reach.z / steps),
     )?;
-    Self::write_vector::<T>(output, &center)
+    Self::write_vector(output, &center)
   }
 
   /// A stream led by its checksum, which the engine shares identical streams by.
-  fn write_checked<T: ByteOrder>(output: &mut Vec<u8>, keys: &[u8]) -> XrfResult {
-    output.write_u32::<T>(crc32fast::hash(keys))?;
+  fn write_checked(output: &mut Vec<u8>, keys: &[u8]) -> XrfResult {
+    output.write_u32(crc32fast::hash(keys))?;
     output.extend_from_slice(keys);
 
     Ok(())
   }
 
-  fn write_vector<T: ByteOrder>(output: &mut Vec<u8>, vector: &Vector3d) -> XrfResult {
+  fn write_vector(output: &mut Vec<u8>, vector: &Vector3d) -> XrfResult {
     for component in vector.to_array() {
-      output.write_f32::<T>(component)?;
+      output.write_f32(component)?;
     }
 
     Ok(())

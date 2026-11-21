@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -53,8 +52,8 @@ impl AlifeObjectInventoryBox {
 }
 
 impl AlifeStateReadWrite for AlifeObjectInventoryBox {
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
-    let base: AlifeObjectDynamicVisual = reader.read_xr::<T, _>()?;
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+    let base: AlifeObjectDynamicVisual = reader.read_xr()?;
 
     if !layout.has_inventory_box_access() {
       return Ok(Self::new_default_access(base));
@@ -68,9 +67,9 @@ impl AlifeStateReadWrite for AlifeObjectInventoryBox {
     })
   }
 
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     self.assert_access_fits(layout)?;
-    writer.write_xr::<T, _>(&self.base)?;
+    writer.write_xr(&self.base)?;
 
     if layout.has_inventory_box_access() {
       writer.write_u8(self.can_take)?;
@@ -125,7 +124,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_test_utils::GeneratedResources;
@@ -171,10 +170,10 @@ mod tests {
   ) -> XrfResult<(usize, AlifeObjectInventoryBox)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    inventory_box.write_state::<XRayByteOrder, _>(&mut writer, layout)?;
+    inventory_box.write_state(&mut writer, layout)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: AlifeObjectInventoryBox = AlifeObjectInventoryBox::read_state::<XRayByteOrder, _>(&mut reader, layout)?;
+    let read: AlifeObjectInventoryBox = AlifeObjectInventoryBox::read_state(&mut reader, layout)?;
 
     reader.assert_read("Expect the inventory box to be read whole")?;
 
@@ -208,7 +207,7 @@ mod tests {
       (new_inventory_box(1, 0, "some-tip"), "tip"),
     ] {
       let error: String = inventory_box
-        .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(124))
+        .write_state(&mut ChunkWriter::new(), layout(124))
         .expect_err("an access field the packet cannot hold")
         .to_string();
 

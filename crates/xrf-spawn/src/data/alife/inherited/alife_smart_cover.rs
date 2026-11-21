@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -44,8 +43,8 @@ impl AlifeSmartCover {
 }
 
 impl AlifeStateReadWrite for AlifeSmartCover {
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
-    let base: AlifeObjectSmartCover = AlifeObjectSmartCover::read_state::<T, _>(reader, layout)?;
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+    let base: AlifeObjectSmartCover = AlifeObjectSmartCover::read_state(reader, layout)?;
 
     if !layout.has_smart_cover_loopholes() {
       return Ok(Self::new_without_script_fields(base));
@@ -73,9 +72,9 @@ impl AlifeStateReadWrite for AlifeSmartCover {
     })
   }
 
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     self.assert_loopholes_fit(layout)?;
-    self.base.write_state::<T, _>(writer, layout)?;
+    self.base.write_state(writer, layout)?;
 
     if !layout.has_smart_cover_loopholes() {
       return Ok(());
@@ -133,7 +132,7 @@ impl AlifeStateReadWrite for AlifeSmartCover {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::{Sphere, Vector3d};
@@ -188,10 +187,10 @@ mod tests {
   fn read_back(cover: &AlifeSmartCover, layout: SpawnLayout) -> XrfResult<(Vec<u8>, AlifeSmartCover)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    cover.write_state::<XRayByteOrder, _>(&mut writer, layout)?;
+    cover.write_state(&mut writer, layout)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: AlifeSmartCover = AlifeSmartCover::read_state::<XRayByteOrder, _>(&mut reader, layout)?;
+    let read: AlifeSmartCover = AlifeSmartCover::read_state(&mut reader, layout)?;
 
     reader.assert_read("Expect the smart cover to be read whole")?;
 
@@ -238,7 +237,7 @@ mod tests {
       ),
     ] {
       let error: String = cover
-        .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(8))
+        .write_state(&mut ChunkWriter::new(), layout(8))
         .expect_err("a script field the packet cannot hold")
         .to_string();
 
@@ -282,7 +281,7 @@ mod tests {
 
     assert_eq!(
       original
-        .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(12))
+        .write_state(&mut ChunkWriter::new(), layout(12))
         .expect_err("expect the loophole count to exceed its format field")
         .to_string(),
       "Invalid error: smart cover loopholes exceeds the u8 format limit"
@@ -294,7 +293,7 @@ mod tests {
     let original: AlifeSmartCover = new_smart_cover("last-description", Vec::new());
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write_state::<XRayByteOrder, _>(&mut writer, layout(12))?;
+    original.write_state(&mut writer, layout(12))?;
 
     // The loophole count is the last byte written, so raising it declares loopholes the payload cannot hold.
     let mut bytes: Vec<u8> = writer.buffer;
@@ -303,7 +302,7 @@ mod tests {
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
 
-    let error: String = AlifeSmartCover::read_state::<XRayByteOrder, _>(&mut reader, layout(12))
+    let error: String = AlifeSmartCover::read_state(&mut reader, layout(12))
       .expect_err("expect the declared loophole count to exceed the chunk")
       .to_string();
 

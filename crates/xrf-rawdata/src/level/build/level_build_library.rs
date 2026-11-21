@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use byteorder::ByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
@@ -37,7 +36,7 @@ impl<'a> LevelBuildLibrary<'a> {
   ///
   /// Returns an error naming a reference that names no file below a root, or whose object no root holds or does not
   /// read.
-  pub(crate) fn load<'r, T: ByteOrder>(&mut self, references: impl IntoIterator<Item = &'r str>) -> XrfResult {
+  pub(crate) fn load<'r>(&mut self, references: impl IntoIterator<Item = &'r str>) -> XrfResult {
     for reference in references {
       if self.held.contains_key(reference) || self.objects.contains_key(reference) {
         continue;
@@ -53,7 +52,7 @@ impl<'a> LevelBuildLibrary<'a> {
         .find(|path| path.is_file())
         .or(candidates.first())
         .ok_or_else(|| XrfError::new_invalid_error("A build names no objects root"))?;
-      let object: EditableObjectFile = EditableObjectFile::read_from_path::<T, _>(&path).map_err(|error| {
+      let object: EditableObjectFile = EditableObjectFile::read_from_path(&path).map_err(|error| {
         XrfError::new_read_error(format!(
           "Library object '{reference}' was not read from {}: {error}",
           format_path(&path)

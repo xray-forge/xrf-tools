@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -99,15 +98,15 @@ impl AnimationEnvelope {
   /// # Errors
   ///
   /// Returns an error when the declared key count does not fit the payload, or the payload ends inside a key.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let behavior_before: AnimationBehavior = AnimationBehavior::from(reader.read_u8()?);
     let behavior_after: AnimationBehavior = AnimationBehavior::from(reader.read_u8()?);
-    let count: u16 = reader.read_u16::<T>()?;
+    let count: u16 = reader.read_u16()?;
     let mut keys: Vec<AnimationKey> =
       reader.new_bounded_vec(count.into(), AnimationKey::MIN_SERIALIZED_SIZE, "animation keys")?;
 
     for _ in 0..count {
-      keys.push(AnimationKey::read::<T, D>(reader)?);
+      keys.push(AnimationKey::read::<D>(reader)?);
     }
 
     Ok(Self {
@@ -122,16 +121,16 @@ impl AnimationEnvelope {
   /// # Errors
   ///
   /// Returns an error when the declared key count does not fit the payload, or the payload ends inside a key.
-  pub fn read_wide<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_wide<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     // Two `int`s read as one block by the engine, narrowed here because only the low byte of each is a behaviour.
-    let behavior_before: AnimationBehavior = AnimationBehavior::from((reader.read_u32::<T>()? & 0xff) as u8);
-    let behavior_after: AnimationBehavior = AnimationBehavior::from((reader.read_u32::<T>()? & 0xff) as u8);
-    let count: u32 = reader.read_u32::<T>()?;
+    let behavior_before: AnimationBehavior = AnimationBehavior::from((reader.read_u32()? & 0xff) as u8);
+    let behavior_after: AnimationBehavior = AnimationBehavior::from((reader.read_u32()? & 0xff) as u8);
+    let count: u32 = reader.read_u32()?;
     let mut keys: Vec<AnimationKey> =
       reader.new_bounded_vec(count.into(), AnimationKey::WIDE_SERIALIZED_SIZE, "animation keys")?;
 
     for _ in 0..count {
-      keys.push(AnimationKey::read_wide::<T, D>(reader)?);
+      keys.push(AnimationKey::read_wide::<D>(reader)?);
     }
 
     Ok(Self {
@@ -146,13 +145,13 @@ impl AnimationEnvelope {
   /// # Errors
   ///
   /// Returns an error when the key count exceeds what the format's `u16` holds.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u8(self.behavior_before.into())?;
     writer.write_u8(self.behavior_after.into())?;
-    writer.write_u16::<T>(narrow_format_size(self.keys.len(), "animation keys")?)?;
+    writer.write_u16(narrow_format_size(self.keys.len(), "animation keys")?)?;
 
     for key in &self.keys {
-      key.write::<T>(writer)?;
+      key.write(writer)?;
     }
 
     Ok(())
@@ -161,7 +160,7 @@ impl AnimationEnvelope {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter};
   use xrf_error::{XrfError, XrfResult};
 
   use crate::{AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationShape};
@@ -185,7 +184,7 @@ mod tests {
     assert_eq!(bytes.len(), 52);
 
     let mut reader = ChunkReader::from_vec(bytes)?;
-    let envelope: AnimationEnvelope = AnimationEnvelope::read_wide::<XRayByteOrder, _>(&mut reader)?;
+    let envelope: AnimationEnvelope = AnimationEnvelope::read_wide(&mut reader)?;
 
     assert_eq!(
       envelope,
@@ -246,13 +245,13 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 36);
     assert_eq!(writer.buffer, new_envelope_bytes());
 
     let mut reader = ChunkReader::from_vec(writer.buffer)?;
-    let envelope: AnimationEnvelope = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)?;
+    let envelope: AnimationEnvelope = AnimationEnvelope::read(&mut reader)?;
 
     assert_eq!(envelope, original);
     assert_eq!(envelope.get_duration_seconds(), Some(3.0));
@@ -270,13 +269,13 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 4);
     assert_eq!(writer.buffer, [2, 5, 0, 0]);
 
     let mut reader = ChunkReader::from_vec(writer.buffer)?;
-    let envelope: AnimationEnvelope = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)?;
+    let envelope: AnimationEnvelope = AnimationEnvelope::read(&mut reader)?;
 
     assert_eq!(envelope, original);
     assert_eq!(envelope.get_duration_seconds(), None);
@@ -284,7 +283,7 @@ mod tests {
 
     let mut reader = ChunkReader::from_vec(vec![2, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0])?;
 
-    assert_eq!(AnimationEnvelope::read_wide::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AnimationEnvelope::read_wide(&mut reader)?, original);
     reader.assert_read("Expect the empty wide envelope to end after its count")?;
 
     Ok(())
@@ -297,10 +296,10 @@ mod tests {
     bytes.extend_from_slice(&[0xde, 0xad]);
 
     let mut reader = ChunkReader::from_vec(bytes)?;
-    let envelope: AnimationEnvelope = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)?;
+    let envelope: AnimationEnvelope = AnimationEnvelope::read(&mut reader)?;
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    envelope.write::<XRayByteOrder>(&mut writer)?;
+    envelope.write(&mut writer)?;
 
     assert_eq!(writer.buffer, new_envelope_bytes());
     assert_eq!(reader.read_remaining()?, [0xde, 0xad]);
@@ -315,7 +314,7 @@ mod tests {
     for length in 1..bytes.len() {
       let mut reader = ChunkReader::from_vec(bytes[..length].to_vec())?;
 
-      assert!(AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader).is_err());
+      assert!(AnimationEnvelope::read(&mut reader).is_err());
     }
 
     Ok(())
@@ -326,14 +325,14 @@ mod tests {
     let mut reader = ChunkReader::from_vec(vec![1, 2, 255, 255])?;
 
     assert!(matches!(
-      AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader),
+      AnimationEnvelope::read(&mut reader),
       Err(XrfError::Invalid { .. })
     ));
 
     let mut reader = ChunkReader::from_vec(vec![1, 0, 0, 0, 2, 0, 0, 0, 255, 255, 255, 255])?;
 
     assert!(matches!(
-      AnimationEnvelope::read_wide::<XRayByteOrder, _>(&mut reader),
+      AnimationEnvelope::read_wide(&mut reader),
       Err(XrfError::Invalid { .. })
     ));
 
@@ -409,19 +408,19 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    envelope.write::<XRayByteOrder>(&mut writer)?;
+    envelope.write(&mut writer)?;
 
     assert_eq!(&writer.buffer[..4], [1, 1, 255, 255]);
     assert_eq!(writer.bytes_written(), 589_819);
 
     let mut reader = ChunkReader::from_vec(writer.buffer)?;
 
-    assert_eq!(AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)?, envelope);
+    assert_eq!(AnimationEnvelope::read(&mut reader)?, envelope);
     reader.assert_read("Expect all 65535 keys to be read")?;
 
     envelope.keys.push(key);
 
-    assert!(envelope.write::<XRayByteOrder>(&mut ChunkWriter::new()).is_err());
+    assert!(envelope.write(&mut ChunkWriter::new()).is_err());
 
     Ok(())
   }

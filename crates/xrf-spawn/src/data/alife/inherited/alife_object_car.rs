@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -18,19 +17,19 @@ pub struct AlifeObjectCar {
 
 impl ChunkFieldReadWrite for AlifeObjectCar {
   /// Read car data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      skeleton: reader.read_xr::<T, _>()?,
-      health: reader.read_f32::<T>()?,
+      base: reader.read_xr()?,
+      skeleton: reader.read_xr()?,
+      health: reader.read_f32()?,
     })
   }
 
   /// Write car data into the chunk.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr::<T, _>(&self.skeleton)?;
-    writer.write_f32::<T>(self.health)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    writer.write_xr(&self.skeleton)?;
+    writer.write_f32(self.health)?;
 
     Ok(())
   }
@@ -71,7 +70,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -113,12 +112,11 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
     let original: AlifeObjectCar = new_mock(1.0);
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 96);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 96);
 
@@ -128,7 +126,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeObjectCar::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeObjectCar::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -140,12 +138,12 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "health_above_one.chunk");
     let original: AlifeObjectCar = new_mock(85.0);
 
-    original.write::<XRayByteOrder>(&mut writer)?;
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    original.write(&mut writer)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-    let read: AlifeObjectCar = AlifeObjectCar::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: AlifeObjectCar = AlifeObjectCar::read(&mut reader)?;
 
     assert_eq!(read.health, 85.0);
     assert_eq!(read, original);

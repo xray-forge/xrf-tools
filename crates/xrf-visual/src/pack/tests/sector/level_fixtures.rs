@@ -1,6 +1,5 @@
 //! Synthetic compiled levels built in code, so the bytes a sector test reasons about are visible in the test.
 
-use xrf_chunk::XRayByteOrder;
 use xrf_level::{
   LevelFile, LevelGeomFile, LevelGeomSource, LevelGeomVertexElement, LevelShadersChunk, LevelVisualsChunk,
 };
@@ -216,7 +215,7 @@ pub(crate) fn new_progressive_drawable_from(
 
 /// Opens render geometry the same way the tool does, from bytes already in hand.
 pub(crate) fn new_open_geometry(bytes: Vec<u8>) -> LevelGeomSource<xrf_chunk::InMemoryChunkDataSource> {
-  LevelGeomSource::open_from_bytes::<XRayByteOrder>(bytes).expect("readable render geometry")
+  LevelGeomSource::open_from_bytes(bytes).expect("readable render geometry")
 }
 
 /// An OGF header of the given model type and shader entry.
@@ -329,7 +328,7 @@ pub(crate) fn new_visuals(run: &[Vec<u8>]) -> LevelVisualsChunk {
 
   let level: Vec<u8> = new_chunk(LevelVisualsChunk::CHUNK_ID, &body);
 
-  LevelFile::read_visuals_from_bytes::<XRayByteOrder>(level)
+  LevelFile::read_visuals_from_bytes(level)
     .expect("readable visuals")
     .expect("a run of visuals")
 }

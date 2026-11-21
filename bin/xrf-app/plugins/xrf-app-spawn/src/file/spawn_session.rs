@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use xrf_app_core::TauriResult;
-use xrf_chunk::XRayByteOrder;
 use xrf_spawn::SpawnFile;
 
 use crate::{SpawnChunk, SpawnChunkKind, SpawnSessionDescriptor};
@@ -30,8 +29,8 @@ impl SpawnSession {
   ///
   /// Returns an error naming the path where the file cannot be read as a spawn.
   pub fn read(path: PathBuf) -> TauriResult<Self> {
-    let file: SpawnFile = SpawnFile::read_from_path::<XRayByteOrder, _>(&path)
-      .map_err(|error| format!("Cannot open spawn '{}': {error}", path.display()))?;
+    let file: SpawnFile =
+      SpawnFile::read_from_path(&path).map_err(|error| format!("Cannot open spawn '{}': {error}", path.display()))?;
 
     Ok(Self::new(path, file))
   }

@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -28,8 +27,8 @@ impl LevelLightsFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a light list this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level lights were not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -42,8 +41,8 @@ impl LevelLightsFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a light list this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived list arrives.
@@ -51,8 +50,8 @@ impl LevelLightsFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a light list this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -60,13 +59,13 @@ impl LevelLightsFile {
   /// # Errors
   ///
   /// Returns an error when the container does not account for every byte.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut chunks: Vec<LevelLightsChunk> = Vec::new();
 
     for mut chunk in reader.read_children()? {
       let id: u32 = chunk.id;
 
-      chunks.push(LevelLightsChunk::read::<T, D>(id, &mut chunk)?);
+      chunks.push(LevelLightsChunk::read::<D>(id, &mut chunk)?);
     }
 
     Ok(Self { chunks })
@@ -77,12 +76,12 @@ impl LevelLightsFile {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for chunk in &self.chunks {
       let mut payload: ChunkWriter = ChunkWriter::new();
 
-      chunk.write::<T>(&mut payload)?;
-      payload.flush_chunk_into::<T>(&mut writer.buffer, chunk.get_id())?;
+      chunk.write(&mut payload)?;
+      payload.flush_chunk_into(&mut writer.buffer, chunk.get_id())?;
     }
 
     Ok(())

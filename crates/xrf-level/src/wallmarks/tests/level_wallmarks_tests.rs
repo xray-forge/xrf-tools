@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::tests::fixtures::{chunk, floats, string};
@@ -56,7 +56,7 @@ fn a_wallmark_vertex_is_the_width_its_lit_layout_gives_it() {
 
 #[test]
 fn a_slot_holds_every_decal_that_shares_its_material() -> XrfResult {
-  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes::<XRayByteOrder>(file_bytes(&[
+  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes(file_bytes(&[
     ("effects\\wallmark", "wm\\wm_blood", vec![4, 6]),
     ("effects\\wallmark", "wm\\wm_scorch", vec![3]),
   ])?)?;
@@ -78,7 +78,7 @@ fn a_slot_holding_nothing_stores_no_names_at_all() -> XrfResult {
   // them would run straight into the next slot.
   let bytes: Vec<u8> = file_bytes(&[("", "", vec![]), ("effects\\wallmark", "wm\\wm_blood", vec![4])])?;
 
-  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(file.slots.len(), 2);
   assert!(!file.slots[0].is_used());
@@ -87,7 +87,7 @@ fn a_slot_holding_nothing_stores_no_names_at_all() -> XrfResult {
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -101,11 +101,11 @@ fn a_decal_list_is_written_back_byte_for_byte() -> XrfResult {
     ("effects\\wallmark", "wm\\wm_scorch", vec![3]),
   ])?;
 
-  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -114,7 +114,7 @@ fn a_decal_list_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_file_carrying_no_slots_reads_as_none_rather_than_failing() -> XrfResult {
-  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes::<XRayByteOrder>(file_bytes(&[])?)?;
+  let file: LevelWallmarksFile = LevelWallmarksFile::read_from_bytes(file_bytes(&[])?)?;
 
   assert!(file.slots.is_empty());
   assert_eq!(file.get_marks_count(), 0);

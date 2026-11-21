@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, AssetSource, AssetTextureDescriptor};
-use xrf_chunk::XRayByteOrder;
 use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayRoots, XraySearch};
@@ -73,7 +72,7 @@ impl SelectedVisual {
   /// search's snapshot retains models.
   fn read_file(source: &AssetSource, search: &XraySearch) -> TauriResult<Arc<OgfFile>> {
     match source {
-      AssetSource::File { path } => OgfFile::read_from_path::<XRayByteOrder, _>(path)
+      AssetSource::File { path } => OgfFile::read_from_path(path)
         .map(Arc::new)
         .map_err(|error| format!("Failed to read visual '{path}': {error}")),
       AssetSource::Asset { logical_path } => {
@@ -87,7 +86,7 @@ impl SelectedVisual {
         };
 
         search
-          .read_parsed(&asset, OgfFile::read_from_bytes::<XRayByteOrder>)
+          .read_parsed(&asset, OgfFile::read_from_bytes)
           .map_err(|error| format!("Failed to read visual '{logical_path}': {error}"))
       }
     }

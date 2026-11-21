@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -36,28 +35,28 @@ impl AlifePacketsReadWrite for AlifeObjectHumanStalker {
   }
 
   /// Read the stalker from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectHumanAbstract::read::<T, _, _>(spawn, update, layout)?,
-      skeleton: spawn.read_xr::<T, _>()?,
+      base: AlifeObjectHumanAbstract::read(spawn, update, layout)?,
+      skeleton: spawn.read_xr()?,
       update_start_dialog: update.read_w1251_string()?,
     })
   }
 
   /// Write the stalker into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    spawn.write_xr::<T, _>(&self.skeleton)?;
+    spawn.write_xr(&self.skeleton)?;
     update.write_w1251_string(&self.update_start_dialog)?;
 
     Ok(())
@@ -111,7 +110,6 @@ impl AlifeObjectHumanStalker {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -132,11 +130,10 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectHumanStalker = new_object();
-    let (human_spawn_size, human_update_size, _) =
-      original.base.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (human_spawn_size, human_update_size, _) = original.base.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?,
       (
         human_spawn_size + 1 + 1 + 2,
         human_update_size + original.update_start_dialog.len() + 1,

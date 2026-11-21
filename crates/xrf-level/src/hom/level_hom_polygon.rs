@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -19,23 +18,19 @@ impl LevelHomPolygon {
 }
 
 impl ChunkReadWrite for LevelHomPolygon {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      vertices: [
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      ],
-      flags: reader.read_u32::<T>()?,
+      vertices: [reader.read_xr()?, reader.read_xr()?, reader.read_xr()?],
+      flags: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
-    writer.write_u32::<T>(self.flags)?;
+    writer.write_u32(self.flags)?;
 
     Ok(())
   }

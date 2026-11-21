@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_shaders::ShaderCompilerFile;
 
@@ -21,7 +20,7 @@ impl ArchiveShaderCompilerDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not a compiler library this reader can walk.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes(source.read_bytes(name)?)?;
 
     Ok(Self {
       shaders: ArchiveShaderCompilerShader::of_all(&file.shaders),

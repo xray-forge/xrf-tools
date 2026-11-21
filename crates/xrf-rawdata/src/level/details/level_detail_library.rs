@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use byteorder::ByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
@@ -48,10 +47,10 @@ impl LevelDetailLibrary {
   /// The detail objects of `library`, those under each root's [`Self::DIRECTORY`], each compiled as `EDetail` exports
   /// it; one that does not read is recorded in `library`, and one that does not compile is held for
   /// [`Self::record_uncompiled`]. Either matches nothing. The walk stops once `job` is cancelled.
-  pub(crate) fn read_from_library<T: ByteOrder>(library: &mut LevelObjectLibrary, job: &JobHandle) -> XrfResult<Self> {
+  pub(crate) fn read_from_library(library: &mut LevelObjectLibrary, job: &JobHandle) -> XrfResult<Self> {
     let mut detail: Self = Self::default();
 
-    library.read_each::<T>(job, Self::is_detail, |entry, object| {
+    library.read_each(job, Self::is_detail, |entry, object| {
       detail.add(entry, &object);
 
       Ok(())

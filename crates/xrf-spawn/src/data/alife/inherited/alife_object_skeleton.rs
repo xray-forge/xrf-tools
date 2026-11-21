@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -34,11 +33,11 @@ impl AlifeObjectSkeleton {
 
 impl ChunkFieldReadWrite for AlifeObjectSkeleton {
   /// Read skeleton data from the chunk reader.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let object = Self {
       name: reader.read_w1251_string()?,
       flags: reader.read_u8()?,
-      source_id: reader.read_u16::<T>()?,
+      source_id: reader.read_u16()?,
     };
 
     object.assert_no_saved_bone_data()?;
@@ -47,12 +46,12 @@ impl ChunkFieldReadWrite for AlifeObjectSkeleton {
   }
 
   /// Write skeleton data into the chunk writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     self.assert_no_saved_bone_data()?;
 
     writer.write_w1251_string(&self.name)?;
     writer.write_u8(self.flags)?;
-    writer.write_u16::<T>(self.source_id)?;
+    writer.write_u16(self.source_id)?;
 
     Ok(())
   }
@@ -97,9 +96,8 @@ mod tests {
   use std::fs::File;
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
-  use byteorder::WriteBytesExt;
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayWrite};
   use xrf_error::{MapXrfErr, XrfError, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -117,12 +115,11 @@ mod tests {
       source_id: 753,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 13);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 13);
 
@@ -131,7 +128,7 @@ mod tests {
     assert_eq!(file.bytes_remaining(), 13 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-    let read_object: AlifeObjectSkeleton = AlifeObjectSkeleton::read::<XRayByteOrder, _>(&mut reader)?;
+    let read_object: AlifeObjectSkeleton = AlifeObjectSkeleton::read(&mut reader)?;
 
     assert_eq!(read_object, original);
 
@@ -175,15 +172,15 @@ mod tests {
 
     writer.write_w1251_string("test-name")?;
     writer.write_u8(AlifeObjectSkeleton::FLAG_SAVED_DATA)?;
-    writer.write_u16::<XRayByteOrder>(753)?;
+    writer.write_u16(753)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let mut reader: ChunkReader =
       ChunkReader::from_slice(GeneratedResources::open_slice(&filename)?)?.read_child_by_index(0)?;
 
     assert!(matches!(
-      AlifeObjectSkeleton::read::<XRayByteOrder, _>(&mut reader),
+      AlifeObjectSkeleton::read(&mut reader),
       Err(XrfError::Parsing { message }) if message.contains("saved skeleton bones are not implemented")
     ));
 
@@ -201,7 +198,7 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     assert!(matches!(
-      original.write::<XRayByteOrder>(&mut writer),
+      original.write(&mut writer),
       Err(XrfError::Parsing { message }) if message.contains("saved skeleton bones are not implemented")
     ));
     assert_eq!(writer.bytes_written(), 0);

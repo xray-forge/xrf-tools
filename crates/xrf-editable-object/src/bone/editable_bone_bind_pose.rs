@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -13,18 +12,18 @@ pub struct EditableBoneBindPose {
 }
 
 impl ChunkReadWrite for EditableBoneBindPose {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      offset: reader.read_xr::<T, _>()?,
-      rotation: reader.read_xr::<T, _>()?,
-      length: reader.read_f32::<T>()?,
+      offset: reader.read_xr()?,
+      rotation: reader.read_xr()?,
+      length: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.offset.write::<T>(writer)?;
-    self.rotation.write::<T>(writer)?;
-    writer.write_f32::<T>(self.length)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.offset.write(writer)?;
+    self.rotation.write(writer)?;
+    writer.write_f32(self.length)?;
 
     Ok(())
   }

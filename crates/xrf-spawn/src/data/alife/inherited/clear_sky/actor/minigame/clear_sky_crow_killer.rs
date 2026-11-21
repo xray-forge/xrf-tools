@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -116,10 +115,10 @@ impl Default for ClearSkyCrowKiller {
 }
 
 impl ChunkFieldReadWrite for ClearSkyCrowKiller {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    ScriptSaveMarker::read::<T, _, _>(reader, Self::PROFILE, |reader| {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    ScriptSaveMarker::read(reader, Self::PROFILE, |reader| {
       let highscore: u8 = reader.read_u8()?;
-      let timer: u16 = reader.read_u16::<T>()?;
+      let timer: u16 = reader.read_u16()?;
       let win: u8 = reader.read_u8()?;
       let crows_count: u8 = reader.read_u8()?;
       let crows_to_kill: Vec<u8> = (0..crows_count).map(|_| reader.read_u8()).collect::<XrfResult<_>>()?;
@@ -129,24 +128,24 @@ impl ChunkFieldReadWrite for ClearSkyCrowKiller {
         timer,
         win,
         crows_to_kill,
-        money_multiplier: reader.read_u16::<T>()?,
-        champion_multiplier: reader.read_u16::<T>()?,
+        money_multiplier: reader.read_u16()?,
+        champion_multiplier: reader.read_u16()?,
         selected: reader.read_u8()?,
         game_type: reader.read_w1251_string()?,
         current_high_score: reader.read_u8()?,
-        current_timer: reader.read_u16::<T>()?,
+        current_timer: reader.read_u16()?,
         // `w_s16`, the same two bytes read as signed.
-        time_out: i16::from_ne_bytes(reader.read_u16::<T>()?.to_ne_bytes()),
+        time_out: i16::from_ne_bytes(reader.read_u16()?.to_ne_bytes()),
         killed_counter: reader.read_u8()?,
         current_win: reader.read_u8()?,
       })
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    ScriptSaveMarker::write::<T, _>(writer, Self::PROFILE, |writer| {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    ScriptSaveMarker::write(writer, Self::PROFILE, |writer| {
       writer.write_u8(self.highscore)?;
-      writer.write_u16::<T>(self.timer)?;
+      writer.write_u16(self.timer)?;
       writer.write_u8(self.win)?;
       writer.write_u8(narrow_format_size(self.crows_to_kill.len(), "crows to kill")?)?;
 
@@ -154,13 +153,13 @@ impl ChunkFieldReadWrite for ClearSkyCrowKiller {
         writer.write_u8(*crows)?;
       }
 
-      writer.write_u16::<T>(self.money_multiplier)?;
-      writer.write_u16::<T>(self.champion_multiplier)?;
+      writer.write_u16(self.money_multiplier)?;
+      writer.write_u16(self.champion_multiplier)?;
       writer.write_u8(self.selected)?;
       writer.write_w1251_string(&self.game_type)?;
       writer.write_u8(self.current_high_score)?;
-      writer.write_u16::<T>(self.current_timer)?;
-      writer.write_u16::<T>(u16::from_ne_bytes(self.time_out.to_ne_bytes()))?;
+      writer.write_u16(self.current_timer)?;
+      writer.write_u16(u16::from_ne_bytes(self.time_out.to_ne_bytes()))?;
       writer.write_u8(self.killed_counter)?;
       writer.write_u8(self.current_win)
     })
@@ -169,7 +168,7 @@ impl ChunkFieldReadWrite for ClearSkyCrowKiller {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
 
@@ -182,13 +181,11 @@ mod tests {
   fn reads_and_writes_the_constructed_state() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    ClearSkyCrowKiller::default().write::<XRayByteOrder>(&mut writer)?;
+    ClearSkyCrowKiller::default().write(&mut writer)?;
 
     assert_eq!(writer.buffer, CONSTRUCTED);
     assert_eq!(
-      ClearSkyCrowKiller::read::<XRayByteOrder, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(
-        CONSTRUCTED
-      )?)?,
+      ClearSkyCrowKiller::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(CONSTRUCTED)?)?,
       ClearSkyCrowKiller::default()
     );
 

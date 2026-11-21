@@ -1,8 +1,7 @@
 use std::ops::RangeInclusive;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::environment::eax_environment::EaxEnvironment;
@@ -83,8 +82,8 @@ impl SoundEnvironment {
   /// # Errors
   ///
   /// Returns an error when the chunk does not hold a preset of a version this reads.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let version: u32 = reader.read_u32::<T>()?;
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let version: u32 = reader.read_u32()?;
 
     if !Self::SUPPORTED_VERSIONS.contains(&version) {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -95,20 +94,20 @@ impl SoundEnvironment {
 
     Ok(Self {
       name: reader.read_w1251_string()?,
-      room: reader.read_f32::<T>()?,
-      room_hf: reader.read_f32::<T>()?,
-      room_rolloff_factor: reader.read_f32::<T>()?,
-      decay_time: reader.read_f32::<T>()?,
-      decay_hf_ratio: reader.read_f32::<T>()?,
-      reflections: reader.read_f32::<T>()?,
-      reflections_delay: reader.read_f32::<T>()?,
-      reverb: reader.read_f32::<T>()?,
-      reverb_delay: reader.read_f32::<T>()?,
-      environment_size: reader.read_f32::<T>()?,
-      environment_diffusion: reader.read_f32::<T>()?,
-      air_absorption_hf: reader.read_f32::<T>()?,
+      room: reader.read_f32()?,
+      room_hf: reader.read_f32()?,
+      room_rolloff_factor: reader.read_f32()?,
+      decay_time: reader.read_f32()?,
+      decay_hf_ratio: reader.read_f32()?,
+      reflections: reader.read_f32()?,
+      reflections_delay: reader.read_f32()?,
+      reverb: reader.read_f32()?,
+      reverb_delay: reader.read_f32()?,
+      environment_size: reader.read_f32()?,
+      environment_diffusion: reader.read_f32()?,
+      air_absorption_hf: reader.read_f32()?,
       environment: if version >= Self::ENVIRONMENT_VERSION {
-        Some(EaxEnvironment::from(reader.read_u32::<T>()?))
+        Some(EaxEnvironment::from(reader.read_u32()?))
       } else {
         None
       },
@@ -121,16 +120,16 @@ impl SoundEnvironment {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.get_version())?;
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.get_version())?;
     writer.write_w1251_string(&self.name)?;
 
     for value in self.get_parameters() {
-      writer.write_f32::<T>(value)?;
+      writer.write_f32(value)?;
     }
 
     if let Some(environment) = self.environment {
-      writer.write_u32::<T>(environment.into())?;
+      writer.write_u32(environment.into())?;
     }
 
     Ok(())

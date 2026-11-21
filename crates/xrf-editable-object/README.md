@@ -14,11 +14,10 @@ motion references. It keeps what an OGF export drops:
 ## Read an object
 
 ```rust,no_run
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 
 fn main() -> xrf_error::XrfResult {
-  let object = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&"rawdata/objects/editor/axis.object")?;
+  let object = EditableObjectFile::read_from_path(&"rawdata/objects/editor/axis.object")?;
 
   for mesh in object.meshes.iter().flatten() {
     println!("{}: {} points, {} faces", mesh.name, mesh.points.len(), mesh.faces.len());
@@ -95,7 +94,7 @@ example, mod-shipped objects store a mesh's vertex map references before its smo
 A default layout writes `Save`'s order; a named chunk added after reading goes after the ones the stored order lists.
 
 ```rust
-use xrf_chunk::{ChunkLayout, XRayByteOrder};
+use xrf_chunk::ChunkLayout;
 use xrf_editable_object::EditableObjectFile;
 
 fn main() -> xrf_error::XrfResult {
@@ -115,12 +114,12 @@ fn main() -> xrf_error::XrfResult {
     layout: ChunkLayout::default(),
   };
 
-  let bytes = object.write_to_bytes::<XRayByteOrder>()?;
-  let restored = EditableObjectFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let bytes = object.write_to_bytes()?;
+  let restored = EditableObjectFile::read_from_bytes(bytes.clone())?;
 
   // The object read back knows the order it was stored in; the rest is what was written.
   assert_eq!(restored.layout.order.len(), 6);
-  assert_eq!(restored.write_to_bytes::<XRayByteOrder>()?, bytes);
+  assert_eq!(restored.write_to_bytes()?, bytes);
 
   Ok(())
 }

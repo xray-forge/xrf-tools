@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::assert_equal;
@@ -30,11 +29,11 @@ impl Default for ParticleEffectCollision {
 
 impl ChunkReadWrite for ParticleEffectCollision {
   /// Read particle effect collision data from chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let particle_collision: Self = Self {
-      collide_one_minus_friction: reader.read_f32::<T>()?,
-      collide_resilience: reader.read_f32::<T>()?,
-      collide_sqr_cutoff: reader.read_f32::<T>()?,
+      collide_one_minus_friction: reader.read_f32()?,
+      collide_resilience: reader.read_f32()?,
+      collide_sqr_cutoff: reader.read_f32()?,
     };
 
     reader.assert_read("Expect particle collision chunk to be ended")?;
@@ -43,10 +42,10 @@ impl ChunkReadWrite for ParticleEffectCollision {
   }
 
   /// Write particle effect collision data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.collide_one_minus_friction)?;
-    writer.write_f32::<T>(self.collide_resilience)?;
-    writer.write_f32::<T>(self.collide_sqr_cutoff)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.collide_one_minus_friction)?;
+    writer.write_f32(self.collide_resilience)?;
+    writer.write_f32(self.collide_sqr_cutoff)?;
 
     Ok(())
   }

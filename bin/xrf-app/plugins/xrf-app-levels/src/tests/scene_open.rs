@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionScope, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableAiMapNode, EditableAiMapParams, EditableAiMapTool, EditableSceneObject, EditableSectorItem,
   EditableSectorObject, EditableWallmarkSlot, EditableWallmarkTool,
@@ -32,8 +31,8 @@ fn ai_map_part() -> Vec<u8> {
   };
 
   EditableAiMapTool::new(bounds, EditableAiMapParams::default(), vec![node, node])
-    .to_part::<XRayByteOrder>(SCENE_GUID)
-    .and_then(|part| part.write_to_bytes::<XRayByteOrder>())
+    .to_part(SCENE_GUID)
+    .and_then(|part| part.write_to_bytes())
     .expect("the AI map writes")
 }
 
@@ -45,8 +44,8 @@ fn wallmark_part() -> Vec<u8> {
   };
 
   EditableWallmarkTool::new(vec![slot])
-    .to_part::<XRayByteOrder>(SCENE_GUID)
-    .and_then(|part| part.write_to_bytes::<XRayByteOrder>())
+    .to_part(SCENE_GUID)
+    .and_then(|part| part.write_to_bytes())
     .expect("the wall marks write")
 }
 

@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::game::level_game_file::LevelGameFile;
@@ -65,7 +65,7 @@ fn level_game_data_reads_both_of_its_tables() -> XrfResult {
     &[(0, ""), (2, "1_medkit_10_sec")],
   )?;
 
-  let file: LevelGameFile = LevelGameFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelGameFile = LevelGameFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.ways.len(), 1);
   assert_eq!(file.ways[0].name, "patrol_1");
@@ -81,7 +81,7 @@ fn level_game_data_reads_both_of_its_tables() -> XrfResult {
 #[test]
 fn a_patrol_path_carries_no_type_chunk_because_no_shipped_one_does() -> XrfResult {
   let bytes: Vec<u8> = file_bytes(&[("patrol_1", vec!["wp00"])], &[])?;
-  let file: LevelGameFile = LevelGameFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelGameFile = LevelGameFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.ways[0].kind, None);
 
@@ -93,13 +93,13 @@ fn every_respawn_point_stores_a_profile_even_where_the_engine_never_reads_one() 
   // An actor spawn's is empty, and the engine skips it - but the byte is there, and a reader that followed the
   // engine would leave it behind and fail to write the file back.
   let bytes: Vec<u8> = file_bytes(&[], &[(0, "")])?;
-  let file: LevelGameFile = LevelGameFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelGameFile = LevelGameFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(file.rpoints[0].profile, "");
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -113,11 +113,11 @@ fn level_game_data_is_written_back_byte_for_byte() -> XrfResult {
     &[(0, ""), (2, "1_medkit_10_sec")],
   )?;
 
-  let file: LevelGameFile = LevelGameFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelGameFile = LevelGameFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -127,8 +127,7 @@ fn level_game_data_is_written_back_byte_for_byte() -> XrfResult {
 #[test]
 fn a_level_carrying_one_table_and_not_the_other_still_reads() -> XrfResult {
   // Every shipped file holds both chunks and leaves one empty, which is the single-player shape.
-  let file: LevelGameFile =
-    LevelGameFile::read_from_bytes::<XRayByteOrder>(file_bytes(&[("patrol_1", vec!["wp00"])], &[])?)?;
+  let file: LevelGameFile = LevelGameFile::read_from_bytes(file_bytes(&[("patrol_1", vec!["wp00"])], &[])?)?;
 
   assert!(file.rpoints.is_empty());
   assert_eq!(file.ways.len(), 1);

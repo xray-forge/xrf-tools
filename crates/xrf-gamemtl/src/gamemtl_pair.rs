@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// What happens when two materials meet, `SGameMtlPair` (`xrMaterialSystem/GameMtlLib_Engine.cpp`).
@@ -76,18 +75,18 @@ impl GameMtlPair {
   /// # Errors
   ///
   /// Returns an error when a chunk the engine asserts on is absent, or a chunk holds more or less than it should.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     let mut head: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PAIR_CHUNK_ID)?;
     let mut collide: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::COLLIDE_CHUNK_ID)?;
 
     let pair: Self = Self {
-      material_a: head.read_u32::<T>()?,
-      material_b: head.read_u32::<T>()?,
-      id: head.read_u32::<T>()?,
-      parent_id: head.read_u32::<T>()?,
-      own_properties: head.read_u32::<T>()?,
+      material_a: head.read_u32()?,
+      material_b: head.read_u32()?,
+      id: head.read_u32()?,
+      parent_id: head.read_u32()?,
+      own_properties: head.read_u32()?,
       breaking_sounds: ChunkReader::find_required_by_id(&chunks, Self::BREAKING_CHUNK_ID)?
         .read_w1251_string_payload()?,
       step_sounds: ChunkReader::find_required_by_id(&chunks, Self::STEP_CHUNK_ID)?.read_w1251_string_payload()?,
@@ -107,32 +106,32 @@ impl GameMtlPair {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut pair: ChunkWriter = ChunkWriter::new();
 
-    pair.write_u32::<T>(self.material_a)?;
-    pair.write_u32::<T>(self.material_b)?;
-    pair.write_u32::<T>(self.id)?;
-    pair.write_u32::<T>(self.parent_id)?;
-    pair.write_u32::<T>(self.own_properties)?;
-    pair.flush_chunk_into::<T>(&mut writer.buffer, Self::PAIR_CHUNK_ID)?;
+    pair.write_u32(self.material_a)?;
+    pair.write_u32(self.material_b)?;
+    pair.write_u32(self.id)?;
+    pair.write_u32(self.parent_id)?;
+    pair.write_u32(self.own_properties)?;
+    pair.flush_chunk_into(&mut writer.buffer, Self::PAIR_CHUNK_ID)?;
 
     let mut breaking: ChunkWriter = ChunkWriter::new();
 
     breaking.write_w1251_string(&self.breaking_sounds)?;
-    breaking.flush_chunk_into::<T>(&mut writer.buffer, Self::BREAKING_CHUNK_ID)?;
+    breaking.flush_chunk_into(&mut writer.buffer, Self::BREAKING_CHUNK_ID)?;
 
     let mut step: ChunkWriter = ChunkWriter::new();
 
     step.write_w1251_string(&self.step_sounds)?;
-    step.flush_chunk_into::<T>(&mut writer.buffer, Self::STEP_CHUNK_ID)?;
+    step.flush_chunk_into(&mut writer.buffer, Self::STEP_CHUNK_ID)?;
 
     let mut collide: ChunkWriter = ChunkWriter::new();
 
     collide.write_w1251_string(&self.collide_sounds)?;
     collide.write_w1251_string(&self.collide_particles)?;
     collide.write_w1251_string(&self.collide_marks)?;
-    collide.flush_chunk_into::<T>(&mut writer.buffer, Self::COLLIDE_CHUNK_ID)?;
+    collide.flush_chunk_into(&mut writer.buffer, Self::COLLIDE_CHUNK_ID)?;
 
     Ok(())
   }

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -13,7 +12,7 @@ pub struct OgfIkDataChunk {
 impl OgfIkDataChunk {
   pub const CHUNK_ID: u32 = 16;
 
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, bones_count: usize) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, bones_count: usize) -> XrfResult<Self> {
     let mut bones: Vec<OgfBoneIkData> = reader.new_bounded_vec(
       bones_count as u64,
       OgfBoneIkData::MIN_SERIALIZED_SIZE,
@@ -21,7 +20,7 @@ impl OgfIkDataChunk {
     )?;
 
     for _ in 0..bones_count {
-      bones.push(reader.read_xr::<T, _>()?);
+      bones.push(reader.read_xr()?);
     }
 
     reader.assert_read("Expect all data to be read from ogf ik data")?;
@@ -29,9 +28,9 @@ impl OgfIkDataChunk {
     Ok(Self { bones })
   }
 
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for bone in &self.bones {
-      bone.write::<T>(writer)?;
+      bone.write(writer)?;
     }
 
     Ok(())
@@ -42,7 +41,7 @@ impl OgfIkDataChunk {
 mod tests {
   use std::io::Write;
 
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_math::{Cylinder, Obb, Sphere, Vector3d};
   use xrf_skeleton::{SkeletonBoneShape, SkeletonBoneShapeKind, SkeletonJointKind, SkeletonJointLimit};
@@ -109,9 +108,9 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), name);
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    chunk.write::<XRayByteOrder>(&mut writer)?;
+    chunk.write(&mut writer)?;
 
-    let contents: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfIkDataChunk::CHUNK_ID)?;
+    let contents: Vec<u8> = writer.flush_chunk_into_buffer(OgfIkDataChunk::CHUNK_ID)?;
     let mut file = GeneratedResources::overwrite(&filename)?;
 
     file.write_all(&contents)?;
@@ -124,7 +123,7 @@ mod tests {
       .next()
       .expect("expect the written chunk to be present");
 
-    OgfIkDataChunk::read::<XRayByteOrder, _>(&mut reader, chunk.bones.len())
+    OgfIkDataChunk::read(&mut reader, chunk.bones.len())
   }
 
   #[test]
@@ -190,7 +189,7 @@ mod tests {
   fn rejects_bone_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 0, 0, 0])?;
 
-    let error: String = OgfIkDataChunk::read::<XRayByteOrder, _>(&mut reader, 1_000)
+    let error: String = OgfIkDataChunk::read(&mut reader, 1_000)
       .expect_err("expect the supplied bone count to exceed the chunk")
       .to_string();
 

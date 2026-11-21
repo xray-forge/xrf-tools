@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere};
@@ -91,7 +90,7 @@ impl SceneDrawPart {
   fn read_box(objects: &XraySearch, object: &SceneDrawnObject) -> XrfResult<Option<Aabb>> {
     let file: EditableObjectFile = objects
       .read(&object.logical_path)
-      .and_then(EditableObjectFile::read_from_bytes::<XRayByteOrder>)?;
+      .and_then(EditableObjectFile::read_from_bytes)?;
 
     Ok(
       file

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 
@@ -15,16 +14,16 @@ pub struct SpawnPacket<S> {
 }
 
 impl<S: ChunkFieldReadWrite> ChunkFieldReadWrite for SpawnPacket<S> {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    let header: SpawnPacketHeader = reader.read_xr::<T, _>()?;
-    let state: S = header.read_state::<T, _, _>(reader, |reader| reader.read_xr::<T, _>())?;
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let header: SpawnPacketHeader = reader.read_xr()?;
+    let state: S = header.read_state(reader, |reader| reader.read_xr())?;
 
     Ok(Self { header, state })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.header)?;
-    SpawnPacketHeader::write_state::<T, _>(writer, |writer| writer.write_xr::<T, _>(&self.state))
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.header)?;
+    SpawnPacketHeader::write_state(writer, |writer| writer.write_xr(&self.state))
   }
 }
 
@@ -34,7 +33,7 @@ mod tests {
 
   use xrf_chunk::{
     ChunkField, ChunkFieldKind, ChunkFieldReadWrite, ChunkFieldRecorder, ChunkFieldReplay, ChunkFieldSource,
-    ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+    ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource,
   };
   use xrf_error::{XrfError, XrfResult};
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -110,7 +109,7 @@ mod tests {
   fn record(packet: &Restrictor) -> XrfResult<Vec<ChunkField>> {
     let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
 
-    packet.write_fields::<XRayByteOrder, _>(&mut recorder)?;
+    packet.write_fields(&mut recorder)?;
 
     Ok(recorder.into_fields())
   }
@@ -118,7 +117,7 @@ mod tests {
   fn write_bytes(packet: &Restrictor) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    packet.write::<XRayByteOrder>(&mut writer)?;
+    packet.write(&mut writer)?;
 
     Ok(writer.buffer)
   }
@@ -188,10 +187,10 @@ mod tests {
       let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
       let mut source: QueuedFields = QueuedFields(record(&packet)?.into());
 
-      assert_eq!(Restrictor::read::<XRayByteOrder, _>(&mut reader)?, packet);
+      assert_eq!(Restrictor::read(&mut reader)?, packet);
       assert!(reader.is_ended());
       assert_eq!(
-        Restrictor::read_fields::<XRayByteOrder, _>(&mut ChunkFieldReplay::new(&mut source))?,
+        Restrictor::read_fields(&mut ChunkFieldReplay::new(&mut source))?,
         packet
       );
       assert!(source.0.is_empty());
@@ -206,14 +205,14 @@ mod tests {
     let mut bytes: Vec<u8> = write_bytes(&packet)?;
     let mut state: ChunkWriter = ChunkWriter::new();
 
-    packet.state.write::<XRayByteOrder>(&mut state)?;
+    packet.state.write(&mut state)?;
 
     let size_at: usize = bytes.len() - state.bytes_written() - 2;
     let short: u16 = u16::try_from(state.bytes_written()).expect("a small state") + 1;
 
     bytes[size_at..size_at + 2].copy_from_slice(&short.to_le_bytes());
 
-    let error: String = Restrictor::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&bytes)?)
+    let error: String = Restrictor::read(&mut ChunkReader::from_bytes(&bytes)?)
       .expect_err("a state size one short of its fields")
       .to_string();
 
@@ -235,7 +234,7 @@ mod tests {
 
     assert!(error.contains("Cannot record 3 raw bytes"), "{error}");
     assert_eq!(
-      Restrictor::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&write_bytes(&packet)?)?)?,
+      Restrictor::read(&mut ChunkReader::from_bytes(&write_bytes(&packet)?)?)?,
       packet
     );
 

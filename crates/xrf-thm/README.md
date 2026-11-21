@@ -14,7 +14,6 @@ what the engine loads it as, and which bump pair goes with it. It is the SDK's `
 ## Read and write a descriptor
 
 ```rust
-use xrf_chunk::XRayByteOrder;
 use xrf_thm::{ThmBumpChunk, ThmBumpMode, ThmFile, ThmTextureType};
 
 fn main() -> xrf_error::XrfResult {
@@ -26,11 +25,11 @@ fn main() -> xrf_error::XrfResult {
     ..ThmBumpChunk::default()
   });
 
-  let bytes = descriptor.write_to_bytes::<XRayByteOrder>()?;
-  let restored = ThmFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let bytes = descriptor.write_to_bytes()?;
+  let restored = ThmFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(restored, descriptor);
-  assert_eq!(restored.write_to_bytes::<XRayByteOrder>()?, bytes);
+  assert_eq!(restored.write_to_bytes()?, bytes);
   assert_eq!(restored.used_bump_name(), Some("wpn\\wpn_ak74_bump"));
 
   // The engine skips a bump map's own descriptor whole, whatever its bump chunk declares.

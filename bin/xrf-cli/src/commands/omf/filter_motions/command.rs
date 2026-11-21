@@ -4,7 +4,6 @@ use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_omf::{OmfFile, OmfMotionsProcessor};
 use xrf_output::OutputOptions;
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfFilterMotionsReport;
@@ -106,7 +105,7 @@ impl FilterMotionsCommand {
   ) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
 
-    let mut omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(&path)?;
+    let mut omf_file: OmfFile = OmfFile::read_from_path(&path)?;
     let original_count: usize = omf_file.motions.motions.len();
 
     let removed_count: usize = OmfMotionsProcessor::retain_motions(&mut omf_file, |name| {
@@ -148,7 +147,7 @@ impl FilterMotionsCommand {
       return Ok(());
     }
 
-    omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
+    omf_file.write_to_path(&destination)?;
 
     xrf_output::success!(output, "Filtered omf file written into {}", format_path(destination));
 

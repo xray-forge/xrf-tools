@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
-use xrf_spawn::{AnySpawnFile, LevelSpawnFile, SpawnFile, XRayByteOrder};
+use xrf_spawn::{AnySpawnFile, LevelSpawnFile, SpawnFile};
 use xrf_utils::format_path;
 
 use super::report::SpawnInfoReport;
@@ -33,7 +33,7 @@ impl GenericCommand for InfoCommand {
 
     xrf_output::info!(output, "Read spawn file {}", format_path(path));
 
-    let file: AnySpawnFile = AnySpawnFile::read_from_path::<XRayByteOrder, _>(path)?;
+    let file: AnySpawnFile = AnySpawnFile::read_from_path(path)?;
 
     match &file {
       AnySpawnFile::Root(file) => Self::print_root(&output, file),

@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_math::Vector3d;
@@ -20,19 +19,19 @@ impl GraphLevelPoint {
 
 impl ChunkReadWrite for GraphLevelPoint {
   /// Read level point from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      position: reader.read_xr::<T, _>()?,
-      level_vertex_id: reader.read_u32::<T>()?,
-      distance: reader.read_f32::<T>()?,
+      position: reader.read_xr()?,
+      level_vertex_id: reader.read_u32()?,
+      distance: reader.read_f32()?,
     })
   }
 
   /// Write level point data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_u32::<T>(self.level_vertex_id)?;
-    writer.write_f32::<T>(self.distance)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.position)?;
+    writer.write_u32(self.level_vertex_id)?;
+    writer.write_f32(self.distance)?;
 
     Ok(())
   }
@@ -75,7 +74,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
@@ -94,11 +93,11 @@ mod tests {
       level_vertex_id: 8000,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 20);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite_path(GeneratedResources::sample_path(file!(), &filename))?,
       0,
     )?;
@@ -113,7 +112,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(GraphLevelPoint::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(GraphLevelPoint::read(&mut reader)?, original);
 
     Ok(())
   }

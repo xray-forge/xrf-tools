@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -24,25 +23,25 @@ impl BuildPrjLightControl {
 }
 
 impl ChunkReadWrite for BuildPrjLightControl {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let name: BuildPrjName = BuildPrjName::read(reader, BuildPrjName::SHORT_SIZE)?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut data: Vec<u32> = reader.new_bounded_vec(u64::from(count), 4, "build project light control data")?;
 
     for _ in 0..count {
-      data.push(reader.read_u32::<T>()?);
+      data.push(reader.read_u32()?);
     }
 
     Ok(Self { name, data })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.name.write(writer, BuildPrjName::SHORT_SIZE)?;
 
-    writer.write_u32::<T>(narrow_format_size(self.data.len(), "build project light control data")?)?;
+    writer.write_u32(narrow_format_size(self.data.len(), "build project light control data")?)?;
 
     for value in &self.data {
-      writer.write_u32::<T>(*value)?;
+      writer.write_u32(*value)?;
     }
 
     Ok(())

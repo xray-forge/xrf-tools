@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::parallel::prelude::*;
 use xrf_level::{
@@ -160,7 +159,7 @@ impl GeometryModels {
         let mut bytes: Vec<u8> = vec![0; visual.vertices.len() * stride];
 
         for (vertex, slot) in visual.vertices.iter().zip(bytes.chunks_exact_mut(stride)) {
-          Self::get_stored(vertex, model).write_into::<XRayByteOrder>(&layout, slot)?;
+          Self::get_stored(vertex, model).write_into(&layout, slot)?;
         }
 
         let slide_window: Option<u32> = visual.windows.as_ref().map(|windows| {

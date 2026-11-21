@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::narrow_format_size;
@@ -69,7 +68,7 @@ impl EditableDetailObjectTool {
   /// # Errors
   ///
   /// Returns an error when the part is another tool's, or its data is not a stream this reads.
-  pub fn read_from_part<T: ByteOrder>(part: &EditableBinaryPart) -> XrfResult<Self> {
+  pub fn read_from_part(part: &EditableBinaryPart) -> XrfResult<Self> {
     if part.class_id != Self::CLASS_ID {
       return Err(XrfError::new_parsing_error(format!(
         "Level part of class {} is not the detail object tool's {}",
@@ -78,7 +77,7 @@ impl EditableDetailObjectTool {
       )));
     }
 
-    Self::read_from_bytes::<T>(part.data.clone())
+    Self::read_from_bytes(part.data.clone())
   }
 
   /// The tool's stream as `EDetailManager::LoadStream` reads it, keeping the base texture's name whether or not the
@@ -89,7 +88,7 @@ impl EditableDetailObjectTool {
   /// Returns an error when a chunk the editor asserts on is missing, the version is another, a chunk does not hold
   /// exactly what it is read as, the objects are not numbered from 0, the slots do not fill the header's grid, or an
   /// object does not read.
-  pub fn read_from_bytes<T: ByteOrder>(data: Vec<u8>) -> XrfResult<Self> {
+  pub fn read_from_bytes(data: Vec<u8>) -> XrfResult<Self> {
     let mut version: Option<u32> = None;
     let mut header: Option<EditableDetailHeader> = None;
     let mut slots: Option<Vec<[u32; Self::SLOT_WORDS]>> = None;
@@ -102,18 +101,18 @@ impl EditableDetailObjectTool {
     let mut snap_objects: Option<Vec<String>> = None;
     let layout: ChunkLayout = ChunkLayout::read(&mut ChunkReader::from_vec(data)?, |chunk| {
       match chunk.id {
-        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u32_payload::<T>()?),
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u32_payload()?),
         Self::HEADER_CHUNK_ID if header.is_none() => {
           header = Some(chunk.read_whole_payload(
             "Expect the detail header chunk to hold exactly its six values",
             |chunk| {
               Ok(EditableDetailHeader {
-                version: chunk.read_u32::<T>()?,
-                object_count: chunk.read_u32::<T>()?,
-                offset_x: chunk.read_i32::<T>()?,
-                offset_z: chunk.read_i32::<T>()?,
-                size_x: chunk.read_u32::<T>()?,
-                size_z: chunk.read_u32::<T>()?,
+                version: chunk.read_u32()?,
+                object_count: chunk.read_u32()?,
+                offset_x: chunk.read_i32()?,
+                offset_z: chunk.read_i32()?,
+                size_x: chunk.read_u32()?,
+                size_z: chunk.read_u32()?,
               })
             },
           )?);
@@ -122,7 +121,7 @@ impl EditableDetailObjectTool {
           slots = Some(chunk.read_whole_payload(
             "Expect the detail slots chunk to hold exactly the slots it counts",
             |chunk| {
-              let count: u32 = chunk.read_u32::<T>()?;
+              let count: u32 = chunk.read_u32()?;
               let mut slots: Vec<[u32; Self::SLOT_WORDS]> =
                 chunk.new_bounded_vec(count.into(), (Self::SLOT_WORDS * 4) as u64, "detail slots")?;
 
@@ -130,7 +129,7 @@ impl EditableDetailObjectTool {
                 let mut slot: [u32; Self::SLOT_WORDS] = [0; Self::SLOT_WORDS];
 
                 for word in &mut slot {
-                  *word = chunk.read_u32::<T>()?;
+                  *word = chunk.read_u32()?;
                 }
 
                 slots.push(slot);
@@ -144,8 +143,8 @@ impl EditableDetailObjectTool {
           bbox = Some(
             chunk.read_whole_payload("Expect the detail box chunk to hold exactly its box", |chunk| {
               Ok(Aabb {
-                min: Self::read_vector::<T>(chunk)?,
-                max: Self::read_vector::<T>(chunk)?,
+                min: Self::read_vector(chunk)?,
+                max: Self::read_vector(chunk)?,
               })
             })?,
           );
@@ -153,12 +152,12 @@ impl EditableDetailObjectTool {
         Self::COLOR_INDEX_CHUNK_ID if color_indices.is_none() => {
           color_indices = Some(chunk.read_whole_payload(
             "Expect the detail colour index chunk to hold exactly its indices",
-            |chunk| Self::read_color_indices::<T>(chunk),
+            Self::read_color_indices,
           )?);
         }
-        Self::FLAGS_CHUNK_ID if flags.is_none() => flags = Some(chunk.read_u32_payload::<T>()?),
+        Self::FLAGS_CHUNK_ID if flags.is_none() => flags = Some(chunk.read_u32_payload()?),
         Self::OBJECTS_CHUNK_ID if objects.is_none() => {
-          objects = Some(chunk.read_numbered_children("detail object", EditableDetailObject::read::<T>)?);
+          objects = Some(chunk.read_numbered_children("detail object", EditableDetailObject::read)?);
         }
         Self::BASE_TEXTURE_CHUNK_ID if base_texture.is_none() => {
           base_texture = Some(chunk.read_whole_payload(
@@ -166,12 +165,12 @@ impl EditableDetailObjectTool {
             |chunk| chunk.read_w1251_string(),
           )?);
         }
-        Self::DENSITY_CHUNK_ID if density.is_none() => density = Some(chunk.read_f32_payload::<T>()?),
+        Self::DENSITY_CHUNK_ID if density.is_none() => density = Some(chunk.read_f32_payload()?),
         Self::SNAP_OBJECTS_CHUNK_ID if snap_objects.is_none() => {
           snap_objects = Some(chunk.read_whole_payload(
             "Expect the detail snap objects chunk to hold exactly its names",
             |chunk| {
-              let count: u32 = chunk.read_u32::<T>()?;
+              let count: u32 = chunk.read_u32()?;
 
               (0..count).map(|_| chunk.read_w1251_string()).collect::<XrfResult<_>>()
             },
@@ -226,30 +225,28 @@ impl EditableDetailObjectTool {
   ///
   /// Returns an error when the slots do not fill the header's grid, a count overflows its field, or a name does not
   /// encode.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     Self::check_grid(&self.header, self.slots.len())?;
 
     let mut sequence: ChunkSequence = ChunkSequence::new();
     let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult { sequence.push(id, write) };
 
-    chunk(Self::VERSION_CHUNK_ID, &|writer| {
-      Ok(writer.write_u32::<T>(Self::VERSION)?)
-    })?;
-    chunk(Self::FLAGS_CHUNK_ID, &|writer| Ok(writer.write_u32::<T>(self.flags)?))?;
+    chunk(Self::VERSION_CHUNK_ID, &|writer| Ok(writer.write_u32(Self::VERSION)?))?;
+    chunk(Self::FLAGS_CHUNK_ID, &|writer| Ok(writer.write_u32(self.flags)?))?;
     chunk(Self::HEADER_CHUNK_ID, &|writer| {
-      writer.write_u32::<T>(self.header.version)?;
-      writer.write_u32::<T>(self.header.object_count)?;
-      writer.write_i32::<T>(self.header.offset_x)?;
-      writer.write_i32::<T>(self.header.offset_z)?;
-      writer.write_u32::<T>(self.header.size_x)?;
-      Ok(writer.write_u32::<T>(self.header.size_z)?)
+      writer.write_u32(self.header.version)?;
+      writer.write_u32(self.header.object_count)?;
+      writer.write_i32(self.header.offset_x)?;
+      writer.write_i32(self.header.offset_z)?;
+      writer.write_u32(self.header.size_x)?;
+      Ok(writer.write_u32(self.header.size_z)?)
     })?;
     chunk(Self::OBJECTS_CHUNK_ID, &|writer| {
       for (index, object) in self.objects.iter().enumerate() {
         let mut entry: ChunkWriter = ChunkWriter::new();
 
-        object.write::<T>(&mut entry)?;
-        entry.flush_chunk_into::<T>(&mut writer.buffer, narrow_format_size(index, "detail objects")?)?;
+        object.write(&mut entry)?;
+        entry.flush_chunk_into(&mut writer.buffer, narrow_format_size(index, "detail objects")?)?;
       }
 
       Ok(())
@@ -261,7 +258,7 @@ impl EditableDetailObjectTool {
       )?)?;
 
       for index in &self.color_indices {
-        writer.write_u32::<T>(index.color)?;
+        writer.write_u32(index.color)?;
         writer.write_u8(narrow_format_size::<u8>(
           index.objects.len(),
           "Detail objects of a colour index",
@@ -275,10 +272,10 @@ impl EditableDetailObjectTool {
       Ok(())
     })?;
     chunk(Self::SLOTS_CHUNK_ID, &|writer| {
-      writer.write_u32::<T>(narrow_format_size(self.slots.len(), "detail slots")?)?;
+      writer.write_u32(narrow_format_size(self.slots.len(), "detail slots")?)?;
 
       for word in self.slots.as_flattened() {
-        writer.write_u32::<T>(*word)?;
+        writer.write_u32(*word)?;
       }
 
       Ok(())
@@ -288,7 +285,7 @@ impl EditableDetailObjectTool {
         .iter()
         .flat_map(|corner| [corner.x, corner.y, corner.z])
       {
-        writer.write_f32::<T>(value)?;
+        writer.write_f32(value)?;
       }
 
       Ok(())
@@ -301,11 +298,9 @@ impl EditableDetailObjectTool {
       })?;
     }
 
-    chunk(Self::DENSITY_CHUNK_ID, &|writer| {
-      Ok(writer.write_f32::<T>(self.density)?)
-    })?;
+    chunk(Self::DENSITY_CHUNK_ID, &|writer| Ok(writer.write_f32(self.density)?))?;
     chunk(Self::SNAP_OBJECTS_CHUNK_ID, &|writer| {
-      writer.write_u32::<T>(narrow_format_size(self.snap_objects.len(), "snap objects")?)?;
+      writer.write_u32(narrow_format_size(self.snap_objects.len(), "snap objects")?)?;
 
       for name in &self.snap_objects {
         writer.write_w1251_string(name)?;
@@ -316,7 +311,7 @@ impl EditableDetailObjectTool {
 
     let mut stream: ChunkWriter = ChunkWriter::new();
 
-    self.layout.write::<T>(&mut stream, sequence)?;
+    self.layout.write(&mut stream, sequence)?;
 
     Ok(stream.buffer)
   }
@@ -326,11 +321,11 @@ impl EditableDetailObjectTool {
   /// # Errors
   ///
   /// Returns an error as [`Self::write_to_bytes`] does.
-  pub fn to_part<T: ByteOrder>(&self, guid: EditableLevelGuid) -> XrfResult<EditableBinaryPart> {
+  pub fn to_part(&self, guid: EditableLevelGuid) -> XrfResult<EditableBinaryPart> {
     Ok(EditableBinaryPart {
       guid,
       class_id: Self::CLASS_ID,
-      data: self.write_to_bytes::<T>()?,
+      data: self.write_to_bytes()?,
       layout: ChunkLayout::default(),
     })
   }
@@ -341,9 +336,9 @@ impl EditableDetailObjectTool {
   ///
   /// Returns an error when the tool is not [`Self::TOOL_NAME`] or holds other than one binary part, or as
   /// [`Self::read_from_part`] does.
-  pub fn read_from_scene_tool<T: ByteOrder>(tool: &EditableSceneTool) -> XrfResult<Self> {
+  pub fn read_from_scene_tool(tool: &EditableSceneTool) -> XrfResult<Self> {
     match tool.parts.as_slice() {
-      [EditableLevelPart::Binary(part)] if tool.name == Self::TOOL_NAME => Self::read_from_part::<T>(part),
+      [EditableLevelPart::Binary(part)] if tool.name == Self::TOOL_NAME => Self::read_from_part(part),
       _ => Err(XrfError::new_parsing_error(format!(
         "Scene tool '{}' of {} parts is not the one binary part of tool '{}'",
         tool.name,
@@ -358,21 +353,19 @@ impl EditableDetailObjectTool {
   /// # Errors
   ///
   /// Returns an error as [`Self::write_to_bytes`] does.
-  pub fn to_scene_tool<T: ByteOrder>(&self, guid: EditableLevelGuid) -> XrfResult<EditableSceneTool> {
+  pub fn to_scene_tool(&self, guid: EditableLevelGuid) -> XrfResult<EditableSceneTool> {
     Ok(EditableSceneTool {
       name: Self::TOOL_NAME.to_owned(),
-      parts: vec![EditableLevelPart::Binary(self.to_part::<T>(guid)?)],
+      parts: vec![EditableLevelPart::Binary(self.to_part(guid)?)],
     })
   }
 
-  fn read_color_indices<T: ByteOrder>(
-    reader: &mut ChunkReader<InMemoryChunkDataSource>,
-  ) -> XrfResult<Vec<EditableDetailColorIndex>> {
+  fn read_color_indices(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Vec<EditableDetailColorIndex>> {
     let count: u8 = reader.read_u8()?;
 
     (0..count)
       .map(|_| {
-        let color: u32 = reader.read_u32::<T>()?;
+        let color: u32 = reader.read_u32()?;
         let objects: u8 = reader.read_u8()?;
 
         Ok(EditableDetailColorIndex {
@@ -399,11 +392,11 @@ impl EditableDetailObjectTool {
     }
   }
 
-  fn read_vector<T: ByteOrder>(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Vector3d> {
+  fn read_vector(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Vector3d> {
     Ok(Vector3d::new(
-      reader.read_f32::<T>()?,
-      reader.read_f32::<T>()?,
-      reader.read_f32::<T>()?,
+      reader.read_f32()?,
+      reader.read_f32()?,
+      reader.read_f32()?,
     ))
   }
 }

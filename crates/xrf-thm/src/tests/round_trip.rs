@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
 use crate::chunks::thm_extra_chunk::ThmExtraChunk;
@@ -9,8 +8,8 @@ use crate::thm_file::ThmFile;
 
 /// Read a descriptor and write it straight back.
 fn rewrite(bytes: &[u8]) -> XrfResult<(ThmFile, Vec<u8>)> {
-  let file: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(bytes.to_vec())?;
-  let written: Vec<u8> = file.write_to_bytes::<XRayByteOrder>()?;
+  let file: ThmFile = ThmFile::read_from_bytes(bytes.to_vec())?;
+  let written: Vec<u8> = file.write_to_bytes()?;
 
   Ok((file, written))
 }

@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_output::OutputOptions;
 use xrf_texture::TextureEncodedDescriptor;
@@ -70,7 +69,7 @@ impl GenericCommand for WriteCommand {
     let descriptor: ThmFile = Self::describe(source, &edit)?;
 
     if !is_dry_run {
-      descriptor.write_to_path::<XRayByteOrder, _>(&destination)?;
+      descriptor.write_to_path(&destination)?;
     }
 
     context.set_result(|| ThmWriteReport::new(source, &destination, descriptor, is_dry_run))?;

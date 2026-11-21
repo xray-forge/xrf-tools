@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::DetailModel;
 use xrf_vfs::XrayAssetType;
@@ -39,7 +38,7 @@ impl ArchiveDetailModel {
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     Ok(Self::of(
       source,
-      &DetailModel::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?,
+      &DetailModel::read_from_bytes(source.read_bytes(name)?)?,
     ))
   }
 

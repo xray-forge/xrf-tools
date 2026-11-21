@@ -2,7 +2,6 @@ use clap::{ArgMatches, Command};
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_level::{LevelFile, LevelGeomFile, LevelVisualsChunk};
 use xrf_output::OutputOptions;
-use xrf_spawn::XRayByteOrder;
 
 use super::level_visuals_report::LevelVisualsReport;
 use super::report::LevelInfoReport;
@@ -44,8 +43,8 @@ impl GenericCommand for InfoCommand {
 
     // Split once and read twice: an archived bundle is the largest file a level ships.
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bundle)?.read_children()?;
-    let level: LevelFile = LevelFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
-    let visuals: Option<LevelVisualsChunk> = LevelFile::read_visuals_from_chunks::<XRayByteOrder, _>(&chunks)?;
+    let level: LevelFile = LevelFile::read_from_chunks(&chunks)?;
+    let visuals: Option<LevelVisualsChunk> = LevelFile::read_visuals_from_chunks(&chunks)?;
 
     let geometry: Option<LevelGeomFile> = Self::read_geometry(&assets, LevelGeomFile::FILE_NAME, &output)?;
     let detail_geometry: Option<LevelGeomFile> =
@@ -127,6 +126,6 @@ impl InfoCommand {
       return Ok(None);
     };
 
-    Ok(Some(LevelGeomFile::read_from_bytes::<XRayByteOrder>(bytes)?))
+    Ok(Some(LevelGeomFile::read_from_bytes(bytes)?))
   }
 }

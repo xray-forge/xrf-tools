@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
 
@@ -27,7 +26,7 @@ impl LevelCformMaterials {
   /// # Errors
   ///
   /// Returns an error when the payload holds fewer vertices or faces than the header counts.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_from_chunk<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     header: &LevelCformHeader,
   ) -> XrfResult<Self> {
@@ -38,7 +37,7 @@ impl LevelCformMaterials {
         let mut named: Box<[bool; Self::IDS]> = Box::new([false; Self::IDS]);
 
         for face in faces.as_chunks::<{ LevelCformFace::SERIALIZED_SIZE }>().0 {
-          named[usize::from(LevelCformFace::read_material::<T>(face))] = true;
+          named[usize::from(LevelCformFace::read_material(face))] = true;
         }
 
         named

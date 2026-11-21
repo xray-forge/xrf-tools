@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -52,15 +51,15 @@ impl AlifeObjectTraderAbstract {
 }
 
 impl AlifeStateReadWrite for AlifeObjectTraderAbstract {
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
     let mut trader: Self = Self {
-      money: reader.read_u32::<T>()?,
+      money: reader.read_u32()?,
       specific_character: reader.read_w1251_string()?,
-      trader_flags: reader.read_u32::<T>()?,
+      trader_flags: reader.read_u32()?,
       character_profile: reader.read_w1251_string()?,
-      community_index: reader.read_u32::<T>()?,
-      rank: reader.read_u32::<T>()?,
-      reputation: reader.read_u32::<T>()?,
+      community_index: reader.read_u32()?,
+      rank: reader.read_u32()?,
+      reputation: reader.read_u32()?,
       character_name: reader.read_w1251_string()?,
       dead_body_can_take: Self::DEFAULT_DEAD_BODY_CAN_TAKE,
       dead_body_closed: Self::DEFAULT_DEAD_BODY_CLOSED,
@@ -74,15 +73,15 @@ impl AlifeStateReadWrite for AlifeObjectTraderAbstract {
     Ok(trader)
   }
 
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     self.assert_corpse_access_fits(layout)?;
-    writer.write_u32::<T>(self.money)?;
+    writer.write_u32(self.money)?;
     writer.write_w1251_string(&self.specific_character)?;
-    writer.write_u32::<T>(self.trader_flags)?;
+    writer.write_u32(self.trader_flags)?;
     writer.write_w1251_string(&self.character_profile)?;
-    writer.write_u32::<T>(self.community_index)?;
-    writer.write_u32::<T>(self.rank)?;
-    writer.write_u32::<T>(self.reputation)?;
+    writer.write_u32(self.community_index)?;
+    writer.write_u32(self.rank)?;
+    writer.write_u32(self.reputation)?;
     writer.write_w1251_string(&self.character_name)?;
 
     if layout.has_trader_corpse_access() {
@@ -149,7 +148,7 @@ impl AlifeStateReadWrite for AlifeObjectTraderAbstract {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
 
@@ -185,11 +184,10 @@ mod tests {
   ) -> XrfResult<(usize, AlifeObjectTraderAbstract)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    trader.write_state::<XRayByteOrder, _>(&mut writer, layout)?;
+    trader.write_state(&mut writer, layout)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: AlifeObjectTraderAbstract =
-      AlifeObjectTraderAbstract::read_state::<XRayByteOrder, _>(&mut reader, layout)?;
+    let read: AlifeObjectTraderAbstract = AlifeObjectTraderAbstract::read_state(&mut reader, layout)?;
 
     reader.assert_read("Expect the trader to be read whole")?;
 
@@ -221,7 +219,7 @@ mod tests {
       (new_trader(1, 1), "dead_body_closed"),
     ] {
       let error: String = trader
-        .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(124))
+        .write_state(&mut ChunkWriter::new(), layout(124))
         .expect_err("a corpse access field the packet cannot hold")
         .to_string();
 

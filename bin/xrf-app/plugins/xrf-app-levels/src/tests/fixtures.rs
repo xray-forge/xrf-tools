@@ -9,7 +9,6 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, SessionSnapshot};
 use xrf_audio::{AudioEngineParts, AudioEngineSettings, AudioEvent, AudioServer};
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableBuildParams, EditableCustomObject, EditableLevelCamera, EditableLevelFile, EditableLevelGuid,
   EditableLevelOptions, EditableObjectPart, EditableObjectTransform, EditableToolObject,
@@ -186,9 +185,7 @@ pub(super) fn write_scene_object_file(source: &SceneSource, reference: &str, obj
     .join(format!("{reference}.object"));
 
   fs::create_dir_all(path.parent().expect("an object lies in a directory")).expect("the object's directory is made");
-  object
-    .write_to_path::<XRayByteOrder, _>(&path)
-    .expect("the object is written");
+  object.write_to_path(&path).expect("the object is written");
 }
 
 /// A static library object of one `models\model` wood surface of `triangles` and game material

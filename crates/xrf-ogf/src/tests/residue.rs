@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
@@ -10,7 +10,7 @@ use crate::tests::fixtures;
 
 #[test]
 fn reads_a_visual_whose_fifth_reference_is_split() -> XrfResult {
-  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::split_motion_ref()?)?;
+  let file: OgfFile = OgfFile::read_from_bytes(fixtures::split_motion_ref()?)?;
   let kinematics: &OgfKinematicsChunk = file.kinematics.as_ref().expect("Expect a motion refs chunk");
 
   assert_eq!(
@@ -44,7 +44,7 @@ fn reads_motion_refs_through_the_narrow_path() -> XrfResult {
   let mut reader = ChunkReader::from_vec(fixtures::split_motion_ref()?)?;
 
   assert_eq!(
-    OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut reader)?,
+    OgfFile::read_motion_refs_from_chunk(&mut reader)?,
     fixtures::DECLARED_REFS.map(String::from).to_vec()
   );
 
@@ -53,7 +53,7 @@ fn reads_motion_refs_through_the_narrow_path() -> XrfResult {
 
 #[test]
 fn reads_a_visual_ending_in_a_fragment_too_short_for_a_header() -> XrfResult {
-  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::trailing_fragment()?)?;
+  let file: OgfFile = OgfFile::read_from_bytes(fixtures::trailing_fragment()?)?;
   let residue = file.residue.expect("Expect the stray bytes to be accounted for");
 
   assert_eq!(residue.cause, OgfResidueCause::TrailingFragment);
@@ -64,7 +64,7 @@ fn reads_a_visual_ending_in_a_fragment_too_short_for_a_header() -> XrfResult {
 
 #[test]
 fn refuses_a_truncated_chunk() -> XrfResult {
-  let error: String = match OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::truncated_chunk()?) {
+  let error: String = match OgfFile::read_from_bytes(fixtures::truncated_chunk()?) {
     Ok(_) => panic!("Expected a chunk declaring more than the file holds to be refused"),
     Err(error) => error.to_string(),
   };
@@ -81,7 +81,7 @@ fn refuses_a_truncated_chunk() -> XrfResult {
 #[test]
 fn refuses_trailing_bytes_headed_as_a_chunk_the_engine_reads() -> XrfResult {
   // Keeps the rule narrow: the engine reads a user data chunk cut short past the file's end.
-  let strict: String = match OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::unexplained_residue()?) {
+  let strict: String = match OgfFile::read_from_bytes(fixtures::unexplained_residue()?) {
     Ok(_) => panic!("Expected trailing bytes the engine reads to be refused"),
     Err(error) => error.to_string(),
   };
@@ -98,7 +98,7 @@ fn refuses_trailing_bytes_headed_as_a_chunk_the_engine_reads() -> XrfResult {
 fn reads_text_appended_after_the_last_chunk_and_normalizes_it_away() -> XrfResult {
   // `find_chunk` takes the text's first bytes for an id it never looks for and a size past the end, and stops there.
   let appended: Vec<u8> = fixtures::appended_text()?;
-  let residue = OgfFile::read_from_bytes::<XRayByteOrder>(appended.clone())?
+  let residue = OgfFile::read_from_bytes(appended.clone())?
     .residue
     .expect("Expect the appended text accounted for");
 
@@ -109,10 +109,7 @@ fn reads_text_appended_after_the_last_chunk_and_normalizes_it_away() -> XrfResul
     }
   );
   assert_eq!(residue.bytes, fixtures::APPENDED_TEXT);
-  assert_eq!(
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&appended)?,
-    fixtures::well_formed()?
-  );
+  assert_eq!(OgfNormalization::normalize_bytes(&appended)?, fixtures::well_formed()?);
 
   Ok(())
 }
@@ -120,7 +117,7 @@ fn reads_text_appended_after_the_last_chunk_and_normalizes_it_away() -> XrfResul
 #[test]
 fn reads_a_lods_chunk_declaring_more_than_the_file_holds_whose_line_ends_in_it() -> XrfResult {
   let (overstated, exact) = fixtures::overstated_lods()?;
-  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(overstated.clone())?;
+  let file: OgfFile = OgfFile::read_from_bytes(overstated.clone())?;
 
   assert_eq!(
     file.lods.map(|it| String::from(it.get_visual_name())),
@@ -130,7 +127,7 @@ fn reads_a_lods_chunk_declaring_more_than_the_file_holds_whose_line_ends_in_it()
     file.residue.map(|it| it.cause),
     Some(OgfResidueCause::OverstatedLods { declared: 4343 })
   );
-  assert_eq!(OgfNormalization::normalize_bytes::<XRayByteOrder>(&overstated)?, exact);
+  assert_eq!(OgfNormalization::normalize_bytes(&overstated)?, exact);
 
   Ok(())
 }
@@ -140,7 +137,7 @@ fn reads_a_counted_reference_the_declared_size_cuts_as_the_engine_does() -> XrfR
   // `CKinematicsAnimated::Load` finds the chunk and reads its strings off the visual's reader, so the reference runs on
   // past the declared size and the engine loads it whole: reading it short would name a bank that does not exist.
   let bytes: Vec<u8> = fixtures::split_counted_ref()?;
-  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: OgfFile = OgfFile::read_from_bytes(bytes.clone())?;
   let declared: u32 = (fixtures::kinematics_payload(&[fixtures::COUNTED_REF]).len() - 14) as u32;
 
   assert_eq!(
@@ -152,7 +149,7 @@ fn reads_a_counted_reference_the_declared_size_cuts_as_the_engine_does() -> XrfR
     Some(OgfResidueCause::UnderstatedMotionRefs { declared })
   );
   assert_eq!(
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&bytes)?,
+    OgfNormalization::normalize_bytes(&bytes)?,
     fixtures::with_refs(&[fixtures::COUNTED_REF])?,
     "Expect normalizing to keep every byte and only give the chunk the size of what the engine reads"
   );
@@ -170,13 +167,10 @@ fn reads_counted_references_running_whole_past_the_declared_size() -> XrfResult 
   let bytes: Vec<u8> = fixtures::spilled_refs(&refs, 30)?;
 
   assert_eq!(
-    OgfFile::read_motion_refs_from_bytes::<XRayByteOrder>(bytes.clone())?,
+    OgfFile::read_motion_refs_from_bytes(bytes.clone())?,
     refs.map(String::from).to_vec()
   );
-  assert_eq!(
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&bytes)?,
-    fixtures::with_refs(&refs)?
-  );
+  assert_eq!(OgfNormalization::normalize_bytes(&bytes)?, fixtures::with_refs(&refs)?);
 
   Ok(())
 }
@@ -187,7 +181,7 @@ fn refuses_counted_references_followed_by_bytes_nothing_reads() -> XrfResult {
 
   bytes.extend_from_slice(b"unexplained bytes");
 
-  assert!(OgfFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(OgfFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -195,7 +189,7 @@ fn refuses_counted_references_followed_by_bytes_nothing_reads() -> XrfResult {
 #[test]
 fn reads_a_found_last_chunk_declaring_more_than_the_file_holds() -> XrfResult {
   let (overstated, exact) = fixtures::overstated_last_chunk()?;
-  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(overstated.clone())?;
+  let file: OgfFile = OgfFile::read_from_bytes(overstated.clone())?;
 
   assert_eq!(
     file.kinematics.map(|it| it.motion_refs),
@@ -207,7 +201,7 @@ fn reads_a_found_last_chunk_declaring_more_than_the_file_holds() -> XrfResult {
     file.residue.map(|it| it.cause),
     Some(OgfResidueCause::OverstatedMotionRefs { declared: 56 })
   );
-  assert_eq!(OgfNormalization::normalize_bytes::<XRayByteOrder>(&overstated)?, exact);
+  assert_eq!(OgfNormalization::normalize_bytes(&overstated)?, exact);
 
   Ok(())
 }
@@ -221,7 +215,7 @@ fn refuses_any_other_chunk_the_file_cuts_short() -> XrfResult {
   bytes.extend_from_slice(&141u32.to_le_bytes());
   bytes.extend_from_slice(b"x:\\rawdata\\objects\\cut");
 
-  assert!(OgfFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(OgfFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -229,24 +223,21 @@ fn refuses_any_other_chunk_the_file_cuts_short() -> XrfResult {
 #[test]
 fn reads_a_compression_mark_the_engine_ignores_and_normalizes_it_away() -> XrfResult {
   let marked: Vec<u8> = fixtures::marked_header()?;
-  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(marked.clone())?;
+  let file: OgfFile = OgfFile::read_from_bytes(marked.clone())?;
 
   assert_eq!(file.header.version, 4);
   assert!(
     file.residue.is_none(),
     "Expect a mark on a found chunk to be no departure at all"
   );
-  assert_eq!(
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&marked)?,
-    fixtures::well_formed()?
-  );
+  assert_eq!(OgfNormalization::normalize_bytes(&marked)?, fixtures::well_formed()?);
 
   Ok(())
 }
 
 #[test]
 fn refuses_a_compressed_chunk_the_engine_would_decompress() -> XrfResult {
-  let error: String = OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::marked_opened_chunk()?)
+  let error: String = OgfFile::read_from_bytes(fixtures::marked_opened_chunk()?)
     .expect_err("expect a compressed user data chunk to be refused")
     .to_string();
 
@@ -260,13 +251,13 @@ fn normalizes_only_what_the_engine_ignores() -> XrfResult {
   let well_formed: Vec<u8> = fixtures::well_formed()?;
 
   assert_eq!(
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&well_formed)?,
+    OgfNormalization::normalize_bytes(&well_formed)?,
     well_formed,
     "Expect a well-formed visual to normalize to itself byte for byte, which is what keeps the patch guard unchanged"
   );
 
   let split: Vec<u8> = fixtures::split_motion_ref()?;
-  let normalized: Vec<u8> = OgfNormalization::normalize_bytes::<XRayByteOrder>(&split)?;
+  let normalized: Vec<u8> = OgfNormalization::normalize_bytes(&split)?;
 
   assert_eq!(
     normalized.len(),
@@ -280,18 +271,15 @@ fn normalizes_only_what_the_engine_ignores() -> XrfResult {
 
   let fragment: Vec<u8> = fixtures::trailing_fragment()?;
 
-  assert_eq!(
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&fragment)?,
-    well_formed
-  );
+  assert_eq!(OgfNormalization::normalize_bytes(&fragment)?, well_formed);
 
   Ok(())
 }
 
 #[test]
 fn normalized_bytes_still_read_as_the_same_visual() -> XrfResult {
-  let normalized: Vec<u8> = OgfNormalization::normalize_bytes::<XRayByteOrder>(&fixtures::split_motion_ref()?)?;
-  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(normalized)?;
+  let normalized: Vec<u8> = OgfNormalization::normalize_bytes(&fixtures::split_motion_ref()?)?;
+  let file: OgfFile = OgfFile::read_from_bytes(normalized)?;
 
   assert_eq!(
     file.kinematics.map(|it| it.motion_refs),
@@ -306,7 +294,7 @@ fn normalized_bytes_still_read_as_the_same_visual() -> XrfResult {
 #[test]
 fn refuses_to_normalize_what_it_cannot_account_for() -> XrfResult {
   assert!(
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&fixtures::unexplained_residue()?).is_err(),
+    OgfNormalization::normalize_bytes(&fixtures::unexplained_residue()?).is_err(),
     "Expect normalization to refuse a file the reader refuses, rather than truncate it to the last good chunk"
   );
 
@@ -323,9 +311,9 @@ fn surveys_report_residue_rather_than_tolerating_it() -> XrfResult {
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(std::fs::read(path)?)?;
 
   // Surveyed after the visual was read through the same reader, as `ogf info` does to read the file once.
-  OgfFile::read_from_chunk::<XRayByteOrder, _>(&mut reader)?;
+  OgfFile::read_from_chunk(&mut reader)?;
 
-  let survey = OgfChunksProcessor::collect_chunks::<XRayByteOrder, _>(&mut reader)?;
+  let survey = OgfChunksProcessor::collect_chunks(&mut reader)?;
 
   assert_eq!(
     survey.entries.iter().map(|it| it.id).collect::<Vec<u32>>(),

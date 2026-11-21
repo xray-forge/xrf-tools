@@ -1,5 +1,4 @@
 use clap::ArgMatches;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 
@@ -21,6 +20,6 @@ impl GameMtlFileInput {
   ///
   /// Returns an error when the file cannot be read or is no game material library the engine loads.
   pub(crate) fn open(matches: &ArgMatches) -> XrfResult<GameMtlFile> {
-    GameMtlFile::read_from_path::<XRayByteOrder, _>(InputArgument::of(matches))
+    GameMtlFile::read_from_path(InputArgument::of(matches))
   }
 }

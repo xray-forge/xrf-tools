@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
@@ -48,8 +47,8 @@ impl BuildCformFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a compiler collision form this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Build collision form was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -62,8 +61,8 @@ impl BuildCformFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a compiler collision form this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand.
@@ -71,8 +70,8 @@ impl BuildCformFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a compiler collision form this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -81,7 +80,7 @@ impl BuildCformFile {
   ///
   /// Returns an error when a chunk is absent or unknown, the version is not the current one, the geometry is not
   /// exactly what its header counts, or the form is not consistent (see [`Self::write`]).
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     if let Some(chunk) = chunks
@@ -95,7 +94,7 @@ impl BuildCformFile {
     }
 
     let mut geometry: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?;
-    let header: LevelCformHeader = geometry.read_xr::<T, _>()?;
+    let header: LevelCformHeader = geometry.read_xr()?;
 
     if header.version != Self::CURRENT_VERSION {
       return Err(XrfError::new_invalid_error(format!(
@@ -112,7 +111,7 @@ impl BuildCformFile {
     )?;
 
     for _ in 0..header.vertex_count {
-      vertices.push(geometry.read_xr::<T, _>()?);
+      vertices.push(geometry.read_xr()?);
     }
 
     let mut faces: Vec<BuildCformFace> = geometry.new_bounded_vec(
@@ -122,7 +121,7 @@ impl BuildCformFile {
     )?;
 
     for _ in 0..header.face_count {
-      faces.push(geometry.read_xr::<T, _>()?);
+      faces.push(geometry.read_xr()?);
     }
 
     geometry.assert_read("Expect all data to be read from build collision form geometry")?;
@@ -132,7 +131,7 @@ impl BuildCformFile {
       bounds: header.bounds,
       vertices,
       faces,
-      raycast_faces: ChunkReader::find_required_by_id(&chunks, Self::RAYCAST_FACES_CHUNK_ID)?.read_xr_records::<T, _>(
+      raycast_faces: ChunkReader::find_required_by_id(&chunks, Self::RAYCAST_FACES_CHUNK_ID)?.read_xr_records(
         BuildCformRaycastFace::SERIALIZED_SIZE,
         "build collision form raycast faces chunk",
       )?,
@@ -149,7 +148,7 @@ impl BuildCformFile {
   ///
   /// Returns an error when a face names a vertex the form does not hold, the raycast records do not match the faces
   /// one for one, or the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_consistent()?;
 
     let mut geometry: ChunkWriter = ChunkWriter::new();
@@ -160,25 +159,25 @@ impl BuildCformFile {
       face_count: narrow_format_size(self.faces.len(), "build collision form faces")?,
       bounds: self.bounds,
     }
-    .write::<T>(&mut geometry)?;
+    .write(&mut geometry)?;
 
     for vertex in &self.vertices {
-      geometry.write_xr::<T, _>(vertex)?;
+      geometry.write_xr(vertex)?;
     }
 
     for face in &self.faces {
-      geometry.write_xr::<T, _>(face)?;
+      geometry.write_xr(face)?;
     }
 
-    geometry.flush_chunk_into::<T>(&mut writer.buffer, Self::GEOMETRY_CHUNK_ID)?;
+    geometry.flush_chunk_into(&mut writer.buffer, Self::GEOMETRY_CHUNK_ID)?;
 
     let mut raycast_faces: ChunkWriter = ChunkWriter::new();
 
     for face in &self.raycast_faces {
-      raycast_faces.write_xr::<T, _>(face)?;
+      raycast_faces.write_xr(face)?;
     }
 
-    raycast_faces.flush_chunk_into::<T>(&mut writer.buffer, Self::RAYCAST_FACES_CHUNK_ID)?;
+    raycast_faces.flush_chunk_into(&mut writer.buffer, Self::RAYCAST_FACES_CHUNK_ID)?;
 
     Ok(())
   }

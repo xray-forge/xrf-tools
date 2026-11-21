@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_skeleton::SkeletonBoneShape;
@@ -29,30 +28,30 @@ impl OgfBoneIkData {
 }
 
 impl ChunkReadWrite for OgfBoneIkData {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let version: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let version: u32 = reader.read_u32()?;
 
     Ok(Self {
       version,
       game_material: reader.read_w1251_string()?,
-      shape: reader.read_xr::<T, _>()?,
-      joint: OgfJointIkData::read_versioned::<T, _>(reader, version)?,
-      bind_rotation: reader.read_xr::<T, _>()?,
-      bind_position: reader.read_xr::<T, _>()?,
-      mass: reader.read_f32::<T>()?,
-      center_of_mass: reader.read_xr::<T, _>()?,
+      shape: reader.read_xr()?,
+      joint: OgfJointIkData::read_versioned(reader, version)?,
+      bind_rotation: reader.read_xr()?,
+      bind_position: reader.read_xr()?,
+      mass: reader.read_f32()?,
+      center_of_mass: reader.read_xr()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.version)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.version)?;
     writer.write_w1251_string(&self.game_material)?;
-    self.shape.write::<T>(writer)?;
-    self.joint.write_versioned::<T>(writer)?;
-    self.bind_rotation.write::<T>(writer)?;
-    self.bind_position.write::<T>(writer)?;
-    writer.write_f32::<T>(self.mass)?;
-    self.center_of_mass.write::<T>(writer)?;
+    self.shape.write(writer)?;
+    self.joint.write_versioned(writer)?;
+    self.bind_rotation.write(writer)?;
+    self.bind_position.write(writer)?;
+    writer.write_f32(self.mass)?;
+    self.center_of_mass.write(writer)?;
 
     Ok(())
   }

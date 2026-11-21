@@ -6,7 +6,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_app_render::{ResolvedTexture, TextureResolver};
 use xrf_audio::{AudioAssetSource, AudioSceneGeometry, AudioSceneInbox};
-use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::InMemoryChunkDataSource;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelGeomSource, LevelSector, LevelSectorComposition};
@@ -208,7 +208,7 @@ impl WorldLevelSource for LevelRenderSource {
       LevelGeometryPart::get(&self.level, &self.search()?).map_err(XrfError::new_read_error)?;
     let started: Instant = Instant::now();
     let package: SectorPackage = SectorPacker::new(&self.level.visuals, self.level.level.shaders.as_ref(), &geometry)
-      .pack::<XRayByteOrder>(sector, &composition, Self::DRAWN_ATTRIBUTES);
+      .pack(sector, &composition, Self::DRAWN_ATTRIBUTES);
 
     LevelReport::packed_sector(&package, started);
 

@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Sphere};
 
@@ -17,7 +16,7 @@ impl OgfHeaderChunk {
 }
 
 impl ChunkReadWrite for OgfHeaderChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let version: u8 = reader.read_u8()?;
 
     if version != 4 {
@@ -29,9 +28,9 @@ impl ChunkReadWrite for OgfHeaderChunk {
     let header: Self = Self {
       version,
       model_type: reader.read_u8()?,
-      shader_id: reader.read_u16::<T>()?,
-      bounding_box: reader.read_xr::<T, _>()?,
-      bounding_sphere: reader.read_xr::<T, _>()?,
+      shader_id: reader.read_u16()?,
+      bounding_box: reader.read_xr()?,
+      bounding_sphere: reader.read_xr()?,
     };
 
     reader.assert_read("Expect all data to be read from ogf header, {} remain")?;
@@ -39,12 +38,12 @@ impl ChunkReadWrite for OgfHeaderChunk {
     Ok(header)
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u8(self.version)?;
     writer.write_u8(self.model_type)?;
-    writer.write_u16::<T>(self.shader_id)?;
-    writer.write_xr::<T, _>(&self.bounding_box)?;
-    writer.write_xr::<T, _>(&self.bounding_sphere)?;
+    writer.write_u16(self.shader_id)?;
+    writer.write_xr(&self.bounding_box)?;
+    writer.write_xr(&self.bounding_sphere)?;
 
     Ok(())
   }

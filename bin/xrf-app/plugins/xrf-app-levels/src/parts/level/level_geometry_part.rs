@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
-use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelGeomFile, LevelGeomSource};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
@@ -56,7 +56,7 @@ impl LevelGeometryPart {
     source: &LevelSource,
     search: &XraySearch,
   ) -> TauriResult<LevelGeomSource<InMemoryChunkDataSource>> {
-    LevelGeomSource::open_from_bytes::<XRayByteOrder>(source.read_file(search, LevelGeomFile::FILE_NAME)?)
+    LevelGeomSource::open_from_bytes(source.read_file(search, LevelGeomFile::FILE_NAME)?)
       .map_err(|error| source.describe_read_failure(LevelGeomFile::FILE_NAME, &error))
   }
 }

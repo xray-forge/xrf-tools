@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayInputRecord, XrayLogicalPath, XraySearch};
 
@@ -92,7 +92,7 @@ impl LevelSpawnPart {
   fn read_level(search: &XraySearch, configs: &LevelConfigs, level: &str) -> TauriResult<LevelSpawn> {
     let started: Instant = Instant::now();
     let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) = Self::read_chunks(search)?;
-    let read: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks::<XRayByteOrder, _>(&chunks, level)
+    let read: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks(&chunks, level)
       .map_err(|error| format!("Failed to read '{path}': {error}"))?;
 
     LevelReport::spawn(level, path.as_str(), &read, started);

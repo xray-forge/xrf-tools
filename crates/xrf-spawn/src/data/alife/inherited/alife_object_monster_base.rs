@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -36,29 +35,29 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterBase {
   }
 
   /// Read the monster from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectMonsterAbstract::read::<T, _, _>(spawn, update, layout)?,
-      skeleton: spawn.read_xr::<T, _>()?,
-      spec_object_id: spawn.read_u16::<T>()?,
+      base: AlifeObjectMonsterAbstract::read(spawn, update, layout)?,
+      skeleton: spawn.read_xr()?,
+      spec_object_id: spawn.read_u16()?,
     })
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    spawn.write_xr::<T, _>(&self.skeleton)?;
-    spawn.write_u16::<T>(self.spec_object_id)?;
+    spawn.write_xr(&self.skeleton)?;
+    spawn.write_u16(self.spec_object_id)?;
 
     Ok(())
   }
@@ -115,7 +114,6 @@ impl AlifeObjectMonsterBase {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -138,20 +136,13 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectMonsterBase = new_object();
-    let (spawn_size, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (spawn_size, update_size, read) = original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(update_size, 52);
     assert_eq!(read, original);
     assert_eq!(
       spawn_size,
-      original
-        .base
-        .read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?
-        .0
-        + 7
-        + 1
-        + 2
-        + 2
+      original.base.read_back(SpawnLayout::CALL_OF_PRIPYAT)?.0 + 7 + 1 + 2 + 2
     );
 
     Ok(())

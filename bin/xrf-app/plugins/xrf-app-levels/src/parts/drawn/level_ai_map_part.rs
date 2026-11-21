@@ -1,6 +1,5 @@
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelAiFile, LevelAiHeader, LevelAiNode, LevelAiNodes};
 use xrf_renderer::{RenderAiMapNode, RenderLevelAiMap};
 use xrf_vfs::XraySearch;
@@ -41,7 +40,7 @@ impl LevelAiMapPart {
     let Some(bytes) = source.read_optional_file(search, LevelAiFile::FILE_NAME)? else {
       return Ok(None);
     };
-    let (file, nodes) = LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(bytes)
+    let (file, nodes) = LevelAiFile::read_with_nodes_from_bytes(bytes)
       .map_err(|error| source.describe_read_failure(LevelAiFile::FILE_NAME, &error))?;
 
     Ok(Some(Self::describe(&file.header, &nodes)))
@@ -64,7 +63,7 @@ impl LevelAiMapPart {
       floor: header.bounds.min.y,
       height: header.size_y,
       nodes: nodes
-        .iter_nodes::<XRayByteOrder>()
+        .iter_nodes()
         .map(|node: LevelAiNode| RenderAiMapNode {
           cell: node.packed_xz,
           height: node.packed_y,

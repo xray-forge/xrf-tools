@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::EditableSpawnPointObject;
 use xrf_error::XrfResult;
 use xrf_level::{BuildPrjFile, LevelEnvModFile, LevelEnvModifier, LevelPsStaticFile};
@@ -56,7 +56,7 @@ fn scene_root(name: &str) -> XrfResult<PathBuf> {
       use_flags: Some(63),
     }],
   }
-  .write::<XRayByteOrder>(&mut writer)?;
+  .write(&mut writer)?;
   fs::create_dir_all(root.join("level"))?;
   fs::create_dir_all(root.join("scenes"))?;
   fs::write(root.join("level").join(LevelEnvModFile::FILE_NAME), writer.buffer)?;

@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_utils::narrow_format_size;
@@ -54,22 +53,15 @@ impl EditableWallmark {
   }
 
   /// One decal of a slot, as `LoadStream` reads it from `items`, which decides whether its size and turn are stored.
-  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-    items: EditableWallmarkItems,
-  ) -> XrfResult<Self> {
+  pub(crate) fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, items: EditableWallmarkItems) -> XrfResult<Self> {
     let flags: u8 = reader.read_u8()?;
-    let bbox: Aabb = reader.read_xr::<T, _>()?;
-    let bounds: Sphere = reader.read_xr::<T, _>()?;
+    let bbox: Aabb = reader.read_xr()?;
+    let bounds: Sphere = reader.read_xr()?;
     let [width, height, rotation] = match items {
-      EditableWallmarkItems::Current => [
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-      ],
+      EditableWallmarkItems::Current => [reader.read_f32()?, reader.read_f32()?, reader.read_f32()?],
       EditableWallmarkItems::Old => [1.0; 3],
     };
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut vertices: Vec<EditableWallmarkVertex> = reader.new_bounded_vec(
       count.into(),
       EditableWallmarkVertex::SERIALIZED_SIZE,
@@ -77,7 +69,7 @@ impl EditableWallmark {
     )?;
 
     for _ in 0..count {
-      vertices.push(EditableWallmarkVertex::read::<T, D>(reader)?);
+      vertices.push(EditableWallmarkVertex::read::<D>(reader)?);
     }
 
     Ok(Self {
@@ -92,17 +84,17 @@ impl EditableWallmark {
   }
 
   /// As `SaveStream` writes a decal.
-  pub(crate) fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub(crate) fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u8(self.flags)?;
-    writer.write_xr::<T, _>(&self.bbox)?;
-    writer.write_xr::<T, _>(&self.bounds)?;
-    writer.write_f32::<T>(self.width)?;
-    writer.write_f32::<T>(self.height)?;
-    writer.write_f32::<T>(self.rotation)?;
-    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "wall mark vertices")?)?;
+    writer.write_xr(&self.bbox)?;
+    writer.write_xr(&self.bounds)?;
+    writer.write_f32(self.width)?;
+    writer.write_f32(self.height)?;
+    writer.write_f32(self.rotation)?;
+    writer.write_u32(narrow_format_size(self.vertices.len(), "wall mark vertices")?)?;
 
     for vertex in &self.vertices {
-      vertex.write::<T>(writer)?;
+      vertex.write(writer)?;
     }
 
     Ok(())

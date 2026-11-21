@@ -1,9 +1,8 @@
 use std::ops::Deref;
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::{assert_equal, assert_length, narrow_format_size};
@@ -86,15 +85,15 @@ impl ParticleAction {
 
 impl ChunkReadWriteList for ParticleAction {
   /// Read list of particle action data from chunk reader.
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
+    let count: u32 = reader.read_u32()?;
 
     let mut actions: Vec<Self> = reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "particle actions")?;
 
     for _ in 0..count {
       actions.push(
         reader
-          .read_xr::<T, _>()
+          .read_xr()
           .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle effect action: {error}")))?,
       );
     }
@@ -110,11 +109,11 @@ impl ChunkReadWriteList for ParticleAction {
   }
 
   /// Write particle action data into chunk writer.
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, actions: &[Self]) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(actions.len(), "particle actions")?)?;
+  fn write_list(writer: &mut ChunkWriter, actions: &[Self]) -> XrfResult {
+    writer.write_u32(narrow_format_size(actions.len(), "particle actions")?)?;
 
     for action in actions {
-      writer.write_xr::<T, _>(action)?;
+      writer.write_xr(action)?;
     }
 
     Ok(())
@@ -122,43 +121,43 @@ impl ChunkReadWriteList for ParticleAction {
 }
 
 impl ChunkReadWrite for ParticleAction {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let action_type: ParticleActionType = ParticleActionType::from(reader.read_u32::<T>()?);
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let action_type: ParticleActionType = ParticleActionType::from(reader.read_u32()?);
 
     Ok(match action_type {
-      ParticleActionType::Avoid => Self::Avoid(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Bounce => Self::Bounce(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::CopyVertex => Self::CopyVertex(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Damping => Self::Damping(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Explosion => Self::Explosion(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Follow => Self::Follow(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Gravitate => Self::Gravitate(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Gravity => Self::Gravity(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Jet => Self::Jet(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::KillOld => Self::KillOld(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::MatchVelocity => Self::MatchVelocity(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Move => Self::Move(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::OrbitLine => Self::OrbitLine(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::OrbitPoint => Self::OrbitPoint(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::RandomAccel => Self::RandomAccel(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::RandomDisplace => Self::RandomDisplace(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::RandomVelocity => Self::RandomVelocity(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Restore => Self::Restore(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Sink => Self::Sink(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::SinkVelocity => Self::SinkVelocity(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Source => Self::Source(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::SpeedLimit => Self::SpeedLimit(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::TargetColor => Self::TargetColor(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::TargetSize => Self::TargetSize(Box::new(reader.read_xr::<T, _>()?)),
+      ParticleActionType::Avoid => Self::Avoid(Box::new(reader.read_xr()?)),
+      ParticleActionType::Bounce => Self::Bounce(Box::new(reader.read_xr()?)),
+      ParticleActionType::CopyVertex => Self::CopyVertex(Box::new(reader.read_xr()?)),
+      ParticleActionType::Damping => Self::Damping(Box::new(reader.read_xr()?)),
+      ParticleActionType::Explosion => Self::Explosion(Box::new(reader.read_xr()?)),
+      ParticleActionType::Follow => Self::Follow(Box::new(reader.read_xr()?)),
+      ParticleActionType::Gravitate => Self::Gravitate(Box::new(reader.read_xr()?)),
+      ParticleActionType::Gravity => Self::Gravity(Box::new(reader.read_xr()?)),
+      ParticleActionType::Jet => Self::Jet(Box::new(reader.read_xr()?)),
+      ParticleActionType::KillOld => Self::KillOld(Box::new(reader.read_xr()?)),
+      ParticleActionType::MatchVelocity => Self::MatchVelocity(Box::new(reader.read_xr()?)),
+      ParticleActionType::Move => Self::Move(Box::new(reader.read_xr()?)),
+      ParticleActionType::OrbitLine => Self::OrbitLine(Box::new(reader.read_xr()?)),
+      ParticleActionType::OrbitPoint => Self::OrbitPoint(Box::new(reader.read_xr()?)),
+      ParticleActionType::RandomAccel => Self::RandomAccel(Box::new(reader.read_xr()?)),
+      ParticleActionType::RandomDisplace => Self::RandomDisplace(Box::new(reader.read_xr()?)),
+      ParticleActionType::RandomVelocity => Self::RandomVelocity(Box::new(reader.read_xr()?)),
+      ParticleActionType::Restore => Self::Restore(Box::new(reader.read_xr()?)),
+      ParticleActionType::Sink => Self::Sink(Box::new(reader.read_xr()?)),
+      ParticleActionType::SinkVelocity => Self::SinkVelocity(Box::new(reader.read_xr()?)),
+      ParticleActionType::Source => Self::Source(Box::new(reader.read_xr()?)),
+      ParticleActionType::SpeedLimit => Self::SpeedLimit(Box::new(reader.read_xr()?)),
+      ParticleActionType::TargetColor => Self::TargetColor(Box::new(reader.read_xr()?)),
+      ParticleActionType::TargetSize => Self::TargetSize(Box::new(reader.read_xr()?)),
       ParticleActionType::TargetRotate | ParticleActionType::TargetRotateD => {
-        Self::TargetRotate(Box::new(reader.read_xr::<T, _>()?))
+        Self::TargetRotate(Box::new(reader.read_xr()?))
       }
       ParticleActionType::TargetVelocity | ParticleActionType::TargetVelocityD => {
-        Self::TargetVelocity(Box::new(reader.read_xr::<T, _>()?))
+        Self::TargetVelocity(Box::new(reader.read_xr()?))
       }
-      ParticleActionType::Vortex => Self::Vortex(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Turbulence => Self::Turbulence(Box::new(reader.read_xr::<T, _>()?)),
-      ParticleActionType::Scatter => Self::Scatter(Box::new(reader.read_xr::<T, _>()?)),
+      ParticleActionType::Vortex => Self::Vortex(Box::new(reader.read_xr()?)),
+      ParticleActionType::Turbulence => Self::Turbulence(Box::new(reader.read_xr()?)),
+      ParticleActionType::Scatter => Self::Scatter(Box::new(reader.read_xr()?)),
       ParticleActionType::Unknown | ParticleActionType::CallActionList => {
         return Err(XrfError::new_unexpected_error(format!(
           "Unexpected action type provided for reading: {action_type}"
@@ -167,7 +166,7 @@ impl ChunkReadWrite for ParticleAction {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     // TargetRotate/TargetVelocity share variants with their D-derivatives, so the
     // dispatch type must come from the stored action type to survive round-trip.
     let action_type: ParticleActionType = match self {
@@ -176,38 +175,38 @@ impl ChunkReadWrite for ParticleAction {
       action => ParticleActionType::get_action_type(action),
     };
 
-    writer.write_u32::<T>(action_type as u32)?;
+    writer.write_u32(action_type as u32)?;
 
     match self {
-      Self::Avoid(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Bounce(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::CopyVertex(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Damping(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Explosion(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Follow(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Gravitate(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Gravity(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Jet(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::KillOld(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::MatchVelocity(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Move(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::OrbitLine(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::OrbitPoint(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::RandomAccel(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::RandomDisplace(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::RandomVelocity(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Restore(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Sink(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::SinkVelocity(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Source(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::SpeedLimit(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::TargetColor(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::TargetSize(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::TargetRotate(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::TargetVelocity(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Vortex(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Turbulence(action) => writer.write_xr::<T, _>(action.deref()),
-      Self::Scatter(action) => writer.write_xr::<T, _>(action.deref()),
+      Self::Avoid(action) => writer.write_xr(action.deref()),
+      Self::Bounce(action) => writer.write_xr(action.deref()),
+      Self::CopyVertex(action) => writer.write_xr(action.deref()),
+      Self::Damping(action) => writer.write_xr(action.deref()),
+      Self::Explosion(action) => writer.write_xr(action.deref()),
+      Self::Follow(action) => writer.write_xr(action.deref()),
+      Self::Gravitate(action) => writer.write_xr(action.deref()),
+      Self::Gravity(action) => writer.write_xr(action.deref()),
+      Self::Jet(action) => writer.write_xr(action.deref()),
+      Self::KillOld(action) => writer.write_xr(action.deref()),
+      Self::MatchVelocity(action) => writer.write_xr(action.deref()),
+      Self::Move(action) => writer.write_xr(action.deref()),
+      Self::OrbitLine(action) => writer.write_xr(action.deref()),
+      Self::OrbitPoint(action) => writer.write_xr(action.deref()),
+      Self::RandomAccel(action) => writer.write_xr(action.deref()),
+      Self::RandomDisplace(action) => writer.write_xr(action.deref()),
+      Self::RandomVelocity(action) => writer.write_xr(action.deref()),
+      Self::Restore(action) => writer.write_xr(action.deref()),
+      Self::Sink(action) => writer.write_xr(action.deref()),
+      Self::SinkVelocity(action) => writer.write_xr(action.deref()),
+      Self::Source(action) => writer.write_xr(action.deref()),
+      Self::SpeedLimit(action) => writer.write_xr(action.deref()),
+      Self::TargetColor(action) => writer.write_xr(action.deref()),
+      Self::TargetSize(action) => writer.write_xr(action.deref()),
+      Self::TargetRotate(action) => writer.write_xr(action.deref()),
+      Self::TargetVelocity(action) => writer.write_xr(action.deref()),
+      Self::Vortex(action) => writer.write_xr(action.deref()),
+      Self::Turbulence(action) => writer.write_xr(action.deref()),
+      Self::Scatter(action) => writer.write_xr(action.deref()),
     }
   }
 }
@@ -340,10 +339,7 @@ impl LtxImportExport for ParticleAction {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::ReadBytesExt;
-  use xrf_chunk::{
-    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
-  };
+  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -373,16 +369,16 @@ mod tests {
       scale: 0.5,
     }));
 
-    rotate.write::<XRayByteOrder>(&mut writer)?;
-    velocity.write::<XRayByteOrder>(&mut writer)?;
+    rotate.write(&mut writer)?;
+    velocity.write(&mut writer)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     assert_eq!(
-      reader.read_u32::<XRayByteOrder>()?,
+      reader.read_u32()?,
       ParticleActionType::TargetRotateD as u32,
       "Expected derivative dispatch type to be written for target rotate"
     );
@@ -390,8 +386,8 @@ mod tests {
     let mut reader: ChunkReader =
       ChunkReader::from_slice(GeneratedResources::open_slice(&filename)?)?.read_child_by_index(0)?;
 
-    assert_eq!(ParticleAction::read::<XRayByteOrder, _>(&mut reader)?, rotate);
-    assert_eq!(ParticleAction::read::<XRayByteOrder, _>(&mut reader)?, velocity);
+    assert_eq!(ParticleAction::read(&mut reader)?, rotate);
+    assert_eq!(ParticleAction::read(&mut reader)?, velocity);
 
     Ok(())
   }
@@ -400,7 +396,7 @@ mod tests {
   fn rejects_action_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
 
-    let error: String = ParticleAction::read_list::<XRayByteOrder, _>(&mut reader)
+    let error: String = ParticleAction::read_list(&mut reader)
       .expect_err("expect the declared action count to exceed the chunk")
       .to_string();
 

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -203,20 +202,20 @@ impl From<&Affine3d> for Matrix4x4 {
 /// Sixteen floats, row by row.
 impl ChunkFieldReadWrite for Matrix4x4 {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let mut values: [f32; Self::ELEMENTS] = [0.0; Self::ELEMENTS];
 
     for value in &mut values {
-      *value = reader.read_f32::<T>()?;
+      *value = reader.read_f32()?;
     }
 
     Ok(Self { values })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     for value in self.values {
-      writer.write_f32::<T>(value)?;
+      writer.write_f32(value)?;
     }
 
     Ok(())

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
@@ -12,7 +11,7 @@ pub(crate) struct LevelCformCover;
 
 impl LevelCformCover {
   /// Whether no face of the payload after a header lies straight above each point, which is under the open sky.
-  pub(crate) fn read_open_above<T: ByteOrder, D: ChunkDataSource>(
+  pub(crate) fn read_open_above<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     header: &LevelCformHeader,
     points: &[Vector3d<f32>],
@@ -24,13 +23,13 @@ impl LevelCformCover {
     )?;
 
     for _ in 0..header.vertex_count {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
     let mut open: Vec<bool> = vec![true; points.len()];
 
     for _ in 0..header.face_count {
-      let face: LevelCformFace = reader.read_xr::<T, _>()?;
+      let face: LevelCformFace = reader.read_xr()?;
       let [a, b, c]: [&Vector3d<f32>; 3] = match face.vertices.map(|index| vertices.get(index as usize)) {
         [Some(a), Some(b), Some(c)] => [a, b, c],
         _ => {

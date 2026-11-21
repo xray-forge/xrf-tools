@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
@@ -24,13 +23,13 @@ impl OgfRawPatch {
   }
 
   /// Guard that a rewrite which changes nothing reproduces the source, normalized.
-  pub(crate) fn assert_chunk_copy_is_lossless<T: ByteOrder>(
+  pub(crate) fn assert_chunk_copy_is_lossless(
     source: &Path,
     original: &[u8],
     reverted: &[u8],
     identity: &str,
   ) -> XrfResult {
-    let expected: Vec<u8> = OgfNormalization::normalize_bytes::<T>(original)?;
+    let expected: Vec<u8> = OgfNormalization::normalize_bytes(original)?;
 
     if reverted != expected {
       return Err(XrfError::new_verify_error(format!(
@@ -47,12 +46,8 @@ impl OgfRawPatch {
   }
 
   /// Payload of a motion refs chunk with the bytes the count never reaches cut off, every byte before them as stored.
-  pub(crate) fn read_normalized_kinematics_payload<T: ByteOrder, D: ChunkDataSource>(
-    chunk: &ChunkReader<D>,
-  ) -> XrfResult<Vec<u8>> {
-    let trailing: usize = OgfKinematicsChunk::read::<T, _>(&mut chunk.clone(), chunk.id)?
-      .trailing
-      .len();
+  pub(crate) fn read_normalized_kinematics_payload<D: ChunkDataSource>(chunk: &ChunkReader<D>) -> XrfResult<Vec<u8>> {
+    let trailing: usize = OgfKinematicsChunk::read(&mut chunk.clone(), chunk.id)?.trailing.len();
     let mut payload: Vec<u8> = Self::read_payload(chunk)?;
 
     payload.truncate(payload.len() - trailing);
@@ -69,11 +64,11 @@ impl OgfRawPatch {
   }
 
   /// Appends a chunk of `id` holding `payload` to `buffer`, its header declaring the payload's own size.
-  pub(crate) fn write_chunk<T: ByteOrder>(buffer: &mut Vec<u8>, id: u32, payload: Vec<u8>) -> XrfResult {
+  pub(crate) fn write_chunk(buffer: &mut Vec<u8>, id: u32, payload: Vec<u8>) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     writer.buffer = payload;
-    writer.flush_chunk_into::<T>(buffer, id)?;
+    writer.flush_chunk_into(buffer, id)?;
 
     Ok(())
   }

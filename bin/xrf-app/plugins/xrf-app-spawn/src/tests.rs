@@ -5,7 +5,6 @@ use serde_json::json;
 use uuid::Uuid;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
-use xrf_chunk::XRayByteOrder;
 use xrf_job::ExecutionRequest;
 use xrf_spawn::SpawnFile;
 use xrf_test_utils::GeneratedResources;
@@ -37,7 +36,7 @@ fn a_packed_spawn_opens_described_and_a_failed_open_leaves_no_binding() {
   let source: SpawnFile = synthetic_spawn();
 
   fs::create_dir_all(&directory).unwrap();
-  source.write_to_path::<XRayByteOrder, _>(&packed).unwrap();
+  source.write_to_path(&packed).unwrap();
   fs::write(&corrupt, b"invalid spawn").unwrap();
 
   let scopes: SessionScopes = SessionScopes::default();

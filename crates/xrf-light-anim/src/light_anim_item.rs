@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
@@ -45,23 +44,23 @@ impl LightAnimItem {
   /// # Errors
   ///
   /// Returns an error when a chunk the engine asserts on is absent, or a chunk does not hold what it should.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     let mut common: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::COMMON_CHUNK_ID)?;
     let name: String = common.read_w1251_string()?;
-    let fps: f32 = common.read_f32::<T>()?;
-    let frame_count: u32 = common.read_u32::<T>()?;
+    let fps: f32 = common.read_f32()?;
+    let frame_count: u32 = common.read_u32()?;
 
     let mut keys: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::KEYS_CHUNK_ID)?;
-    let count: u32 = keys.read_u32::<T>()?;
+    let count: u32 = keys.read_u32()?;
     let mut read: Vec<LightAnimKey> =
       keys.new_bounded_vec(u64::from(count), LightAnimKey::SERIALIZED_SIZE, "light animation keys")?;
 
     for _ in 0..count {
       read.push(LightAnimKey {
-        frame: keys.read_i32::<T>()?,
-        color: keys.read_u32::<T>()?,
+        frame: keys.read_i32()?,
+        color: keys.read_u32()?,
       });
     }
 
@@ -80,24 +79,24 @@ impl LightAnimItem {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut common: ChunkWriter = ChunkWriter::new();
 
     common.write_w1251_string(&self.name)?;
-    common.write_f32::<T>(self.fps)?;
-    common.write_u32::<T>(self.frame_count)?;
-    common.flush_chunk_into::<T>(&mut writer.buffer, Self::COMMON_CHUNK_ID)?;
+    common.write_f32(self.fps)?;
+    common.write_u32(self.frame_count)?;
+    common.flush_chunk_into(&mut writer.buffer, Self::COMMON_CHUNK_ID)?;
 
     let mut keys: ChunkWriter = ChunkWriter::new();
 
-    keys.write_u32::<T>(narrow_format_size(self.keys.len(), "light animation keys")?)?;
+    keys.write_u32(narrow_format_size(self.keys.len(), "light animation keys")?)?;
 
     for key in &self.keys {
-      keys.write_i32::<T>(key.frame)?;
-      keys.write_u32::<T>(key.color)?;
+      keys.write_i32(key.frame)?;
+      keys.write_u32(key.color)?;
     }
 
-    keys.flush_chunk_into::<T>(&mut writer.buffer, Self::KEYS_CHUNK_ID)?;
+    keys.flush_chunk_into(&mut writer.buffer, Self::KEYS_CHUNK_ID)?;
 
     Ok(())
   }

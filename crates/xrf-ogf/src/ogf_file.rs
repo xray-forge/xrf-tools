@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
@@ -78,8 +77,8 @@ pub struct OgfFile {
 }
 
 impl OgfFile {
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "OGF file was not read: {}, error: {}",
         format_path(path.as_ref()),
@@ -88,29 +87,29 @@ impl OgfFile {
     })?)
   }
 
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads a visual already held in memory, such as one served out of an archive volume.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let (chunks, residue) = OgfResidue::read_root_chunks::<T, _>(reader)?;
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let (chunks, residue) = OgfResidue::read_root_chunks(reader)?;
 
     Ok(Self {
       residue,
-      ..Self::read_from_chunks::<T, _>(&chunks)?
+      ..Self::read_from_chunks(&chunks)?
     })
   }
 
-  pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+  pub fn read_from_chunks<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     // Bones are read up front because the ik data chunk stores no count of its own and has one record
     // per bone, so it can only be read once the bone list is known.
     let bones: Option<OgfBonesChunk> = match ChunkReader::find_optional_by_id(chunks, OgfBonesChunk::CHUNK_ID) {
-      Some(mut it) => Some(it.read_xr::<T, _>()?),
+      Some(mut it) => Some(it.read_xr()?),
       None => None,
     };
 
@@ -118,61 +117,59 @@ impl OgfFile {
       &bones,
       ChunkReader::find_optional_by_id(chunks, OgfIkDataChunk::CHUNK_ID),
     ) {
-      (Some(bones), Some(mut it)) => Some(OgfIkDataChunk::read::<T, _>(&mut it, bones.bones.len())?),
+      (Some(bones), Some(mut it)) => Some(OgfIkDataChunk::read(&mut it, bones.bones.len())?),
       _ => None,
     };
 
     // Read ahead of the record so the two embedded motion chunks can be checked against each other.
     let motions: Option<SkeletonMotionsChunk> =
       match ChunkReader::find_optional_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID) {
-        Some(mut it) => Some(it.read_xr::<T, _>()?),
+        Some(mut it) => Some(it.read_xr()?),
         None => None,
       };
 
     let motion_parameters: Option<SkeletonMotionParametersChunk> =
       match ChunkReader::find_optional_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID) {
-        Some(mut it) => Some(it.read_xr::<T, _>()?),
+        Some(mut it) => Some(it.read_xr()?),
         None => None,
       };
 
     Self::assert_motions_are_paired(motions.as_ref(), motion_parameters.as_ref())?;
 
-    let header: OgfHeaderChunk =
-      ChunkReader::find_required_by_id(chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?;
+    let header: OgfHeaderChunk = ChunkReader::find_required_by_id(chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr()?;
 
     Ok(Self {
       bones,
       ik_data,
-      texture: Self::read_optional::<T, _, _>(chunks, OgfTextureChunk::CHUNK_ID)?,
-      description: ChunkReader::find_optional_by_id(chunks, OgfDescriptionChunk::CHUNK_ID)
-        .map(|mut it| it.read_xr::<T, _>()),
-      geometry: OgfGeometry::read_from_chunks::<T, _>(chunks, OgfModelType::from_raw(header.model_type))?,
-      geometry_container: Self::read_optional::<T, _, _>(chunks, OgfGeometryContainerChunk::CHUNK_ID)?,
+      texture: Self::read_optional(chunks, OgfTextureChunk::CHUNK_ID)?,
+      description: ChunkReader::find_optional_by_id(chunks, OgfDescriptionChunk::CHUNK_ID).map(|mut it| it.read_xr()),
+      geometry: OgfGeometry::read_from_chunks(chunks, OgfModelType::from_raw(header.model_type))?,
+      geometry_container: Self::read_optional(chunks, OgfGeometryContainerChunk::CHUNK_ID)?,
       fastpath: match ChunkReader::find_optional_by_id(chunks, OgfFastpathChunk::CHUNK_ID) {
-        Some(mut it) => Some(OgfFastpathChunk::read_from_chunk::<T, _>(&mut it)?),
+        Some(mut it) => Some(OgfFastpathChunk::read_from_chunk(&mut it)?),
         None => None,
       },
-      swi_data: Self::read_optional::<T, _, _>(chunks, OgfSwiDataChunk::CHUNK_ID)?,
-      swi_container: Self::read_optional::<T, _, _>(chunks, OgfSwiContainerChunk::CHUNK_ID)?,
+      swi_data: Self::read_optional(chunks, OgfSwiDataChunk::CHUNK_ID)?,
+      swi_container: Self::read_optional(chunks, OgfSwiContainerChunk::CHUNK_ID)?,
       children: match ChunkReader::find_optional_by_id(chunks, OgfChildrenChunk::CHUNK_ID) {
-        Some(mut it) => Some(OgfChildrenChunk::read::<T, _>(&mut it)?),
+        Some(mut it) => Some(OgfChildrenChunk::read(&mut it)?),
         None => None,
       },
-      children_links: Self::read_optional::<T, _, _>(chunks, OgfChildrenLinkChunk::CHUNK_ID)?,
-      tree_definition: Self::read_optional::<T, _, _>(chunks, OgfTreeDefinitionChunk::CHUNK_ID)?,
-      lod_definition: Self::read_optional::<T, _, _>(chunks, OgfLodDefinitionChunk::CHUNK_ID)?,
-      collision_vertices: Self::read_optional::<T, _, _>(chunks, OgfCollisionVerticesChunk::CHUNK_ID)?,
-      collision_indices: Self::read_optional::<T, _, _>(chunks, OgfCollisionIndicesChunk::CHUNK_ID)?,
+      children_links: Self::read_optional(chunks, OgfChildrenLinkChunk::CHUNK_ID)?,
+      tree_definition: Self::read_optional(chunks, OgfTreeDefinitionChunk::CHUNK_ID)?,
+      lod_definition: Self::read_optional(chunks, OgfLodDefinitionChunk::CHUNK_ID)?,
+      collision_vertices: Self::read_optional(chunks, OgfCollisionVerticesChunk::CHUNK_ID)?,
+      collision_indices: Self::read_optional(chunks, OgfCollisionIndicesChunk::CHUNK_ID)?,
       header,
       kinematics: match ChunkReader::find_one_of_optional_by_id(
         chunks,
         &[OgfKinematicsChunk::CHUNK_ID, OgfKinematicsChunk::CHUNK_ID_OLD],
       ) {
-        Some((id, mut it)) => Some(OgfKinematicsChunk::read::<T, _>(&mut it, id)?),
+        Some((id, mut it)) => Some(OgfKinematicsChunk::read(&mut it, id)?),
         None => None,
       },
-      user_data: Self::read_optional::<T, _, _>(chunks, OgfUserDataChunk::CHUNK_ID)?,
-      lods: Self::read_optional::<T, _, _>(chunks, OgfLodsChunk::CHUNK_ID)?,
+      user_data: Self::read_optional(chunks, OgfUserDataChunk::CHUNK_ID)?,
+      lods: Self::read_optional(chunks, OgfLodsChunk::CHUNK_ID)?,
       motions,
       motion_parameters,
       // Root residue is a property of the byte stream, not of a chunk list, so a caller handed chunks directly cannot
@@ -182,15 +179,13 @@ impl OgfFile {
   }
 
   /// The motion refs of the visual `bytes` hold, skipping its other data.
-  pub fn read_motion_refs_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Vec<String>> {
-    Self::read_motion_refs_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_motion_refs_from_bytes(bytes: Vec<u8>) -> XrfResult<Vec<String>> {
+    Self::read_motion_refs_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Lists motion references from a chunk reader over any data source.
-  pub fn read_motion_refs_from_chunk<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<String>> {
-    let (chunks, _) = OgfResidue::read_root_chunks::<T, _>(reader)?;
+  pub fn read_motion_refs_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<String>> {
+    let (chunks, _) = OgfResidue::read_root_chunks(reader)?;
 
     log::info!(
       "Reading ogf file motion refs, {} chunks, {} bytes",
@@ -203,28 +198,23 @@ impl OgfFile {
       &[OgfKinematicsChunk::CHUNK_ID, OgfKinematicsChunk::CHUNK_ID_OLD],
     )?;
 
-    Ok(OgfKinematicsChunk::read::<T, _>(&mut chunk, chunk_id)?.motion_refs)
+    Ok(OgfKinematicsChunk::read(&mut chunk, chunk_id)?.motion_refs)
   }
 
   /// The texture reference of every nested child visual the visual `bytes` hold.
-  pub fn read_texture_refs_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Vec<String>> {
-    Ok(Self::read_from_bytes::<T>(bytes)?.list_texture_refs())
+  pub fn read_texture_refs_from_bytes(bytes: Vec<u8>) -> XrfResult<Vec<String>> {
+    Ok(Self::read_from_bytes(bytes)?.list_texture_refs())
   }
 
   /// Lists texture references from a chunk reader over any data source.
-  pub fn read_texture_refs_from_chunk<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<String>> {
-    Ok(Self::read_from_chunk::<T, _>(reader)?.list_texture_refs())
+  pub fn read_texture_refs_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<String>> {
+    Ok(Self::read_from_chunk(reader)?.list_texture_refs())
   }
 
   /// The chunk of `id` read as `C`, when the visual carries one.
-  fn read_optional<T: ByteOrder, D: ChunkDataSource, C: ChunkReadWrite>(
-    chunks: &[ChunkReader<D>],
-    id: u32,
-  ) -> XrfResult<Option<C>> {
+  fn read_optional<D: ChunkDataSource, C: ChunkReadWrite>(chunks: &[ChunkReader<D>], id: u32) -> XrfResult<Option<C>> {
     match ChunkReader::find_optional_by_id(chunks, id) {
-      Some(mut chunk) => Ok(Some(chunk.read_xr::<T, C>()?)),
+      Some(mut chunk) => Ok(Some(chunk.read_xr::<C>()?)),
       None => Ok(None),
     }
   }
@@ -309,7 +299,7 @@ impl OgfFile {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_math::{Aabb, Sphere, Vector3d};
   use xrf_skeleton::{
@@ -322,9 +312,9 @@ mod tests {
   fn new_chunk_bytes<C: ChunkReadWrite>(id: u32, value: &C) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    writer.write_xr::<XRayByteOrder, _>(value)?;
+    writer.write_xr(value)?;
 
-    writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
+    writer.flush_chunk_into_buffer(id)
   }
 
   fn new_header_bytes() -> XrfResult<Vec<u8>> {
@@ -392,7 +382,7 @@ mod tests {
     bytes.extend(new_motions_bytes(1)?);
 
     assert!(
-      OgfFile::read_from_bytes::<XRayByteOrder>(bytes).is_err(),
+      OgfFile::read_from_bytes(bytes).is_err(),
       "Expect a visual whose motions have no definitions to be rejected, as the engine cannot name them"
     );
 
@@ -406,7 +396,7 @@ mod tests {
     bytes.extend(new_parameters_bytes(&["embedded_idle"])?);
 
     assert!(
-      OgfFile::read_from_bytes::<XRayByteOrder>(bytes).is_err(),
+      OgfFile::read_from_bytes(bytes).is_err(),
       "Expect definitions without payloads to be rejected rather than read as a nameless motion set"
     );
 
@@ -421,7 +411,7 @@ mod tests {
     bytes.extend(new_parameters_bytes(&["embedded_idle"])?);
 
     assert!(
-      OgfFile::read_from_bytes::<XRayByteOrder>(bytes).is_err(),
+      OgfFile::read_from_bytes(bytes).is_err(),
       "Expect unequal counts to be rejected rather than silently truncating the ordinal pairs"
     );
 
@@ -435,7 +425,7 @@ mod tests {
     bytes.extend(new_motions_bytes(2)?);
     bytes.extend(new_parameters_bytes(&["embedded_idle", "embedded_draw"])?);
 
-    let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+    let file: OgfFile = OgfFile::read_from_bytes(bytes)?;
 
     assert_eq!(file.get_motion_names(), vec!["embedded_idle", "embedded_draw"]);
     assert_eq!(
@@ -456,7 +446,7 @@ mod tests {
 
   #[test]
   fn test_read_accepts_a_visual_without_embedded_motions() -> XrfResult {
-    let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(new_header_bytes()?)?;
+    let file: OgfFile = OgfFile::read_from_bytes(new_header_bytes()?)?;
 
     assert!(file.get_motion_names().is_empty());
     assert_eq!(file.get_diverging_labels_count(), 0);

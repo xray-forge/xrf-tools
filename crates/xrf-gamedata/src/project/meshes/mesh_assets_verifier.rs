@@ -6,7 +6,6 @@ use xrf_job::JobHandle;
 use xrf_ogf::{OgfFile, OgfResidueCause};
 use xrf_omf::OmfFile;
 use xrf_shaders::ShaderLibraryFile;
-use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
@@ -66,10 +65,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
   /// What is wrong with one mesh, read through the VFS so a mesh inside an archive volume is verified too.
   fn verify_mesh(&self, path: &str) -> Vec<Finding> {
-    match self
-      .project
-      .read_parsed(path, OgfFile::read_from_chunk::<XRayByteOrder, _>)
-    {
+    match self.project.read_parsed(path, OgfFile::read_from_chunk) {
       Ok(ogf) => match self.verify_mesh_findings(self.shader_library, &ogf, Some(path), None) {
         Ok(findings) if findings.is_empty() => Vec::new(),
         Ok(findings) => findings,
@@ -152,9 +148,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
             // Retained per path, because a shared animation bank is referenced by hundreds of visuals and each read is
             // a whole-entry decompression: four Anomaly banks account for 47GB of a sweep's 77GB without this.
-            match self.project.read_parsed(&motion_path, |chunk| {
-              OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-            }) {
+            match self.project.read_parsed(&motion_path, OmfFile::read_from_chunk) {
               Ok(omf) => match self.verify_mesh_motion_findings(ogf, &omf, Some(&motion_path)) {
                 Ok(motion_findings) => findings.extend(motion_findings),
                 Err(error) => {

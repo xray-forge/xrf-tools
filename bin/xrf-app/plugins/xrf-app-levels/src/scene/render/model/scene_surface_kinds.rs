@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::{EditableObjectFile, EditableSurface};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_vfs::XraySearch;
@@ -31,7 +30,7 @@ impl SceneSurfaceKinds {
     let library: Option<ShaderCompilerFile> = match game.find(ShaderCompilerFile::FILE_NAME) {
       Ok(Some(_)) => game
         .read(ShaderCompilerFile::FILE_NAME)
-        .and_then(ShaderCompilerFile::read_from_bytes::<XRayByteOrder>)
+        .and_then(ShaderCompilerFile::read_from_bytes)
         .inspect_err(|error| {
           log::warn!("The scene's compiler shaders do not read, so every surface is drawn: {error}");
         })

@@ -1,6 +1,6 @@
 use std::io::{Read, SeekFrom};
 
-use byteorder::{ByteOrder, ReadBytesExt};
+use crate::{XRayBytes, XRayRead};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::read_write::chunk_read_write::ChunkReadWrite;
@@ -11,18 +11,18 @@ use crate::source::chunk_data_source::ChunkDataSource;
 
 impl<D: ChunkDataSource> ChunkReader<D> {
   #[inline]
-  pub fn read_xr<T: ByteOrder, C: ChunkReadWrite>(&mut self) -> XrfResult<C> {
-    C::read::<T, D>(self)
+  pub fn read_xr<C: ChunkReadWrite>(&mut self) -> XrfResult<C> {
+    C::read::<D>(self)
   }
 
   #[inline]
-  pub fn read_xr_optional<T: ByteOrder, C: ChunkReadWriteOptional>(&mut self) -> XrfResult<Option<C>> {
-    C::read_optional::<T, D>(self)
+  pub fn read_xr_optional<C: ChunkReadWriteOptional>(&mut self) -> XrfResult<Option<C>> {
+    C::read_optional::<D>(self)
   }
 
   #[inline]
-  pub fn read_xr_list<T: ByteOrder, C: ChunkReadWriteList>(&mut self) -> XrfResult<Vec<C>> {
-    C::read_list::<T, D>(self)
+  pub fn read_xr_list<C: ChunkReadWriteList>(&mut self) -> XrfResult<Vec<C>> {
+    C::read_list::<D>(self)
   }
 
   /// Read a chunk whose whole payload is one `u8`.
@@ -35,34 +35,24 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   }
 
   /// Read a chunk whose whole payload is one `u16`; see [`Self::read_u8_payload`] for the errors.
-  pub fn read_u16_payload<T: ByteOrder>(&mut self) -> XrfResult<u16> {
-    self.read_whole_payload("All data should be read in u16 chunk", |reader| {
-      Ok(reader.read_u16::<T>()?)
-    })
+  pub fn read_u16_payload(&mut self) -> XrfResult<u16> {
+    self.read_whole_payload("All data should be read in u16 chunk", |reader| Ok(reader.read_u16()?))
   }
 
   /// Read a chunk whose whole payload is one `u32`; see [`Self::read_u8_payload`] for the errors.
-  pub fn read_u32_payload<T: ByteOrder>(&mut self) -> XrfResult<u32> {
-    self.read_whole_payload("All data should be read in u32 chunk", |reader| {
-      Ok(reader.read_u32::<T>()?)
-    })
+  pub fn read_u32_payload(&mut self) -> XrfResult<u32> {
+    self.read_whole_payload("All data should be read in u32 chunk", |reader| Ok(reader.read_u32()?))
   }
 
   /// Read a chunk whose whole payload is one `f32`; see [`Self::read_u8_payload`] for the errors.
-  pub fn read_f32_payload<T: ByteOrder>(&mut self) -> XrfResult<f32> {
-    self.read_whole_payload("All data should be read in f32 chunk", |reader| {
-      Ok(reader.read_f32::<T>()?)
-    })
+  pub fn read_f32_payload(&mut self) -> XrfResult<f32> {
+    self.read_whole_payload("All data should be read in f32 chunk", |reader| Ok(reader.read_f32()?))
   }
 
   /// Read a chunk whose whole payload is three `f32`s; see [`Self::read_u8_payload`] for the errors.
-  pub fn read_f32_vector_payload<T: ByteOrder>(&mut self) -> XrfResult<(f32, f32, f32)> {
+  pub fn read_f32_vector_payload(&mut self) -> XrfResult<(f32, f32, f32)> {
     self.read_whole_payload("All data should be read in f32 vector chunk", |reader| {
-      Ok((
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-      ))
+      Ok((reader.read_f32()?, reader.read_f32()?, reader.read_f32()?))
     })
   }
 
@@ -88,11 +78,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   ///
   /// Returns an error when the payload does not divide into whole `record_size` byte records, a record cannot be read,
   /// or the records read do not end exactly at the chunk end.
-  pub fn read_xr_records<T: ByteOrder, C: ChunkReadWrite>(
-    &mut self,
-    record_size: u64,
-    what: &str,
-  ) -> XrfResult<Vec<C>> {
+  pub fn read_xr_records<C: ChunkReadWrite>(&mut self, record_size: u64, what: &str) -> XrfResult<Vec<C>> {
     let size: u64 = self.read_bytes_remain();
 
     if !size.is_multiple_of(record_size) {
@@ -105,7 +91,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     let mut records: Vec<C> = self.new_bounded_vec(count, record_size, what)?;
 
     for _ in 0..count {
-      records.push(C::read::<T, D>(self)?);
+      records.push(C::read::<D>(self)?);
     }
 
     self.assert_read(&format!("Expect all data to be read from {what}"))?;
@@ -114,8 +100,8 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   }
 
   /// Read serialized vector from chunk, where u32 count N is followed by N u16 entries.
-  pub fn read_u16_vector<T: ByteOrder>(&mut self) -> XrfResult<Vec<u16>> {
-    let count: u32 = self.read_u32::<T>()?;
+  pub fn read_u16_vector(&mut self) -> XrfResult<Vec<u16>> {
+    let count: u32 = self.read_u32()?;
 
     // Bounded before anything is read, so a corrupt count is refused rather than reserved.
     xrf_utils::assert_count_fits(
@@ -126,7 +112,12 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     )?;
 
     Ok(self.data.read_with(count as usize * size_of::<u16>(), |bytes| {
-      bytes.as_chunks::<2>().0.iter().map(|it| T::read_u16(it)).collect()
+      bytes
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|it| XRayBytes::read_u16(it))
+        .collect()
     })?)
   }
 
@@ -134,8 +125,8 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   ///
   /// Lossy in both directions, and not corrected: this is the number the engine reads, and a reader that
   /// rounded it to something prettier would disagree with what the game does.
-  pub fn read_f32_q16<T: ByteOrder>(&mut self, minimum: f32, maximum: f32) -> XrfResult<f32> {
-    let value: u16 = self.read_u16::<T>()?;
+  pub fn read_f32_q16(&mut self, minimum: f32, maximum: f32) -> XrfResult<f32> {
+    let value: u16 = self.read_u16()?;
 
     Ok(f32::from(value) * (maximum - minimum) / f32::from(u16::MAX) + minimum)
   }
@@ -251,10 +242,9 @@ impl<D: ChunkDataSource> ChunkReader<D> {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+  use crate::{XRayRead, XRayWrite};
   use xrf_error::XrfResult;
 
-  use crate::XRayByteOrder;
   use crate::read_write::chunk_read_write::ChunkReadWrite;
   use crate::reader::chunk_reader::ChunkReader;
   use crate::source::chunk_data_source::ChunkDataSource;
@@ -270,7 +260,7 @@ mod tests {
     assert_eq!(chunk.cursor_pos(), 0, "Expect 0 bytes read");
 
     assert_eq!(
-      chunk.read_u16_vector::<XRayByteOrder>()?,
+      chunk.read_u16_vector()?,
       vec!(0u16, 1u16, 2u16, 3u16),
       "Expect correctly read vector"
     );
@@ -355,10 +345,7 @@ mod tests {
   #[test]
   fn reads_a_payload_holding_exactly_one_value() -> XrfResult {
     assert_eq!(ChunkReader::from_bytes(&[7])?.read_u8_payload()?, 7);
-    assert_eq!(
-      ChunkReader::from_bytes(&[1, 0, 0, 0])?.read_u32_payload::<XRayByteOrder>()?,
-      1
-    );
+    assert_eq!(ChunkReader::from_bytes(&[1, 0, 0, 0])?.read_u32_payload()?, 1);
     assert_eq!(ChunkReader::from_bytes(b"abc\0")?.read_w1251_string_payload()?, "abc");
 
     Ok(())
@@ -367,7 +354,7 @@ mod tests {
   #[test]
   fn refuses_a_payload_with_bytes_left_after_its_value() -> XrfResult {
     let error: String = ChunkReader::from_bytes(&[1, 0, 0, 0, 9])?
-      .read_u32_payload::<XRayByteOrder>()
+      .read_u32_payload()
       .expect_err("expect the trailing byte to be refused")
       .to_string();
 
@@ -403,12 +390,12 @@ mod tests {
   struct Record(u32);
 
   impl ChunkReadWrite for Record {
-    fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-      Ok(Self(reader.read_u32::<T>()?))
+    fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+      Ok(Self(reader.read_u32()?))
     }
 
-    fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-      Ok(writer.write_u32::<T>(self.0)?)
+    fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+      Ok(writer.write_u32(self.0)?)
     }
   }
 
@@ -417,7 +404,7 @@ mod tests {
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[1, 0, 0, 0, 2, 0, 0, 0])?;
 
     assert_eq!(
-      chunk.read_xr_records::<XRayByteOrder, Record>(4, "test records")?,
+      chunk.read_xr_records::<Record>(4, "test records")?,
       vec![Record(1), Record(2)]
     );
     assert!(chunk.is_ended());
@@ -428,7 +415,7 @@ mod tests {
   #[test]
   fn refuses_a_record_run_that_does_not_divide_into_whole_records() -> XrfResult {
     let error: String = ChunkReader::from_bytes(&[1, 0, 0, 0, 2])?
-      .read_xr_records::<XRayByteOrder, Record>(4, "test records")
+      .read_xr_records::<Record>(4, "test records")
       .expect_err("expect the trailing byte to be refused")
       .to_string();
 
@@ -446,16 +433,15 @@ mod tests {
     for id in ids {
       let mut child: ChunkWriter = ChunkWriter::new();
 
-      child.write_u32::<XRayByteOrder>(*id)?;
-      child.flush_chunk_into::<XRayByteOrder>(&mut parent.buffer, *id)?;
+      child.write_u32(*id)?;
+      child.flush_chunk_into(&mut parent.buffer, *id)?;
     }
 
     Ok(parent.buffer)
   }
 
   fn read_numbered(ids: &[u32]) -> XrfResult<Vec<u32>> {
-    ChunkReader::from_bytes(&children_of(ids)?)?
-      .read_numbered_children("test child", |child| Ok(child.read_u32::<XRayByteOrder>()?))
+    ChunkReader::from_bytes(&children_of(ids)?)?.read_numbered_children("test child", |child| Ok(child.read_u32()?))
   }
 
   #[test]
@@ -477,7 +463,7 @@ mod tests {
   fn rejects_u16_vector_count_larger_than_remaining_payload() -> XrfResult {
     let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[2, 0, 0, 0, 1, 0])?;
     let error: String = chunk
-      .read_u16_vector::<XRayByteOrder>()
+      .read_u16_vector()
       .expect_err("expect the declared count to exceed the payload")
       .to_string();
 

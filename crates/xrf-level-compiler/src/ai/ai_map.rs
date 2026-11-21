@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_level::{LevelAiFile, LevelAiNodes};
 
@@ -18,7 +18,7 @@ impl AiMap {
   ///
   /// Returns an error when the file cannot be read or is not an AI map the engine loads.
   pub(crate) fn read_from_path(path: &Path) -> XrfResult<Self> {
-    let (file, nodes) = LevelAiFile::read_with_nodes_from_path::<XRayByteOrder, _>(&path)?;
+    let (file, nodes) = LevelAiFile::read_with_nodes_from_path(&path)?;
 
     Ok(Self { file, nodes })
   }
@@ -31,7 +31,7 @@ impl AiMap {
   pub(crate) fn get_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    self.file.write::<XRayByteOrder>(&self.nodes, &mut writer)?;
+    self.file.write(&self.nodes, &mut writer)?;
 
     Ok(writer.buffer)
   }

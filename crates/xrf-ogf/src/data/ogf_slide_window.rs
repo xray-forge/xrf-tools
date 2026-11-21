@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One progressive mesh level of detail, `FSlideWindow` in the engine (`FMesh.hpp:109`).
@@ -16,18 +15,18 @@ impl OgfSlideWindow {
 }
 
 impl ChunkReadWrite for OgfSlideWindow {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      offset: reader.read_u32::<T>()?,
-      num_tris: reader.read_u16::<T>()?,
-      num_verts: reader.read_u16::<T>()?,
+      offset: reader.read_u32()?,
+      num_tris: reader.read_u16()?,
+      num_verts: reader.read_u16()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.offset)?;
-    writer.write_u16::<T>(self.num_tris)?;
-    writer.write_u16::<T>(self.num_verts)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.offset)?;
+    writer.write_u16(self.num_tris)?;
+    writer.write_u16(self.num_verts)?;
 
     Ok(())
   }

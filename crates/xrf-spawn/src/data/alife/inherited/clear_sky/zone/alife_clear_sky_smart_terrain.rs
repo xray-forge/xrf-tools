@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -33,17 +32,17 @@ impl AlifeClearSkySmartTerrain {
 impl AlifeStateReadWrite for AlifeClearSkySmartTerrain {
   /// Read the terrain's spawn fields. Its `STATE_Read` returns before its own under the Level Editor, so the editor's
   /// form ending at the smart zone takes the combat manager's constructor state.
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      combat_manager: ScriptSaveMarker::read_or_constructed::<T, _, _>(
+      base: reader.read_xr()?,
+      combat_manager: ScriptSaveMarker::read_or_constructed(
         reader,
         Self::SCRIPT_CLASS,
         ClearSkyCombatManager::default,
         |reader| {
-          let combat_manager: ClearSkyCombatManager = reader.read_xr::<T, _>()?;
+          let combat_manager: ClearSkyCombatManager = reader.read_xr()?;
 
           ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "stalkers' jobs count", 0)?;
           ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "jobs' death times count", 0)?;
@@ -54,13 +53,13 @@ impl AlifeStateReadWrite for AlifeClearSkySmartTerrain {
     })
   }
 
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
-    writer.write_xr::<T, _>(&self.base)?;
+    writer.write_xr(&self.base)?;
 
-    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
-      writer.write_xr::<T, _>(&self.combat_manager)?;
+    ScriptSaveMarker::write(writer, Self::SCRIPT_CLASS, |writer| {
+      writer.write_xr(&self.combat_manager)?;
       // No stalkers' jobs and no jobs' death times.
       writer.write_u8(0)?;
       writer.write_u8(0)
@@ -94,7 +93,7 @@ impl AlifeStateReadWrite for AlifeClearSkySmartTerrain {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::{Sphere, Vector3d};
@@ -139,14 +138,14 @@ mod tests {
     let original: AlifeClearSkySmartTerrain = new_terrain();
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write_state::<XRayByteOrder, _>(&mut writer, SpawnLayout::CLEAR_SKY)?;
+    original.write_state(&mut writer, SpawnLayout::CLEAR_SKY)?;
 
     assert_eq!(writer.buffer[writer.buffer.len() - 4..], [0, 0, 23, 0]);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
     assert_eq!(
-      AlifeClearSkySmartTerrain::read_state::<XRayByteOrder, _>(&mut reader, SpawnLayout::CLEAR_SKY)?,
+      AlifeClearSkySmartTerrain::read_state(&mut reader, SpawnLayout::CLEAR_SKY)?,
       original
     );
     assert!(reader.is_ended());
@@ -159,13 +158,13 @@ mod tests {
   fn refuses_stalkers_holding_jobs() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    new_terrain().write_state::<XRayByteOrder, _>(&mut writer, SpawnLayout::CLEAR_SKY)?;
+    new_terrain().write_state(&mut writer, SpawnLayout::CLEAR_SKY)?;
 
     let jobs_at: usize = writer.buffer.len() - 4;
 
     writer.buffer[jobs_at] = 2;
 
-    let error: String = AlifeClearSkySmartTerrain::read_state::<XRayByteOrder, _>(
+    let error: String = AlifeClearSkySmartTerrain::read_state(
       &mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&writer.buffer)?,
       SpawnLayout::CLEAR_SKY,
     )

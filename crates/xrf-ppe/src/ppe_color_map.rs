@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
@@ -25,9 +24,9 @@ impl PpeColorMap {
   /// # Errors
   ///
   /// Returns an error when the payload ends inside the envelope or before the texture name terminates.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      influence: AnimationEnvelope::read::<T, D>(reader)?,
+      influence: AnimationEnvelope::read::<D>(reader)?,
       texture: reader.read_w1251_string()?,
     })
   }
@@ -37,8 +36,8 @@ impl PpeColorMap {
   /// # Errors
   ///
   /// Returns an error when the envelope carries more keys than its `u16` count holds.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.influence.write::<T>(writer)?;
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.influence.write(writer)?;
     writer.write_w1251_string(&self.texture)?;
 
     Ok(())

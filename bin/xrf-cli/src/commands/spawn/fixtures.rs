@@ -8,7 +8,7 @@ use xrf_math::Vector3d;
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectInherited, ClsId, GraphHeader, LevelSpawnFile, LevelSpawnObject,
   SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk, SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPacketHeader,
-  SpawnPatrolsChunk, XRayByteOrder,
+  SpawnPatrolsChunk,
 };
 
 /// A root spawn holding nothing: no objects, levels, artefact points, patrols or graph vertices.
@@ -62,7 +62,7 @@ pub(crate) fn new_level_object(id: u32, section: &str, name: &str) -> LevelSpawn
 
 /// A graph point of Call of Pripyat's spawn version, which the typed read accepts, listed under chunk `id`.
 pub(crate) fn new_typed_level_object(id: u32, name: &str) -> XrfResult<LevelSpawnObject> {
-  LevelSpawnObject::from_alife_object::<XRayByteOrder>(
+  LevelSpawnObject::from_alife_object(
     id,
     &AlifeObject {
       header: SpawnPacketHeader {
@@ -101,7 +101,7 @@ pub(crate) fn new_typed_level_object(id: u32, name: &str) -> XrfResult<LevelSpaw
 pub(crate) fn write_level_spawn_list(path: &Path, objects: Vec<LevelSpawnObject>) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  LevelSpawnFile { objects }.write::<XRayByteOrder>(&mut writer)?;
+  LevelSpawnFile { objects }.write(&mut writer)?;
 
   let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 

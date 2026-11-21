@@ -4,7 +4,6 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfResult;
 use xrf_ogf::{OgfRefsPatchReport, OgfTextureRefsProcessor};
 use xrf_output::OutputOptions;
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use crate::core::arguments::InputArgument;
@@ -92,7 +91,7 @@ impl PatchTextureRefsCommand {
     is_dry_run: bool,
   ) -> XrfResult<OgfRefsPatchReport> {
     let report: OgfRefsPatchReport =
-      OgfTextureRefsProcessor::patch_texture_refs_to_path::<XRayByteOrder>(path, destination, from, to, is_dry_run)?;
+      OgfTextureRefsProcessor::patch_texture_refs_to_path(path, destination, from, to, is_dry_run)?;
 
     xrf_output::info!(
       output,

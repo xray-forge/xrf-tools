@@ -10,7 +10,6 @@ and archive describer read banks through it.
 ## Read, edit and write a bank
 
 ```rust
-use xrf_chunk::XRayByteOrder;
 use xrf_omf::{OmfFile, OmfMotionsProcessor};
 use xrf_skeleton::{
   SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
@@ -48,9 +47,9 @@ fn main() -> xrf_error::XrfResult {
   OmfMotionsProcessor::duplicate_motion(&mut bank, "pm_idle", "pm_idle_bore", true)?;
 
   let mut bytes: Vec<u8> = Vec::new();
-  bank.write_to::<XRayByteOrder>(&mut bytes)?;
+  bank.write_to(&mut bytes)?;
 
-  let restored = OmfFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let restored = OmfFile::read_from_bytes(bytes)?;
 
   assert_eq!(restored.get_motion_names(), ["pm_idle", "pm_idle_bore"]);
   assert!(

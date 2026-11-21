@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{EditableObjectPart, EditableTextPart, EditableWayObject};
 use xrf_error::XrfResult;
 use xrf_level::{LevelGameFile, LevelGameWay, LevelGameWayLink, LevelGameWayPoint};
@@ -34,7 +34,7 @@ fn bytes_of(ways: Vec<LevelGameWay>) -> XrfResult<Vec<u8>> {
     rpoints: Vec::new(),
     ways,
   }
-  .write::<XRayByteOrder>(&mut writer)?;
+  .write(&mut writer)?;
 
   Ok(writer.buffer)
 }

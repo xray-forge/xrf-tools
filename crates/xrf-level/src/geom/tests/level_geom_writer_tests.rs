@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -61,15 +61,12 @@ fn writes_a_vertex_where_each_layout_places_its_elements_and_reads_it_back() -> 
     let layout: LevelVertexLayout = layout_of(declaration)?;
     let mut bytes: Vec<u8> = vec![0; layout.get_stride() as usize];
 
-    stored.write_into::<XRayByteOrder>(&layout, &mut bytes)?;
+    stored.write_into(&layout, &mut bytes)?;
 
     let payload: LevelVertexPayload = LevelVertexPayload::of(layout, bytes)?;
 
     assert_eq!(
-      payload
-        .vertices()
-        .next()
-        .map(|vertex| vertex.get_stored::<XRayByteOrder>()),
+      payload.vertices().next().map(|vertex| vertex.get_stored()),
       Some(stored)
     );
   }
@@ -85,16 +82,8 @@ fn refuses_a_vertex_whose_elements_its_layout_does_not_hold() -> XrfResult {
   let layout: LevelVertexLayout = layout_of(LevelVertexDeclaration::get_lightmapped())?;
   let mut bytes: Vec<u8> = vec![0; layout.get_stride() as usize];
 
-  assert!(
-    vertex_lit(1.0)
-      .write_into::<XRayByteOrder>(&layout, &mut bytes)
-      .is_err()
-  );
-  assert!(
-    vertex_lit(1.0)
-      .write_into::<XRayByteOrder>(&layout, &mut bytes[1..])
-      .is_err()
-  );
+  assert!(vertex_lit(1.0).write_into(&layout, &mut bytes).is_err());
+  assert!(vertex_lit(1.0).write_into(&layout, &mut bytes[1..]).is_err());
 
   Ok(())
 }
@@ -187,8 +176,8 @@ fn writes_a_geometry_file_that_reads_back_whole() -> XrfResult {
   let mut packer: LevelGeomPacker = LevelGeomPacker::default();
   let mut bytes: Vec<u8> = vec![0; 64];
 
-  vertex_lit(1.0).write_into::<XRayByteOrder>(&layout, &mut bytes[..32])?;
-  vertex_lit(2.0).write_into::<XRayByteOrder>(&layout, &mut bytes[32..])?;
+  vertex_lit(1.0).write_into(&layout, &mut bytes[..32])?;
+  vertex_lit(2.0).write_into(&layout, &mut bytes[32..])?;
   packer.add_vertices(&LevelVertexDeclaration::get_vertex_lit(), &bytes)?;
   packer.add_indices(&[0, 1, 1])?;
 
@@ -208,10 +197,10 @@ fn writes_a_geometry_file_that_reads_back_whole() -> XrfResult {
   );
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  buffers.write::<XRayByteOrder>(&mut writer)?;
+  buffers.write(&mut writer)?;
 
   assert_eq!(
-    LevelGeomBuffers::read_from_bytes::<XRayByteOrder>(writer.flush_raw_into_buffer()?)?,
+    LevelGeomBuffers::read_from_bytes(writer.flush_raw_into_buffer()?)?,
     buffers
   );
 

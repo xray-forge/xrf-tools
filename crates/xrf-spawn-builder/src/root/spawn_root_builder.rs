@@ -3,7 +3,6 @@ use std::time::{Duration, Instant};
 
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_report::Report;
 use xrf_spawn::{
@@ -284,7 +283,7 @@ impl SpawnRootBuilder {
   fn derive_guid(spawn: &SpawnFile) -> XrfResult<Uuid> {
     let mut hasher: Sha256 = Sha256::new();
 
-    spawn.write_to::<XRayByteOrder>(&mut hasher)?;
+    spawn.write_to(&mut hasher)?;
 
     let digest = hasher.finalize();
     let mut guid: [u8; 16] = [0; 16];

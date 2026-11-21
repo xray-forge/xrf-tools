@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_spawn::{SpawnFile, SpawnLevelGraph};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
@@ -39,7 +39,7 @@ impl LevelGraphPart {
       let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) =
         LevelSpawnPart::read_chunks(search)?;
 
-      SpawnFile::read_level_graph_from_chunks::<XRayByteOrder, _>(&chunks, &level)
+      SpawnFile::read_level_graph_from_chunks(&chunks, &level)
         .map(Arc::new)
         .map_err(|error| format!("Failed to read the graph of '{path}': {error}"))
     })

@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
@@ -42,7 +41,7 @@ impl LevelLightsChunk {
   /// # Errors
   ///
   /// Returns an error when the payload cannot be read.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(id: u32, reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(id: u32, reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let size: u64 = reader.read_bytes_remain();
 
     if size == 0 || !size.is_multiple_of(LevelLight::SERIALIZED_SIZE) {
@@ -56,7 +55,7 @@ impl LevelLightsChunk {
     let mut lights: Vec<LevelLight> = reader.new_bounded_vec(count, LevelLight::SERIALIZED_SIZE, "level lights")?;
 
     for _ in 0..count {
-      lights.push(reader.read_xr::<T, _>()?);
+      lights.push(reader.read_xr()?);
     }
 
     reader.assert_read("Expect all data to be read from level lights chunk")?;
@@ -69,11 +68,11 @@ impl LevelLightsChunk {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     match self {
       Self::Lights { lights, .. } => {
         for light in lights {
-          writer.write_xr::<T, _>(light)?;
+          writer.write_xr(light)?;
         }
       }
       Self::Opaque { data, .. } => {

@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::parallel::prelude::*;
 use xrf_level::{
@@ -186,7 +185,7 @@ impl GeometryVisuals {
           .iter()
           .zip(bytes.chunks_exact_mut(fast_path.get_stride() as usize))
         {
-          Self::get_fast_stored(vertex).write_into::<XRayByteOrder>(&fast_path, slot)?;
+          Self::get_fast_stored(vertex).write_into(&fast_path, slot)?;
         }
 
         fast_vertices = Some(fast.add_vertices(&LevelVertexDeclaration::get_fast_path(), &bytes)?);
@@ -206,7 +205,7 @@ impl GeometryVisuals {
         .iter()
         .zip(bytes.chunks_exact_mut(layout.get_stride() as usize))
       {
-        Self::get_stored(vertex, visual.light).write_into::<XRayByteOrder>(layout, slot)?;
+        Self::get_stored(vertex, visual.light).write_into(layout, slot)?;
       }
 
       packed[index] = Some(GeometryPackedVisual {

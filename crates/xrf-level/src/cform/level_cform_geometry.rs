@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use glam::Vec3;
 use serde::Serialize;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
@@ -24,7 +23,7 @@ impl LevelCformGeometry {
   pub const VERTEX_SIZE: usize = 12;
 
   /// Reads the payload the header counts, from just after the header.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_from_chunk<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     header: &LevelCformHeader,
   ) -> XrfResult<Self> {
@@ -35,7 +34,7 @@ impl LevelCformGeometry {
     )?;
 
     for _ in 0..header.vertex_count {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
     let mut faces: Vec<LevelCformFace> = reader.new_bounded_vec(
@@ -45,7 +44,7 @@ impl LevelCformGeometry {
     )?;
 
     for _ in 0..header.face_count {
-      faces.push(reader.read_xr::<T, _>()?);
+      faces.push(reader.read_xr()?);
     }
 
     Self::new(vertices, faces)
@@ -76,13 +75,13 @@ impl LevelCformGeometry {
   /// # Errors
   ///
   /// Returns an error when the writer fails.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
     for face in &self.faces {
-      writer.write_xr::<T, _>(face)?;
+      writer.write_xr(face)?;
     }
 
     Ok(())

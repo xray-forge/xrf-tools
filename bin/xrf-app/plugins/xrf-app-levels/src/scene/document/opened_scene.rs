@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableLevelFile, EditableLevelGuid, EditableLevelPart, EditableLevelScene, EditableScenePartFile,
   EditableScenePartSource, EditableSceneRead, EditableSceneTool,
@@ -75,7 +74,7 @@ impl OpenedScene {
     let EditableSceneRead {
       scene: mut read_scene,
       files: read_files,
-    } = EditableLevelScene::read_from_source::<XRayByteOrder>(level, &files)
+    } = EditableLevelScene::read_from_source(level, &files)
       .map_err(|error| format!("Failed to read scene '{}': {error}", source.path))?;
     let mut scene: EditableLevelScene = EditableLevelScene {
       level: read_scene.level,

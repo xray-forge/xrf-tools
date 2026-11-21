@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
 
@@ -22,8 +21,8 @@ impl GraphVertexLevels {
   /// # Errors
   ///
   /// Returns an error when the head of the chunk cannot be read.
-  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let header: GraphHeader = reader.read_xr::<T, _>()?;
+  pub(crate) fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let header: GraphHeader = reader.read_xr()?;
 
     let mut levels: Vec<GraphLevel> = reader.new_bounded_vec(
       header.levels_count.into(),
@@ -32,7 +31,7 @@ impl GraphVertexLevels {
     )?;
 
     for _ in 0..header.levels_count {
-      levels.push(reader.read_xr::<T, _>()?);
+      levels.push(reader.read_xr()?);
     }
 
     let mut vertices: Vec<GraphVertex> = reader.new_bounded_vec(
@@ -42,7 +41,7 @@ impl GraphVertexLevels {
     )?;
 
     for _ in 0..header.vertices_count {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
     Ok(Self { levels, vertices })
@@ -65,7 +64,7 @@ impl GraphVertexLevels {
 #[cfg(test)]
 mod tests {
   use uuid::uuid;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
 
@@ -118,13 +117,13 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    graphs.write::<XRayByteOrder>(&mut writer)?;
+    graphs.write(&mut writer)?;
 
-    let bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnGraphsChunk::CHUNK_ID)?;
+    let bytes: Vec<u8> = writer.flush_chunk_into_buffer(SpawnGraphsChunk::CHUNK_ID)?;
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(bytes)?
       .read_child_by_index(0)
       .expect("the graph chunk to exist");
-    let levels: GraphVertexLevels = GraphVertexLevels::read::<XRayByteOrder, _>(&mut reader)?;
+    let levels: GraphVertexLevels = GraphVertexLevels::read(&mut reader)?;
 
     assert_eq!(levels.vertices, graphs.vertices);
     assert_eq!(levels.get_level(0).map(|it| it.name.as_str()), Some("zaton"));

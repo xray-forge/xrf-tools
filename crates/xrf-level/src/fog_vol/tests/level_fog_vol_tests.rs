@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::fog_vol::level_fog_vol_file::LevelFogVolFile;
@@ -42,7 +42,7 @@ fn file_bytes(volumes: &[(&str, &str, usize)]) -> Vec<u8> {
 #[test]
 fn a_fog_body_names_the_config_its_simulation_comes_from() -> XrfResult {
   let file: LevelFogVolFile =
-    LevelFogVolFile::read_from_bytes::<XRayByteOrder>(file_bytes(&[("environment\\fog\\area_02.ltx", "\r\n", 2)]))?;
+    LevelFogVolFile::read_from_bytes(file_bytes(&[("environment\\fog\\area_02.ltx", "\r\n", 2)]))?;
 
   assert_eq!(file.version, LevelFogVolFile::CURRENT_VERSION);
   assert_eq!(file.volumes.len(), 1);
@@ -59,7 +59,7 @@ fn a_profile_is_a_line_rather_than_a_terminated_string() -> XrfResult {
   // `dx113DFluidData::Load` reads it with `r_string`, which stops at the first CR or LF. Every shipped body ends
   // with a CRLF, and normalising that would cost byte-identical repack.
   let file: LevelFogVolFile =
-    LevelFogVolFile::read_from_bytes::<XRayByteOrder>(file_bytes(&[("environment\\fog\\area_02.ltx", "\r\n", 0)]))?;
+    LevelFogVolFile::read_from_bytes(file_bytes(&[("environment\\fog\\area_02.ltx", "\r\n", 0)]))?;
 
   assert_eq!(file.volumes[0].terminator, "\r\n");
 
@@ -77,11 +77,11 @@ fn a_fog_body_list_is_written_back_byte_for_byte() -> XrfResult {
     ],
   ] {
     let bytes: Vec<u8> = file_bytes(&volumes);
-    let file: LevelFogVolFile = LevelFogVolFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+    let file: LevelFogVolFile = LevelFogVolFile::read_from_bytes(bytes.clone())?;
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    file.write::<XRayByteOrder>(&mut writer)?;
+    file.write(&mut writer)?;
 
     assert_eq!(writer.buffer, bytes, "{} volumes did not round trip", volumes.len());
   }
@@ -93,7 +93,7 @@ fn a_fog_body_list_is_written_back_byte_for_byte() -> XrfResult {
 fn a_file_declaring_no_bodies_is_the_ordinary_case() -> XrfResult {
   // 116 of the 117 shipped files are exactly six bytes: a version and a zero count.
   let bytes: Vec<u8> = file_bytes(&[]);
-  let file: LevelFogVolFile = LevelFogVolFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelFogVolFile = LevelFogVolFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(bytes.len(), 6);
   assert!(file.volumes.is_empty());
@@ -107,5 +107,5 @@ fn a_version_the_renderer_refuses_is_refused_here_too() {
 
   bytes[0..2].copy_from_slice(&2u16.to_le_bytes());
 
-  assert!(LevelFogVolFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(LevelFogVolFile::read_from_bytes(bytes).is_err());
 }

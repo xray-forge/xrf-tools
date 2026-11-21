@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -19,17 +18,17 @@ impl LevelGameWayPoint {
 }
 
 impl ChunkReadWrite for LevelGameWayPoint {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      position: reader.read_xr::<T, _>()?,
-      flags: reader.read_u32::<T>()?,
+      position: reader.read_xr()?,
+      flags: reader.read_u32()?,
       name: reader.read_w1251_string()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_u32::<T>(self.flags)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.position)?;
+    writer.write_u32(self.flags)?;
     writer.write_w1251_string(&self.name)?;
 
     Ok(())

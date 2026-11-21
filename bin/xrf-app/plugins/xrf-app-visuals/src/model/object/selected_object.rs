@@ -1,6 +1,5 @@
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetSource;
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_extension::XrayExtension;
 use xrf_object_visual::ObjectVisual;
@@ -28,7 +27,7 @@ impl SelectedObject {
     let label: &str = source.label();
     let object: EditableObjectFile = source
       .read(search)
-      .and_then(EditableObjectFile::read_from_bytes::<XRayByteOrder>)
+      .and_then(EditableObjectFile::read_from_bytes)
       .map_err(|error| format!("Failed to read object '{label}': {error}"))?;
     let provenance: Option<ObjectProvenance> = source.physical_path().and_then(|path| {
       ObjectProvenance::read_beside(path)

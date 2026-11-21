@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::library::{ShaderBlenderClass, ShaderBlenderProperty, read_shader_fixed_string, write_shader_fixed_string};
@@ -118,22 +117,22 @@ impl ShaderBlender {
 
 impl ChunkReadWrite for ShaderBlender {
   /// Reads one blender chunk whole: its description, then every property up to the chunk's end.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let class: ShaderBlenderClass = ShaderBlenderClass::from_raw(reader.read_u64::<T>()?);
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let class: ShaderBlenderClass = ShaderBlenderClass::from_raw(reader.read_u64()?);
     let name: String = read_shader_fixed_string(reader, Self::NAME_SIZE, "blender name")?;
     let computer: String = read_shader_fixed_string(reader, Self::COMPUTER_SIZE, "blender computer name")?;
-    let time: u32 = reader.read_u32::<T>()?;
-    let version: u16 = reader.read_u16::<T>()?;
+    let time: u32 = reader.read_u32()?;
+    let version: u16 = reader.read_u16()?;
 
     // The two bytes `pack(4)` leaves after the version, which the engine reads as part of its description struct.
-    reader.read_u16::<T>()?;
+    reader.read_u16()?;
 
     // Grown rather than reserved: the format declares no property count, so the only bound is the chunk itself and
     // reserving against it would size every blender's list by its longest possible reading.
     let mut properties: Vec<ShaderBlenderProperty> = Vec::new();
 
     while reader.has_data() {
-      properties.push(reader.read_xr::<T, ShaderBlenderProperty>()?);
+      properties.push(reader.read_xr::<ShaderBlenderProperty>()?);
     }
 
     Ok(Self {
@@ -146,16 +145,16 @@ impl ChunkReadWrite for ShaderBlender {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u64::<T>(self.class.raw())?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u64(self.class.raw())?;
     write_shader_fixed_string(writer, &self.name, Self::NAME_SIZE, "blender name")?;
     write_shader_fixed_string(writer, &self.computer, Self::COMPUTER_SIZE, "blender computer name")?;
-    writer.write_u32::<T>(self.time)?;
-    writer.write_u16::<T>(self.version)?;
-    writer.write_u16::<T>(0)?;
+    writer.write_u32(self.time)?;
+    writer.write_u16(self.version)?;
+    writer.write_u16(0)?;
 
     for property in &self.properties {
-      property.write::<T>(writer)?;
+      property.write(writer)?;
     }
 
     Ok(())

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -23,24 +22,24 @@ impl AlifePacketsReadWrite for AlifeObjectItemArtefact {
   }
 
   /// Read an artefact from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?,
+      base: AlifeObjectItem::read(spawn, update, layout)?,
     })
   }
 
   /// Write an artefact into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)
+    self.base.write(spawn, update, layout)
   }
 
   /// Import an artefact from ltx config section.
@@ -58,7 +57,6 @@ impl AlifePacketsReadWrite for AlifeObjectItemArtefact {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -78,10 +76,7 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemArtefact = new_object();
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (52, 54, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (52, 54, original));
 
     Ok(())
   }

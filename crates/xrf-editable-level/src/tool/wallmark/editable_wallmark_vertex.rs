@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -16,20 +15,20 @@ impl EditableWallmarkVertex {
   /// Bytes a vertex occupies.
   pub const SERIALIZED_SIZE: u64 = 12 + 4 + 8;
 
-  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub(crate) fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      position: reader.read_xr::<T, _>()?,
-      color: reader.read_u32::<T>()?,
-      u: reader.read_f32::<T>()?,
-      v: reader.read_f32::<T>()?,
+      position: reader.read_xr()?,
+      color: reader.read_u32()?,
+      u: reader.read_f32()?,
+      v: reader.read_f32()?,
     })
   }
 
-  pub(crate) fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_u32::<T>(self.color)?;
-    writer.write_f32::<T>(self.u)?;
-    writer.write_f32::<T>(self.v)?;
+  pub(crate) fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.position)?;
+    writer.write_u32(self.color)?;
+    writer.write_f32(self.u)?;
+    writer.write_f32(self.v)?;
 
     Ok(())
   }

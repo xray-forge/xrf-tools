@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -47,19 +46,19 @@ impl LevelEnvModifier {
   /// # Errors
   ///
   /// Returns an error when the payload ends inside the record.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, version: u32) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, version: u32) -> XrfResult<Self> {
     Ok(Self {
-      position: reader.read_xr::<T, _>()?,
-      radius: reader.read_f32::<T>()?,
-      power: reader.read_f32::<T>()?,
-      far_plane: reader.read_f32::<T>()?,
-      fog_color: reader.read_xr::<T, _>()?,
-      fog_density: reader.read_f32::<T>()?,
-      ambient: reader.read_xr::<T, _>()?,
-      sky_color: reader.read_xr::<T, _>()?,
-      hemi_color: reader.read_xr::<T, _>()?,
+      position: reader.read_xr()?,
+      radius: reader.read_f32()?,
+      power: reader.read_f32()?,
+      far_plane: reader.read_f32()?,
+      fog_color: reader.read_xr()?,
+      fog_density: reader.read_f32()?,
+      ambient: reader.read_xr()?,
+      sky_color: reader.read_xr()?,
+      hemi_color: reader.read_xr()?,
       use_flags: if version >= Self::FLAGS_VERSION {
-        Some(reader.read_u16::<T>()?)
+        Some(reader.read_u16()?)
       } else {
         None
       },
@@ -71,19 +70,19 @@ impl LevelEnvModifier {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_f32::<T>(self.radius)?;
-    writer.write_f32::<T>(self.power)?;
-    writer.write_f32::<T>(self.far_plane)?;
-    writer.write_xr::<T, _>(&self.fog_color)?;
-    writer.write_f32::<T>(self.fog_density)?;
-    writer.write_xr::<T, _>(&self.ambient)?;
-    writer.write_xr::<T, _>(&self.sky_color)?;
-    writer.write_xr::<T, _>(&self.hemi_color)?;
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.position)?;
+    writer.write_f32(self.radius)?;
+    writer.write_f32(self.power)?;
+    writer.write_f32(self.far_plane)?;
+    writer.write_xr(&self.fog_color)?;
+    writer.write_f32(self.fog_density)?;
+    writer.write_xr(&self.ambient)?;
+    writer.write_xr(&self.sky_color)?;
+    writer.write_xr(&self.hemi_color)?;
 
     if let Some(flags) = self.use_flags {
-      writer.write_u16::<T>(flags)?;
+      writer.write_u16(flags)?;
     }
 
     Ok(())

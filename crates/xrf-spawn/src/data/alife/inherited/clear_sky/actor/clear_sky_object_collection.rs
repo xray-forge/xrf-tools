@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -41,34 +40,34 @@ impl ClearSkyObjectCollection {
 }
 
 impl ChunkFieldReadWrite for ClearSkyObjectCollection {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    ScriptSaveMarker::read(reader, Self::SCRIPT_CLASS, |reader| {
       let collection: Self = Self {
-        count: reader.read_u16::<T>()?,
-        last_id: reader.read_u16::<T>()?,
+        count: reader.read_u16()?,
+        last_id: reader.read_u16()?,
       };
 
-      ScriptAbsentState::read_u16::<T, _>(reader, Self::SCRIPT_CLASS, "freed ids count", 0)?;
-      ScriptAbsentState::read_u16::<T, _>(reader, Self::SCRIPT_CLASS, "given ids count", 0)?;
+      ScriptAbsentState::read_u16(reader, Self::SCRIPT_CLASS, "freed ids count", 0)?;
+      ScriptAbsentState::read_u16(reader, Self::SCRIPT_CLASS, "given ids count", 0)?;
 
       Ok(collection)
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
-      writer.write_u16::<T>(self.count)?;
-      writer.write_u16::<T>(self.last_id)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    ScriptSaveMarker::write(writer, Self::SCRIPT_CLASS, |writer| {
+      writer.write_u16(self.count)?;
+      writer.write_u16(self.last_id)?;
       // No freed and no given ids.
-      writer.write_u16::<T>(0)?;
-      writer.write_u16::<T>(0)
+      writer.write_u16(0)?;
+      writer.write_u16(0)
     })
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
 
   use crate::data::alife::inherited::clear_sky::actor::clear_sky_object_collection::ClearSkyObjectCollection;
@@ -78,13 +77,11 @@ mod tests {
     let bytes: &[u8] = b"\0\0\0\0\0\0\0\0\x08\0";
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    ClearSkyObjectCollection::default().write::<XRayByteOrder>(&mut writer)?;
+    ClearSkyObjectCollection::default().write(&mut writer)?;
 
     assert_eq!(writer.buffer, bytes);
     assert_eq!(
-      ClearSkyObjectCollection::read::<XRayByteOrder, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(
-        bytes
-      )?)?,
+      ClearSkyObjectCollection::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(bytes)?)?,
       ClearSkyObjectCollection::default()
     );
 
@@ -94,9 +91,9 @@ mod tests {
   // A given id would be followed by the list holding it, which is not read.
   #[test]
   fn refuses_given_ids() -> XrfResult {
-    let error: String = ClearSkyObjectCollection::read::<XRayByteOrder, _>(
-      &mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(b"\x01\0\x01\0\0\0\x01\0\x01\0\x0a\0")?,
-    )
+    let error: String = ClearSkyObjectCollection::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(
+      b"\x01\0\x01\0\0\0\x01\0\x01\0\x0a\0",
+    )?)
     .expect_err("one given id")
     .to_string();
 

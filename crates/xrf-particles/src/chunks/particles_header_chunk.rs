@@ -1,8 +1,7 @@
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, format_path};
@@ -21,9 +20,9 @@ impl ParticlesHeaderChunk {
 impl ChunkReadWrite for ParticlesHeaderChunk {
   /// Read version chunk by position descriptor.
   /// Parses binary data into version chunk representation object.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let header_chunk: Self = Self {
-      version: reader.read_u16::<T>()?,
+      version: reader.read_u16()?,
     };
 
     log::info!("Read header chunk, {} bytes", reader.read_bytes_len());
@@ -40,8 +39,8 @@ impl ChunkReadWrite for ParticlesHeaderChunk {
   }
 
   /// Write particle header into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.version)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.version)?;
 
     log::info!("Written header chunk, {} bytes", writer.bytes_written());
 
@@ -100,7 +99,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::FileImportExport;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -115,12 +114,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 2);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 2);
 
@@ -133,9 +131,7 @@ mod tests {
       .expect("0 index chunk to exist");
 
     assert_eq!(
-      ParticlesHeaderChunk::read::<XRayByteOrder, _>(&mut reader)
-        .unwrap_err()
-        .to_string(),
+      ParticlesHeaderChunk::read(&mut reader).unwrap_err().to_string(),
       "Not implemented error: Unknown version in particles header chunk, expected v1 only",
     );
 
@@ -150,12 +146,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 2);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 2);
 
@@ -167,7 +162,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(ParticlesHeaderChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(ParticlesHeaderChunk::read(&mut reader)?, original);
 
     Ok(())
   }

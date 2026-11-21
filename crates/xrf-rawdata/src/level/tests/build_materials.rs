@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
   EditableBuildParams, EditableCustomObject, EditableLevelCamera, EditableLevelFile, EditableLevelOptions,
   EditableLevelScene, EditableObjectPart, EditableObjectTransform, EditableSceneObject,
@@ -40,9 +40,9 @@ fn refuses_to_build_a_scene_placing_objects_without_the_game_materials() -> XrfR
     ),
     tools: vec![EditableObjectPart::new(GUID, vec![scene_object("own_0")]).to_scene_tool()?],
   }
-  .write_to_path::<XRayByteOrder, _>(&source)?;
+  .write_to_path(&source)?;
 
-  let error: String = LevelBuildExporter::build_to_directory::<XRayByteOrder>(
+  let error: String = LevelBuildExporter::build_to_directory(
     &LevelBuildRequest {
       source,
       destination: destination.clone(),
@@ -67,7 +67,7 @@ fn hands_the_compilers_files_to_the_check_before_writing_any() -> XrfResult {
   let destination: PathBuf = root.join("level");
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  GameMtlFile::new(Vec::new(), Vec::new()).write::<XRayByteOrder>(&mut writer)?;
+  GameMtlFile::new(Vec::new(), Vec::new()).write(&mut writer)?;
   std::fs::write(&game_materials, writer.buffer)?;
   std::fs::create_dir_all(root.join("objects"))?;
 
@@ -82,10 +82,10 @@ fn hands_the_compilers_files_to_the_check_before_writing_any() -> XrfResult {
     ),
     tools: Vec::new(),
   }
-  .write_to_path::<XRayByteOrder, _>(&source)?;
+  .write_to_path(&source)?;
 
   let mut checked: Vec<&str> = Vec::new();
-  let error: String = LevelBuildExporter::build_to_directory_checked::<XRayByteOrder>(
+  let error: String = LevelBuildExporter::build_to_directory_checked(
     &LevelBuildRequest {
       source,
       destination: destination.clone(),

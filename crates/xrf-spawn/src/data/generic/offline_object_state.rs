@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -50,7 +49,7 @@ impl OfflineObjectState {
 
 impl ChunkFieldReadWrite for OfflineObjectState {
   /// Read the two strings the script class writes.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       level_vertex_id: ScriptToString::parse_id(&reader.read_w1251_string()?, Self::LEVEL_VERTEX)?,
       active_section: ScriptToString::parse_text(reader.read_w1251_string()?),
@@ -58,7 +57,7 @@ impl ChunkFieldReadWrite for OfflineObjectState {
   }
 
   /// Write the two strings the script class reads.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&ScriptToString::format_id(self.level_vertex_id))?;
     writer.write_w1251_string(ScriptToString::format_text(self.active_section.as_deref()))?;
 
@@ -68,7 +67,7 @@ impl ChunkFieldReadWrite for OfflineObjectState {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
 
@@ -77,10 +76,10 @@ mod tests {
   fn read_back(state: &OfflineObjectState) -> XrfResult<(Vec<u8>, OfflineObjectState)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    state.write::<XRayByteOrder>(&mut writer)?;
+    state.write(&mut writer)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: OfflineObjectState = OfflineObjectState::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: OfflineObjectState = OfflineObjectState::read(&mut reader)?;
 
     reader.assert_read("Expect the whole state to be read")?;
 
@@ -118,7 +117,7 @@ mod tests {
     writer.write_w1251_string("nil")?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let error: String = OfflineObjectState::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = OfflineObjectState::read(&mut reader)
       .expect_err("a vertex the script would not write")
       .to_string();
 

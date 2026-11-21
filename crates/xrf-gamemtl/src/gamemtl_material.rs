@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::gamemtl_acoustics::GameMtlAcoustics;
@@ -131,11 +130,11 @@ impl GameMtlMaterial {
   /// # Errors
   ///
   /// Returns an error when a chunk the engine asserts on is absent, or a chunk holds more or less than it should.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     let mut main: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::MAIN_CHUNK_ID)?;
-    let id: u32 = main.read_u32::<T>()?;
+    let id: u32 = main.read_u32()?;
     let name: String = main.read_w1251_string()?;
 
     main.assert_read("All data should be read in game material main chunk")?;
@@ -149,21 +148,21 @@ impl GameMtlMaterial {
       description: ChunkReader::find_optional_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID)
         .map(|mut chunk| chunk.read_w1251_string_payload())
         .transpose()?,
-      flags: ChunkReader::find_required_by_id(&chunks, Self::FLAGS_CHUNK_ID)?.read_u32_payload::<T>()?,
-      ph_friction: physics.read_f32::<T>()?,
-      ph_damping: physics.read_f32::<T>()?,
-      ph_spring: physics.read_f32::<T>()?,
-      ph_bounce_start_velocity: physics.read_f32::<T>()?,
-      ph_bouncing: physics.read_f32::<T>()?,
-      shoot_factor: factors.read_f32::<T>()?,
-      bounce_damage_factor: factors.read_f32::<T>()?,
-      visual_transparency_factor: factors.read_f32::<T>()?,
-      sound_occlusion_factor: factors.read_f32::<T>()?,
-      flotation_factor: Self::read_optional_f32::<T, D>(&chunks, Self::FLOTATION_CHUNK_ID)?,
-      injurious_speed: Self::read_optional_f32::<T, D>(&chunks, Self::INJURIOUS_CHUNK_ID)?,
-      density_factor: Self::read_optional_f32::<T, D>(&chunks, Self::DENSITY_CHUNK_ID)?,
-      shoot_factor_mp: Self::read_optional_f32::<T, D>(&chunks, Self::FACTORS_MP_CHUNK_ID)?,
-      acoustics: Self::read_optional_acoustics::<T, D>(&chunks)?,
+      flags: ChunkReader::find_required_by_id(&chunks, Self::FLAGS_CHUNK_ID)?.read_u32_payload()?,
+      ph_friction: physics.read_f32()?,
+      ph_damping: physics.read_f32()?,
+      ph_spring: physics.read_f32()?,
+      ph_bounce_start_velocity: physics.read_f32()?,
+      ph_bouncing: physics.read_f32()?,
+      shoot_factor: factors.read_f32()?,
+      bounce_damage_factor: factors.read_f32()?,
+      visual_transparency_factor: factors.read_f32()?,
+      sound_occlusion_factor: factors.read_f32()?,
+      flotation_factor: Self::read_optional_f32::<D>(&chunks, Self::FLOTATION_CHUNK_ID)?,
+      injurious_speed: Self::read_optional_f32::<D>(&chunks, Self::INJURIOUS_CHUNK_ID)?,
+      density_factor: Self::read_optional_f32::<D>(&chunks, Self::DENSITY_CHUNK_ID)?,
+      shoot_factor_mp: Self::read_optional_f32::<D>(&chunks, Self::FACTORS_MP_CHUNK_ID)?,
+      acoustics: Self::read_optional_acoustics::<D>(&chunks)?,
     };
 
     physics.assert_read("All data should be read in game material physics chunk")?;
@@ -177,74 +176,72 @@ impl GameMtlMaterial {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut main: ChunkWriter = ChunkWriter::new();
 
-    main.write_u32::<T>(self.id)?;
+    main.write_u32(self.id)?;
     main.write_w1251_string(&self.name)?;
-    main.flush_chunk_into::<T>(&mut writer.buffer, Self::MAIN_CHUNK_ID)?;
+    main.flush_chunk_into(&mut writer.buffer, Self::MAIN_CHUNK_ID)?;
 
     if let Some(description) = &self.description {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
       chunk.write_w1251_string(description)?;
-      chunk.flush_chunk_into::<T>(&mut writer.buffer, Self::DESCRIPTION_CHUNK_ID)?;
+      chunk.flush_chunk_into(&mut writer.buffer, Self::DESCRIPTION_CHUNK_ID)?;
     }
 
     let mut flags: ChunkWriter = ChunkWriter::new();
 
-    flags.write_u32::<T>(self.flags)?;
-    flags.flush_chunk_into::<T>(&mut writer.buffer, Self::FLAGS_CHUNK_ID)?;
+    flags.write_u32(self.flags)?;
+    flags.flush_chunk_into(&mut writer.buffer, Self::FLAGS_CHUNK_ID)?;
 
     let mut physics: ChunkWriter = ChunkWriter::new();
 
-    physics.write_f32::<T>(self.ph_friction)?;
-    physics.write_f32::<T>(self.ph_damping)?;
-    physics.write_f32::<T>(self.ph_spring)?;
-    physics.write_f32::<T>(self.ph_bounce_start_velocity)?;
-    physics.write_f32::<T>(self.ph_bouncing)?;
-    physics.flush_chunk_into::<T>(&mut writer.buffer, Self::PHYSICS_CHUNK_ID)?;
+    physics.write_f32(self.ph_friction)?;
+    physics.write_f32(self.ph_damping)?;
+    physics.write_f32(self.ph_spring)?;
+    physics.write_f32(self.ph_bounce_start_velocity)?;
+    physics.write_f32(self.ph_bouncing)?;
+    physics.flush_chunk_into(&mut writer.buffer, Self::PHYSICS_CHUNK_ID)?;
 
     let mut factors: ChunkWriter = ChunkWriter::new();
 
-    factors.write_f32::<T>(self.shoot_factor)?;
-    factors.write_f32::<T>(self.bounce_damage_factor)?;
-    factors.write_f32::<T>(self.visual_transparency_factor)?;
-    factors.write_f32::<T>(self.sound_occlusion_factor)?;
-    factors.flush_chunk_into::<T>(&mut writer.buffer, Self::FACTORS_CHUNK_ID)?;
+    factors.write_f32(self.shoot_factor)?;
+    factors.write_f32(self.bounce_damage_factor)?;
+    factors.write_f32(self.visual_transparency_factor)?;
+    factors.write_f32(self.sound_occlusion_factor)?;
+    factors.flush_chunk_into(&mut writer.buffer, Self::FACTORS_CHUNK_ID)?;
 
     // `SGameMtl::Save` puts the multiplayer factor before the three chunks that follow it, which is not the order
     // `SGameMtl::Load` reads them in; keeping the editor's order is what writes a shipped library back byte for byte.
-    Self::write_optional_f32::<T>(writer, Self::FACTORS_MP_CHUNK_ID, self.shoot_factor_mp)?;
-    Self::write_optional_f32::<T>(writer, Self::FLOTATION_CHUNK_ID, self.flotation_factor)?;
-    Self::write_optional_f32::<T>(writer, Self::INJURIOUS_CHUNK_ID, self.injurious_speed)?;
-    Self::write_optional_f32::<T>(writer, Self::DENSITY_CHUNK_ID, self.density_factor)?;
+    Self::write_optional_f32(writer, Self::FACTORS_MP_CHUNK_ID, self.shoot_factor_mp)?;
+    Self::write_optional_f32(writer, Self::FLOTATION_CHUNK_ID, self.flotation_factor)?;
+    Self::write_optional_f32(writer, Self::INJURIOUS_CHUNK_ID, self.injurious_speed)?;
+    Self::write_optional_f32(writer, Self::DENSITY_CHUNK_ID, self.density_factor)?;
 
     if let Some(acoustics) = &self.acoustics {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      acoustics.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut writer.buffer, Self::ACOUSTICS_CHUNK_ID)?;
+      acoustics.write(&mut chunk)?;
+      chunk.flush_chunk_into(&mut writer.buffer, Self::ACOUSTICS_CHUNK_ID)?;
     }
 
     Ok(())
   }
 
   /// Reads one optional single-float chunk, or nothing where the material declares none.
-  fn read_optional_f32<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>], id: u32) -> XrfResult<Option<f32>> {
+  fn read_optional_f32<D: ChunkDataSource>(chunks: &[ChunkReader<D>], id: u32) -> XrfResult<Option<f32>> {
     ChunkReader::find_optional_by_id(chunks, id)
-      .map(|mut chunk| chunk.read_f32_payload::<T>())
+      .map(|mut chunk| chunk.read_f32_payload())
       .transpose()
   }
 
   /// Reads the acoustics chunk, or nothing where the material declares none.
-  fn read_optional_acoustics<T: ByteOrder, D: ChunkDataSource>(
-    chunks: &[ChunkReader<D>],
-  ) -> XrfResult<Option<GameMtlAcoustics>> {
+  fn read_optional_acoustics<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Option<GameMtlAcoustics>> {
     let Some(mut chunk) = ChunkReader::find_optional_by_id(chunks, Self::ACOUSTICS_CHUNK_ID) else {
       return Ok(None);
     };
-    let acoustics: GameMtlAcoustics = GameMtlAcoustics::read::<T, D>(&mut chunk)?;
+    let acoustics: GameMtlAcoustics = GameMtlAcoustics::read::<D>(&mut chunk)?;
 
     chunk.assert_read("All data should be read in game material acoustics chunk")?;
 
@@ -252,12 +249,12 @@ impl GameMtlMaterial {
   }
 
   /// Writes one optional single-float chunk, or nothing where the material declares none.
-  fn write_optional_f32<T: ByteOrder>(writer: &mut ChunkWriter, id: u32, value: Option<f32>) -> XrfResult {
+  fn write_optional_f32(writer: &mut ChunkWriter, id: u32, value: Option<f32>) -> XrfResult {
     if let Some(value) = value {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      chunk.write_f32::<T>(value)?;
-      chunk.flush_chunk_into::<T>(&mut writer.buffer, id)?;
+      chunk.write_f32(value)?;
+      chunk.flush_chunk_into(&mut writer.buffer, id)?;
     }
 
     Ok(())

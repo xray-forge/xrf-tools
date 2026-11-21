@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -29,26 +28,26 @@ impl LevelSndStaticSound {
 }
 
 impl ChunkReadWrite for LevelSndStaticSound {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       sound: reader.read_w1251_string()?,
-      position: reader.read_xr::<T, _>()?,
-      volume: reader.read_f32::<T>()?,
-      frequency: reader.read_f32::<T>()?,
-      active: reader.read_xr::<T, _>()?,
-      play: reader.read_xr::<T, _>()?,
-      pause: reader.read_xr::<T, _>()?,
+      position: reader.read_xr()?,
+      volume: reader.read_f32()?,
+      frequency: reader.read_f32()?,
+      active: reader.read_xr()?,
+      play: reader.read_xr()?,
+      pause: reader.read_xr()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.sound)?;
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_f32::<T>(self.volume)?;
-    writer.write_f32::<T>(self.frequency)?;
-    writer.write_xr::<T, _>(&self.active)?;
-    writer.write_xr::<T, _>(&self.play)?;
-    writer.write_xr::<T, _>(&self.pause)?;
+    writer.write_xr(&self.position)?;
+    writer.write_f32(self.volume)?;
+    writer.write_f32(self.frequency)?;
+    writer.write_xr(&self.active)?;
+    writer.write_xr(&self.play)?;
+    writer.write_xr(&self.pause)?;
 
     Ok(())
   }

@@ -1,7 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReadWriteOptional, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -34,20 +33,20 @@ impl Display for Time {
 
 impl ChunkFieldReadWriteOptional for Time {
   /// A flag of 1 ahead of the time, or 0 for none; any other flag is refused, as it would not write back.
-  fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
+  fn read_field_optional<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>> {
     match reader.read_u8()? {
       0 => Ok(None),
-      1 => Ok(Some(reader.read_xr::<T, _>()?)),
+      1 => Ok(Some(reader.read_xr()?)),
       flag => Err(XrfError::new_invalid_error(format!(
         "A time's flag is {flag}, where 0 stands for none and 1 for a time"
       ))),
     }
   }
 
-  fn write_field_optional<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, time: Option<&Self>) -> XrfResult {
+  fn write_field_optional<W: ChunkFieldWriter>(writer: &mut W, time: Option<&Self>) -> XrfResult {
     if let Some(time) = time {
       writer.write_u8(1)?;
-      writer.write_xr::<T, _>(time)
+      writer.write_xr(time)
     } else {
       writer.write_u8(0)
     }
@@ -56,14 +55,14 @@ impl ChunkFieldReadWriteOptional for Time {
 
 impl ChunkFieldReadWrite for Time {
   /// Read time object from chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     let year: u8 = reader.read_u8()?;
     let month: u8 = reader.read_u8()?;
     let day: u8 = reader.read_u8()?;
     let hour: u8 = reader.read_u8()?;
     let minute: u8 = reader.read_u8()?;
     let second: u8 = reader.read_u8()?;
-    let millis: u16 = reader.read_u16::<T>()?;
+    let millis: u16 = reader.read_u16()?;
 
     Ok(Self {
       year,
@@ -77,14 +76,14 @@ impl ChunkFieldReadWrite for Time {
   }
 
   /// Write time object into the chunk.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u8(self.year)?;
     writer.write_u8(self.month)?;
     writer.write_u8(self.day)?;
     writer.write_u8(self.hour)?;
     writer.write_u8(self.minute)?;
     writer.write_u8(self.second)?;
-    writer.write_u16::<T>(self.millis)
+    writer.write_u16(self.millis)
   }
 }
 
@@ -154,9 +153,7 @@ mod tests {
   use std::str::FromStr;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{
-    ChunkReadWrite, ChunkReadWriteOptional, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
-  };
+  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteOptional, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -177,15 +174,15 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     let mut bytes: Vec<u8> = Vec::new();
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut bytes, 0)?;
+    writer.flush_chunk_into(&mut bytes, 0)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?.read_child_by_index(0)?;
 
-    assert_eq!(Time::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(Time::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -205,12 +202,11 @@ mod tests {
       millis: 250,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 8);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 8);
 
@@ -220,7 +216,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(Time::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(Time::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -240,12 +236,11 @@ mod tests {
       millis: 250,
     };
 
-    writer.write_xr_optional::<XRayByteOrder, _>(Some(&original))?;
+    writer.write_xr_optional(Some(&original))?;
 
     assert_eq!(writer.bytes_written(), 9);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 9);
 
@@ -255,7 +250,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(Time::read_optional::<XRayByteOrder, _>(&mut reader)?, Some(original));
+    assert_eq!(Time::read_optional(&mut reader)?, Some(original));
 
     Ok(())
   }
@@ -265,12 +260,11 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let filename: String = GeneratedResources::sample_name(file!(), "read_write_optional_none.chunk");
 
-    Time::write_optional::<XRayByteOrder>(&mut writer, None)?;
+    Time::write_optional(&mut writer, None)?;
 
     assert_eq!(writer.bytes_written(), 1);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 1);
 
@@ -280,7 +274,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(Time::read_optional::<XRayByteOrder, _>(&mut reader)?, None);
+    assert_eq!(Time::read_optional(&mut reader)?, None);
 
     Ok(())
   }
@@ -288,9 +282,7 @@ mod tests {
   #[test]
   fn refuses_a_flag_other_than_0_or_1() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[2, 0, 0, 0, 0, 0, 0, 0, 0])?;
-    let error: String = Time::read_optional::<XRayByteOrder, _>(&mut reader)
-      .expect_err("a flag of 2")
-      .to_string();
+    let error: String = Time::read_optional(&mut reader).expect_err("a flag of 2").to_string();
 
     assert!(error.contains("A time's flag is 2"), "{error}");
 

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -26,25 +25,25 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazined {
   }
 
   /// Read a magazined weapon from both packets; its fire mode ends the update packet's weapon fields.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItemWeapon::read::<T, _, _>(spawn, update, layout)?,
+      base: AlifeObjectItemWeapon::read(spawn, update, layout)?,
       update_fire_mode: update.read_u8()?,
     })
   }
 
   /// Write a magazined weapon into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
     update.write_u8(self.update_fire_mode)?;
 
     Ok(())
@@ -91,7 +90,6 @@ impl AlifeObjectItemWeaponMagazined {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -105,10 +103,7 @@ mod tests {
     let original: AlifeObjectItemWeaponMagazined =
       AlifeObjectItemWeaponMagazined::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (60, 63, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (60, 63, original));
 
     Ok(())
   }
@@ -120,10 +115,7 @@ mod tests {
 
     original.base.base.update_state = None;
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (60, 10, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (60, 10, original));
 
     Ok(())
   }

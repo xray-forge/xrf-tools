@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -18,23 +17,23 @@ impl EditableVMapReference {
 }
 
 impl ChunkReadWrite for EditableVMapReference {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let count: u8 = reader.read_u8()?;
     let mut points: Vec<EditableVMapPoint> =
       reader.new_bounded_vec(count.into(), EditableVMapPoint::SIZE, "vertex map points")?;
 
     for _ in 0..count {
-      points.push(reader.read_xr::<T, _>()?);
+      points.push(reader.read_xr()?);
     }
 
     Ok(Self { points })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_u8(narrow_format_size(self.points.len(), "Vertex map points")?)?;
 
     for point in &self.points {
-      point.write::<T>(writer)?;
+      point.write(writer)?;
     }
 
     Ok(())

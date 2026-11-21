@@ -8,7 +8,7 @@ an effect's intensity. Both [xrf-anm](../xrf-anm/README.md) and [xrf-ppe](../xrf
 
 ```rust
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
-use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter};
 
 fn main() -> xrf_error::XrfResult {
   let step = |value: f32, time: f32| AnimationKey {
@@ -23,10 +23,10 @@ fn main() -> xrf_error::XrfResult {
   };
 
   let mut writer = ChunkWriter::new();
-  envelope.write::<XRayByteOrder>(&mut writer)?;
+  envelope.write(&mut writer)?;
 
   let mut reader = ChunkReader::from_vec(writer.buffer)?;
-  let restored = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)?;
+  let restored = AnimationEnvelope::read(&mut reader)?;
 
   assert_eq!(restored, envelope);
   assert_eq!(restored.get_duration_seconds(), Some(2.0));

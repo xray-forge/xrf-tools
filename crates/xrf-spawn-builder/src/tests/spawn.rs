@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, Vector3d};
@@ -53,10 +53,7 @@ fn map() -> XrfResult<SpawnAiMap> {
     guid: Uuid::nil(),
   };
 
-  SpawnAiMap::new(
-    header,
-    &LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &nodes)?,
-  )
+  SpawnAiMap::new(header, &LevelAiNodes::from_nodes(LevelAiVersion::CsCop, &nodes)?)
 }
 
 fn cell(game_vertex_id: u16, cells: u32) -> GraphCrossTableCell {
@@ -72,8 +69,7 @@ fn refuses_a_header_its_grid_or_nodes_cannot_follow() -> XrfResult {
     count: 1,
     ..map()?.get_header().clone()
   };
-  let nodes: LevelAiNodes =
-    LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &[node(0, 0, NONE, NONE)])?;
+  let nodes: LevelAiNodes = LevelAiNodes::from_nodes(LevelAiVersion::CsCop, &[node(0, 0, NONE, NONE)])?;
   let refused = |header: LevelAiHeader| SpawnAiMap::new(header, &nodes).is_err();
 
   assert!(SpawnAiMap::new(header.clone(), &nodes).is_ok());
@@ -157,7 +153,7 @@ fn takes_a_node_plane_through_its_own_position() -> XrfResult {
       count: 1,
       ..map()?.get_header().clone()
     },
-    &LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &nodes)?,
+    &LevelAiNodes::from_nodes(LevelAiVersion::CsCop, &nodes)?,
   )?;
   let position: Vector3d = map.get_node_position(0);
 
@@ -204,9 +200,9 @@ fn spawn_list(positions: &[Vector3d]) -> XrfResult<LevelSpawnFile> {
       };
       let mut bytes: ChunkWriter = ChunkWriter::new();
 
-      packet.write::<XRayByteOrder>(&mut bytes)?;
+      packet.write(&mut bytes)?;
 
-      LevelSpawnObject::read::<XRayByteOrder, _>(index as u32, &mut ChunkReader::from_bytes(&bytes.buffer)?)
+      LevelSpawnObject::read(index as u32, &mut ChunkReader::from_bytes(&bytes.buffer)?)
     })
     .collect::<XrfResult<_>>()?;
 

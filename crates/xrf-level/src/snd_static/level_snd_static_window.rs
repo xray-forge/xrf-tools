@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// A window a static sound answers to, as a pair the engine compares a clock against.
@@ -22,16 +21,16 @@ impl LevelSndStaticWindow {
 }
 
 impl ChunkReadWrite for LevelSndStaticWindow {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      from: reader.read_u32::<T>()?,
-      to: reader.read_u32::<T>()?,
+      from: reader.read_u32()?,
+      to: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.from)?;
-    writer.write_u32::<T>(self.to)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.from)?;
+    writer.write_u32(self.to)?;
 
     Ok(())
   }

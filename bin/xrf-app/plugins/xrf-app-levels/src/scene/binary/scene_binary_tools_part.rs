@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{EditableAiMapTool, EditableDetailObjectTool, EditableSceneTool, EditableWallmarkTool};
 use xrf_error::XrfResult;
 
@@ -65,7 +64,7 @@ impl SceneBinaryToolsPart {
   }
 
   fn count_ai_map(tool: &EditableSceneTool) -> XrfResult<SceneBinaryToolDescription> {
-    let map: EditableAiMapTool = EditableAiMapTool::read_from_scene_tool::<XRayByteOrder>(tool)?;
+    let map: EditableAiMapTool = EditableAiMapTool::read_from_scene_tool(tool)?;
 
     Ok(SceneBinaryToolDescription::AiMap {
       nodes: map.nodes.len() as u32,
@@ -73,7 +72,7 @@ impl SceneBinaryToolsPart {
   }
 
   fn count_detail_objects(tool: &EditableSceneTool) -> XrfResult<SceneBinaryToolDescription> {
-    let details: EditableDetailObjectTool = EditableDetailObjectTool::read_from_scene_tool::<XRayByteOrder>(tool)?;
+    let details: EditableDetailObjectTool = EditableDetailObjectTool::read_from_scene_tool(tool)?;
 
     Ok(SceneBinaryToolDescription::DetailObject {
       objects: details.objects.len() as u32,
@@ -82,7 +81,7 @@ impl SceneBinaryToolsPart {
   }
 
   fn count_wallmarks(tool: &EditableSceneTool) -> XrfResult<SceneBinaryToolDescription> {
-    let wallmarks: EditableWallmarkTool = EditableWallmarkTool::read_from_scene_tool::<XRayByteOrder>(tool)?;
+    let wallmarks: EditableWallmarkTool = EditableWallmarkTool::read_from_scene_tool(tool)?;
 
     Ok(SceneBinaryToolDescription::Wallmark {
       slots: wallmarks.slots.len() as u32,

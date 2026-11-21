@@ -1,14 +1,12 @@
 use std::io::{Error as IoError, ErrorKind, Read, Result as IoResult, SeekFrom};
 use std::ops::RangeBounds;
 
-use byteorder::ReadBytesExt;
-
 /// A seekable window of bytes a [`crate::ChunkReader`] reads from, which can cut sub-windows for its children.
 ///
 /// `start_pos`, `cursor_pos` and `end_pos` are in the source's own coordinates: offsets into the file for a
 /// [`fileslice::FileSlice`], offsets from the window's own start for an
 /// [`crate::InMemoryChunkDataSource`]. Seeking and slicing are always relative to the window's start.
-pub trait ChunkDataSource: ReadBytesExt + Read + Clone {
+pub trait ChunkDataSource: Read + Clone {
   /// Where this window starts.
   fn start_pos(&self) -> u64;
 

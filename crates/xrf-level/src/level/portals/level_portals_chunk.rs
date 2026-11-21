@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
@@ -21,9 +20,9 @@ impl LevelPortalsChunk {
   /// # Errors
   ///
   /// Returns an error when the chunk does not divide into whole records, which is what the engine asserts on.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      portals: reader.read_xr_records::<T, _>(LevelPortal::SERIALIZED_SIZE, "level portals chunk")?,
+      portals: reader.read_xr_records(LevelPortal::SERIALIZED_SIZE, "level portals chunk")?,
     })
   }
 }

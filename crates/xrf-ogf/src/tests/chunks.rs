@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 
 use crate::chunks::visual::ogf_description_chunk::OgfDescriptionChunk;
@@ -26,7 +26,7 @@ fn description_bytes(width: usize) -> Vec<u8> {
 fn read_description(bytes: &[u8]) -> XrfResult<OgfDescriptionChunk> {
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(bytes)?;
 
-  OgfDescriptionChunk::read::<XRayByteOrder, _>(&mut reader)
+  OgfDescriptionChunk::read(&mut reader)
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn reads_a_description_in_whichever_time_width_it_was_written() -> XrfResult {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    description.write::<XRayByteOrder>(&mut writer)?;
+    description.write(&mut writer)?;
 
     assert_eq!(
       writer.buffer, bytes,
@@ -76,7 +76,7 @@ fn keeps_the_bytes_a_texture_chunk_carries_past_its_two_names() -> XrfResult {
   // `rat_tail_normal.ogf`'s shape: two names, then padding the engine never reads.
   let bytes: &[u8] = b"act\\act_norma\0models\\artefact2\0\0\0\0\0\0\0\0\0\0\0\0\0";
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(bytes)?;
-  let texture: OgfTextureChunk = OgfTextureChunk::read::<XRayByteOrder, _>(&mut reader)?;
+  let texture: OgfTextureChunk = OgfTextureChunk::read(&mut reader)?;
 
   assert_eq!(texture.texture_name, "act\\act_norma");
   assert_eq!(texture.shader_name, "models\\artefact2");
@@ -84,7 +84,7 @@ fn keeps_the_bytes_a_texture_chunk_carries_past_its_two_names() -> XrfResult {
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  texture.write::<XRayByteOrder>(&mut writer)?;
+  texture.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 

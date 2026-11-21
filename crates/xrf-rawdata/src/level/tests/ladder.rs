@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::EditableObjectTransform;
 use xrf_editable_object::{EditableMesh, EditableObjectFile};
 use xrf_error::XrfResult;
@@ -219,7 +218,7 @@ fn library_ladder(path: &PathBuf) -> XrfResult {
 
   ObjectDecompiler::decompile_level_geometry(&geometry)?
     .object
-    .write_to_path::<XRayByteOrder, _>(path)
+    .write_to_path(path)
 }
 
 // The placed object brings them back, and the Build cuts them out of it again.
@@ -248,7 +247,7 @@ fn tells_the_ladders_and_breakables_a_placed_library_object_makes_again() -> Xrf
     triangles: 4,
   };
   let cutouts: LevelInstanceCutouts =
-    LevelInstanceCutouts::of::<XRayByteOrder>(&[placement], &GameMtlFile::new(vec![ladders, glass], Vec::new()))?;
+    LevelInstanceCutouts::of(&[placement], &GameMtlFile::new(vec![ladders, glass], Vec::new()))?;
   // The panel's middle, a metre above the placement.
   let made: Vector3d = Vector3d::new(10.0, 6.0, 3.0);
 
@@ -282,7 +281,7 @@ fn tells_the_ladders_and_breakables_a_placed_library_object_makes_again() -> Xrf
 
 #[test]
 fn leaves_other_entities() -> XrfResult {
-  let entity: AlifeObject = listed(&restrictor(), 0)?.read_alife_object::<XRayByteOrder>()?;
+  let entity: AlifeObject = listed(&restrictor(), 0)?.read_alife_object()?;
 
   assert!(LevelLadderConversion::decompile("test", 0, &entity)?.is_none());
 

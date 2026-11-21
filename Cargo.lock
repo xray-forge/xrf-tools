@@ -7764,7 +7764,6 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 name = "xrf-animation-envelope"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "serde",
  "xrf-chunk",
  "xrf-error",
@@ -7776,7 +7775,6 @@ dependencies = [
 name = "xrf-anm"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "serde",
  "xrf-animation-envelope",
  "xrf-chunk",
@@ -8236,7 +8234,6 @@ dependencies = [
 name = "xrf-archive"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "crc32fast",
  "log",
  "lzokay",
@@ -8304,7 +8301,6 @@ dependencies = [
 name = "xrf-chunk"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "criterion 0.8.2",
  "fileslice",
  "xrf-error",
@@ -8432,7 +8428,6 @@ dependencies = [
 name = "xrf-editable-level"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "xrf-chunk",
  "xrf-error",
  "xrf-ini",
@@ -8445,7 +8440,6 @@ dependencies = [
 name = "xrf-editable-object"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "xrf-animation-envelope",
  "xrf-chunk",
  "xrf-error",
@@ -8459,7 +8453,6 @@ dependencies = [
 name = "xrf-efd"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "serde",
  "xrf-chunk",
  "xrf-error",
@@ -8608,7 +8601,6 @@ dependencies = [
 name = "xrf-gamemtl"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "serde",
  "xrf-chunk",
  "xrf-error",
@@ -8694,7 +8686,6 @@ dependencies = [
 name = "xrf-level"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "glam",
  "serde",
  "specta",
@@ -8742,7 +8733,6 @@ dependencies = [
 name = "xrf-light-anim"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "serde",
  "xrf-chunk",
  "xrf-error",
@@ -8830,7 +8820,6 @@ dependencies = [
 name = "xrf-math"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "glam",
  "serde",
  "serde_json",
@@ -8861,7 +8850,6 @@ dependencies = [
 name = "xrf-ogf"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "log",
  "serde",
  "xrf-chunk",
@@ -8876,7 +8864,6 @@ dependencies = [
 name = "xrf-omf"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "xrf-chunk",
  "xrf-error",
  "xrf-skeleton",
@@ -8916,7 +8903,6 @@ dependencies = [
 name = "xrf-particles"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "glam",
  "log",
  "serde",
@@ -8935,7 +8921,6 @@ dependencies = [
 name = "xrf-ppe"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "serde",
  "xrf-animation-envelope",
  "xrf-chunk",
@@ -8958,7 +8943,6 @@ name = "xrf-rawdata"
 version = "0.1.0"
 dependencies = [
  "bevy_mikktspace",
- "byteorder",
  "crc32fast",
  "glam",
  "serde",
@@ -9081,7 +9065,6 @@ dependencies = [
 name = "xrf-shaders"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "serde",
  "xrf-chunk",
  "xrf-error",
@@ -9095,7 +9078,6 @@ dependencies = [
 name = "xrf-skeleton"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "log",
  "xrf-chunk",
  "xrf-error",
@@ -9108,7 +9090,6 @@ dependencies = [
 name = "xrf-sound"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "ogg",
  "serde",
  "symphonia",
@@ -9121,7 +9102,6 @@ dependencies = [
 name = "xrf-spawn"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "log",
  "serde",
  "serde_json",
@@ -9208,7 +9188,6 @@ dependencies = [
 name = "xrf-thm"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "image",
  "serde",
  "serde_json",
@@ -9292,7 +9271,6 @@ dependencies = [
 name = "xrf-visual"
 version = "0.1.0"
 dependencies = [
- "byteorder",
  "glam",
  "log",
  "serde",

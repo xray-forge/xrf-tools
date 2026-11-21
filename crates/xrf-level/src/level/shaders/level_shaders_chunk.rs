@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -40,8 +39,8 @@ impl LevelShadersChunk {
 
 impl ChunkReadWrite for LevelShadersChunk {
   /// Read level shaders table from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let count: u32 = reader.read_u32()?;
     let mut entries: Vec<LevelShaderEntry> =
       reader.new_bounded_vec(count.into(), Self::MIN_ENTRY_SIZE, "level shaders")?;
 
@@ -55,8 +54,8 @@ impl ChunkReadWrite for LevelShadersChunk {
   }
 
   /// Write level shaders table into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(self.entries.len(), "level shaders")?)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(narrow_format_size(self.entries.len(), "level shaders")?)?;
 
     for entry in &self.entries {
       writer.write_w1251_string(&entry.to_raw())?;
@@ -68,7 +67,7 @@ impl ChunkReadWrite for LevelShadersChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -106,9 +105,9 @@ mod tests {
       ],
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       LevelShadersChunk::CHUNK_ID,
     )?;
@@ -119,7 +118,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(LevelShadersChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(LevelShadersChunk::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -128,7 +127,7 @@ mod tests {
   fn rejects_entry_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
 
-    let error: String = LevelShadersChunk::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = LevelShadersChunk::read(&mut reader)
       .expect_err("expect the declared entry count to exceed the chunk")
       .to_string();
 

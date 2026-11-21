@@ -2,9 +2,8 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path, narrow_format_size};
 
@@ -47,8 +46,8 @@ impl ThmGroupFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a group thumbnail [`Self::read_from_chunk`] reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Group thumbnail was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -61,8 +60,8 @@ impl ThmGroupFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a group thumbnail [`Self::read_from_chunk`] reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads a group thumbnail as `EGroupThumbnail::Load` does.
@@ -71,7 +70,7 @@ impl ThmGroupFile {
   ///
   /// Returns an error, where the SDK fails or asserts, for a version other than [`Self::VERSION`], a type other than
   /// [`Self::THUMBNAIL_TYPE`], a missing preview or objects chunk, or a chunk too short for its fields.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut thumbnail_type: Option<u32> = None;
     let mut thumbnail: Option<ThmThumbnailChunk> = None;
@@ -82,7 +81,7 @@ impl ThmGroupFile {
     for mut chunk in reader.read_children_including_compressed()? {
       let is_folded: bool = match chunk.id {
         ThmFile::VERSION_CHUNK_ID if version.is_none() => {
-          version = Some(chunk.read_u16::<T>()?);
+          version = Some(chunk.read_u16()?);
           true
         }
         id if ThmThumbnailChunk::matches(id) && thumbnail.is_none() => {
@@ -90,11 +89,11 @@ impl ThmGroupFile {
           true
         }
         ThmFile::THUMBNAIL_TYPE_CHUNK_ID if thumbnail_type.is_none() => {
-          thumbnail_type = Some(chunk.read_u32::<T>()?);
+          thumbnail_type = Some(chunk.read_u32()?);
           true
         }
         Self::OBJECTS_CHUNK_ID if objects.is_none() => {
-          let count: u32 = chunk.read_u32::<T>()?;
+          let count: u32 = chunk.read_u32()?;
 
           objects = Some(
             (0..count)
@@ -124,10 +123,10 @@ impl ThmGroupFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be written.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     Ok(StagedFile::write_creating_directories(
       path.as_ref(),
-      &self.write_to_bytes::<T>()?,
+      &self.write_to_bytes()?,
     )?)
   }
 
@@ -136,10 +135,10 @@ impl ThmGroupFile {
   /// # Errors
   ///
   /// Returns an error when the objects outnumber their `u32` count, or the writer refuses the bytes.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut bytes)?;
+    self.write_to(&mut bytes)?;
 
     Ok(bytes)
   }
@@ -149,20 +148,20 @@ impl ThmGroupFile {
   /// # Errors
   ///
   /// Returns an error when the objects outnumber their `u32` count, or the writer refuses the bytes.
-  pub fn write_to<T: ByteOrder>(&self, destination: &mut dyn Write) -> XrfResult {
+  pub fn write_to(&self, destination: &mut dyn Write) -> XrfResult {
     let trailing: &[ThmTrailingBytes] = &self.trailing;
 
-    ThmChunks::write::<T>(destination, ThmFile::VERSION_CHUNK_ID, trailing, |writer| {
-      Ok(writer.write_u16::<T>(Self::VERSION)?)
+    ThmChunks::write(destination, ThmFile::VERSION_CHUNK_ID, trailing, |writer| {
+      Ok(writer.write_u16(Self::VERSION)?)
     })?;
-    ThmChunks::write::<T>(destination, self.thumbnail.to_chunk_id(), trailing, |writer| {
+    ThmChunks::write(destination, self.thumbnail.to_chunk_id(), trailing, |writer| {
       self.thumbnail.write(writer)
     })?;
-    ThmChunks::write::<T>(destination, ThmFile::THUMBNAIL_TYPE_CHUNK_ID, trailing, |writer| {
-      Ok(writer.write_u32::<T>(Self::THUMBNAIL_TYPE)?)
+    ThmChunks::write(destination, ThmFile::THUMBNAIL_TYPE_CHUNK_ID, trailing, |writer| {
+      Ok(writer.write_u32(Self::THUMBNAIL_TYPE)?)
     })?;
-    ThmChunks::write::<T>(destination, Self::OBJECTS_CHUNK_ID, trailing, |writer| {
-      writer.write_u32::<T>(narrow_format_size(self.objects.len(), "group thumbnail objects")?)?;
+    ThmChunks::write(destination, Self::OBJECTS_CHUNK_ID, trailing, |writer| {
+      writer.write_u32(narrow_format_size(self.objects.len(), "group thumbnail objects")?)?;
 
       for object in &self.objects {
         writer.write_w1251_string(object)?;
@@ -171,6 +170,6 @@ impl ThmGroupFile {
       Ok(())
     })?;
 
-    ThmChunks::write_extra::<T>(destination, &self.extra)
+    ThmChunks::write_extra(destination, &self.extra)
   }
 }

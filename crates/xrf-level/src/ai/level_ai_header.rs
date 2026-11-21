@@ -1,7 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, AiNodePosition, Vector3d};
 
@@ -69,25 +68,25 @@ impl LevelAiHeader {
 
 impl ChunkReadWrite for LevelAiHeader {
   /// Read level AI-map header from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      version: reader.read_u32::<T>()?,
-      count: reader.read_u32::<T>()?,
-      size: reader.read_f32::<T>()?,
-      size_y: reader.read_f32::<T>()?,
-      bounds: reader.read_xr::<T, _>()?,
-      guid: Uuid::from_u128(reader.read_u128::<T>()?),
+      version: reader.read_u32()?,
+      count: reader.read_u32()?,
+      size: reader.read_f32()?,
+      size_y: reader.read_f32()?,
+      bounds: reader.read_xr()?,
+      guid: Uuid::from_u128(reader.read_u128()?),
     })
   }
 
   /// Write level AI-map header into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.version)?;
-    writer.write_u32::<T>(self.count)?;
-    writer.write_f32::<T>(self.size)?;
-    writer.write_f32::<T>(self.size_y)?;
-    writer.write_xr::<T, _>(&self.bounds)?;
-    writer.write_u128::<T>(self.guid.as_u128())?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.version)?;
+    writer.write_u32(self.count)?;
+    writer.write_f32(self.size)?;
+    writer.write_f32(self.size_y)?;
+    writer.write_xr(&self.bounds)?;
+    writer.write_u128(self.guid.as_u128())?;
 
     Ok(())
   }

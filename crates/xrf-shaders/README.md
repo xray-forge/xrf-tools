@@ -63,7 +63,6 @@ Writing:
 of 144-byte `ShaderCompilerShader` records: a 128-byte name, flags, vertex translucency, vertex ambient, and lightmap
 density in texels per unit.
 
-- Its readers take the byte order as a type parameter; pass `XRayByteOrder`.
 - A size that is not a whole number of records is refused, as the engine asserts.
 - Bytes the editor left in a name field after the terminator are kept (`name_trailing`), so `write` reproduces the file
   byte for byte. A name changed without them is refused.

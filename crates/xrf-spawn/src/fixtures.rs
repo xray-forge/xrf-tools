@@ -1,6 +1,5 @@
-use byteorder::{LittleEndian, WriteBytesExt};
 use uuid::{Uuid, uuid};
-use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -379,10 +378,10 @@ impl LevelSpawnObjects {
   pub(crate) fn of_state(id: u32, header: &SpawnPacketHeader, state: &[u8]) -> XrfResult<LevelSpawnObject> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    writer.write_xr::<XRayByteOrder, _>(header)?;
+    writer.write_xr(header)?;
     writer.buffer.extend(state);
 
-    LevelSpawnObject::read::<XRayByteOrder, _>(id, &mut ChunkReader::from_bytes(&writer.buffer)?)
+    LevelSpawnObject::read(id, &mut ChunkReader::from_bytes(&writer.buffer)?)
   }
 
   /// A Call of Pripyat bolt, as the game writes a new one: its fields behind the size `Spawn_Write` patches in.
@@ -390,7 +389,7 @@ impl LevelSpawnObjects {
     let fields: Vec<u8> = GameWrittenPackets::bytes(GameWrittenPackets::CLASSES[0].2);
     let mut state: Vec<u8> = Vec::new();
 
-    state.write_u16::<LittleEndian>(u16::try_from(fields.len() + 2).expect("a bolt's fields fit a u16"))?;
+    state.write_u16(u16::try_from(fields.len() + 2).expect("a bolt's fields fit a u16"))?;
     state.extend(fields);
 
     Self::of_state(id, &Self::header("bolt", "zat_bolt", 128, 12), &state)
@@ -429,12 +428,12 @@ impl LevelSpawnObjects {
       118,
       6,
     ] {
-      payload.write_u16::<LittleEndian>(value)?;
+      payload.write_u16(value)?;
     }
 
     // No client data, the spawn id, then the state's size and a graph point's two empty names and four locations.
-    payload.write_u16::<LittleEndian>(0)?;
-    payload.write_u16::<LittleEndian>(u16::MAX)?;
+    payload.write_u16(0)?;
+    payload.write_u16(u16::MAX)?;
     payload.extend([8, 0, 0, 0, 1, 0, 0, 0]);
 
     Ok(LevelSpawnObject {

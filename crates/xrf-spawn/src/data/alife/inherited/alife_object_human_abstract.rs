@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -37,23 +36,23 @@ impl AlifeObjectHumanAbstract {
   /// Reads a preference list as `load_data` reads an `xr_vector<u8>`: a `u32` count, then a byte each. The brain reads
   /// it from bytes alone (`CALifeHumanBrain::on_state_read`), so fields hold none and the editor's random values read
   /// as none.
-  fn read_preferences<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<u8>> {
+  fn read_preferences<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<u8>> {
     if reader.is_field_form() {
       return Ok(Vec::new());
     }
 
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
 
     reader.read_bytes(count as usize)
   }
 
   /// Write a preference list as `save_data` writes it, to bytes alone (`CALifeHumanBrain::on_state_write`).
-  fn write_preferences<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, preferences: &[u8]) -> XrfResult {
+  fn write_preferences<W: ChunkFieldWriter>(writer: &mut W, preferences: &[u8]) -> XrfResult {
     if writer.is_field_form() {
       return Ok(());
     }
 
-    writer.write_u32::<T>(narrow_format_size(preferences.len(), "human preferences")?)?;
+    writer.write_u32(narrow_format_size(preferences.len(), "human preferences")?)?;
     writer.write_bytes(preferences)
   }
 }
@@ -64,32 +63,32 @@ impl AlifePacketsReadWrite for AlifeObjectHumanAbstract {
   }
 
   /// Read the human from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      trader: AlifeObjectTraderAbstract::read_state::<T, _>(spawn, layout)?,
-      base: AlifeObjectMonsterAbstract::read::<T, _, _>(spawn, update, layout)?,
-      equipment_preferences: Self::read_preferences::<T, _>(spawn)?,
-      main_weapon_preferences: Self::read_preferences::<T, _>(spawn)?,
+      trader: AlifeObjectTraderAbstract::read_state(spawn, layout)?,
+      base: AlifeObjectMonsterAbstract::read(spawn, update, layout)?,
+      equipment_preferences: Self::read_preferences(spawn)?,
+      main_weapon_preferences: Self::read_preferences(spawn)?,
     })
   }
 
   /// Write the human into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.trader.write_state::<T, _>(spawn, layout)?;
+    self.trader.write_state(spawn, layout)?;
 
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    Self::write_preferences::<T, _>(spawn, &self.equipment_preferences)?;
-    Self::write_preferences::<T, _>(spawn, &self.main_weapon_preferences)
+    Self::write_preferences(spawn, &self.equipment_preferences)?;
+    Self::write_preferences(spawn, &self.main_weapon_preferences)
   }
 
   /// Import human data from ltx config section.
@@ -156,7 +155,7 @@ impl AlifeObjectHumanAbstract {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -173,10 +172,10 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectHumanAbstract = AlifeObjectHumanAbstract::new_mock(Vector3d::new(1.0, 2.0, 3.0));
-    let (monster_size, _, _) = original.base.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (monster_size, _, _) = original.base.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?,
       (TRADER_SIZE + monster_size + 4 + 5 + 4 + 4, 52, original)
     );
 
@@ -191,7 +190,7 @@ mod tests {
     let mut update: ChunkWriter = ChunkWriter::new();
 
     original.trader.money = 0x0102_0304;
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
+    original.write(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(&spawn.buffer[..4], &[4, 3, 2, 1]);
 
@@ -199,11 +198,7 @@ mod tests {
     let mut monster_update: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
 
     assert_eq!(
-      AlifeObjectMonsterAbstract::read::<XRayByteOrder, _, _>(
-        &mut monster,
-        &mut monster_update,
-        SpawnLayout::CALL_OF_PRIPYAT
-      )?,
+      AlifeObjectMonsterAbstract::read(&mut monster, &mut monster_update, SpawnLayout::CALL_OF_PRIPYAT)?,
       original.base
     );
 
@@ -218,8 +213,8 @@ mod tests {
       version,
       script_version: 8,
     };
-    let (with_access, update_with, read_with) = original.read_back::<XRayByteOrder>(layout(125))?;
-    let (without_access, update_without, read_without) = original.read_back::<XRayByteOrder>(layout(124))?;
+    let (with_access, update_with, read_with) = original.read_back(layout(125))?;
+    let (without_access, update_without, read_without) = original.read_back(layout(124))?;
 
     assert_eq!(without_access, with_access - 2);
     assert_eq!(update_without, update_with);
@@ -230,7 +225,7 @@ mod tests {
 
     closed.trader.dead_body_closed = 1;
 
-    assert!(closed.read_back::<XRayByteOrder>(layout(124)).is_err());
+    assert!(closed.read_back(layout(124)).is_err());
     assert!(closed.export("data", &mut Ltx::new(), layout(124)).is_err());
 
     Ok(())

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -52,8 +51,8 @@ impl AlifeObjectItem {
   }
 
   /// Read the upgrade count and that many sections, as `load_data` reads `m_upgrades`.
-  fn read_upgrades<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<String>> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_upgrades<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<String>> {
+    let count: u32 = reader.read_u32()?;
     // An upgrade is at least the terminator of an empty name.
     let mut upgrades: Vec<String> = reader.new_bounded_vec(count.into(), 1, "item upgrades")?;
 
@@ -71,43 +70,43 @@ impl AlifePacketsReadWrite for AlifeObjectItem {
   fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
 
   /// Read the item's condition and upgrades, then the physics state of its update packet.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: spawn.read_xr::<T, _>()?,
-      condition: spawn.read_f32::<T>()?,
+      base: spawn.read_xr()?,
+      condition: spawn.read_f32()?,
       upgrades: if layout.has_item_upgrades() {
-        Self::read_upgrades::<T, _>(spawn)?
+        Self::read_upgrades(spawn)?
       } else {
         Vec::new()
       },
-      update_state: update.read_xr_optional::<T, _>()?,
+      update_state: update.read_xr_optional()?,
     })
   }
 
   /// Write the item's condition and upgrades, then the physics state of its update packet.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
     self.assert_upgrades_fit(layout)?;
-    spawn.write_xr::<T, _>(&self.base)?;
-    spawn.write_f32::<T>(self.condition)?;
+    spawn.write_xr(&self.base)?;
+    spawn.write_f32(self.condition)?;
 
     if layout.has_item_upgrades() {
-      spawn.write_u32::<T>(narrow_format_size(self.upgrades.len(), "item upgrades")?)?;
+      spawn.write_u32(narrow_format_size(self.upgrades.len(), "item upgrades")?)?;
 
       for upgrade in &self.upgrades {
         spawn.write_w1251_string(upgrade)?;
       }
     }
 
-    update.write_xr_optional::<T, _>(self.update_state.as_ref())
+    update.write_xr_optional(self.update_state.as_ref())
   }
 
   /// Import ALife item object data from ltx config section.
@@ -183,7 +182,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkWriter, XRayByteOrder};
+  use xrf_chunk::ChunkWriter;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -204,8 +203,8 @@ mod tests {
   #[test]
   fn writes_upgrades_above_version_123_only() -> XrfResult {
     let original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(1.0, 2.0, 3.0));
-    let (with_upgrades, update_with, read_with) = original.read_back::<XRayByteOrder>(layout(124))?;
-    let (without_upgrades, update_without, read_without) = original.read_back::<XRayByteOrder>(layout(123))?;
+    let (with_upgrades, update_with, read_with) = original.read_back(layout(124))?;
+    let (without_upgrades, update_without, read_without) = original.read_back(layout(123))?;
 
     assert_eq!(with_upgrades, 52);
     assert_eq!(without_upgrades, with_upgrades - 4);
@@ -223,7 +222,7 @@ mod tests {
     original.upgrades = vec![String::from("up_firsta_ak74")];
 
     let error: String = original
-      .write::<XRayByteOrder, _, _>(&mut ChunkWriter::new(), &mut ChunkWriter::new(), layout(123))
+      .write(&mut ChunkWriter::new(), &mut ChunkWriter::new(), layout(123))
       .expect_err("upgrades the packet cannot hold")
       .to_string();
 
@@ -248,10 +247,7 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (52, 54, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (52, 54, original));
 
     Ok(())
   }
@@ -263,10 +259,7 @@ mod tests {
 
     original.update_state = None;
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (52, 1, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (52, 1, original));
 
     Ok(())
   }
@@ -278,10 +271,7 @@ mod tests {
 
     original.upgrades = vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")];
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?.2,
-      original
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?.2, original);
 
     Ok(())
   }

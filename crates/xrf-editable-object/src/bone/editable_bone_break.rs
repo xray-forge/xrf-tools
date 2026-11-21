@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// What breaks a bone's joint, `BONE_CHUNK_IK_JOINT_BREAK`.
@@ -10,16 +9,16 @@ pub struct EditableBoneBreak {
 }
 
 impl ChunkReadWrite for EditableBoneBreak {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      force: reader.read_f32::<T>()?,
-      torque: reader.read_f32::<T>()?,
+      force: reader.read_f32()?,
+      torque: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.force)?;
-    writer.write_f32::<T>(self.torque)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.force)?;
+    writer.write_f32(self.torque)?;
 
     Ok(())
   }

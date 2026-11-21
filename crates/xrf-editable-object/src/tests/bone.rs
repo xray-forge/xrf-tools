@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 use xrf_skeleton::{SkeletonBoneShapeKind, SkeletonJointKind};
 
@@ -9,13 +9,13 @@ fn read(children: &[u8]) -> XrfResult<EditableBone> {
   let mut reader: ChunkReader<InMemoryChunkDataSource> =
     ChunkReader::from_vec(fixtures::chunk(0, children))?.read_child_by_index(0)?;
 
-  EditableBone::read::<XRayByteOrder, _>(&mut reader)
+  EditableBone::read(&mut reader)
 }
 
 fn write(bone: &EditableBone) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  bone.write::<XRayByteOrder>(&mut writer)?;
+  bone.write(&mut writer)?;
 
   Ok(writer.buffer)
 }

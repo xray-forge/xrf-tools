@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
@@ -41,7 +40,7 @@ impl ThmChunks {
   }
 
   /// Frames a folded chunk's fields as a chunk of `id`, then the bytes `trailing` kept past them.
-  pub(crate) fn write<T: ByteOrder>(
+  pub(crate) fn write(
     destination: &mut dyn Write,
     id: u32,
     trailing: &[ThmTrailingBytes],
@@ -55,7 +54,7 @@ impl ThmChunks {
       writer.write_all(&kept.data)?;
     }
 
-    writer.flush_chunk_into::<T>(destination, id)?;
+    writer.flush_chunk_into(destination, id)?;
 
     Ok(())
   }
@@ -89,9 +88,9 @@ impl ThmChunks {
   }
 
   /// Writes every chunk no field holds, after the folded ones, as it was read.
-  pub(crate) fn write_extra<T: ByteOrder>(destination: &mut dyn Write, extra: &[ThmExtraChunk]) -> XrfResult {
+  pub(crate) fn write_extra(destination: &mut dyn Write, extra: &[ThmExtraChunk]) -> XrfResult {
     for chunk in extra {
-      Self::write::<T>(destination, chunk.id, &[], |writer| chunk.write(writer))?;
+      Self::write(destination, chunk.id, &[], |writer| chunk.write(writer))?;
     }
 
     Ok(())

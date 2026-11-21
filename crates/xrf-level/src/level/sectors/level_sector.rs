@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
@@ -29,7 +28,7 @@ impl LevelSector {
   ///
   /// Returns an error when either chunk is absent, the portal run does not divide into ids, or the root is not one
   /// `u32` - each of which the engine asserts on rather than tolerates.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut portals_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PORTALS_CHUNK_ID)?;
     let size: u64 = portals_chunk.read_bytes_remain();
@@ -43,13 +42,13 @@ impl LevelSector {
     let mut portals: Vec<u16> = Vec::with_capacity((size / Self::PORTAL_ID_SIZE) as usize);
 
     for _ in 0..size / Self::PORTAL_ID_SIZE {
-      portals.push(byteorder::ReadBytesExt::read_u16::<T>(&mut portals_chunk)?);
+      portals.push(xrf_chunk::XRayRead::read_u16(&mut portals_chunk)?);
     }
 
     portals_chunk.assert_read("Expect all data to be read from level sector portals chunk")?;
 
     let mut root_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::ROOT_CHUNK_ID)?;
-    let root: u32 = byteorder::ReadBytesExt::read_u32::<T>(&mut root_chunk)?;
+    let root: u32 = xrf_chunk::XRayRead::read_u32(&mut root_chunk)?;
 
     root_chunk.assert_read("Expect all data to be read from level sector root chunk")?;
 

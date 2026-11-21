@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -18,24 +17,24 @@ impl EditableSurfaceFaces {
 }
 
 impl ChunkReadWrite for EditableSurfaceFaces {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let surface: String = reader.read_w1251_string()?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut faces: Vec<u32> = reader.new_bounded_vec(count.into(), 4, "surface faces")?;
 
     for _ in 0..count {
-      faces.push(reader.read_u32::<T>()?);
+      faces.push(reader.read_u32()?);
     }
 
     Ok(Self { surface, faces })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.surface)?;
-    writer.write_u32::<T>(narrow_format_size(self.faces.len(), "Surface faces")?)?;
+    writer.write_u32(narrow_format_size(self.faces.len(), "Surface faces")?)?;
 
     for face in &self.faces {
-      writer.write_u32::<T>(*face)?;
+      writer.write_u32(*face)?;
     }
 
     Ok(())

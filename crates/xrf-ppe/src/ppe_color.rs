@@ -1,7 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_animation_envelope::AnimationEnvelope;
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::ppe_color_channel::PpeColorChannel;
@@ -48,12 +47,12 @@ impl PpeColor {
   /// # Errors
   ///
   /// Returns an error when the payload ends inside one of the three envelopes.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_f32::<T>()?,
-      red: AnimationEnvelope::read::<T, D>(reader)?,
-      green: AnimationEnvelope::read::<T, D>(reader)?,
-      blue: AnimationEnvelope::read::<T, D>(reader)?,
+      base: reader.read_f32()?,
+      red: AnimationEnvelope::read::<D>(reader)?,
+      green: AnimationEnvelope::read::<D>(reader)?,
+      blue: AnimationEnvelope::read::<D>(reader)?,
     })
   }
 
@@ -62,11 +61,11 @@ impl PpeColor {
   /// # Errors
   ///
   /// Returns an error when an envelope carries more keys than its `u16` count holds.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.base)?;
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.base)?;
 
     for envelope in self.channels() {
-      envelope.write::<T>(writer)?;
+      envelope.write(writer)?;
     }
 
     Ok(())

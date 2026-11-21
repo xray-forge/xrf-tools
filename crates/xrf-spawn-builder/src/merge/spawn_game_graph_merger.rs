@@ -1,6 +1,6 @@
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_spawn::{
@@ -293,7 +293,7 @@ impl SpawnGameGraphMerger {
   fn assign_guid(graph: &mut SpawnGraphsChunk) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    graph.write::<XRayByteOrder>(&mut writer)?;
+    graph.write(&mut writer)?;
 
     let digest = Sha256::digest(&writer.buffer);
     let mut bytes: [u8; 16] = [0; 16];

@@ -2,9 +2,8 @@ use std::fmt;
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, LtxRecordReader, LtxRecordWriter};
 use xrf_utils::{StagedFile, assert_length, narrow_format_size};
@@ -252,10 +251,10 @@ impl SpawnGraphsChunk {
 
 impl ChunkReadWrite for SpawnGraphsChunk {
   /// Read graphs chunk by position descriptor.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Reading graphs chunk, bytes {}", reader.read_bytes_remain());
 
-    let header: GraphHeader = reader.read_xr::<T, _>()?;
+    let header: GraphHeader = reader.read_xr()?;
 
     let mut levels: Vec<GraphLevel> = reader.new_bounded_vec(
       header.levels_count.into(),
@@ -264,7 +263,7 @@ impl ChunkReadWrite for SpawnGraphsChunk {
     )?;
 
     for _ in 0..header.levels_count {
-      levels.push(reader.read_xr::<T, _>()?);
+      levels.push(reader.read_xr()?);
     }
 
     let mut vertices: Vec<GraphVertex> = reader.new_bounded_vec(
@@ -274,14 +273,14 @@ impl ChunkReadWrite for SpawnGraphsChunk {
     )?;
 
     for _ in 0..header.vertices_count {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
     let mut edges: Vec<GraphEdge> =
       reader.new_bounded_vec(header.edges_count.into(), GraphEdge::MIN_SERIALIZED_SIZE, "graph edges")?;
 
     for _ in 0..header.edges_count {
-      edges.push(reader.read_xr::<T, _>()?);
+      edges.push(reader.read_xr()?);
     }
 
     let mut points: Vec<GraphLevelPoint> = reader.new_bounded_vec(
@@ -291,10 +290,10 @@ impl ChunkReadWrite for SpawnGraphsChunk {
     )?;
 
     for _ in 0..header.points_count {
-      points.push(reader.read_xr::<T, _>()?);
+      points.push(reader.read_xr()?);
     }
 
-    let cross_tables: Vec<GraphCrossTable> = reader.read_xr_list::<T, _>()?;
+    let cross_tables: Vec<GraphCrossTable> = reader.read_xr_list()?;
 
     log::debug!("Read graphs ver {}, {} bytes", header.version, reader.read_bytes_len(),);
 
@@ -314,27 +313,27 @@ impl ChunkReadWrite for SpawnGraphsChunk {
   }
 
   /// Write whole graphs chunk into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_header_counts()?;
-    self.header.write::<T>(writer)?;
+    self.header.write(writer)?;
 
     for level in &self.levels {
-      writer.write_xr::<T, _>(level)?;
+      writer.write_xr(level)?;
     }
 
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
     for edge in &self.edges {
-      writer.write_xr::<T, _>(edge)?;
+      writer.write_xr(edge)?;
     }
 
     for point in &self.points {
-      writer.write_xr::<T, _>(point)?;
+      writer.write_xr(point)?;
     }
 
-    writer.write_xr_list::<T, _>(&self.cross_tables)?;
+    writer.write_xr_list(&self.cross_tables)?;
 
     log::debug!("Written graphs chunk, {} bytes", writer.bytes_written());
 
@@ -360,7 +359,7 @@ impl FileImportExport for SpawnGraphsChunk {
       LtxRecordReader::import_indexed(path.as_ref().join("graphs_edges.ltx"), header.edges_count as usize)?;
 
     let cross_tables: Vec<GraphCrossTable> =
-      GraphCrossTable::import_list::<XRayByteOrder>(&mut File::open(path.as_ref().join("graphs_cross_tables.gct"))?)?;
+      GraphCrossTable::import_list(&mut File::open(path.as_ref().join("graphs_cross_tables.gct"))?)?;
 
     log::debug!("Imported graphs chunk");
 
@@ -425,7 +424,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     let mut cross_tables: Vec<u8> = Vec::new();
 
-    GraphCrossTable::export_list::<XRayByteOrder>(&self.cross_tables, &mut cross_tables)?;
+    GraphCrossTable::export_list(&self.cross_tables, &mut cross_tables)?;
     StagedFile::write_creating_directories(&path.as_ref().join("graphs_cross_tables.gct"), &cross_tables)?;
 
     log::debug!("Exported graph cross tables");
@@ -451,7 +450,7 @@ impl fmt::Debug for SpawnGraphsChunk {
 #[cfg(test)]
 mod tests {
   use uuid::uuid;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -487,11 +486,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 28);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -506,7 +505,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(SpawnGraphsChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SpawnGraphsChunk::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -633,11 +632,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 432);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -652,7 +651,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(SpawnGraphsChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SpawnGraphsChunk::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -673,7 +672,7 @@ mod tests {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(bytes)?;
 
     Ok(
-      SpawnGraphsChunk::read::<XRayByteOrder, _>(&mut reader)
+      SpawnGraphsChunk::read(&mut reader)
         .expect_err("expect the declared count to exceed the chunk")
         .to_string(),
     )
@@ -822,10 +821,10 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    graph.write::<XRayByteOrder>(&mut writer)?;
+    graph.write(&mut writer)?;
 
     assert_eq!(
-      SpawnGraphsChunk::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&writer.buffer)?)?,
+      SpawnGraphsChunk::read(&mut ChunkReader::from_bytes(&writer.buffer)?)?,
       graph
     );
 

@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock};
 
 use xrf_app_core::TauriResult;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
@@ -101,9 +100,7 @@ impl SpawnVisualReader {
   fn read_file(&self, name: &str) -> XrfResult<Arc<OgfFile>> {
     let asset: XrayAsset = self.find_asset(name)?;
 
-    self
-      .search
-      .read_parsed(&asset, OgfFile::read_from_bytes::<XRayByteOrder>)
+    self.search.read_parsed(&asset, OgfFile::read_from_bytes)
   }
 
   /// `CModelPool::Instance_Load`: the level directory first, then the shared meshes; a name no level path can spell

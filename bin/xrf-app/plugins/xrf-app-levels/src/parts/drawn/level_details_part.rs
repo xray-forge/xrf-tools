@@ -2,7 +2,6 @@ use std::collections::{BTreeSet, HashSet};
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformGeometry, LevelDetailsFile};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
@@ -51,7 +50,7 @@ impl LevelDetailsPart {
       return Ok(None);
     };
 
-    let details: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(details)
+    let details: LevelDetailsFile = LevelDetailsFile::read_from_bytes(details)
       .map_err(|error| source.describe_read_failure(LevelDetailsFile::FILE_NAME, &error))?;
     let collision: LevelCformGeometry = LevelCollisionPart::read_geometry(source, search)?;
     let passable: HashSet<u16> = Self::read_passable_materials(search);
@@ -87,7 +86,7 @@ impl LevelDetailsPart {
   fn read_passable_materials(search: &XraySearch) -> HashSet<u16> {
     let materials: GameMtlFile = match search
       .read(GameMtlFile::FILE_NAME)
-      .and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>)
+      .and_then(GameMtlFile::read_from_bytes)
     {
       Ok(materials) => materials,
       Err(error) => {

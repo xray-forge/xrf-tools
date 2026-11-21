@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
@@ -31,7 +30,7 @@ fn write_scene(root: &Path, part_guid: &EditableLevelGuid) -> XrfResult<PathBuf>
 #[test]
 fn reads_a_scene_and_its_parts_as_the_editor_finds_them() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/read")?;
-  let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&write_scene(&root, &GUID)?)?;
+  let scene: EditableLevelScene = EditableLevelScene::read_from_path(&write_scene(&root, &GUID)?)?;
   let names: Vec<&str> = scene.tools.iter().map(|tool| tool.name.as_str()).collect();
 
   assert_eq!(names, vec!["ai_map", "group", "spawn"]);
@@ -47,12 +46,12 @@ fn reads_a_scene_and_its_parts_as_the_editor_finds_them() -> XrfResult {
 #[test]
 fn a_scene_written_to_a_new_place_reads_back_the_same() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/write")?;
-  let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&write_scene(&root, &GUID)?)?;
+  let scene: EditableLevelScene = EditableLevelScene::read_from_path(&write_scene(&root, &GUID)?)?;
   let copy: PathBuf = root.join("copy").join("labx8.level");
 
-  scene.write_to_path::<XRayByteOrder, _>(&copy)?;
+  scene.write_to_path(&copy)?;
 
-  assert_eq!(EditableLevelScene::read_from_path::<XRayByteOrder, _>(&copy)?, scene);
+  assert_eq!(EditableLevelScene::read_from_path(&copy)?, scene);
   assert_eq!(
     fs::read(root.join("copy/labx8/spawn.part"))?,
     fs::read(root.join("labx8/spawn.part"))?
@@ -66,15 +65,15 @@ fn a_scene_written_to_a_new_place_reads_back_the_same() -> XrfResult {
 fn refuses_to_write_beside_a_part_the_scene_would_not_write() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/stale-part")?;
   let level: PathBuf = write_scene(&root, &GUID)?;
-  let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level)?;
+  let scene: EditableLevelScene = EditableLevelScene::read_from_path(&level)?;
 
   // `group.part3`, past the gap, would join the scene once a `group.part2` were written.
-  assert!(scene.write_to_path::<XRayByteOrder, _>(&level).is_err());
+  assert!(scene.write_to_path(&level).is_err());
 
   fs::remove_file(root.join("labx8/group.part3"))?;
-  scene.write_to_path::<XRayByteOrder, _>(&level)?;
+  scene.write_to_path(&level)?;
 
-  assert_eq!(EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level)?, scene);
+  assert_eq!(EditableLevelScene::read_from_path(&level)?, scene);
 
   Ok(())
 }
@@ -84,7 +83,7 @@ fn refuses_to_write_beside_a_part_the_scene_would_not_write() -> XrfResult {
 fn writes_over_a_part_held_in_another_case() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/part-case")?;
   let level: PathBuf = write_scene(&root, &GUID)?;
-  let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level)?;
+  let scene: EditableLevelScene = EditableLevelScene::read_from_path(&level)?;
 
   fs::remove_file(root.join("labx8/group.part3"))?;
   fs::rename(root.join("labx8/spawn.part"), root.join("labx8/SPAWN.part"))?;
@@ -99,7 +98,7 @@ fn writes_over_a_part_held_in_another_case() -> XrfResult {
 fn refuses_a_tool_name_that_is_not_one_file_name() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/tool-name")?;
   let level: PathBuf = write_scene(&root, &GUID)?;
-  let scene: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level)?;
+  let scene: EditableLevelScene = EditableLevelScene::read_from_path(&level)?;
   let copy: PathBuf = root.join("copy").join("labx8.level");
 
   for name in ["..\\outside", "../outside", "c:outside", "nested\\spawn", "..", ""] {
@@ -108,10 +107,7 @@ fn refuses_a_tool_name_that_is_not_one_file_name() -> XrfResult {
     renamed.tools[0].name = String::from(name);
 
     assert!(renamed.get_part_paths(&copy).is_err(), "'{name}' is refused");
-    assert!(
-      renamed.write_to_path::<XRayByteOrder, _>(&copy).is_err(),
-      "'{name}' is refused"
-    );
+    assert!(renamed.write_to_path(&copy).is_err(), "'{name}' is refused");
   }
 
   let mut doubled: EditableLevelScene = scene;
@@ -119,7 +115,7 @@ fn refuses_a_tool_name_that_is_not_one_file_name() -> XrfResult {
   doubled.tools[0].name = String::from("SPAWN");
   doubled.tools[1].name = String::from("spawn");
 
-  assert!(doubled.write_to_path::<XRayByteOrder, _>(&copy).is_err());
+  assert!(doubled.write_to_path(&copy).is_err());
   assert!(!copy.exists(), "nothing is written");
 
   Ok(())
@@ -145,7 +141,7 @@ fn refuses_a_part_saved_for_another_scene() -> XrfResult {
   let root: PathBuf = GeneratedResources::create_dir("xrf-editable-level/scene/stale")?;
   let stale: EditableLevelGuid = EditableLevelGuid { g0: 1, g1: 2 };
 
-  assert!(EditableLevelScene::read_from_path::<XRayByteOrder, _>(&write_scene(&root, &stale)?).is_err());
+  assert!(EditableLevelScene::read_from_path(&write_scene(&root, &stale)?).is_err());
 
   Ok(())
 }

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -79,25 +78,25 @@ impl AiNodePosition {
 /// x, y, z as the editor writes them: `s16`, `u16`, `s16`.
 impl ChunkFieldReadWrite for AiNodePosition {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      x: reader.read_u16::<T>()?.cast_signed(),
-      y: reader.read_u16::<T>()?,
-      z: reader.read_u16::<T>()?.cast_signed(),
+      x: reader.read_u16()?.cast_signed(),
+      y: reader.read_u16()?,
+      z: reader.read_u16()?.cast_signed(),
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_u16::<T>(self.x.cast_unsigned())?;
-    writer.write_u16::<T>(self.y)?;
-    writer.write_u16::<T>(self.z.cast_unsigned())
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_u16(self.x.cast_unsigned())?;
+    writer.write_u16(self.y)?;
+    writer.write_u16(self.z.cast_unsigned())
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
 
   use crate::ai_node_position::AiNodePosition;
@@ -134,12 +133,12 @@ mod tests {
     let position: AiNodePosition = AiNodePosition { x: -3, y: 40000, z: 7 };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    position.write::<XRayByteOrder>(&mut writer)?;
+    position.write(&mut writer)?;
     assert_eq!(writer.buffer.len() as u64, AiNodePosition::SERIALIZED_SIZE);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
-    assert_eq!(AiNodePosition::read::<XRayByteOrder, _>(&mut reader)?, position);
+    assert_eq!(AiNodePosition::read(&mut reader)?, position);
 
     Ok(())
   }

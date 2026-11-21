@@ -2,7 +2,6 @@ use std::fmt::{self, Display, Formatter};
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -256,13 +255,13 @@ impl Neg for &Vector3d<f32> {
 /// An `Fvector`, `w_vec3`: three floats as one value.
 impl ChunkFieldReadWrite for Vector3d<f32> {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    Ok(Self::from(reader.read_vector3::<T>()?))
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    Ok(Self::from(reader.read_vector3()?))
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_vector3::<T>(self.to_array())
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_vector3(self.to_array())
   }
 }
 
@@ -318,7 +317,7 @@ mod tests {
   use std::str::FromStr;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -331,11 +330,11 @@ mod tests {
 
     let original: Vector3d = Vector3d { x: 1.5, y: 2.7, z: 3.2 };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 12);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -350,7 +349,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(Vector3d::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(Vector3d::read(&mut reader)?, original);
 
     Ok(())
   }

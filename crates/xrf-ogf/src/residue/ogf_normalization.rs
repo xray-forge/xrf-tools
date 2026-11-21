@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 
@@ -21,18 +20,18 @@ impl OgfNormalization {
   /// # Errors
   ///
   /// Returns the strict walk's error for a visual whose departures cannot be accounted for.
-  pub fn normalize<T: ByteOrder>(original: &[u8]) -> XrfResult<Self> {
+  pub fn normalize(original: &[u8]) -> XrfResult<Self> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(original)?;
-    let (chunks, residue) = OgfResidue::read_root_chunks::<T, _>(&mut reader)?;
+    let (chunks, residue) = OgfResidue::read_root_chunks(&mut reader)?;
     let mut bytes: Vec<u8> = Vec::with_capacity(original.len());
 
     for chunk in &chunks {
       let payload: Vec<u8> = match OgfRawPatch::is_kinematics_chunk(chunk.id) {
-        true => OgfRawPatch::read_normalized_kinematics_payload::<T, _>(chunk)?,
+        true => OgfRawPatch::read_normalized_kinematics_payload(chunk)?,
         false => OgfRawPatch::read_payload(chunk)?,
       };
 
-      OgfRawPatch::write_chunk::<T>(&mut bytes, chunk.id, payload)?;
+      OgfRawPatch::write_chunk(&mut bytes, chunk.id, payload)?;
     }
 
     Ok(Self { bytes, residue })
@@ -43,8 +42,8 @@ impl OgfNormalization {
   /// # Errors
   ///
   /// As [`Self::normalize`].
-  pub fn normalize_bytes<T: ByteOrder>(original: &[u8]) -> XrfResult<Vec<u8>> {
-    Self::normalize::<T>(original).map(|normalization| normalization.bytes)
+  pub fn normalize_bytes(original: &[u8]) -> XrfResult<Vec<u8>> {
+    Self::normalize(original).map(|normalization| normalization.bytes)
   }
 
   /// Whether the source carried anything the engine ignores.
@@ -62,9 +61,9 @@ impl OgfNormalization {
   /// # Errors
   ///
   /// Returns a verify error when the normalized bytes do not parse, still carry residue, or yield other motion refs.
-  pub fn assert_engine_reads_the_same<T: ByteOrder>(&self, original: &[u8]) -> XrfResult {
-    let before: OgfFile = OgfFile::read_from_bytes::<T>(original.to_vec())?;
-    let after: OgfFile = OgfFile::read_from_bytes::<T>(self.bytes.clone())?;
+  pub fn assert_engine_reads_the_same(&self, original: &[u8]) -> XrfResult {
+    let before: OgfFile = OgfFile::read_from_bytes(original.to_vec())?;
+    let after: OgfFile = OgfFile::read_from_bytes(self.bytes.clone())?;
 
     if after.residue.is_some() {
       return Err(XrfError::new_verify_error(

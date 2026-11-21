@@ -8,7 +8,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScopes, SessionSnapshot};
 use xrf_app_render::plugin::RenderPlugin;
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_dds::{DdsFile, RgbaImage};
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::EditableObjectFile;
@@ -110,9 +110,7 @@ fn write_compiler_library(source: &SceneSource) {
     .join(SceneSource::GAME_DATA_DIRECTORY);
   let mut library: ChunkWriter = ChunkWriter::new();
 
-  compiler_library()
-    .write::<XRayByteOrder>(&mut library)
-    .expect("the library writes");
+  compiler_library().write(&mut library).expect("the library writes");
   fs::create_dir_all(&game_data).unwrap();
   fs::write(game_data.join(ShaderCompilerFile::FILE_NAME), library.buffer).unwrap();
 }
@@ -531,9 +529,7 @@ fn a_library_object_come_into_the_objects_roots_is_read_again_and_bounded() {
       &XrayTransaction::new(&objects)
         .with_write(
           &format!("{LOST}.object"),
-          scene_library_object(&square())
-            .write_to_bytes::<XRayByteOrder>()
-            .unwrap(),
+          scene_library_object(&square()).write_to_bytes().unwrap(),
         )
         .unwrap(),
     )

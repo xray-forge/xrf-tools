@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// Detail texture association of a texture, `THM_CHUNK_DETAIL_EXT` in the engine (`ETextureParams.h`).
@@ -29,10 +28,10 @@ impl Default for ThmDetailChunk {
 }
 
 impl ChunkReadWrite for ThmDetailChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunk: Self = Self {
       name: reader.read_w1251_string()?,
-      scale: reader.read_f32::<T>()?,
+      scale: reader.read_f32()?,
     };
 
     // Bytes past the fields are the descriptor's to keep, as `ThmFile::trailing`.
@@ -40,9 +39,9 @@ impl ChunkReadWrite for ThmDetailChunk {
     Ok(chunk)
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
-    writer.write_f32::<T>(self.scale)?;
+    writer.write_f32(self.scale)?;
 
     Ok(())
   }

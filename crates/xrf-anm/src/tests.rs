@@ -1,11 +1,10 @@
 use std::io::Write;
 use std::time::Duration;
 
-use byteorder::WriteBytesExt;
 use xrf_animation_envelope::{
   AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationPlayback, AnimationShape,
 };
-use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -78,12 +77,12 @@ fn new_animation_bytes(version: u16) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   writer.write_all(&payload)?;
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(AnmFile::CHUNK_ID)
+  writer.flush_chunk_into_buffer(AnmFile::CHUNK_ID)
 }
 
 #[test]
 fn an_animation_reads_as_the_header_and_six_channels_it_is() -> XrfResult {
-  let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
 
   assert_eq!(animation.name, "camera_shake");
   assert_eq!((animation.frame_start, animation.frame_end), (0, 479));
@@ -110,13 +109,9 @@ fn an_animation_is_written_back_byte_for_byte() -> XrfResult {
   // property a writer has to hold.
   for version in AnmFile::WRITABLE_VERSIONS {
     let original: Vec<u8> = new_animation_bytes(version)?;
-    let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+    let animation: AnmFile = AnmFile::read_from_bytes(original.clone())?;
 
-    assert_eq!(
-      animation.write_to_bytes::<XRayByteOrder>()?,
-      original,
-      "version {version}"
-    );
+    assert_eq!(animation.write_to_bytes()?, original, "version {version}");
   }
 
   Ok(())
@@ -126,8 +121,8 @@ fn an_animation_is_written_back_byte_for_byte() -> XrfResult {
 fn a_version_four_motion_stores_its_pitch_before_its_heading() -> XrfResult {
   // `COMotion::Load` reads version 4's fourth envelope into the pitch, where version 5's is the heading; the
   // channels hold the engine's order either way, so the rotation a motion plays does not depend on its version.
-  let pitch_first: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(4)?)?;
-  let current: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(5)?)?;
+  let pitch_first: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(4)?)?;
+  let current: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(5)?)?;
 
   assert_eq!(pitch_first.get_channel(AnmChannel::RotationPitch).keys[0].value, -0.25);
   assert!(pitch_first.get_channel(AnmChannel::RotationHeading).keys.is_empty());
@@ -143,7 +138,7 @@ fn a_version_four_motion_stores_its_pitch_before_its_heading() -> XrfResult {
 
 #[test]
 fn a_stepped_key_carries_no_curve_at_all() -> XrfResult {
-  let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
   let key: &AnimationKey = &animation.channels[1].keys[0];
 
   assert_eq!(key.shape, AnimationShape::Stepped);
@@ -164,7 +159,7 @@ fn a_stepped_key_carries_no_curve_at_all() -> XrfResult {
 
 #[test]
 fn a_quantised_parameter_reads_as_the_step_it_sits_on() -> XrfResult {
-  let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
   let interpolation: AnimationInterpolation = animation.get_channel(AnmChannel::PositionX).keys[0].interpolation;
 
   // 32768 of 65535 across -32..32 is just past the middle, which is the closest the grid comes to zero.
@@ -182,13 +177,13 @@ fn a_version_nothing_here_reads_is_refused_by_name() -> XrfResult {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   writer.write_w1251_string("")?;
-  writer.write_u32::<XRayByteOrder>(0)?;
-  writer.write_u32::<XRayByteOrder>(1)?;
-  writer.write_f32::<XRayByteOrder>(30.0)?;
-  writer.write_u16::<XRayByteOrder>(2)?;
+  writer.write_u32(0)?;
+  writer.write_u32(1)?;
+  writer.write_f32(30.0)?;
+  writer.write_u16(2)?;
 
-  let bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(AnmFile::CHUNK_ID)?;
-  let error: String = AnmFile::read_from_bytes::<XRayByteOrder>(bytes)
+  let bytes: Vec<u8> = writer.flush_chunk_into_buffer(AnmFile::CHUNK_ID)?;
+  let error: String = AnmFile::read_from_bytes(bytes)
     .expect_err("expect an unimplemented version to be refused")
     .to_string();
 
@@ -209,7 +204,7 @@ fn a_payload_holding_more_than_six_channels_is_refused() -> XrfResult {
   bytes[4..8].copy_from_slice(&size.to_le_bytes());
 
   assert!(
-    AnmFile::read_from_bytes::<XRayByteOrder>(bytes).is_err(),
+    AnmFile::read_from_bytes(bytes).is_err(),
     "a chunk holding more than six envelopes is not an animation this reads"
   );
 
@@ -220,7 +215,7 @@ fn a_payload_holding_more_than_six_channels_is_refused() -> XrfResult {
 fn a_declared_key_count_past_the_payload_is_refused_before_it_is_reserved() -> XrfResult {
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[1, 1, 0xff, 0xff])?;
 
-  let error: String = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)
+  let error: String = AnimationEnvelope::read(&mut reader)
     .expect_err("expect the declared key count to exceed the payload")
     .to_string();
 
@@ -231,29 +226,28 @@ fn a_declared_key_count_past_the_payload_is_refused_before_it_is_reserved() -> X
 
 #[test]
 fn a_version_this_writer_does_not_emit_is_refused_rather_than_written_as_another() -> XrfResult {
-  let mut animation: AnmFile =
-    AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let mut animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
 
   animation.version = 3;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   assert!(
-    animation.write::<XRayByteOrder>(&mut writer).is_err(),
+    animation.write(&mut writer).is_err(),
     "version 3 stores wider keys and is read only"
   );
 
   // 4 is written, its envelopes laid out as 5's and its channels in its own order.
   animation.version = 4;
 
-  assert!(animation.write::<XRayByteOrder>(&mut ChunkWriter::new()).is_ok());
+  assert!(animation.write(&mut ChunkWriter::new()).is_ok());
 
   Ok(())
 }
 
 #[test]
 fn what_an_animation_is_worth_comes_from_its_frames_and_its_rate() -> XrfResult {
-  let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
 
   // 0 to 479 inclusive, which is 480 frames and not 479.
   assert_eq!(animation.get_frame_count(), 480);
@@ -268,8 +262,7 @@ fn what_an_animation_is_worth_comes_from_its_frames_and_its_rate() -> XrfResult 
 fn a_range_starting_before_zero_spans_the_frames_the_engine_plays() -> XrfResult {
   // `camera_effects\head_shot.anm`, which every one of the workspace trees ships: -1 to 60, which the engine reads
   // as 62 frames. Read unsigned, the start would be 4294967295 and the animation would last no time at all.
-  let mut animation: AnmFile =
-    AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let mut animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
 
   animation.frame_start = -1;
   animation.frame_end = 60;
@@ -282,8 +275,7 @@ fn a_range_starting_before_zero_spans_the_frames_the_engine_plays() -> XrfResult
 
 #[test]
 fn a_range_running_backwards_spans_no_frames_rather_than_a_negative_count() -> XrfResult {
-  let mut animation: AnmFile =
-    AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let mut animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
 
   animation.frame_start = 60;
   animation.frame_end = 0;
@@ -296,8 +288,7 @@ fn a_range_running_backwards_spans_no_frames_rather_than_a_negative_count() -> X
 
 #[test]
 fn a_rate_the_file_cannot_be_played_at_falls_back_to_the_format_default() -> XrfResult {
-  let mut animation: AnmFile =
-    AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let mut animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
 
   animation.fps = 0.0;
 
@@ -309,7 +300,7 @@ fn a_rate_the_file_cannot_be_played_at_falls_back_to_the_format_default() -> Xrf
 
 #[test]
 fn a_channel_reports_the_span_its_own_keys_cover() -> XrfResult {
-  let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
+  let animation: AnmFile = AnmFile::read_from_bytes(new_animation_bytes(AnmFile::CURRENT_VERSION)?)?;
 
   assert_eq!(
     animation.get_channel(AnmChannel::PositionX).get_duration_seconds(),

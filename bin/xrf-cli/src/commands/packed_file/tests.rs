@@ -62,7 +62,7 @@ fn packing_refuses_a_destination_that_is_there_and_keeps_it() -> XrfResult {
   )
   .expect("a forced pack replaces it");
 
-  assert!(ParticlesFile::read_from_path::<xrf_spawn::XRayByteOrder, _>(&library).is_ok());
+  assert!(ParticlesFile::read_from_path(&library).is_ok());
 
   Ok(())
 }

@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 /// Frames a payload as one X-Ray chunk.
@@ -7,7 +7,7 @@ pub(crate) fn chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
 
   writer.buffer = payload.to_vec();
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
+  writer.flush_chunk_into_buffer(id)
 }
 
 /// A run of little-endian floats.

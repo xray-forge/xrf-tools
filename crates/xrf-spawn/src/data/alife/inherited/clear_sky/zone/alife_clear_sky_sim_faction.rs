@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -43,27 +42,26 @@ impl AlifeClearSkySimFaction {
 impl AlifeStateReadWrite for AlifeClearSkySimFaction {
   /// Read the faction's spawn fields. Its `STATE_Read` returns before its own under the Level Editor, so the editor's
   /// form ending at the smart zone takes the constructor's values.
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
-    let base: AlifeSmartZone = reader.read_xr::<T, _>()?;
-    let [community_player, start_position_filled, current_expansion_level] =
-      ScriptSaveMarker::read_or_constructed::<T, _, _>(
-        reader,
-        Self::SCRIPT_CLASS,
-        || Self::CONSTRUCTED,
-        |reader| {
-          let fields: [u8; 3] = [reader.read_u8()?, reader.read_u8()?, reader.read_u8()?];
+    let base: AlifeSmartZone = reader.read_xr()?;
+    let [community_player, start_position_filled, current_expansion_level] = ScriptSaveMarker::read_or_constructed(
+      reader,
+      Self::SCRIPT_CLASS,
+      || Self::CONSTRUCTED,
+      |reader| {
+        let fields: [u8; 3] = [reader.read_u8()?, reader.read_u8()?, reader.read_u8()?];
 
-          ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "last spawn time", Self::NIL_TIME)?;
-          ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "squads' targets count", 0)?;
-          ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "random tasks count", 0)?;
-          ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "attack counts count", 0)?;
-          ScriptAbsentState::read_u16::<T, _>(reader, Self::SCRIPT_CLASS, "squads count", 0)?;
+        ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "last spawn time", Self::NIL_TIME)?;
+        ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "squads' targets count", 0)?;
+        ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "random tasks count", 0)?;
+        ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "attack counts count", 0)?;
+        ScriptAbsentState::read_u16(reader, Self::SCRIPT_CLASS, "squads count", 0)?;
 
-          Ok(fields)
-        },
-      )?;
+        Ok(fields)
+      },
+    )?;
 
     Ok(Self {
       base,
@@ -73,12 +71,12 @@ impl AlifeStateReadWrite for AlifeClearSkySimFaction {
     })
   }
 
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
-    writer.write_xr::<T, _>(&self.base)?;
+    writer.write_xr(&self.base)?;
 
-    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.community_player)?;
       writer.write_u8(self.start_position_filled)?;
       writer.write_u8(self.current_expansion_level)?;
@@ -87,7 +85,7 @@ impl AlifeStateReadWrite for AlifeClearSkySimFaction {
       writer.write_u8(0)?;
       writer.write_u8(0)?;
       writer.write_u8(0)?;
-      writer.write_u16::<T>(0)
+      writer.write_u16(0)
     })
   }
 
@@ -125,7 +123,7 @@ impl AlifeStateReadWrite for AlifeClearSkySimFaction {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::{Sphere, Vector3d};
@@ -171,7 +169,7 @@ mod tests {
     let original: AlifeClearSkySimFaction = new_faction();
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write_state::<XRayByteOrder, _>(&mut writer, SpawnLayout::CLEAR_SKY)?;
+    original.write_state(&mut writer, SpawnLayout::CLEAR_SKY)?;
 
     assert_eq!(
       writer.buffer[writer.buffer.len() - 11..],
@@ -181,7 +179,7 @@ mod tests {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
     assert_eq!(
-      AlifeClearSkySimFaction::read_state::<XRayByteOrder, _>(&mut reader, SpawnLayout::CLEAR_SKY)?,
+      AlifeClearSkySimFaction::read_state(&mut reader, SpawnLayout::CLEAR_SKY)?,
       original
     );
     assert!(reader.is_ended());
@@ -194,13 +192,13 @@ mod tests {
   fn refuses_a_last_spawn_time() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    new_faction().write_state::<XRayByteOrder, _>(&mut writer, SpawnLayout::CLEAR_SKY)?;
+    new_faction().write_state(&mut writer, SpawnLayout::CLEAR_SKY)?;
 
     let time_at: usize = writer.buffer.len() - 8;
 
     writer.buffer[time_at] = 0;
 
-    let error: String = AlifeClearSkySimFaction::read_state::<XRayByteOrder, _>(
+    let error: String = AlifeClearSkySimFaction::read_state(
       &mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&writer.buffer)?,
       SpawnLayout::CLEAR_SKY,
     )

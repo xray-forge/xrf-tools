@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_test_utils::{GeneratedResources, RefusedPublication};
 use xrf_utils::StagingFaults;
@@ -16,7 +15,7 @@ fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
   fs::write(&path, b"previous")?;
   StagingFaults::fail_next_write();
 
-  assert!(ThmFile::default().write_to_path::<XRayByteOrder, _>(&path).is_err());
+  assert!(ThmFile::default().write_to_path(&path).is_err());
   RefusedPublication::assert_left_previous(&path, b"previous");
 
   Ok(())

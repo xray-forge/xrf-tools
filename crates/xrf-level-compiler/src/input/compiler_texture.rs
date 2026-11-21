@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::BuildPrjFile;
@@ -57,7 +56,7 @@ impl CompilerTexture {
       }
 
       let parameters: Option<ThmTextureParamChunk> = CompilerTextures::find(roots, &name, "thm")?
-        .map(|path| ThmFile::read_from_path::<XRayByteOrder, _>(&path))
+        .map(|path| ThmFile::read_from_path(&path))
         .transpose()?
         .and_then(|thumbnail| thumbnail.texture_param);
       let Some(parameters) = parameters else {

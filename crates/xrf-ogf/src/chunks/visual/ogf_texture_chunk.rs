@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -20,7 +19,7 @@ impl OgfTextureChunk {
 }
 
 impl ChunkReadWrite for OgfTextureChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       texture_name: reader.read_w1251_string()?,
       shader_name: reader.read_w1251_string()?,
@@ -29,7 +28,7 @@ impl ChunkReadWrite for OgfTextureChunk {
   }
 
   /// Writes the chunk back exactly as read, trailing bytes included.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.texture_name)?;
     writer.write_w1251_string(&self.shader_name)?;
     writer.write_all(&self.trailing)?;

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -19,17 +18,17 @@ pub struct AlifeObjectPhSkeletonObject {
 
 impl ChunkFieldReadWrite for AlifeObjectPhSkeletonObject {
   /// Read the skeleton object from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      skeleton: reader.read_xr::<T, _>()?,
+      base: reader.read_xr()?,
+      skeleton: reader.read_xr()?,
     })
   }
 
   /// Write the skeleton object into the chunk.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr::<T, _>(&self.skeleton)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    writer.write_xr(&self.skeleton)?;
 
     Ok(())
   }
@@ -55,7 +54,7 @@ impl LtxImportExport for AlifeObjectPhSkeletonObject {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
 
@@ -94,7 +93,7 @@ mod tests {
     let original: AlifeObjectPhSkeletonObject = new_object();
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(
       writer.buffer.len(),
@@ -103,10 +102,7 @@ mod tests {
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
-    assert_eq!(
-      AlifeObjectPhSkeletonObject::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(AlifeObjectPhSkeletonObject::read(&mut reader)?, original);
     reader.assert_read("Expect the skeleton object to be read whole")?;
 
     Ok(())

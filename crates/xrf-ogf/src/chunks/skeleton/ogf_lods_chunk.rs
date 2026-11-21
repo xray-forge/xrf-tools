@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::{decode_w1251_field_to_string, encode_string_to_bytes, new_windows1251_encoder};
@@ -23,7 +22,7 @@ impl OgfLodsChunk {
 }
 
 impl ChunkReadWrite for OgfLodsChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let bytes: Vec<u8> = reader.read_remaining()?;
 
     Ok(Self {
@@ -31,7 +30,7 @@ impl ChunkReadWrite for OgfLodsChunk {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_all(&encode_string_to_bytes(&self.lods, new_windows1251_encoder())?)?;
 
     Ok(())
@@ -42,7 +41,7 @@ impl ChunkReadWrite for OgfLodsChunk {
 mod tests {
   use std::io::Write;
 
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -56,9 +55,9 @@ mod tests {
     OgfLodsChunk {
       lods: String::from(lods),
     }
-    .write::<XRayByteOrder>(&mut writer)?;
+    .write(&mut writer)?;
 
-    let contents: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfLodsChunk::CHUNK_ID)?;
+    let contents: Vec<u8> = writer.flush_chunk_into_buffer(OgfLodsChunk::CHUNK_ID)?;
     let mut file = GeneratedResources::overwrite(&filename)?;
 
     file.write_all(&contents)?;
@@ -71,7 +70,7 @@ mod tests {
       .next()
       .expect("expect the written chunk to be present");
 
-    OgfLodsChunk::read::<XRayByteOrder, _>(&mut chunk)
+    OgfLodsChunk::read(&mut chunk)
   }
 
   #[test]

@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use byteorder::{ByteOrder, WriteBytesExt};
+use crate::{XRayBytes, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::field::chunk_field_writer::ChunkFieldWriter;
@@ -15,33 +15,33 @@ impl ChunkFieldWriter for ChunkWriter {
 
   #[inline]
   fn write_u8(&mut self, value: u8) -> XrfResult {
-    Ok(WriteBytesExt::write_u8(self, value)?)
+    Ok(XRayWrite::write_u8(self, value)?)
   }
 
   #[inline]
-  fn write_u16<T: ByteOrder>(&mut self, value: u16) -> XrfResult {
-    Ok(WriteBytesExt::write_u16::<T>(self, value)?)
+  fn write_u16(&mut self, value: u16) -> XrfResult {
+    Ok(XRayWrite::write_u16(self, value)?)
   }
 
   #[inline]
-  fn write_u32<T: ByteOrder>(&mut self, value: u32) -> XrfResult {
-    Ok(WriteBytesExt::write_u32::<T>(self, value)?)
+  fn write_u32(&mut self, value: u32) -> XrfResult {
+    Ok(XRayWrite::write_u32(self, value)?)
   }
 
   #[inline]
-  fn write_u64<T: ByteOrder>(&mut self, value: u64) -> XrfResult {
-    Ok(WriteBytesExt::write_u64::<T>(self, value)?)
+  fn write_u64(&mut self, value: u64) -> XrfResult {
+    Ok(XRayWrite::write_u64(self, value)?)
   }
 
   #[inline]
-  fn write_f32<T: ByteOrder>(&mut self, value: f32) -> XrfResult {
-    Ok(WriteBytesExt::write_f32::<T>(self, value)?)
+  fn write_f32(&mut self, value: f32) -> XrfResult {
+    Ok(XRayWrite::write_f32(self, value)?)
   }
 
   #[inline]
-  fn write_vector3<T: ByteOrder>(&mut self, value: [f32; 3]) -> XrfResult {
+  fn write_vector3(&mut self, value: [f32; 3]) -> XrfResult {
     for component in value {
-      WriteBytesExt::write_f32::<T>(self, component)?;
+      XRayWrite::write_f32(self, component)?;
     }
 
     Ok(())
@@ -65,14 +65,14 @@ impl ChunkFieldWriter for ChunkWriter {
   }
 
   #[inline]
-  fn patch_u16<T: ByteOrder>(&mut self, at: usize, value: u16) -> XrfResult {
+  fn patch_u16(&mut self, at: usize, value: u16) -> XrfResult {
     let written: usize = self.bytes_written();
     let bytes: &mut [u8] = self
       .buffer
       .get_mut(at..at + size_of::<u16>())
       .ok_or_else(|| XrfError::new_invalid_error(format!("Cannot patch a u16 at {at}, {written} bytes are written")))?;
 
-    T::write_u16(bytes, value);
+    XRayBytes::write_u16(bytes, value);
 
     Ok(())
   }

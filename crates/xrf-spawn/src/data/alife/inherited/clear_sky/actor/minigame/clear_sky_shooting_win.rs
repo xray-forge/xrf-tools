@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -53,10 +52,10 @@ impl ClearSkyShootingWin {
 }
 
 impl ChunkFieldReadWrite for ClearSkyShootingWin {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     match reader.read_u8()? {
       Self::FLAG => Ok(Self::Flag(reader.read_u8()?)),
-      Self::COUNT => Ok(Self::Count(reader.read_u16::<T>()?)),
+      Self::COUNT => Ok(Self::Count(reader.read_u16()?)),
       other => Err(XrfError::new_invalid_error(format!(
         "Shooting win kind {other} is read as a count but written back as {}",
         Self::COUNT
@@ -64,7 +63,7 @@ impl ChunkFieldReadWrite for ClearSkyShootingWin {
     }
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
       Self::Flag(flag) => {
         writer.write_u8(Self::FLAG)?;
@@ -72,7 +71,7 @@ impl ChunkFieldReadWrite for ClearSkyShootingWin {
       }
       Self::Count(count) => {
         writer.write_u8(Self::COUNT)?;
-        writer.write_u16::<T>(*count)
+        writer.write_u16(*count)
       }
     }
   }
@@ -80,7 +79,7 @@ impl ChunkFieldReadWrite for ClearSkyShootingWin {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
 
@@ -94,13 +93,11 @@ mod tests {
     ] {
       let mut writer: ChunkWriter = ChunkWriter::new();
 
-      value.write::<XRayByteOrder>(&mut writer)?;
+      value.write(&mut writer)?;
 
       assert_eq!(writer.buffer, bytes);
       assert_eq!(
-        ClearSkyShootingWin::read::<XRayByteOrder, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(
-          &bytes
-        )?)?,
+        ClearSkyShootingWin::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&bytes)?)?,
         value
       );
 
@@ -119,11 +116,10 @@ mod tests {
 
   #[test]
   fn refuses_a_kind_it_would_write_back_otherwise() -> XrfResult {
-    let error: String = ClearSkyShootingWin::read::<XRayByteOrder, _>(
-      &mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(b"\x02\0\0")?,
-    )
-    .expect_err("kind 2")
-    .to_string();
+    let error: String =
+      ClearSkyShootingWin::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(b"\x02\0\0")?)
+        .expect_err("kind 2")
+        .to_string();
 
     assert!(error.contains("Shooting win kind 2"), "{error}");
 

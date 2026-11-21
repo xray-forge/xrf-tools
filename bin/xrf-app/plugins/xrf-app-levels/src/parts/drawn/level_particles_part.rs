@@ -3,7 +3,6 @@ use std::time::Instant;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
@@ -133,7 +132,7 @@ impl LevelParticlesPart {
   fn read_library(search: &XraySearch) -> TauriResult<ParticleLibrary> {
     search
       .read(ParticlesFile::FILE_NAME)
-      .and_then(ParticlesFile::read_from_bytes::<XRayByteOrder>)
+      .and_then(ParticlesFile::read_from_bytes)
       .map(ParticleLibrary::from)
       .map_err(|error| format!("Failed to read '{}': {error}", ParticlesFile::FILE_NAME))
   }
@@ -143,7 +142,7 @@ impl LevelParticlesPart {
     let Some(bytes) = source.read_optional_file(search, LevelPsStaticFile::FILE_NAME)? else {
       return Ok(Vec::new());
     };
-    let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes)
+    let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes(bytes)
       .map_err(|error| source.describe_read_failure(LevelPsStaticFile::FILE_NAME, &error))?;
 
     Ok(

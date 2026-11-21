@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 #[cfg(test)]
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
@@ -18,14 +17,14 @@ use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 /// stream. A spawn field the layout lacks follows `AlifeStateReadWrite`'s rule, in bytes and text alike.
 pub(crate) trait AlifePacketsReadWrite: Sized {
   /// Read the payload's spawn fields from `spawn` and its update fields from `update`, laid out as `layout`.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self>;
 
   /// Write the payload's spawn fields into `spawn` and its update fields into `update`, laid out as `layout`.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
@@ -47,15 +46,15 @@ pub(crate) trait AlifePacketsReadWrite: Sized {
   /// Write the payload at `layout` and read it back, refusing a byte of either packet left unread, with the sizes of
   /// the spawn and update fields written.
   #[cfg(test)]
-  fn read_back<T: ByteOrder>(&self, layout: SpawnLayout) -> XrfResult<(usize, usize, Self)> {
+  fn read_back(&self, layout: SpawnLayout) -> XrfResult<(usize, usize, Self)> {
     let mut spawn: ChunkWriter = ChunkWriter::new();
     let mut update: ChunkWriter = ChunkWriter::new();
 
-    self.write::<T, _, _>(&mut spawn, &mut update, layout)?;
+    self.write(&mut spawn, &mut update, layout)?;
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
-    let read: Self = Self::read::<T, _, _>(&mut spawn_reader, &mut update_reader, layout)?;
+    let read: Self = Self::read(&mut spawn_reader, &mut update_reader, layout)?;
 
     spawn_reader.assert_read("Expect the spawn fields to be read whole")?;
     update_reader.assert_read("Expect the update fields to be read whole")?;

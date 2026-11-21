@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
@@ -35,7 +34,7 @@ impl EditableLevelPart {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a part [`Self::read_from_bytes`] reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P, class_id: Option<u32>) -> XrfResult<Self> {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P, class_id: Option<u32>) -> XrfResult<Self> {
     let bytes: Vec<u8> = std::fs::read(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level part was not read: {}, error: {error}",
@@ -43,7 +42,7 @@ impl EditableLevelPart {
       ))
     })?;
 
-    Self::read_from_bytes::<T>(bytes, class_id)
+    Self::read_from_bytes(bytes, class_id)
   }
 
   /// Reads a part as `EScene::LoadLevelPartLTX` tells the two kinds apart: a file opening with `[` is text, any other
@@ -52,11 +51,11 @@ impl EditableLevelPart {
   /// # Errors
   ///
   /// Returns an error when the bytes are not the part their first byte says they are.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>, class_id: Option<u32>) -> XrfResult<Self> {
+  pub fn read_from_bytes(bytes: Vec<u8>, class_id: Option<u32>) -> XrfResult<Self> {
     if bytes.first() == Some(&b'[') {
       Ok(Self::Text(EditableTextPart::read_from_bytes(&bytes)?))
     } else {
-      Ok(Self::Binary(EditableBinaryPart::read_from_bytes::<T>(bytes, class_id)?))
+      Ok(Self::Binary(EditableBinaryPart::read_from_bytes(bytes, class_id)?))
     }
   }
 
@@ -65,20 +64,20 @@ impl EditableLevelPart {
   /// # Errors
   ///
   /// Returns an error as [`Self::write_to_bytes`] does, or when the file cannot be written.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     Ok(StagedFile::write_creating_directories(
       path.as_ref(),
-      &self.write_to_bytes::<T>()?,
+      &self.write_to_bytes()?,
     )?)
   }
 
   /// # Errors
   ///
   /// Returns an error when a text part would not read back as itself or a binary part's chunks cannot be framed.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     match self {
       Self::Text(part) => part.write_to_bytes(),
-      Self::Binary(part) => part.write_to_bytes::<T>(),
+      Self::Binary(part) => part.write_to_bytes(),
     }
   }
 

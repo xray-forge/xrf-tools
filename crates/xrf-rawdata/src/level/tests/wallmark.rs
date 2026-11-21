@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkLayout, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkLayout, ChunkWriter};
 use xrf_editable_level::{EditableBinaryPart, EditableWallmark, EditableWallmarkSlot, EditableWallmarkTool};
 use xrf_error::XrfResult;
 use xrf_level::{LevelWallmark, LevelWallmarkSlot, LevelWallmarkVertex, LevelWallmarksFile};
@@ -41,7 +41,7 @@ fn slot(texture: &str, marks: Vec<LevelWallmark>) -> LevelWallmarkSlot {
 fn bytes_of(file: &LevelWallmarksFile) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   Ok(writer.buffer)
 }
@@ -55,10 +55,9 @@ fn wall_marks_come_back_to_the_same_file_through_the_part() -> XrfResult {
     ],
   };
   let tool: EditableWallmarkTool = LevelWallmarkConversion::decompile(&file)?;
-  let part: Vec<u8> = tool.to_part::<XRayByteOrder>(GUID)?.write_to_bytes::<XRayByteOrder>()?;
-  let read: EditableWallmarkTool = EditableWallmarkTool::read_from_part::<XRayByteOrder>(
-    &EditableBinaryPart::read_from_bytes::<XRayByteOrder>(part, None)?,
-  )?;
+  let part: Vec<u8> = tool.to_part(GUID)?.write_to_bytes()?;
+  let read: EditableWallmarkTool =
+    EditableWallmarkTool::read_from_part(&EditableBinaryPart::read_from_bytes(part, None)?)?;
   let mark: &EditableWallmark = &read.slots[0].marks[1];
 
   assert_eq!(

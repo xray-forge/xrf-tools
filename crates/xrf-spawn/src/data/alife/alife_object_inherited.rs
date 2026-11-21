@@ -1,6 +1,5 @@
 use std::ops::Deref;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -119,120 +118,107 @@ pub enum AlifeObjectInherited {
 impl AlifeObjectInherited {
   /// Reads the payload of `alife_class` at `layout`: each class's `STATE_Read` from the spawn packet, script fields
   /// included, and its `UPDATE_Read` from the update packet, empty for a class without update fields.
-  pub(crate) fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  pub(crate) fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     alife_class: &AlifeClass,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(match alife_class {
-      AlifeClass::SeActor => Self::SeActor(Box::new(AlifeActor::read::<T, _, _>(spawn, update, layout)?)),
-      AlifeClass::SeStalker => Self::SeStalker(Box::new(AlifeStalker::read::<T, _, _>(spawn, update, layout)?)),
-      AlifeClass::SeMonster => Self::SeMonster(Box::new(AlifeMonster::read::<T, _, _>(spawn, update, layout)?)),
-      AlifeClass::CseAlifeObjectBreakable => Self::CseAlifeObjectBreakable(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::SeActor => Self::SeActor(Box::new(AlifeActor::read(spawn, update, layout)?)),
+      AlifeClass::SeStalker => Self::SeStalker(Box::new(AlifeStalker::read(spawn, update, layout)?)),
+      AlifeClass::SeMonster => Self::SeMonster(Box::new(AlifeMonster::read(spawn, update, layout)?)),
+      AlifeClass::CseAlifeObjectBreakable => Self::CseAlifeObjectBreakable(Box::new(spawn.read_xr()?)),
       AlifeClass::CseAlifeObjectClimable => {
-        Self::CseAlifeObjectClimable(Box::new(AlifeObjectClimable::read_state::<T, _>(spawn, layout)?))
+        Self::CseAlifeObjectClimable(Box::new(AlifeObjectClimable::read_state(spawn, layout)?))
       }
-      AlifeClass::CseAlifeGraphPoint => Self::CseAlifeGraphPoint(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeSpaceRestrictor => Self::CseAlifeSpaceRestrictor(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(AlifeSmartCover::read_state::<T, _>(spawn, layout)?)),
-      AlifeClass::CseAlifeAnomalousZone => Self::CseAlifeAnomalousZone(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeTorridZone => Self::CseAlifeTorridZone(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeTeamBaseZone => Self::CseAlifeTeamBaseZone(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeTrader => {
-        Self::CseAlifeTrader(Box::new(AlifeObjectTrader::read_state::<T, _>(spawn, layout)?))
-      }
+      AlifeClass::CseAlifeGraphPoint => Self::CseAlifeGraphPoint(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeSpaceRestrictor => Self::CseAlifeSpaceRestrictor(Box::new(spawn.read_xr()?)),
+      AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(AlifeSmartCover::read_state(spawn, layout)?)),
+      AlifeClass::CseAlifeAnomalousZone => Self::CseAlifeAnomalousZone(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeTorridZone => Self::CseAlifeTorridZone(Box::new(spawn.read_xr()?)),
+      AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(spawn.read_xr()?)),
+      AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeTeamBaseZone => Self::CseAlifeTeamBaseZone(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeTrader => Self::CseAlifeTrader(Box::new(AlifeObjectTrader::read_state(spawn, layout)?)),
       AlifeClass::CseAlifeObjectPhysic => {
-        Self::CseAlifeObjectPhysic(Box::new(AlifeObjectPhysic::read::<T, _, _>(spawn, update, layout)?))
+        Self::CseAlifeObjectPhysic(Box::new(AlifeObjectPhysic::read(spawn, update, layout)?))
       }
-      AlifeClass::CseAlifeHelicopter => Self::CseAlifeHelicopter(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeHelicopter => Self::CseAlifeHelicopter(Box::new(spawn.read_xr()?)),
       AlifeClass::CseAlifeInventoryBox => {
-        Self::CseAlifeInventoryBox(Box::new(AlifeObjectInventoryBox::read_state::<T, _>(spawn, layout)?))
+        Self::CseAlifeInventoryBox(Box::new(AlifeObjectInventoryBox::read_state(spawn, layout)?))
       }
-      AlifeClass::CseAlifeObjectHangingLamp => Self::CseAlifeObjectHangingLamp(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItem => {
-        Self::CseAlifeItem(Box::new(AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?))
-      }
+      AlifeClass::CseAlifeObjectHangingLamp => Self::CseAlifeObjectHangingLamp(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeItem => Self::CseAlifeItem(Box::new(AlifeObjectItem::read(spawn, update, layout)?)),
       AlifeClass::CseAlifeItemExplosive => {
-        Self::CseAlifeItemExplosive(Box::new(AlifeObjectItemExplosive::read::<T, _, _>(
-          spawn, update, layout,
-        )?))
+        Self::CseAlifeItemExplosive(Box::new(AlifeObjectItemExplosive::read(spawn, update, layout)?))
       }
-      AlifeClass::CseAlifeItemPda => {
-        Self::CseAlifeItemPda(Box::new(AlifeObjectItemPda::read::<T, _, _>(spawn, update, layout)?))
-      }
+      AlifeClass::CseAlifeItemPda => Self::CseAlifeItemPda(Box::new(AlifeObjectItemPda::read(spawn, update, layout)?)),
       AlifeClass::CseAlifeItemAmmo => {
-        Self::CseAlifeItemAmmo(Box::new(AlifeObjectItemAmmo::read::<T, _, _>(spawn, update, layout)?))
+        Self::CseAlifeItemAmmo(Box::new(AlifeObjectItemAmmo::read(spawn, update, layout)?))
       }
-      AlifeClass::CseAlifeItemGrenade => Self::CseAlifeItemGrenade(Box::new(AlifeObjectItemGrenade::read::<T, _, _>(
-        spawn, update, layout,
-      )?)),
-      AlifeClass::CseAlifeItemArtefact => Self::CseAlifeItemArtefact(Box::new(
-        AlifeObjectItemArtefact::read::<T, _, _>(spawn, update, layout)?,
-      )),
+      AlifeClass::CseAlifeItemGrenade => {
+        Self::CseAlifeItemGrenade(Box::new(AlifeObjectItemGrenade::read(spawn, update, layout)?))
+      }
+      AlifeClass::CseAlifeItemArtefact => {
+        Self::CseAlifeItemArtefact(Box::new(AlifeObjectItemArtefact::read(spawn, update, layout)?))
+      }
       AlifeClass::CseAlifeItemWeapon => {
-        Self::CseAlifeItemWeapon(Box::new(AlifeObjectItemWeapon::read::<T, _, _>(spawn, update, layout)?))
+        Self::CseAlifeItemWeapon(Box::new(AlifeObjectItemWeapon::read(spawn, update, layout)?))
       }
-      AlifeClass::CseAlifeItemDetector => Self::CseAlifeItemDetector(Box::new(
-        AlifeObjectItemDetector::read::<T, _, _>(spawn, update, layout)?,
-      )),
+      AlifeClass::CseAlifeItemDetector => {
+        Self::CseAlifeItemDetector(Box::new(AlifeObjectItemDetector::read(spawn, update, layout)?))
+      }
       AlifeClass::CseAlifeItemHelmet => {
-        Self::CseAlifeItemHelmet(Box::new(AlifeObjectItemHelmet::read::<T, _, _>(spawn, update, layout)?))
+        Self::CseAlifeItemHelmet(Box::new(AlifeObjectItemHelmet::read(spawn, update, layout)?))
       }
-      AlifeClass::CseAlifeItemCustomOutfit => Self::CseAlifeItemCustomOutfit(Box::new(
-        AlifeObjectItemCustomOutfit::read::<T, _, _>(spawn, update, layout)?,
-      )),
-      AlifeClass::CseAlifeItemWeaponShotgun => Self::CseAlifeItemWeaponShotgun(Box::new(
-        AlifeObjectItemWeaponShotgun::read::<T, _, _>(spawn, update, layout)?,
-      )),
-      AlifeClass::CseAlifeItemWeaponMagazined => Self::CseAlifeItemWeaponMagazined(Box::new(
-        AlifeObjectItemWeaponMagazined::read::<T, _, _>(spawn, update, layout)?,
-      )),
+      AlifeClass::CseAlifeItemCustomOutfit => {
+        Self::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit::read(spawn, update, layout)?))
+      }
+      AlifeClass::CseAlifeItemWeaponShotgun => {
+        Self::CseAlifeItemWeaponShotgun(Box::new(AlifeObjectItemWeaponShotgun::read(spawn, update, layout)?))
+      }
+      AlifeClass::CseAlifeItemWeaponMagazined => {
+        Self::CseAlifeItemWeaponMagazined(Box::new(AlifeObjectItemWeaponMagazined::read(spawn, update, layout)?))
+      }
       AlifeClass::CseAlifeItemWeaponMagazinedWGl => Self::CseAlifeItemWeaponMagazinedWGl(Box::new(
-        AlifeObjectItemWeaponMagazinedWgl::read::<T, _, _>(spawn, update, layout)?,
+        AlifeObjectItemWeaponMagazinedWgl::read(spawn, update, layout)?,
       )),
-      AlifeClass::CseAlifeItemBolt => {
-        Self::CseAlifeItemBolt(Box::new(AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?))
-      }
+      AlifeClass::CseAlifeItemBolt => Self::CseAlifeItemBolt(Box::new(AlifeObjectItem::read(spawn, update, layout)?)),
       AlifeClass::CseAlifeItemTorch => {
-        Self::CseAlifeItemTorch(Box::new(AlifeObjectItemTorch::read::<T, _, _>(spawn, update, layout)?))
+        Self::CseAlifeItemTorch(Box::new(AlifeObjectItemTorch::read(spawn, update, layout)?))
       }
-      AlifeClass::CseAlifeItemDocument => Self::CseAlifeItemDocument(Box::new(
-        AlifeObjectItemDocument::read::<T, _, _>(spawn, update, layout)?,
-      )),
+      AlifeClass::CseAlifeItemDocument => {
+        Self::CseAlifeItemDocument(Box::new(AlifeObjectItemDocument::read(spawn, update, layout)?))
+      }
       AlifeClass::CseAlifeCreatureCrow => {
-        Self::CseAlifeCreatureCrow(Box::new(AlifeObjectCreature::read::<T, _, _>(spawn, update, layout)?))
+        Self::CseAlifeCreatureCrow(Box::new(AlifeObjectCreature::read(spawn, update, layout)?))
       }
       AlifeClass::CseAlifeCreaturePhantom => {
-        Self::CseAlifeCreaturePhantom(Box::new(AlifeObjectCreature::read::<T, _, _>(spawn, update, layout)?))
+        Self::CseAlifeCreaturePhantom(Box::new(AlifeObjectCreature::read(spawn, update, layout)?))
       }
-      AlifeClass::CseAlifeDynamicObjectVisual => Self::CseAlifeDynamicObjectVisual(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeObjectProjector => Self::CseAlifeObjectProjector(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifePhSkeletonObject => Self::CseAlifePhSkeletonObject(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeStationaryMGun => {
-        Self::CseAlifeStationaryMGun(Box::new(AlifeObjectStationaryMgun::read::<T, _, _>(
-          spawn, update, layout,
-        )?))
-      }
-      AlifeClass::SimSquadScripted => Self::SimSquadScripted(Box::new(spawn.read_xr::<T, _>()?)),
-      AlifeClass::ClearSkySeActor => {
-        Self::ClearSkySeActor(Box::new(AlifeClearSkyActor::read::<T, _, _>(spawn, update, layout)?))
-      }
+      AlifeClass::CseAlifeDynamicObjectVisual => Self::CseAlifeDynamicObjectVisual(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeObjectProjector => Self::CseAlifeObjectProjector(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifePhSkeletonObject => Self::CseAlifePhSkeletonObject(Box::new(spawn.read_xr()?)),
+      AlifeClass::CseAlifeStationaryMGun => Self::CseAlifeStationaryMGun(Box::new(AlifeObjectStationaryMgun::read::<
+        _,
+        _,
+      >(spawn, update, layout)?)),
+      AlifeClass::SimSquadScripted => Self::SimSquadScripted(Box::new(spawn.read_xr()?)),
+      AlifeClass::ClearSkySeActor => Self::ClearSkySeActor(Box::new(AlifeClearSkyActor::read(spawn, update, layout)?)),
       AlifeClass::ClearSkySeStalker => {
-        Self::ClearSkySeStalker(Box::new(AlifeClearSkyStalker::read::<T, _, _>(spawn, update, layout)?))
+        Self::ClearSkySeStalker(Box::new(AlifeClearSkyStalker::read(spawn, update, layout)?))
       }
       AlifeClass::ClearSkySeMonster => {
-        Self::ClearSkySeMonster(Box::new(AlifeClearSkyMonster::read::<T, _, _>(spawn, update, layout)?))
+        Self::ClearSkySeMonster(Box::new(AlifeClearSkyMonster::read(spawn, update, layout)?))
       }
       AlifeClass::ClearSkySeSmartTerrain => {
-        Self::ClearSkySeSmartTerrain(Box::new(AlifeClearSkySmartTerrain::read_state::<T, _>(spawn, layout)?))
+        Self::ClearSkySeSmartTerrain(Box::new(AlifeClearSkySmartTerrain::read_state(spawn, layout)?))
       }
       AlifeClass::ClearSkySeSimFaction => {
-        Self::ClearSkySeSimFaction(Box::new(AlifeClearSkySimFaction::read_state::<T, _>(spawn, layout)?))
+        Self::ClearSkySeSimFaction(Box::new(AlifeClearSkySimFaction::read_state(spawn, layout)?))
       }
       AlifeClass::Unknown => return Err(Self::new_unknown_class_error()),
     })
@@ -693,61 +679,61 @@ impl AlifeObjectInherited {
   }
 
   /// Write the payload's spawn fields into `spawn` and its update fields into `update`, laid out as `layout`.
-  pub(crate) fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  pub(crate) fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
     match self {
-      Self::SeActor(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::SeStalker(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::SeMonster(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeObjectBreakable(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeObjectClimable(object) => object.write_state::<T, _>(spawn, layout)?,
-      Self::CseAlifeGraphPoint(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeSpaceRestrictor(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::SeSmartCover(object) => object.write_state::<T, _>(spawn, layout)?,
-      Self::CseAlifeAnomalousZone(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeTorridZone(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::SeSmartTerrain(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::SeLevelChanger(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeTeamBaseZone(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeZoneVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeCar(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeTrader(object) => object.write_state::<T, _>(spawn, layout)?,
-      Self::CseAlifeObjectPhysic(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeHelicopter(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeInventoryBox(object) => object.write_state::<T, _>(spawn, layout)?,
-      Self::CseAlifeObjectHangingLamp(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeItem(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemExplosive(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemPda(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemAmmo(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemGrenade(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemArtefact(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemWeapon(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemDetector(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemHelmet(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemCustomOutfit(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemWeaponShotgun(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemWeaponMagazined(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemWeaponMagazinedWGl(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemBolt(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemTorch(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeItemDocument(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeCreatureCrow(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeCreaturePhantom(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::CseAlifeDynamicObjectVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeObjectProjector(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifePhSkeletonObject(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::CseAlifeStationaryMGun(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::SimSquadScripted(object) => spawn.write_xr::<T, _>(object.deref())?,
-      Self::ClearSkySeActor(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::ClearSkySeStalker(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::ClearSkySeMonster(object) => object.write::<T, _, _>(spawn, update, layout)?,
-      Self::ClearSkySeSmartTerrain(object) => object.write_state::<T, _>(spawn, layout)?,
-      Self::ClearSkySeSimFaction(object) => object.write_state::<T, _>(spawn, layout)?,
+      Self::SeActor(object) => object.write(spawn, update, layout)?,
+      Self::SeStalker(object) => object.write(spawn, update, layout)?,
+      Self::SeMonster(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeObjectBreakable(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeObjectClimable(object) => object.write_state(spawn, layout)?,
+      Self::CseAlifeGraphPoint(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeSpaceRestrictor(object) => spawn.write_xr(object.deref())?,
+      Self::SeSmartCover(object) => object.write_state(spawn, layout)?,
+      Self::CseAlifeAnomalousZone(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeTorridZone(object) => spawn.write_xr(object.deref())?,
+      Self::SeSmartTerrain(object) => spawn.write_xr(object.deref())?,
+      Self::SeLevelChanger(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeTeamBaseZone(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeZoneVisual(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeCar(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeTrader(object) => object.write_state(spawn, layout)?,
+      Self::CseAlifeObjectPhysic(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeHelicopter(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeInventoryBox(object) => object.write_state(spawn, layout)?,
+      Self::CseAlifeObjectHangingLamp(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeItem(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemExplosive(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemPda(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemAmmo(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemGrenade(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemArtefact(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemWeapon(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemDetector(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemHelmet(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemCustomOutfit(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemWeaponShotgun(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemWeaponMagazined(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemWeaponMagazinedWGl(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemBolt(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemTorch(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeItemDocument(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeCreatureCrow(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeCreaturePhantom(object) => object.write(spawn, update, layout)?,
+      Self::CseAlifeDynamicObjectVisual(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeObjectProjector(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifePhSkeletonObject(object) => spawn.write_xr(object.deref())?,
+      Self::CseAlifeStationaryMGun(object) => object.write(spawn, update, layout)?,
+      Self::SimSquadScripted(object) => spawn.write_xr(object.deref())?,
+      Self::ClearSkySeActor(object) => object.write(spawn, update, layout)?,
+      Self::ClearSkySeStalker(object) => object.write(spawn, update, layout)?,
+      Self::ClearSkySeMonster(object) => object.write(spawn, update, layout)?,
+      Self::ClearSkySeSmartTerrain(object) => object.write_state(spawn, layout)?,
+      Self::ClearSkySeSimFaction(object) => object.write_state(spawn, layout)?,
     }
 
     Ok(())
@@ -950,8 +936,7 @@ impl AlifeObjectInherited {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::ReadBytesExt;
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead};
   use xrf_error::XrfResult;
 
   use crate::constants::NET_ACTION_UPDATE;
@@ -972,10 +957,10 @@ mod tests {
       let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn)?;
       let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&framed_update)?;
 
-      update_reader.read_u16::<XRayByteOrder>()?;
+      update_reader.read_u16()?;
 
       let object: AlifeObjectInherited =
-        AlifeObjectInherited::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, class, LAYOUT)?;
+        AlifeObjectInherited::read(&mut spawn_reader, &mut update_reader, class, LAYOUT)?;
 
       spawn_reader.assert_read(&format!("Expect the game's {section} spawn packet to be read whole"))?;
       update_reader.assert_read(&format!("Expect the game's {section} update packet to be read whole"))?;
@@ -983,7 +968,7 @@ mod tests {
       let mut spawn_writer: ChunkWriter = ChunkWriter::new();
       let mut update_writer: ChunkWriter = ChunkWriter::new();
 
-      object.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer, LAYOUT)?;
+      object.write(&mut spawn_writer, &mut update_writer, LAYOUT)?;
 
       assert_eq!(&object.get_class(), class, "{section}");
       assert_eq!(

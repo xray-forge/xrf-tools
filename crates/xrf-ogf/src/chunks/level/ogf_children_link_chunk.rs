@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
 /// The children a visual links to rather than carries, `OGF_CHILDREN_L`.
@@ -17,12 +16,12 @@ impl OgfChildrenLinkChunk {
 }
 
 impl ChunkReadWrite for OgfChildrenLinkChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let count: u32 = reader.read_u32()?;
     let mut children: Vec<u32> = reader.new_bounded_vec(u64::from(count), Self::CHILD_SIZE, "ogf linked children")?;
 
     for _ in 0..count {
-      children.push(reader.read_u32::<T>()?);
+      children.push(reader.read_u32()?);
     }
 
     reader.assert_read("Expect all data to be read from ogf linked children chunk")?;
@@ -30,7 +29,7 @@ impl ChunkReadWrite for OgfChildrenLinkChunk {
     Ok(Self { children })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let count: u32 = u32::try_from(self.children.len()).map_err(|_| {
       XrfError::new_invalid_error(format!(
         "A visual links {} children, more than a u32 counts",
@@ -38,10 +37,10 @@ impl ChunkReadWrite for OgfChildrenLinkChunk {
       ))
     })?;
 
-    writer.write_u32::<T>(count)?;
+    writer.write_u32(count)?;
 
     for child in &self.children {
-      writer.write_u32::<T>(*child)?;
+      writer.write_u32(*child)?;
     }
 
     Ok(())
@@ -50,7 +49,7 @@ impl ChunkReadWrite for OgfChildrenLinkChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -65,11 +64,11 @@ mod tests {
       children: vec![0, 7, 4294967295],
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 4 + 3 * 4);
 
-    writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       OgfChildrenLinkChunk::CHUNK_ID,
     )?;
@@ -80,7 +79,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(OgfChildrenLinkChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(OgfChildrenLinkChunk::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -89,11 +88,11 @@ mod tests {
   fn test_reads_a_visual_that_links_nothing() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    OgfChildrenLinkChunk { children: Vec::new() }.write::<XRayByteOrder>(&mut writer)?;
+    OgfChildrenLinkChunk { children: Vec::new() }.write(&mut writer)?;
 
     let filename: String = String::from("empty.chunk");
 
-    writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       OgfChildrenLinkChunk::CHUNK_ID,
     )?;
@@ -103,11 +102,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert!(
-      OgfChildrenLinkChunk::read::<XRayByteOrder, _>(&mut reader)?
-        .children
-        .is_empty()
-    );
+    assert!(OgfChildrenLinkChunk::read(&mut reader)?.children.is_empty());
 
     Ok(())
   }

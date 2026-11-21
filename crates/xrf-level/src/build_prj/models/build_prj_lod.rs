@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::build_prj::models::build_prj_lod_face::BuildPrjLodFace;
@@ -23,27 +22,27 @@ impl BuildPrjLod {
 }
 
 impl ChunkReadWrite for BuildPrjLod {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut faces: Vec<BuildPrjLodFace> = Vec::with_capacity(Self::FACES);
 
     for _ in 0..Self::FACES {
-      faces.push(reader.read_xr::<T, _>()?);
+      faces.push(reader.read_xr()?);
     }
 
     Ok(Self {
       faces: faces
         .try_into()
         .map_err(|_| XrfError::new_invalid_error("An impostor was not read as its eight faces"))?,
-      material: reader.read_u32::<T>()?,
+      material: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for face in &self.faces {
-      writer.write_xr::<T, _>(face)?;
+      writer.write_xr(face)?;
     }
 
-    writer.write_u32::<T>(self.material)?;
+    writer.write_u32(self.material)?;
 
     Ok(())
   }

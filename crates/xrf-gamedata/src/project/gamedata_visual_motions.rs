@@ -6,7 +6,6 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_ogf::OgfFile;
 use xrf_omf::OmfFile;
-use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType;
 
 use crate::GamedataProject;
@@ -25,7 +24,7 @@ impl GamedataVisualMotions {
     match project
       .read_bytes(visual_path)
       .and_then(ChunkReader::from_vec)
-      .and_then(|mut chunk| OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk))
+      .and_then(|mut chunk| OgfFile::read_motion_refs_from_chunk(&mut chunk))
     {
       Ok(refs) => Ok(Some(refs)),
       Err(XrfError::NotFound { .. }) => Ok(None),
@@ -55,7 +54,7 @@ impl GamedataVisualMotions {
   ///
   /// Returns an error when the bank does not read.
   pub(crate) fn read_names(project: &GamedataProject, bank_path: &str) -> XrfResult<Vec<String>> {
-    let bank: Arc<OmfFile> = project.read_parsed(bank_path, OmfFile::read_from_chunk::<XRayByteOrder, _>)?;
+    let bank: Arc<OmfFile> = project.read_parsed(bank_path, OmfFile::read_from_chunk)?;
 
     Ok(bank.get_motion_names().into_iter().map(str::to_owned).collect())
   }

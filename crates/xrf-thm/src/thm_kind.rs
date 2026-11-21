@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, XRayRead};
 use xrf_error::XrfResult;
 
 use crate::object::thm_group_file::ThmGroupFile;
@@ -43,8 +42,8 @@ impl ThmKind {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a chunk tree, or a version or type chunk is too short.
-  pub fn detect<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Option<Self>> {
-    Self::detect_in::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn detect(bytes: Vec<u8>) -> XrfResult<Option<Self>> {
+    Self::detect_in(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// [`Self::detect`] over a chunk reader over any data source.
@@ -52,14 +51,14 @@ impl ThmKind {
   /// # Errors
   ///
   /// Returns an error when a version or type chunk is too short.
-  pub fn detect_in<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>> {
+  pub fn detect_in<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>> {
     let mut version: Option<u16> = None;
     let mut thumbnail_type: Option<u32> = None;
 
     for mut chunk in reader.read_children_including_compressed()? {
       match chunk.id {
-        ThmFile::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16::<T>()?),
-        ThmFile::THUMBNAIL_TYPE_CHUNK_ID if thumbnail_type.is_none() => thumbnail_type = Some(chunk.read_u32::<T>()?),
+        ThmFile::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16()?),
+        ThmFile::THUMBNAIL_TYPE_CHUNK_ID if thumbnail_type.is_none() => thumbnail_type = Some(chunk.read_u32()?),
         _ => {}
       }
     }

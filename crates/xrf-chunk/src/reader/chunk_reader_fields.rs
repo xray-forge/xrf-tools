@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt};
+use crate::XRayRead;
 use xrf_error::XrfResult;
 
 use crate::field::chunk_field_reader::ChunkFieldReader;
@@ -14,35 +14,35 @@ impl<D: ChunkDataSource> ChunkFieldReader for ChunkReader<D> {
 
   #[inline]
   fn read_u8(&mut self) -> XrfResult<u8> {
-    Ok(ReadBytesExt::read_u8(self)?)
+    Ok(XRayRead::read_u8(self)?)
   }
 
   #[inline]
-  fn read_u16<T: ByteOrder>(&mut self) -> XrfResult<u16> {
-    Ok(ReadBytesExt::read_u16::<T>(self)?)
+  fn read_u16(&mut self) -> XrfResult<u16> {
+    Ok(XRayRead::read_u16(self)?)
   }
 
   #[inline]
-  fn read_u32<T: ByteOrder>(&mut self) -> XrfResult<u32> {
-    Ok(ReadBytesExt::read_u32::<T>(self)?)
+  fn read_u32(&mut self) -> XrfResult<u32> {
+    Ok(XRayRead::read_u32(self)?)
   }
 
   #[inline]
-  fn read_u64<T: ByteOrder>(&mut self) -> XrfResult<u64> {
-    Ok(ReadBytesExt::read_u64::<T>(self)?)
+  fn read_u64(&mut self) -> XrfResult<u64> {
+    Ok(XRayRead::read_u64(self)?)
   }
 
   #[inline]
-  fn read_f32<T: ByteOrder>(&mut self) -> XrfResult<f32> {
-    Ok(ReadBytesExt::read_f32::<T>(self)?)
+  fn read_f32(&mut self) -> XrfResult<f32> {
+    Ok(XRayRead::read_f32(self)?)
   }
 
   #[inline]
-  fn read_vector3<T: ByteOrder>(&mut self) -> XrfResult<[f32; 3]> {
+  fn read_vector3(&mut self) -> XrfResult<[f32; 3]> {
     Ok([
-      ReadBytesExt::read_f32::<T>(self)?,
-      ReadBytesExt::read_f32::<T>(self)?,
-      ReadBytesExt::read_f32::<T>(self)?,
+      XRayRead::read_f32(self)?,
+      XRayRead::read_f32(self)?,
+      XRayRead::read_f32(self)?,
     ])
   }
 

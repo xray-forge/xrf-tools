@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::snd_env::level_snd_env_face::LevelSndEnvFace;
@@ -28,8 +28,7 @@ fn file_bytes(names: &[&str], face: (u32, u16, u16)) -> XrfResult<Vec<u8>> {
 
 #[test]
 fn reads_the_environments_and_the_faces_between_them() -> XrfResult {
-  let file: LevelSndEnvFile =
-    LevelSndEnvFile::read_from_bytes::<XRayByteOrder>(file_bytes(&["open_space", "bathroom"], (2, 1, 0))?)?;
+  let file: LevelSndEnvFile = LevelSndEnvFile::read_from_bytes(file_bytes(&["open_space", "bathroom"], (2, 1, 0))?)?;
 
   assert_eq!(file.environments, ["open_space", "bathroom"]);
   assert_eq!(file.version, 4);
@@ -53,7 +52,7 @@ fn writes_the_mesh_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = file_bytes(&["open_space", "bathroom"], (2, 1, 0))?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  LevelSndEnvFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?.write::<XRayByteOrder>(&mut writer)?;
+  LevelSndEnvFile::read_from_bytes(bytes.clone())?.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -62,7 +61,7 @@ fn writes_the_mesh_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_face_naming_an_environment_the_file_lacks_is_refused() -> XrfResult {
-  let error: String = LevelSndEnvFile::read_from_bytes::<XRayByteOrder>(file_bytes(&["open_space"], (2, 0, 1))?)
+  let error: String = LevelSndEnvFile::read_from_bytes(file_bytes(&["open_space"], (2, 0, 1))?)
     .expect_err("environment 1 of 1 is refused, as the engine asserts")
     .to_string();
 
@@ -76,7 +75,7 @@ fn a_face_naming_an_environment_the_file_lacks_is_refused() -> XrfResult {
 
 #[test]
 fn a_face_naming_a_vertex_the_mesh_lacks_is_refused() -> XrfResult {
-  let error: String = LevelSndEnvFile::read_from_bytes::<XRayByteOrder>(file_bytes(&["open_space"], (3, 0, 0))?)
+  let error: String = LevelSndEnvFile::read_from_bytes(file_bytes(&["open_space"], (3, 0, 0))?)
     .expect_err("vertex 3 of 3 is refused")
     .to_string();
 
@@ -94,7 +93,7 @@ fn a_mesh_with_bytes_past_its_faces_is_refused() -> XrfResult {
   geometry.push(0);
   bytes.extend(chunk(LevelSndEnvFile::GEOMETRY_CHUNK_ID, &geometry)?);
 
-  assert!(LevelSndEnvFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(LevelSndEnvFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }

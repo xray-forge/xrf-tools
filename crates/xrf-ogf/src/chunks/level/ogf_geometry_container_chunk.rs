@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// Where a visual's geometry sits in buffers the visual does not own, `OGF_GCONTAINER`.
@@ -29,14 +28,14 @@ impl OgfGeometryContainerChunk {
 
 impl ChunkReadWrite for OgfGeometryContainerChunk {
   /// Read a geometry container from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let container: Self = Self {
-      vertex_buffer_id: reader.read_u32::<T>()?,
-      vertex_base: reader.read_u32::<T>()?,
-      vertex_count: reader.read_u32::<T>()?,
-      index_buffer_id: reader.read_u32::<T>()?,
-      index_base: reader.read_u32::<T>()?,
-      index_count: reader.read_u32::<T>()?,
+      vertex_buffer_id: reader.read_u32()?,
+      vertex_base: reader.read_u32()?,
+      vertex_count: reader.read_u32()?,
+      index_buffer_id: reader.read_u32()?,
+      index_base: reader.read_u32()?,
+      index_count: reader.read_u32()?,
     };
 
     reader.assert_read("Expect all data to be read from ogf geometry container")?;
@@ -45,13 +44,13 @@ impl ChunkReadWrite for OgfGeometryContainerChunk {
   }
 
   /// Write a geometry container into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.vertex_buffer_id)?;
-    writer.write_u32::<T>(self.vertex_base)?;
-    writer.write_u32::<T>(self.vertex_count)?;
-    writer.write_u32::<T>(self.index_buffer_id)?;
-    writer.write_u32::<T>(self.index_base)?;
-    writer.write_u32::<T>(self.index_count)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.vertex_buffer_id)?;
+    writer.write_u32(self.vertex_base)?;
+    writer.write_u32(self.vertex_count)?;
+    writer.write_u32(self.index_buffer_id)?;
+    writer.write_u32(self.index_base)?;
+    writer.write_u32(self.index_count)?;
 
     Ok(())
   }
@@ -59,7 +58,7 @@ impl ChunkReadWrite for OgfGeometryContainerChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -79,14 +78,14 @@ mod tests {
       index_count: 900,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(
       writer.bytes_written() as u64,
       OgfGeometryContainerChunk::SERIALIZED_SIZE
     );
 
-    writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       OgfGeometryContainerChunk::CHUNK_ID,
     )?;
@@ -97,10 +96,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(
-      OgfGeometryContainerChunk::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(OgfGeometryContainerChunk::read(&mut reader)?, original);
 
     Ok(())
   }

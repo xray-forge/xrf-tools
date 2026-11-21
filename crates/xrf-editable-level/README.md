@@ -12,11 +12,10 @@ two chunks in the editor's order, so a part stored in another order comes back r
 ## Read a scene
 
 ```rust,no_run
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{EditableLevelPart, EditableLevelScene};
 
 fn main() -> xrf_error::XrfResult {
-  let scene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&"rawdata/levels/labx8.level")?;
+  let scene = EditableLevelScene::read_from_path(&"rawdata/levels/labx8.level")?;
 
   println!("builds to {}", scene.level.get_level_options()?.level_path);
 

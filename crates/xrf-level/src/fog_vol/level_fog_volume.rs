@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkLine, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkLine, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
 use xrf_utils::narrow_format_size;
@@ -27,15 +26,15 @@ impl LevelFogVolume {
 }
 
 impl ChunkReadWrite for LevelFogVolume {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let profile: ChunkLine = reader.read_w1251_line()?;
-    let transform: Matrix4x4 = reader.read_xr::<T, _>()?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let transform: Matrix4x4 = reader.read_xr()?;
+    let count: u32 = reader.read_u32()?;
     let mut obstacles: Vec<Matrix4x4> =
       reader.new_bounded_vec(count.into(), Matrix4x4::SERIALIZED_SIZE, "fog volume obstacles")?;
 
     for _ in 0..count {
-      obstacles.push(reader.read_xr::<T, _>()?);
+      obstacles.push(reader.read_xr()?);
     }
 
     Ok(Self {
@@ -46,13 +45,13 @@ impl ChunkReadWrite for LevelFogVolume {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_line(&self.profile, &self.terminator)?;
-    writer.write_xr::<T, _>(&self.transform)?;
-    writer.write_u32::<T>(narrow_format_size(self.obstacles.len(), "fog volume obstacles")?)?;
+    writer.write_xr(&self.transform)?;
+    writer.write_u32(narrow_format_size(self.obstacles.len(), "fog volume obstacles")?)?;
 
     for obstacle in &self.obstacles {
-      writer.write_xr::<T, _>(obstacle)?;
+      writer.write_xr(obstacle)?;
     }
 
     Ok(())

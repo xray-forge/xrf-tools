@@ -1,4 +1,4 @@
-use byteorder::ByteOrder;
+use xrf_chunk::XRayBytes;
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::geom::vertex::level_vertex::LevelVertex;
@@ -35,13 +35,13 @@ impl<'a> LevelVertexBytes<'a> {
   }
 
   /// The three floats of the position element.
-  pub fn get_position<T: ByteOrder>(&self) -> Vector3d {
+  pub fn get_position(&self) -> Vector3d {
     let at: usize = usize::from(self.layout.get_position_offset());
 
     Vector3d {
-      x: T::read_f32(&self.bytes[at..at + 4]),
-      y: T::read_f32(&self.bytes[at + 4..at + 8]),
-      z: T::read_f32(&self.bytes[at + 8..at + 12]),
+      x: XRayBytes::read_f32(&self.bytes[at..at + 4]),
+      y: XRayBytes::read_f32(&self.bytes[at + 4..at + 8]),
+      z: XRayBytes::read_f32(&self.bytes[at + 8..at + 12]),
     }
   }
 
@@ -67,7 +67,7 @@ impl<'a> LevelVertexBytes<'a> {
 
   /// The base coordinate's shorts as stored: a tree's four, its wind terms after its coordinate, or a baked surface's
   /// two and zeroes after them.
-  pub fn get_texture_coordinate<T: ByteOrder>(&self) -> Option<[i16; LevelVertexLayout::TREE_COORDINATE_SHORTS]> {
+  pub fn get_texture_coordinate(&self) -> Option<[i16; LevelVertexLayout::TREE_COORDINATE_SHORTS]> {
     let offset: u16 = self.layout.get_texture_coordinate_offset()?;
     let mut shorts: [i16; LevelVertexLayout::TREE_COORDINATE_SHORTS] = [0; LevelVertexLayout::TREE_COORDINATE_SHORTS];
 
@@ -76,36 +76,36 @@ impl<'a> LevelVertexBytes<'a> {
       .take(self.layout.get_texture_coordinate_shorts())
       .enumerate()
     {
-      *short = self.take_short::<T>(usize::from(offset) + index * 2);
+      *short = self.take_short(usize::from(offset) + index * 2);
     }
 
     Some(shorts)
   }
 
   /// The lightmap coordinate's two shorts as stored.
-  pub fn get_lightmap_coordinate<T: ByteOrder>(&self) -> Option<[i16; 2]> {
+  pub fn get_lightmap_coordinate(&self) -> Option<[i16; 2]> {
     self.layout.get_lightmap_coordinate_offset().map(|offset| {
       let at: usize = usize::from(offset);
 
-      [self.take_short::<T>(at), self.take_short::<T>(at + 2)]
+      [self.take_short(at), self.take_short(at + 2)]
     })
   }
 
   /// Every element as stored, which [`LevelVertexStored::write_into`] writes back.
-  pub fn get_stored<T: ByteOrder>(&self) -> LevelVertexStored {
+  pub fn get_stored(&self) -> LevelVertexStored {
     LevelVertexStored {
-      position: self.get_position::<T>(),
+      position: self.get_position(),
       normal: self.get_normal(),
       tangent: self.get_tangent(),
       binormal: self.get_binormal(),
       color: self.get_color(),
-      texture_coordinate: self.get_texture_coordinate::<T>(),
-      lightmap_coordinate: self.get_lightmap_coordinate::<T>(),
+      texture_coordinate: self.get_texture_coordinate(),
+      lightmap_coordinate: self.get_lightmap_coordinate(),
     }
   }
 
   /// What xrLC had before it quantized the vertex.
-  pub fn decode<T: ByteOrder>(&self) -> LevelVertex {
+  pub fn decode(&self) -> LevelVertex {
     let normal: LevelVertexDirection = self.get_normal().map_or(
       LevelVertexDirection {
         direction: Vector3d::new(0.0, 0.0, 0.0),
@@ -129,16 +129,16 @@ impl<'a> LevelVertexBytes<'a> {
       binormal: binormal.map(|decoded| decoded.direction),
       color: self.get_color().map(LevelVertex::decode_color),
       hemi: normal.extra,
-      lightmap_coordinate: self.get_lightmap_coordinate::<T>().map(|[u, v]| {
+      lightmap_coordinate: self.get_lightmap_coordinate().map(|[u, v]| {
         Vector2d::new(
           f32::from(u) / LevelVertexLayout::LIGHTMAP_QUANT,
           f32::from(v) / LevelVertexLayout::LIGHTMAP_QUANT,
         )
       }),
       normal: normal.direction,
-      position: self.get_position::<T>(),
+      position: self.get_position(),
       tangent: tangent.map(|decoded| decoded.direction),
-      texture_coordinate: self.get_texture_coordinate::<T>().map_or(Vector2d::ZERO, |[u, v, ..]| {
+      texture_coordinate: self.get_texture_coordinate().map_or(Vector2d::ZERO, |[u, v, ..]| {
         Vector2d::new(
           self.layout.rebuild_coordinate(u, fraction_u),
           self.layout.rebuild_coordinate(v, fraction_v),
@@ -158,7 +158,7 @@ impl<'a> LevelVertexBytes<'a> {
   }
 
   /// One signed 16-bit component of a coordinate element, at a byte of the vertex counted wide.
-  fn take_short<T: ByteOrder>(&self, at: usize) -> i16 {
-    T::read_i16(&self.bytes[at..at + 2])
+  fn take_short(&self, at: usize) -> i16 {
+    XRayBytes::read_i16(&self.bytes[at..at + 2])
   }
 }

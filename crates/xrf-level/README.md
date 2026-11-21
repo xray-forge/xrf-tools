@@ -18,16 +18,15 @@ This crate reads formats only:
 ```rust,no_run
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelFile, LevelGeomFile, LevelVisualsChunk};
 
 # fn main() -> xrf_error::XrfResult {
 let directory: PathBuf = PathBuf::from("C:\\Games\\Anomaly\\gamedata\\levels\\jupiter");
 
-let level: LevelFile = LevelFile::read_from_path::<XRayByteOrder, _>(&directory.join("level"))?;
+let level: LevelFile = LevelFile::read_from_path(&directory.join("level"))?;
 let visuals: Option<LevelVisualsChunk> =
-  LevelFile::read_visuals_from_path::<XRayByteOrder, _>(&directory.join("level"))?;
-let geometry: LevelGeomFile = LevelGeomFile::read_from_path::<XRayByteOrder, _>(&directory.join("level.geom"))?;
+  LevelFile::read_visuals_from_path(&directory.join("level"))?;
+let geometry: LevelGeomFile = LevelGeomFile::read_from_path(&directory.join("level.geom"))?;
 
 println!(
   "xrLC {}: {} sectors, {} visuals, {} vertices",
@@ -44,7 +43,7 @@ if level.shaders.is_none() {
 # }
 ```
 
-Every file type has the same entry points, generic over byte order (`xrf_chunk::XRayByteOrder` for every shipped file):
+Every file type has the same entry points:
 
 - `read_from_path`, `read_from_file`, `read_from_chunk` over any chunk source;
 - for most, `read_from_bytes`, which is how an archived level arrives;
@@ -167,7 +166,7 @@ The compiler inputs were checked against the one sample of each available, Gunsl
 - `build.prj` writes its smoothing groups after the faces, as `SaveBuild` does.
 
 ```rust
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_level::LevelHomFile;
 
 # fn main() -> xrf_error::XrfResult {
@@ -177,9 +176,9 @@ let mesh: LevelHomFile = LevelHomFile {
 };
 let mut writer: ChunkWriter = ChunkWriter::new();
 
-mesh.write::<XRayByteOrder>(&mut writer)?;
+mesh.write(&mut writer)?;
 
-assert_eq!(LevelHomFile::read_from_bytes::<XRayByteOrder>(writer.buffer.clone())?, mesh);
+assert_eq!(LevelHomFile::read_from_bytes(writer.buffer.clone())?, mesh);
 # Ok(())
 # }
 ```

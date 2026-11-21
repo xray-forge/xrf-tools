@@ -10,7 +10,6 @@ xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-lua = { workspace = true }
-byteorder = { workspace = true }
 serde = { workspace = true }
 xrf-chunk = { workspace = true }
 

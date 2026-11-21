@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 
@@ -52,7 +51,7 @@ impl EditableBinaryPart {
   ///
   /// Returns an error when the bytes are not chunks, the GUID chunk is missing or not 16 bytes, or no data chunk is
   /// present, which the editor reports as a corrupted part.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>, class_id: Option<u32>) -> XrfResult<Self> {
+  pub fn read_from_bytes(bytes: Vec<u8>, class_id: Option<u32>) -> XrfResult<Self> {
     let wanted: Option<u32> = class_id.and_then(|class_id| Self::DATA_CHUNK_ID.checked_add(class_id));
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(bytes)?;
     let is_wanted_held: bool = wanted.is_some_and(|wanted| {
@@ -74,7 +73,7 @@ impl EditableBinaryPart {
             )));
           }
 
-          guid = Some(EditableLevelGuid::read::<T>(chunk)?);
+          guid = Some(EditableLevelGuid::read(chunk)?);
         }
         id if id >= Self::DATA_CHUNK_ID && data.is_none() && (!is_wanted_held || Some(id) == wanted) => {
           found_class = Some(id - Self::DATA_CHUNK_ID);
@@ -103,20 +102,20 @@ impl EditableBinaryPart {
   /// # Errors
   ///
   /// Returns an error when the class id would overflow the data chunk's id or the data is larger than a chunk holds.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let data_chunk_id: u32 = Self::DATA_CHUNK_ID.checked_add(self.class_id).ok_or_else(|| {
       XrfError::new_invalid_error(format!("Level part class id {} overflows its chunk id", self.class_id))
     })?;
     let mut sequence: ChunkSequence = ChunkSequence::new();
 
-    sequence.push(Self::GUID_CHUNK_ID, |writer| self.guid.write::<T>(writer))?;
+    sequence.push(Self::GUID_CHUNK_ID, |writer| self.guid.write(writer))?;
     sequence.push(data_chunk_id, |writer| {
       Ok(std::io::Write::write_all(writer, &self.data)?)
     })?;
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    self.layout.write::<T>(&mut writer, sequence)?;
+    self.layout.write(&mut writer, sequence)?;
 
     Ok(writer.buffer)
   }

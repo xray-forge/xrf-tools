@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_editable_object::{EditableObjectFile, EditableTimeWidth};
 use xrf_error::XrfResult;
@@ -74,15 +73,11 @@ impl OgfExportChunks {
   }
 
   /// Writes `chunk` into `writer` as chunk `id`.
-  pub(crate) fn write_chunk<T: ByteOrder, C: ChunkReadWrite>(
-    writer: &mut ChunkWriter,
-    id: u32,
-    chunk: &C,
-  ) -> XrfResult {
+  pub(crate) fn write_chunk<C: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, chunk: &C) -> XrfResult {
     let mut contents: ChunkWriter = ChunkWriter::new();
 
-    chunk.write::<T>(&mut contents)?;
-    contents.flush_chunk_into::<T>(writer, id)?;
+    chunk.write(&mut contents)?;
+    contents.flush_chunk_into(writer, id)?;
 
     Ok(())
   }

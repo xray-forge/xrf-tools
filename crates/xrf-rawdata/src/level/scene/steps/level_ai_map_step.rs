@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_editable_level::EditableAiMapTool;
 use xrf_error::XrfResult;
 use xrf_level::{LevelAiFile, LevelAiNodes};
@@ -16,20 +15,20 @@ pub(crate) struct LevelAiMapStep;
 impl LevelSceneStep for LevelAiMapStep {
   const FILES: &'static [&'static str] = &[LevelAiFile::FILE_NAME];
 
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     _options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
     let Some((file, nodes)): Option<(LevelAiFile, LevelAiNodes)> =
-      sources.take_read(LevelAiFile::FILE_NAME, LevelAiFile::read_with_nodes_from_bytes::<T>)?
+      sources.take_read(LevelAiFile::FILE_NAME, LevelAiFile::read_with_nodes_from_bytes)?
     else {
       return Ok(());
     };
-    let tool: EditableAiMapTool = LevelAiMapConversion::decompile(&file.header, nodes.iter_nodes::<T>());
+    let tool: EditableAiMapTool = LevelAiMapConversion::decompile(&file.header, nodes.iter_nodes());
 
     draft.infer_if(!tool.nodes.is_empty(), &[LevelSceneInference::AiMapSettings]);
-    draft.add(tool.to_scene_tool::<T>(draft.context.guid)?, Self::FILES, sources);
+    draft.add(tool.to_scene_tool(draft.context.guid)?, Self::FILES, sources);
 
     Ok(())
   }

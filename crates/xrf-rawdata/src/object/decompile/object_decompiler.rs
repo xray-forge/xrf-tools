@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_chunk::{ChunkLayout, XRayByteOrder};
+use xrf_chunk::ChunkLayout;
 use xrf_editable_object::{EditableBone, EditableDescription, EditableMotion, EditableObjectFile, EditableTimeWidth};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
@@ -70,9 +70,9 @@ impl ObjectDecompiler {
     // Hashed before the reader takes the bytes, so the source is held once.
     let source_sha256: String = Sidecar::get_sha256_hex(&bytes);
     let decompile: ObjectDecompile = if XrayExtension::Dm.matches_path(&request.source) {
-      Self::decompile_detail(&DetailModel::read_from_bytes::<XRayByteOrder>(bytes)?)?
+      Self::decompile_detail(&DetailModel::read_from_bytes(bytes)?)?
     } else {
-      Self::decompile(&OgfFile::read_from_bytes::<XRayByteOrder>(bytes)?)?
+      Self::decompile(&OgfFile::read_from_bytes(bytes)?)?
     };
     let provenance: ObjectProvenance = ObjectProvenance::of_source_hash(
       format_path(&request.source).to_string(),
@@ -93,9 +93,7 @@ impl ObjectDecompiler {
         error.kind(),
       )
     })?;
-    decompile
-      .object
-      .write_to_path::<XRayByteOrder, _>(&request.destination)?;
+    decompile.object.write_to_path(&request.destination)?;
 
     Ok(ObjectDecompileReport::new(request, &decompile))
   }
@@ -324,7 +322,7 @@ impl ObjectDecompiler {
         bone_names: &bone_names,
       },
     )?;
-    let motions: Option<ConvertedMotions> = MotionConverter::convert::<XRayByteOrder>(file, &bone_names)?;
+    let motions: Option<ConvertedMotions> = MotionConverter::convert(file, &bone_names)?;
     let mut inferred: Vec<ObjectInference> = Self::INFERRED.to_vec();
 
     inferred.push(ObjectInference::BoneLengths);
@@ -356,7 +354,7 @@ impl ObjectDecompiler {
         bones: Some(bones),
         embedded_motions: motions
           .as_ref()
-          .map(|it| EditableMotion::write_list::<XRayByteOrder>(&it.motions))
+          .map(|it| EditableMotion::write_list(&it.motions))
           .transpose()?,
         motion_references: file
           .kinematics

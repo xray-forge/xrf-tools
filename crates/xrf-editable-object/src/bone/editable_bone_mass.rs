@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -11,16 +10,16 @@ pub struct EditableBoneMass {
 }
 
 impl ChunkReadWrite for EditableBoneMass {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      mass: reader.read_f32::<T>()?,
-      center: reader.read_xr::<T, _>()?,
+      mass: reader.read_f32()?,
+      center: reader.read_xr()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.mass)?;
-    self.center.write::<T>(writer)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.mass)?;
+    self.center.write(writer)?;
 
     Ok(())
   }

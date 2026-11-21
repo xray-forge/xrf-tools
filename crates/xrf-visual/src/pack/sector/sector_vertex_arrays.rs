@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelVertex, LevelVertexBytes, LevelVertexLayout, LevelVertexPayload};
 use xrf_math::Vector3d;
@@ -73,7 +72,7 @@ impl SectorVertexArrays {
   ///
   /// Returns an error, packing nothing, when the range stores its base coordinate in another width than the arrays
   /// do: a tree's four shorts cannot share one array with a baked surface's two.
-  pub(crate) fn push<T: ByteOrder>(&mut self, payload: &LevelVertexPayload) -> XrfResult {
+  pub(crate) fn push(&mut self, payload: &LevelVertexPayload) -> XrfResult {
     let layout: &LevelVertexLayout = payload.get_layout();
     let uv_components: usize = self.uv_components as usize;
 
@@ -94,7 +93,7 @@ impl SectorVertexArrays {
 
     self.positions.reserve(count * 3);
     self.positions.extend(payload.vertices().flat_map(|vertex| {
-      let position: Vector3d = convert_vector(&vertex.get_position::<T>());
+      let position: Vector3d = convert_vector(&vertex.get_position());
 
       [position.x, position.y, position.z]
     }));
@@ -116,7 +115,7 @@ impl SectorVertexArrays {
 
       for vertex in payload.vertices() {
         let shorts: [i16; LevelVertexLayout::TREE_COORDINATE_SHORTS] =
-          vertex.get_texture_coordinate::<T>().unwrap_or_default();
+          vertex.get_texture_coordinate().unwrap_or_default();
 
         self.uvs.extend_from_slice(&shorts[..uv_components]);
       }
@@ -127,7 +126,7 @@ impl SectorVertexArrays {
       self.lightmap_uvs.extend(
         payload
           .vertices()
-          .flat_map(|vertex| vertex.get_lightmap_coordinate::<T>().unwrap_or(Self::NEUTRAL_LIGHTMAP)),
+          .flat_map(|vertex| vertex.get_lightmap_coordinate().unwrap_or(Self::NEUTRAL_LIGHTMAP)),
       );
     }
 

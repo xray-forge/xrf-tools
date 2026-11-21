@@ -1,6 +1,5 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{
-  CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, ChunkDataSource, ChunkReader, ChunkTrailing,
+  CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, ChunkDataSource, ChunkReader, ChunkTrailing, XRayBytes,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::decode_w1251_field_to_string;
@@ -27,7 +26,7 @@ impl OgfResidue {
   ///
   /// Returns the strict walk's error for bytes this cannot account for, and a not-implemented error for a compressed
   /// chunk the engine would decompress.
-  pub fn read_root_chunks<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_root_chunks<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
   ) -> XrfResult<(Vec<ChunkReader<D>>, Option<Self>)> {
     let (mut chunks, trailing) = reader.read_children_with_trailing_including_compressed()?;
@@ -38,7 +37,7 @@ impl OgfResidue {
       return Ok((chunks, None));
     };
 
-    let residue: Self = Self::account_for::<T, _>(reader, &mut chunks, trailing)?;
+    let residue: Self = Self::account_for(reader, &mut chunks, trailing)?;
 
     Ok((chunks, Some(residue)))
   }
@@ -68,7 +67,7 @@ impl OgfResidue {
   }
 
   /// Explains trailing bytes, or returns the error a strict walk would have raised on them.
-  fn account_for<T: ByteOrder, D: ChunkDataSource>(
+  fn account_for<D: ChunkDataSource>(
     reader: &ChunkReader<D>,
     chunks: &mut Vec<ChunkReader<D>>,
     trailing: ChunkTrailing<D>,
@@ -94,7 +93,7 @@ impl OgfResidue {
       });
     }
 
-    if let Some(path) = Self::read_split_motion_ref::<T, _>(chunks, &bytes) {
+    if let Some(path) = Self::read_split_motion_ref(chunks, &bytes) {
       return Ok(Self {
         position,
         bytes,
@@ -102,29 +101,26 @@ impl OgfResidue {
       });
     }
 
-    if let Some(residue) = Self::widen_understated_motion_refs::<T, _>(reader, chunks, position + size) {
+    if let Some(residue) = Self::widen_understated_motion_refs(reader, chunks, position + size) {
       return Ok(residue);
     }
 
-    if let Some(residue) = Self::clip_overstated_last_chunk::<T, _>(reader, chunks, position, &bytes) {
+    if let Some(residue) = Self::clip_overstated_last_chunk(reader, chunks, position, &bytes) {
       return Ok(residue);
     }
 
-    Self::skip_unread_trailing_chunk::<T>(position, bytes).ok_or(error)
+    Self::skip_unread_trailing_chunk(position, bytes).ok_or(error)
   }
 
   /// The motion reference path these bytes complete, when they complete one past the count the loader reads.
-  fn read_split_motion_ref<T: ByteOrder, D: ChunkDataSource>(
-    chunks: &[ChunkReader<D>],
-    bytes: &[u8],
-  ) -> Option<String> {
+  fn read_split_motion_ref<D: ChunkDataSource>(chunks: &[ChunkReader<D>], bytes: &[u8]) -> Option<String> {
     let last: &ChunkReader<D> = chunks.last()?;
 
     if !Self::is_kinematics(last.id) {
       return None;
     }
 
-    let kinematics: OgfKinematicsChunk = OgfKinematicsChunk::read::<T, _>(&mut last.clone(), last.id).ok()?;
+    let kinematics: OgfKinematicsChunk = OgfKinematicsChunk::read(&mut last.clone(), last.id).ok()?;
 
     if kinematics.trailing.is_empty() {
       return None;
@@ -150,14 +146,14 @@ impl OgfResidue {
   ///
   /// Only when the declared size cannot hold the count, and the references end exactly where the file does: anything
   /// after them would be bytes nothing accounts for.
-  fn widen_understated_motion_refs<T: ByteOrder, D: ChunkDataSource>(
+  fn widen_understated_motion_refs<D: ChunkDataSource>(
     reader: &ChunkReader<D>,
     chunks: &mut [ChunkReader<D>],
     end: u64,
   ) -> Option<Self> {
     let last: &mut ChunkReader<D> = chunks.last_mut()?;
 
-    if !Self::is_kinematics(last.id) || OgfKinematicsChunk::read::<T, _>(&mut last.clone(), last.id).is_ok() {
+    if !Self::is_kinematics(last.id) || OgfKinematicsChunk::read(&mut last.clone(), last.id).is_ok() {
       return None;
     }
 
@@ -168,7 +164,7 @@ impl OgfResidue {
       data: reader.data.slice(last.position..end),
     };
 
-    if !OgfKinematicsChunk::read::<T, _>(&mut widened.clone(), widened.id)
+    if !OgfKinematicsChunk::read(&mut widened.clone(), widened.id)
       .ok()?
       .trailing
       .is_empty()
@@ -196,14 +192,14 @@ impl OgfResidue {
   /// - LODs whose line ends within the file, where `CKinematics::Load`'s `r_string` stops.
   ///
   /// Any other chunk cut short stays refused as a truncated file.
-  fn clip_overstated_last_chunk<T: ByteOrder, D: ChunkDataSource>(
+  fn clip_overstated_last_chunk<D: ChunkDataSource>(
     reader: &ChunkReader<D>,
     chunks: &mut Vec<ChunkReader<D>>,
     position: u64,
     bytes: &[u8],
   ) -> Option<Self> {
-    let chunk_id: u32 = T::read_u32(bytes.get(..4)?) & CHUNK_ID_MASK;
-    let declared: u32 = T::read_u32(bytes.get(4..8)?);
+    let chunk_id: u32 = XRayBytes::read_u32(bytes.get(..4)?) & CHUNK_ID_MASK;
+    let declared: u32 = XRayBytes::read_u32(bytes.get(4..8)?);
     let payload: u64 = bytes.len() as u64 - CHUNK_HEADER_SIZE;
 
     if u64::from(declared) <= payload {
@@ -218,7 +214,7 @@ impl OgfResidue {
       data: reader.data.slice(start..start + payload),
     };
     let cause: OgfResidueCause = if Self::is_kinematics(chunk_id) {
-      OgfKinematicsChunk::read::<T, _>(&mut clipped.clone(), chunk_id)
+      OgfKinematicsChunk::read(&mut clipped.clone(), chunk_id)
         .ok()?
         .trailing
         .is_empty()
@@ -242,8 +238,8 @@ impl OgfResidue {
   }
 
   /// Bytes after the last chunk headed by an id no loader reads, which `find_chunk` skips by a size past the file's end.
-  fn skip_unread_trailing_chunk<T: ByteOrder>(position: u64, bytes: Vec<u8>) -> Option<Self> {
-    let id: u32 = T::read_u32(bytes.get(..4)?);
+  fn skip_unread_trailing_chunk(position: u64, bytes: Vec<u8>) -> Option<Self> {
+    let id: u32 = XRayBytes::read_u32(bytes.get(..4)?);
 
     OgfChunkAccess::of(id & CHUNK_ID_MASK).is_none().then_some(Self {
       position,

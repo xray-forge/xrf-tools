@@ -1,5 +1,5 @@
 use xrf_app_core::TauriResult;
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_level::{LevelFile, LevelVisualsChunk};
 use xrf_vfs::XraySearch;
 
@@ -22,9 +22,9 @@ impl LevelBundle {
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bundle)
       .and_then(|mut it| it.read_children())
       .map_err(|error| source.describe_read_failure(LevelFile::FILE_NAME, &error))?;
-    let level: LevelFile = LevelFile::read_from_chunks::<XRayByteOrder, _>(&chunks)
+    let level: LevelFile = LevelFile::read_from_chunks(&chunks)
       .map_err(|error| source.describe_read_failure(LevelFile::FILE_NAME, &error))?;
-    let visuals: LevelVisualsChunk = LevelFile::read_visuals_from_chunks::<XRayByteOrder, _>(&chunks)
+    let visuals: LevelVisualsChunk = LevelFile::read_visuals_from_chunks(&chunks)
       .map_err(|error| source.describe_read_failure(LevelFile::FILE_NAME, &error))?
       .ok_or_else(|| {
         format!(

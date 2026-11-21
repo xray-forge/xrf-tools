@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::field::chunk_field::ChunkField;
@@ -44,35 +43,35 @@ impl<S: ChunkFieldSource + ?Sized> ChunkFieldReader for ChunkFieldReplay<'_, S> 
     })
   }
 
-  fn read_u16<T: ByteOrder>(&mut self) -> XrfResult<u16> {
+  fn read_u16(&mut self) -> XrfResult<u16> {
     self.read(ChunkFieldKind::U16, |field| match field {
       ChunkField::U16(value) => Some(value),
       _ => None,
     })
   }
 
-  fn read_u32<T: ByteOrder>(&mut self) -> XrfResult<u32> {
+  fn read_u32(&mut self) -> XrfResult<u32> {
     self.read(ChunkFieldKind::U32, |field| match field {
       ChunkField::U32(value) => Some(value),
       _ => None,
     })
   }
 
-  fn read_u64<T: ByteOrder>(&mut self) -> XrfResult<u64> {
+  fn read_u64(&mut self) -> XrfResult<u64> {
     self.read(ChunkFieldKind::U64, |field| match field {
       ChunkField::U64(value) => Some(value),
       _ => None,
     })
   }
 
-  fn read_f32<T: ByteOrder>(&mut self) -> XrfResult<f32> {
+  fn read_f32(&mut self) -> XrfResult<f32> {
     self.read(ChunkFieldKind::F32, |field| match field {
       ChunkField::F32(value) => Some(value),
       _ => None,
     })
   }
 
-  fn read_vector3<T: ByteOrder>(&mut self) -> XrfResult<[f32; 3]> {
+  fn read_vector3(&mut self) -> XrfResult<[f32; 3]> {
     self.read(ChunkFieldKind::Vector3, |field| match field {
       ChunkField::Vector3(value) => Some(value),
       _ => None,

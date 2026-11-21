@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Obb;
@@ -17,18 +16,18 @@ impl OgfBone {
 }
 
 impl ChunkReadWrite for OgfBone {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       name: reader.read_w1251_string()?,
       parent: reader.read_w1251_string()?,
-      obb: reader.read_xr::<T, _>()?,
+      obb: reader.read_xr()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
     writer.write_w1251_string(&self.parent)?;
-    self.obb.write::<T>(writer)?;
+    self.obb.write(writer)?;
 
     Ok(())
   }

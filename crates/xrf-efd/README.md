@@ -9,7 +9,7 @@ describer reads it.
 ## Read, evaluate and write a function
 
 ```rust
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_efd::{EfdDataFormat, EfdFile, EfdPattern, EfdVariable};
 
 fn main() -> xrf_error::XrfResult {
@@ -30,16 +30,16 @@ fn main() -> xrf_error::XrfResult {
   assert_eq!(function.evaluate(&[2, 4])?, 14.0);
 
   let mut writer = ChunkWriter::new();
-  function.write::<XRayByteOrder>(&mut writer)?;
+  function.write(&mut writer)?;
 
-  assert_eq!(EfdFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?, function);
+  assert_eq!(EfdFile::read_from_bytes(writer.buffer)?, function);
 
   Ok(())
 }
 ```
 
 - Read with `read_from_path`, `read_from_file`, `read_from_bytes` (for an archived entry), or `read` for a reader at
-  the file's first byte. `XRayByteOrder` selects the little-endian layout.
+  the file's first byte.
 - `write` produces the complete file in the writer's buffer; there is no chunk header to add.
 
 ## Layout

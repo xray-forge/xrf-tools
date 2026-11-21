@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfBone, OgfBoneIkData, OgfFile};
 use xrf_omf::OmfFile;
@@ -151,7 +150,7 @@ impl VisualMotions {
       .read_asset(asset)
       .map_err(|error| XrfError::new_read_error(format!("Failed to read '{}': {error}", asset.get_logical_path())))?;
 
-    OmfFile::read_from_bytes::<XRayByteOrder>(bytes)
+    OmfFile::read_from_bytes(bytes)
       .map_err(|error| XrfError::new_parsing_error(format!("Failed to parse '{}': {error}", asset.get_logical_path())))
   }
 }

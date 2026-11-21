@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_chunk::{ChunkLayout, ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkLayout, ChunkReadWrite, ChunkWriter};
 use xrf_editable_object::{EditableObjectFile, EditableSurface};
 use xrf_error::XrfResult;
 use xrf_level::{DetailModel, DetailVertex};
@@ -55,11 +55,11 @@ fn writes_an_object_that_reads_back_and_rewrites_alike() -> XrfResult {
     layout: ChunkLayout::default(),
   };
 
-  let written: Vec<u8> = object.write_to_bytes::<XRayByteOrder>()?;
-  let read: EditableObjectFile = EditableObjectFile::read_from_bytes::<XRayByteOrder>(written.clone())?;
+  let written: Vec<u8> = object.write_to_bytes()?;
+  let read: EditableObjectFile = EditableObjectFile::read_from_bytes(written.clone())?;
 
   assert_eq!(read.class_script.as_deref(), Some("[collide]\n"));
-  assert_eq!(read.write_to_bytes::<XRayByteOrder>()?, written);
+  assert_eq!(read.write_to_bytes()?, written);
 
   Ok(())
 }
@@ -71,7 +71,7 @@ fn static_visual(model_type: OgfModelType, windows: Option<Vec<OgfSlideWindow>>)
     let mut contents: ChunkWriter = ChunkWriter::new();
 
     write(&mut contents)?;
-    contents.flush_chunk_into::<XRayByteOrder>(&mut file, id)?;
+    contents.flush_chunk_into(&mut file, id)?;
 
     Ok(())
   };
@@ -98,7 +98,7 @@ fn static_visual(model_type: OgfModelType, windows: Option<Vec<OgfSlideWindow>>)
         radius: 1.0,
       },
     }
-    .write::<XRayByteOrder>(writer)
+    .write(writer)
   })?;
   chunk(OgfTextureChunk::CHUNK_ID, &|writer| {
     OgfTextureChunk {
@@ -106,12 +106,12 @@ fn static_visual(model_type: OgfModelType, windows: Option<Vec<OgfSlideWindow>>)
       shader_name: String::from("default"),
       trailing: Vec::new(),
     }
-    .write::<XRayByteOrder>(writer)
+    .write(writer)
   })?;
 
   let mut geometry: ChunkWriter = ChunkWriter::new();
 
-  OgfGeometry::write_static::<XRayByteOrder>(
+  OgfGeometry::write_static(
     &mut geometry,
     &OgfFvf::from_raw(EditableSurface::POSITION_NORMAL_UV_FVF).expect("the export's format decodes"),
     &[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 0.0, 1.0]].map(vertex),
@@ -129,11 +129,11 @@ fn static_visual(model_type: OgfModelType, windows: Option<Vec<OgfSlideWindow>>)
       reserved: [0; 4],
       windows,
     }
-    .write::<XRayByteOrder>(&mut swi)?;
-    bytes.extend(swi.flush_chunk_into_buffer::<XRayByteOrder>(OgfSwiDataChunk::CHUNK_ID)?);
+    .write(&mut swi)?;
+    bytes.extend(swi.flush_chunk_into_buffer(OgfSwiDataChunk::CHUNK_ID)?);
   }
 
-  OgfFile::read_from_bytes::<XRayByteOrder>(bytes)
+  OgfFile::read_from_bytes(bytes)
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn names_the_source_in_the_sidecar_by_the_hash_of_the_bytes_read() -> XrfResult 
   };
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  leaf.write::<XRayByteOrder>(&mut writer)?;
+  leaf.write(&mut writer)?;
   std::fs::write(&request.source, writer.flush_raw_into_buffer()?)?;
   ObjectDecompiler::decompile_to_path(&request, "test", "1.0.0")?;
 

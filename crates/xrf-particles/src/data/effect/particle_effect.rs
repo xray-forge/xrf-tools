@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_math::Vector3d;
@@ -91,11 +90,11 @@ impl ParticleEffect {
   /// # Errors
   ///
   /// Returns an error when the editor data does not decode.
-  pub fn read_editor_actions<T: ByteOrder>(&self) -> XrfResult<Option<Vec<ParticleEditorAction>>> {
+  pub fn read_editor_actions(&self) -> XrfResult<Option<Vec<ParticleEditorAction>>> {
     self
       .editor_data
       .as_ref()
-      .map(ParticleEffectEditorData::read_actions::<T>)
+      .map(ParticleEffectEditorData::read_actions)
       .transpose()
   }
 
@@ -105,14 +104,14 @@ impl ParticleEffect {
   /// # Errors
   ///
   /// Returns an error when an enabled action does not compile; the effect is then left as it was.
-  pub fn set_editor_actions<T: ByteOrder>(&mut self, actions: &[ParticleEditorAction]) -> XrfResult {
+  pub fn set_editor_actions(&mut self, actions: &[ParticleEditorAction]) -> XrfResult {
     let compiled: Vec<ParticleAction> = actions
       .iter()
       .filter(|action| action.is_enabled())
       .map(ParticleEditorAction::compile)
       .collect::<XrfResult<_>>()?;
 
-    self.editor_data = Some(ParticleEffectEditorData::from_actions::<T>(actions)?);
+    self.editor_data = Some(ParticleEffectEditorData::from_actions(actions)?);
     self.actions = compiled;
 
     Ok(())
@@ -126,12 +125,11 @@ impl ChunkReadWrite for ParticleEffect {
   ///
   /// Returns a parsing error naming the chunk when a required one is missing or any is malformed, and when the version
   /// is not [`Self::VERSION`].
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    let version: u16 = ParticleRecordChunks::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| {
-      it.read_u16_payload::<T>()
-    })?;
+    let version: u16 =
+      ParticleRecordChunks::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| it.read_u16_payload())?;
 
     if version != Self::VERSION {
       return Err(XrfError::new_parsing_error(format!(
@@ -149,36 +147,34 @@ impl ChunkReadWrite for ParticleEffect {
         &chunks,
         Self::MAX_PARTICLES_CHUNK_ID,
         "max_particles",
-        |it| it.read_u32_payload::<T>(),
+        |it| it.read_u32_payload(),
       )?,
       actions: ParticleRecordChunks::read_required(&chunks, Self::ACTION_LIST_CHUNK_ID, "actions", |it| {
-        it.read_xr_list::<T, _>()
+        it.read_xr_list()
       })?,
-      flags: ParticleRecordChunks::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| {
-        it.read_u32_payload::<T>()
-      })?,
-      frame: ParticleRecordChunks::read_optional(&chunks, Self::FRAME_CHUNK_ID, "frame", |it| it.read_xr::<T, _>())?,
-      sprite: ParticleRecordChunks::read_optional(&chunks, Self::SPRITE_CHUNK_ID, "sprite", |it| it.read_xr::<T, _>())?,
+      flags: ParticleRecordChunks::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| it.read_u32_payload())?,
+      frame: ParticleRecordChunks::read_optional(&chunks, Self::FRAME_CHUNK_ID, "frame", |it| it.read_xr())?,
+      sprite: ParticleRecordChunks::read_optional(&chunks, Self::SPRITE_CHUNK_ID, "sprite", |it| it.read_xr())?,
       time_limit: ParticleRecordChunks::read_optional(&chunks, Self::TIME_LIMIT_CHUNK_ID, "time_limit", |it| {
-        it.read_f32_payload::<T>()
+        it.read_f32_payload()
       })?,
       collision: ParticleRecordChunks::read_optional(&chunks, Self::COLLISION_CHUNK_ID, "collision", |it| {
-        it.read_xr::<T, _>()
+        it.read_xr()
       })?,
       velocity_scale: ParticleRecordChunks::read_optional(
         &chunks,
         Self::VELOCITY_SCALE_CHUNK_ID,
         "velocity_scale",
-        |it| it.read_f32_vector_payload::<T>().map(Into::into),
+        |it| it.read_f32_vector_payload().map(Into::into),
       )?,
       description: ParticleRecordChunks::read_optional(&chunks, Self::DESCRIPTION_CHUNK_ID, "description", |it| {
-        it.read_xr::<T, _>()
+        it.read_xr()
       })?,
       rotation: ParticleRecordChunks::read_optional(&chunks, Self::ROTATION_CHUNK_ID, "rotation", |it| {
-        it.read_f32_vector_payload::<T>().map(Into::into)
+        it.read_f32_vector_payload().map(Into::into)
       })?,
       editor_data: ParticleRecordChunks::read_optional(&chunks, Self::EDITOR_DATA_CHUNK_ID, "editor_data", |it| {
-        it.read_xr::<T, _>()
+        it.read_xr()
       })?,
     };
 
@@ -188,75 +184,75 @@ impl ChunkReadWrite for ParticleEffect {
   }
 
   /// Write particle effect data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut version_chunk_writer: ChunkWriter = ChunkWriter::new();
-    version_chunk_writer.write_u16::<T>(self.version)?;
-    version_chunk_writer.flush_chunk_into::<T>(writer, Self::VERSION_CHUNK_ID)?;
+    version_chunk_writer.write_u16(self.version)?;
+    version_chunk_writer.flush_chunk_into(writer, Self::VERSION_CHUNK_ID)?;
 
     let mut name_chunk_writer: ChunkWriter = ChunkWriter::new();
     name_chunk_writer.write_w1251_string(&self.name)?;
-    name_chunk_writer.flush_chunk_into::<T>(writer, Self::NAME_CHUNK_ID)?;
+    name_chunk_writer.flush_chunk_into(writer, Self::NAME_CHUNK_ID)?;
 
     // The SDK's authorship record follows the name; the engine's own save, which keeps none, has no place for it.
     if let Some(description) = &self.description {
       let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
-      description_chunk_writer.write_xr::<T, _>(description)?;
-      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
+      description_chunk_writer.write_xr(description)?;
+      description_chunk_writer.flush_chunk_into(writer, Self::DESCRIPTION_CHUNK_ID)?;
     }
 
     let mut max_particles_chunk_writer: ChunkWriter = ChunkWriter::new();
-    max_particles_chunk_writer.write_u32::<T>(self.max_particles)?;
-    max_particles_chunk_writer.flush_chunk_into::<T>(writer, Self::MAX_PARTICLES_CHUNK_ID)?;
+    max_particles_chunk_writer.write_u32(self.max_particles)?;
+    max_particles_chunk_writer.flush_chunk_into(writer, Self::MAX_PARTICLES_CHUNK_ID)?;
 
     let mut actions_chunk_writer: ChunkWriter = ChunkWriter::new();
-    actions_chunk_writer.write_xr_list::<T, _>(&self.actions)?;
-    actions_chunk_writer.flush_chunk_into::<T>(writer, Self::ACTION_LIST_CHUNK_ID)?;
+    actions_chunk_writer.write_xr_list(&self.actions)?;
+    actions_chunk_writer.flush_chunk_into(writer, Self::ACTION_LIST_CHUNK_ID)?;
 
     let mut flags_chunk_writer: ChunkWriter = ChunkWriter::new();
-    flags_chunk_writer.write_u32::<T>(self.flags)?;
-    flags_chunk_writer.flush_chunk_into::<T>(writer, Self::FLAGS_CHUNK_ID)?;
+    flags_chunk_writer.write_u32(self.flags)?;
+    flags_chunk_writer.flush_chunk_into(writer, Self::FLAGS_CHUNK_ID)?;
 
     // `CPEDef::Save` writes the sprite ahead of the frame, against their ids.
     if let Some(sprite) = &self.sprite {
       let mut sprite_chunk_writer: ChunkWriter = ChunkWriter::new();
-      sprite_chunk_writer.write_xr::<T, _>(sprite)?;
-      sprite_chunk_writer.flush_chunk_into::<T>(writer, Self::SPRITE_CHUNK_ID)?;
+      sprite_chunk_writer.write_xr(sprite)?;
+      sprite_chunk_writer.flush_chunk_into(writer, Self::SPRITE_CHUNK_ID)?;
     }
 
     if let Some(frame) = &self.frame {
       let mut frame_chunk_writer: ChunkWriter = ChunkWriter::new();
-      frame_chunk_writer.write_xr::<T, _>(frame)?;
-      frame_chunk_writer.flush_chunk_into::<T>(writer, Self::FRAME_CHUNK_ID)?;
+      frame_chunk_writer.write_xr(frame)?;
+      frame_chunk_writer.flush_chunk_into(writer, Self::FRAME_CHUNK_ID)?;
     }
 
     if let Some(time_limit) = self.time_limit {
       let mut time_limit_chunk_writer: ChunkWriter = ChunkWriter::new();
-      time_limit_chunk_writer.write_f32::<T>(time_limit)?;
-      time_limit_chunk_writer.flush_chunk_into::<T>(writer, Self::TIME_LIMIT_CHUNK_ID)?;
+      time_limit_chunk_writer.write_f32(time_limit)?;
+      time_limit_chunk_writer.flush_chunk_into(writer, Self::TIME_LIMIT_CHUNK_ID)?;
     }
 
     if let Some(collision) = &self.collision {
       let mut collision_chunk_writer: ChunkWriter = ChunkWriter::new();
-      collision_chunk_writer.write_xr::<T, _>(collision)?;
-      collision_chunk_writer.flush_chunk_into::<T>(writer, Self::COLLISION_CHUNK_ID)?;
+      collision_chunk_writer.write_xr(collision)?;
+      collision_chunk_writer.flush_chunk_into(writer, Self::COLLISION_CHUNK_ID)?;
     }
 
     if let Some(velocity_scale) = &self.velocity_scale {
       let mut velocity_scale_chunk_writer: ChunkWriter = ChunkWriter::new();
-      velocity_scale_chunk_writer.write_xr::<T, Vector3d>(velocity_scale)?;
-      velocity_scale_chunk_writer.flush_chunk_into::<T>(writer, Self::VELOCITY_SCALE_CHUNK_ID)?;
+      velocity_scale_chunk_writer.write_xr::<Vector3d>(velocity_scale)?;
+      velocity_scale_chunk_writer.flush_chunk_into(writer, Self::VELOCITY_SCALE_CHUNK_ID)?;
     }
 
     if let Some(rotation) = &self.rotation {
       let mut rotation_chunk_writer: ChunkWriter = ChunkWriter::new();
-      rotation_chunk_writer.write_xr::<T, Vector3d>(rotation)?;
-      rotation_chunk_writer.flush_chunk_into::<T>(writer, Self::ROTATION_CHUNK_ID)?;
+      rotation_chunk_writer.write_xr::<Vector3d>(rotation)?;
+      rotation_chunk_writer.flush_chunk_into(writer, Self::ROTATION_CHUNK_ID)?;
     }
 
     if let Some(editor_data) = &self.editor_data {
       let mut editor_data_chunk_writer: ChunkWriter = ChunkWriter::new();
-      editor_data_chunk_writer.write_xr::<T, _>(editor_data)?;
-      editor_data_chunk_writer.flush_chunk_into::<T>(writer, Self::EDITOR_DATA_CHUNK_ID)?;
+      editor_data_chunk_writer.write_xr(editor_data)?;
+      editor_data_chunk_writer.flush_chunk_into(writer, Self::EDITOR_DATA_CHUNK_ID)?;
     }
 
     Ok(())
@@ -362,7 +358,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::{Vector2d, Vector3d};
@@ -433,7 +429,7 @@ mod tests {
       }),
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 343);
     // The SDK's order, which reading never checks and the shipped libraries keep: the description after the name, the
@@ -447,7 +443,7 @@ mod tests {
       [1, 2, 35, 3, 4, 5, 7, 6, 8, 33, 34, 37, 36]
     );
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -462,7 +458,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    let read: ParticleEffect = ParticleEffect::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: ParticleEffect = ParticleEffect::read(&mut reader)?;
 
     assert_eq!(read, original);
 

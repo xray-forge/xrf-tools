@@ -1,7 +1,6 @@
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -58,7 +57,7 @@ impl ParticlesGroupsChunk {
 impl ChunkReadWrite for ParticlesGroupsChunk {
   /// Read effects chunk by position descriptor.
   /// Parses binary data into version chunk representation object.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut groups: Vec<ParticleGroup> = Vec::new();
 
@@ -69,7 +68,7 @@ impl ChunkReadWrite for ParticlesGroupsChunk {
     );
 
     for mut chunk_reader in chunks {
-      groups.push(chunk_reader.read_xr::<T, _>()?);
+      groups.push(chunk_reader.read_xr()?);
     }
 
     groups.sort_by(|first, second| first.name.cmp(&second.name));
@@ -80,14 +79,13 @@ impl ChunkReadWrite for ParticlesGroupsChunk {
   }
 
   /// Write particle groups data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for (index, group) in self.groups.iter().enumerate() {
       let mut group_writer: ChunkWriter = ChunkWriter::new();
 
-      group_writer.write_xr::<T, _>(group)?;
-      writer.write_all(
-        &group_writer.flush_chunk_into_buffer::<T>(narrow_format_size(index, "particle group chunk id")?)?,
-      )?;
+      group_writer.write_xr(group)?;
+      writer
+        .write_all(&group_writer.flush_chunk_into_buffer(narrow_format_size(index, "particle group chunk id")?)?)?;
     }
 
     log::info!("Written groups chunk, {} bytes", writer.bytes_written());

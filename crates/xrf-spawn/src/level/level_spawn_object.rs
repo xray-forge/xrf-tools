@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -35,8 +34,8 @@ impl LevelSpawnObject {
   /// # Errors
   ///
   /// Returns an error when the chunk does not open with a spawn packet.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(id: u32, reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let net_action: u16 = reader.read_u16::<T>()?;
+  pub fn read<D: ChunkDataSource>(id: u32, reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let net_action: u16 = reader.read_u16()?;
 
     if net_action != NET_ACTION_SPAWN {
       return Err(XrfError::new_invalid_error(format!(
@@ -51,8 +50,8 @@ impl LevelSpawnObject {
       name: reader.read_w1251_string()?,
       script_game_id: reader.read_u8()?,
       script_rp: reader.read_u8()?,
-      position: reader.read_xr::<T, _>()?,
-      direction: reader.read_xr::<T, _>()?,
+      position: reader.read_xr()?,
+      direction: reader.read_xr()?,
       payload: reader.read_remaining()?,
     })
   }
@@ -62,14 +61,14 @@ impl LevelSpawnObject {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.net_action)?;
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.net_action)?;
     writer.write_w1251_string(&self.section)?;
     writer.write_w1251_string(&self.name)?;
     writer.write_u8(self.script_game_id)?;
     writer.write_u8(self.script_rp)?;
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_xr::<T, _>(&self.direction)?;
+    writer.write_xr(&self.position)?;
+    writer.write_xr(&self.direction)?;
     writer.buffer.extend_from_slice(&self.payload);
 
     Ok(())
@@ -80,10 +79,10 @@ impl LevelSpawnObject {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub(crate) fn encode_packet<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub(crate) fn encode_packet(&self) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    self.write::<T>(&mut writer)?;
+    self.write(&mut writer)?;
 
     Ok(writer.buffer)
   }
@@ -93,8 +92,8 @@ impl LevelSpawnObject {
   /// # Errors
   ///
   /// Returns an error when the packet is not of a known class, or holds bytes past what its class reads.
-  pub fn read_alife_object<T: ByteOrder>(&self) -> XrfResult<AlifeObject> {
-    self.read_alife_object_by::<T>(&SpawnSectionClasses::default())
+  pub fn read_alife_object(&self) -> XrfResult<AlifeObject> {
+    self.read_alife_object_by(&SpawnSectionClasses::default())
   }
 
   /// The object typed as the class `classes` gives its section, read from its spawn packet alone
@@ -103,10 +102,10 @@ impl LevelSpawnObject {
   /// # Errors
   ///
   /// Returns an error when the packet is not of a known class, or holds bytes past what its class reads.
-  pub fn read_alife_object_by<T: ByteOrder>(&self, classes: &SpawnSectionClasses) -> XrfResult<AlifeObject> {
-    let bytes: Vec<u8> = self.encode_packet::<T>()?;
+  pub fn read_alife_object_by(&self, classes: &SpawnSectionClasses) -> XrfResult<AlifeObject> {
+    let bytes: Vec<u8> = self.encode_packet()?;
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
-    let object: AlifeObject = AlifeObject::read_spawn_packet_by::<T, _>(&mut reader, classes)?;
+    let object: AlifeObject = AlifeObject::read_spawn_packet_by(&mut reader, classes)?;
 
     if !reader.is_ended() {
       return Err(XrfError::new_parsing_error(format!(
@@ -124,18 +123,17 @@ impl LevelSpawnObject {
   /// # Errors
   ///
   /// Returns an error when the object's payload is not its section's class, or the writer refuses a value.
-  pub fn from_alife_object<T: ByteOrder>(id: u32, object: &AlifeObject) -> XrfResult<Self> {
+  pub fn from_alife_object(id: u32, object: &AlifeObject) -> XrfResult<Self> {
     let mut bytes: ChunkWriter = ChunkWriter::new();
 
-    object.write_spawn_packet::<T, _>(&mut bytes)?;
+    object.write_spawn_packet(&mut bytes)?;
 
-    Self::read::<T, _>(id, &mut ChunkReader::from_bytes(&bytes.buffer)?)
+    Self::read(id, &mut ChunkReader::from_bytes(&bytes.buffer)?)
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
 
@@ -181,10 +179,10 @@ mod tests {
 
   #[test]
   fn types_a_listed_object_and_lists_it_back() -> XrfResult {
-    let listed: LevelSpawnObject = LevelSpawnObject::from_alife_object::<XRayByteOrder>(3, &graph_point())?;
+    let listed: LevelSpawnObject = LevelSpawnObject::from_alife_object(3, &graph_point())?;
 
     assert_eq!((listed.id, listed.name.as_str()), (3, "test_graph_point"));
-    assert_eq!(listed.read_alife_object::<XRayByteOrder>()?, graph_point());
+    assert_eq!(listed.read_alife_object()?, graph_point());
 
     Ok(())
   }
@@ -192,14 +190,11 @@ mod tests {
   // A rewrite would drop bytes past what the class reads.
   #[test]
   fn refuses_bytes_past_what_the_class_reads() -> XrfResult {
-    let mut listed: LevelSpawnObject = LevelSpawnObject::from_alife_object::<XRayByteOrder>(0, &graph_point())?;
+    let mut listed: LevelSpawnObject = LevelSpawnObject::from_alife_object(0, &graph_point())?;
 
     listed.payload.push(7);
 
-    let error: String = listed
-      .read_alife_object::<XRayByteOrder>()
-      .expect_err("a stray byte")
-      .to_string();
+    let error: String = listed.read_alife_object().expect_err("a stray byte").to_string();
 
     assert!(error.contains("holds 1 bytes past what its class reads"), "{error}");
 

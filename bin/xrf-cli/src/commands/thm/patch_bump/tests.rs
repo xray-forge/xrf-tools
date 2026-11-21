@@ -3,7 +3,6 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use xrf_chunk::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmBumpChunk, ThmBumpMode, ThmFile, ThmTextureParamChunk};
 
@@ -22,7 +21,7 @@ fn descriptor(case: &str, bump: ThmBumpChunk) -> CommandResult<PathBuf> {
       bump: Some(bump),
       ..texture_descriptor()
     }
-    .write_to_bytes::<XRayByteOrder>()?,
+    .write_to_bytes()?,
   )?;
 
   Ok(path)
@@ -46,20 +45,20 @@ fn run(path: &Path, arguments: &[&str]) -> CommandResult<Value> {
 }
 
 fn bump_of(path: &Path) -> CommandResult<Option<ThmBumpChunk>> {
-  Ok(ThmFile::read_from_path::<XRayByteOrder, _>(&path)?.bump)
+  Ok(ThmFile::read_from_path(&path)?.bump)
 }
 
 #[test]
 fn repoints_the_name_and_keeps_the_mode_and_every_other_field() -> CommandResult {
   let path: PathBuf = descriptor("repoint", used("wpn\\source_bump", ThmBumpMode::UseParallax))?;
-  let param: Option<ThmTextureParamChunk> = ThmFile::read_from_path::<XRayByteOrder, _>(&path)?.texture_param;
+  let param: Option<ThmTextureParamChunk> = ThmFile::read_from_path(&path)?.texture_param;
   let report: Value = run(&path, &["--to", "wpn\\renamed_bump"])?;
 
   assert_eq!(
     bump_of(&path)?,
     Some(used("wpn\\renamed_bump", ThmBumpMode::UseParallax))
   );
-  assert_eq!(ThmFile::read_from_path::<XRayByteOrder, _>(&path)?.texture_param, param);
+  assert_eq!(ThmFile::read_from_path(&path)?.texture_param, param);
   assert_eq!(report["previousName"], "wpn\\source_bump");
   assert_eq!(report["previousMode"], 3);
   assert_eq!(report["isDryRun"], false);
@@ -111,7 +110,7 @@ fn refuses_a_file_declaring_no_bump() -> CommandResult {
   let path: PathBuf = GeneratedResources::path("thm_patch_bump/sound.thm");
 
   std::fs::create_dir_all(path.parent().expect("case directory"))?;
-  std::fs::write(&path, sound_thumbnail().write_to_bytes::<XRayByteOrder>()?)?;
+  std::fs::write(&path, sound_thumbnail().write_to_bytes()?)?;
 
   assert!(run(&path, &["--to", "any"]).is_err());
 

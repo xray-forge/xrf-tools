@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{
@@ -61,32 +60,32 @@ impl LevelVisualRecord {
   /// # Errors
   ///
   /// Returns an error when the writer fails.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if self.tree.is_some() {
-      Self::put::<T, _>(writer, OgfGeometryContainerChunk::CHUNK_ID, self.geometry.as_ref())?;
-      Self::put::<T, _>(writer, OgfTreeDefinitionChunk::CHUNK_ID, self.tree.as_ref())?;
-      Self::put::<T, _>(writer, OgfHeaderChunk::CHUNK_ID, Some(&self.header))?;
-      Self::put::<T, _>(writer, OgfTextureChunk::CHUNK_ID, self.texture.as_ref())?;
-      Self::put::<T, _>(writer, OgfSwiContainerChunk::CHUNK_ID, self.swi_container.as_ref())?;
+      Self::put(writer, OgfGeometryContainerChunk::CHUNK_ID, self.geometry.as_ref())?;
+      Self::put(writer, OgfTreeDefinitionChunk::CHUNK_ID, self.tree.as_ref())?;
+      Self::put(writer, OgfHeaderChunk::CHUNK_ID, Some(&self.header))?;
+      Self::put(writer, OgfTextureChunk::CHUNK_ID, self.texture.as_ref())?;
+      Self::put(writer, OgfSwiContainerChunk::CHUNK_ID, self.swi_container.as_ref())?;
     } else if self.geometry.is_some() {
-      Self::put::<T, _>(writer, OgfGeometryContainerChunk::CHUNK_ID, self.geometry.as_ref())?;
-      Self::put::<T, _>(writer, OgfSwiDataChunk::CHUNK_ID, self.swi.as_ref())?;
+      Self::put(writer, OgfGeometryContainerChunk::CHUNK_ID, self.geometry.as_ref())?;
+      Self::put(writer, OgfSwiDataChunk::CHUNK_ID, self.swi.as_ref())?;
 
       if let Some(fastpath) = &self.fastpath {
         let mut chunk: ChunkWriter = ChunkWriter::new();
 
-        fastpath.write::<T>(&mut chunk)?;
-        chunk.flush_chunk_into::<T>(&mut writer.buffer, OgfFastpathChunk::CHUNK_ID)?;
+        fastpath.write(&mut chunk)?;
+        chunk.flush_chunk_into(&mut writer.buffer, OgfFastpathChunk::CHUNK_ID)?;
       }
 
-      Self::put::<T, _>(writer, OgfHeaderChunk::CHUNK_ID, Some(&self.header))?;
-      Self::put::<T, _>(writer, OgfTextureChunk::CHUNK_ID, self.texture.as_ref())?;
+      Self::put(writer, OgfHeaderChunk::CHUNK_ID, Some(&self.header))?;
+      Self::put(writer, OgfTextureChunk::CHUNK_ID, self.texture.as_ref())?;
     } else {
-      Self::put::<T, _>(writer, OgfHeaderChunk::CHUNK_ID, Some(&self.header))?;
-      Self::put::<T, _>(writer, OgfTextureChunk::CHUNK_ID, self.texture.as_ref())?;
+      Self::put(writer, OgfHeaderChunk::CHUNK_ID, Some(&self.header))?;
+      Self::put(writer, OgfTextureChunk::CHUNK_ID, self.texture.as_ref())?;
 
       if let Some(children) = &self.children {
-        Self::put::<T, _>(
+        Self::put(
           writer,
           OgfChildrenLinkChunk::CHUNK_ID,
           Some(&OgfChildrenLinkChunk {
@@ -95,19 +94,19 @@ impl LevelVisualRecord {
         )?;
       }
 
-      Self::put::<T, _>(writer, OgfLodDefinitionChunk::CHUNK_ID, self.lod.as_ref())?;
+      Self::put(writer, OgfLodDefinitionChunk::CHUNK_ID, self.lod.as_ref())?;
     }
 
     Ok(())
   }
 
   /// Writes `record` as chunk `id` where it is present.
-  fn put<B: ByteOrder, R: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, record: Option<&R>) -> XrfResult {
+  fn put<R: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, record: Option<&R>) -> XrfResult {
     if let Some(record) = record {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      chunk.write_xr::<B, _>(record)?;
-      chunk.flush_chunk_into::<B>(&mut writer.buffer, id)?;
+      chunk.write_xr(record)?;
+      chunk.flush_chunk_into(&mut writer.buffer, id)?;
     }
 
     Ok(())

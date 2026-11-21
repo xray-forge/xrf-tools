@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_omf::{OmfFile, OmfMotionsProcessor};
 use xrf_output::OutputOptions;
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfDuplicateMotionReport;
@@ -72,7 +71,7 @@ impl GenericCommand for DuplicateMotionCommand {
     let is_dry_run: bool = matches.get_flag("dry-run");
     let output: OutputOptions = context.get_output().clone();
 
-    let mut omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(path)?;
+    let mut omf_file: OmfFile = OmfFile::read_from_path(path)?;
 
     OmfMotionsProcessor::duplicate_motion(&mut omf_file, from, to, play_once)?;
 
@@ -86,7 +85,7 @@ impl GenericCommand for DuplicateMotionCommand {
         format_path(destination)
       );
     } else {
-      omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
+      omf_file.write_to_path(&destination)?;
 
       xrf_output::success!(
         output,

@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::som::level_som_file::LevelSomFile;
@@ -23,7 +23,7 @@ fn mesh_bytes(version: u32, triangles: &[(u32, f32)]) -> XrfResult<Vec<u8>> {
 #[test]
 fn a_sound_occluder_counts_a_two_sided_face_twice_the_way_the_loader_builds_it() -> XrfResult {
   let bytes: Vec<u8> = mesh_bytes(0, &[(1, 0.5), (0, 0.25)])?;
-  let mesh: LevelSomFile = LevelSomFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let mesh: LevelSomFile = LevelSomFile::read_from_bytes(bytes)?;
 
   assert_eq!(mesh.polygons.len(), 2);
   assert_eq!(mesh.get_two_sided_count(), 1);
@@ -36,11 +36,11 @@ fn a_sound_occluder_counts_a_two_sided_face_twice_the_way_the_loader_builds_it()
 #[test]
 fn a_sound_occlusion_mesh_is_written_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = mesh_bytes(0, &[(1, 0.5), (0, 0.25)])?;
-  let mesh: LevelSomFile = LevelSomFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let mesh: LevelSomFile = LevelSomFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  mesh.write::<XRayByteOrder>(&mut writer)?;
+  mesh.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -49,7 +49,7 @@ fn a_sound_occlusion_mesh_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_sound_occlusion_version_the_engine_refuses_is_refused_here_too() -> XrfResult {
-  assert!(LevelSomFile::read_from_bytes::<XRayByteOrder>(mesh_bytes(1, &[])?).is_err());
+  assert!(LevelSomFile::read_from_bytes(mesh_bytes(1, &[])?).is_err());
 
   Ok(())
 }

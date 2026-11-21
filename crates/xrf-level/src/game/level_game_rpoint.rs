@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -34,23 +33,23 @@ impl LevelGameRPoint {
 }
 
 impl ChunkReadWrite for LevelGameRPoint {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      position: reader.read_xr::<T, _>()?,
-      rotation: reader.read_xr::<T, _>()?,
+      position: reader.read_xr()?,
+      rotation: reader.read_xr()?,
       team: reader.read_u8()?,
       kind: reader.read_u8()?,
-      game_types: reader.read_u16::<T>()?,
+      game_types: reader.read_u16()?,
       profile: reader.read_w1251_string()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_xr::<T, _>(&self.rotation)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.position)?;
+    writer.write_xr(&self.rotation)?;
     writer.write_u8(self.team)?;
     writer.write_u8(self.kind)?;
-    writer.write_u16::<T>(self.game_types)?;
+    writer.write_u16(self.game_types)?;
     writer.write_w1251_string(&self.profile)?;
 
     Ok(())

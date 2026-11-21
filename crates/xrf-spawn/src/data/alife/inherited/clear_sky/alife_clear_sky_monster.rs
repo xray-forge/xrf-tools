@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -56,7 +55,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyMonster {
   }
 
   /// Read the monster from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
@@ -64,15 +63,15 @@ impl AlifePacketsReadWrite for AlifeClearSkyMonster {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
     Ok(Self {
-      base: AlifeObjectMonsterBase::read::<T, _, _>(spawn, update, layout)?,
-      job_online: spawn.read_xr::<T, _>()?,
+      base: AlifeObjectMonsterBase::read(spawn, update, layout)?,
+      job_online: spawn.read_xr()?,
       squad_id: ScriptToString::parse_text(spawn.read_w1251_string()?),
       sim_forced_online: spawn.read_u8()?,
     })
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
@@ -80,9 +79,9 @@ impl AlifePacketsReadWrite for AlifeClearSkyMonster {
   ) -> XrfResult {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    spawn.write_xr::<T, _>(&self.job_online)?;
+    spawn.write_xr(&self.job_online)?;
     spawn.write_w1251_string(ScriptToString::format_text(self.squad_id.as_deref()))?;
     spawn.write_u8(self.sim_forced_online)
   }
@@ -126,7 +125,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyMonster {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkWriter, XRayByteOrder};
+  use xrf_chunk::ChunkWriter;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -140,14 +139,14 @@ mod tests {
   #[test]
   fn writes_the_tail_in_the_script_order() -> XrfResult {
     let original: AlifeClearSkyMonster = AlifeClearSkyMonster::new_mock(Vector3d::new(-12.5, 0.75, 310.0));
-    let (base_spawn_size, base_update_size, _) = original.base.read_back::<XRayByteOrder>(SpawnLayout::CLEAR_SKY)?;
+    let (base_spawn_size, base_update_size, _) = original.base.read_back(SpawnLayout::CLEAR_SKY)?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CLEAR_SKY)?;
+    original.write(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CLEAR_SKY)?;
 
     assert_eq!(&spawn.buffer[base_spawn_size..], b"\x02nil\0\0");
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CLEAR_SKY)?,
+      original.read_back(SpawnLayout::CLEAR_SKY)?,
       (base_spawn_size + 6, base_update_size, original)
     );
 
@@ -161,7 +160,7 @@ mod tests {
       script_version: 7,
     };
     let error: String = AlifeClearSkyMonster::new_mock(Vector3d::ZERO)
-      .write::<XRayByteOrder, _, _>(&mut ChunkWriter::new(), &mut ChunkWriter::new(), layout)
+      .write(&mut ChunkWriter::new(), &mut ChunkWriter::new(), layout)
       .expect_err("script version 7")
       .to_string();
 

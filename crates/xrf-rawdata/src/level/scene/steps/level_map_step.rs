@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_editable_level::{EditableObjectPart, EditableShapeObject};
 use xrf_error::XrfResult;
 
@@ -18,7 +17,7 @@ pub(crate) struct LevelMapStep;
 impl LevelSceneStep for LevelMapStep {
   const FILES: &'static [&'static str] = &[LevelMapConversion::FILE_NAME];
 
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     _options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,

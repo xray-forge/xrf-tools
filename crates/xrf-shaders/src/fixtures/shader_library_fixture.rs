@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 use crate::library::{ShaderBlender, ShaderLibraryFile};
@@ -16,13 +16,13 @@ impl ShaderLibraryFixture {
     for (index, blender) in blenders.iter().enumerate() {
       let mut blender_writer: ChunkWriter = ChunkWriter::new();
 
-      blender.clone().into().write::<XRayByteOrder>(&mut blender_writer)?;
-      chunk.write_all(&blender_writer.flush_chunk_into_buffer::<XRayByteOrder>(index as u32)?)?;
+      blender.clone().into().write(&mut blender_writer)?;
+      chunk.write_all(&blender_writer.flush_chunk_into_buffer(index as u32)?)?;
     }
 
     let mut library: ChunkWriter = ChunkWriter::new();
 
-    library.write_all(&chunk.flush_chunk_into_buffer::<XRayByteOrder>(ShaderLibraryFile::BLENDERS_CHUNK_ID)?)?;
+    library.write_all(&chunk.flush_chunk_into_buffer(ShaderLibraryFile::BLENDERS_CHUNK_ID)?)?;
 
     library.flush_raw_into_buffer()
   }

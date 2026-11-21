@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface};
 use xrf_error::{XrfError, XrfResult};
@@ -36,14 +35,11 @@ impl DetailModelBuilder {
   ///
   /// Returns an error for an object of other than one surface or of no mesh, a corner whose reference's first entry is
   /// not a texture coordinate, more than 65,535 vertices, or a mesh that does not hold together.
-  pub(crate) fn build<T: ByteOrder>(
-    object: &EditableObjectFile,
-    parameters: &DetailParameters,
-  ) -> XrfResult<ObjectCompile> {
+  pub(crate) fn build(object: &EditableObjectFile, parameters: &DetailParameters) -> XrfResult<ObjectCompile> {
     let (model, dropped_faces) = Self::build_model(object, parameters)?;
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    model.write::<T>(&mut writer)?;
+    model.write(&mut writer)?;
 
     Ok(ObjectCompile {
       bytes: writer.flush_raw_into_buffer()?,

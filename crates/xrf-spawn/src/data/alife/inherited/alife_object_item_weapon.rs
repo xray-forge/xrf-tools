@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -74,15 +73,15 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeapon {
   }
 
   /// Read a weapon from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?,
-      ammo_current: spawn.read_u16::<T>()?,
-      ammo_elapsed: spawn.read_u16::<T>()?,
+      base: AlifeObjectItem::read(spawn, update, layout)?,
+      ammo_current: spawn.read_u16()?,
+      ammo_elapsed: spawn.read_u16()?,
       weapon_state: spawn.read_u8()?,
       addon_flags: spawn.read_u8()?,
       ammo_type: spawn.read_u8()?,
@@ -93,7 +92,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeapon {
       },
       update_condition: update.read_u8()?,
       update_weapon_flags: update.read_u8()?,
-      update_ammo_elapsed: update.read_u16::<T>()?,
+      update_ammo_elapsed: update.read_u16()?,
       update_addon_flags: update.read_u8()?,
       update_ammo_type: update.read_u8()?,
       update_weapon_state: update.read_u8()?,
@@ -102,17 +101,17 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeapon {
   }
 
   /// Write a weapon into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
     self.assert_grenades_fit(layout)?;
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    spawn.write_u16::<T>(self.ammo_current)?;
-    spawn.write_u16::<T>(self.ammo_elapsed)?;
+    spawn.write_u16(self.ammo_current)?;
+    spawn.write_u16(self.ammo_elapsed)?;
     spawn.write_u8(self.weapon_state)?;
     spawn.write_u8(self.addon_flags)?;
     spawn.write_u8(self.ammo_type)?;
@@ -123,7 +122,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeapon {
 
     update.write_u8(self.update_condition)?;
     update.write_u8(self.update_weapon_flags)?;
-    update.write_u16::<T>(self.update_ammo_elapsed)?;
+    update.write_u16(self.update_ammo_elapsed)?;
     update.write_u8(self.update_addon_flags)?;
     update.write_u8(self.update_ammo_type)?;
     update.write_u8(self.update_weapon_state)?;
@@ -222,7 +221,7 @@ impl AlifeObjectItemWeapon {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkWriter, XRayByteOrder};
+  use xrf_chunk::ChunkWriter;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -242,8 +241,8 @@ mod tests {
   #[test]
   fn writes_grenades_above_version_122_only() -> XrfResult {
     let original: AlifeObjectItemWeapon = AlifeObjectItemWeapon::new_mock(Vector3d::new(1.0, 2.0, 3.0));
-    let (with_grenades, update_with, read_with) = original.read_back::<XRayByteOrder>(layout(123))?;
-    let (without_grenades, update_without, read_without) = original.read_back::<XRayByteOrder>(layout(122))?;
+    let (with_grenades, update_with, read_with) = original.read_back(layout(123))?;
+    let (without_grenades, update_without, read_without) = original.read_back(layout(122))?;
 
     assert_eq!(with_grenades, 60 - 4);
     assert_eq!(without_grenades, with_grenades - 1);
@@ -261,7 +260,7 @@ mod tests {
     original.elapsed_grenades = 3;
 
     let error: String = original
-      .write::<XRayByteOrder, _, _>(&mut ChunkWriter::new(), &mut ChunkWriter::new(), layout(122))
+      .write(&mut ChunkWriter::new(), &mut ChunkWriter::new(), layout(122))
       .expect_err("grenades the packet cannot hold")
       .to_string();
 
@@ -290,10 +289,7 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemWeapon = AlifeObjectItemWeapon::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (60, 62, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (60, 62, original));
 
     Ok(())
   }

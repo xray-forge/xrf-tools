@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -30,8 +29,8 @@ impl LevelWallmarkSlot {
 
 impl ChunkReadWrite for LevelWallmarkSlot {
   /// Reads one slot.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let count: u32 = reader.read_u32()?;
 
     if count == 0 {
       return Ok(Self {
@@ -47,14 +46,14 @@ impl ChunkReadWrite for LevelWallmarkSlot {
       reader.new_bounded_vec(count.into(), LevelWallmark::FIXED_SIZE, "level wallmarks")?;
 
     for _ in 0..count {
-      marks.push(reader.read_xr::<T, _>()?);
+      marks.push(reader.read_xr()?);
     }
 
     Ok(Self { shader, texture, marks })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(self.marks.len(), "level wallmarks")?)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(narrow_format_size(self.marks.len(), "level wallmarks")?)?;
 
     if self.marks.is_empty() {
       return Ok(());
@@ -64,7 +63,7 @@ impl ChunkReadWrite for LevelWallmarkSlot {
     writer.write_w1251_string(&self.texture)?;
 
     for mark in &self.marks {
-      writer.write_xr::<T, _>(mark)?;
+      writer.write_xr(mark)?;
     }
 
     Ok(())

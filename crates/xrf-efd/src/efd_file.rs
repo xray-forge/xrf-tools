@@ -1,9 +1,8 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, narrow_format_size};
 
@@ -42,8 +41,8 @@ impl EfdFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not an evaluation function this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Evaluation function was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -56,8 +55,8 @@ impl EfdFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not an evaluation function this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived function arrives.
@@ -65,8 +64,8 @@ impl EfdFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not an evaluation function this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads off a reader positioned at the file's first byte.
@@ -76,8 +75,8 @@ impl EfdFile {
   /// Returns an error when the builder version is one the engine refuses, the data format one the builder never
   /// writes, a pattern names an input the function does not declare, or the parameter block is not the size the
   /// patterns claim.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let builder_version: u32 = reader.read_u32::<T>()?;
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let builder_version: u32 = reader.read_u32()?;
 
     if builder_version != Self::CURRENT_VERSION {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -86,13 +85,13 @@ impl EfdFile {
       )));
     }
 
-    let data_format: EfdDataFormat = EfdDataFormat::from_value(reader.read_u32::<T>()?)?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let data_format: EfdDataFormat = EfdDataFormat::from_value(reader.read_u32()?)?;
+    let count: u32 = reader.read_u32()?;
 
     let mut ranges: Vec<u32> = reader.new_bounded_vec(count.into(), EfdVariable::SERIALIZED_SIZE, "efd variables")?;
 
     for _ in 0..count {
-      ranges.push(reader.read_u32::<T>()?);
+      ranges.push(reader.read_u32()?);
     }
 
     let mut variables: Vec<EfdVariable> = Vec::with_capacity(ranges.len());
@@ -100,24 +99,24 @@ impl EfdFile {
     for range in ranges {
       variables.push(EfdVariable {
         range,
-        kind: reader.read_u32::<T>()?,
+        kind: reader.read_u32()?,
       });
     }
 
-    let function_type: u32 = reader.read_u32::<T>()?;
-    let minimum_result: f64 = data_format.read_real::<T, D>(reader)?;
-    let maximum_result: f64 = data_format.read_real::<T, D>(reader)?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let function_type: u32 = reader.read_u32()?;
+    let minimum_result: f64 = data_format.read_real::<D>(reader)?;
+    let maximum_result: f64 = data_format.read_real::<D>(reader)?;
+    let count: u32 = reader.read_u32()?;
 
     let mut patterns: Vec<EfdPattern> = reader.new_bounded_vec(count.into(), EfdPattern::FIXED_SIZE, "efd patterns")?;
 
     for _ in 0..count {
-      let cardinality: u32 = reader.read_u32::<T>()?;
+      let cardinality: u32 = reader.read_u32()?;
       let mut indices: Vec<u32> =
         reader.new_bounded_vec(cardinality.into(), size_of::<u32>() as u64, "efd pattern variables")?;
 
       for _ in 0..cardinality {
-        indices.push(reader.read_u32::<T>()?);
+        indices.push(reader.read_u32()?);
       }
 
       patterns.push(EfdPattern { variables: indices });
@@ -127,7 +126,7 @@ impl EfdFile {
     let mut parameters: Vec<f64> = reader.new_bounded_vec(expected, data_format.get_real_size(), "efd parameters")?;
 
     for _ in 0..expected {
-      parameters.push(data_format.read_real::<T, D>(reader)?);
+      parameters.push(data_format.read_real::<D>(reader)?);
     }
 
     reader.assert_read("Expect all data to be read from evaluation function file")?;
@@ -150,7 +149,7 @@ impl EfdFile {
   ///
   /// Returns an error when the parameter block does not match what the patterns claim, or a count exceeds what the
   /// format's `u32` holds.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let expected: u64 = Self::count_parameters(&self.patterns, &self.variables)?;
 
     if expected != self.parameters.len() as u64 {
@@ -160,33 +159,33 @@ impl EfdFile {
       )));
     }
 
-    writer.write_u32::<T>(self.builder_version)?;
-    writer.write_u32::<T>(self.data_format.to_value())?;
-    writer.write_u32::<T>(narrow_format_size(self.variables.len(), "efd variables")?)?;
+    writer.write_u32(self.builder_version)?;
+    writer.write_u32(self.data_format.to_value())?;
+    writer.write_u32(narrow_format_size(self.variables.len(), "efd variables")?)?;
 
     for variable in &self.variables {
-      writer.write_u32::<T>(variable.range)?;
+      writer.write_u32(variable.range)?;
     }
 
     for variable in &self.variables {
-      writer.write_u32::<T>(variable.kind)?;
+      writer.write_u32(variable.kind)?;
     }
 
-    writer.write_u32::<T>(self.function_type)?;
-    self.data_format.write_real::<T>(writer, self.minimum_result)?;
-    self.data_format.write_real::<T>(writer, self.maximum_result)?;
-    writer.write_u32::<T>(narrow_format_size(self.patterns.len(), "efd patterns")?)?;
+    writer.write_u32(self.function_type)?;
+    self.data_format.write_real(writer, self.minimum_result)?;
+    self.data_format.write_real(writer, self.maximum_result)?;
+    writer.write_u32(narrow_format_size(self.patterns.len(), "efd patterns")?)?;
 
     for pattern in &self.patterns {
-      writer.write_u32::<T>(narrow_format_size(pattern.variables.len(), "efd pattern variables")?)?;
+      writer.write_u32(narrow_format_size(pattern.variables.len(), "efd pattern variables")?)?;
 
       for index in &pattern.variables {
-        writer.write_u32::<T>(*index)?;
+        writer.write_u32(*index)?;
       }
     }
 
     for parameter in &self.parameters {
-      self.data_format.write_real::<T>(writer, *parameter)?;
+      self.data_format.write_real(writer, *parameter)?;
     }
 
     Ok(())

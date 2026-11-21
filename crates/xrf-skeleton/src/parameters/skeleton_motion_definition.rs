@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_length, narrow_format_size};
 
@@ -97,17 +96,14 @@ impl SkeletonMotionDefinition {
     }
   }
 
-  pub fn read_list<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-    version: u16,
-  ) -> XrfResult<Vec<Self>> {
-    let count: u16 = reader.read_u16::<T>()?;
+  pub fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>, version: u16) -> XrfResult<Vec<Self>> {
+    let count: u16 = reader.read_u16()?;
     let mut definitions: Vec<Self> =
       reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "skeleton motion definitions")?;
 
     for _ in 0..count {
       definitions.push(
-        Self::read::<T, _>(reader, version)
+        Self::read(reader, version)
           .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton motion: {error}")))?,
       );
     }
@@ -121,18 +117,18 @@ impl SkeletonMotionDefinition {
     Ok(definitions)
   }
 
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, version: u16) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, version: u16) -> XrfResult<Self> {
     let name: String = reader.read_w1251_string()?;
-    let flags: u32 = reader.read_u32::<T>()?;
-    let bone_or_part: u16 = reader.read_u16::<T>()?;
-    let motion: u16 = reader.read_u16::<T>()?;
-    let speed: f32 = reader.read_f32::<T>()?;
-    let power: f32 = reader.read_f32::<T>()?;
-    let accrue: f32 = reader.read_f32::<T>()?;
-    let falloff: f32 = reader.read_f32::<T>()?;
+    let flags: u32 = reader.read_u32()?;
+    let bone_or_part: u16 = reader.read_u16()?;
+    let motion: u16 = reader.read_u16()?;
+    let speed: f32 = reader.read_f32()?;
+    let power: f32 = reader.read_f32()?;
+    let accrue: f32 = reader.read_f32()?;
+    let falloff: f32 = reader.read_f32()?;
 
     let marks: Vec<SkeletonMotionMark> = if version >= Self::MARKS_VERSION {
-      let count: u32 = reader.read_u32::<T>()?;
+      let count: u32 = reader.read_u32()?;
       let mut marks: Vec<SkeletonMotionMark> = reader.new_bounded_vec(
         count.into(),
         SkeletonMotionMark::MIN_SERIALIZED_SIZE,
@@ -141,7 +137,7 @@ impl SkeletonMotionDefinition {
 
       for _ in 0..count {
         marks.push(
-          SkeletonMotionMark::read::<T, _>(reader)
+          SkeletonMotionMark::read(reader)
             .map_err(|error| XrfError::new_read_error(format!("Failed to read skeleton motion mark: {error}")))?,
         );
       }
@@ -172,33 +168,33 @@ impl SkeletonMotionDefinition {
     Ok(motion)
   }
 
-  pub fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, definitions: &[Self], version: u16) -> XrfResult {
-    writer.write_u16::<T>(narrow_format_size(definitions.len(), "skeleton motion definitions")?)?;
+  pub fn write_list(writer: &mut ChunkWriter, definitions: &[Self], version: u16) -> XrfResult {
+    writer.write_u16(narrow_format_size(definitions.len(), "skeleton motion definitions")?)?;
 
     for definition in definitions {
       definition
-        .write::<T>(writer, version)
+        .write(writer, version)
         .map_err(|error| XrfError::new_serialization_error(format!("Failed to write skeleton motion: {error}")))?;
     }
 
     Ok(())
   }
 
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter, version: u16) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter, version: u16) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
-    writer.write_u32::<T>(self.flags)?;
-    writer.write_u16::<T>(self.bone_or_part)?;
-    writer.write_u16::<T>(self.motion)?;
-    writer.write_f32::<T>(self.speed)?;
-    writer.write_f32::<T>(self.power)?;
-    writer.write_f32::<T>(self.accrue)?;
-    writer.write_f32::<T>(self.falloff)?;
+    writer.write_u32(self.flags)?;
+    writer.write_u16(self.bone_or_part)?;
+    writer.write_u16(self.motion)?;
+    writer.write_f32(self.speed)?;
+    writer.write_f32(self.power)?;
+    writer.write_f32(self.accrue)?;
+    writer.write_f32(self.falloff)?;
 
     if version >= Self::MARKS_VERSION {
-      writer.write_u32::<T>(narrow_format_size(self.marks.len(), "skeleton motion marks")?)?;
+      writer.write_u32(narrow_format_size(self.marks.len(), "skeleton motion marks")?)?;
 
       for mark in &self.marks {
-        mark.write::<T>(writer).map_err(|error| {
+        mark.write(writer).map_err(|error| {
           XrfError::new_serialization_error(format!("Failed to write skeleton motion mark: {error}"))
         })?;
       }
@@ -235,7 +231,7 @@ impl SkeletonMotionDefinition {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -248,14 +244,14 @@ mod tests {
   ) -> XrfResult<Vec<SkeletonMotionDefinition>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    SkeletonMotionDefinition::write_list::<XRayByteOrder>(&mut writer, definitions, version)?;
+    SkeletonMotionDefinition::write_list(&mut writer, definitions, version)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(filename)?, 0)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(filename)?, 0)?;
 
     let file: FileSlice = GeneratedResources::open_slice(filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    SkeletonMotionDefinition::read_list::<XRayByteOrder, _>(&mut reader, version)
+    SkeletonMotionDefinition::read_list(&mut reader, version)
   }
 
   #[test]
@@ -344,7 +340,7 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     assert_eq!(
-      SkeletonMotionDefinition::write_list::<XRayByteOrder>(&mut writer, &definitions, 4)
+      SkeletonMotionDefinition::write_list(&mut writer, &definitions, 4)
         .expect_err("expect the definition count to exceed its format field")
         .to_string(),
       "Invalid error: skeleton motion definitions exceeds the u16 format limit"
@@ -391,7 +387,7 @@ mod tests {
     }]);
 
     assert!(
-      definition.write::<XRayByteOrder>(&mut writer, 3).is_err(),
+      definition.write(&mut writer, 3).is_err(),
       "Expect marks to be rejected when writing version 3 motion definition"
     );
   }
@@ -400,7 +396,7 @@ mod tests {
   fn rejects_definition_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255])?;
 
-    let error: String = SkeletonMotionDefinition::read_list::<XRayByteOrder, _>(&mut reader, 4)
+    let error: String = SkeletonMotionDefinition::read_list(&mut reader, 4)
       .expect_err("expect the declared definition count to exceed the chunk")
       .to_string();
 
@@ -422,7 +418,7 @@ mod tests {
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
 
-    let error: String = SkeletonMotionDefinition::read::<XRayByteOrder, _>(&mut reader, 4)
+    let error: String = SkeletonMotionDefinition::read(&mut reader, 4)
       .expect_err("expect the declared mark count to exceed the chunk")
       .to_string();
 

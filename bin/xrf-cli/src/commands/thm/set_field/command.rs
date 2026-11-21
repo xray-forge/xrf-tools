@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_output::OutputOptions;
@@ -126,11 +125,11 @@ impl SetFieldCommand {
   fn edit(path: &Path, edit: &ThmTextureEdit) -> XrfResult<ThmSetFieldOutcome> {
     let original: Vec<u8> = std::fs::read(path)?;
 
-    if ThmKind::detect::<XRayByteOrder>(original.clone())? != Some(ThmKind::Texture) {
+    if ThmKind::detect(original.clone())? != Some(ThmKind::Texture) {
       return Ok(ThmSetFieldOutcome::Skipped);
     }
 
-    let bytes: Vec<u8> = edit.rewrite::<XRayByteOrder>(&original)?.ok_or_else(|| {
+    let bytes: Vec<u8> = edit.rewrite(&original)?.ok_or_else(|| {
       XrfError::new_verify_error(format!(
         "{} would not be written back byte for byte, so its other fields could not be kept as they are",
         format_path(path)

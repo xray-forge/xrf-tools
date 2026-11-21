@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector3d};
 
@@ -66,7 +66,7 @@ fn library_bytes() -> XrfResult<Vec<u8>> {
     let mut entry: ChunkWriter = ChunkWriter::new();
 
     entry.buffer = bytes;
-    entry.flush_chunk_into::<XRayByteOrder>(&mut objects.buffer, index as u32)?;
+    entry.flush_chunk_into(&mut objects.buffer, index as u32)?;
   }
 
   let mut slots: ChunkWriter = ChunkWriter::new();
@@ -78,17 +78,17 @@ fn library_bytes() -> XrfResult<Vec<u8>> {
 
   // Objects, grid, then header - the order every shipped library uses, because the object count is only known once
   // the objects are written.
-  let mut bytes: Vec<u8> = objects.flush_chunk_into_buffer::<XRayByteOrder>(LevelDetailsFile::OBJECTS_CHUNK_ID)?;
+  let mut bytes: Vec<u8> = objects.flush_chunk_into_buffer(LevelDetailsFile::OBJECTS_CHUNK_ID)?;
 
-  bytes.extend(slots.flush_chunk_into_buffer::<XRayByteOrder>(LevelDetailsFile::SLOTS_CHUNK_ID)?);
-  bytes.extend(header.flush_chunk_into_buffer::<XRayByteOrder>(LevelDetailsFile::HEADER_CHUNK_ID)?);
+  bytes.extend(slots.flush_chunk_into_buffer(LevelDetailsFile::SLOTS_CHUNK_ID)?);
+  bytes.extend(header.flush_chunk_into_buffer(LevelDetailsFile::HEADER_CHUNK_ID)?);
 
   Ok(bytes)
 }
 
 #[test]
 fn a_library_reads_as_the_header_objects_and_grid_it_is() -> XrfResult {
-  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
+  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(library_bytes()?)?;
 
   assert_eq!(library.header.version, LevelDetailsFile::CURRENT_VERSION);
   assert_eq!(library.header.object_count, 2);
@@ -104,11 +104,11 @@ fn a_library_reads_as_the_header_objects_and_grid_it_is() -> XrfResult {
 #[test]
 fn a_library_is_written_back_byte_for_byte() -> XrfResult {
   let original: Vec<u8> = library_bytes()?;
-  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(original.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  library.write::<XRayByteOrder>(&mut writer)?;
+  library.write(&mut writer)?;
 
   assert_eq!(writer.buffer, original);
 
@@ -117,7 +117,7 @@ fn a_library_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_grid_reports_what_it_plants_rather_than_how_many_cells_it_has() -> XrfResult {
-  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
+  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(library_bytes()?)?;
 
   assert_eq!(library.get_slots_count(), 4);
   assert_eq!(library.get_planted_slots_count(), 2);
@@ -129,7 +129,7 @@ fn a_grid_reports_what_it_plants_rather_than_how_many_cells_it_has() -> XrfResul
 
 #[test]
 fn a_grid_covers_the_ground_its_slot_size_gives_it() -> XrfResult {
-  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
+  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(library_bytes()?)?;
 
   assert_eq!(
     library.get_covered_meters(),
@@ -141,7 +141,7 @@ fn a_grid_covers_the_ground_its_slot_size_gives_it() -> XrfResult {
 
 #[test]
 fn a_slot_is_decoded_only_where_one_is_looked_at() -> XrfResult {
-  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
+  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(library_bytes()?)?;
   let slots: Vec<LevelDetailsSlot> = library.iter_slots().collect();
 
   assert_eq!(slots.len(), 4);
@@ -155,7 +155,7 @@ fn a_slot_is_decoded_only_where_one_is_looked_at() -> XrfResult {
 
 #[test]
 fn a_model_says_whether_the_renderer_sways_it() -> XrfResult {
-  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
+  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(library_bytes()?)?;
 
   // The flag turns swaying off, so a clear word is the one that waves.
   assert!(library.objects[0].is_waving());
@@ -167,7 +167,7 @@ fn a_model_says_whether_the_renderer_sways_it() -> XrfResult {
 
 #[test]
 fn a_model_reports_the_box_its_mesh_occupies() -> XrfResult {
-  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
+  let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(library_bytes()?)?;
   assert_eq!(
     library.objects[0].get_bounds(),
     Some(Aabb {
@@ -181,7 +181,7 @@ fn a_model_reports_the_box_its_mesh_occupies() -> XrfResult {
 
 #[test]
 fn a_model_carrying_no_mesh_has_no_bounds_rather_than_an_empty_box() -> XrfResult {
-  let mut library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
+  let mut library: LevelDetailsFile = LevelDetailsFile::read_from_bytes(library_bytes()?)?;
 
   library.objects[0].vertices.clear();
   library.objects[0].indices.clear();
@@ -206,7 +206,7 @@ fn a_version_nothing_here_reads_is_refused_by_name() -> XrfResult {
 
   bytes[version].copy_from_slice(&7u32.to_le_bytes());
 
-  let error: String = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(bytes)
+  let error: String = LevelDetailsFile::read_from_bytes(bytes)
     .expect_err("an unknown version is refused")
     .to_string();
 
@@ -224,7 +224,7 @@ fn a_grid_the_header_does_not_account_for_is_refused() -> XrfResult {
 
   bytes[size_x].copy_from_slice(&3u32.to_le_bytes());
 
-  assert!(LevelDetailsFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(LevelDetailsFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -238,7 +238,7 @@ fn an_index_count_that_is_not_whole_triangles_is_refused() {
 
   bytes[offset..offset + 4].copy_from_slice(&4u32.to_le_bytes());
 
-  let error: String = DetailModel::read_from_bytes::<XRayByteOrder>(bytes)
+  let error: String = DetailModel::read_from_bytes(bytes)
     .expect_err("a partial triangle is refused")
     .to_string();
 
@@ -249,7 +249,7 @@ fn an_index_count_that_is_not_whole_triangles_is_refused() {
 fn a_standalone_model_is_the_same_layout_as_a_library_entry() -> XrfResult {
   // `model_CreateDM` is `CDetail::Load` over the whole file, so a `.dm` and an entry read identically.
   let bytes: Vec<u8> = model_bytes("effects\\rain", "fx\\fx_rain", 1, 2, 3);
-  let model: DetailModel = DetailModel::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let model: DetailModel = DetailModel::read_from_bytes(bytes.clone())?;
 
   assert_eq!(model.shader, "effects\\rain");
   assert_eq!(model.texture, "fx\\fx_rain");
@@ -258,7 +258,7 @@ fn a_standalone_model_is_the_same_layout_as_a_library_entry() -> XrfResult {
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  model.write::<XRayByteOrder>(&mut writer)?;
+  model.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -271,5 +271,5 @@ fn a_standalone_model_with_anything_after_it_is_refused() {
 
   bytes.extend_from_slice(&[0, 0, 0, 0]);
 
-  assert!(DetailModel::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(DetailModel::read_from_bytes(bytes).is_err());
 }

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::XrfResult;
 use xrf_level::LevelGeomSource;
@@ -31,7 +30,7 @@ impl SectorIndexRange {
   /// # Errors
   ///
   /// Returns an error when the window leaves the run or the buffer, or an index names a vertex past `vertex_count`.
-  pub(crate) fn read_window<T: ByteOrder, D: ChunkDataSource>(
+  pub(crate) fn read_window<D: ChunkDataSource>(
     &self,
     source: &LevelGeomSource<D>,
     window: VisualIndexWindow,
@@ -40,7 +39,7 @@ impl SectorIndexRange {
   ) -> XrfResult<Vec<u32>> {
     window.check(self.count)?;
 
-    let indices: Vec<u16> = source.read_indices::<T>(self.buffer, window.start_at(self.base)?, window.count)?;
+    let indices: Vec<u16> = source.read_indices(self.buffer, window.start_at(self.base)?, window.count)?;
 
     VisualIndexWindow::check_vertices(&indices, vertex_count)?;
 

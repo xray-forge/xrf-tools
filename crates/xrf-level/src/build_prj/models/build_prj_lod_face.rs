@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
@@ -18,17 +17,17 @@ impl BuildPrjLodFace {
 }
 
 impl ChunkReadWrite for BuildPrjLodFace {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut vertices: [Vector3d<f32>; 4] = [const { Vector3d::ZERO }; 4];
 
     for vertex in &mut vertices {
-      *vertex = reader.read_xr::<T, _>()?;
+      *vertex = reader.read_xr()?;
     }
 
     let mut texture_coordinates: [Vector2d; 4] = [Vector2d::ZERO; 4];
 
     for coordinate in &mut texture_coordinates {
-      *coordinate = reader.read_xr::<T, _>()?;
+      *coordinate = reader.read_xr()?;
     }
 
     Ok(Self {
@@ -37,13 +36,13 @@ impl ChunkReadWrite for BuildPrjLodFace {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
     for coordinate in &self.texture_coordinates {
-      writer.write_xr::<T, _>(coordinate)?;
+      writer.write_xr(coordinate)?;
     }
 
     Ok(())

@@ -56,8 +56,7 @@ fn aligns_every_section_to_four_bytes() {
 
 #[test]
 fn writes_values_little_endian() {
-  // Typed array views read in host order, and every supported target is little endian, so the packer
-  // must not follow the big endian convention the X-Ray chunk readers use for some formats.
+  // Typed array views read in host order, and every supported target is little endian.
   let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
 
   builder.push_u16_section(&[0x0102]);

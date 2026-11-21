@@ -14,11 +14,10 @@ hierarchies, progressive meshes, trees and level visuals all share it.
 ## Read a visual
 
 `OgfFile` (the engine's `FMesh`) reads a whole visual into one value, each chunk an `Option` field. Read it with
-`read_from_path`, `read_from_file`, `read_from_bytes` (for an archived visual) or `read_from_chunk`, generic over byte
-order (`xrf_chunk::XRayByteOrder` for every shipped file).
+`read_from_path`, `read_from_file`, `read_from_bytes` (for an archived visual) or `read_from_chunk`.
 
 ```rust
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{OgfFile, OgfHeaderChunk, OgfModelType};
 
@@ -26,7 +25,7 @@ use xrf_ogf::{OgfFile, OgfHeaderChunk, OgfModelType};
 // The smallest visual: a header chunk alone.
 let mut writer: ChunkWriter = ChunkWriter::new();
 
-writer.write_xr::<XRayByteOrder, _>(&OgfHeaderChunk {
+writer.write_xr(&OgfHeaderChunk {
   version: 4,
   model_type: 0,
   shader_id: 0,
@@ -40,8 +39,8 @@ writer.write_xr::<XRayByteOrder, _>(&OgfHeaderChunk {
   },
 })?;
 
-let bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfHeaderChunk::CHUNK_ID)?;
-let visual: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+let bytes: Vec<u8> = writer.flush_chunk_into_buffer(OgfHeaderChunk::CHUNK_ID)?;
+let visual: OgfFile = OgfFile::read_from_bytes(bytes)?;
 
 assert_eq!(OgfModelType::from_raw(visual.header.model_type), Some(OgfModelType::Normal));
 assert!(visual.geometry.is_none() && visual.get_motion_names().is_empty());

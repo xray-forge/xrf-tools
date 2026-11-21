@@ -1,5 +1,4 @@
 use serde_json::Value;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
 use crate::bump::thm_bump_mode::ThmBumpMode;
@@ -20,7 +19,7 @@ use crate::thm_file::ThmFile;
 
 #[test]
 fn reads_every_field_the_format_defines() -> XrfResult {
-  let file: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(fixtures::descriptor())?;
+  let file: ThmFile = ThmFile::read_from_bytes(fixtures::descriptor())?;
 
   assert_eq!(file.version, Some(ThmFile::VERSION));
   assert_eq!(file.thumbnail, None);
@@ -73,8 +72,8 @@ fn reads_every_field_the_format_defines() -> XrfResult {
 
 #[test]
 fn reads_a_chunk_longer_than_its_fields_as_the_engine_does_and_keeps_the_rest() -> XrfResult {
-  let padded: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(fixtures::descriptor_padded())?;
-  let whole: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(fixtures::descriptor())?;
+  let padded: ThmFile = ThmFile::read_from_bytes(fixtures::descriptor_padded())?;
+  let whole: ThmFile = ThmFile::read_from_bytes(fixtures::descriptor())?;
 
   assert_eq!(
     ThmFile {

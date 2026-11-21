@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_math::Vector2d;
@@ -22,13 +21,13 @@ impl ParticleEffectFrame {
 
 impl ChunkReadWrite for ParticleEffectFrame {
   /// Read frame data from chunk redder.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let particle_frame: Self = Self {
-      texture_size: reader.read_xr::<T, _>()?,
-      reserved: reader.read_xr::<T, _>()?,
-      frame_dimension_x: reader.read_u32::<T>()?,
-      frame_count: reader.read_u32::<T>()?,
-      frame_speed: reader.read_f32::<T>()?,
+      texture_size: reader.read_xr()?,
+      reserved: reader.read_xr()?,
+      frame_dimension_x: reader.read_u32()?,
+      frame_count: reader.read_u32()?,
+      frame_speed: reader.read_f32()?,
     };
 
     reader.assert_read("Expect particle frame chunk to be ended")?;
@@ -37,12 +36,12 @@ impl ChunkReadWrite for ParticleEffectFrame {
   }
 
   /// Write frame data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.texture_size)?;
-    writer.write_xr::<T, _>(&self.reserved)?;
-    writer.write_u32::<T>(self.frame_dimension_x)?;
-    writer.write_u32::<T>(self.frame_count)?;
-    writer.write_f32::<T>(self.frame_speed)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.texture_size)?;
+    writer.write_xr(&self.reserved)?;
+    writer.write_u32(self.frame_dimension_x)?;
+    writer.write_u32(self.frame_count)?;
+    writer.write_f32(self.frame_speed)?;
 
     Ok(())
   }
@@ -98,7 +97,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, META_TYPE_FIELD};
   use xrf_math::Vector2d;
@@ -119,11 +118,11 @@ mod tests {
       frame_speed: 2857.0,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 28);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -138,7 +137,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    let read: ParticleEffectFrame = ParticleEffectFrame::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: ParticleEffectFrame = ParticleEffectFrame::read(&mut reader)?;
 
     assert_eq!(read, original);
 

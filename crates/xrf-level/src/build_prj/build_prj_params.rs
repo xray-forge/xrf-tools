@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// The compiler settings the level editor builds with, `b_params` (`communicate.h`).
@@ -38,19 +37,19 @@ impl BuildPrjParams {
 }
 
 impl ChunkReadWrite for BuildPrjParams {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let smooth_angle: f32 = reader.read_f32::<T>()?;
-    let weld_distance: f32 = reader.read_f32::<T>()?;
-    let lightmap_pixels_per_meter: f32 = reader.read_f32::<T>()?;
-    let lightmap_jitter_samples: u32 = reader.read_u32::<T>()?;
-    let lightmap_rms_zero: u32 = reader.read_u32::<T>()?;
-    let lightmap_rms: u32 = reader.read_u32::<T>()?;
-    let quality: u16 = reader.read_u16::<T>()?;
-    let quality_reserved: u16 = reader.read_u16::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let smooth_angle: f32 = reader.read_f32()?;
+    let weld_distance: f32 = reader.read_f32()?;
+    let lightmap_pixels_per_meter: f32 = reader.read_f32()?;
+    let lightmap_jitter_samples: u32 = reader.read_u32()?;
+    let lightmap_rms_zero: u32 = reader.read_u32()?;
+    let lightmap_rms: u32 = reader.read_u32()?;
+    let quality: u16 = reader.read_u16()?;
+    let quality_reserved: u16 = reader.read_u16()?;
     let mut reserved: [f32; 6] = [0.0; 6];
 
     for value in &mut reserved {
-      *value = reader.read_f32::<T>()?;
+      *value = reader.read_f32()?;
     }
 
     Ok(Self {
@@ -66,18 +65,18 @@ impl ChunkReadWrite for BuildPrjParams {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.smooth_angle)?;
-    writer.write_f32::<T>(self.weld_distance)?;
-    writer.write_f32::<T>(self.lightmap_pixels_per_meter)?;
-    writer.write_u32::<T>(self.lightmap_jitter_samples)?;
-    writer.write_u32::<T>(self.lightmap_rms_zero)?;
-    writer.write_u32::<T>(self.lightmap_rms)?;
-    writer.write_u16::<T>(self.quality)?;
-    writer.write_u16::<T>(self.quality_reserved)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.smooth_angle)?;
+    writer.write_f32(self.weld_distance)?;
+    writer.write_f32(self.lightmap_pixels_per_meter)?;
+    writer.write_u32(self.lightmap_jitter_samples)?;
+    writer.write_u32(self.lightmap_rms_zero)?;
+    writer.write_u32(self.lightmap_rms)?;
+    writer.write_u16(self.quality)?;
+    writer.write_u16(self.quality_reserved)?;
 
     for value in self.reserved {
-      writer.write_f32::<T>(value)?;
+      writer.write_f32(value)?;
     }
 
     Ok(())

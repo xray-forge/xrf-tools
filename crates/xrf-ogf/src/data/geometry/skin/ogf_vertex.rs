@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::{ChunkReadWrite, ChunkWriter};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayBytes, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -27,7 +26,7 @@ impl OgfVertex {
   const UV_SIZE: usize = 2 * 4;
 
   /// Read one vertex out of an already sized slice.
-  pub fn read_from_slice<T: ByteOrder>(vertex: &[u8], links_count: usize) -> Self {
+  pub fn read_from_slice(vertex: &[u8], links_count: usize) -> Self {
     debug_assert!(
       (1..=OgfVertexLinks::CAPACITY).contains(&links_count),
       "a vertex is linked to one to four bones"
@@ -35,11 +34,11 @@ impl OgfVertex {
 
     if links_count == 1 {
       let link: OgfVertexLink = OgfVertexLink {
-        bone: T::read_u32(&vertex[Self::GEOMETRY_SIZE..Self::GEOMETRY_SIZE + 4]) as u16,
+        bone: XRayBytes::read_u32(&vertex[Self::GEOMETRY_SIZE..Self::GEOMETRY_SIZE + 4]) as u16,
         weight: 1.0,
       };
 
-      return Self::read_geometry::<T>(
+      return Self::read_geometry(
         &vertex[..Self::VECTORS_SIZE],
         &vertex[Self::VECTORS_SIZE..],
         OgfVertexLinks::from([link]),
@@ -56,7 +55,7 @@ impl OgfVertex {
     for (index, weight) in stored.iter_mut().enumerate() {
       let offset: usize = weights_offset + index * 4;
 
-      *weight = T::read_f32(&vertex[offset..offset + 4]);
+      *weight = XRayBytes::read_f32(&vertex[offset..offset + 4]);
     }
 
     // Two links are the engine's lerp, whose one stored weight belongs to the second bone, leaving the remainder to the
@@ -79,10 +78,10 @@ impl OgfVertex {
     }
 
     for (index, link) in links.iter_mut().enumerate() {
-      link.bone = T::read_u16(&vertex[index * 2..index * 2 + 2]);
+      link.bone = XRayBytes::read_u16(&vertex[index * 2..index * 2 + 2]);
     }
 
-    Self::read_geometry::<T>(
+    Self::read_geometry(
       &vertex[bones_size..bones_size + Self::VECTORS_SIZE],
       &vertex[uv_offset..uv_offset + Self::UV_SIZE],
       OgfVertexLinks::from_slice(links),
@@ -96,7 +95,7 @@ impl OgfVertex {
   /// # Errors
   ///
   /// Returns an error when the vertex carries no link or more than four, or the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let links: &[OgfVertexLink] = &self.links;
 
     if links.is_empty() || links.len() > OgfVertexLinks::CAPACITY {
@@ -108,51 +107,51 @@ impl OgfVertex {
     }
 
     if let [link] = links {
-      self.write_vectors::<T>(writer)?;
-      self.write_texture_coordinate::<T>(writer)?;
-      writer.write_u32::<T>(u32::from(link.bone))?;
+      self.write_vectors(writer)?;
+      self.write_texture_coordinate(writer)?;
+      writer.write_u32(u32::from(link.bone))?;
 
       return Ok(());
     }
 
     for link in links {
-      writer.write_u16::<T>(link.bone)?;
+      writer.write_u16(link.bone)?;
     }
 
-    self.write_vectors::<T>(writer)?;
+    self.write_vectors(writer)?;
 
     match links {
-      [_, second] => writer.write_f32::<T>(second.weight)?,
+      [_, second] => writer.write_f32(second.weight)?,
       _ => {
         for link in &links[..links.len() - 1] {
-          writer.write_f32::<T>(link.weight)?;
+          writer.write_f32(link.weight)?;
         }
       }
     }
 
-    self.write_texture_coordinate::<T>(writer)
+    self.write_texture_coordinate(writer)
   }
 
-  fn write_vectors<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write_vectors(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vector in [&self.position, &self.normal, &self.tangent, &self.binormal] {
-      vector.write::<T>(writer)?;
+      vector.write(writer)?;
     }
 
     Ok(())
   }
 
-  fn write_texture_coordinate<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.texture_u)?;
-    writer.write_f32::<T>(self.texture_v)?;
+  fn write_texture_coordinate(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.texture_u)?;
+    writer.write_f32(self.texture_v)?;
 
     Ok(())
   }
 
-  fn read_geometry<T: ByteOrder>(vectors: &[u8], uv: &[u8], links: OgfVertexLinks) -> Self {
+  fn read_geometry(vectors: &[u8], uv: &[u8], links: OgfVertexLinks) -> Self {
     let vector = |offset: usize| Vector3d {
-      x: T::read_f32(&vectors[offset..offset + 4]),
-      y: T::read_f32(&vectors[offset + 4..offset + 8]),
-      z: T::read_f32(&vectors[offset + 8..offset + 12]),
+      x: XRayBytes::read_f32(&vectors[offset..offset + 4]),
+      y: XRayBytes::read_f32(&vectors[offset + 4..offset + 8]),
+      z: XRayBytes::read_f32(&vectors[offset + 8..offset + 12]),
     };
 
     Self {
@@ -160,8 +159,8 @@ impl OgfVertex {
       normal: vector(12),
       tangent: vector(24),
       binormal: vector(36),
-      texture_u: T::read_f32(&uv[0..4]),
-      texture_v: T::read_f32(&uv[4..8]),
+      texture_u: XRayBytes::read_f32(&uv[0..4]),
+      texture_v: XRayBytes::read_f32(&uv[4..8]),
       links,
     }
   }
@@ -169,8 +168,6 @@ impl OgfVertex {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
-
   use super::OgfVertex;
 
   /// The four vectors, which every format stores contiguously: position, normal, tangent, binormal.
@@ -240,7 +237,7 @@ mod tests {
     let mut bytes: Vec<u8> = geometry_bytes();
     bytes.extend_from_slice(&7u32.to_le_bytes());
 
-    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 1);
+    let vertex: OgfVertex = OgfVertex::read_from_slice(&bytes, 1);
 
     assert_geometry(&vertex);
     assert_eq!(vertex.links.len(), 1);
@@ -258,7 +255,7 @@ mod tests {
     // is why this asserts which bone got which weight rather than the total.
     let bytes: Vec<u8> = linked_vertex_bytes(&[3, 9], &[0.25]);
 
-    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 2);
+    let vertex: OgfVertex = OgfVertex::read_from_slice(&bytes, 2);
 
     assert_geometry(&vertex);
     assert_eq!(vertex.links.len(), 2);
@@ -270,7 +267,7 @@ mod tests {
   fn reads_a_four_link_vertex_with_weights_summing_to_one() {
     let bytes: Vec<u8> = linked_vertex_bytes(&[1, 2, 3, 4], &[0.1, 0.2, 0.3]);
 
-    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 4);
+    let vertex: OgfVertex = OgfVertex::read_from_slice(&bytes, 4);
 
     assert_geometry(&vertex);
     assert_eq!(
@@ -289,7 +286,7 @@ mod tests {
   fn reads_a_three_link_vertex() {
     let bytes: Vec<u8> = linked_vertex_bytes(&[5, 6, 7], &[0.5, 0.25]);
 
-    let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, 3);
+    let vertex: OgfVertex = OgfVertex::read_from_slice(&bytes, 3);
 
     assert_geometry(&vertex);
     assert_eq!(
@@ -326,7 +323,7 @@ mod tests {
       (3, linked_vertex_bytes(&[0; 3], &[0.5, 0.25])),
       (4, linked_vertex_bytes(&[0; 4], &[0.4, 0.3, 0.2])),
     ] {
-      let vertex: OgfVertex = OgfVertex::read_from_slice::<XRayByteOrder>(&bytes, links);
+      let vertex: OgfVertex = OgfVertex::read_from_slice(&bytes, links);
 
       assert_eq!(
         (vertex.position.x, vertex.position.y, vertex.position.z),

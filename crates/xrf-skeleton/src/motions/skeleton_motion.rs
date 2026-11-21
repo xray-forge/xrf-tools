@@ -1,7 +1,6 @@
 use std::io::Write;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Quaternion, Vector3d};
 use xrf_utils::{assert_count_fits, new_bounded_vec};
@@ -46,7 +45,7 @@ impl SkeletonMotion {
   ///
   /// Returns an error when the payload ends early, when it does not end exactly where the last bone's keys do, or when
   /// a motion declaring no frames carries keyed streams.
-  pub fn decode_bone_motions<T: ByteOrder>(&self, bone_count: usize) -> XrfResult<Vec<SkeletonBoneMotion>> {
+  pub fn decode_bone_motions(&self, bone_count: usize) -> XrfResult<Vec<SkeletonBoneMotion>> {
     let mut cursor: SkeletonMotionCursor<'_> = SkeletonMotionCursor::new(&self.keys);
 
     // The bone count comes from the skeleton rather than the payload, so it is bounded by the keys that remain.
@@ -56,7 +55,7 @@ impl SkeletonMotion {
     for _ in 0..bone_count {
       let flags: u8 = cursor.read_u8()?;
 
-      bones.push(self.decode_bone::<T>(&mut cursor, flags)?);
+      bones.push(self.decode_bone(&mut cursor, flags)?);
     }
 
     if !cursor.is_exhausted() {
@@ -71,15 +70,11 @@ impl SkeletonMotion {
     Ok(bones)
   }
 
-  fn decode_bone<T: ByteOrder>(
-    &self,
-    cursor: &mut SkeletonMotionCursor<'_>,
-    flags: u8,
-  ) -> XrfResult<SkeletonBoneMotion> {
+  fn decode_bone(&self, cursor: &mut SkeletonMotionCursor<'_>, flags: u8) -> XrfResult<SkeletonBoneMotion> {
     let count: usize = self.count as usize;
     let rotations: Vec<Quaternion> = if flags & Self::ROTATION_KEYS_ABSENT != 0 {
       // A held bone stores one key and no checksum: there is nothing to interpolate between.
-      vec![cursor.read_rotation::<T>()?]
+      vec![cursor.read_rotation()?]
     } else {
       self.assert_keyed_frames("rotation keys")?;
 
@@ -93,16 +88,14 @@ impl SkeletonMotion {
         "skeleton motion rotation keys",
       )?;
 
-      (0..count)
-        .map(|_| cursor.read_rotation::<T>())
-        .collect::<XrfResult<_>>()?
+      (0..count).map(|_| cursor.read_rotation()).collect::<XrfResult<_>>()?
     };
 
     if flags & Self::TRANSLATION_KEYS_PRESENT == 0 {
       // No stream at all: the bone sits at its initial offset for the whole motion.
       return Ok(SkeletonBoneMotion {
         rotations,
-        translations: vec![cursor.read_vector::<T>()?],
+        translations: vec![cursor.read_vector()?],
       });
     }
 
@@ -126,7 +119,7 @@ impl SkeletonMotion {
 
     let quantised: Vec<[f32; 3]> = match is_16_bit {
       true => (0..count)
-        .map(|_| cursor.read_translation_key_16::<T>())
+        .map(|_| cursor.read_translation_key_16())
         .collect::<XrfResult<_>>()?,
       false => (0..count)
         .map(|_| cursor.read_translation_key_8())
@@ -134,8 +127,8 @@ impl SkeletonMotion {
     };
 
     // Scale and offset trail the stream rather than leading it, which is why the keys are held quantised until here.
-    let size: Vector3d = cursor.read_vector::<T>()?;
-    let initial: Vector3d = cursor.read_vector::<T>()?;
+    let size: Vector3d = cursor.read_vector()?;
+    let initial: Vector3d = cursor.read_vector()?;
 
     Ok(SkeletonBoneMotion {
       rotations,
@@ -163,9 +156,9 @@ impl SkeletonMotion {
 }
 
 impl ChunkReadWrite for SkeletonMotion {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let label: String = reader.read_w1251_string()?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let keys: Vec<u8> = reader.read_remaining()?;
 
     reader.assert_read("Chunk data should be read for SkeletonMotion")?;
@@ -173,9 +166,9 @@ impl ChunkReadWrite for SkeletonMotion {
     Ok(Self { label, count, keys })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.label)?;
-    writer.write_u32::<T>(self.count)?;
+    writer.write_u32(self.count)?;
     writer.write_all(&self.keys)?;
 
     Ok(())
@@ -184,8 +177,7 @@ impl ChunkReadWrite for SkeletonMotion {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::{LittleEndian, WriteBytesExt};
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayWrite};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -202,27 +194,27 @@ mod tests {
       let mut bytes: Vec<u8> = vec![SkeletonMotion::TRANSLATION_KEYS_PRESENT | SkeletonMotion::TRANSLATION_KEYS_16_BIT];
 
       // Rotation: a checksum the engine caches by, then one key per frame.
-      bytes.write_u32::<LittleEndian>(0xDEAD_BEEF).unwrap();
+      bytes.write_u32(0xDEAD_BEEF).unwrap();
 
       let frames: i16 = i16::try_from(count).unwrap();
 
       for frame in 0..frames {
         for component in 0..4_i16 {
-          bytes.write_i16::<LittleEndian>((frame + 1) * (component + 1)).unwrap();
+          bytes.write_i16((frame + 1) * (component + 1)).unwrap();
         }
       }
 
-      bytes.write_u32::<LittleEndian>(0xFEED_FACE).unwrap();
+      bytes.write_u32(0xFEED_FACE).unwrap();
 
       for frame in 0..frames {
         for component in 0..3_i16 {
-          bytes.write_i16::<LittleEndian>(frame * 10 + component).unwrap();
+          bytes.write_i16(frame * 10 + component).unwrap();
         }
       }
 
       // Scale then offset, in that order, after the stream rather than before it.
       for value in [2.0_f32, 4.0, 8.0, 100.0, 200.0, 300.0] {
-        bytes.write_f32::<LittleEndian>(value).unwrap();
+        bytes.write_f32(value).unwrap();
       }
 
       Self { bytes }
@@ -233,11 +225,11 @@ mod tests {
       let mut bytes: Vec<u8> = vec![SkeletonMotion::ROTATION_KEYS_ABSENT];
 
       for component in 0..4 {
-        bytes.write_i16::<LittleEndian>(component + 1).unwrap();
+        bytes.write_i16(component + 1).unwrap();
       }
 
       for value in [7.0_f32, 8.0, 9.0] {
-        bytes.write_f32::<LittleEndian>(value).unwrap();
+        bytes.write_f32(value).unwrap();
       }
 
       Self { bytes }
@@ -263,17 +255,17 @@ mod tests {
       keys: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     // 9 label bytes + 1 terminator + 4 count bytes + 9 key bytes.
     assert_eq!(writer.bytes_written(), 9 + 1 + 4 + 9);
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(SkeletonMotion::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SkeletonMotion::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -281,7 +273,7 @@ mod tests {
   #[test]
   fn decodes_a_rotation_stream_by_dequantising_every_component() {
     let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2)]);
-    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 2);
     assert_eq!(bones[0].rotations[0].x, 1.0 / SkeletonMotionCursor::KEY_QUANT);
@@ -294,7 +286,7 @@ mod tests {
   fn scales_and_offsets_every_translation_key() {
     // `T = key * size + init`, with scale and offset read after the stream they apply to.
     let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2)]);
-    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions(1).expect("one bone decodes");
 
     assert_eq!(bones[0].translations.len(), 2);
     assert_eq!(
@@ -320,7 +312,7 @@ mod tests {
     // No checksum precedes a held rotation, and no stream precedes the offset. Reading either would misalign the
     // bones that follow, which is what the exhaustion check catches.
     let motion: SkeletonMotion = mock_motion(4, vec![BoneRun::held()]);
-    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 1);
     assert_eq!(
@@ -338,9 +330,7 @@ mod tests {
   fn reads_each_bones_flags_ahead_of_its_run() {
     // Every run, the first included, leads with its own flags. Getting this wrong shifts every stream after it.
     let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2), BoneRun::held(), BoneRun::animated(2)]);
-    let bones: Vec<SkeletonBoneMotion> = motion
-      .decode_bone_motions::<LittleEndian>(3)
-      .expect("three bones decode");
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions(3).expect("three bones decode");
 
     assert_eq!(bones[0].rotations.len(), 2);
     assert_eq!(bones[1].rotations.len(), 1, "expect the middle bone to be held");
@@ -352,10 +342,7 @@ mod tests {
     // `motions_value::load` reads one run per bone and nothing else, so a skeleton of none stores no keys.
     let motion: SkeletonMotion = mock_motion(1, vec![]);
 
-    assert_eq!(
-      motion.decode_bone_motions::<LittleEndian>(0).expect("no bones decode"),
-      vec![]
-    );
+    assert_eq!(motion.decode_bone_motions(0).expect("no bones decode"), vec![]);
   }
 
   #[test]
@@ -365,7 +352,7 @@ mod tests {
     let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2), BoneRun::held()]);
 
     let error: String = motion
-      .decode_bone_motions::<LittleEndian>(1)
+      .decode_bone_motions(1)
       .expect_err("expect a leftover payload to be refused")
       .to_string();
 
@@ -381,7 +368,7 @@ mod tests {
 
     motion.keys.truncate(5);
 
-    assert!(motion.decode_bone_motions::<LittleEndian>(1).is_err());
+    assert!(motion.decode_bone_motions(1).is_err());
   }
 
   #[test]
@@ -395,7 +382,7 @@ mod tests {
     let motion: SkeletonMotion = mock_motion(1, vec![BoneRun::held()]);
 
     let error: String = motion
-      .decode_bone_motions::<LittleEndian>(10_000)
+      .decode_bone_motions(10_000)
       .expect_err("expect the supplied bone count to exceed the payload")
       .to_string();
 
@@ -412,7 +399,7 @@ mod tests {
     let motion: SkeletonMotion = mock_motion(0, vec![BoneRun::animated(0)]);
 
     let error: String = motion
-      .decode_bone_motions::<LittleEndian>(1)
+      .decode_bone_motions(1)
       .expect_err("expect a zero frame keyed motion to be refused")
       .to_string();
 
@@ -436,7 +423,7 @@ mod tests {
     };
 
     let error: String = motion
-      .decode_bone_motions::<LittleEndian>(1)
+      .decode_bone_motions(1)
       .expect_err("expect a zero frame keyed motion to be refused")
       .to_string();
 
@@ -450,7 +437,7 @@ mod tests {
   fn accepts_a_held_bone_on_a_motion_declaring_no_frames() {
     // A held stream stores one key however many frames the motion declares, so the zero frame guard must not reach it.
     let motion: SkeletonMotion = mock_motion(0, vec![BoneRun::held()]);
-    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
+    let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 1);
     assert_eq!(
@@ -469,7 +456,7 @@ mod tests {
     };
 
     let error: String = motion
-      .decode_bone_motions::<LittleEndian>(1)
+      .decode_bone_motions(1)
       .expect_err("expect the declared frame count to exceed the payload")
       .to_string();
 
@@ -492,7 +479,7 @@ mod tests {
     };
 
     let error: String = motion
-      .decode_bone_motions::<LittleEndian>(1)
+      .decode_bone_motions(1)
       .expect_err("expect the declared frame count to exceed the payload")
       .to_string();
 

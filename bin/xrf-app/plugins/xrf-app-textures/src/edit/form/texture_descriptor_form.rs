@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use xrf_app_core::TauriResult;
-use xrf_chunk::XRayByteOrder;
 use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmFormat, ThmMaterial, ThmMaterialChunk, ThmMipFilter,
   ThmTextureEdit, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk, ThmTextureType,
@@ -137,10 +136,7 @@ impl TextureDescriptorForm {
       form.format = format.into();
     }
 
-    form
-      .to_descriptor(file)
-      .write_to_bytes::<XRayByteOrder>()
-      .map_err(error_to_string)
+    form.to_descriptor(file).write_to_bytes().map_err(error_to_string)
   }
 
   /// `value` where it differs from `current`, which is the only case an edit names it.

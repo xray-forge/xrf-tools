@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::AiNodePosition;
 
@@ -23,22 +22,22 @@ impl EditableAiMapNode {
   /// Bytes a node occupies: four three-byte links, the plane, the position and the flags.
   pub const SERIALIZED_SIZE: u64 = 4 * 3 + 2 + 6 + 1;
 
-  pub(crate) fn read<T: ByteOrder>(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Self> {
+  pub(crate) fn read(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Self> {
     let mut links: [u32; 4] = [0; 4];
 
     for link in &mut links {
-      *link = reader.read_u24::<T>()?;
+      *link = reader.read_u24()?;
     }
 
     Ok(Self {
       links,
-      plane: reader.read_u16::<T>()?,
-      position: reader.read_xr::<T, _>()?,
+      plane: reader.read_u16()?,
+      position: reader.read_xr()?,
       flags: reader.read_u8()?,
     })
   }
 
-  pub(crate) fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub(crate) fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for link in self.links {
       if link > Self::NO_LINK {
         return Err(XrfError::new_invalid_error(format!(
@@ -46,11 +45,11 @@ impl EditableAiMapNode {
         )));
       }
 
-      writer.write_u24::<T>(link)?;
+      writer.write_u24(link)?;
     }
 
-    writer.write_u16::<T>(self.plane)?;
-    writer.write_xr::<T, _>(&self.position)?;
+    writer.write_u16(self.plane)?;
+    writer.write_xr(&self.position)?;
     writer.write_u8(self.flags)?;
 
     Ok(())

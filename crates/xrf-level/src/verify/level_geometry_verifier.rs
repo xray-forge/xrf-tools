@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource};
 use xrf_math::{Aabb, Matrix4x4, Vector3d};
 use xrf_ogf::OgfGeometryContainerChunk;
 use xrf_report::{Finding, Report, RuleId};
@@ -119,7 +119,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
     chunks: &[ChunkReader<InMemoryChunkDataSource>],
     state: &mut LevelGeometryFindings,
   ) -> Option<LevelFile> {
-    let level: LevelFile = match LevelFile::read_from_chunks::<XRayByteOrder, _>(chunks) {
+    let level: LevelFile = match LevelFile::read_from_chunks(chunks) {
       Ok(level) => level,
       Err(error) => {
         state
@@ -149,7 +149,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
     chunks: &[ChunkReader<InMemoryChunkDataSource>],
     state: &mut LevelGeometryFindings,
   ) -> Option<LevelVisualsChunk> {
-    match LevelFile::read_visuals_from_chunks::<XRayByteOrder, _>(chunks) {
+    match LevelFile::read_visuals_from_chunks(chunks) {
       Ok(visuals) => visuals,
       Err(error) => {
         state
@@ -188,7 +188,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
       ));
     }
 
-    let vertices: Vec<LevelVertex> = match source.read_vertices::<XRayByteOrder>(
+    let vertices: Vec<LevelVertex> = match source.read_vertices(
       container.vertex_buffer_id,
       container.vertex_base,
       container.vertex_count,
@@ -205,22 +205,19 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
       }
     };
 
-    let indices: Vec<u16> = match source.read_indices::<XRayByteOrder>(
-      container.index_buffer_id,
-      container.index_base,
-      container.index_count,
-    ) {
-      Ok(indices) => indices,
-      Err(error) => {
-        state.ranges.push(self.finding(
-          "level.visuals.indices.unreadable",
-          file,
-          format!("Visual {index}: {error}"),
-        ));
+    let indices: Vec<u16> =
+      match source.read_indices(container.index_buffer_id, container.index_base, container.index_count) {
+        Ok(indices) => indices,
+        Err(error) => {
+          state.ranges.push(self.finding(
+            "level.visuals.indices.unreadable",
+            file,
+            format!("Visual {index}: {error}"),
+          ));
 
-        return;
-      }
-    };
+          return;
+        }
+      };
 
     if let Some(visual) = declared {
       self.verify_declared_bounds(index, file, visual, &vertices, state);
@@ -502,7 +499,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   fn open(&self, name: &str, state: &mut LevelGeometryFindings) -> Option<LevelGeomSource<InMemoryChunkDataSource>> {
     let bytes: Vec<u8> = self.read_file(name, "level.geometry.read", state)?;
 
-    match LevelGeomSource::open_from_bytes::<XRayByteOrder>(bytes) {
+    match LevelGeomSource::open_from_bytes(bytes) {
       Ok(source) => Some(source),
       Err(error) => {
         state

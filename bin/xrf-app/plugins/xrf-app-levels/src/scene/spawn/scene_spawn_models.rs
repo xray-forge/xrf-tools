@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{EditableSpawnPointKind, EditableSpawnPointObject, EditableToolObjects};
 use xrf_rawdata::LevelSpawnDataFields;
 
@@ -33,7 +32,7 @@ impl SceneSpawnModels {
         continue;
       };
       // A packet that does not read is the build's to refuse; the spawn point keeps its icon here.
-      let Ok(Some(visual)) = LevelSpawnDataFields::read_visual::<XRayByteOrder>(data) else {
+      let Ok(Some(visual)) = LevelSpawnDataFields::read_visual(data) else {
         continue;
       };
 

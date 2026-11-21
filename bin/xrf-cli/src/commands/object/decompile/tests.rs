@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::OgfHeaderChunk;
@@ -32,7 +32,7 @@ const SKELETON_RIGID: u8 = 10;
 fn header_only(model_type: u8) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  writer.write_xr::<XRayByteOrder, _>(&OgfHeaderChunk {
+  writer.write_xr(&OgfHeaderChunk {
     version: 4,
     model_type,
     shader_id: 0,
@@ -46,7 +46,7 @@ fn header_only(model_type: u8) -> XrfResult<Vec<u8>> {
     },
   })?;
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfHeaderChunk::CHUNK_ID)
+  writer.flush_chunk_into_buffer(OgfHeaderChunk::CHUNK_ID)
 }
 
 fn get_error(verdict: CommandResult) -> String {

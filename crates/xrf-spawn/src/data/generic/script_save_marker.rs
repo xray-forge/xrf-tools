@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
@@ -17,7 +16,7 @@ impl ScriptSaveMarker {
   /// # Errors
   ///
   /// Returns an error when `write` fails, or when the fields outgrow the marker's `u16`.
-  pub(crate) fn write<T: ByteOrder, W: ChunkFieldWriter>(
+  pub(crate) fn write<W: ChunkFieldWriter>(
     writer: &mut W,
     owner: &str,
     write: impl FnOnce(&mut W) -> XrfResult,
@@ -25,7 +24,7 @@ impl ScriptSaveMarker {
     let opened: usize = writer.get_position();
 
     write(writer)?;
-    writer.write_u16::<T>(narrow_format_size(writer.get_position() - opened, owner)?)
+    writer.write_u16(narrow_format_size(writer.get_position() - opened, owner)?)
   }
 
   /// Reads the fields `read` takes, then the marker closing them, refusing a marker that counts another size.
@@ -33,7 +32,7 @@ impl ScriptSaveMarker {
   /// # Errors
   ///
   /// Returns an error when `read` fails, the marker is missing, or it does not count the bytes `read` took.
-  pub(crate) fn read<T: ByteOrder, R: ChunkFieldReader, V>(
+  pub(crate) fn read<R: ChunkFieldReader, V>(
     reader: &mut R,
     owner: &str,
     read: impl FnOnce(&mut R) -> XrfResult<V>,
@@ -41,7 +40,7 @@ impl ScriptSaveMarker {
     let opened: usize = reader.get_position();
     let fields: V = read(reader)?;
     let counted: usize = reader.get_position() - opened;
-    let marker: u16 = reader.read_u16::<T>()?;
+    let marker: u16 = reader.read_u16()?;
 
     if usize::from(marker) != counted {
       return Err(XrfError::new_invalid_error(format!(
@@ -59,7 +58,7 @@ impl ScriptSaveMarker {
   /// # Errors
   ///
   /// Returns an error as [`Self::read`] does when the fields are there.
-  pub(crate) fn read_or_constructed<T: ByteOrder, R: ChunkFieldReader, V>(
+  pub(crate) fn read_or_constructed<R: ChunkFieldReader, V>(
     reader: &mut R,
     owner: &str,
     constructed: impl FnOnce() -> V,
@@ -68,7 +67,7 @@ impl ScriptSaveMarker {
     if reader.is_field_form() && reader.is_ended() {
       Ok(constructed())
     } else {
-      Self::read::<T, _, _>(reader, owner, read)
+      Self::read(reader, owner, read)
     }
   }
 }
@@ -77,7 +76,6 @@ impl ScriptSaveMarker {
 mod tests {
   use xrf_chunk::{
     ChunkFieldReader, ChunkFieldReplay, ChunkFieldWriter, ChunkReader, ChunkWriter, InMemoryChunkDataSource,
-    XRayByteOrder,
   };
   use xrf_error::XrfResult;
 
@@ -89,7 +87,7 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     ChunkFieldWriter::write_u8(&mut writer, 7)?;
-    ScriptSaveMarker::write::<XRayByteOrder, _>(&mut writer, "test", |writer| {
+    ScriptSaveMarker::write(&mut writer, "test", |writer| {
       ChunkFieldWriter::write_u8(writer, 1)?;
       ChunkFieldWriter::write_w1251_string(writer, "hint")
     })?;
@@ -101,7 +99,7 @@ mod tests {
 
     assert_eq!(ChunkFieldReader::read_u8(&mut reader)?, 7);
     assert_eq!(
-      ScriptSaveMarker::read::<XRayByteOrder, _, _>(&mut reader, "test", |reader| {
+      ScriptSaveMarker::read(&mut reader, "test", |reader| {
         Ok((
           ChunkFieldReader::read_u8(reader)?,
           ChunkFieldReader::read_w1251_string(reader)?,
@@ -117,7 +115,7 @@ mod tests {
   #[test]
   fn takes_constructed_values_only_where_fields_end() -> XrfResult {
     fn read<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<u8> {
-      ScriptSaveMarker::read_or_constructed::<XRayByteOrder, _, _>(reader, "test", || 3, ChunkFieldReader::read_u8)
+      ScriptSaveMarker::read_or_constructed(reader, "test", || 3, ChunkFieldReader::read_u8)
     }
 
     assert_eq!(read(&mut ChunkFieldReplay::new(&mut ZeroedUpdateFields))?, 3);
@@ -134,7 +132,7 @@ mod tests {
   #[test]
   fn refuses_a_marker_counting_another_size() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[1, 26, 0])?;
-    let error: String = ScriptSaveMarker::read::<XRayByteOrder, _, _>(&mut reader, "test", ChunkFieldReader::read_u8)
+    let error: String = ScriptSaveMarker::read(&mut reader, "test", ChunkFieldReader::read_u8)
       .expect_err("a marker that counts more than its fields")
       .to_string();
 

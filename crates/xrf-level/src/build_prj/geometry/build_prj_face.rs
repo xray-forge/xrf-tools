@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector2d;
 
@@ -25,39 +24,35 @@ impl BuildPrjFace {
 }
 
 impl ChunkReadWrite for BuildPrjFace {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let vertices: [u32; 3] = [
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-    ];
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let vertices: [u32; 3] = [reader.read_u32()?, reader.read_u32()?, reader.read_u32()?];
     let mut texture_coordinates: [Vector2d; 3] = [Vector2d::ZERO; 3];
 
     for coordinate in &mut texture_coordinates {
-      *coordinate = reader.read_xr::<T, _>()?;
+      *coordinate = reader.read_xr()?;
     }
 
     Ok(Self {
       vertices,
       texture_coordinates,
-      material: reader.read_u16::<T>()?,
-      material_padding: reader.read_u16::<T>()?,
-      game_material: reader.read_u32::<T>()?,
+      material: reader.read_u16()?,
+      material_padding: reader.read_u16()?,
+      game_material: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in self.vertices {
-      writer.write_u32::<T>(vertex)?;
+      writer.write_u32(vertex)?;
     }
 
     for coordinate in &self.texture_coordinates {
-      writer.write_xr::<T, _>(coordinate)?;
+      writer.write_xr(coordinate)?;
     }
 
-    writer.write_u16::<T>(self.material)?;
-    writer.write_u16::<T>(self.material_padding)?;
-    writer.write_u32::<T>(self.game_material)?;
+    writer.write_u16(self.material)?;
+    writer.write_u16(self.material_padding)?;
+    writer.write_u32(self.game_material)?;
 
     Ok(())
   }

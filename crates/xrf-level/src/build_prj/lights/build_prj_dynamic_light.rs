@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::level::dynamic_lights::level_dynamic_light::LevelDynamicLight;
@@ -31,29 +30,29 @@ impl BuildPrjDynamicLight {
 }
 
 impl ChunkReadWrite for BuildPrjDynamicLight {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let light: LevelDynamicLight = reader.read_xr::<T, _>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let light: LevelDynamicLight = reader.read_xr()?;
     let mut sector_slots: [u16; Self::MAXIMUM_SECTORS] = [0; Self::MAXIMUM_SECTORS];
 
     for slot in &mut sector_slots {
-      *slot = reader.read_u16::<T>()?;
+      *slot = reader.read_u16()?;
     }
 
     Ok(Self {
       light,
       sector_slots,
-      sector_count: reader.read_u32::<T>()?,
+      sector_count: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.light)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.light)?;
 
     for slot in self.sector_slots {
-      writer.write_u16::<T>(slot)?;
+      writer.write_u16(slot)?;
     }
 
-    writer.write_u32::<T>(self.sector_count)?;
+    writer.write_u32(self.sector_count)?;
 
     Ok(())
   }

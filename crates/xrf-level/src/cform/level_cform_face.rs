@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayBytes, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One triangle of the collision form, `CDB::TRI` (`xrCDB/xrCDB.h`).
@@ -32,8 +31,8 @@ impl LevelCformFace {
   pub const MATERIAL_MASK: u32 = 0x3FFF;
 
   /// The game material of a face's bytes, read where they lie, for a reader wanting nothing else of the face.
-  pub fn read_material<T: ByteOrder>(face: &[u8; Self::SERIALIZED_SIZE]) -> u16 {
-    Self::material_of(T::read_u32(&face[Self::PACKED_OFFSET..]))
+  pub fn read_material(face: &[u8; Self::SERIALIZED_SIZE]) -> u16 {
+    Self::material_of(XRayBytes::read_u32(&face[Self::PACKED_OFFSET..]))
   }
 
   fn material_of(packed: u32) -> u16 {
@@ -43,13 +42,9 @@ impl LevelCformFace {
 
 impl ChunkReadWrite for LevelCformFace {
   /// Reads one face: its three corners, then the word packing its material, flags and sector.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let vertices: [u32; 3] = [
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-    ];
-    let packed: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let vertices: [u32; 3] = [reader.read_u32()?, reader.read_u32()?, reader.read_u32()?];
+    let packed: u32 = reader.read_u32()?;
 
     Ok(Self {
       vertices,
@@ -61,12 +56,12 @@ impl ChunkReadWrite for LevelCformFace {
   }
 
   /// Writes one face in the layout [`Self::read`] reads.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in self.vertices {
-      writer.write_u32::<T>(vertex)?;
+      writer.write_u32(vertex)?;
     }
 
-    writer.write_u32::<T>(
+    writer.write_u32(
       (u32::from(self.material) & Self::MATERIAL_MASK)
         | (u32::from(self.is_shadow_suppressed) << 14)
         | (u32::from(self.is_wallmark_suppressed) << 15)

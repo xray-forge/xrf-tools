@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_editable_object::{EditableBoneMotion, EditableBonePart, EditableMotion};
 use xrf_error::{XrfError, XrfResult};
@@ -26,7 +25,7 @@ impl MotionConverter {
   /// Returns an error when the motions come without the parameters that say how they play, a part names a bone the
   /// skeleton lacks or two parts name one bone, or a motion's keys do not decode for the skeleton's bones at its
   /// declared length or one key more.
-  pub(crate) fn convert<T: ByteOrder>(file: &OgfFile, bone_names: &[String]) -> XrfResult<Option<ConvertedMotions>> {
+  pub(crate) fn convert(file: &OgfFile, bone_names: &[String]) -> XrfResult<Option<ConvertedMotions>> {
     let Some(motions) = file.motions.as_ref().filter(|chunk| !chunk.motions.is_empty()) else {
       return Ok(None);
     };
@@ -43,7 +42,7 @@ impl MotionConverter {
         .motions
         .iter()
         .find(|definition| usize::from(definition.motion) == index);
-      let (runs, frames): (Vec<SkeletonBoneMotion>, u32) = Self::decode_runs::<T>(motion, bone_names.len())?;
+      let (runs, frames): (Vec<SkeletonBoneMotion>, u32) = Self::decode_runs(motion, bone_names.len())?;
 
       is_lengthened |= frames != motion.count;
       converted.push(Self::convert_motion(
@@ -112,8 +111,8 @@ impl MotionConverter {
   /// # Errors
   ///
   /// Returns the declared length's error when the keys decode at neither length.
-  fn decode_runs<T: ByteOrder>(motion: &SkeletonMotion, bones: usize) -> XrfResult<(Vec<SkeletonBoneMotion>, u32)> {
-    let error: XrfError = match motion.decode_bone_motions::<T>(bones) {
+  fn decode_runs(motion: &SkeletonMotion, bones: usize) -> XrfResult<(Vec<SkeletonBoneMotion>, u32)> {
+    let error: XrfError = match motion.decode_bone_motions(bones) {
       Ok(runs) => return Ok((runs, motion.count)),
       Err(error) => error,
     };
@@ -126,7 +125,7 @@ impl MotionConverter {
     };
 
     lengthened
-      .decode_bone_motions::<T>(bones)
+      .decode_bone_motions(bones)
       .map(|runs| (runs, frames))
       .map_err(|_| error)
   }

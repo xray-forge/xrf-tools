@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkFieldRecorder, ChunkWriter};
 use xrf_editable_level::{
   EditableCustomObject, EditableObjectPart, EditableObjectTransform, EditableShape, EditableShapeElement,
@@ -62,7 +61,7 @@ impl LevelEntityConversion {
   ///
   /// Returns an error when a packet's fields cannot be saved (a string holding a double quote) or a root spawn object
   /// does not write. A packet of an unknown class is refused on its own instead.
-  pub fn decompile<'a, T: ByteOrder>(
+  pub fn decompile<'a>(
     sources: &LevelEntitySources<'a>,
     context: &mut LevelDecompileContext,
   ) -> XrfResult<LevelEntityDecompile> {
@@ -84,12 +83,12 @@ impl LevelEntityConversion {
     Self::reserve_names(sources, context);
 
     if sources.root.is_empty() {
-      Self::decompile_listed::<T>(&spawn, Self::SPAWN_FILE_NAME, 0, &mut decompile, context)?;
+      Self::decompile_listed(&spawn, Self::SPAWN_FILE_NAME, 0, &mut decompile, context)?;
     } else {
-      Self::decompile_root::<T>(&spawn, &root, &mut decompile, context)?;
+      Self::decompile_root(&spawn, &root, &mut decompile, context)?;
     }
 
-    Self::decompile_listed::<T>(
+    Self::decompile_listed(
       &respawn,
       Self::RESPAWN_FILE_NAME,
       EditableSpawnPointObject::RESPAWN_ENTITY,
@@ -101,7 +100,7 @@ impl LevelEntityConversion {
   }
 
   /// A spawn list's packets as spawn points of `flags`, those of no known class refused.
-  fn decompile_listed<T: ByteOrder>(
+  fn decompile_listed(
     objects: &[&LevelSpawnObject],
     file: &str,
     flags: u8,
@@ -109,10 +108,10 @@ impl LevelEntityConversion {
     context: &mut LevelDecompileContext,
   ) -> XrfResult {
     for object in objects {
-      match object.read_alife_object::<T>() {
+      match object.read_alife_object() {
         Ok(entity) => decompile
           .entities
-          .push(Self::decompile_entity::<T>(&entity, flags, context)?),
+          .push(Self::decompile_entity(&entity, flags, context)?),
         Err(error) => decompile.refused.push(Self::refuse(object, file, &error)),
       }
     }
@@ -122,7 +121,7 @@ impl LevelEntityConversion {
 
   /// `level.spawn`'s packets in order, each replaced by the root spawn's object of its name, then the root spawn's
   /// other objects. Of the packets the root spawn lacks, only graph points are kept.
-  fn decompile_root<T: ByteOrder>(
+  fn decompile_root(
     listed: &[&LevelSpawnObject],
     root: &[&AlifeObject],
     decompile: &mut LevelEntityDecompile,
@@ -138,15 +137,13 @@ impl LevelEntityConversion {
     for object in listed {
       if let Some(index) = by_name.remove(object.name.as_str()) {
         taken[index] = true;
-        Self::decompile_built::<T>(root[index], Some(*object), decompile, context)?;
+        Self::decompile_built(root[index], Some(*object), decompile, context)?;
         continue;
       }
 
-      match object.read_alife_object::<T>() {
+      match object.read_alife_object() {
         Ok(entity) if matches!(entity.inherited, AlifeObjectInherited::CseAlifeGraphPoint(_)) => {
-          decompile
-            .entities
-            .push(Self::decompile_entity::<T>(&entity, 0, context)?);
+          decompile.entities.push(Self::decompile_entity(&entity, 0, context)?);
         }
         Ok(_) => decompile.disagreements.push(LevelSceneDisagreement {
           object: object.name.clone(),
@@ -159,14 +156,14 @@ impl LevelEntityConversion {
     }
 
     for (object, _) in root.iter().zip(taken).filter(|(_, taken)| !taken) {
-      Self::decompile_built::<T>(object, None, decompile, context)?;
+      Self::decompile_built(object, None, decompile, context)?;
     }
 
     Ok(())
   }
 
   /// One root spawn object as a spawn point, compared with its `level.spawn` packet where there is one.
-  fn decompile_built<T: ByteOrder>(
+  fn decompile_built(
     built: &AlifeObject,
     listed: Option<&LevelSpawnObject>,
     decompile: &mut LevelEntityDecompile,
@@ -177,7 +174,7 @@ impl LevelEntityConversion {
     // xrAI overwrites these, so they come from the editor's packet in `level.spawn` where one reads, else a fresh
     // entity's.
     let editor_fields: AlifeBuiltFields = listed
-      .and_then(|listed| listed.read_alife_object::<T>().ok())
+      .and_then(|listed| listed.read_alife_object().ok())
       .map_or(AlifeBuiltFields::UNBUILT, |listed| listed.get_built_fields());
 
     entity.set_built_fields(&editor_fields);
@@ -185,7 +182,7 @@ impl LevelEntityConversion {
     let disagreement: Option<&str> = match listed {
       None => Some("only in the root spawn"),
       // Compared as bytes: as floats, a negative zero would equal a positive one.
-      Some(listed) if Self::get_spawn_packet::<T>(&entity)? != Self::get_listed_packet::<T>(listed)? => {
+      Some(listed) if Self::get_spawn_packet(&entity)? != Self::get_listed_packet(listed)? => {
         Some("its spawn packet differs from level.spawn's past the fields xrAI fills in")
       }
       Some(_) => None,
@@ -198,42 +195,40 @@ impl LevelEntityConversion {
       });
     }
 
-    let stored: Vec<u8> = Self::get_update_packet::<T>(built)?;
+    let stored: Vec<u8> = Self::get_update_packet(built)?;
 
-    if stored != Self::get_update_packet::<T>(&built.get_fresh_entity::<T>()?)? {
+    if stored != Self::get_update_packet(&built.get_fresh_entity()?)? {
       decompile.update_packets.push(LevelSceneUpdatePacket {
         object: name.to_owned(),
         bytes: Sidecar::format_hex(&stored),
       });
     }
 
-    decompile
-      .entities
-      .push(Self::decompile_entity::<T>(&entity, 0, context)?);
+    decompile.entities.push(Self::decompile_entity(&entity, 0, context)?);
 
     Ok(())
   }
 
-  fn get_update_packet<T: ByteOrder>(object: &AlifeObject) -> XrfResult<Vec<u8>> {
+  fn get_update_packet(object: &AlifeObject) -> XrfResult<Vec<u8>> {
     let mut bytes: ChunkWriter = ChunkWriter::new();
 
-    object.write_update_packet::<T, _>(&mut bytes)?;
+    object.write_update_packet(&mut bytes)?;
 
     Ok(bytes.buffer)
   }
 
-  fn get_spawn_packet<T: ByteOrder>(object: &AlifeObject) -> XrfResult<Vec<u8>> {
+  fn get_spawn_packet(object: &AlifeObject) -> XrfResult<Vec<u8>> {
     let mut bytes: ChunkWriter = ChunkWriter::new();
 
-    object.write_spawn_packet::<T, _>(&mut bytes)?;
+    object.write_spawn_packet(&mut bytes)?;
 
     Ok(bytes.buffer)
   }
 
-  fn get_listed_packet<T: ByteOrder>(object: &LevelSpawnObject) -> XrfResult<Vec<u8>> {
+  fn get_listed_packet(object: &LevelSpawnObject) -> XrfResult<Vec<u8>> {
     let mut bytes: ChunkWriter = ChunkWriter::new();
 
-    object.write::<T>(&mut bytes)?;
+    object.write(&mut bytes)?;
 
     Ok(bytes.buffer)
   }
@@ -252,7 +247,7 @@ impl LevelEntityConversion {
   ///
   /// Returns an error naming a spawn point whose data does not read as its section's class, whose class has a volume
   /// but no attached shape (as the build refuses it), or whose packet does not write.
-  pub fn export<T: ByteOrder>(part: &EditableObjectPart<EditableSpawnPointObject>) -> XrfResult<LevelEntityExport> {
+  pub fn export(part: &EditableObjectPart<EditableSpawnPointObject>) -> XrfResult<LevelEntityExport> {
     let mut spawn: Vec<LevelSpawnObject> = Vec::new();
     let mut respawn: Vec<LevelSpawnObject> = Vec::new();
 
@@ -269,7 +264,7 @@ impl LevelEntityConversion {
         .map_err(|_| XrfError::new_invalid_error("A spawn list holds more entities than its chunk ids number"))?;
 
       list.push(
-        Self::export_entity::<T>(point, section, data, id)
+        Self::export_entity(point, section, data, id)
           .map_err(|error| XrfError::new_invalid_error(format!("Spawn point '{}': {error}", point.object.name)))?,
       );
     }
@@ -283,7 +278,7 @@ impl LevelEntityConversion {
   }
 
   /// The spawn point of a typed packet, at its place under its name, a class's volume attached as an unturned shape.
-  fn decompile_entity<T: ByteOrder>(
+  fn decompile_entity(
     entity: &AlifeObject,
     flags: u8,
     context: &mut LevelDecompileContext,
@@ -291,7 +286,7 @@ impl LevelEntityConversion {
     let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
     let mut data: IniSection = IniSection::new("spawndata");
 
-    entity.write_spawn_packet::<T, _>(&mut recorder)?;
+    entity.write_spawn_packet(&mut recorder)?;
     LevelSpawnDataFields::write_section(&recorder.into_fields(), &mut data)?;
 
     let position: Vector3d = entity.header.position;
@@ -329,13 +324,13 @@ impl LevelEntityConversion {
 
   /// One entity's packet as `ExportGame` writes it: the spawn data with the spawn point's name, position and angles,
   /// and a class's volume from the attached shape, scaled.
-  fn export_entity<T: ByteOrder>(
+  fn export_entity(
     point: &EditableSpawnPointObject,
     section: &str,
     data: &IniSection,
     id: u32,
   ) -> XrfResult<LevelSpawnObject> {
-    let mut entity: AlifeObject = LevelSpawnDataFields::read_entity::<T>(data)?;
+    let mut entity: AlifeObject = LevelSpawnDataFields::read_entity(data)?;
 
     if entity.header.section != section {
       return Err(XrfError::new_invalid_error(format!(
@@ -361,7 +356,7 @@ impl LevelEntityConversion {
         .collect();
     }
 
-    LevelSpawnObject::from_alife_object::<T>(id, &entity)
+    LevelSpawnObject::from_alife_object(id, &entity)
   }
 
   fn get_element(shape: &Shape) -> EditableShapeElement {

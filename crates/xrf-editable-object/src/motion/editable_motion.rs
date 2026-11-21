@@ -1,6 +1,7 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_animation_envelope::AnimationEnvelope;
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{
+  ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite,
+};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::SkeletonMotionMark;
 use xrf_utils::narrow_format_size;
@@ -66,13 +67,13 @@ impl EditableMotion {
   ///
   /// Returns an error on a motion version outside [`Self::OLDEST_VERSION`] to [`Self::CURRENT_VERSION`], or bytes that
   /// end early or run on.
-  pub fn read_list<T: ByteOrder>(bytes: &[u8]) -> XrfResult<Vec<Self>> {
+  pub fn read_list(bytes: &[u8]) -> XrfResult<Vec<Self>> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(bytes)?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut motions: Vec<Self> = reader.new_bounded_vec(count.into(), 4 * 4 + 2, "embedded motions")?;
 
     for _ in 0..count {
-      motions.push(Self::read::<T, _>(&mut reader)?);
+      motions.push(Self::read(&mut reader)?);
     }
 
     reader.assert_read("Expect the embedded motions to end with their last motion")?;
@@ -86,31 +87,31 @@ impl EditableMotion {
   /// # Errors
   ///
   /// Returns an error when a count does not fit its field, or the bytes do not write.
-  pub fn write_list<T: ByteOrder>(motions: &[Self]) -> XrfResult<Vec<u8>> {
+  pub fn write_list(motions: &[Self]) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    writer.write_u32::<T>(narrow_format_size(motions.len(), "embedded motions")?)?;
+    writer.write_u32(narrow_format_size(motions.len(), "embedded motions")?)?;
 
     for motion in motions {
-      motion.write::<T>(&mut writer)?;
+      motion.write(&mut writer)?;
     }
 
     writer.flush_raw_into_buffer()
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
-    writer.write_i32::<T>(self.frame_start)?;
-    writer.write_i32::<T>(self.frame_end)?;
-    writer.write_f32::<T>(self.fps)?;
-    writer.write_u16::<T>(Self::CURRENT_VERSION)?;
+    writer.write_i32(self.frame_start)?;
+    writer.write_i32(self.frame_end)?;
+    writer.write_f32(self.fps)?;
+    writer.write_u16(Self::CURRENT_VERSION)?;
     writer.write_u8(self.flags)?;
-    writer.write_u16::<T>(self.bone_or_part)?;
-    writer.write_f32::<T>(self.speed)?;
-    writer.write_f32::<T>(self.accrue)?;
-    writer.write_f32::<T>(self.falloff)?;
-    writer.write_f32::<T>(self.power)?;
-    writer.write_u16::<T>(u16::try_from(self.bones.len()).map_err(|_| {
+    writer.write_u16(self.bone_or_part)?;
+    writer.write_f32(self.speed)?;
+    writer.write_f32(self.accrue)?;
+    writer.write_f32(self.falloff)?;
+    writer.write_f32(self.power)?;
+    writer.write_u16(u16::try_from(self.bones.len()).map_err(|_| {
       XrfError::new_invalid_error(format!("Motion '{}' moves more bones than a u16 counts", self.name))
     })?)?;
 
@@ -119,26 +120,26 @@ impl EditableMotion {
       writer.write_u8(bone.flags)?;
 
       for channel in &bone.channels {
-        channel.write::<T>(writer)?;
+        channel.write(writer)?;
       }
     }
 
-    writer.write_u32::<T>(narrow_format_size(self.marks.len(), "motion marks")?)?;
+    writer.write_u32(narrow_format_size(self.marks.len(), "motion marks")?)?;
 
     for mark in &self.marks {
-      mark.write::<T>(writer)?;
+      mark.write(writer)?;
     }
 
     Ok(())
   }
 
   /// One motion, `CSMotion::Load`.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let name: String = reader.read_w1251_string()?;
-    let frame_start: i32 = reader.read_i32::<T>()?;
-    let frame_end: i32 = reader.read_i32::<T>()?;
-    let fps: f32 = reader.read_f32::<T>()?;
-    let version: u16 = reader.read_u16::<T>()?;
+    let frame_start: i32 = reader.read_i32()?;
+    let frame_end: i32 = reader.read_i32()?;
+    let fps: f32 = reader.read_f32()?;
+    let version: u16 = reader.read_u16()?;
 
     if !(Self::OLDEST_VERSION..=Self::CURRENT_VERSION).contains(&version) {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -166,7 +167,7 @@ impl EditableMotion {
 
     let count: usize = match version {
       4 => {
-        motion.bone_or_part = (reader.read_u32::<T>()? & 0xFFFF) as u16;
+        motion.bone_or_part = (reader.read_u32()? & 0xFFFF) as u16;
 
         if reader.read_u8()? != 0 {
           motion.flags |= Self::FX_FLAG;
@@ -176,36 +177,36 @@ impl EditableMotion {
           motion.flags |= Self::STOP_AT_END_FLAG;
         }
 
-        motion.read_parameters::<T, D>(reader)?;
-        reader.read_u32::<T>()? as usize
+        motion.read_parameters::<D>(reader)?;
+        reader.read_u32()? as usize
       }
       5 => {
-        motion.flags = reader.read_u32::<T>()? as u8;
-        motion.bone_or_part = (reader.read_u32::<T>()? & 0xFFFF) as u16;
-        motion.read_parameters::<T, D>(reader)?;
-        reader.read_u32::<T>()? as usize
+        motion.flags = reader.read_u32()? as u8;
+        motion.bone_or_part = (reader.read_u32()? & 0xFFFF) as u16;
+        motion.read_parameters::<D>(reader)?;
+        reader.read_u32()? as usize
       }
       _ => {
         motion.flags = reader.read_u8()?;
-        motion.bone_or_part = reader.read_u16::<T>()?;
-        motion.read_parameters::<T, D>(reader)?;
-        usize::from(reader.read_u16::<T>()?)
+        motion.bone_or_part = reader.read_u16()?;
+        motion.read_parameters::<D>(reader)?;
+        usize::from(reader.read_u16()?)
       }
     };
 
     motion.bones = reader.new_bounded_vec(count as u64, 1 + 6, "motion bones")?;
 
     for index in 0..count {
-      motion.bones.push(motion.read_bone::<T, D>(reader, index)?);
+      motion.bones.push(motion.read_bone::<D>(reader, index)?);
     }
 
     if version >= Self::MARKS_VERSION {
-      let count: u32 = reader.read_u32::<T>()?;
+      let count: u32 = reader.read_u32()?;
 
       motion.marks = reader.new_bounded_vec(count.into(), SkeletonMotionMark::MIN_SERIALIZED_SIZE, "motion marks")?;
 
       for _ in 0..count {
-        motion.marks.push(SkeletonMotionMark::read::<T, _>(reader)?);
+        motion.marks.push(SkeletonMotionMark::read(reader)?);
       }
     }
 
@@ -213,32 +214,28 @@ impl EditableMotion {
   }
 
   /// Speed, accrue, falloff and power, in the order every layout stores them.
-  fn read_parameters<T: ByteOrder, D: ChunkDataSource>(&mut self, reader: &mut ChunkReader<D>) -> XrfResult {
-    self.speed = reader.read_f32::<T>()?;
-    self.accrue = reader.read_f32::<T>()?;
-    self.falloff = reader.read_f32::<T>()?;
-    self.power = reader.read_f32::<T>()?;
+  fn read_parameters<D: ChunkDataSource>(&mut self, reader: &mut ChunkReader<D>) -> XrfResult {
+    self.speed = reader.read_f32()?;
+    self.accrue = reader.read_f32()?;
+    self.falloff = reader.read_f32()?;
+    self.power = reader.read_f32()?;
 
     Ok(())
   }
 
-  fn read_bone<T: ByteOrder, D: ChunkDataSource>(
-    &self,
-    reader: &mut ChunkReader<D>,
-    index: usize,
-  ) -> XrfResult<EditableBoneMotion> {
+  fn read_bone<D: ChunkDataSource>(&self, reader: &mut ChunkReader<D>, index: usize) -> XrfResult<EditableBoneMotion> {
     let (name, flags): (String, u8) = match self.version {
-      4 => (index.to_string(), reader.read_u32::<T>()? as u8),
-      5 => (reader.read_w1251_string()?, reader.read_u32::<T>()? as u8),
+      4 => (index.to_string(), reader.read_u32()? as u8),
+      5 => (reader.read_w1251_string()?, reader.read_u32()? as u8),
       _ => (reader.read_w1251_string()?, reader.read_u8()?),
     };
     let mut channels: [AnimationEnvelope; 6] = Default::default();
 
     for channel in &mut channels {
       *channel = if self.version >= Self::NARROW_VERSION {
-        AnimationEnvelope::read::<T, D>(reader)?
+        AnimationEnvelope::read::<D>(reader)?
       } else {
-        AnimationEnvelope::read_wide::<T, D>(reader)?
+        AnimationEnvelope::read_wide::<D>(reader)?
       };
     }
 

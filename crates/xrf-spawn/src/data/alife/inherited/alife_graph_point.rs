@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -21,7 +20,7 @@ pub struct AlifeGraphPoint {
 
 impl ChunkFieldReadWrite for AlifeGraphPoint {
   /// Read graph point data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
       connection_point_name: reader.read_w1251_string()?,
       connection_level_name: reader.read_w1251_string()?,
@@ -33,7 +32,7 @@ impl ChunkFieldReadWrite for AlifeGraphPoint {
   }
 
   /// Write graph point data into the writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_w1251_string(&self.connection_point_name)?;
     writer.write_w1251_string(&self.connection_level_name)?;
     writer.write_u8(self.location0)?;
@@ -87,7 +86,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -108,12 +107,11 @@ mod tests {
       location3: 3,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 26);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 26);
 
@@ -123,7 +121,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeGraphPoint::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeGraphPoint::read(&mut reader)?, original);
 
     Ok(())
   }

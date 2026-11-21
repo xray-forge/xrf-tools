@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
@@ -45,17 +44,17 @@ impl OgfGeometry {
 
   /// Reads the embedded vertices and indices of a visual of `model_type`, which decides how its vertex format tag is
   /// read: a skinned child's as a skin layout, any other visual's as a flexible vertex format, as the engine does.
-  pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_from_chunks<D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
     model_type: Option<OgfModelType>,
   ) -> XrfResult<Option<Self>> {
     let vertices: Option<OgfVertices> = match chunks.iter().find(|chunk| chunk.id == Self::VERTICES_CHUNK_ID) {
-      Some(chunk) => Some(Self::read_vertices::<T, D>(&mut chunk.clone(), model_type)?),
+      Some(chunk) => Some(Self::read_vertices::<D>(&mut chunk.clone(), model_type)?),
       None => None,
     };
 
     let indices: Option<Vec<u16>> = match chunks.iter().find(|chunk| chunk.id == Self::INDICES_CHUNK_ID) {
-      Some(chunk) => Some(Self::read_indices::<T, D>(&mut chunk.clone())?),
+      Some(chunk) => Some(Self::read_indices::<D>(&mut chunk.clone())?),
       None => None,
     };
 
@@ -74,19 +73,19 @@ impl OgfGeometry {
     }
   }
 
-  fn read_vertices<T: ByteOrder, D: ChunkDataSource>(
+  fn read_vertices<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     model_type: Option<OgfModelType>,
   ) -> XrfResult<OgfVertices> {
-    let vertex_format: u32 = reader.read_u32::<T>()?;
-    let vertex_count: u32 = reader.read_u32::<T>()?;
+    let vertex_format: u32 = reader.read_u32()?;
+    let vertex_count: u32 = reader.read_u32()?;
 
     // Decoded in place: vertices are most of a visual's bytes, and only the decoded form is kept.
     let data: Option<OgfVertexData> = reader.read_remaining_with(|vertices| {
       if model_type.is_some_and(OgfModelType::is_skinned_geometry) {
-        Self::decode_skinned_vertices::<T>(vertices, vertex_format, vertex_count)
+        Self::decode_skinned_vertices(vertices, vertex_format, vertex_count)
       } else {
-        Self::decode_static_vertices::<T>(vertices, vertex_format, vertex_count)
+        Self::decode_static_vertices(vertices, vertex_format, vertex_count)
       }
     })??;
 
@@ -98,7 +97,7 @@ impl OgfGeometry {
   }
 
   /// The vertices of a skinned payload, or `None` for a skin layout the format tag does not name.
-  fn decode_skinned_vertices<T: ByteOrder>(
+  fn decode_skinned_vertices(
     vertices: &[u8],
     vertex_format: u32,
     vertex_count: u32,
@@ -109,13 +108,13 @@ impl OgfGeometry {
 
     Ok(Some(OgfVertexData::Skinned(
       Self::sized_vertices(vertices, vertex_count, layout.vertex_size, "skin")?
-        .map(|vertex| OgfVertex::read_from_slice::<T>(vertex, layout.links))
+        .map(|vertex| OgfVertex::read_from_slice(vertex, layout.links))
         .collect(),
     )))
   }
 
   /// The vertices of a static payload, or `None` for a flexible vertex format this does not decode.
-  fn decode_static_vertices<T: ByteOrder>(
+  fn decode_static_vertices(
     vertices: &[u8],
     vertex_format: u32,
     vertex_count: u32,
@@ -126,7 +125,7 @@ impl OgfGeometry {
 
     Ok(Some(OgfVertexData::Static(
       Self::sized_vertices(vertices, vertex_count, format.get_stride(), "static")?
-        .map(|vertex| OgfStaticVertex::read_from_slice::<T>(vertex, &format))
+        .map(|vertex| OgfStaticVertex::read_from_slice(vertex, &format))
         .collect(),
     )))
   }
@@ -158,7 +157,7 @@ impl OgfGeometry {
   /// # Errors
   ///
   /// Returns an error when the vertices are not all laid out in one link count, or a count outgrows a `u32`.
-  pub fn write_skinned<T: ByteOrder>(writer: &mut ChunkWriter, vertices: &[OgfVertex], indices: &[u16]) -> XrfResult {
+  pub fn write_skinned(writer: &mut ChunkWriter, vertices: &[OgfVertex], indices: &[u16]) -> XrfResult {
     let links: usize = vertices.first().map_or(1, |vertex| vertex.links.len());
 
     if vertices.iter().any(|vertex| vertex.links.len() != links) {
@@ -169,15 +168,15 @@ impl OgfGeometry {
 
     let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
 
-    vertices_chunk.write_u32::<T>(narrow_format_size::<u32>(links, "OGF vertex links")?)?;
-    vertices_chunk.write_u32::<T>(narrow_format_size::<u32>(vertices.len(), "OGF vertices")?)?;
+    vertices_chunk.write_u32(narrow_format_size::<u32>(links, "OGF vertex links")?)?;
+    vertices_chunk.write_u32(narrow_format_size::<u32>(vertices.len(), "OGF vertices")?)?;
 
     for vertex in vertices {
-      vertex.write::<T>(&mut vertices_chunk)?;
+      vertex.write(&mut vertices_chunk)?;
     }
 
-    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
-    Self::write_indices::<T>(writer, indices)
+    vertices_chunk.flush_chunk_into(writer, Self::VERTICES_CHUNK_ID)?;
+    Self::write_indices(writer, indices)
   }
 
   /// Writes a static visual's vertices and indices as the static export does: the vertices chunk tagged with
@@ -186,7 +185,7 @@ impl OgfGeometry {
   /// # Errors
   ///
   /// Returns an error when a vertex does not hold what `format` declares, or a count outgrows a `u32`.
-  pub fn write_static<T: ByteOrder>(
+  pub fn write_static(
     writer: &mut ChunkWriter,
     format: &OgfFvf,
     vertices: &[OgfStaticVertex],
@@ -194,34 +193,34 @@ impl OgfGeometry {
   ) -> XrfResult {
     let mut vertices_chunk: ChunkWriter = ChunkWriter::new();
 
-    vertices_chunk.write_u32::<T>(format.raw)?;
-    vertices_chunk.write_u32::<T>(narrow_format_size::<u32>(vertices.len(), "OGF vertices")?)?;
+    vertices_chunk.write_u32(format.raw)?;
+    vertices_chunk.write_u32(narrow_format_size::<u32>(vertices.len(), "OGF vertices")?)?;
 
     for vertex in vertices {
-      vertex.write::<T>(&mut vertices_chunk, format)?;
+      vertex.write(&mut vertices_chunk, format)?;
     }
 
-    vertices_chunk.flush_chunk_into::<T>(writer, Self::VERTICES_CHUNK_ID)?;
-    Self::write_indices::<T>(writer, indices)
+    vertices_chunk.flush_chunk_into(writer, Self::VERTICES_CHUNK_ID)?;
+    Self::write_indices(writer, indices)
   }
 
   /// The indices chunk, its count first.
-  fn write_indices<T: ByteOrder>(writer: &mut ChunkWriter, indices: &[u16]) -> XrfResult {
+  fn write_indices(writer: &mut ChunkWriter, indices: &[u16]) -> XrfResult {
     let mut indices_chunk: ChunkWriter = ChunkWriter::new();
 
-    indices_chunk.write_u32::<T>(narrow_format_size::<u32>(indices.len(), "OGF indices")?)?;
+    indices_chunk.write_u32(narrow_format_size::<u32>(indices.len(), "OGF indices")?)?;
 
     for index in indices {
-      indices_chunk.write_u16::<T>(*index)?;
+      indices_chunk.write_u16(*index)?;
     }
 
-    indices_chunk.flush_chunk_into::<T>(writer, Self::INDICES_CHUNK_ID)?;
+    indices_chunk.flush_chunk_into(writer, Self::INDICES_CHUNK_ID)?;
 
     Ok(())
   }
 
-  fn read_indices<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u16>> {
-    let indices: Vec<u16> = reader.read_u16_vector::<T>()?;
+  fn read_indices<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u16>> {
+    let indices: Vec<u16> = reader.read_u16_vector()?;
     reader.assert_read("Expect all data to be read from ogf indices")?;
 
     Ok(indices)
@@ -232,8 +231,7 @@ impl OgfGeometry {
 mod tests {
   use std::io::Write;
 
-  use byteorder::WriteBytesExt;
-  use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, XRayWrite};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -269,13 +267,13 @@ mod tests {
   fn write_then_read(vertices: &[OgfVertex], indices: &[u16]) -> XrfResult<OgfGeometry> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    OgfGeometry::write_skinned::<XRayByteOrder>(&mut writer, vertices, indices)?;
+    OgfGeometry::write_skinned(&mut writer, vertices, indices)?;
 
     let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
     let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
 
     Ok(
-      OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::SkeletonGeomdefSt))?
+      OgfGeometry::read_from_chunks(&chunks, Some(OgfModelType::SkeletonGeomdefSt))?
         .expect("geometry chunks are present"),
     )
   }
@@ -302,7 +300,7 @@ mod tests {
   fn refuses_vertices_of_two_layouts_in_one_child() {
     let vertices: [OgfVertex; 2] = [skinned(&[(1, 1.0)], 0.0), skinned(&[(1, 0.5), (2, 0.5)], 0.0)];
 
-    assert!(OgfGeometry::write_skinned::<XRayByteOrder>(&mut ChunkWriter::new(), &vertices, &[]).is_err());
+    assert!(OgfGeometry::write_skinned(&mut ChunkWriter::new(), &vertices, &[]).is_err());
   }
 
   #[test]
@@ -318,9 +316,8 @@ mod tests {
     assert_eq!(file.bytes_remaining(), contents.len());
 
     let chunks = ChunkReader::from_slice(file)?.read_children()?;
-    let geometry: OgfGeometry =
-      OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::SkeletonGeomdefSt))?
-        .expect("geometry chunks are present");
+    let geometry: OgfGeometry = OgfGeometry::read_from_chunks(&chunks, Some(OgfModelType::SkeletonGeomdefSt))?
+      .expect("geometry chunks are present");
 
     assert_eq!(geometry.vertex_count, Some(2));
     assert_eq!(geometry.indices, Some(vec![0, 1, 0]));
@@ -335,17 +332,17 @@ mod tests {
     // The SDK's static export, `D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1`: position, normal and one uv pair.
     let mut vertices: ChunkWriter = ChunkWriter::new();
 
-    vertices.write_u32::<XRayByteOrder>(0x112)?;
-    vertices.write_u32::<XRayByteOrder>(1)?;
+    vertices.write_u32(0x112)?;
+    vertices.write_u32(1)?;
 
     for value in [1.0f32, 2.0, 3.0, 0.0, 1.0, 0.0, 0.25, 0.75] {
-      vertices.write_f32::<XRayByteOrder>(value)?;
+      vertices.write_f32(value)?;
     }
 
-    let bytes: Vec<u8> = vertices.flush_chunk_into_buffer::<XRayByteOrder>(OgfGeometry::VERTICES_CHUNK_ID)?;
+    let bytes: Vec<u8> = vertices.flush_chunk_into_buffer(OgfGeometry::VERTICES_CHUNK_ID)?;
     let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
-    let geometry: OgfGeometry = OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::Normal))?
-      .expect("geometry chunks are present");
+    let geometry: OgfGeometry =
+      OgfGeometry::read_from_chunks(&chunks, Some(OgfModelType::Normal))?.expect("geometry chunks are present");
     let vertex: &OgfStaticVertex = &geometry.get_static_vertices().expect("static vertices are decoded")[0];
 
     assert_eq!(vertex.position, Vector3d::new(1.0, 2.0, 3.0));
@@ -370,12 +367,12 @@ mod tests {
     }];
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    OgfGeometry::write_static::<XRayByteOrder>(&mut writer, &format, &vertices, &[0, 0, 0])?;
+    OgfGeometry::write_static(&mut writer, &format, &vertices, &[0, 0, 0])?;
 
     let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
     let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
-    let geometry: OgfGeometry = OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::Normal))?
-      .expect("geometry chunks are present");
+    let geometry: OgfGeometry =
+      OgfGeometry::read_from_chunks(&chunks, Some(OgfModelType::Normal))?.expect("geometry chunks are present");
 
     assert_eq!(geometry.vertex_format, Some(0x112));
     assert_eq!(geometry.get_static_vertices(), Some(vertices.as_slice()));
@@ -387,9 +384,7 @@ mod tests {
       ..vertices[0].clone()
     };
 
-    assert!(
-      OgfGeometry::write_static::<XRayByteOrder>(&mut ChunkWriter::new(), &format, &[without_normal], &[]).is_err()
-    );
+    assert!(OgfGeometry::write_static(&mut ChunkWriter::new(), &format, &[without_normal], &[]).is_err());
 
     Ok(())
   }
@@ -400,13 +395,13 @@ mod tests {
     // a tag belongs to is the visual's kind, never the tag, so it is kept undecoded rather than read as a skin.
     let mut vertices: ChunkWriter = ChunkWriter::new();
 
-    vertices.write_u32::<XRayByteOrder>(0x12071980)?;
-    vertices.write_u32::<XRayByteOrder>(0)?;
+    vertices.write_u32(0x12071980)?;
+    vertices.write_u32(0)?;
 
-    let bytes: Vec<u8> = vertices.flush_chunk_into_buffer::<XRayByteOrder>(OgfGeometry::VERTICES_CHUNK_ID)?;
+    let bytes: Vec<u8> = vertices.flush_chunk_into_buffer(OgfGeometry::VERTICES_CHUNK_ID)?;
     let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
-    let geometry: OgfGeometry = OgfGeometry::read_from_chunks::<XRayByteOrder, _>(&chunks, Some(OgfModelType::Normal))?
-      .expect("geometry chunks are present");
+    let geometry: OgfGeometry =
+      OgfGeometry::read_from_chunks(&chunks, Some(OgfModelType::Normal))?.expect("geometry chunks are present");
 
     assert_eq!(geometry.vertex_format, Some(0x12071980));
     assert_eq!(geometry.vertices, None);
@@ -417,26 +412,26 @@ mod tests {
   fn geometry_contents() -> XrfResult<Vec<u8>> {
     let mut vertices: ChunkWriter = ChunkWriter::new();
 
-    vertices.write_u32::<XRayByteOrder>(2)?;
-    vertices.write_u32::<XRayByteOrder>(2)?;
-    vertices.write_u16::<XRayByteOrder>(1)?;
-    vertices.write_u16::<XRayByteOrder>(3)?;
+    vertices.write_u32(2)?;
+    vertices.write_u32(2)?;
+    vertices.write_u16(1)?;
+    vertices.write_u16(3)?;
     vertices.write_all(&[0; 60])?;
-    vertices.write_u16::<XRayByteOrder>(2)?;
-    vertices.write_u16::<XRayByteOrder>(4)?;
+    vertices.write_u16(2)?;
+    vertices.write_u16(4)?;
     vertices.write_all(&[0; 60])?;
 
     let mut indices: ChunkWriter = ChunkWriter::new();
 
-    indices.write_u32::<XRayByteOrder>(3)?;
-    indices.write_u16::<XRayByteOrder>(0)?;
-    indices.write_u16::<XRayByteOrder>(1)?;
-    indices.write_u16::<XRayByteOrder>(0)?;
+    indices.write_u32(3)?;
+    indices.write_u16(0)?;
+    indices.write_u16(1)?;
+    indices.write_u16(0)?;
 
     let mut source: ChunkWriter = ChunkWriter::new();
 
-    source.write_all(&vertices.flush_chunk_into_buffer::<XRayByteOrder>(OgfGeometry::VERTICES_CHUNK_ID)?)?;
-    source.write_all(&indices.flush_chunk_into_buffer::<XRayByteOrder>(OgfGeometry::INDICES_CHUNK_ID)?)?;
+    source.write_all(&vertices.flush_chunk_into_buffer(OgfGeometry::VERTICES_CHUNK_ID)?)?;
+    source.write_all(&indices.flush_chunk_into_buffer(OgfGeometry::INDICES_CHUNK_ID)?)?;
 
     source.flush_raw_into_buffer()
   }

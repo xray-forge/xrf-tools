@@ -6,7 +6,6 @@ use uuid::Uuid;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobKind, JobPhase, JobRegistry, JobResource, JobStart};
-use xrf_chunk::XRayByteOrder;
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
 use xrf_spawn::SpawnFile;
 use xrf_utils::{OutputFiles, error_to_string};
@@ -87,8 +86,8 @@ impl SpawnConversion {
       job.set_detail(Some(request.source.display().to_string()));
 
       match self {
-        Self::Pack => SpawnFile::import_from_path::<XRayByteOrder, _>(&request.source),
-        Self::Unpack => SpawnFile::read_from_path::<XRayByteOrder, _>(&request.source),
+        Self::Pack => SpawnFile::import_from_path(&request.source),
+        Self::Unpack => SpawnFile::read_from_path(&request.source),
       }
       .map_err(error_to_string)?
     };
@@ -103,8 +102,8 @@ impl SpawnConversion {
     job.set_detail(Some(request.destination.display().to_string()));
 
     match self {
-      Self::Pack => file.write_to_path::<XRayByteOrder, _>(&request.destination),
-      Self::Unpack => file.export_to_path::<XRayByteOrder, _>(&request.destination),
+      Self::Pack => file.write_to_path(&request.destination),
+      Self::Unpack => file.export_to_path(&request.destination),
     }
     .map_err(error_to_string)?;
 

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -37,13 +36,13 @@ impl AlifeObjectSmartCover {
 }
 
 impl AlifeStateReadWrite for AlifeObjectSmartCover {
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
-    let base: AlifeObjectDynamic = reader.read_xr::<T, _>()?;
-    let shape: Vec<Shape> = reader.read_xr_list::<T, Shape>()?;
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+    let base: AlifeObjectDynamic = reader.read_xr()?;
+    let shape: Vec<Shape> = reader.read_xr_list::<Shape>()?;
     let description: String = reader.read_w1251_string()?;
-    let hold_position_time: f32 = reader.read_f32::<T>()?;
-    let enter_min_enemy_distance: f32 = reader.read_f32::<T>()?;
-    let exit_min_enemy_distance: f32 = reader.read_f32::<T>()?;
+    let hold_position_time: f32 = reader.read_f32()?;
+    let enter_min_enemy_distance: f32 = reader.read_f32()?;
+    let exit_min_enemy_distance: f32 = reader.read_f32()?;
     let is_combat_cover: u8 = reader.read_u8()?;
     let can_fire: u8 = if layout.has_smart_cover_fire_flag() {
       reader.read_u8()?
@@ -63,15 +62,15 @@ impl AlifeStateReadWrite for AlifeObjectSmartCover {
     })
   }
 
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     self.assert_fire_flag_fits(layout)?;
 
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr_list::<T, Shape>(&self.shape)?;
+    writer.write_xr(&self.base)?;
+    writer.write_xr_list::<Shape>(&self.shape)?;
     writer.write_w1251_string(&self.description)?;
-    writer.write_f32::<T>(self.hold_position_time)?;
-    writer.write_f32::<T>(self.enter_min_enemy_distance)?;
-    writer.write_f32::<T>(self.exit_min_enemy_distance)?;
+    writer.write_f32(self.hold_position_time)?;
+    writer.write_f32(self.enter_min_enemy_distance)?;
+    writer.write_f32(self.exit_min_enemy_distance)?;
     writer.write_u8(self.is_combat_cover)?;
 
     if layout.has_smart_cover_fire_flag() {
@@ -133,7 +132,7 @@ impl AlifeStateReadWrite for AlifeObjectSmartCover {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -190,10 +189,10 @@ mod tests {
   fn read_back(cover: &AlifeObjectSmartCover, layout: SpawnLayout) -> XrfResult<(usize, AlifeObjectSmartCover)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    cover.write_state::<XRayByteOrder, _>(&mut writer, layout)?;
+    cover.write_state(&mut writer, layout)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: AlifeObjectSmartCover = AlifeObjectSmartCover::read_state::<XRayByteOrder, _>(&mut reader, layout)?;
+    let read: AlifeObjectSmartCover = AlifeObjectSmartCover::read_state(&mut reader, layout)?;
 
     reader.assert_read("Expect the smart cover to be read whole")?;
 
@@ -240,7 +239,7 @@ mod tests {
 
     assert_eq!(
       cover
-        .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(124))
+        .write_state(&mut ChunkWriter::new(), layout(124))
         .expect_err("a can_fire the packet cannot hold")
         .to_string(),
       expected

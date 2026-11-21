@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{decode_bytes_from_base64, encode_bytes_to_base64};
@@ -26,7 +25,7 @@ impl LevelSpawnObject {
   /// # Errors
   ///
   /// Returns an error when a typed object's fields cannot be written.
-  pub(crate) fn export_record<T: ByteOrder>(
+  pub(crate) fn export_record(
     &self,
     index: usize,
     ltx: &mut impl LtxWrite,
@@ -34,7 +33,7 @@ impl LevelSpawnObject {
   ) -> XrfResult {
     let section_name: String = index.to_string();
 
-    match self.read_typed_record::<T>() {
+    match self.read_typed_record() {
       Ok(object) => {
         object.export(&section_name, ltx)?;
         export.count_typed();
@@ -69,7 +68,7 @@ impl LevelSpawnObject {
   ///
   /// Returns an error when the section is not named by an index, names a form other than none or `verbatim`, or its
   /// fields do not read.
-  pub(crate) fn import_record<T: ByteOrder, L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
+  pub(crate) fn import_record<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Level spawn record '{section_name}' should be defined in ltx file"
@@ -86,7 +85,7 @@ impl LevelSpawnObject {
     };
 
     match section.get(Self::FORM) {
-      None => Self::from_alife_object::<T>(id, &AlifeObject::import(section_name, ltx)?),
+      None => Self::from_alife_object(id, &AlifeObject::import(section_name, ltx)?),
       Some(Self::VERBATIM_FORM) => Ok(Self {
         id,
         net_action: NET_ACTION_SPAWN,
@@ -107,12 +106,12 @@ impl LevelSpawnObject {
 
   /// The object typed, when the typed read accepts it and writes back the same bytes; otherwise the reason it is
   /// written verbatim ([`Self::format_reason`]).
-  fn read_typed_record<T: ByteOrder>(&self) -> Result<AlifeObject, String> {
+  fn read_typed_record(&self) -> Result<AlifeObject, String> {
     let object: AlifeObject = self
-      .read_alife_object::<T>()
+      .read_alife_object()
       .map_err(|error| self.format_reason(&error.to_string()))?;
-    let is_written_back: bool = Self::from_alife_object::<T>(self.id, &object)
-      .and_then(|written| Ok(written.encode_packet::<T>()? == self.encode_packet::<T>()?))
+    let is_written_back: bool = Self::from_alife_object(self.id, &object)
+      .and_then(|written| Ok(written.encode_packet()? == self.encode_packet()?))
       .map_err(|error| self.format_reason(&format!("Its typed form does not write back: {error}")))?;
 
     if !is_written_back {
@@ -139,7 +138,6 @@ impl LevelSpawnObject {
 mod tests {
   use std::path::PathBuf;
 
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::{LtxRecordWriter, LtxSectionWrite, LtxWrite};
   use xrf_test_utils::GeneratedResources;
@@ -158,7 +156,7 @@ mod tests {
     let path: PathBuf = GeneratedResources::create_dir("level_spawn_object_record/quoted_reason")?;
     let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
 
-    object.export_record::<XRayByteOrder>(0, &mut ltx, &mut Default::default())?;
+    object.export_record(0, &mut ltx, &mut Default::default())?;
     ltx.with_section("0").set("reason", &reason);
     ltx.write_to_path(path.join(LevelSpawnFile::UNPACKED_FILE_NAME))?;
 
@@ -167,7 +165,7 @@ mod tests {
       "Invalid error: se_test holds game 'a\\'b' where a spawn holds 'nil': simulation state that is not read"
     );
     assert_eq!(
-      LevelSpawnFile::import_from_path::<XRayByteOrder, _>(&path)?,
+      LevelSpawnFile::import_from_path(&path)?,
       LevelSpawnFile { objects: vec![object] }
     );
 

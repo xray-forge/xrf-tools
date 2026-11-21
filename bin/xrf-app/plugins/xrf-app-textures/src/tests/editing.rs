@@ -8,7 +8,6 @@ use std::time::{Duration, SystemTime};
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, Sessions};
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
@@ -76,15 +75,15 @@ fn reading_a_descriptor_and_writing_it_back_changes_nothing() {
     ThmFixture::image().without_texture_type(),
     ThmFixture::image().without_texture_param(),
   ] {
-    let original: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(fixture.to_bytes()).expect("fixture parses");
+    let original: ThmFile = ThmFile::read_from_bytes(fixture.to_bytes()).expect("fixture parses");
     let mut applied: ThmFile = original.clone();
 
     TextureDescriptorForm::read(&original).apply_to(&mut applied);
 
     assert_eq!(applied, original, "expect a read and write back to be the identity");
     assert_eq!(
-      applied.write_to_bytes::<XRayByteOrder>().expect("writes"),
-      original.write_to_bytes::<XRayByteOrder>().expect("writes"),
+      applied.write_to_bytes().expect("writes"),
+      original.write_to_bytes().expect("writes"),
       "expect the same bytes, not merely the same fields"
     );
   }
@@ -93,7 +92,7 @@ fn reading_a_descriptor_and_writing_it_back_changes_nothing() {
 #[test]
 fn a_chunk_that_was_absent_is_added_only_when_the_form_asks_for_something() {
   let original: ThmFile =
-    ThmFile::read_from_bytes::<XRayByteOrder>(ThmFixture::image().without_bump().to_bytes()).expect("fixture parses");
+    ThmFile::read_from_bytes(ThmFixture::image().without_bump().to_bytes()).expect("fixture parses");
 
   assert!(original.bump.is_none(), "expect the fixture to carry no bump chunk");
 

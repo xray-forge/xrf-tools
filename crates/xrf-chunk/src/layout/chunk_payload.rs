@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::writer::chunk_writer::ChunkWriter;
@@ -20,11 +19,11 @@ impl ChunkPayload {
   /// # Errors
   ///
   /// Returns an error when the payload is larger than a chunk can declare.
-  pub fn write<T: ByteOrder>(&self, destination: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, destination: &mut ChunkWriter) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     writer.write_all(&self.bytes)?;
-    writer.flush_chunk_into::<T>(destination, self.id)?;
+    writer.flush_chunk_into(destination, self.id)?;
 
     Ok(())
   }

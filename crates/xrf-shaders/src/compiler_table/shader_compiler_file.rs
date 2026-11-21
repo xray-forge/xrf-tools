@@ -1,9 +1,8 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -25,8 +24,8 @@ impl ShaderCompilerFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a compiler shader library this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Compiler shader library was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -39,8 +38,8 @@ impl ShaderCompilerFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a compiler shader library this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived library arrives.
@@ -48,8 +47,8 @@ impl ShaderCompilerFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a compiler shader library this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -57,7 +56,7 @@ impl ShaderCompilerFile {
   /// # Errors
   ///
   /// Returns an error when the bytes do not divide into whole records, which is the assert the engine makes.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let size: u64 = reader.read_bytes_remain();
 
     if !size.is_multiple_of(ShaderCompilerShader::SERIALIZED_SIZE) {
@@ -78,10 +77,10 @@ impl ShaderCompilerFile {
       shaders.push(ShaderCompilerShader {
         name,
         name_trailing,
-        flags: reader.read_u32::<T>()?,
-        vertex_translucency: reader.read_f32::<T>()?,
-        vertex_ambient: reader.read_f32::<T>()?,
-        lightmap_density: reader.read_f32::<T>()?,
+        flags: reader.read_u32()?,
+        vertex_translucency: reader.read_f32()?,
+        vertex_ambient: reader.read_f32()?,
+        lightmap_density: reader.read_f32()?,
       });
     }
 
@@ -95,13 +94,13 @@ impl ShaderCompilerFile {
   /// # Errors
   ///
   /// Returns an error when a name does not fit its fixed field, or the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for shader in &self.shaders {
       writer.buffer.extend_from_slice(&shader.write_name()?);
-      writer.write_u32::<T>(shader.flags)?;
-      writer.write_f32::<T>(shader.vertex_translucency)?;
-      writer.write_f32::<T>(shader.vertex_ambient)?;
-      writer.write_f32::<T>(shader.lightmap_density)?;
+      writer.write_u32(shader.flags)?;
+      writer.write_f32(shader.vertex_translucency)?;
+      writer.write_f32(shader.vertex_ambient)?;
+      writer.write_f32(shader.lightmap_density)?;
     }
 
     Ok(())

@@ -1,7 +1,7 @@
 use std::io;
 use std::io::Write;
 
-use byteorder::{ByteOrder, WriteBytesExt};
+use crate::XRayWrite;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
@@ -24,16 +24,16 @@ impl ChunkWriter {
 
   /// Writes the buffered payload as an X-Ray chunk to `destination`.
   ///
-  /// The header contains `id` and the payload length in the selected byte order. Returns the payload length.
+  /// The header contains `id` and the payload length, little-endian. Returns the payload length.
   ///
   /// # Errors
   ///
   /// Returns an error when the payload exceeds the format's `u32` length limit or the destination rejects a write.
-  pub fn flush_chunk_into<T: ByteOrder>(&self, destination: &mut dyn Write, id: u32) -> XrfResult<usize> {
+  pub fn flush_chunk_into(&self, destination: &mut dyn Write, id: u32) -> XrfResult<usize> {
     let payload_size: u32 = narrow_format_size(self.buffer.len(), "Chunk payload")?;
 
-    destination.write_u32::<T>(id)?;
-    destination.write_u32::<T>(payload_size)?;
+    destination.write_u32(id)?;
+    destination.write_u32(payload_size)?;
     destination.write_all(&self.buffer)?;
 
     Ok(self.buffer.len())
@@ -49,7 +49,7 @@ impl ChunkWriter {
   /// # Errors
   ///
   /// Returns an error when the framed size exceeds platform capacity or the payload exceeds the format's `u32` limit.
-  pub fn flush_chunk_into_buffer<T: ByteOrder>(&self, id: u32) -> XrfResult<Vec<u8>> {
+  pub fn flush_chunk_into_buffer(&self, id: u32) -> XrfResult<Vec<u8>> {
     let capacity: usize = self
       .buffer
       .len()
@@ -57,7 +57,7 @@ impl ChunkWriter {
       .ok_or_else(|| XrfError::new_invalid_error("Framed chunk size exceeds the platform limit"))?;
     let mut framed: Vec<u8> = Vec::with_capacity(capacity);
 
-    self.flush_chunk_into::<T>(&mut framed, id)?;
+    self.flush_chunk_into(&mut framed, id)?;
 
     Ok(framed)
   }
@@ -90,7 +90,6 @@ mod tests {
   use xrf_error::XrfResult;
 
   use super::ChunkWriter;
-  use crate::XRayByteOrder;
 
   struct ShortWriter {
     bytes: Vec<u8>,
@@ -121,7 +120,7 @@ mod tests {
 
     chunk.write_all(&[1, 2, 3, 4])?;
 
-    assert_eq!(chunk.flush_chunk_into::<XRayByteOrder>(&mut destination, 7)?, 4);
+    assert_eq!(chunk.flush_chunk_into(&mut destination, 7)?, 4);
     assert_eq!(destination.bytes, [7, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4]);
 
     Ok(())
@@ -133,10 +132,7 @@ mod tests {
 
     chunk.write_all(&[1, 2])?;
 
-    assert_eq!(
-      chunk.flush_chunk_into_buffer::<XRayByteOrder>(3)?,
-      [3, 0, 0, 0, 2, 0, 0, 0, 1, 2]
-    );
+    assert_eq!(chunk.flush_chunk_into_buffer(3)?, [3, 0, 0, 0, 2, 0, 0, 0, 1, 2]);
     assert_eq!(chunk.flush_raw_into_buffer()?, [1, 2], "the payload survives a flush");
 
     Ok(())

@@ -1,5 +1,5 @@
 use clap::{ArgMatches, Command};
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::XrfError;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
@@ -53,19 +53,16 @@ impl GenericCommand for MaterialsCommand {
     // Split once and read twice: an archived bundle is the largest file a level ships.
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> =
       ChunkReader::from_vec(require(LevelFile::FILE_NAME)?)?.read_children()?;
-    let level: LevelFile = LevelFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
-    let visuals: LevelVisualsChunk =
-      LevelFile::read_visuals_from_chunks::<XRayByteOrder, _>(&chunks)?.ok_or_else(|| {
-        XrfError::new_not_found_error("The level carries no visuals, so it draws nothing to look under")
-      })?;
+    let level: LevelFile = LevelFile::read_from_chunks(&chunks)?;
+    let visuals: LevelVisualsChunk = LevelFile::read_visuals_from_chunks(&chunks)?.ok_or_else(|| {
+      XrfError::new_not_found_error("The level carries no visuals, so it draws nothing to look under")
+    })?;
     let source: LevelGeomSource<InMemoryChunkDataSource> =
-      LevelGeomSource::open_from_bytes::<XRayByteOrder>(require(LevelGeomFile::FILE_NAME)?)?;
-    let collision: LevelCformGeometry =
-      LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(require(LevelCformFile::FILE_NAME)?)?;
+      LevelGeomSource::open_from_bytes(require(LevelGeomFile::FILE_NAME)?)?;
+    let collision: LevelCformGeometry = LevelCformFile::read_geometry_from_bytes(require(LevelCformFile::FILE_NAME)?)?;
     let library: Option<GameMtlFile> = Self::read_library(&assets, &output);
 
-    let survey: LevelSurfaceMaterials =
-      LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &collision);
+    let survey: LevelSurfaceMaterials = LevelSurfaceMaterials::survey(&visuals, &source, &collision);
     let report: LevelMaterialsReport =
       LevelMaterialsReport::new(assets.describe(), &survey, level.shaders.as_ref(), library.as_ref());
 
@@ -87,7 +84,7 @@ impl MaterialsCommand {
 
     match search
       .read(GameMtlFile::FILE_NAME)
-      .and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>)
+      .and_then(GameMtlFile::read_from_bytes)
     {
       Ok(library) => Some(library),
       Err(error) => {

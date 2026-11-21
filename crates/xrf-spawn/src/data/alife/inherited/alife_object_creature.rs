@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -73,29 +72,25 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
   }
 
   /// Read a creature from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
-    spawn: &mut S,
-    update: &mut U,
-    _: SpawnLayout,
-  ) -> XrfResult<Self> {
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U, _: SpawnLayout) -> XrfResult<Self> {
     Ok(Self {
-      base: spawn.read_xr::<T, _>()?,
+      base: spawn.read_xr()?,
       team: spawn.read_u8()?,
       squad: spawn.read_u8()?,
       group: spawn.read_u8()?,
-      health: spawn.read_f32::<T>()?,
-      dynamic_out_restrictions: spawn.read_u16_vector::<T>()?,
-      dynamic_in_restrictions: spawn.read_u16_vector::<T>()?,
-      killer_id: spawn.read_u16::<T>()?,
-      game_death_time: spawn.read_u64::<T>()?,
-      update_health: update.read_f32::<T>()?,
-      update_timestamp: update.read_u32::<T>()?,
+      health: spawn.read_f32()?,
+      dynamic_out_restrictions: spawn.read_u16_vector()?,
+      dynamic_in_restrictions: spawn.read_u16_vector()?,
+      killer_id: spawn.read_u16()?,
+      game_death_time: spawn.read_u64()?,
+      update_health: update.read_f32()?,
+      update_timestamp: update.read_u32()?,
       update_flags: update.read_u8()?,
-      update_position: update.read_xr::<T, _>()?,
-      update_model_yaw: update.read_f32::<T>()?,
-      update_torso_yaw: update.read_f32::<T>()?,
-      update_torso_pitch: update.read_f32::<T>()?,
-      update_torso_roll: update.read_f32::<T>()?,
+      update_position: update.read_xr()?,
+      update_model_yaw: update.read_f32()?,
+      update_torso_yaw: update.read_f32()?,
+      update_torso_pitch: update.read_f32()?,
+      update_torso_roll: update.read_f32()?,
       update_team: update.read_u8()?,
       update_squad: update.read_u8()?,
       update_group: update.read_u8()?,
@@ -103,33 +98,33 @@ impl AlifePacketsReadWrite for AlifeObjectCreature {
   }
 
   /// Write a creature into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     _: SpawnLayout,
   ) -> XrfResult {
-    spawn.write_xr::<T, _>(&self.base)?;
+    spawn.write_xr(&self.base)?;
 
     spawn.write_u8(self.team)?;
     spawn.write_u8(self.squad)?;
     spawn.write_u8(self.group)?;
-    spawn.write_f32::<T>(self.health)?;
+    spawn.write_f32(self.health)?;
 
-    spawn.write_u16_vector::<T>(&self.dynamic_out_restrictions)?;
-    spawn.write_u16_vector::<T>(&self.dynamic_in_restrictions)?;
+    spawn.write_u16_vector(&self.dynamic_out_restrictions)?;
+    spawn.write_u16_vector(&self.dynamic_in_restrictions)?;
 
-    spawn.write_u16::<T>(self.killer_id)?;
-    spawn.write_u64::<T>(self.game_death_time)?;
+    spawn.write_u16(self.killer_id)?;
+    spawn.write_u64(self.game_death_time)?;
 
-    update.write_f32::<T>(self.update_health)?;
-    update.write_u32::<T>(self.update_timestamp)?;
+    update.write_f32(self.update_health)?;
+    update.write_u32(self.update_timestamp)?;
     update.write_u8(self.update_flags)?;
-    update.write_xr::<T, _>(&self.update_position)?;
-    update.write_f32::<T>(self.update_model_yaw)?;
-    update.write_f32::<T>(self.update_torso_yaw)?;
-    update.write_f32::<T>(self.update_torso_pitch)?;
-    update.write_f32::<T>(self.update_torso_roll)?;
+    update.write_xr(&self.update_position)?;
+    update.write_f32(self.update_model_yaw)?;
+    update.write_f32(self.update_torso_yaw)?;
+    update.write_f32(self.update_torso_pitch)?;
+    update.write_f32(self.update_torso_roll)?;
     update.write_u8(self.update_team)?;
     update.write_u8(self.update_squad)?;
     update.write_u8(self.update_group)?;
@@ -253,7 +248,6 @@ impl AlifeObjectCreature {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -279,10 +273,7 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectCreature = new_object();
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (104, 40, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (104, 40, original));
 
     Ok(())
   }

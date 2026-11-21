@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
 
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
 use xrf_editable_level::{
   EditableCustomObject, EditableObjectPart, EditableObjectTransform, EditablePortalObject, EditableSceneObject,
@@ -113,7 +112,7 @@ impl LevelGeometryConversion {
   ///
   /// Returns an error when the level holds no shader table, a sector's visual cannot be read, a decompile refuses its
   /// geometry, or a portal names a sector the level does not hold or is no polygon.
-  pub fn decompile<T: ByteOrder, D: ChunkDataSource>(
+  pub fn decompile<D: ChunkDataSource>(
     mut sources: LevelGeometrySources<'_, D>,
     mut surfaces: Option<&mut LevelSurfaceInference>,
     context: &mut LevelDecompileContext,
@@ -132,7 +131,7 @@ impl LevelGeometryConversion {
       folded_entities: Vec::new(),
     };
     let sector_names: Vec<String> =
-      Self::decompile_shells::<T, D>(&mut decompile, &mut sources, surfaces.as_deref_mut(), context)?;
+      Self::decompile_shells::<D>(&mut decompile, &mut sources, surfaces.as_deref_mut(), context)?;
 
     if let Some(collision) = sources.collision.as_deref() {
       Self::decompile_collision(&mut decompile, name, collision, surfaces.as_deref_mut(), context)?;
@@ -167,11 +166,11 @@ impl LevelGeometryConversion {
         .map(LevelSurfaceInference::get_game_materials)
         .or(sources.game_materials)
       {
-        Some(game_materials) => LevelInstanceCutouts::of::<T>(&decompile.instances, game_materials)?,
+        Some(game_materials) => LevelInstanceCutouts::of(&decompile.instances, game_materials)?,
         None => LevelInstanceCutouts::default(),
       };
 
-      Self::decompile_entities::<T>(&mut decompile, name, spawn, sources.breakable_parts, &cutouts, context)?;
+      Self::decompile_entities(&mut decompile, name, spawn, sources.breakable_parts, &cutouts, context)?;
     }
 
     // With a sector left out, the rest would renumber, so none is written, and no portal joining them.
@@ -186,7 +185,7 @@ impl LevelGeometryConversion {
 
   /// Each sector's shell and the sector naming it, into `decompile`; the sectors' names by compiled index, an empty
   /// sector's too, which the portals join by.
-  fn decompile_shells<T: ByteOrder, D: ChunkDataSource>(
+  fn decompile_shells<D: ChunkDataSource>(
     decompile: &mut LevelGeometryDecompile,
     sources: &mut LevelGeometrySources<'_, D>,
     mut surfaces: Option<&mut LevelSurfaceInference>,
@@ -218,7 +217,7 @@ impl LevelGeometryConversion {
       .iter()
       .zip(0u16..)
       .map(|(sector, index)| {
-        let mut read: SectorGeometry = Self::read_sector::<T, D>(
+        let mut read: SectorGeometry = Self::read_sector::<D>(
           visuals,
           (sector.root, index),
           &parents,
@@ -521,7 +520,7 @@ impl LevelGeometryConversion {
 
   /// The geometry sector `number`'s root reaches: its static visuals and its trees with their `MT_LOD` parents; the
   /// impostors are only counted.
-  fn read_sector<T: ByteOrder, D: ChunkDataSource>(
+  fn read_sector<D: ChunkDataSource>(
     visuals: &LevelVisualsChunk,
     (root, number): (u32, u16),
     parents: &HashMap<u32, u32>,
@@ -555,7 +554,7 @@ impl LevelGeometryConversion {
         continue;
       }
 
-      let Some(geometry) = LevelVisualGeometry::read::<T, D>(visual, shaders, source)
+      let Some(geometry) = LevelVisualGeometry::read::<D>(visual, shaders, source)
         .map_err(|error| XrfError::new_invalid_error(format!("Visual {index} was not read: {error}")))?
       else {
         continue;
@@ -793,7 +792,7 @@ impl LevelGeometryConversion {
   ///
   /// One `cutouts` makes again folds with no object of its own. One whose geometry does not decompile is refused and
   /// stays an entity, as does a breakable missing its part; a packet that does not read is left to the spawn points.
-  fn decompile_entities<T: ByteOrder>(
+  fn decompile_entities(
     decompile: &mut LevelGeometryDecompile,
     name: &str,
     spawn: &LevelSpawnFile,
@@ -802,7 +801,7 @@ impl LevelGeometryConversion {
     context: &mut LevelDecompileContext,
   ) -> XrfResult {
     for object in &spawn.objects {
-      let Ok(entity) = object.read_alife_object::<T>() else {
+      let Ok(entity) = object.read_alife_object() else {
         continue;
       };
 

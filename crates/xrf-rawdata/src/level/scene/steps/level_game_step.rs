@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_editable_level::{EditableLevelOptions, EditableSpawnPointObject};
 use xrf_error::XrfResult;
 use xrf_level::{LevelEnvModFile, LevelGameFile, LevelGameRPoint};
@@ -27,16 +26,15 @@ impl LevelSceneStep for LevelGameStep {
     LevelEntityConversion::RESPAWN_FILE_NAME,
   ];
 
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     _options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
-    let game: Option<LevelGameFile> =
-      sources.take_read(LevelGameFile::FILE_NAME, LevelGameFile::read_from_bytes::<T>)?;
+    let game: Option<LevelGameFile> = sources.take_read(LevelGameFile::FILE_NAME, LevelGameFile::read_from_bytes)?;
     let environment: Option<LevelEnvModFile> =
-      sources.take_read(LevelEnvModFile::FILE_NAME, LevelEnvModFile::read_from_bytes::<T>)?;
-    let entities: LevelEntityDecompile = LevelEntityConversion::decompile::<T>(
+      sources.take_read(LevelEnvModFile::FILE_NAME, LevelEnvModFile::read_from_bytes)?;
+    let entities: LevelEntityDecompile = LevelEntityConversion::decompile(
       &LevelEntitySources {
         spawn: draft.spawn.as_ref(),
         respawn: draft.respawn.as_ref(),

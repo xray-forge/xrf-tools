@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::SkeletonBoneShape;
 
@@ -55,7 +54,7 @@ impl EditableBone {
   ///
   /// Returns an error on a missing version, definition, bind pose, material, shape or joint chunk, a version outside
   /// [`Self::SUPPORTED_VERSIONS`], or a chunk holding more or less than its fields.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut definition: Option<EditableBoneDefinition> = None;
     let mut bind_pose: Option<EditableBoneBindPose> = None;
@@ -70,16 +69,16 @@ impl EditableBone {
 
     let layout: ChunkLayout = ChunkLayout::read(reader, |chunk| {
       match chunk.id {
-        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload()?),
         Self::DEFINITION_CHUNK_ID if definition.is_none() => {
           definition = Some(EditableChunks::read_whole(chunk, "bone definition", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
         Self::DEFINITION_CHUNK_ID if data_name.is_none() => data_name = Some(chunk.read_w1251_string_payload()?),
         Self::BIND_POSE_CHUNK_ID if bind_pose.is_none() => {
           bind_pose = Some(EditableChunks::read_whole(chunk, "bone bind pose", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
         Self::MATERIAL_CHUNK_ID if game_material.is_none() => {
@@ -87,25 +86,23 @@ impl EditableBone {
         }
         Self::SHAPE_CHUNK_ID if shape.is_none() => {
           shape = Some(EditableChunks::read_whole(chunk, "bone shape", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
-        Self::FLAGS_CHUNK_ID if joint_flags.is_none() => joint_flags = Some(chunk.read_u32_payload::<T>()?),
+        Self::FLAGS_CHUNK_ID if joint_flags.is_none() => joint_flags = Some(chunk.read_u32_payload()?),
         Self::JOINT_CHUNK_ID if joint.is_none() => {
           joint = Some(EditableChunks::read_whole(chunk, "bone joint", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
         Self::BREAK_CHUNK_ID if joint_break.is_none() => {
           joint_break = Some(EditableChunks::read_whole(chunk, "bone joint break", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
-        Self::FRICTION_CHUNK_ID if friction.is_none() => friction = Some(chunk.read_f32_payload::<T>()?),
+        Self::FRICTION_CHUNK_ID if friction.is_none() => friction = Some(chunk.read_f32_payload()?),
         Self::MASS_CHUNK_ID if mass.is_none() => {
-          mass = Some(EditableChunks::read_whole(chunk, "bone mass", |chunk| {
-            chunk.read_xr::<T, _>()
-          })?);
+          mass = Some(EditableChunks::read_whole(chunk, "bone mass", |chunk| chunk.read_xr())?);
         }
         _ => return Ok(false),
       }
@@ -144,14 +141,12 @@ impl EditableBone {
   /// # Errors
   ///
   /// Returns an error when a string cannot be encoded.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut sequence: ChunkSequence = ChunkSequence::new();
 
-    sequence.push(Self::VERSION_CHUNK_ID, |writer| {
-      Ok(writer.write_u16::<T>(self.version)?)
-    })?;
-    sequence.push(Self::DEFINITION_CHUNK_ID, |writer| self.definition.write::<T>(writer))?;
-    sequence.push(Self::BIND_POSE_CHUNK_ID, |writer| self.bind_pose.write::<T>(writer))?;
+    sequence.push(Self::VERSION_CHUNK_ID, |writer| Ok(writer.write_u16(self.version)?))?;
+    sequence.push(Self::DEFINITION_CHUNK_ID, |writer| self.definition.write(writer))?;
+    sequence.push(Self::BIND_POSE_CHUNK_ID, |writer| self.bind_pose.write(writer))?;
 
     if let Some(data_name) = &self.data_name {
       sequence.push(Self::DEFINITION_CHUNK_ID, |writer| {
@@ -166,26 +161,26 @@ impl EditableBone {
 
       Ok(())
     })?;
-    sequence.push(Self::SHAPE_CHUNK_ID, |writer| self.shape.write::<T>(writer))?;
+    sequence.push(Self::SHAPE_CHUNK_ID, |writer| self.shape.write(writer))?;
 
     if let Some(flags) = self.joint_flags {
-      sequence.push(Self::FLAGS_CHUNK_ID, |writer| Ok(writer.write_u32::<T>(flags)?))?;
+      sequence.push(Self::FLAGS_CHUNK_ID, |writer| Ok(writer.write_u32(flags)?))?;
     }
 
-    sequence.push(Self::JOINT_CHUNK_ID, |writer| self.joint.write::<T>(writer))?;
+    sequence.push(Self::JOINT_CHUNK_ID, |writer| self.joint.write(writer))?;
 
     if let Some(joint_break) = &self.joint_break {
-      sequence.push(Self::BREAK_CHUNK_ID, |writer| joint_break.write::<T>(writer))?;
+      sequence.push(Self::BREAK_CHUNK_ID, |writer| joint_break.write(writer))?;
     }
 
     if let Some(friction) = self.friction {
-      sequence.push(Self::FRICTION_CHUNK_ID, |writer| Ok(writer.write_f32::<T>(friction)?))?;
+      sequence.push(Self::FRICTION_CHUNK_ID, |writer| Ok(writer.write_f32(friction)?))?;
     }
 
     if let Some(mass) = &self.mass {
-      sequence.push(Self::MASS_CHUNK_ID, |writer| mass.write::<T>(writer))?;
+      sequence.push(Self::MASS_CHUNK_ID, |writer| mass.write(writer))?;
     }
 
-    self.layout.write::<T>(writer, sequence)
+    self.layout.write(writer, sequence)
   }
 }

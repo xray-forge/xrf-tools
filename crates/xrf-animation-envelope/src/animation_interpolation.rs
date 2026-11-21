@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead};
 use xrf_error::XrfResult;
 
 /// The curve parameters every key carries, `st_Key`'s tension, continuity, bias and `param`. Zero by default, as
@@ -21,45 +20,45 @@ impl AnimationInterpolation {
   /// Bytes the quantised form occupies: seven `u16`.
   pub const SERIALIZED_SIZE: u64 = 7 * 2;
 
-  pub(crate) fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub(crate) fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let (minimum, maximum): (f32, f32) = Self::PARAMETER_RANGE;
 
     Ok(Self {
-      tension: reader.read_f32_q16::<T>(minimum, maximum)?,
-      continuity: reader.read_f32_q16::<T>(minimum, maximum)?,
-      bias: reader.read_f32_q16::<T>(minimum, maximum)?,
+      tension: reader.read_f32_q16(minimum, maximum)?,
+      continuity: reader.read_f32_q16(minimum, maximum)?,
+      bias: reader.read_f32_q16(minimum, maximum)?,
       parameters: [
-        reader.read_f32_q16::<T>(minimum, maximum)?,
-        reader.read_f32_q16::<T>(minimum, maximum)?,
-        reader.read_f32_q16::<T>(minimum, maximum)?,
-        reader.read_f32_q16::<T>(minimum, maximum)?,
+        reader.read_f32_q16(minimum, maximum)?,
+        reader.read_f32_q16(minimum, maximum)?,
+        reader.read_f32_q16(minimum, maximum)?,
+        reader.read_f32_q16(minimum, maximum)?,
       ],
     })
   }
 
-  pub(crate) fn read_wide<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub(crate) fn read_wide<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      tension: reader.read_f32::<T>()?,
-      continuity: reader.read_f32::<T>()?,
-      bias: reader.read_f32::<T>()?,
+      tension: reader.read_f32()?,
+      continuity: reader.read_f32()?,
+      bias: reader.read_f32()?,
       parameters: [
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
+        reader.read_f32()?,
+        reader.read_f32()?,
+        reader.read_f32()?,
+        reader.read_f32()?,
       ],
     })
   }
 
-  pub(crate) fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub(crate) fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let (minimum, maximum): (f32, f32) = Self::PARAMETER_RANGE;
 
-    writer.write_f32_q16::<T>(self.tension, minimum, maximum)?;
-    writer.write_f32_q16::<T>(self.continuity, minimum, maximum)?;
-    writer.write_f32_q16::<T>(self.bias, minimum, maximum)?;
+    writer.write_f32_q16(self.tension, minimum, maximum)?;
+    writer.write_f32_q16(self.continuity, minimum, maximum)?;
+    writer.write_f32_q16(self.bias, minimum, maximum)?;
 
     for parameter in self.parameters {
-      writer.write_f32_q16::<T>(parameter, minimum, maximum)?;
+      writer.write_f32_q16(parameter, minimum, maximum)?;
     }
 
     Ok(())
@@ -68,7 +67,7 @@ impl AnimationInterpolation {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
 
   use crate::AnimationInterpolation;
@@ -83,14 +82,14 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 14);
     assert_eq!(writer.buffer, [0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0]);
 
     let mut reader = ChunkReader::from_vec(writer.buffer)?;
 
-    assert_eq!(AnimationInterpolation::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AnimationInterpolation::read(&mut reader)?, original);
     reader.assert_read("Expect all interpolation parameters to be read")?;
 
     Ok(())
@@ -100,7 +99,7 @@ mod tests {
   fn test_quantized_bytes_round_trip() -> XrfResult {
     let bytes: Vec<u8> = vec![0, 0, 1, 0, 255, 127, 0, 128, 254, 255, 255, 255, 0, 64];
     let mut reader = ChunkReader::from_vec(bytes.clone())?;
-    let interpolation: AnimationInterpolation = AnimationInterpolation::read::<XRayByteOrder, _>(&mut reader)?;
+    let interpolation: AnimationInterpolation = AnimationInterpolation::read(&mut reader)?;
     let values: [f32; 7] = [
       interpolation.tension,
       interpolation.continuity,
@@ -120,7 +119,7 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    interpolation.write::<XRayByteOrder>(&mut writer)?;
+    interpolation.write(&mut writer)?;
 
     assert_eq!(writer.buffer, bytes);
 
@@ -136,7 +135,7 @@ mod tests {
     let mut reader = ChunkReader::from_vec(bytes)?;
 
     assert_eq!(
-      AnimationInterpolation::read_wide::<XRayByteOrder, _>(&mut reader)?,
+      AnimationInterpolation::read_wide(&mut reader)?,
       AnimationInterpolation {
         tension: -1.25,
         continuity: 2.5,
@@ -154,13 +153,13 @@ mod tests {
     for length in 1..14 {
       let mut reader = ChunkReader::from_vec(vec![0; length])?;
 
-      assert!(AnimationInterpolation::read::<XRayByteOrder, _>(&mut reader).is_err());
+      assert!(AnimationInterpolation::read(&mut reader).is_err());
     }
 
     for length in 1..28 {
       let mut reader = ChunkReader::from_vec(vec![0; length])?;
 
-      assert!(AnimationInterpolation::read_wide::<XRayByteOrder, _>(&mut reader).is_err());
+      assert!(AnimationInterpolation::read_wide(&mut reader).is_err());
     }
 
     Ok(())

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::field::chunk_field_reader::ChunkFieldReader;
@@ -14,22 +13,22 @@ pub trait ChunkFieldReadWriteList: Sized {
   /// # Errors
   ///
   /// Returns an error when the reader does not hold the list.
-  fn read_field_list<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<Self>>;
+  fn read_field_list<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<Self>>;
 
   /// # Errors
   ///
   /// Returns an error when the list does not fit its framing or the writer refuses a value.
-  fn write_field_list<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, list: &[Self]) -> XrfResult;
+  fn write_field_list<W: ChunkFieldWriter>(writer: &mut W, list: &[Self]) -> XrfResult;
 }
 
 impl<F: ChunkFieldReadWriteList> ChunkReadWriteList for F {
   #[inline]
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
-    Self::read_field_list::<T, _>(reader)
+  fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
+    Self::read_field_list(reader)
   }
 
   #[inline]
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
-    Self::write_field_list::<T, _>(writer, list)
+  fn write_list(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
+    Self::write_field_list(writer, list)
   }
 }

@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelSomFile;
 
@@ -31,7 +30,7 @@ impl ArchiveLevelSomDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not a sound occlusion mesh this reader can walk.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: LevelSomFile = LevelSomFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: LevelSomFile = LevelSomFile::read_from_bytes(source.read_bytes(name)?)?;
 
     Ok(Self {
       version: file.version,

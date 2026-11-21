@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -34,14 +33,14 @@ impl ParticleEditorValue {
   /// # Errors
   ///
   /// Returns an error when the reader ends before the value does.
-  pub fn read_same_kind<T: ByteOrder, D: ChunkDataSource>(&self, reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_same_kind<D: ChunkDataSource>(&self, reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(match self {
-      Self::Float(_) => Self::Float(reader.read_f32::<T>()?),
-      Self::Vector(_) => Self::Vector(reader.read_xr::<T, _>()?),
-      Self::Domain(_) => Self::Domain(reader.read_xr::<T, _>()?),
+      Self::Float(_) => Self::Float(reader.read_f32()?),
+      Self::Vector(_) => Self::Vector(reader.read_xr()?),
+      Self::Domain(_) => Self::Domain(reader.read_xr()?),
       // `PBool` keeps a `BOOL`, saved as its low byte: any byte but zero is true.
       Self::Bool(_) => Self::Bool(reader.read_u8()? != 0),
-      Self::Int(_) => Self::Int(reader.read_i32::<T>()?),
+      Self::Int(_) => Self::Int(reader.read_i32()?),
     })
   }
 
@@ -50,13 +49,13 @@ impl ParticleEditorValue {
   /// # Errors
   ///
   /// Returns an error when the writer fails.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     match self {
-      Self::Float(value) => writer.write_f32::<T>(*value)?,
-      Self::Vector(value) => writer.write_xr::<T, _>(value)?,
-      Self::Domain(value) => writer.write_xr::<T, _>(value)?,
+      Self::Float(value) => writer.write_f32(*value)?,
+      Self::Vector(value) => writer.write_xr(value)?,
+      Self::Domain(value) => writer.write_xr(value)?,
       Self::Bool(value) => writer.write_u8(u8::from(*value))?,
-      Self::Int(value) => writer.write_i32::<T>(*value)?,
+      Self::Int(value) => writer.write_i32(*value)?,
     }
 
     Ok(())

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::layout::chunk_payload::ChunkPayload;
@@ -57,9 +56,9 @@ impl ChunkLayout {
   /// # Errors
   ///
   /// Returns an error when a payload is larger than a chunk can declare.
-  pub fn write<T: ByteOrder>(&self, destination: &mut ChunkWriter, mut sequence: ChunkSequence) -> XrfResult {
+  pub fn write(&self, destination: &mut ChunkWriter, mut sequence: ChunkSequence) -> XrfResult {
     sequence.push_kept(&self.kept);
-    sequence.write_in_order::<T>(destination, &self.order)
+    sequence.write_in_order(destination, &self.order)
   }
 }
 
@@ -67,21 +66,20 @@ impl ChunkLayout {
 mod tests {
   use std::io::Write;
 
-  use byteorder::{ReadBytesExt, WriteBytesExt};
   use xrf_error::XrfResult;
 
   use crate::{
-    ChunkLayout, ChunkPayload, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+    ChunkLayout, ChunkPayload, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite,
   };
 
   fn container(children: &[ChunkPayload]) -> XrfResult<ChunkReader<InMemoryChunkDataSource>> {
     let mut payload: ChunkWriter = ChunkWriter::new();
 
     for child in children {
-      child.write::<XRayByteOrder>(&mut payload)?;
+      child.write(&mut payload)?;
     }
 
-    ChunkReader::from_vec(payload.flush_chunk_into_buffer::<XRayByteOrder>(1)?)?.read_child_by_index(0)
+    ChunkReader::from_vec(payload.flush_chunk_into_buffer(1)?)?.read_child_by_index(0)
   }
 
   fn payload(id: u32, bytes: &[u8]) -> ChunkPayload {
@@ -127,7 +125,7 @@ mod tests {
 
       let mut destination: ChunkWriter = ChunkWriter::new();
 
-      self.layout.write::<XRayByteOrder>(&mut destination, sequence)?;
+      self.layout.write(&mut destination, sequence)?;
 
       Ok(destination.buffer)
     }
@@ -137,7 +135,7 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     for child in children {
-      child.write::<XRayByteOrder>(&mut writer)?;
+      child.write(&mut writer)?;
     }
 
     Ok(writer.buffer)
@@ -215,12 +213,12 @@ mod tests {
   fn a_payload_writes_framed_under_its_id() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    payload(7, b"ab").write::<XRayByteOrder>(&mut writer)?;
+    payload(7, b"ab").write(&mut writer)?;
 
     let mut expected: Vec<u8> = Vec::new();
 
-    expected.write_u32::<XRayByteOrder>(7)?;
-    expected.write_u32::<XRayByteOrder>(2)?;
+    expected.write_u32(7)?;
+    expected.write_u32(2)?;
     expected.write_all(b"ab")?;
 
     assert_eq!(writer.buffer, expected);

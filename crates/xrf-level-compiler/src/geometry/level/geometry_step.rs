@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, ImageFormat, Quality, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
@@ -56,9 +55,9 @@ impl GeometryStep {
     light: Option<RayTracing<'_>>,
   ) -> XrfResult<GeometryStepRun> {
     let level: &Path = &request.level;
-    let project: BuildPrjFile = BuildPrjFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildPrjFile::FILE_NAME))?;
+    let project: BuildPrjFile = BuildPrjFile::read_from_path(&level.join(BuildPrjFile::FILE_NAME))?;
     let library: ShaderCompilerFile =
-      ShaderCompilerFile::read_from_path::<XRayByteOrder, _>(&request.gamedata.join(ShaderCompilerFile::FILE_NAME))?;
+      ShaderCompilerFile::read_from_path(&request.gamedata.join(ShaderCompilerFile::FILE_NAME))?;
     let roots: Vec<PathBuf> = request.get_textures_roots();
     let textures: Vec<CompilerTexture> = CompilerTexture::resolve_all(&project, &roots)?;
 
@@ -79,22 +78,22 @@ impl GeometryStep {
     let collision = compiled.get_collision_file()?;
 
     CompilerOutput::write_chunks(&level.join(LevelFile::FILE_NAME), |writer| {
-      compiled.bundle.write::<XRayByteOrder>(writer)
+      compiled.bundle.write(writer)
     })?;
     CompilerOutput::write_chunks(&level.join(LevelGeomFile::FILE_NAME), |writer| {
-      compiled.geometry.write::<XRayByteOrder>(writer)
+      compiled.geometry.write(writer)
     })?;
     CompilerOutput::write_chunks(&level.join(LevelGeomFile::DETAIL_FILE_NAME), |writer| {
-      compiled.fast.write::<XRayByteOrder>(writer)
+      compiled.fast.write(writer)
     })?;
     CompilerOutput::write_chunks(&level.join(LevelCformFile::FILE_NAME), |writer| {
-      collision.write_with_geometry::<XRayByteOrder>(&compiled.collision, writer)
+      collision.write_with_geometry(&compiled.collision, writer)
     })?;
     CompilerOutput::write_chunks(&level.join(BuildCformFile::FILE_NAME), |writer| {
-      compiled.ray_model.write::<XRayByteOrder>(writer)
+      compiled.ray_model.write(writer)
     })?;
     CompilerOutput::write_chunks(&level.join(LevelLightsFile::FILE_NAME), |writer| {
-      compiled.lights.write::<XRayByteOrder>(writer)
+      compiled.lights.write(writer)
     })?;
 
     let side: u32 = compiled.lightmaps.side;

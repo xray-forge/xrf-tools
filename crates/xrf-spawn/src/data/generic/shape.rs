@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReadWriteList, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -26,23 +25,23 @@ impl Shape {
 
 /// As `CSE_Shape::cform_write` writes one shape: its type, then the sphere or the box's matrix.
 impl ChunkFieldReadWrite for Shape {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     match reader.read_u8()? {
-      Self::SPHERE_TYPE => Ok(Self::Sphere(reader.read_xr::<T, _>()?)),
-      Self::BOX_TYPE => Ok(Self::Box(reader.read_xr::<T, _>()?)),
+      Self::SPHERE_TYPE => Ok(Self::Sphere(reader.read_xr()?)),
+      Self::BOX_TYPE => Ok(Self::Box(reader.read_xr()?)),
       kind => Err(XrfError::new_parsing_error(format!("Unexpected shape type {kind}"))),
     }
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
       Self::Sphere(sphere) => {
         writer.write_u8(Self::SPHERE_TYPE)?;
-        writer.write_xr::<T, _>(sphere)
+        writer.write_xr(sphere)
       }
       Self::Box(transform) => {
         writer.write_u8(Self::BOX_TYPE)?;
-        writer.write_xr::<T, _>(transform)
+        writer.write_xr(transform)
       }
     }
   }
@@ -50,17 +49,17 @@ impl ChunkFieldReadWrite for Shape {
 
 /// As `CSE_Shape::cform_write` writes an object's shapes: their `u8` count, then each.
 impl ChunkFieldReadWriteList for Shape {
-  fn read_field_list<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<Self>> {
+  fn read_field_list<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Vec<Self>> {
     let count: u8 = reader.read_u8()?;
 
-    (0..count).map(|_| reader.read_xr::<T, _>()).collect()
+    (0..count).map(|_| reader.read_xr()).collect()
   }
 
-  fn write_field_list<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, shapes: &[Self]) -> XrfResult {
+  fn write_field_list<W: ChunkFieldWriter>(writer: &mut W, shapes: &[Self]) -> XrfResult {
     writer.write_u8(narrow_format_size(shapes.len(), "shapes")?)?;
 
     for shape in shapes {
-      writer.write_xr::<T, _>(shape)?;
+      writer.write_xr(shape)?;
     }
 
     Ok(())
@@ -167,9 +166,8 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
-  use byteorder::ReadBytesExt;
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -200,7 +198,7 @@ mod tests {
     // A count with no shape tag, and a sphere tag with no sphere.
     for payload in [&[1][..], &[1, 0]] {
       assert!(
-        Shape::read_list::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(payload)?).is_err(),
+        Shape::read_list(&mut ChunkReader::from_bytes(payload)?).is_err(),
         "a shape list of {payload:?} must be refused"
       );
     }
@@ -210,7 +208,7 @@ mod tests {
 
     exhausted.read_u8()?;
 
-    assert!(Shape::read_list::<XRayByteOrder, _>(&mut exhausted).is_err());
+    assert!(Shape::read_list(&mut exhausted).is_err());
 
     Ok(())
   }
@@ -252,7 +250,7 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     assert_eq!(
-      Shape::write_list::<XRayByteOrder>(&mut writer, &shapes)
+      Shape::write_list(&mut writer, &shapes)
         .expect_err("expect the shape count to exceed its format field")
         .to_string(),
       "Invalid error: shapes exceeds the u8 format limit"
@@ -265,12 +263,11 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "read_write_list.chunk");
     let original: Vec<Shape> = vec![sphere(125.465, 456.123, 675.345, 150.0), box_of_rows(10.0)];
 
-    Shape::write_list::<XRayByteOrder>(&mut writer, &original)?;
+    Shape::write_list(&mut writer, &original)?;
 
     assert_eq!(writer.bytes_written(), 67);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 67);
 
@@ -280,7 +277,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(Shape::read_list::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(Shape::read_list(&mut reader)?, original);
 
     Ok(())
   }
@@ -291,12 +288,11 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "read_write_sphere.chunk");
     let original: Shape = sphere(25.5, 3.4, 45.1, 150.0);
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 17);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 17);
 
@@ -306,7 +302,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(Shape::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(Shape::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -317,12 +313,11 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "read_write_box.chunk");
     let original: Shape = box_of_rows(1.0);
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 49);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 49);
 
@@ -332,7 +327,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(Shape::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(Shape::read(&mut reader)?, original);
 
     Ok(())
   }

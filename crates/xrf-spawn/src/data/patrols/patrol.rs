@@ -1,8 +1,9 @@
 use std::io::Write;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
+use xrf_chunk::{
+  ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite,
+};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite, LtxWrite, Section};
 use xrf_utils::{assert_equal, assert_length, narrow_format_size, new_bounded_vec};
@@ -63,13 +64,13 @@ impl Patrol {
 
 impl ChunkReadWriteList for Patrol {
   /// Read chunk as list of patrol samples.
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
+  fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
     let mut patrols: Vec<Self> = Vec::new();
 
     for patrol_reader in ChunkIterator::from_start(reader)? {
       let mut patrol_reader: ChunkReader<D> = patrol_reader?;
 
-      patrols.push(Self::read::<T, _>(&mut patrol_reader)?);
+      patrols.push(Self::read(&mut patrol_reader)?);
     }
 
     reader.assert_read("Chunk data should be read for patrols list")?;
@@ -78,13 +79,13 @@ impl ChunkReadWriteList for Patrol {
   }
 
   /// Write list of patrols into chunk writer.
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
+  fn write_list(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
     for (index, patrol) in list.iter().enumerate() {
       let mut patrol_writer: ChunkWriter = ChunkWriter::new();
 
-      patrol.write::<T>(&mut patrol_writer)?;
+      patrol.write(&mut patrol_writer)?;
 
-      writer.write_all(&patrol_writer.flush_chunk_into_buffer::<T>(narrow_format_size(index, "patrol chunk id")?)?)?;
+      writer.write_all(&patrol_writer.flush_chunk_into_buffer(narrow_format_size(index, "patrol chunk id")?)?)?;
     }
 
     Ok(())
@@ -93,7 +94,7 @@ impl ChunkReadWriteList for Patrol {
 
 impl ChunkReadWrite for Patrol {
   /// Read chunk as patrol.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut meta_reader: ChunkReader<D> = reader.read_child_by_index(Self::META_CHUNK_ID)?;
     let mut data_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_CHUNK_ID)?;
 
@@ -109,9 +110,9 @@ impl ChunkReadWrite for Patrol {
       "Expect correct patrol name data to be read",
     )?; // Count null termination char.
 
-    let points_count: u32 = point_count_reader.read_u32::<T>()?;
-    let points: Vec<PatrolPoint> = points_reader.read_xr_list::<T, _>()?;
-    let links: Vec<PatrolLink> = links_reader.read_xr_list::<T, _>()?;
+    let points_count: u32 = point_count_reader.read_u32()?;
+    let points: Vec<PatrolPoint> = points_reader.read_xr_list()?;
+    let links: Vec<PatrolLink> = links_reader.read_xr_list()?;
 
     assert_length(
       &points,
@@ -128,7 +129,7 @@ impl ChunkReadWrite for Patrol {
   }
 
   /// Write single patrol entity into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_links_in_range()?;
 
     let mut meta_writer: ChunkWriter = ChunkWriter::new();
@@ -139,18 +140,18 @@ impl ChunkReadWrite for Patrol {
     let mut links_writer: ChunkWriter = ChunkWriter::new();
 
     meta_writer.write_w1251_string(&self.name)?;
-    writer.write_all(&meta_writer.flush_chunk_into_buffer::<T>(Self::META_CHUNK_ID)?)?;
+    writer.write_all(&meta_writer.flush_chunk_into_buffer(Self::META_CHUNK_ID)?)?;
 
-    point_count_writer.write_u32::<T>(narrow_format_size(self.points.len(), "patrol points")?)?;
-    data_writer.write_all(&point_count_writer.flush_chunk_into_buffer::<T>(Self::DATA_POINT_COUNT_CHUNK_ID)?)?;
+    point_count_writer.write_u32(narrow_format_size(self.points.len(), "patrol points")?)?;
+    data_writer.write_all(&point_count_writer.flush_chunk_into_buffer(Self::DATA_POINT_COUNT_CHUNK_ID)?)?;
 
-    points_writer.write_xr_list::<T, _>(&self.points)?;
-    data_writer.write_all(&points_writer.flush_chunk_into_buffer::<T>(Self::DATA_POINT_DATA_CHUNK_ID)?)?;
+    points_writer.write_xr_list(&self.points)?;
+    data_writer.write_all(&points_writer.flush_chunk_into_buffer(Self::DATA_POINT_DATA_CHUNK_ID)?)?;
 
-    links_writer.write_xr_list::<T, _>(&self.links)?;
-    data_writer.write_all(&links_writer.flush_chunk_into_buffer::<T>(Self::DATA_LIST_CHUNK_ID)?)?;
+    links_writer.write_xr_list(&self.links)?;
+    data_writer.write_all(&links_writer.flush_chunk_into_buffer(Self::DATA_LIST_CHUNK_ID)?)?;
 
-    writer.write_all(&data_writer.flush_chunk_into_buffer::<T>(Self::DATA_CHUNK_ID)?)?;
+    writer.write_all(&data_writer.flush_chunk_into_buffer(Self::DATA_CHUNK_ID)?)?;
 
     Ok(())
   }
@@ -275,7 +276,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxSectionWrite};
   use xrf_math::Vector3d;
@@ -314,12 +315,11 @@ mod tests {
       }],
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 210);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 210);
 
@@ -327,7 +327,7 @@ mod tests {
 
     assert_eq!(file.bytes_remaining(), 210 + 8);
     assert_eq!(
-      Patrol::read::<XRayByteOrder, _>(&mut ChunkReader::from_slice(file)?.read_child_by_index(0)?)?,
+      Patrol::read(&mut ChunkReader::from_slice(file)?.read_child_by_index(0)?)?,
       original
     );
 
@@ -353,7 +353,7 @@ mod tests {
     };
 
     let error: String = patrol
-      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .write(&mut ChunkWriter::new())
       .expect_err("a link to a second point")
       .to_string();
 
@@ -417,12 +417,11 @@ mod tests {
       },
     ];
 
-    Patrol::write_list::<XRayByteOrder>(&mut writer, &original)?;
+    Patrol::write_list(&mut writer, &original)?;
 
     assert_eq!(writer.bytes_written(), 430);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 430);
 
@@ -430,7 +429,7 @@ mod tests {
 
     assert_eq!(file.bytes_remaining(), 430 + 8);
     assert_eq!(
-      Patrol::read_list::<XRayByteOrder, _>(&mut ChunkReader::from_slice(file)?.read_child_by_index(0)?)?,
+      Patrol::read_list(&mut ChunkReader::from_slice(file)?.read_child_by_index(0)?)?,
       original
     );
 

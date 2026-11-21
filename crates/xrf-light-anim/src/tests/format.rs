@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::light_anim_file::LightAnimFile;
@@ -11,7 +11,7 @@ fn chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
 
   writer.buffer = payload.to_vec();
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
+  writer.flush_chunk_into_buffer(id)
 }
 
 /// One animation, as the library stores it.
@@ -59,7 +59,7 @@ fn sample() -> XrfResult<Vec<u8>> {
 
 #[test]
 fn reads_an_animation_and_its_keys() -> XrfResult {
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(sample()?)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(sample()?)?;
 
   assert_eq!(file.items.len(), 1);
   assert_eq!(file.items[0].name, "campfire");
@@ -72,7 +72,7 @@ fn reads_an_animation_and_its_keys() -> XrfResult {
 
 #[test]
 fn takes_a_duration_from_the_frames_over_the_rate() -> XrfResult {
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(sample()?)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(sample()?)?;
 
   assert_eq!(file.items[0].get_duration_seconds(), Some(2.0));
 
@@ -82,8 +82,7 @@ fn takes_a_duration_from_the_frames_over_the_rate() -> XrfResult {
 #[test]
 fn an_animation_that_never_advances_has_no_duration_rather_than_an_infinite_one() -> XrfResult {
   // Dividing by a rate of zero would answer infinity, which reads as a measurement rather than as its absence.
-  let file: LightAnimFile =
-    LightAnimFile::read_from_bytes::<XRayByteOrder>(library(1, &[item("still", 0.0, 1, &[(0, 0)])?])?)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(library(1, &[item("still", 0.0, 1, &[(0, 0)])?])?)?;
 
   assert_eq!(file.items[0].get_duration_seconds(), None);
 
@@ -92,7 +91,7 @@ fn an_animation_that_never_advances_has_no_duration_rather_than_an_infinite_one(
 
 #[test]
 fn splits_a_key_into_the_channels_the_engine_reads() -> XrfResult {
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(sample()?)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(sample()?)?;
   let key = file.items[0].keys[1];
 
   assert_eq!(key.get_alpha(), 0xFF);
@@ -107,8 +106,7 @@ fn splits_a_key_into_the_channels_the_engine_reads() -> XrfResult {
 fn reports_a_version_zero_library_as_channel_swapped() -> XrfResult {
   // `ELightAnimLibrary::Load` swaps every key of a version 0 file on load, so the stored colours are not the ones
   // the engine ends up using and a reader that said nothing would mislead.
-  let file: LightAnimFile =
-    LightAnimFile::read_from_bytes::<XRayByteOrder>(library(0, &[item("old", 15.0, 1, &[(0, 0)])?])?)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(library(0, &[item("old", 15.0, 1, &[(0, 0)])?])?)?;
 
   assert!(file.is_bgr());
 
@@ -125,7 +123,7 @@ fn a_library_without_a_version_chunk_reads_as_the_oldest_one() -> XrfResult {
     &chunk(0, &item("old", 15.0, 1, &[(0, 0)])?)?,
   )?);
 
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.version, LightAnimFile::BGR_VERSION);
   assert!(file.is_bgr());
@@ -145,10 +143,10 @@ fn reads_a_key_before_frame_zero_as_the_engine_does() -> XrfResult {
       &[(-1, 0x00E9_CE72), (0, 0x00FF_C066), (29, 0x00FF_C066)],
     )?],
   )?;
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(original.clone())?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.flush_raw_into_buffer()?, original);
 
@@ -168,7 +166,7 @@ fn reads_a_key_before_frame_zero_as_the_engine_does() -> XrfResult {
 #[test]
 fn loads_keys_by_frame_keeping_the_last_colour_of_a_repeated_one() -> XrfResult {
   // `CLAItem::Keys` is a map, so a frame listed twice holds what was read last and the keys come out by frame.
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(library(
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(library(
     1,
     &[item(
       "repeated",
@@ -188,8 +186,7 @@ fn loads_keys_by_frame_keeping_the_last_colour_of_a_repeated_one() -> XrfResult 
 
 #[test]
 fn loads_a_bgr_library_with_red_and_blue_exchanged_and_alpha_kept() -> XrfResult {
-  let file: LightAnimFile =
-    LightAnimFile::read_from_bytes::<XRayByteOrder>(library(0, &[item("old", 15.0, 1, &[(0, 0x80_102030)])?])?)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(library(0, &[item("old", 15.0, 1, &[(0, 0x80_102030)])?])?)?;
   let loaded: Vec<LightAnimKey> = file.items[0].to_loaded_keys(file.is_bgr());
 
   assert_eq!(loaded[0].color, 0x80_302010);
@@ -207,7 +204,7 @@ fn loads_a_bgr_library_with_red_and_blue_exchanged_and_alpha_kept() -> XrfResult
 
 #[test]
 fn finds_an_animation_by_its_exact_name_only() -> XrfResult {
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(sample()?)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(sample()?)?;
 
   assert_eq!(file.find_item("campfire").map(|item| item.frame_count), Some(30));
   assert!(file.find_item("Campfire").is_none(), "names compare with their case");
@@ -227,7 +224,7 @@ fn stops_reading_animations_at_the_first_number_the_list_lacks() -> XrfResult {
 
   bytes.extend(chunk(LightAnimFile::ITEMS_CHUNK_ID, &payload)?);
 
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(bytes)?;
 
   assert_eq!(
     file.items.iter().map(|item| item.name.as_str()).collect::<Vec<&str>>(),
@@ -240,10 +237,10 @@ fn stops_reading_animations_at_the_first_number_the_list_lacks() -> XrfResult {
 #[test]
 fn writes_a_library_back_byte_for_byte() -> XrfResult {
   let original: Vec<u8> = sample()?;
-  let file: LightAnimFile = LightAnimFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let file: LightAnimFile = LightAnimFile::read_from_bytes(original.clone())?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.flush_raw_into_buffer()?, original);
 

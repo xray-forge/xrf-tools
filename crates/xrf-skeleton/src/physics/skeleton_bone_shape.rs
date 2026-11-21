@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Cylinder, Obb, Sphere};
 
@@ -32,22 +31,22 @@ impl SkeletonBoneShape {
 }
 
 impl ChunkReadWrite for SkeletonBoneShape {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      kind: SkeletonBoneShapeKind::from(reader.read_u16::<T>()?),
-      flags: reader.read_u16::<T>()?,
-      obb: reader.read_xr::<T, _>()?,
-      sphere: reader.read_xr::<T, _>()?,
-      cylinder: reader.read_xr::<T, _>()?,
+      kind: SkeletonBoneShapeKind::from(reader.read_u16()?),
+      flags: reader.read_u16()?,
+      obb: reader.read_xr()?,
+      sphere: reader.read_xr()?,
+      cylinder: reader.read_xr()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(u16::from(self.kind))?;
-    writer.write_u16::<T>(self.flags)?;
-    self.obb.write::<T>(writer)?;
-    self.sphere.write::<T>(writer)?;
-    self.cylinder.write::<T>(writer)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(u16::from(self.kind))?;
+    writer.write_u16(self.flags)?;
+    self.obb.write(writer)?;
+    self.sphere.write(writer)?;
+    self.cylinder.write(writer)?;
 
     Ok(())
   }

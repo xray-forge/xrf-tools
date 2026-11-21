@@ -1,5 +1,5 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
+use xrf_chunk::XRayBytes;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -34,7 +34,7 @@ impl LevelAiNode {
   /// Decodes a node from its packed bytes.
   ///
   /// `bytes` holds at least `layout.size` bytes, which the caller guarantees by slicing whole nodes.
-  pub(crate) fn decode<T: ByteOrder>(bytes: &[u8], layout: &LevelAiNodeLayout) -> Self {
+  pub(crate) fn decode(bytes: &[u8], layout: &LevelAiNodeLayout) -> Self {
     let mask: u32 = (1 << layout.link_bits) - 1;
     let position: &[u8] = &bytes[layout.position..];
     let light_bits: u32 = layout.get_light_bits();
@@ -42,16 +42,16 @@ impl LevelAiNode {
     Self {
       links: layout
         .links
-        .map(|(offset, shift)| (T::read_u32(&bytes[offset..offset + 4]) >> shift) & mask),
-      high_cover: Self::decode_cover::<T>(&bytes[layout.high_cover..]),
-      low_cover: Self::decode_cover::<T>(&bytes[layout.low_cover..]),
-      plane: T::read_u16(&bytes[layout.plane..]),
+        .map(|(offset, shift)| (XRayBytes::read_u32(&bytes[offset..offset + 4]) >> shift) & mask),
+      high_cover: Self::decode_cover(&bytes[layout.high_cover..]),
+      low_cover: Self::decode_cover(&bytes[layout.low_cover..]),
+      plane: XRayBytes::read_u16(&bytes[layout.plane..]),
       packed_xz: if layout.is_wide_position {
-        T::read_u32(position)
+        XRayBytes::read_u32(position)
       } else {
-        T::read_u24(position)
+        XRayBytes::read_u24(position)
       },
-      packed_y: T::read_u16(&position[if layout.is_wide_position { 4 } else { 3 }..]),
+      packed_y: XRayBytes::read_u16(&position[if layout.is_wide_position { 4 } else { 3 }..]),
       light: if light_bits == 0 {
         0
       } else {
@@ -66,7 +66,7 @@ impl LevelAiNode {
   /// # Errors
   ///
   /// Returns an error when a link, the cell, a cover or the light overflows the bits the layout gives it.
-  pub(crate) fn encode<T: ByteOrder>(&self, bytes: &mut [u8], layout: &LevelAiNodeLayout) -> XrfResult {
+  pub(crate) fn encode(&self, bytes: &mut [u8], layout: &LevelAiNodeLayout) -> XrfResult {
     let mask: u32 = (1 << layout.link_bits) - 1;
     let light_bits: u32 = layout.get_light_bits();
     let cell_bits: u32 = if layout.is_wide_position { 32 } else { 24 };
@@ -89,27 +89,27 @@ impl LevelAiNode {
 
     // The links share bytes, so each is merged into the words already written.
     for (link, (offset, shift)) in self.links.iter().zip(layout.links) {
-      let word: u32 = T::read_u32(&bytes[offset..offset + 4]) | (link << shift);
+      let word: u32 = XRayBytes::read_u32(&bytes[offset..offset + 4]) | (link << shift);
 
-      T::write_u32(&mut bytes[offset..offset + 4], word);
+      XRayBytes::write_u32(&mut bytes[offset..offset + 4], word);
     }
 
     if light_bits > 0 {
       bytes[layout.high_cover - 1] |= self.light << (8 - light_bits);
     }
 
-    T::write_u16(&mut bytes[layout.low_cover..], Self::encode_cover(&self.low_cover));
-    T::write_u16(&mut bytes[layout.high_cover..], Self::encode_cover(&self.high_cover));
-    T::write_u16(&mut bytes[layout.plane..], self.plane);
+    XRayBytes::write_u16(&mut bytes[layout.low_cover..], Self::encode_cover(&self.low_cover));
+    XRayBytes::write_u16(&mut bytes[layout.high_cover..], Self::encode_cover(&self.high_cover));
+    XRayBytes::write_u16(&mut bytes[layout.plane..], self.plane);
 
     let position: &mut [u8] = &mut bytes[layout.position..];
 
     if layout.is_wide_position {
-      T::write_u32(position, self.packed_xz);
-      T::write_u16(&mut position[4..], self.packed_y);
+      XRayBytes::write_u32(position, self.packed_xz);
+      XRayBytes::write_u16(&mut position[4..], self.packed_y);
     } else {
-      T::write_u24(position, self.packed_xz);
-      T::write_u16(&mut position[3..], self.packed_y);
+      XRayBytes::write_u24(position, self.packed_xz);
+      XRayBytes::write_u16(&mut position[3..], self.packed_y);
     }
 
     Ok(())
@@ -126,8 +126,8 @@ impl LevelAiNode {
   }
 
   /// A cover set, `NodeCover5`: four 4-bit values, the first in the lowest bits.
-  fn decode_cover<T: ByteOrder>(bytes: &[u8]) -> [u8; 4] {
-    let packed: u16 = T::read_u16(bytes);
+  fn decode_cover(bytes: &[u8]) -> [u8; 4] {
+    let packed: u16 = XRayBytes::read_u16(bytes);
 
     [0, 4, 8, 12].map(|shift| ((packed >> shift) & 0xF) as u8)
   }

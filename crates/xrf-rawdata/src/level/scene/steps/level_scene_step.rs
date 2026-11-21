@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::level::scene::level_decompile_options::LevelDecompileOptions;
@@ -24,7 +23,7 @@ pub(crate) trait LevelSceneStep {
   /// # Errors
   ///
   /// Returns an error when a file it reads is not the file its name says, or a conversion refuses what it holds.
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,

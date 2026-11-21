@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -40,7 +39,7 @@ impl PhysicsClosingState {
   /// # Errors
   ///
   /// Returns an error when the state is cut short.
-  pub(crate) fn read<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  pub(crate) fn read<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     if reader.is_ended() {
       return Ok(Self::Absent);
     }
@@ -51,7 +50,7 @@ impl PhysicsClosingState {
       return Ok(Self::Unset);
     }
 
-    PhysicsNetState::read_after::<T, _>(reader, packed).map(Self::Set)
+    PhysicsNetState::read_after(reader, packed).map(Self::Set)
   }
 
   /// Write the state back as it was read.
@@ -59,11 +58,11 @@ impl PhysicsClosingState {
   /// # Errors
   ///
   /// Returns an error for a count past [`PhysicsNetState::MAX_ITEM_COUNT`].
-  pub(crate) fn write<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  pub(crate) fn write<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
       Self::Absent => Ok(()),
       Self::Unset => writer.write_u8(0),
-      Self::Set(state) => state.write_after::<T, _>(writer, state.pack()?),
+      Self::Set(state) => state.write_after(writer, state.pack()?),
     }
   }
 

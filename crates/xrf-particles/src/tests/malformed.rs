@@ -2,7 +2,7 @@
 //!
 //! Inputs are framed by hand, independent of the writers, so a reader cannot pass by agreeing with its own writer.
 
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::{ParticleEffect, ParticleGroup, ParticlesFile};
@@ -25,7 +25,7 @@ fn effect_required_chunks() -> Vec<Vec<u8>> {
 }
 
 fn read_effect(chunks: &[Vec<u8>]) -> XrfResult<ParticleEffect> {
-  ParticleEffect::read::<XRayByteOrder, _>(&mut ChunkReader::from_vec(chunks.concat())?)
+  ParticleEffect::read(&mut ChunkReader::from_vec(chunks.concat())?)
 }
 
 /// Every chunk a group requires, and the effects and time limit the engine always writes.
@@ -40,7 +40,7 @@ fn group_required_chunks() -> Vec<Vec<u8>> {
 }
 
 fn read_group(chunks: &[Vec<u8>]) -> XrfResult<ParticleGroup> {
-  ParticleGroup::read::<XRayByteOrder, _>(&mut ChunkReader::from_vec(chunks.concat())?)
+  ParticleGroup::read(&mut ChunkReader::from_vec(chunks.concat())?)
 }
 
 fn assert_parsing_error_naming<R: std::fmt::Debug>(result: XrfResult<R>, name: &str) {
@@ -175,9 +175,9 @@ fn writes_a_groups_old_effects_where_the_engine_reads_them() -> XrfResult {
   let group: ParticleGroup = read_group(&chunks)?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  group.write::<XRayByteOrder>(&mut writer)?;
+  group.write(&mut writer)?;
 
-  let bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+  let bytes: Vec<u8> = writer.flush_chunk_into_buffer(0)?;
   let written: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_bytes(&bytes)?
     .read_child_by_index(0)?
     .read_children()?;
@@ -185,7 +185,7 @@ fn writes_a_groups_old_effects_where_the_engine_reads_them() -> XrfResult {
   assert!(written.iter().any(|it| it.id == ParticleGroup::EFFECTS2_CHUNK_ID));
   assert!(!written.iter().any(|it| it.id == ParticleGroup::DESCRIPTION_CHUNK_ID));
   assert_eq!(
-    ParticleGroup::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&bytes)?.read_child_by_index(0)?)?.effects_old,
+    ParticleGroup::read(&mut ChunkReader::from_bytes(&bytes)?.read_child_by_index(0)?)?.effects_old,
     group.effects_old
   );
 
@@ -211,13 +211,13 @@ fn refuses_a_group_whose_optional_chunks_are_malformed() {
 fn refuses_a_library_holding_an_empty_effect() {
   let library: Vec<u8> = [chunk(1, &1u16.to_le_bytes()), chunk(3, &chunk(0, &[])), chunk(4, &[])].concat();
 
-  assert_parsing_error_naming(ParticlesFile::read_from_bytes::<XRayByteOrder>(library), "version");
+  assert_parsing_error_naming(ParticlesFile::read_from_bytes(library), "version");
 }
 
 #[test]
 fn reads_a_library_without_effects_or_groups_as_the_engine_does() -> XrfResult {
   // `CPSLibrary::Load` opens each list where it is present.
-  let library: ParticlesFile = ParticlesFile::read_from_bytes::<XRayByteOrder>(chunk(1, &1u16.to_le_bytes()))?;
+  let library: ParticlesFile = ParticlesFile::read_from_bytes(chunk(1, &1u16.to_le_bytes()))?;
 
   assert!(library.effects.effects.is_empty());
   assert!(library.groups.groups.is_empty());
@@ -235,7 +235,7 @@ fn refuses_a_library_root_chunk_a_rewrite_would_drop() {
   ]
   .concat();
 
-  assert_parsing_error_naming(ParticlesFile::read_from_bytes::<XRayByteOrder>(library), "chunk 9");
+  assert_parsing_error_naming(ParticlesFile::read_from_bytes(library), "chunk 9");
 }
 
 #[test]
@@ -243,7 +243,7 @@ fn refuses_a_library_header_with_bytes_left_over() {
   let library: Vec<u8> = [chunk(1, &[1, 0, 0]), chunk(3, &[]), chunk(4, &[])].concat();
 
   assert!(matches!(
-    ParticlesFile::read_from_bytes::<XRayByteOrder>(library),
+    ParticlesFile::read_from_bytes(library),
     Err(XrfError::ChunkNotEnded { .. })
   ));
 }

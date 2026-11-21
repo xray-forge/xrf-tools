@@ -3,7 +3,6 @@ use std::time::{Duration, Instant};
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_geometry::{BvhTracer, Tracer};
 use xrf_level::{LevelCformFile, LevelCformGeometry};
 use xrf_vfs::XraySearch;
@@ -44,7 +43,7 @@ impl LevelCollisionPart {
   ///
   /// Returns why the collision form cannot be read.
   pub(crate) fn read_geometry(source: &LevelSource, search: &XraySearch) -> TauriResult<LevelCformGeometry> {
-    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(source.read_file(search, LevelCformFile::FILE_NAME)?)
+    LevelCformFile::read_geometry_from_bytes(source.read_file(search, LevelCformFile::FILE_NAME)?)
       .map_err(|error| source.describe_read_failure(LevelCformFile::FILE_NAME, &error))
   }
 

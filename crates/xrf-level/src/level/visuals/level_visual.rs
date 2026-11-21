@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Matrix4x4;
@@ -44,37 +43,35 @@ impl LevelVisual {
   ///
   /// Returns an error when the visual carries no header, or when a chunk it does carry does not end where its record
   /// says it should; its impostor and slide windows are kept as read or as the reason they were not instead.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     Ok(Self {
-      header: ChunkReader::find_required_by_id(&chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      header: ChunkReader::find_required_by_id(&chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr()?,
       texture: match ChunkReader::find_optional_by_id(&chunks, OgfTextureChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        Some(mut chunk) => Some(chunk.read_xr()?),
         None => None,
       },
       children: match ChunkReader::find_optional_by_id(&chunks, OgfChildrenLinkChunk::CHUNK_ID) {
-        Some(mut chunk) => chunk.read_xr::<T, OgfChildrenLinkChunk>()?.children,
+        Some(mut chunk) => chunk.read_xr::<OgfChildrenLinkChunk>()?.children,
         None => Vec::new(),
       },
       geometry: match ChunkReader::find_optional_by_id(&chunks, OgfGeometryContainerChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        Some(mut chunk) => Some(chunk.read_xr()?),
         None => None,
       },
       fastpath: match ChunkReader::find_optional_by_id(&chunks, OgfFastpathChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(OgfFastpathChunk::read_from_chunk::<T, _>(&mut chunk)?),
+        Some(mut chunk) => Some(OgfFastpathChunk::read_from_chunk(&mut chunk)?),
         None => None,
       },
       tree: match ChunkReader::find_optional_by_id(&chunks, OgfTreeDefinitionChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        Some(mut chunk) => Some(chunk.read_xr()?),
         None => None,
       },
-      lod: ChunkReader::find_optional_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID)
-        .map(|mut chunk| chunk.read_xr::<T, _>()),
-      swi: ChunkReader::find_optional_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID)
-        .map(|mut chunk| chunk.read_xr::<T, _>()),
+      lod: ChunkReader::find_optional_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID).map(|mut chunk| chunk.read_xr()),
+      swi: ChunkReader::find_optional_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID).map(|mut chunk| chunk.read_xr()),
       swi_container: ChunkReader::find_optional_by_id(&chunks, OgfSwiContainerChunk::CHUNK_ID)
-        .map(|mut chunk| chunk.read_xr::<T, _>()),
+        .map(|mut chunk| chunk.read_xr()),
     })
   }
 

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -79,11 +78,11 @@ impl Default for ClearSkyCombatManager {
 }
 
 impl ChunkFieldReadWrite for ClearSkyCombatManager {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    ScriptSaveMarker::read(reader, Self::SCRIPT_CLASS, |reader| {
       let actor_defence_come: u8 = reader.read_u8()?;
       let combat_quest: String = reader.read_w1251_string()?;
-      let task_id: u16 = reader.read_u16::<T>()?;
+      let task_id: u16 = reader.read_u16()?;
       let see_actor_enemy: Option<String> = ScriptToString::parse_text(reader.read_w1251_string()?);
 
       ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "time the actor was seen flag", 0)?;
@@ -93,7 +92,7 @@ impl ChunkFieldReadWrite for ClearSkyCombatManager {
 
       ScriptAbsentState::read_u8(reader, Self::SCRIPT_CLASS, "squads forced online count", 0)?;
 
-      let cover_is_valid: u8 = ScriptSaveMarker::read::<T, _, _>(reader, Self::COVER_SCRIPT_CLASS, |reader| {
+      let cover_is_valid: u8 = ScriptSaveMarker::read(reader, Self::COVER_SCRIPT_CLASS, |reader| {
         let is_valid: u8 = reader.read_u8()?;
 
         ScriptAbsentState::read_u8(reader, Self::COVER_SCRIPT_CLASS, "covers count", 0)?;
@@ -112,11 +111,11 @@ impl ChunkFieldReadWrite for ClearSkyCombatManager {
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    ScriptSaveMarker::write(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.actor_defence_come)?;
       writer.write_w1251_string(&self.combat_quest)?;
-      writer.write_u16::<T>(self.task_id)?;
+      writer.write_u16(self.task_id)?;
       writer.write_w1251_string(ScriptToString::format_text(self.see_actor_enemy.as_deref()))?;
       // No time the actor was seen, and no squads in combat.
       writer.write_u8(0)?;
@@ -125,7 +124,7 @@ impl ChunkFieldReadWrite for ClearSkyCombatManager {
       // No squads forced online.
       writer.write_u8(0)?;
 
-      ScriptSaveMarker::write::<T, _>(writer, Self::COVER_SCRIPT_CLASS, |writer| {
+      ScriptSaveMarker::write(writer, Self::COVER_SCRIPT_CLASS, |writer| {
         writer.write_u8(self.cover_is_valid)?;
         // No covers.
         writer.write_u8(0)
@@ -136,7 +135,7 @@ impl ChunkFieldReadWrite for ClearSkyCombatManager {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
 
@@ -150,14 +149,14 @@ mod tests {
   fn reads_and_writes_the_constructed_state() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    ClearSkyCombatManager::default().write::<XRayByteOrder>(&mut writer)?;
+    ClearSkyCombatManager::default().write(&mut writer)?;
 
     assert_eq!(writer.buffer, CONSTRUCTED);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(CONSTRUCTED)?;
 
     assert_eq!(
-      ClearSkyCombatManager::read::<XRayByteOrder, _>(&mut reader)?,
+      ClearSkyCombatManager::read(&mut reader)?,
       ClearSkyCombatManager::default()
     );
     assert!(reader.is_ended());
@@ -173,7 +172,7 @@ mod tests {
     // Past the defence flag, the quest, the task and the enemy, then the seen time's flag.
     bytes[12] = 1;
 
-    let error: String = ClearSkyCombatManager::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&bytes)?)
+    let error: String = ClearSkyCombatManager::read(&mut ChunkReader::from_bytes(&bytes)?)
       .expect_err("one squad in combat")
       .to_string();
 

@@ -1,7 +1,6 @@
 use std::io::Write;
 
-use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, narrow_format_size};
 
@@ -41,12 +40,11 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
   ///
   /// Returns an error when the count chunk is not one `u32`, the count is more than a motion id addresses or is not the
   /// number of motion chunks, or a motion's chunk is absent or does not read.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::info!("Reading motions chunk: {} bytes", reader.read_bytes_remain());
 
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let count: usize =
-      ChunkReader::find_required_by_id(&chunks, Self::COUNT_CHUNK_ID)?.read_u32_payload::<T>()? as usize;
+    let count: usize = ChunkReader::find_required_by_id(&chunks, Self::COUNT_CHUNK_ID)?.read_u32_payload()? as usize;
 
     Self::assert_count_fits(count)?;
 
@@ -60,8 +58,7 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
 
     for index in 1..=count {
       motions.push(
-        ChunkReader::find_required_by_id(&chunks, narrow_format_size(index, "skeleton motion chunk id")?)?
-          .read_xr::<T, _>()?,
+        ChunkReader::find_required_by_id(&chunks, narrow_format_size(index, "skeleton motion chunk id")?)?.read_xr()?,
       );
     }
 
@@ -72,26 +69,22 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
 
   /// Write motions as nested chunks, where leading chunk 0 stores motions count and
   /// following chunks 1..=N store motions themselves.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     Self::assert_count_fits(self.motions.len())?;
 
     let mut count_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<T>(narrow_format_size(self.motions.len(), "skeleton motions")?)?;
-    writer.write_all(
-      count_writer
-        .flush_chunk_into_buffer::<T>(Self::COUNT_CHUNK_ID)?
-        .as_slice(),
-    )?;
+    count_writer.write_u32(narrow_format_size(self.motions.len(), "skeleton motions")?)?;
+    writer.write_all(count_writer.flush_chunk_into_buffer(Self::COUNT_CHUNK_ID)?.as_slice())?;
 
     for (index, motion) in self.motions.iter().enumerate() {
       let mut motion_writer: ChunkWriter = ChunkWriter::new();
 
-      motion.write::<T>(&mut motion_writer)?;
+      motion.write(&mut motion_writer)?;
 
       writer.write_all(
         motion_writer
-          .flush_chunk_into_buffer::<T>(narrow_format_size(index + 1, "skeleton motion chunk id")?)?
+          .flush_chunk_into_buffer(narrow_format_size(index + 1, "skeleton motion chunk id")?)?
           .as_slice(),
       )?;
     }
@@ -108,8 +101,7 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::WriteBytesExt;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayWrite};
   use xrf_error::XrfResult;
 
   use crate::motions::{SkeletonMotion, SkeletonMotionsChunk};
@@ -127,16 +119,16 @@ mod tests {
     let mut bytes: Vec<u8> = Vec::new();
 
     for (id, child) in children {
-      bytes.extend(child.flush_chunk_into_buffer::<XRayByteOrder>(id)?);
+      bytes.extend(child.flush_chunk_into_buffer(id)?);
     }
 
-    SkeletonMotionsChunk::read::<XRayByteOrder, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&bytes)?)
+    SkeletonMotionsChunk::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&bytes)?)
   }
 
   fn count_chunk(count: u32) -> XrfResult<ChunkWriter> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    writer.write_u32::<XRayByteOrder>(count)?;
+    writer.write_u32(count)?;
 
     Ok(writer)
   }
@@ -144,7 +136,7 @@ mod tests {
   fn motion_chunk(label: &str) -> XrfResult<ChunkWriter> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    new_motion(label).write::<XRayByteOrder>(&mut writer)?;
+    new_motion(label).write(&mut writer)?;
 
     Ok(writer)
   }
@@ -185,7 +177,7 @@ mod tests {
     };
 
     let error: String = chunk
-      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .write(&mut ChunkWriter::new())
       .expect_err("expect the motion count to exceed a motion id")
       .to_string();
 
@@ -202,9 +194,9 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
-    let bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(SkeletonMotionsChunk::CHUNK_ID)?;
+    let bytes: Vec<u8> = writer.flush_chunk_into_buffer(SkeletonMotionsChunk::CHUNK_ID)?;
     let children: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_bytes(&bytes)?
       .read_child_by_index(0)?
       .read_children()?;

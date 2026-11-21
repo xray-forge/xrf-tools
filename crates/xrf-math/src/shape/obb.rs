@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -26,25 +25,21 @@ impl Obb {
 /// `Fobb`: the rotation's rows, the centre, the half sizes, each a vector.
 impl ChunkFieldReadWrite for Obb {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      rotation: [
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      ],
-      center: reader.read_xr::<T, _>()?,
-      half_extents: reader.read_xr::<T, _>()?,
+      rotation: [reader.read_xr()?, reader.read_xr()?, reader.read_xr()?],
+      center: reader.read_xr()?,
+      half_extents: reader.read_xr()?,
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     for row in &self.rotation {
-      writer.write_xr::<T, _>(row)?;
+      writer.write_xr(row)?;
     }
 
-    writer.write_xr::<T, _>(&self.center)?;
-    writer.write_xr::<T, _>(&self.half_extents)
+    writer.write_xr(&self.center)?;
+    writer.write_xr(&self.half_extents)
   }
 }

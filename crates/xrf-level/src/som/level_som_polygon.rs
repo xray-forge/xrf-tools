@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -26,25 +25,21 @@ impl LevelSomPolygon {
 }
 
 impl ChunkReadWrite for LevelSomPolygon {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      vertices: [
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      ],
-      is_two_sided: reader.read_u32::<T>()?,
-      occlusion: reader.read_f32::<T>()?,
+      vertices: [reader.read_xr()?, reader.read_xr()?, reader.read_xr()?],
+      is_two_sided: reader.read_u32()?,
+      occlusion: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
-    writer.write_u32::<T>(self.is_two_sided)?;
-    writer.write_f32::<T>(self.occlusion)?;
+    writer.write_u32(self.is_two_sided)?;
+    writer.write_f32(self.occlusion)?;
 
     Ok(())
   }

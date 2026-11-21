@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
   EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableParticleObject, EditableTextPart,
 };
@@ -28,7 +28,7 @@ fn placement(effect: &str, position: Vector3d, rotation: Vector3d) -> LevelPsSta
 fn bytes_of(file: &LevelPsStaticFile) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   Ok(writer.buffer)
 }

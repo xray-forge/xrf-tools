@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
@@ -68,8 +67,8 @@ impl LevelFile {
   }
 
   /// Read level file from provided path.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level file was not read: {}, error: {}",
         format_path(path.as_ref()),
@@ -79,22 +78,22 @@ impl LevelFile {
   }
 
   /// Read level file from file.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived bundle arrives: a volume holds no file to open.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
   ///
   /// The route an archived entry takes: a volume holds no file to slice, only bytes.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    Self::read_from_chunks::<T, _>(&chunks)
+    Self::read_from_chunks(&chunks)
   }
 
   /// Read every visual of a level from its path.
@@ -102,8 +101,8 @@ impl LevelFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened or a visual cannot be read.
-  pub fn read_visuals_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Option<LevelVisualsChunk>> {
-    Self::read_visuals_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_visuals_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Option<LevelVisualsChunk>> {
+    Self::read_visuals_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level file was not read: {}, error: {}",
         format_path(path.as_ref()),
@@ -117,8 +116,8 @@ impl LevelFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read or a visual cannot be read.
-  pub fn read_visuals_from_file<T: ByteOrder>(file: File) -> XrfResult<Option<LevelVisualsChunk>> {
-    Self::read_visuals_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_visuals_from_file(file: File) -> XrfResult<Option<LevelVisualsChunk>> {
+    Self::read_visuals_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Read every visual of a level from bytes already in hand, which is how an archived level arrives.
@@ -126,8 +125,8 @@ impl LevelFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a level, or a visual cannot be read.
-  pub fn read_visuals_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Option<LevelVisualsChunk>> {
-    Self::read_visuals_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_visuals_from_bytes(bytes: Vec<u8>) -> XrfResult<Option<LevelVisualsChunk>> {
+    Self::read_visuals_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Read every visual of a level from a chunk reader over any data source.
@@ -135,10 +134,10 @@ impl LevelFile {
   /// # Errors
   ///
   /// Returns an error when the source cannot be read or a visual cannot be read.
-  pub fn read_visuals_from_chunk<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_visuals_from_chunk<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
   ) -> XrfResult<Option<LevelVisualsChunk>> {
-    Self::read_visuals_from_chunks::<T, _>(&reader.read_children()?)
+    Self::read_visuals_from_chunks(&reader.read_children()?)
   }
 
   /// Read every visual of a level from chunks already read from it.
@@ -146,37 +145,37 @@ impl LevelFile {
   /// # Errors
   ///
   /// Returns an error when a visual cannot be read.
-  pub fn read_visuals_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_visuals_from_chunks<D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<Option<LevelVisualsChunk>> {
     match ChunkReader::find_optional_by_id(chunks, LevelVisualsChunk::CHUNK_ID) {
-      Some(mut chunk) => Ok(Some(LevelVisualsChunk::read_from_chunk::<T, _>(&mut chunk)?)),
+      Some(mut chunk) => Ok(Some(LevelVisualsChunk::read_from_chunk(&mut chunk)?)),
       None => Ok(None),
     }
   }
 
   /// Read level file from chunks.
-  pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+  pub fn read_from_chunks<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     Ok(Self {
-      header: ChunkReader::find_required_by_id(chunks, LevelHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      header: ChunkReader::find_required_by_id(chunks, LevelHeaderChunk::CHUNK_ID)?.read_xr()?,
       glows: match ChunkReader::find_optional_by_id(chunks, LevelGlowsChunk::CHUNK_ID) {
-        Some(mut it) => Some(LevelGlowsChunk::read_from_chunk::<T, _>(&mut it)?),
+        Some(mut it) => Some(LevelGlowsChunk::read_from_chunk(&mut it)?),
         None => None,
       },
       lights: match ChunkReader::find_optional_by_id(chunks, LevelDynamicLightsChunk::CHUNK_ID) {
-        Some(mut it) => Some(LevelDynamicLightsChunk::read_from_chunk::<T, _>(&mut it)?),
+        Some(mut it) => Some(LevelDynamicLightsChunk::read_from_chunk(&mut it)?),
         None => None,
       },
       portals: match ChunkReader::find_optional_by_id(chunks, LevelPortalsChunk::CHUNK_ID) {
-        Some(mut it) => Some(LevelPortalsChunk::read_from_chunk::<T, _>(&mut it)?),
+        Some(mut it) => Some(LevelPortalsChunk::read_from_chunk(&mut it)?),
         None => None,
       },
       sectors: match ChunkReader::find_optional_by_id(chunks, LevelSectorsChunk::CHUNK_ID) {
-        Some(mut it) => Some(LevelSectorsChunk::read_from_chunk::<T, _>(&mut it)?),
+        Some(mut it) => Some(LevelSectorsChunk::read_from_chunk(&mut it)?),
         None => None,
       },
       shaders: match ChunkReader::find_optional_by_id(chunks, LevelShadersChunk::CHUNK_ID) {
-        Some(mut it) => Some(it.read_xr::<T, _>()?),
+        Some(mut it) => Some(it.read_xr()?),
         None => None,
       },
     })

@@ -1,6 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{OutputFiles, StagedFile, format_path};
@@ -40,7 +39,7 @@ impl ObjectCompiler {
   ) -> XrfResult<ObjectCompileReport> {
     OutputFiles::of_path(&request.destination).assert_free(request.is_forced)?;
 
-    let object: EditableObjectFile = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&request.source)?;
+    let object: EditableObjectFile = EditableObjectFile::read_from_path(&request.source)?;
     let compiled: ObjectCompile = if request.is_detail() {
       let parameters: DetailParameters = ObjectProvenance::read_beside(&request.source)?
         .and_then(|provenance| provenance.detail)
@@ -118,7 +117,7 @@ impl ObjectCompiler {
       let geometry: RigidGeometry = RigidGeometryBuilder::build(object)?;
 
       Ok(ObjectCompile {
-        bytes: RigidOgfWriter::write::<XRayByteOrder>(object, &geometry, source)?,
+        bytes: RigidOgfWriter::write(object, &geometry, source)?,
         children: geometry.splits.len(),
         vertices: geometry.splits.iter().map(|split| split.vertices.len()).sum(),
         faces: geometry.splits.iter().map(|split| split.faces.len()).sum(),
@@ -136,7 +135,7 @@ impl ObjectCompiler {
   /// Returns an error for an object of other than one surface or of no mesh, a corner whose reference names no texture
   /// coordinate first, more than 65,535 vertices, or a mesh that does not hold together.
   pub fn compile_detail(object: &EditableObjectFile, parameters: &DetailParameters) -> XrfResult<ObjectCompile> {
-    DetailModelBuilder::build::<XRayByteOrder>(object, parameters)
+    DetailModelBuilder::build(object, parameters)
   }
 
   /// The OGF of a skeleton object whose `geometry` [`Self::build_skeleton_geometry`] built, as bytes.
@@ -150,7 +149,7 @@ impl ObjectCompiler {
     geometry: &SkeletonGeometry,
     source: &ObjectCompileSource,
   ) -> XrfResult<Vec<u8>> {
-    SkeletonOgfWriter::write::<XRayByteOrder>(object, geometry, source)
+    SkeletonOgfWriter::write(object, geometry, source)
   }
 
   /// The children a skeleton object's OGF holds, before the triangle order the engine draws in.

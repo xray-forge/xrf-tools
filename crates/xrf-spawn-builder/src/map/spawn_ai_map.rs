@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::Box2Pick;
 use xrf_level::{LevelAiGrid, LevelAiHeader, LevelAiNode, LevelAiNodes};
@@ -19,7 +18,7 @@ impl SpawnAiMap {
   /// from the nodes held.
   pub(crate) fn new(header: LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Self> {
     let grid: LevelAiGrid = header.get_grid()?;
-    let nodes: Vec<LevelAiNode> = nodes.iter_nodes::<XRayByteOrder>().collect();
+    let nodes: Vec<LevelAiNode> = nodes.iter_nodes().collect();
 
     if nodes.len() != header.count as usize {
       return Err(XrfError::new_invalid_error(format!(

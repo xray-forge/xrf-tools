@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -18,17 +17,17 @@ impl GraphEdge {
 
 impl ChunkReadWrite for GraphEdge {
   /// Read edge from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      game_vertex_id: reader.read_u16::<T>()?,
-      distance: reader.read_f32::<T>()?,
+      game_vertex_id: reader.read_u16()?,
+      distance: reader.read_f32()?,
     })
   }
 
   /// Write graph edge data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.game_vertex_id)?;
-    writer.write_f32::<T>(self.distance)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.game_vertex_id)?;
+    writer.write_f32(self.distance)?;
 
     Ok(())
   }
@@ -69,7 +68,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -86,11 +85,11 @@ mod tests {
       distance: 400.50,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 6);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -105,7 +104,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(GraphEdge::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(GraphEdge::read(&mut reader)?, original);
 
     Ok(())
   }

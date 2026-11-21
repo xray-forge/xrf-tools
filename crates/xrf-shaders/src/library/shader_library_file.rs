@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, XRayByteOrder};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -86,7 +86,7 @@ impl ShaderLibraryFile {
         }));
       }
 
-      let blender: ShaderBlender = ShaderBlender::read::<XRayByteOrder, D>(&mut chunk)?;
+      let blender: ShaderBlender = ShaderBlender::read::<D>(&mut chunk)?;
 
       chunk.assert_read("Expect all data to be read from shader blender")?;
 

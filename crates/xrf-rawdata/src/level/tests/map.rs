@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelFile, EditableLevelOptions, EditableObjectPart, EditableObjectTransform,
   EditableSectorObject, EditableShape, EditableShapeObject,
@@ -131,10 +130,8 @@ fn decompiles_a_levels_map_settings_into_its_options_and_a_level_bound_shape() -
 
   std::fs::write(directory.join(LevelMapConversion::FILE_NAME), SHIPPED)?;
 
-  let decompiled: LevelSceneDecompile = LevelSceneDecompiler::decompile::<XRayByteOrder>(
-    &directory,
-    &LevelDecompileOptions::new("labx8", "test", "1.0.0"),
-  )?;
+  let decompiled: LevelSceneDecompile =
+    LevelSceneDecompiler::decompile(&directory, &LevelDecompileOptions::new("labx8", "test", "1.0.0"))?;
   let options: EditableLevelOptions = decompiled.scene.level.get_level_options()?;
   let shapes: EditableObjectPart<EditableShapeObject> =
     EditableObjectPart::read_from_scene_tool(decompiled.scene.get_tool("shape").expect("a shape part"))?;

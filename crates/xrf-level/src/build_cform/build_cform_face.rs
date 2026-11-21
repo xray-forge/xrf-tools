@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One triangle of the compiler's collision form, `CDB::TRI` (`xrCore/Collision/xrCDB.h`) as xrLC's `BuildRapid`
@@ -20,23 +19,19 @@ impl BuildCformFace {
 }
 
 impl ChunkReadWrite for BuildCformFace {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      vertices: [
-        reader.read_u32::<T>()?,
-        reader.read_u32::<T>()?,
-        reader.read_u32::<T>()?,
-      ],
-      face_handle: reader.read_u32::<T>()?,
+      vertices: [reader.read_u32()?, reader.read_u32()?, reader.read_u32()?],
+      face_handle: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in self.vertices {
-      writer.write_u32::<T>(vertex)?;
+      writer.write_u32(vertex)?;
     }
 
-    writer.write_u32::<T>(self.face_handle)?;
+    writer.write_u32(self.face_handle)?;
 
     Ok(())
   }

@@ -1,5 +1,4 @@
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_level::LevelCformFile;
 use xrf_math::Vector3d;
 use xrf_spawn::AlifeObjectInherited;
@@ -60,7 +59,7 @@ impl LevelStartPart {
       .ok()
       .flatten()
       .and_then(|bytes| {
-        LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, &eyes)
+        LevelCformFile::read_open_above_from_bytes(bytes, &eyes)
           .inspect_err(|error| {
             LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCformFile::FILE_NAME, error));
           })

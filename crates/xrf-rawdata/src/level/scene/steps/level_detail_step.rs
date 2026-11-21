@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelDetailsFile;
 
@@ -21,19 +20,19 @@ pub(crate) struct LevelDetailStep;
 impl LevelSceneStep for LevelDetailStep {
   const FILES: &'static [&'static str] = &[LevelDetailsFile::FILE_NAME, LevelBuildDetails::ATLAS_FILE_NAME];
 
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     _options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
-    let Some(file) = sources.take_read(LevelDetailsFile::FILE_NAME, LevelDetailsFile::read_from_bytes::<T>)? else {
+    let Some(file) = sources.take_read(LevelDetailsFile::FILE_NAME, LevelDetailsFile::read_from_bytes)? else {
       return Ok(());
     };
     let atlas: Option<LevelDetailAtlas> = Self::read_atlas(sources, draft);
     // Compiled by the geometry step's walk where it ran; read here only where it did not.
     let mut library: LevelDetailLibrary = match draft.detail_library.take() {
       Some(library) => library,
-      None => LevelDetailLibrary::read_from_library::<T>(&mut draft.object_library, &draft.job)?,
+      None => LevelDetailLibrary::read_from_library(&mut draft.object_library, &draft.job)?,
     };
 
     // Told only here, where the level has details to match them against.
@@ -45,7 +44,7 @@ impl LevelSceneStep for LevelDetailStep {
     draft.infer_if(decompile.tool.is_some(), &[LevelSceneInference::DetailObjects]);
 
     if let Some(tool) = decompile.tool {
-      draft.add(tool.to_scene_tool::<T>(draft.context.guid)?, Self::FILES, sources);
+      draft.add(tool.to_scene_tool(draft.context.guid)?, Self::FILES, sources);
     }
 
     Ok(())

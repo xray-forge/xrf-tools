@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -179,22 +178,18 @@ impl ParticleEditorDomain {
 
 impl ChunkReadWrite for ParticleEditorDomain {
   /// Reads a domain as `PDomain::Load` does: its shape and its three points.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      domain_type: reader.read_u32::<T>()?,
-      points: [
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      ],
+      domain_type: reader.read_u32()?,
+      points: [reader.read_xr()?, reader.read_xr()?, reader.read_xr()?],
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.domain_type)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.domain_type)?;
 
     for point in &self.points {
-      writer.write_xr::<T, _>(point)?;
+      writer.write_xr(point)?;
     }
 
     Ok(())

@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::efd_data_format::EfdDataFormat;
@@ -61,8 +61,7 @@ fn function_bytes_in(
 #[test]
 fn a_function_reads_as_the_variables_patterns_and_weights_it_is() -> XrfResult {
   // Two inputs of three and five buckets over one pattern reading both: fifteen weights.
-  let function: EfdFile =
-    EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
+  let function: EfdFile = EfdFile::read_from_bytes(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
 
   assert_eq!(function.builder_version, EfdFile::CURRENT_VERSION);
   assert_eq!(function.data_format, EfdDataFormat::Float);
@@ -80,11 +79,11 @@ fn a_function_reads_as_the_variables_patterns_and_weights_it_is() -> XrfResult {
 #[test]
 fn a_function_is_written_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15);
-  let function: EfdFile = EfdFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let function: EfdFile = EfdFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  function.write::<XRayByteOrder>(&mut writer)?;
+  function.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -95,7 +94,7 @@ fn a_function_is_written_back_byte_for_byte() -> XrfResult {
 fn a_double_function_reads_and_writes_at_eight_bytes_a_real() -> XrfResult {
   // What the builder writes when it is not asked to convert: the result range and every weight as doubles.
   let bytes: Vec<u8> = function_bytes_in(EfdDataFormat::Double, &[(3, 10), (5, 11)], &[&[0, 1]], 15);
-  let function: EfdFile = EfdFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let function: EfdFile = EfdFile::read_from_bytes(bytes.clone())?;
 
   assert_eq!(function.data_format, EfdDataFormat::Double);
   assert!(!function.data_format.is_engine_readable());
@@ -105,7 +104,7 @@ fn a_double_function_reads_and_writes_at_eight_bytes_a_real() -> XrfResult {
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  function.write::<XRayByteOrder>(&mut writer)?;
+  function.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -118,7 +117,7 @@ fn a_data_format_the_builder_never_writes_is_refused() {
 
   bytes[4..8].copy_from_slice(&2u32.to_le_bytes());
 
-  let error: String = EfdFile::read_from_bytes::<XRayByteOrder>(bytes)
+  let error: String = EfdFile::read_from_bytes(bytes)
     .expect_err("expect format 2 to be refused")
     .to_string();
 
@@ -128,8 +127,7 @@ fn a_data_format_the_builder_never_writes_is_refused() {
 #[test]
 fn the_weight_block_is_sized_by_a_number_the_file_never_stores() -> XrfResult {
   // Two patterns: one over both inputs and one over the first alone, so 15 + 3.
-  let function: EfdFile =
-    EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1], &[0]], 18))?;
+  let function: EfdFile = EfdFile::read_from_bytes(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1], &[0]], 18))?;
 
   assert_eq!(function.parameters.len(), 18);
   assert_eq!(function.patterns[0].get_complexity(&function.variables), Some(15));
@@ -141,12 +139,12 @@ fn the_weight_block_is_sized_by_a_number_the_file_never_stores() -> XrfResult {
 #[test]
 fn a_weight_block_the_patterns_do_not_account_for_is_refused() {
   // One weight short of the fifteen the pattern claims.
-  assert!(EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 14)).is_err());
+  assert!(EfdFile::read_from_bytes(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 14)).is_err());
 }
 
 #[test]
 fn a_pattern_naming_an_input_the_function_does_not_declare_is_refused() {
-  let error: String = EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10)], &[&[0, 4]], 3))
+  let error: String = EfdFile::read_from_bytes(function_bytes(&[(3, 10)], &[&[0, 4]], 3))
     .expect_err("an index past the variable list is refused")
     .to_string();
 
@@ -159,17 +157,16 @@ fn a_builder_version_the_engine_refuses_is_refused_here_too() {
 
   bytes[0..4].copy_from_slice(&2u32.to_le_bytes());
 
-  assert!(EfdFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(EfdFile::read_from_bytes(bytes).is_err());
 }
 
 #[test]
 fn a_weight_block_disagreeing_with_the_patterns_is_refused_rather_than_written_short() -> XrfResult {
-  let mut function: EfdFile =
-    EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
+  let mut function: EfdFile = EfdFile::read_from_bytes(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
 
   function.parameters.pop();
 
-  assert!(function.write::<XRayByteOrder>(&mut ChunkWriter::new()).is_err());
+  assert!(function.write(&mut ChunkWriter::new()).is_err());
 
   Ok(())
 }
@@ -177,8 +174,7 @@ fn a_weight_block_disagreeing_with_the_patterns_is_refused_rather_than_written_s
 #[test]
 fn a_pattern_reads_its_inputs_as_one_number_with_the_first_most_significant() -> XrfResult {
   // `dwfGetPatternIndex`: input 0 of range 3 then input 1 of range 5, so (2, 4) is 2 * 5 + 4.
-  let function: EfdFile =
-    EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
+  let function: EfdFile = EfdFile::read_from_bytes(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
 
   assert_eq!(function.patterns[0].get_index(&[2, 4], &function.variables), Some(14));
   assert_eq!(function.patterns[0].get_index(&[2, 1], &function.variables), Some(11));
@@ -195,8 +191,7 @@ fn a_pattern_reads_its_inputs_as_one_number_with_the_first_most_significant() ->
 fn a_function_evaluates_to_the_weights_its_patterns_select() -> XrfResult {
   // Weights count up from zero, so each pattern's pick is its offset plus its own index: 14 from the first and
   // 15 + 2 from the second, which reads input 0 alone.
-  let function: EfdFile =
-    EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1], &[0]], 18))?;
+  let function: EfdFile = EfdFile::read_from_bytes(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1], &[0]], 18))?;
 
   assert_eq!(function.evaluate(&[2, 4])?, 14.0 + 17.0);
   assert_eq!(function.evaluate(&[0, 0])?, 0.0 + 15.0);
@@ -206,8 +201,7 @@ fn a_function_evaluates_to_the_weights_its_patterns_select() -> XrfResult {
 
 #[test]
 fn a_function_refuses_values_it_cannot_select_a_weight_for() -> XrfResult {
-  let function: EfdFile =
-    EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
+  let function: EfdFile = EfdFile::read_from_bytes(function_bytes(&[(3, 10), (5, 11)], &[&[0, 1]], 15))?;
 
   assert!(function.evaluate(&[2]).is_err(), "one value short");
   assert!(function.evaluate(&[3, 0]).is_err(), "past the first input's range");
@@ -218,7 +212,7 @@ fn a_function_refuses_values_it_cannot_select_a_weight_for() -> XrfResult {
 #[test]
 fn a_result_is_bucketed_over_the_function_range_as_the_engine_rounds_it() -> XrfResult {
   // Over 0 to 100 into 21 buckets: a bucket is five units wide, and a value rounds to the nearest.
-  let function: EfdFile = EfdFile::read_from_bytes::<XRayByteOrder>(function_bytes(&[(3, 10)], &[&[0]], 3))?;
+  let function: EfdFile = EfdFile::read_from_bytes(function_bytes(&[(3, 10)], &[&[0]], 3))?;
 
   assert_eq!(function.get_discrete_value(-5.0, 21), 0, "at or below the minimum");
   assert_eq!(function.get_discrete_value(50.0, 21), 10);

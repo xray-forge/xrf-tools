@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface};
 use xrf_error::XrfResult;
 use xrf_level::{DetailModel, DetailVertex};
@@ -45,7 +45,7 @@ fn leaf(parameters: &DetailParameters) -> DetailModel {
 fn encode_model(model: &DetailModel) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  model.write::<XRayByteOrder>(&mut writer)?;
+  model.write(&mut writer)?;
   writer.flush_raw_into_buffer()
 }
 
@@ -54,7 +54,7 @@ fn compile(object: &EditableObjectFile) -> XrfResult<ObjectCompile> {
 }
 
 fn read(compiled: &ObjectCompile) -> XrfResult<DetailModel> {
-  DetailModel::read_from_bytes::<XRayByteOrder>(compiled.bytes.clone())
+  DetailModel::read_from_bytes(compiled.bytes.clone())
 }
 
 #[test]
@@ -83,8 +83,7 @@ fn decompiles_a_detail_model_and_compiles_it_back_byte_for_byte() -> XrfResult {
   assert!(mesh.corner_normals.is_none());
 
   // Written and read back as the SDK would find it, the object compiles to the model it came from.
-  let object: EditableObjectFile =
-    EditableObjectFile::read_from_bytes::<XRayByteOrder>(decompile.object.write_to_bytes::<XRayByteOrder>()?)?;
+  let object: EditableObjectFile = EditableObjectFile::read_from_bytes(decompile.object.write_to_bytes()?)?;
   let compiled: ObjectCompile = ObjectCompiler::compile_detail(&object, &parameters)?;
 
   assert_eq!(compiled.bytes, encode_model(&model)?);

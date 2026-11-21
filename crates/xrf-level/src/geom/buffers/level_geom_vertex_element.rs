@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// Bytes each `D3DDECLTYPE` occupies in a vertex, indexed by the stored type.
@@ -133,10 +132,10 @@ impl LevelGeomVertexElement {
 }
 
 impl ChunkReadWrite for LevelGeomVertexElement {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      stream: reader.read_u16::<T>()?,
-      offset: reader.read_u16::<T>()?,
+      stream: reader.read_u16()?,
+      offset: reader.read_u16()?,
       kind: reader.read_u8()?,
       method: reader.read_u8()?,
       usage: reader.read_u8()?,
@@ -144,9 +143,9 @@ impl ChunkReadWrite for LevelGeomVertexElement {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.stream)?;
-    writer.write_u16::<T>(self.offset)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.stream)?;
+    writer.write_u16(self.offset)?;
     writer.write_u8(self.kind)?;
     writer.write_u8(self.method)?;
     writer.write_u8(self.usage)?;

@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// The settings the level editor generated an AI map with, `SAIParams` (`ESceneAIMapTools_Export.h`).
@@ -23,20 +22,20 @@ impl BuildAimapParams {
 }
 
 impl ChunkReadWrite for BuildAimapParams {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      patch_size: reader.read_f32::<T>()?,
-      test_height: reader.read_f32::<T>()?,
-      can_up: reader.read_f32::<T>()?,
-      can_down: reader.read_f32::<T>()?,
+      patch_size: reader.read_f32()?,
+      test_height: reader.read_f32()?,
+      can_up: reader.read_f32()?,
+      can_down: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.patch_size)?;
-    writer.write_f32::<T>(self.test_height)?;
-    writer.write_f32::<T>(self.can_up)?;
-    writer.write_f32::<T>(self.can_down)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.patch_size)?;
+    writer.write_f32(self.test_height)?;
+    writer.write_f32(self.can_up)?;
+    writer.write_f32(self.can_down)?;
 
     Ok(())
   }

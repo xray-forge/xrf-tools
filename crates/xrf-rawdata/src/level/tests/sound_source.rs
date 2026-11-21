@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{EditableObjectPart, EditableSoundSourceObject, EditableTextPart};
 use xrf_error::XrfResult;
 use xrf_level::{LevelSndStaticFile, LevelSndStaticSound, LevelSndStaticWindow};
@@ -25,7 +25,7 @@ fn sound(name: &str, active: (u32, u32), play: (u32, u32), pause: (u32, u32)) ->
 fn bytes_of(file: &LevelSndStaticFile) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   Ok(writer.buffer)
 }

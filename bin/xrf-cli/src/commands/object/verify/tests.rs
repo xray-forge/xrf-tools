@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use xrf_chunk::{ChunkLayout, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkLayout, ChunkWriter};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
@@ -52,7 +52,7 @@ fn empty_object(flags: u32) -> EditableObjectFile {
 fn header_only() -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  writer.write_xr::<XRayByteOrder, _>(&OgfHeaderChunk {
+  writer.write_xr(&OgfHeaderChunk {
     version: 4,
     model_type: 10,
     shader_id: 0,
@@ -66,14 +66,14 @@ fn header_only() -> XrfResult<Vec<u8>> {
     },
   })?;
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfHeaderChunk::CHUNK_ID)
+  writer.flush_chunk_into_buffer(OgfHeaderChunk::CHUNK_ID)
 }
 
 fn write_pair(name: &str, object: &EditableObjectFile) -> XrfResult<(PathBuf, PathBuf)> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("object-verify/{name}"))?;
   let (source, reference) = (root.join("model.object"), root.join("model.ogf"));
 
-  object.write_to_path::<XRayByteOrder, _>(&source)?;
+  object.write_to_path(&source)?;
   fs::write(&reference, header_only()?)?;
 
   Ok((source, reference))

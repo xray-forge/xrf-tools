@@ -1,4 +1,4 @@
-use byteorder::ByteOrder;
+use xrf_chunk::XRayBytes;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -27,7 +27,7 @@ impl LevelVertexStored {
   /// # Errors
   ///
   /// Returns an error when `bytes` is not one stride, or the vertex's elements are not exactly the layout's.
-  pub fn write_into<T: ByteOrder>(&self, layout: &LevelVertexLayout, bytes: &mut [u8]) -> XrfResult {
+  pub fn write_into(&self, layout: &LevelVertexLayout, bytes: &mut [u8]) -> XrfResult {
     if bytes.len() != layout.get_stride() as usize {
       return Err(XrfError::new_invalid_error(format!(
         "A level vertex of stride {} was given {} bytes",
@@ -38,9 +38,9 @@ impl LevelVertexStored {
 
     let at: usize = usize::from(layout.get_position_offset());
 
-    T::write_f32(&mut bytes[at..at + 4], self.position.x);
-    T::write_f32(&mut bytes[at + 4..at + 8], self.position.y);
-    T::write_f32(&mut bytes[at + 8..at + 12], self.position.z);
+    XRayBytes::write_f32(&mut bytes[at..at + 4], self.position.x);
+    XRayBytes::write_f32(&mut bytes[at + 4..at + 8], self.position.y);
+    XRayBytes::write_f32(&mut bytes[at + 8..at + 12], self.position.z);
 
     Self::put_four(bytes, layout.get_normal_offset(), self.normal, "normal")?;
     Self::put_four(bytes, layout.get_tangent_offset(), self.tangent, "tangent")?;
@@ -52,7 +52,7 @@ impl LevelVertexStored {
         for (index, short) in shorts.iter().take(layout.get_texture_coordinate_shorts()).enumerate() {
           let at: usize = usize::from(offset) + index * 2;
 
-          T::write_i16(&mut bytes[at..at + 2], *short);
+          XRayBytes::write_i16(&mut bytes[at..at + 2], *short);
         }
       }
       (None, None) => {}
@@ -63,8 +63,8 @@ impl LevelVertexStored {
       (Some(offset), Some([u, v])) => {
         let at: usize = usize::from(offset);
 
-        T::write_i16(&mut bytes[at..at + 2], u);
-        T::write_i16(&mut bytes[at + 2..at + 4], v);
+        XRayBytes::write_i16(&mut bytes[at..at + 2], u);
+        XRayBytes::write_i16(&mut bytes[at + 2..at + 4], v);
       }
       (None, None) => {}
       _ => return Err(Self::mismatch("lightmap coordinate")),

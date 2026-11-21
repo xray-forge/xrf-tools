@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -32,28 +31,28 @@ impl AlifeObjectAbstract {
 
 /// As `CSE_ALifeObject::STATE_Write` writes it.
 impl ChunkFieldReadWrite for AlifeObjectAbstract {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      game_vertex_id: reader.read_u16::<T>()?,
-      distance: reader.read_f32::<T>()?,
-      direct_control: reader.read_u32::<T>()?,
-      level_vertex_id: reader.read_u32::<T>()?,
-      flags: reader.read_u32::<T>()?,
+      game_vertex_id: reader.read_u16()?,
+      distance: reader.read_f32()?,
+      direct_control: reader.read_u32()?,
+      level_vertex_id: reader.read_u32()?,
+      flags: reader.read_u32()?,
       custom_data: reader.read_w1251_string()?,
-      story_id: reader.read_u32::<T>()?,
-      spawn_story_id: reader.read_u32::<T>()?,
+      story_id: reader.read_u32()?,
+      spawn_story_id: reader.read_u32()?,
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_u16::<T>(self.game_vertex_id)?;
-    writer.write_f32::<T>(self.distance)?;
-    writer.write_u32::<T>(self.direct_control)?;
-    writer.write_u32::<T>(self.level_vertex_id)?;
-    writer.write_u32::<T>(self.flags)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_u16(self.game_vertex_id)?;
+    writer.write_f32(self.distance)?;
+    writer.write_u32(self.direct_control)?;
+    writer.write_u32(self.level_vertex_id)?;
+    writer.write_u32(self.flags)?;
     writer.write_w1251_string(&self.custom_data)?;
-    writer.write_u32::<T>(self.story_id)?;
-    writer.write_u32::<T>(self.spawn_story_id)
+    writer.write_u32(self.story_id)?;
+    writer.write_u32(self.spawn_story_id)
   }
 }
 
@@ -103,7 +102,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfError, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport, LtxSectionWrite};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -126,12 +125,11 @@ mod tests {
       spawn_story_id: 25,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 38);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 38);
 
@@ -141,7 +139,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeObjectAbstract::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeObjectAbstract::read(&mut reader)?, original);
 
     Ok(())
   }

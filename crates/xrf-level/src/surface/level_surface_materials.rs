@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use byteorder::ByteOrder;
 use glam::Vec3;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::XrfResult;
@@ -31,7 +30,7 @@ impl LevelSurfaceMaterials {
 
   /// Tallies every drawable visual of `level.geom` against the collision form. Impostors are left out: a billboard
   /// standing for trees lies on nothing.
-  pub fn survey<T: ByteOrder, D: ChunkDataSource + Sync>(
+  pub fn survey<D: ChunkDataSource + Sync>(
     visuals: &LevelVisualsChunk,
     source: &LevelGeomSource<D>,
     collision: &LevelCformGeometry,
@@ -49,7 +48,7 @@ impl LevelSurfaceMaterials {
         visual
           .geometry
           .as_ref()
-          .map(|_| (visual.header.shader_id, Self::tally::<T, D>(visual, source, &lookup)))
+          .map(|_| (visual.header.shader_id, Self::tally::<D>(visual, source, &lookup)))
       })
       .fold(Self::default, |mut survey, (shader, tally)| {
         survey.add(shader, tally);
@@ -74,7 +73,7 @@ impl LevelSurfaceMaterials {
   }
 
   /// One visual's triangles, each looked up where it lies in the level.
-  fn tally<T: ByteOrder, D: ChunkDataSource>(
+  fn tally<D: ChunkDataSource>(
     visual: &LevelVisual,
     source: &LevelGeomSource<D>,
     lookup: &CollisionLookup<'_>,
@@ -83,13 +82,13 @@ impl LevelSurfaceMaterials {
     let Some(container) = &visual.geometry else {
       return Ok(tally);
     };
-    let vertices: Vec<LevelVertex> = source.read_vertices::<T>(
+    let vertices: Vec<LevelVertex> = source.read_vertices(
       container.vertex_buffer_id,
       container.vertex_base,
       container.vertex_count,
     )?;
     let indices: Vec<u16> =
-      source.read_indices::<T>(container.index_buffer_id, container.index_base, container.index_count)?;
+      source.read_indices(container.index_buffer_id, container.index_base, container.index_count)?;
     let placement: Option<&Matrix4x4> = visual.get_placement();
     let place = |index: u16| -> Option<Vector3d<f32>> {
       let position: &Vector3d<f32> = &vertices.get(usize::from(index))?.position;

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::bump::thm_bump_mode::ThmBumpMode;
@@ -89,16 +88,16 @@ impl ThmTextureEdit {
   /// # Errors
   ///
   /// Returns an error when `original` is not a descriptor the reader reads.
-  pub fn rewrite<T: ByteOrder>(&self, original: &[u8]) -> XrfResult<Option<Vec<u8>>> {
-    let mut file: ThmFile = ThmFile::read_from_bytes::<T>(original.to_vec())?;
+  pub fn rewrite(&self, original: &[u8]) -> XrfResult<Option<Vec<u8>>> {
+    let mut file: ThmFile = ThmFile::read_from_bytes(original.to_vec())?;
 
-    if file.write_to_bytes::<T>()? != original {
+    if file.write_to_bytes()? != original {
       return Ok(None);
     }
 
     self.apply_to(&mut file);
 
-    Ok(Some(file.write_to_bytes::<T>()?))
+    Ok(Some(file.write_to_bytes()?))
   }
 
   /// Whether the edit names a field of the texture parameters.
@@ -135,7 +134,6 @@ impl ThmTextureEdit {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
 
   use super::ThmTextureEdit;
@@ -205,7 +203,7 @@ mod tests {
       fade_amount: Some(40),
       ..ThmTextureEdit::default()
     }
-    .rewrite::<XRayByteOrder>(&original)?
+    .rewrite(&original)?
     .expect("a descriptor the writer gives back");
     let differing: Vec<usize> = (0..original.len())
       .filter(|index| original[*index] != edited[*index])
@@ -215,7 +213,7 @@ mod tests {
     assert_eq!(differing.len(), 1, "the amount's low byte, 0 to 40: {differing:?}");
     assert_eq!(edited[differing[0]], 40);
     assert_eq!(
-      ThmTextureEdit::default().rewrite::<XRayByteOrder>(&original)?,
+      ThmTextureEdit::default().rewrite(&original)?,
       Some(original),
       "naming nothing gives the file back"
     );
@@ -229,7 +227,7 @@ mod tests {
     // An unknown chunk after the ten-byte version chunk, which the writer would move to the end of the file.
     let reordered: Vec<u8> = [&original[..10], &raw_chunk(0x0900, &[1, 2, 3]), &original[10..]].concat();
 
-    assert_eq!(ThmTextureEdit::default().rewrite::<XRayByteOrder>(&reordered)?, None);
+    assert_eq!(ThmTextureEdit::default().rewrite(&reordered)?, None);
 
     Ok(())
   }

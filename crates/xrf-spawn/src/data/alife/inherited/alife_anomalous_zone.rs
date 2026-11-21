@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -17,17 +16,17 @@ pub struct AlifeAnomalousZone {
 
 impl ChunkFieldReadWrite for AlifeAnomalousZone {
   /// Read anomalous zone object data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      last_spawn_time: reader.read_xr::<T, _>()?,
+      base: reader.read_xr()?,
+      last_spawn_time: reader.read_xr()?,
     })
   }
 
   /// Write ALife anomalous zone data to the writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr::<T, _>(&self.last_spawn_time)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    writer.write_xr(&self.last_spawn_time)?;
 
     Ok(())
   }
@@ -72,7 +71,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -141,12 +140,11 @@ mod tests {
       }),
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 145);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 145);
 
@@ -156,7 +154,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeAnomalousZone::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeAnomalousZone::read(&mut reader)?, original);
 
     Ok(())
   }

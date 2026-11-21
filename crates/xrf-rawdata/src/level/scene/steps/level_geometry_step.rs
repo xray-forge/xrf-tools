@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_job::JobHandle;
@@ -72,46 +71,46 @@ impl LevelSceneStep for LevelGeometryStep {
     takes: LevelBreakableConversion::is_part_file,
   }];
 
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
-    let Some(bundle) = sources.get_bundle::<T>()? else {
+    let Some(bundle) = sources.get_bundle()? else {
       return Ok(());
     };
     let Some(visuals) = &bundle.visuals else {
       return Ok(());
     };
-    let Some(geom) = sources.take_read(LevelGeomFile::FILE_NAME, LevelGeomSource::open_from_bytes::<T>)? else {
+    let Some(geom) = sources.take_read(LevelGeomFile::FILE_NAME, LevelGeomSource::open_from_bytes)? else {
       return Ok(());
     };
     let mut collision: Option<LevelCollisionIndex> = sources.take_read(LevelCformFile::FILE_NAME, |bytes| {
-      LevelCformFile::read_geometry_from_bytes::<T>(bytes).map(LevelCollisionIndex::new)
+      LevelCformFile::read_geometry_from_bytes(bytes).map(LevelCollisionIndex::new)
     })?;
-    let hom: Option<LevelHomFile> = sources.take_read(LevelHomFile::FILE_NAME, LevelHomFile::read_from_bytes::<T>)?;
-    let som: Option<LevelSomFile> = sources.take_read(LevelSomFile::FILE_NAME, LevelSomFile::read_from_bytes::<T>)?;
+    let hom: Option<LevelHomFile> = sources.take_read(LevelHomFile::FILE_NAME, LevelHomFile::read_from_bytes)?;
+    let som: Option<LevelSomFile> = sources.take_read(LevelSomFile::FILE_NAME, LevelSomFile::read_from_bytes)?;
     // Read, not taken: the companion step decompiles the wall marks into their part.
     let decals: Option<LevelDecalIndex> = sources
-      .peek_read(LevelWallmarksFile::FILE_NAME, LevelWallmarksFile::read_from_bytes::<T>)?
+      .peek_read(LevelWallmarksFile::FILE_NAME, LevelWallmarksFile::read_from_bytes)?
       .map(|wallmarks| LevelDecalIndex::new(&wallmarks));
-    let breakable_parts: BTreeMap<String, OgfFile> = Self::read_breakable_parts::<T>(sources, draft);
+    let breakable_parts: BTreeMap<String, OgfFile> = Self::read_breakable_parts(sources, draft);
     let impostors: Option<LevelTreeImpostorAtlas> = Self::read_impostors(sources, draft);
     let surface_libraries: Option<(GameMtlFile, ShaderCompilerFile, LevelSceneSurfaceLibraries)> =
       match (options.surfaces, &collision) {
-        (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_libraries::<T>(options)?),
+        (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_libraries(options)?),
         _ => None,
       };
     // The one `shaders_xrlc.xr` the surfaces are dressed from tells the library objects' surfaces too.
     let named_shaders: Option<ShaderCompilerFile> = match (&surface_libraries, &options.compiler_shaders) {
-      (None, Some(path)) if !options.libraries.is_empty() => Some(ShaderCompilerFile::read_from_path::<T, _>(path)?),
+      (None, Some(path)) if !options.libraries.is_empty() => Some(ShaderCompilerFile::read_from_path(path)?),
       _ => None,
     };
     let compiler_shaders: Option<&ShaderCompilerFile> = surface_libraries
       .as_ref()
       .map(|(_, shaders, _)| shaders)
       .or(named_shaders.as_ref());
-    let (pairings, library, details) = Self::read_object_library::<T>(
+    let (pairings, library, details) = Self::read_object_library(
       options,
       &mut draft.object_library,
       &draft.job,
@@ -131,10 +130,10 @@ impl LevelSceneStep for LevelGeometryStep {
       });
     // The inference holds its own; without it, the placements' ladders and breakables are told by this one.
     let game_materials: Option<GameMtlFile> = match (&surfaces, &library, &options.game_materials) {
-      (None, Some(_), Some(path)) => Some(GameMtlFile::read_from_path::<T, _>(path)?),
+      (None, Some(_), Some(path)) => Some(GameMtlFile::read_from_path(path)?),
       _ => None,
     };
-    let mut geometry: LevelGeometryDecompile = LevelGeometryConversion::decompile::<T, _>(
+    let mut geometry: LevelGeometryDecompile = LevelGeometryConversion::decompile(
       LevelGeometrySources {
         name: &options.name,
         level: &bundle.file,
@@ -307,7 +306,7 @@ impl LevelGeometryStep {
   /// Reads each library object once for the shader pairings, where `is_inferring`, the objects to look for in the
   /// static geometry, where a root is named, and the detail objects the detail step matches, which it then need not
   /// read again. The walk stops once `job` is cancelled.
-  fn read_object_library<T: ByteOrder>(
+  fn read_object_library(
     options: &LevelDecompileOptions,
     library: &mut LevelObjectLibrary,
     job: &JobHandle,
@@ -323,7 +322,7 @@ impl LevelGeometryStep {
       (!options.libraries.is_empty()).then(LevelInstanceLibrary::default);
     let mut details: LevelDetailLibrary = LevelDetailLibrary::default();
 
-    library.read_each::<T>(
+    library.read_each(
       job,
       |_| true,
       |entry, object| {
@@ -395,15 +394,12 @@ impl LevelGeometryStep {
 
   /// The breakable parts the directory holds, by their paths in it; one that is no OGF is refused, and its breakable
   /// stays an entity.
-  fn read_breakable_parts<T: ByteOrder>(
-    sources: &mut LevelSceneSources,
-    draft: &mut LevelSceneDraft,
-  ) -> BTreeMap<String, OgfFile> {
+  fn read_breakable_parts(sources: &mut LevelSceneSources, draft: &mut LevelSceneDraft) -> BTreeMap<String, OgfFile> {
     let mut parts: BTreeMap<String, OgfFile> = BTreeMap::new();
 
     for listing in Self::LISTINGS {
       for path in sources.get_listed(listing) {
-        match sources.take_read(&path, OgfFile::read_from_bytes::<T>) {
+        match sources.take_read(&path, OgfFile::read_from_bytes) {
           Ok(Some(part)) => {
             parts.insert(path, part);
           }
@@ -422,7 +418,7 @@ impl LevelGeometryStep {
 
   /// What dresses the surfaces beside the library's pairings: the game material and compiler shader libraries the
   /// options name, each recorded with its hash.
-  fn read_surface_libraries<T: ByteOrder>(
+  fn read_surface_libraries(
     options: &LevelDecompileOptions,
   ) -> XrfResult<(GameMtlFile, ShaderCompilerFile, LevelSceneSurfaceLibraries)> {
     let read = |path: Option<&PathBuf>, what: &str| -> XrfResult<(Vec<u8>, LevelSceneSource)> {
@@ -457,8 +453,8 @@ impl LevelGeometryStep {
     };
 
     Ok((
-      GameMtlFile::read_from_bytes::<T>(game_materials)?,
-      ShaderCompilerFile::read_from_bytes::<T>(compiler_shaders)?,
+      GameMtlFile::read_from_bytes(game_materials)?,
+      ShaderCompilerFile::read_from_bytes(compiler_shaders)?,
       libraries,
     ))
   }

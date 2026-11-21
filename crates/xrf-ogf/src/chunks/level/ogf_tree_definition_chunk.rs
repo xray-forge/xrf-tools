@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
@@ -22,11 +21,11 @@ impl OgfTreeDefinitionChunk {
 }
 
 impl ChunkReadWrite for OgfTreeDefinitionChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let definition: Self = Self {
-      transform: reader.read_xr::<T, _>()?,
-      scale: reader.read_xr::<T, _>()?,
-      bias: reader.read_xr::<T, _>()?,
+      transform: reader.read_xr()?,
+      scale: reader.read_xr()?,
+      bias: reader.read_xr()?,
     };
 
     reader.assert_read("Expect all data to be read from ogf tree definition chunk")?;
@@ -34,10 +33,10 @@ impl ChunkReadWrite for OgfTreeDefinitionChunk {
     Ok(definition)
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.transform)?;
-    writer.write_xr::<T, _>(&self.scale)?;
-    writer.write_xr::<T, _>(&self.bias)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.transform)?;
+    writer.write_xr(&self.scale)?;
+    writer.write_xr(&self.bias)?;
 
     Ok(())
   }
@@ -45,7 +44,7 @@ impl ChunkReadWrite for OgfTreeDefinitionChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_math::{Matrix4x4, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -83,12 +82,12 @@ mod tests {
       },
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     // A matrix and two five float colours, which is what `FTreeVisual::Load` reads in that order.
     assert_eq!(writer.bytes_written(), 64 + 20 + 20);
 
-    writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       OgfTreeDefinitionChunk::CHUNK_ID,
     )?;
@@ -99,7 +98,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    let read: OgfTreeDefinitionChunk = OgfTreeDefinitionChunk::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: OgfTreeDefinitionChunk = OgfTreeDefinitionChunk::read(&mut reader)?;
 
     assert_eq!(read, original);
     assert_eq!(

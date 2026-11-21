@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -248,27 +247,27 @@ impl Affine3d {
 /// `w_matrix`: the four rows, each a vector.
 impl ChunkFieldReadWrite for Affine3d {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      x_axis: reader.read_xr::<T, _>()?,
-      y_axis: reader.read_xr::<T, _>()?,
-      z_axis: reader.read_xr::<T, _>()?,
-      translation: reader.read_xr::<T, _>()?,
+      x_axis: reader.read_xr()?,
+      y_axis: reader.read_xr()?,
+      z_axis: reader.read_xr()?,
+      translation: reader.read_xr()?,
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.x_axis)?;
-    writer.write_xr::<T, _>(&self.y_axis)?;
-    writer.write_xr::<T, _>(&self.z_axis)?;
-    writer.write_xr::<T, _>(&self.translation)
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.x_axis)?;
+    writer.write_xr(&self.y_axis)?;
+    writer.write_xr(&self.z_axis)?;
+    writer.write_xr(&self.translation)
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
 
   use crate::affine_3d::Affine3d;
@@ -373,12 +372,12 @@ mod tests {
   fn reads_back_what_it_writes_in_the_engine_order() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    stretched().write::<XRayByteOrder>(&mut writer)?;
+    stretched().write(&mut writer)?;
 
     assert_eq!(writer.bytes_written() as u64, Affine3d::SERIALIZED_SIZE);
     assert_eq!(&writer.buffer[..4], &2.0_f32.to_le_bytes(), "i comes first");
     assert_eq!(
-      Affine3d::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&writer.buffer)?)?,
+      Affine3d::read(&mut ChunkReader::from_bytes(&writer.buffer)?)?,
       stretched()
     );
 

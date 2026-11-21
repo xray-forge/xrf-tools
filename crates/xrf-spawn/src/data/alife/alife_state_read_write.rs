@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxRead, LtxWrite};
@@ -13,10 +12,10 @@ use crate::data::alife::spawn_layout::SpawnLayout;
 /// spawn fields are the same at every supported version uses `ChunkFieldReadWrite`.
 pub(crate) trait AlifeStateReadWrite: Sized {
   /// Read the payload's spawn fields as `layout` lays them out.
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self>;
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self>;
 
   /// Write the payload's spawn fields as `layout` lays them out.
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult;
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult;
 
   /// Import the payload from its LTX section, the keys `layout` carries.
   fn import_state<L: LtxRead>(section_name: &str, ltx: &L, layout: SpawnLayout) -> XrfResult<Self>;

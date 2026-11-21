@@ -2,9 +2,8 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, narrow_format_size};
 
@@ -57,8 +56,8 @@ impl GameMtlFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a material library this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Game material library was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -71,8 +70,8 @@ impl GameMtlFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a material library this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived library arrives.
@@ -80,8 +79,8 @@ impl GameMtlFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a material library this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -90,9 +89,9 @@ impl GameMtlFile {
   ///
   /// Returns an error when a chunk is absent or holds more or less than it should, the version is one the engine
   /// refuses, or a material or pair cannot be read.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload::<T>()?;
+    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload()?;
 
     if version != Self::CURRENT_VERSION {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -102,8 +101,8 @@ impl GameMtlFile {
     }
 
     let mut autoincrement: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::AUTOINCREMENT_CHUNK_ID)?;
-    let material_index: u32 = autoincrement.read_u32::<T>()?;
-    let material_pair_index: u32 = autoincrement.read_u32::<T>()?;
+    let material_index: u32 = autoincrement.read_u32()?;
+    let material_pair_index: u32 = autoincrement.read_u32()?;
 
     autoincrement.assert_read("All data should be read in game material numbering chunk")?;
 
@@ -112,11 +111,11 @@ impl GameMtlFile {
       material_index,
       material_pair_index,
       materials: match ChunkReader::find_optional_by_id(&chunks, Self::MATERIALS_CHUNK_ID) {
-        Some(mut chunk) => Self::read_materials::<T, D>(&mut chunk)?,
+        Some(mut chunk) => Self::read_materials::<D>(&mut chunk)?,
         None => Vec::new(),
       },
       pairs: match ChunkReader::find_optional_by_id(&chunks, Self::PAIRS_CHUNK_ID) {
-        Some(mut chunk) => Self::read_pairs::<T, D>(&mut chunk)?,
+        Some(mut chunk) => Self::read_pairs::<D>(&mut chunk)?,
         None => Vec::new(),
       },
     })
@@ -127,65 +126,65 @@ impl GameMtlFile {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes, or a list is too long to number its chunks.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut version: ChunkWriter = ChunkWriter::new();
 
-    version.write_u16::<T>(self.version)?;
-    version.flush_chunk_into::<T>(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
+    version.write_u16(self.version)?;
+    version.flush_chunk_into(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
 
     let mut autoincrement: ChunkWriter = ChunkWriter::new();
 
-    autoincrement.write_u32::<T>(self.material_index)?;
-    autoincrement.write_u32::<T>(self.material_pair_index)?;
-    autoincrement.flush_chunk_into::<T>(&mut writer.buffer, Self::AUTOINCREMENT_CHUNK_ID)?;
+    autoincrement.write_u32(self.material_index)?;
+    autoincrement.write_u32(self.material_pair_index)?;
+    autoincrement.flush_chunk_into(&mut writer.buffer, Self::AUTOINCREMENT_CHUNK_ID)?;
 
     let mut materials: ChunkWriter = ChunkWriter::new();
 
     for (index, material) in self.materials.iter().enumerate() {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      material.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut materials.buffer, narrow_format_size(index, "game material chunk")?)?;
+      material.write(&mut chunk)?;
+      chunk.flush_chunk_into(&mut materials.buffer, narrow_format_size(index, "game material chunk")?)?;
     }
 
-    materials.flush_chunk_into::<T>(&mut writer.buffer, Self::MATERIALS_CHUNK_ID)?;
+    materials.flush_chunk_into(&mut writer.buffer, Self::MATERIALS_CHUNK_ID)?;
 
     let mut pairs: ChunkWriter = ChunkWriter::new();
 
     for (index, pair) in self.pairs.iter().enumerate() {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      pair.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(
+      pair.write(&mut chunk)?;
+      chunk.flush_chunk_into(
         &mut pairs.buffer,
         narrow_format_size(index, "game material pair chunk")?,
       )?;
     }
 
-    pairs.flush_chunk_into::<T>(&mut writer.buffer, Self::PAIRS_CHUNK_ID)?;
+    pairs.flush_chunk_into(&mut writer.buffer, Self::PAIRS_CHUNK_ID)?;
 
     Ok(())
   }
 
   /// Reads every material, one per child chunk, in the order the library numbers them.
-  fn read_materials<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<GameMtlMaterial>> {
+  fn read_materials<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<GameMtlMaterial>> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut materials: Vec<GameMtlMaterial> = Vec::with_capacity(chunks.len());
 
     for mut chunk in chunks {
-      materials.push(GameMtlMaterial::read::<T, D>(&mut chunk)?);
+      materials.push(GameMtlMaterial::read::<D>(&mut chunk)?);
     }
 
     Ok(materials)
   }
 
   /// Reads every pair, one per child chunk.
-  fn read_pairs<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<GameMtlPair>> {
+  fn read_pairs<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<GameMtlPair>> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut pairs: Vec<GameMtlPair> = Vec::with_capacity(chunks.len());
 
     for mut chunk in chunks {
-      pairs.push(GameMtlPair::read::<T, D>(&mut chunk)?);
+      pairs.push(GameMtlPair::read::<D>(&mut chunk)?);
     }
 
     Ok(pairs)

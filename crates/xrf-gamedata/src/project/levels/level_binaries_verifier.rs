@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelCformMaterials, LevelFile};
-use xrf_spawn::XRayByteOrder;
 
 use crate::project::levels::level_binaries_outcome::LevelBinariesOutcome;
 use crate::project::levels::level_bundle::LevelBundle;
@@ -51,11 +50,7 @@ impl<'a> LevelBinariesVerifier<'a> {
 
     let asset_path: String = self.bundle.file_path(LEVEL_FILE);
 
-    let level_file: Arc<LevelFile> = match self
-      .bundle
-      .project()
-      .read_parsed(&path, LevelFile::read_from_chunk::<XRayByteOrder, _>)
-    {
+    let level_file: Arc<LevelFile> = match self.bundle.project().read_parsed(&path, LevelFile::read_from_chunk) {
       Ok(level_file) => level_file,
       Err(error) => {
         return LevelBinariesOutcome {
@@ -118,9 +113,11 @@ impl<'a> LevelBinariesVerifier<'a> {
     }
 
     let Some(library) = self.game_materials else {
-      return match self.bundle.project().read_parsed(&path, |chunks| {
-        LevelCformFile::read_from_chunk::<XRayByteOrder, _>(chunks)
-      }) {
+      return match self
+        .bundle
+        .project()
+        .read_parsed(&path, LevelCformFile::read_from_chunk)
+      {
         Ok(cform) => self.verify_cform_version(&cform),
         Err(error) => vec![GamedataFindingFactory::for_asset(
           GamedataVerificationRule::LevelsFileTruncated,
@@ -130,9 +127,11 @@ impl<'a> LevelBinariesVerifier<'a> {
       };
     };
 
-    match self.bundle.project().read_parsed(&path, |chunks| {
-      LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(chunks)
-    }) {
+    match self
+      .bundle
+      .project()
+      .read_parsed(&path, LevelCformFile::read_with_materials_from_chunk)
+    {
       Ok(read) => {
         let (cform, materials): &(LevelCformFile, LevelCformMaterials) = &read;
         let mut findings: Vec<Finding> = self.verify_cform_version(cform);
@@ -216,7 +215,7 @@ impl<'a> LevelBinariesVerifier<'a> {
       .bundle
       .project()
       .read_head(&path, LevelAiHeader::SIZE as usize)
-      .and_then(LevelAiFile::read_from_bytes::<XRayByteOrder>)
+      .and_then(LevelAiFile::read_from_bytes)
     {
       Ok(ai) => ai,
       Err(error) => {

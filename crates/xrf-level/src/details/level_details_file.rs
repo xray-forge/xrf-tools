@@ -1,9 +1,8 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayBytes, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -32,24 +31,24 @@ impl LevelDetailsHeader {
 }
 
 impl ChunkReadWrite for LevelDetailsHeader {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      version: reader.read_u32::<T>()?,
-      object_count: reader.read_u32::<T>()?,
-      offset_x: reader.read_i32::<T>()?,
-      offset_z: reader.read_i32::<T>()?,
-      size_x: reader.read_u32::<T>()?,
-      size_z: reader.read_u32::<T>()?,
+      version: reader.read_u32()?,
+      object_count: reader.read_u32()?,
+      offset_x: reader.read_i32()?,
+      offset_z: reader.read_i32()?,
+      size_x: reader.read_u32()?,
+      size_z: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.version)?;
-    writer.write_u32::<T>(self.object_count)?;
-    writer.write_i32::<T>(self.offset_x)?;
-    writer.write_i32::<T>(self.offset_z)?;
-    writer.write_u32::<T>(self.size_x)?;
-    writer.write_u32::<T>(self.size_z)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.version)?;
+    writer.write_u32(self.object_count)?;
+    writer.write_i32(self.offset_x)?;
+    writer.write_i32(self.offset_z)?;
+    writer.write_u32(self.size_x)?;
+    writer.write_u32(self.size_z)?;
 
     Ok(())
   }
@@ -62,7 +61,7 @@ pub struct LevelDetailsFile {
   pub header: LevelDetailsHeader,
   /// The library the grid indexes into, in the order the file numbers its chunks.
   pub objects: Vec<DetailModel>,
-  /// The grid, `size_x * size_z` slots of [`LevelDetailsSlot::WORDS`] words each, in the byte order it was read with.
+  /// The grid, `size_x * size_z` slots of [`LevelDetailsSlot::WORDS`] words each.
   #[serde(skip)]
   pub slots: Vec<[u32; LevelDetailsSlot::WORDS]>,
 }
@@ -91,8 +90,8 @@ impl LevelDetailsFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a detail library this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level details file was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -105,8 +104,8 @@ impl LevelDetailsFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a detail library this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived library arrives.
@@ -114,8 +113,8 @@ impl LevelDetailsFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a detail library this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -124,11 +123,11 @@ impl LevelDetailsFile {
   ///
   /// Returns an error when a chunk is absent, the version is one this does not read, the object chunk does not hold
   /// exactly what the header declares, or the grid is not the size the header gives it.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     let header: LevelDetailsHeader =
-      ChunkReader::find_required_by_id(&chunks, Self::HEADER_CHUNK_ID)?.read_xr::<T, LevelDetailsHeader>()?;
+      ChunkReader::find_required_by_id(&chunks, Self::HEADER_CHUNK_ID)?.read_xr::<LevelDetailsHeader>()?;
 
     if header.version != Self::CURRENT_VERSION {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -141,7 +140,7 @@ impl LevelDetailsFile {
     let mut objects: Vec<DetailModel> = Vec::new();
 
     for mut chunk in ChunkReader::find_required_by_id(&chunks, Self::OBJECTS_CHUNK_ID)?.read_children()? {
-      objects.push(DetailModel::read::<T, D>(&mut chunk)?);
+      objects.push(DetailModel::read::<D>(&mut chunk)?);
       chunk.assert_read("Expect all data to be read from detail object chunk")?;
     }
 
@@ -169,7 +168,7 @@ impl LevelDetailsFile {
       .as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>()
       .0
       .iter()
-      .map(|slot| std::array::from_fn(|word| T::read_u32(&slot[word * 4..word * 4 + 4])))
+      .map(|slot| std::array::from_fn(|word| XRayBytes::read_u32(&slot[word * 4..word * 4 + 4])))
       .collect();
 
     Ok(Self { header, objects, slots })
@@ -181,7 +180,7 @@ impl LevelDetailsFile {
   ///
   /// Returns an error when the library does not match its own header, or holds more objects than the grid's six bits
   /// can address.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if self.objects.len() as u64 != u64::from(self.header.object_count) {
       return Err(XrfError::new_invalid_error(format!(
         "Unexpected level details object count {} on write, header declares {}",
@@ -203,24 +202,24 @@ impl LevelDetailsFile {
     for (index, object) in self.objects.iter().enumerate() {
       let mut entry: ChunkWriter = ChunkWriter::new();
 
-      object.write::<T>(&mut entry)?;
-      entry.flush_chunk_into::<T>(&mut objects.buffer, index as u32)?;
+      object.write(&mut entry)?;
+      entry.flush_chunk_into(&mut objects.buffer, index as u32)?;
     }
 
-    objects.flush_chunk_into::<T>(&mut writer.buffer, Self::OBJECTS_CHUNK_ID)?;
+    objects.flush_chunk_into(&mut writer.buffer, Self::OBJECTS_CHUNK_ID)?;
 
     let mut slots: ChunkWriter = ChunkWriter::new();
 
     for word in self.slots.as_flattened() {
-      slots.write_u32::<T>(*word)?;
+      slots.write_u32(*word)?;
     }
 
-    slots.flush_chunk_into::<T>(&mut writer.buffer, Self::SLOTS_CHUNK_ID)?;
+    slots.flush_chunk_into(&mut writer.buffer, Self::SLOTS_CHUNK_ID)?;
 
     let mut header: ChunkWriter = ChunkWriter::new();
 
-    header.write_xr::<T, _>(&self.header)?;
-    header.flush_chunk_into::<T>(&mut writer.buffer, Self::HEADER_CHUNK_ID)?;
+    header.write_xr(&self.header)?;
+    header.flush_chunk_into(&mut writer.buffer, Self::HEADER_CHUNK_ID)?;
 
     Ok(())
   }

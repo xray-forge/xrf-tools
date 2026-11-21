@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
 use crate::EditableObjectFile;
@@ -25,10 +24,10 @@ fn a_cyrillic_name_comes_back_as_its_bytes() -> XrfResult {
   // «Новая папка», the folder name one mod-shipped object sits under, in Windows-1251.
   let name: [u8; 11] = [0xcd, 0xee, 0xe2, 0xe0, 0xff, 0x20, 0xef, 0xe0, 0xef, 0xea, 0xe0];
   let original: Vec<u8> = object_with_lods(&name);
-  let object: EditableObjectFile = EditableObjectFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let object: EditableObjectFile = EditableObjectFile::read_from_bytes(original.clone())?;
 
   assert_eq!(object.lods.as_deref(), Some("Новая папка"));
-  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(object.write_to_bytes()?, original);
 
   Ok(())
 }
@@ -43,10 +42,10 @@ fn a_name_opening_on_byte_order_mark_bytes_comes_back_as_its_bytes() -> XrfResul
 
 fn assert_lods_come_back(name: &str, bytes: &[u8]) -> XrfResult {
   let original: Vec<u8> = object_with_lods(bytes);
-  let object: EditableObjectFile = EditableObjectFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let object: EditableObjectFile = EditableObjectFile::read_from_bytes(original.clone())?;
 
   assert_eq!(object.lods.as_deref(), Some(name));
-  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original, "{name}");
+  assert_eq!(object.write_to_bytes()?, original, "{name}");
 
   Ok(())
 }

@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_thm::{ThmFile, ThmTextureParamChunk};
 use xrf_vfs::XrayAssetType;
@@ -41,7 +40,7 @@ impl ArchiveThmDescription {
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
     // todo: Describe the SDK's object, group and sound thumbnails as their own kinds through `ThmKind::detect` and
     //  their readers, rather than as a texture descriptor whose chunk ids they reuse.
-    let file: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: ThmFile = ThmFile::read_from_bytes(source.read_bytes(name)?)?;
     let parameters: Option<&ThmTextureParamChunk> = file.texture_param.as_ref();
 
     Ok(Self {

@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
@@ -64,12 +63,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// Packs everything one sector reaches into one buffer of attribute arrays and one index array.
-  pub fn pack<T: ByteOrder>(
-    &self,
-    sector: u32,
-    composition: &LevelSectorComposition,
-    wanted: SectorAttributes,
-  ) -> SectorPackage {
+  pub fn pack(&self, sector: u32, composition: &LevelSectorComposition, wanted: SectorAttributes) -> SectorPackage {
     // Baked geometry stores its base coordinate as two shorts; a tree, which stores four, is packed as an instance.
     let mut arrays: SectorVertexArrays = SectorVertexArrays::new(
       self.widen_attributes(composition).intersect(wanted),
@@ -122,7 +116,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       // A progressive mesh's indices are every window laid end to end; baked into a section it draws the whole detail,
       // its first window, since a section of many visuals has one range.
       let packed_window: XrfResult<(VisualIndexWindow, u32)> = self.get_first_window(visual).and_then(|window| {
-        let base: u32 = self.pack_range::<T>(container, &mut arrays, &mut packed)?;
+        let base: u32 = self.pack_range(container, &mut arrays, &mut packed)?;
 
         Ok((window.unwrap_or(VisualIndexWindow::whole(container.index_count)), base))
       });
@@ -135,7 +129,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         }
       };
 
-      match SectorIndexRange::of(container).read_window::<T, D>(self.source, window, container.vertex_count, base) {
+      match SectorIndexRange::of(container).read_window::<D>(self.source, window, container.vertex_count, base) {
         Ok(indices) => {
           let gathering: &mut SectorSectionGathering = sections.entry(visual.header.shader_id).or_default();
 
@@ -155,7 +149,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       skipped,
     };
 
-    self.build::<T>(sector, gathering, wanted)
+    self.build(sector, gathering, wanted)
   }
 
   /// The impostors of the sector's `MT_LOD` visuals, a surface's contiguous, and which impostor each tree they compose
@@ -233,7 +227,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// Packs the vertex range a drawable names, unless another drawable already did, and says where it sits.
-  fn pack_range<T: ByteOrder>(
+  fn pack_range(
     &self,
     container: &OgfGeometryContainerChunk,
     arrays: &mut SectorVertexArrays,
@@ -252,14 +246,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     )?;
     let base: u32 = arrays.get_vertex_count();
 
-    arrays.push::<T>(&payload)?;
+    arrays.push(&payload)?;
     packed.insert(range, base);
 
     Ok(base)
   }
 
   /// Writes the arrays and the grouped indices into one buffer and describes what landed where.
-  fn build<T: ByteOrder>(&self, sector: u32, gathering: SectorGathering, wanted: SectorAttributes) -> SectorPackage {
+  fn build(&self, sector: u32, gathering: SectorGathering, wanted: SectorAttributes) -> SectorPackage {
     let SectorGathering {
       arrays,
       sections: gathered_sections,
@@ -303,7 +297,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
     let bounds: Option<VisualBounds> = arrays.get_bounds();
     let geometry: SectorGeometry = arrays.write_into(&indices, &clusters, &mut builder);
-    let instances: Vec<SectorInstanceGroup> = self.pack_instances::<T>(gathered, wanted, &mut builder, &mut skipped);
+    let instances: Vec<SectorInstanceGroup> = self.pack_instances(gathered, wanted, &mut builder, &mut skipped);
     let impostors = impostors.write_into(&mut builder);
 
     SectorPackage {
@@ -322,7 +316,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// Packs each gathered mesh once and writes the places it stands beside it.
-  fn pack_instances<T: ByteOrder>(
+  fn pack_instances(
     &self,
     gathered: BTreeMap<SectorInstanceKey, SectorInstanceGathering>,
     wanted: SectorAttributes,
@@ -332,7 +326,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut instances: Vec<SectorInstanceGroup> = Vec::new();
 
     for (key, gathering) in gathered {
-      match self.pack_instance::<T>(key, &gathering, wanted, builder) {
+      match self.pack_instance(key, &gathering, wanted, builder) {
         Ok(group) => instances.push(group),
         Err(error) => Self::skip_all(&gathering, &error, skipped),
       }
@@ -346,7 +340,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   /// # Errors
   ///
   /// Returns an error when the mesh's own range cannot be read, which leaves every instance of it undrawable.
-  fn pack_instance<T: ByteOrder>(
+  fn pack_instance(
     &self,
     key: SectorInstanceKey,
     gathering: &SectorInstanceGathering,
@@ -363,14 +357,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     );
 
     // Packed unplaced: the mesh is in its own space, and each instance's transform stands a copy of it.
-    arrays.push::<T>(&payload)?;
+    arrays.push(&payload)?;
 
     let (window, progressive): (VisualIndexWindow, Option<SectorProgressive>) =
       Self::get_instance_detail(key.indices.count, gathering.windows.as_deref())?;
     // Onto nought: the mesh is packed alone.
     let indices: Vec<u32> = key
       .indices
-      .read_window::<T, D>(self.source, window, key.vertices.count, 0)?;
+      .read_window::<D>(self.source, window, key.vertices.count, 0)?;
 
     let mut table: VisualClusterTable = VisualClusterTable::default();
     // A place draws its band's window, or the whole mesh: the whole detail is band nought.

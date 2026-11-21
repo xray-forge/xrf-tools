@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -17,15 +16,15 @@ impl OgfCollisionIndicesChunk {
 }
 
 impl ChunkReadWrite for OgfCollisionIndicesChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      faces: reader.read_xr_records::<T, _>(OgfCollisionFace::SERIALIZED_SIZE, "ogf collision indices chunk")?,
+      faces: reader.read_xr_records(OgfCollisionFace::SERIALIZED_SIZE, "ogf collision indices chunk")?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for face in &self.faces {
-      writer.write_xr::<T, _>(face)?;
+      writer.write_xr(face)?;
     }
 
     Ok(())

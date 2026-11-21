@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
@@ -23,7 +22,7 @@ impl OgfChildrenChunk {
   /// # Errors
   ///
   /// Returns an error when a child is not numbered by its position, or does not read as a visual.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Reading children chunk: {} bytes", reader.read_bytes_remain());
 
     let mut children: Vec<OgfFile> = Vec::new();
@@ -38,7 +37,7 @@ impl OgfChildrenChunk {
         )));
       }
 
-      children.push(OgfFile::read_from_chunk::<T, _>(&mut object_reader)?);
+      children.push(OgfFile::read_from_chunk(&mut object_reader)?);
     }
 
     reader.assert_read("Expect all data to be read from ogf children")?;
@@ -51,21 +50,21 @@ impl OgfChildrenChunk {
   /// # Errors
   ///
   /// Returns an error when there are more children than a `u32` numbers, or the writer refuses the bytes.
-  pub fn write_nested<T: ByteOrder>(writer: &mut ChunkWriter, children: &[Vec<u8>]) -> XrfResult {
+  pub fn write_nested(writer: &mut ChunkWriter, children: &[Vec<u8>]) -> XrfResult {
     let mut nested: ChunkWriter = ChunkWriter::new();
 
     for (index, child) in children.iter().enumerate() {
       let mut numbered: ChunkWriter = ChunkWriter::new();
 
       numbered.write_all(child)?;
-      numbered.flush_chunk_into::<T>(
+      numbered.flush_chunk_into(
         &mut nested,
         u32::try_from(index)
           .map_err(|_| XrfError::new_invalid_error("An OGF holds more children than a u32 numbers"))?,
       )?;
     }
 
-    nested.flush_chunk_into::<T>(writer, Self::CHUNK_ID)?;
+    nested.flush_chunk_into(writer, Self::CHUNK_ID)?;
 
     Ok(())
   }

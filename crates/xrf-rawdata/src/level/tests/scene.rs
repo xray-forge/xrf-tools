@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
   EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelGuid, EditableLevelOptions,
   EditableLevelScene, EditableObjectPart, EditableSpawnPointObject, EditableWayObject,
@@ -105,25 +105,22 @@ fn level_directory(name: &str, radius: f32) -> XrfResult<PathBuf> {
 
   std::fs::write(
     directory.join(LevelGameFile::FILE_NAME),
-    bytes_of(|writer| game().write::<XRayByteOrder>(writer))?,
+    bytes_of(|writer| game().write(writer))?,
   )?;
   std::fs::write(
     directory.join(LevelEnvModFile::FILE_NAME),
-    bytes_of(|writer| environment(radius).write::<XRayByteOrder>(writer))?,
+    bytes_of(|writer| environment(radius).write(writer))?,
   )?;
   std::fs::write(
     directory.join(LevelFogVolFile::FILE_NAME),
-    bytes_of(|writer| fog.write::<XRayByteOrder>(writer))?,
+    bytes_of(|writer| fog.write(writer))?,
   )?;
 
   Ok(directory)
 }
 
 fn decompile(directory: &Path) -> XrfResult<LevelSceneDecompile> {
-  LevelSceneDecompiler::decompile::<XRayByteOrder>(
-    directory,
-    &LevelDecompileOptions::new("test_level", "test", "1.0.0"),
-  )
+  LevelSceneDecompiler::decompile(directory, &LevelDecompileOptions::new("test_level", "test", "1.0.0"))
 }
 
 #[test]
@@ -259,7 +256,7 @@ fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
     "nothing written yet"
   );
 
-  decompiled.write_to_path::<XRayByteOrder>(&output.join("test_level.level"), &objects, &output.join("textures"))?;
+  decompiled.write_to_path(&output.join("test_level.level"), &objects, &output.join("textures"))?;
 
   let path: PathBuf = objects
     .join("levels")
@@ -267,8 +264,8 @@ fn writes_each_object_under_the_objects_root_after_its_sidecar() -> XrfResult {
     .join("test_level_sector_0.object");
 
   assert_eq!(
-    EditableObjectFile::read_from_path::<XRayByteOrder, _>(&path)?.write_to_bytes::<XRayByteOrder>()?,
-    decompiled.objects[0].object.write_to_bytes::<XRayByteOrder>()?,
+    EditableObjectFile::read_from_path(&path)?.write_to_bytes()?,
+    decompiled.objects[0].object.write_to_bytes()?,
     "read back, the object saves the bytes it was written as"
   );
   assert_eq!(
@@ -309,7 +306,7 @@ fn refuses_a_name_that_would_leave_its_root_and_writes_nothing() -> XrfResult {
     for decompiled in [texture, object] {
       assert!(
         decompiled
-          .write_to_path::<XRayByteOrder>(&level, &output.join("objects"), &output.join("textures"))
+          .write_to_path(&level, &output.join("objects"), &output.join("textures"))
           .is_err(),
         "'{name}' is refused"
       );
@@ -348,7 +345,7 @@ fn refuses_a_link_below_a_root_where_asked_and_writes_nothing() -> XrfResult {
 
   assert!(
     decompiled
-      .write_to_path_with::<XRayByteOrder>(&level, &objects, &output.join("textures"), HostLinkPolicy::Refuse)
+      .write_to_path_with(&level, &objects, &output.join("textures"), HostLinkPolicy::Refuse)
       .is_err()
   );
   assert!(
@@ -357,7 +354,7 @@ fn refuses_a_link_below_a_root_where_asked_and_writes_nothing() -> XrfResult {
   );
   assert_eq!(std::fs::read_dir(&elsewhere)?.count(), 0);
 
-  decompiled.write_to_path_with::<XRayByteOrder>(&level, &objects, &output.join("textures"), HostLinkPolicy::Follow)?;
+  decompiled.write_to_path_with(&level, &objects, &output.join("textures"), HostLinkPolicy::Follow)?;
 
   assert!(elsewhere.join("test_level").join("copied.object").is_file());
 
@@ -389,9 +386,7 @@ fn refuses_a_link_before_removing_an_earlier_scenes_parts() -> XrfResult {
     ..LevelDecompileRequest::default()
   };
 
-  assert!(
-    LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &JobHandle::inert()).is_err()
-  );
+  assert!(LevelSceneDecompiler::decompile_to_path(&request, "test", "1.0.0", &JobHandle::inert()).is_err());
   assert!(stale.is_file(), "the earlier scene's part is left");
   assert!(!request.destination.exists(), "nothing is written");
 
@@ -404,9 +399,9 @@ fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
   let output: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "written_scene"))?;
   let level_path: PathBuf = output.join("test_level.level");
 
-  decompiled.write_to_path::<XRayByteOrder>(&level_path, &output.join("objects"), &output.join("textures"))?;
+  decompiled.write_to_path(&level_path, &output.join("objects"), &output.join("textures"))?;
 
-  let read: EditableLevelScene = EditableLevelScene::read_from_path::<XRayByteOrder, _>(&level_path)?;
+  let read: EditableLevelScene = EditableLevelScene::read_from_path(&level_path)?;
   let sidecar: LevelSceneProvenance =
     serde_json::from_slice(&std::fs::read(output.join("test_level.level.xrf.json"))?).map_serde_err()?;
 
@@ -415,10 +410,7 @@ fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
 
   for (ours, written) in read.tools.iter().zip(&decompiled.scene.tools) {
     assert_eq!(ours.name, written.name);
-    assert_eq!(
-      ours.parts[0].write_to_bytes::<XRayByteOrder>()?,
-      written.parts[0].write_to_bytes::<XRayByteOrder>()?
-    );
+    assert_eq!(ours.parts[0].write_to_bytes()?, written.parts[0].write_to_bytes()?);
   }
 
   assert!(output.join("test_level").join("spawn.part").is_file());
@@ -430,8 +422,7 @@ fn writes_the_scene_and_its_sidecar_and_reads_them_back() -> XrfResult {
 #[test]
 fn exports_the_scene_back_to_the_files_it_came_from() -> XrfResult {
   let directory: PathBuf = level_directory("exported", 10.0)?;
-  let exported: BTreeMap<&str, Vec<u8>> =
-    LevelSceneExporter::export::<XRayByteOrder>(&decompile(&directory)?.scene, &[])?;
+  let exported: BTreeMap<&str, Vec<u8>> = LevelSceneExporter::export(&decompile(&directory)?.scene, &[])?;
 
   assert_eq!(
     exported.keys().copied().collect::<Vec<_>>(),
@@ -448,8 +439,7 @@ fn exports_the_scene_back_to_the_files_it_came_from() -> XrfResult {
 #[test]
 fn writes_an_export_saying_what_each_file_replaced() -> XrfResult {
   let directory: PathBuf = level_directory("rewritten", 10.0)?;
-  let mut exported: BTreeMap<&str, Vec<u8>> =
-    LevelSceneExporter::export::<XRayByteOrder>(&decompile(&directory)?.scene, &[])?;
+  let mut exported: BTreeMap<&str, Vec<u8>> = LevelSceneExporter::export(&decompile(&directory)?.scene, &[])?;
 
   exported.insert("level.game", b"other".to_vec());
   std::fs::remove_file(directory.join("level.fog_vol"))?;
@@ -485,7 +475,7 @@ fn a_scene_of_no_tool_exports_the_files_every_build_writes() -> XrfResult {
     ),
     tools: Vec::new(),
   };
-  let exported: BTreeMap<&str, Vec<u8>> = LevelSceneExporter::export::<XRayByteOrder>(&scene, &[])?;
+  let exported: BTreeMap<&str, Vec<u8>> = LevelSceneExporter::export(&scene, &[])?;
 
   assert_eq!(
     exported.keys().copied().collect::<Vec<_>>(),
@@ -498,7 +488,7 @@ fn a_scene_of_no_tool_exports_the_files_every_build_writes() -> XrfResult {
         version: EditableSpawnPointObject::VERSION,
         modifiers: Vec::new(),
       }
-      .write::<XRayByteOrder>(writer)
+      .write(writer)
     })?
   );
 
@@ -528,14 +518,14 @@ fn writes_a_scene_for_a_front_end_and_nothing_once_cancelled() -> XrfResult {
 
   cancelled.cancel();
 
-  let error = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &cancelled)
+  let error = LevelSceneDecompiler::decompile_to_path(&request, "test", "1.0.0", &cancelled)
     .expect_err("a cancelled decompile stops");
 
   assert!(matches!(error, XrfError::Cancelled { .. }), "{error}");
   assert!(!request.destination.exists(), "a cancelled decompile writes nothing");
 
   let sink: Arc<RecordingSink> = Arc::new(RecordingSink::default());
-  let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
+  let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path(
     &request,
     "test",
     "1.0.0",
@@ -574,7 +564,7 @@ fn removes_forced_only_the_stale_files_the_editor_reads_as_parts() -> XrfResult 
   std::fs::write(parts.join("old_tool.part1"), b"earlier")?;
   std::fs::write(parts.join("notes.txt"), b"the user's")?;
 
-  LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &JobHandle::inert())?;
+  LevelSceneDecompiler::decompile_to_path(&request, "test", "1.0.0", &JobHandle::inert())?;
 
   assert!(!parts.join("old_tool.part1").exists(), "a stale part is removed");
   assert!(parts.join("notes.txt").is_file(), "the user's file is left");
@@ -605,15 +595,14 @@ fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_w
   std::fs::write(&kept, b"authored")?;
   std::fs::write(&authored, b"authored")?;
 
-  let error: String =
-    LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(&request, "test", "1.0.0", &JobHandle::inert())
-      .expect_err("an object of the level's own is there")
-      .to_string();
+  let error: String = LevelSceneDecompiler::decompile_to_path(&request, "test", "1.0.0", &JobHandle::inert())
+    .expect_err("an object of the level's own is there")
+    .to_string();
 
   assert!(error.contains("Test_Level_Sector_9.object"), "{error}");
   assert!(!request.destination.exists(), "a refusal writes nothing");
 
-  let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
+  let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path(
     &LevelDecompileRequest {
       is_forced: true,
       ..request

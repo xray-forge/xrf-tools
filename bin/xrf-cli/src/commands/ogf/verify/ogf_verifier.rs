@@ -8,7 +8,6 @@ use xrf_extension::XrayExtension;
 use xrf_math::Vector3d;
 use xrf_ogf::OgfFile;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_path, format_portable_path};
 use xrf_visual::{VisualBounds, VisualDescription, VisualPackage, VisualPacker, VisualSkipCause, VisualSubmesh};
 
@@ -69,7 +68,7 @@ impl<'a> OgfVerifier<'a> {
 
       // A read error is a value here, but a panic inside the reader is not: the release profile aborts,
       // which is the right outcome because a panic is a defect rather than a property of the file.
-      let file: OgfFile = match OgfFile::read_from_path::<XRayByteOrder, _>(&path) {
+      let file: OgfFile = match OgfFile::read_from_path(&path) {
         Ok(file) => file,
         Err(error) => {
           census.unreadable_files += 1;

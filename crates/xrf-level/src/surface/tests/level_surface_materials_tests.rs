@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::InMemoryChunkDataSource;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk};
@@ -133,15 +133,11 @@ fn visual(index: u32, shader: u16) -> LevelVisual {
 fn tallies_each_surface_by_the_collision_faces_beneath_it() -> XrfResult {
   // Stone under the first, earth under the second, nothing within reach of the third, which floats a metre up.
   let source: LevelGeomSource<InMemoryChunkDataSource> =
-    LevelGeomSource::open_from_bytes::<XRayByteOrder>(geometry(&[
-      square(-4.0, 0.0),
-      square(4.0, 0.0),
-      square(4.0, 1.0),
-    ])?)?;
+    LevelGeomSource::open_from_bytes(geometry(&[square(-4.0, 0.0), square(4.0, 0.0), square(4.0, 1.0)])?)?;
   let visuals: LevelVisualsChunk = LevelVisualsChunk {
     visuals: vec![visual(0, 1), visual(1, 2), visual(2, 2)],
   };
-  let survey: LevelSurfaceMaterials = LevelSurfaceMaterials::survey::<XRayByteOrder, _>(&visuals, &source, &floor()?);
+  let survey: LevelSurfaceMaterials = LevelSurfaceMaterials::survey(&visuals, &source, &floor()?);
 
   let stone: &LevelSurfaceMaterial = &survey.surfaces[&1];
   let earth: &LevelSurfaceMaterial = &survey.surfaces[&2];

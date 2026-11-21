@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
   EditableCustomObject, EditableFogVolumeKind, EditableFogVolumeObject, EditableObjectPart, EditableObjectTransform,
   EditableShape, EditableTextPart,
@@ -49,7 +49,7 @@ fn part(volumes: Vec<EditableFogVolumeObject>) -> EditableObjectPart<EditableFog
 fn bytes_of(file: &LevelFogVolFile) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   Ok(writer.buffer)
 }

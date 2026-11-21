@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -18,17 +17,17 @@ pub struct AlifeObjectSpaceRestrictor {
 
 /// As `CSE_ALifeSpaceRestrictor::STATE_Write` writes it: the object, its shapes, then its type.
 impl ChunkFieldReadWrite for AlifeObjectSpaceRestrictor {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, AlifeObjectAbstract>()?,
-      shape: reader.read_xr_list::<T, _>()?,
+      base: reader.read_xr::<AlifeObjectAbstract>()?,
+      shape: reader.read_xr_list()?,
       restrictor_type: reader.read_u8()?,
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr_list::<T, _>(&self.shape)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    writer.write_xr_list(&self.shape)?;
     writer.write_u8(self.restrictor_type)
   }
 }
@@ -72,7 +71,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -113,12 +112,11 @@ mod tests {
       restrictor_type: 2,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 106);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 106);
 
@@ -128,10 +126,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(
-      AlifeObjectSpaceRestrictor::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(AlifeObjectSpaceRestrictor::read(&mut reader)?, original);
 
     Ok(())
   }

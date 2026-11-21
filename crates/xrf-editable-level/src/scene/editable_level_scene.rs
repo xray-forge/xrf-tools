@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostFileName, format_path};
 
@@ -35,12 +34,11 @@ impl EditableLevelScene {
   /// # Errors
   ///
   /// Returns an error as [`Self::read_from_source`] does, or when the `.level` or any part does not read.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(level_path: &P) -> XrfResult<Self> {
+  pub fn read_from_path<P: AsRef<Path>>(level_path: &P) -> XrfResult<Self> {
     let directory: EditableScenePartDirectory = EditableScenePartDirectory {
       directory: Self::get_parts_directory(level_path.as_ref()),
     };
-    let read: EditableSceneRead =
-      Self::read_from_source::<T>(EditableLevelFile::read_from_path(level_path)?, &directory)?;
+    let read: EditableSceneRead = Self::read_from_source(EditableLevelFile::read_from_path(level_path)?, &directory)?;
 
     if let Some(file) = read.get_problems().next() {
       return Err(XrfError::new_parsing_error(format!(
@@ -63,7 +61,7 @@ impl EditableLevelScene {
   ///
   /// Returns an error when `level` carries no GUID, the directory cannot be listed, or a part carries another GUID: the
   /// editor would skip that stale part, so the scene is refused rather than opened without the tool's objects.
-  pub fn read_from_source<T: ByteOrder>(
+  pub fn read_from_source(
     level: EditableLevelFile,
     source: &impl EditableScenePartSource,
   ) -> XrfResult<EditableSceneRead> {
@@ -102,7 +100,7 @@ impl EditableLevelScene {
           guid: None,
           problem: None,
         };
-        let (part, found) = match Self::read_part::<T>(source, &mut file, class_id) {
+        let (part, found) = match Self::read_part(source, &mut file, class_id) {
           Ok(read) => read,
           Err(error) => {
             file.problem = Some(error.to_string());
@@ -135,7 +133,7 @@ impl EditableLevelScene {
   }
 
   /// Reads `file` from `source` as a part, its data chunk `class_id`'s, recording its size, and the GUID it carries.
-  fn read_part<T: ByteOrder>(
+  fn read_part(
     source: &impl EditableScenePartSource,
     file: &mut EditableScenePartFile,
     class_id: Option<u32>,
@@ -144,7 +142,7 @@ impl EditableLevelScene {
 
     file.size = bytes.len() as u64;
 
-    let part: EditableLevelPart = EditableLevelPart::read_from_bytes::<T>(bytes, class_id)?;
+    let part: EditableLevelPart = EditableLevelPart::read_from_bytes(bytes, class_id)?;
     let guid: EditableLevelGuid = part.get_guid()?;
 
     Ok((part, guid))
@@ -155,7 +153,7 @@ impl EditableLevelScene {
   /// # Errors
   ///
   /// Returns an error, before writing anything, as [`Self::check_writable`] does, or when a file cannot be written.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, level_path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, level_path: &P) -> XrfResult {
     self.check_writable(level_path.as_ref())?;
     self.level.write_to_path(level_path)?;
 
@@ -164,7 +162,7 @@ impl EditableLevelScene {
       .iter()
       .zip(self.tools.iter().flat_map(|tool| &tool.parts))
     {
-      part.write_to_path::<T, _>(path)?;
+      part.write_to_path(path)?;
     }
 
     Ok(())

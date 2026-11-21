@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality, RgbaImage};
 use xrf_editable_level::{EditableDetailObject, EditableDetailObjectTool};
 use xrf_editable_object::EditableObjectFile;
@@ -39,7 +38,7 @@ impl LevelBuildDetails {
   ///
   /// Returns an error, as the Build stops, when no slot plants anything, a slot names an object the tool lacks, an
   /// object or texture does not read, or the textures do not fit the largest atlas.
-  pub(crate) fn export<T: ByteOrder>(
+  pub(crate) fn export(
     tool: &EditableDetailObjectTool,
     library: &mut LevelBuildLibrary<'_>,
     textures: &LevelBuildTextures<'_>,
@@ -58,7 +57,7 @@ impl LevelBuildDetails {
       ));
     }
 
-    library.load::<T>(planted.iter().map(|object| object.reference.as_str()))?;
+    library.load(planted.iter().map(|object| object.reference.as_str()))?;
 
     let models: Vec<DetailModel> = planted
       .iter()

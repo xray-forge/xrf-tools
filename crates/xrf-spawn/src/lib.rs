@@ -13,8 +13,6 @@ mod fixtures;
 #[cfg(test)]
 mod tests;
 
-pub use xrf_chunk::XRayByteOrder;
-
 pub use crate::any_spawn_file::AnySpawnFile;
 pub use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
 pub use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;

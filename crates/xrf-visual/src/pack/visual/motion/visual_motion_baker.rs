@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
@@ -100,7 +99,7 @@ impl VisualMotionBaker {
     }
 
     let runs: Vec<SkeletonBoneMotion> = motion
-      .decode_bone_motions::<XRayByteOrder>(SkeletonPart::count_bones(parts))
+      .decode_bone_motions(SkeletonPart::count_bones(parts))
       .map_err(|error| XrfError::new_parsing_error(format!("Motion '{}' cannot be posed: {error}", definition.name)))?;
 
     // Run index to bone index, by name: the payload is ordered by the motion's own indices, and the engine resolves each

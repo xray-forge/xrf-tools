@@ -8,10 +8,9 @@ six animation channels. The level world, the archive describer and the animation
 
 ```rust,no_run
 use xrf_anm::{AnmChannel, AnmFile};
-use xrf_chunk::XRayByteOrder;
 
 fn main() -> xrf_error::XrfResult {
-  let motion = AnmFile::read_from_path::<XRayByteOrder, _>(&"gamedata/anims/camera.anm")?;
+  let motion = AnmFile::read_from_path(&"gamedata/anims/camera.anm")?;
 
   println!("{} frames, {} seconds", motion.get_frame_count(), motion.get_duration_seconds());
 
@@ -25,7 +24,7 @@ fn main() -> xrf_error::XrfResult {
 
 Use `read_from_bytes` for owned bytes, including an asset read from an archive, or `read_from_file` for an open file.
 `read_from_chunk` finds the motion chunk among a reader's children, and `read_from_motion_chunk` reads a motion chunk
-already in hand. `XRayByteOrder` selects the little-endian layout.
+already in hand.
 
 ## Channels and versions
 
@@ -51,7 +50,6 @@ chunk's payload alone:
 ```rust
 use xrf_animation_envelope::AnimationEnvelope;
 use xrf_anm::AnmFile;
-use xrf_chunk::XRayByteOrder;
 
 fn main() -> xrf_error::XrfResult {
   let motion = AnmFile {
@@ -63,8 +61,8 @@ fn main() -> xrf_error::XrfResult {
     channels: Default::default(),
   };
 
-  let bytes = motion.write_to_bytes::<XRayByteOrder>()?;
-  let restored = AnmFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let bytes = motion.write_to_bytes()?;
+  let restored = AnmFile::read_from_bytes(bytes)?;
 
   assert_eq!(restored, motion);
   assert_eq!(restored.get_duration_seconds(), 1.0);

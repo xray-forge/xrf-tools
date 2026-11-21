@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -32,7 +31,7 @@ fn reads_every_glow_the_chunk_size_counts() -> XrfResult {
 
   glows.extend(glow([-4.0, 0.0, 8.0], 1.25, 13));
 
-  let read: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(level(&glows)?)?;
+  let read: LevelFile = LevelFile::read_from_bytes(level(&glows)?)?;
 
   assert_eq!(
     read.get_glows(),
@@ -55,8 +54,7 @@ fn reads_every_glow_the_chunk_size_counts() -> XrfResult {
 
 #[test]
 fn a_level_without_the_chunk_has_no_glows() -> XrfResult {
-  let read: LevelFile =
-    LevelFile::read_from_bytes::<XRayByteOrder>(chunk(LevelHeaderChunk::CHUNK_ID, &[14, 0, 1, 0])?)?;
+  let read: LevelFile = LevelFile::read_from_bytes(chunk(LevelHeaderChunk::CHUNK_ID, &[14, 0, 1, 0])?)?;
 
   assert_eq!(read.glows, None);
   assert!(read.get_glows().is_empty());
@@ -70,7 +68,7 @@ fn a_partial_glow_record_is_refused() -> XrfResult {
 
   glows.push(0);
 
-  let error: String = LevelFile::read_from_bytes::<XRayByteOrder>(level(&glows)?)
+  let error: String = LevelFile::read_from_bytes(level(&glows)?)
     .expect_err("a trailing byte is not a glow")
     .to_string();
 

@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One material of the scene, `b_material` (`communicate.h`): a texture under a render and a compiler shader.
@@ -26,19 +25,19 @@ impl BuildPrjMaterial {
 }
 
 impl ChunkReadWrite for BuildPrjMaterial {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      texture: reader.read_u16::<T>()?,
-      shader: reader.read_u16::<T>()?,
-      compiler_shader: reader.read_u16::<T>()?,
-      sector: reader.read_u16::<T>()?,
-      reserved: reader.read_u16::<T>()?,
-      area_padding: reader.read_u16::<T>()?,
-      internal_max_area: reader.read_u32::<T>()?,
+      texture: reader.read_u16()?,
+      shader: reader.read_u16()?,
+      compiler_shader: reader.read_u16()?,
+      sector: reader.read_u16()?,
+      reserved: reader.read_u16()?,
+      area_padding: reader.read_u16()?,
+      internal_max_area: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for value in [
       self.texture,
       self.shader,
@@ -47,10 +46,10 @@ impl ChunkReadWrite for BuildPrjMaterial {
       self.reserved,
       self.area_padding,
     ] {
-      writer.write_u16::<T>(value)?;
+      writer.write_u16(value)?;
     }
 
-    writer.write_u32::<T>(self.internal_max_area)?;
+    writer.write_u32(self.internal_max_area)?;
 
     Ok(())
   }

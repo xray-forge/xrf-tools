@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One entry a face corner takes from a vertex map, `st_VMapPt`: which map, and which entry in it.
@@ -17,16 +16,16 @@ impl EditableVMapPoint {
 }
 
 impl ChunkReadWrite for EditableVMapPoint {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      vmap: reader.read_u32::<T>()?,
-      index: reader.read_u32::<T>()?,
+      vmap: reader.read_u32()?,
+      index: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.vmap)?;
-    writer.write_u32::<T>(self.index)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.vmap)?;
+    writer.write_u32(self.index)?;
 
     Ok(())
   }

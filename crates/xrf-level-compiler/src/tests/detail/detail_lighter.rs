@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use glam::Vec3;
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_geometry::BvhTracer;
 use xrf_job::JobHandle;
@@ -199,10 +199,10 @@ fn writes_the_lit_details_back_in_the_layout_the_engine_reads() -> XrfResult {
   let lighting: DetailLighting = lighting()?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  lighting.details.write::<XRayByteOrder>(&mut writer)?;
+  lighting.details.write(&mut writer)?;
 
   assert_eq!(
-    LevelDetailsFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?.slots,
+    LevelDetailsFile::read_from_bytes(writer.buffer)?.slots,
     lighting.details.slots
   );
 

@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::hom::level_hom_file::LevelHomFile;
@@ -22,7 +22,7 @@ fn mesh_bytes(flags: &[u32]) -> XrfResult<Vec<u8>> {
 #[test]
 fn an_occlusion_mesh_reads_as_the_version_and_triangles_it_is() -> XrfResult {
   let bytes: Vec<u8> = mesh_bytes(&[7, 0])?;
-  let mesh: LevelHomFile = LevelHomFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let mesh: LevelHomFile = LevelHomFile::read_from_bytes(bytes)?;
 
   assert_eq!(mesh.version, LevelHomFile::CURRENT_VERSION);
   assert_eq!(mesh.polygons.len(), 2);
@@ -34,11 +34,11 @@ fn an_occlusion_mesh_reads_as_the_version_and_triangles_it_is() -> XrfResult {
 #[test]
 fn an_occlusion_mesh_is_written_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = mesh_bytes(&[7, 0])?;
-  let mesh: LevelHomFile = LevelHomFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let mesh: LevelHomFile = LevelHomFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  mesh.write::<XRayByteOrder>(&mut writer)?;
+  mesh.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -53,7 +53,7 @@ fn geometry_that_is_not_whole_triangles_is_refused() -> XrfResult {
   geometry.push(0);
   bytes.extend(chunk(LevelHomFile::GEOMETRY_CHUNK_ID, &geometry)?);
 
-  let error: String = LevelHomFile::read_from_bytes::<XRayByteOrder>(bytes)
+  let error: String = LevelHomFile::read_from_bytes(bytes)
     .expect_err("a partial triangle is refused")
     .to_string();
 

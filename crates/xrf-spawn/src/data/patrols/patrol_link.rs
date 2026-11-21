@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 use xrf_utils::{assert_length, narrow_format_size};
@@ -15,11 +14,11 @@ pub struct PatrolLink {
 
 impl ChunkReadWriteList for PatrolLink {
   /// Read links from chunk file.
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
+  fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
     let mut links: Vec<Self> = Vec::new();
 
     while reader.has_data() {
-      links.push(Self::read::<T, _>(reader)?);
+      links.push(Self::read(reader)?);
     }
 
     reader.assert_read("Chunk data should be read for patrol links")?;
@@ -28,9 +27,9 @@ impl ChunkReadWriteList for PatrolLink {
   }
 
   /// Write list patrol links into chunk writer.
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
+  fn write_list(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
     for link in list {
-      link.write::<T>(writer)?;
+      link.write(writer)?;
     }
 
     Ok(())
@@ -44,15 +43,15 @@ impl PatrolLink {
 
 impl ChunkReadWrite for PatrolLink {
   /// Read patrol link from chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let index: u32 = reader.read_u32::<T>()?;
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let index: u32 = reader.read_u32()?;
+    let count: u32 = reader.read_u32()?;
 
     let mut vertices: Vec<(u32, f32)> = reader.new_bounded_vec(count.into(), Self::MIN_LINK_SIZE, "patrol links")?;
 
     for _ in 0..count {
-      let to: u32 = reader.read_u32::<T>()?; // from->to in u16.
-      let weight: f32 = reader.read_f32::<T>()?;
+      let to: u32 = reader.read_u32()?; // from->to in u16.
+      let weight: f32 = reader.read_f32()?;
 
       vertices.push((to, weight));
     }
@@ -67,13 +66,13 @@ impl ChunkReadWrite for PatrolLink {
   }
 
   /// Write patrol link data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.index)?;
-    writer.write_u32::<T>(narrow_format_size(self.links.len(), "patrol links")?)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.index)?;
+    writer.write_u32(narrow_format_size(self.links.len(), "patrol links")?)?;
 
     for (to, weight) in &self.links {
-      writer.write_u32::<T>(*to)?;
-      writer.write_f32::<T>(*weight)?;
+      writer.write_u32(*to)?;
+      writer.write_f32(*weight)?;
     }
 
     Ok(())
@@ -133,9 +132,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{
-    ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
-  };
+  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -152,12 +149,11 @@ mod tests {
       links: vec![(10, 1.5), (11, 2.5), (12, 3.5)],
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 32);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 32);
 
@@ -169,7 +165,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(PatrolLink::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(PatrolLink::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -190,12 +186,11 @@ mod tests {
       },
     ];
 
-    PatrolLink::write_list::<XRayByteOrder>(&mut writer, &original)?;
+    PatrolLink::write_list(&mut writer, &original)?;
 
     assert_eq!(writer.bytes_written(), 48);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 48);
 
@@ -207,7 +202,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(PatrolLink::read_list::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(PatrolLink::read_list(&mut reader)?, original);
 
     Ok(())
   }
@@ -263,7 +258,7 @@ mod tests {
     // The link index, then a count no payload can satisfy.
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 0, 0, 0, 255, 255, 255, 255])?;
 
-    let error: String = PatrolLink::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = PatrolLink::read(&mut reader)
       .expect_err("expect the declared link count to exceed the chunk")
       .to_string();
 

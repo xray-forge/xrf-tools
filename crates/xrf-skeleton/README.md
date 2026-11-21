@@ -83,7 +83,6 @@ terminator, so a mark rewrites byte for byte.
 ## Decode a motion's keys
 
 ```rust
-use xrf_chunk::XRayByteOrder;
 use xrf_skeleton::SkeletonMotion;
 
 fn main() -> xrf_error::XrfResult {
@@ -104,7 +103,7 @@ fn main() -> xrf_error::XrfResult {
     count: 45,
     keys,
   };
-  let bones = motion.decode_bone_motions::<XRayByteOrder>(1)?;
+  let bones = motion.decode_bone_motions(1)?;
 
   assert_eq!(motion.get_duration_seconds(), 45.0 / SkeletonMotion::SAMPLE_FPS);
   assert_eq!(bones[0].get_rotation(10).w, 1.0);

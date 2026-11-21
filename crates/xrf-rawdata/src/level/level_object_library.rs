@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::io::{Error as IoError, ErrorKind};
 use std::path::{Path, PathBuf};
 
-use byteorder::ByteOrder;
 use walkdir::{DirEntry, WalkDir};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
@@ -61,7 +60,7 @@ impl LevelObjectLibrary {
   /// # Errors
   ///
   /// Returns the first error `visit` returns, or a cancelled error once `job` is cancelled.
-  pub fn read_each<T: ByteOrder>(
+  pub fn read_each(
     &mut self,
     job: &JobHandle,
     is_wanted: impl Fn(&LevelObjectLibraryEntry) -> bool,
@@ -72,7 +71,7 @@ impl LevelObjectLibrary {
     for entry in entries.iter().filter(|entry| is_wanted(entry)) {
       job.check_cancelled()?;
 
-      match EditableObjectFile::read_from_path::<T, _>(&entry.path) {
+      match EditableObjectFile::read_from_path(&entry.path) {
         Ok(object) => visit(entry, object)?,
         Err(error) => Self::record(unread, &entry.path, error.to_string()),
       }

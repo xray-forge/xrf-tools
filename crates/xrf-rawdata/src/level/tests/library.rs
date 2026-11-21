@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
@@ -28,7 +27,7 @@ fn write_object(path: &Path) -> XrfResult {
     &floor,
   ))?
   .object
-  .write_to_path::<XRayByteOrder, _>(&path)
+  .write_to_path(&path)
 }
 
 fn references(library: &LevelObjectLibrary) -> Vec<&str> {
@@ -70,7 +69,7 @@ fn records_each_object_that_does_not_read_once_with_why() -> XrfResult {
   let mut read: Vec<String> = Vec::new();
 
   for _ in 0..2 {
-    library.read_each::<XRayByteOrder>(
+    library.read_each(
       &JobHandle::inert(),
       |_| true,
       |entry, _: EditableObjectFile| {
@@ -94,11 +93,7 @@ fn records_each_object_that_does_not_read_once_with_why() -> XrfResult {
 
   cancelled.cancel();
 
-  assert!(
-    library
-      .read_each::<XRayByteOrder>(&cancelled, |_| true, |_, _| Ok(()))
-      .is_err()
-  );
+  assert!(library.read_each(&cancelled, |_| true, |_, _| Ok(())).is_err());
 
   Ok(())
 }

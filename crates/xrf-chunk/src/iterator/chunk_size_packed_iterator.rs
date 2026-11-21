@@ -1,11 +1,10 @@
 use std::io::SeekFrom;
 
-use byteorder::ReadBytesExt;
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::chunk_constants::CHUNK_SIZE_FIELD_SIZE;
-use crate::{ChunkDataSource, ChunkReader, XRayByteOrder};
+use crate::{ChunkDataSource, ChunkReader, XRayRead};
 
 /// Walks a payload stored as `[size][content]` records, where each size counts its own four bytes.
 ///
@@ -64,8 +63,7 @@ impl<T: ChunkDataSource> Iterator for ChunkSizePackedIterator<'_, T> {
       )));
     }
 
-    // todo: Hardcoded byte order, should be part of generics.
-    let size: u64 = match self.reader.read_u32::<XRayByteOrder>() {
+    let size: u64 = match self.reader.read_u32() {
       Ok(size) => u64::from(size),
       Err(error) => return self.fail(error.into()),
     };

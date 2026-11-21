@@ -3,7 +3,6 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use xrf_chunk::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmTextureParamChunk};
 
@@ -24,14 +23,14 @@ fn case(name: &str) -> CommandResult<PathBuf> {
 }
 
 fn descriptor() -> CommandResult<Vec<u8>> {
-  Ok(texture_descriptor().write_to_bytes::<XRayByteOrder>()?)
+  Ok(texture_descriptor().write_to_bytes()?)
 }
 
 fn other_thumbnails() -> CommandResult<[(&'static str, Vec<u8>); 3]> {
   Ok([
-    ("crate.thm", object_thumbnail()?.write_to_bytes::<XRayByteOrder>()?),
-    ("forest.thm", group_thumbnail()?.write_to_bytes::<XRayByteOrder>()?),
-    ("door.thm", sound_thumbnail().write_to_bytes::<XRayByteOrder>()?),
+    ("crate.thm", object_thumbnail()?.write_to_bytes()?),
+    ("forest.thm", group_thumbnail()?.write_to_bytes()?),
+    ("door.thm", sound_thumbnail().write_to_bytes()?),
   ])
 }
 
@@ -65,7 +64,7 @@ fn changes_the_bytes_of_the_field_named_and_no_others() -> CommandResult {
   );
   assert_eq!(edited[differing[0]], 40);
   assert_eq!(
-    ThmFile::read_from_bytes::<XRayByteOrder>(edited)?
+    ThmFile::read_from_bytes(edited)?
       .texture_param
       .map(|param: ThmTextureParamChunk| param.fade_amount),
     Some(40)
@@ -102,7 +101,7 @@ fn edits_every_texture_descriptor_below_a_directory_and_skips_every_other_kind()
   assert_eq!(report["unchanged"], 1);
   assert_eq!(report["skipped"], 3);
   assert_eq!(
-    ThmFile::read_from_path::<XRayByteOrder, _>(&directory.join("a.thm"))?
+    ThmFile::read_from_path(&directory.join("a.thm"))?
       .detail
       .map(|detail| detail.name),
     Some(String::from("detail\\stone"))

@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use byteorder::ByteOrder;
 use xrf_editable_level::EditableLevelScene;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, HostLinkPolicy, HostRelativePath, OutputFiles, StagedFile, format_path};
@@ -157,8 +156,8 @@ impl LevelSceneDecompile {
   /// # Errors
   ///
   /// As [`Self::write_to_path_with`].
-  pub fn write_to_path<T: ByteOrder>(&self, level_path: &Path, objects_root: &Path, textures_root: &Path) -> XrfResult {
-    self.write_to_path_with::<T>(level_path, objects_root, textures_root, HostLinkPolicy::Follow)
+  pub fn write_to_path(&self, level_path: &Path, objects_root: &Path, textures_root: &Path) -> XrfResult {
+    self.write_to_path_with(level_path, objects_root, textures_root, HostLinkPolicy::Follow)
   }
 
   /// Writes the decompile: the scene's sidecar, each object after its own sidecar, the library copies (skipping files
@@ -174,7 +173,7 @@ impl LevelSceneDecompile {
   /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene, a name from data
   /// leaves its root, or a refused link already stands where a file goes; otherwise when a file cannot be written, as
   /// [`EditableLevelScene::write_to_path`] does.
-  pub fn write_to_path_with<T: ByteOrder>(
+  pub fn write_to_path_with(
     &self,
     level_path: &Path,
     objects_root: &Path,
@@ -183,7 +182,7 @@ impl LevelSceneDecompile {
   ) -> XrfResult {
     let write: LevelSceneWrite<'_> = self.check_write(level_path, objects_root, textures_root, link_policy)?;
 
-    self.write_checked::<T>(write)
+    self.write_checked(write)
   }
 
   /// Resolves every path a write writes and checks each against its root's link policy, creating nothing, so a caller
@@ -254,7 +253,7 @@ impl LevelSceneDecompile {
   ///
   /// Returns an error, writing nothing, when [`EditableLevelScene::check_writable`] refuses the scene; otherwise when a
   /// file cannot be written, as [`EditableLevelScene::write_to_path`] does.
-  pub(crate) fn write_checked<T: ByteOrder>(&self, write: LevelSceneWrite<'_>) -> XrfResult {
+  pub(crate) fn write_checked(&self, write: LevelSceneWrite<'_>) -> XrfResult {
     let LevelSceneWrite {
       level_path,
       scene_root,
@@ -283,7 +282,7 @@ impl LevelSceneDecompile {
         &ObjectProvenance::sidecar_path(path),
         object.provenance.to_json()?.as_bytes(),
       )?;
-      Self::write_file(&objects_root, path, &object.object.write_to_bytes::<T>()?)?;
+      Self::write_file(&objects_root, path, &object.object.write_to_bytes()?)?;
     }
 
     for (file, (path, thumbnail)) in self.library.iter().zip(library) {
@@ -311,7 +310,7 @@ impl LevelSceneDecompile {
       scene_root.prepare_file(&Self::get_relative(&scene_root, path)?)?;
     }
 
-    self.scene.write_to_path::<T, _>(&level_path)
+    self.scene.write_to_path(&level_path)
   }
 
   /// `path`, which a getter joined below `destination`'s root, as the path below it.

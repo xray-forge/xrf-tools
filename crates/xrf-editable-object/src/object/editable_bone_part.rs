@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -18,9 +17,9 @@ impl EditableBonePart {
 }
 
 impl ChunkReadWrite for EditableBonePart {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let alias: String = reader.read_w1251_string()?;
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut bones: Vec<String> = reader.new_bounded_vec(count.into(), 1, "bone part bones")?;
 
     for _ in 0..count {
@@ -30,9 +29,9 @@ impl ChunkReadWrite for EditableBonePart {
     Ok(Self { alias, bones })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.alias)?;
-    writer.write_u32::<T>(narrow_format_size(self.bones.len(), "Bone part bones")?)?;
+    writer.write_u32(narrow_format_size(self.bones.len(), "Bone part bones")?)?;
 
     for bone in &self.bones {
       writer.write_w1251_string(bone)?;

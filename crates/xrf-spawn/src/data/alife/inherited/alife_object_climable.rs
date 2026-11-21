@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -45,8 +44,8 @@ impl AlifeObjectClimable {
 }
 
 impl AlifeStateReadWrite for AlifeObjectClimable {
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
-    let base: AlifeObjectShape = reader.read_xr::<T, _>()?;
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+    let base: AlifeObjectShape = reader.read_xr()?;
 
     if !layout.has_climable_material() {
       return Ok(Self::new_default_material(base));
@@ -58,9 +57,9 @@ impl AlifeStateReadWrite for AlifeObjectClimable {
     })
   }
 
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
     self.assert_material_fits(layout)?;
-    writer.write_xr::<T, _>(&self.base)?;
+    writer.write_xr(&self.base)?;
 
     if layout.has_climable_material() {
       writer.write_w1251_string(&self.game_material)?;
@@ -109,7 +108,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -162,10 +161,10 @@ mod tests {
   fn read_back(climable: &AlifeObjectClimable, layout: SpawnLayout) -> XrfResult<(usize, AlifeObjectClimable)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    climable.write_state::<XRayByteOrder, _>(&mut writer, layout)?;
+    climable.write_state(&mut writer, layout)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: AlifeObjectClimable = AlifeObjectClimable::read_state::<XRayByteOrder, _>(&mut reader, layout)?;
+    let read: AlifeObjectClimable = AlifeObjectClimable::read_state(&mut reader, layout)?;
 
     reader.assert_read("Expect the climbable object to be read whole")?;
 
@@ -197,7 +196,7 @@ mod tests {
   fn refuses_to_drop_its_material_up_to_version_126() {
     let climable: AlifeObjectClimable = new_climable("dest-material");
     let error: String = climable
-      .write_state::<XRayByteOrder, _>(&mut ChunkWriter::new(), layout(124))
+      .write_state(&mut ChunkWriter::new(), layout(124))
       .expect_err("a material the packet cannot hold")
       .to_string();
 

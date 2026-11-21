@@ -4,7 +4,6 @@ use std::sync::Arc;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_audio::{AudioMaterial, AudioSceneGeometry, AudioSceneMesh};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::{GameMtlAcoustics, GameMtlFile, GameMtlMaterial};
 use xrf_level::{LevelCformFace, LevelCformGeometry};
@@ -31,7 +30,7 @@ impl LevelSoundGeometry {
   fn read_materials(search: &XraySearch) -> HashMap<u16, GameMtlMaterial> {
     match search
       .read(GameMtlFile::FILE_NAME)
-      .and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>)
+      .and_then(GameMtlFile::read_from_bytes)
     {
       Ok(library) => library
         .materials

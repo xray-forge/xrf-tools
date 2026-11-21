@@ -1,9 +1,8 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Aabb;
 use xrf_utils::{format_path, narrow_format_size};
@@ -35,8 +34,8 @@ impl DetailModel {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a detail model this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Detail model file was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -49,8 +48,8 @@ impl DetailModel {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a detail model this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_whole::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_whole(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads a standalone detail model from bytes already in hand, which is how an archived one arrives.
@@ -58,8 +57,8 @@ impl DetailModel {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a detail model this reads, or do not end where its mesh does.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_whole::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_whole(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads a model that is a whole file rather than one entry of a library, so nothing may follow it.
@@ -67,8 +66,8 @@ impl DetailModel {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a detail model this reads, or do not end where its mesh does.
-  fn read_whole<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let model: Self = Self::read::<T, D>(reader)?;
+  fn read_whole<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let model: Self = Self::read::<D>(reader)?;
 
     reader.assert_read("Expect all data to be read from detail model file")?;
 
@@ -102,14 +101,14 @@ impl ChunkReadWrite for DetailModel {
   ///
   /// Returns an error when the payload ends inside the mesh, or the index count is not whole triangles - which the
   /// engine asserts on rather than tolerating.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let shader: String = reader.read_w1251_string()?;
     let texture: String = reader.read_w1251_string()?;
-    let flags: u32 = reader.read_u32::<T>()?;
-    let min_scale: f32 = reader.read_f32::<T>()?;
-    let max_scale: f32 = reader.read_f32::<T>()?;
-    let vertices_count: u32 = reader.read_u32::<T>()?;
-    let indices_count: u32 = reader.read_u32::<T>()?;
+    let flags: u32 = reader.read_u32()?;
+    let min_scale: f32 = reader.read_f32()?;
+    let max_scale: f32 = reader.read_f32()?;
+    let vertices_count: u32 = reader.read_u32()?;
+    let indices_count: u32 = reader.read_u32()?;
 
     if !indices_count.is_multiple_of(3) {
       return Err(XrfError::new_invalid_error(format!(
@@ -121,14 +120,14 @@ impl ChunkReadWrite for DetailModel {
       reader.new_bounded_vec(vertices_count.into(), DetailVertex::SERIALIZED_SIZE, "detail vertices")?;
 
     for _ in 0..vertices_count {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
     let mut indices: Vec<u16> =
       reader.new_bounded_vec(indices_count.into(), size_of::<u16>() as u64, "detail indices")?;
 
     for _ in 0..indices_count {
-      indices.push(reader.read_u16::<T>()?);
+      indices.push(reader.read_u16()?);
     }
 
     Ok(Self {
@@ -148,7 +147,7 @@ impl ChunkReadWrite for DetailModel {
   ///
   /// Returns an error when either count exceeds what the format's `u32` holds, or the indices are not whole
   /// triangles.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if !self.indices.len().is_multiple_of(3) {
       return Err(XrfError::new_invalid_error(format!(
         "Unexpected detail model index count {} on write, expected whole triangles",
@@ -158,18 +157,18 @@ impl ChunkReadWrite for DetailModel {
 
     writer.write_w1251_string(&self.shader)?;
     writer.write_w1251_string(&self.texture)?;
-    writer.write_u32::<T>(self.flags)?;
-    writer.write_f32::<T>(self.min_scale)?;
-    writer.write_f32::<T>(self.max_scale)?;
-    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "detail vertices")?)?;
-    writer.write_u32::<T>(narrow_format_size(self.indices.len(), "detail indices")?)?;
+    writer.write_u32(self.flags)?;
+    writer.write_f32(self.min_scale)?;
+    writer.write_f32(self.max_scale)?;
+    writer.write_u32(narrow_format_size(self.vertices.len(), "detail vertices")?)?;
+    writer.write_u32(narrow_format_size(self.indices.len(), "detail indices")?)?;
 
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
     for index in &self.indices {
-      writer.write_u16::<T>(*index)?;
+      writer.write_u16(*index)?;
     }
 
     Ok(())

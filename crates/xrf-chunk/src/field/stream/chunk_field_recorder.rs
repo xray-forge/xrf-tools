@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::field::chunk_field::ChunkField;
@@ -43,23 +42,23 @@ impl ChunkFieldWriter for ChunkFieldRecorder {
     self.record(ChunkField::U8(value))
   }
 
-  fn write_u16<T: ByteOrder>(&mut self, value: u16) -> XrfResult {
+  fn write_u16(&mut self, value: u16) -> XrfResult {
     self.record(ChunkField::U16(value))
   }
 
-  fn write_u32<T: ByteOrder>(&mut self, value: u32) -> XrfResult {
+  fn write_u32(&mut self, value: u32) -> XrfResult {
     self.record(ChunkField::U32(value))
   }
 
-  fn write_u64<T: ByteOrder>(&mut self, value: u64) -> XrfResult {
+  fn write_u64(&mut self, value: u64) -> XrfResult {
     self.record(ChunkField::U64(value))
   }
 
-  fn write_f32<T: ByteOrder>(&mut self, value: f32) -> XrfResult {
+  fn write_f32(&mut self, value: f32) -> XrfResult {
     self.record(ChunkField::F32(value))
   }
 
-  fn write_vector3<T: ByteOrder>(&mut self, value: [f32; 3]) -> XrfResult {
+  fn write_vector3(&mut self, value: [f32; 3]) -> XrfResult {
     self.record(ChunkField::Vector3(value))
   }
 
@@ -82,7 +81,7 @@ impl ChunkFieldWriter for ChunkFieldRecorder {
     self.position
   }
 
-  fn patch_u16<T: ByteOrder>(&mut self, _: usize, _: u16) -> XrfResult {
+  fn patch_u16(&mut self, _: usize, _: u16) -> XrfResult {
     Ok(())
   }
 }

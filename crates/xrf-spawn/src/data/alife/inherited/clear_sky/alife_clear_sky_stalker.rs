@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -59,7 +58,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyStalker {
   }
 
   /// Read the stalker from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
@@ -67,8 +66,8 @@ impl AlifePacketsReadWrite for AlifeClearSkyStalker {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
     Ok(Self {
-      base: AlifeObjectHumanStalker::read::<T, _, _>(spawn, update, layout)?,
-      job_online: spawn.read_xr::<T, _>()?,
+      base: AlifeObjectHumanStalker::read(spawn, update, layout)?,
+      job_online: spawn.read_xr()?,
       loot_dropped: spawn.read_u8()?,
       squad_id: ScriptToString::parse_text(spawn.read_w1251_string()?),
       sim_forced_online: spawn.read_u8()?,
@@ -76,7 +75,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyStalker {
   }
 
   /// Write the stalker into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
@@ -84,9 +83,9 @@ impl AlifePacketsReadWrite for AlifeClearSkyStalker {
   ) -> XrfResult {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    spawn.write_xr::<T, _>(&self.job_online)?;
+    spawn.write_xr(&self.job_online)?;
     spawn.write_u8(self.loot_dropped)?;
     spawn.write_w1251_string(ScriptToString::format_text(self.squad_id.as_deref()))?;
     spawn.write_u8(self.sim_forced_online)
@@ -133,7 +132,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyStalker {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkWriter, XRayByteOrder};
+  use xrf_chunk::ChunkWriter;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -147,14 +146,14 @@ mod tests {
   #[test]
   fn writes_the_tail_in_the_script_order() -> XrfResult {
     let original: AlifeClearSkyStalker = AlifeClearSkyStalker::new_mock(Vector3d::new(-12.5, 0.75, 310.0));
-    let (base_spawn_size, base_update_size, _) = original.base.read_back::<XRayByteOrder>(SpawnLayout::CLEAR_SKY)?;
+    let (base_spawn_size, base_update_size, _) = original.base.read_back(SpawnLayout::CLEAR_SKY)?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CLEAR_SKY)?;
+    original.write(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CLEAR_SKY)?;
 
     assert_eq!(&spawn.buffer[base_spawn_size..], b"\x02\0nil\0\0");
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CLEAR_SKY)?,
+      original.read_back(SpawnLayout::CLEAR_SKY)?,
       (base_spawn_size + 7, base_update_size, original)
     );
 

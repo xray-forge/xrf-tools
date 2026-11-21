@@ -2,10 +2,9 @@ use std::fs::File;
 use std::path::Path;
 use std::time::Duration;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_animation_envelope::{AnimationEnvelope, AnimationPlayback};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
@@ -58,8 +57,8 @@ impl AnmFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not an animation this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Animation file was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -72,8 +71,8 @@ impl AnmFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not an animation this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived animation arrives.
@@ -81,8 +80,8 @@ impl AnmFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not an animation this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -91,10 +90,10 @@ impl AnmFile {
   ///
   /// Returns an error when the motion chunk is absent, its version is one this does not read, or its payload does
   /// not account for six envelopes.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    Self::read_from_motion_chunk::<T, _>(&mut ChunkReader::find_required_by_id(&chunks, Self::CHUNK_ID)?)
+    Self::read_from_motion_chunk(&mut ChunkReader::find_required_by_id(&chunks, Self::CHUNK_ID)?)
   }
 
   /// Reads the motion chunk itself, which is where the whole of the format lives.
@@ -102,12 +101,12 @@ impl AnmFile {
   /// # Errors
   ///
   /// Returns an error when the version is one this does not read, or the payload does not account for six envelopes.
-  pub fn read_from_motion_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_motion_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let name: String = reader.read_w1251_string()?;
-    let frame_start: i32 = reader.read_i32::<T>()?;
-    let frame_end: i32 = reader.read_i32::<T>()?;
-    let fps: f32 = reader.read_f32::<T>()?;
-    let version: u16 = reader.read_u16::<T>()?;
+    let frame_start: i32 = reader.read_i32()?;
+    let frame_end: i32 = reader.read_i32()?;
+    let fps: f32 = reader.read_f32()?;
+    let version: u16 = reader.read_u16()?;
 
     if !Self::SUPPORTED_VERSIONS.contains(&version) {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -120,9 +119,9 @@ impl AnmFile {
 
     for channel in Self::get_stored_order(version) {
       channels[channel.get_index()] = if version == Self::WIDE_VERSION {
-        AnimationEnvelope::read_wide::<T, D>(reader)?
+        AnimationEnvelope::read_wide::<D>(reader)?
       } else {
-        AnimationEnvelope::read::<T, D>(reader)?
+        AnimationEnvelope::read::<D>(reader)?
       };
     }
 
@@ -143,12 +142,12 @@ impl AnmFile {
   /// # Errors
   ///
   /// Returns an error when the animation is a version this does not write.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    self.write::<T>(&mut writer)?;
+    self.write(&mut writer)?;
 
-    writer.flush_chunk_into_buffer::<T>(Self::CHUNK_ID)
+    writer.flush_chunk_into_buffer(Self::CHUNK_ID)
   }
 
   /// Writes the motion chunk's payload, in the channel order its own version stores.
@@ -156,7 +155,7 @@ impl AnmFile {
   /// # Errors
   ///
   /// Returns an error when the animation is a version this does not write.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if !Self::WRITABLE_VERSIONS.contains(&self.version) {
       return Err(XrfError::new_not_implemented_error(format!(
         "Unexpected animation version {} on write, only versions {:?} are implemented",
@@ -166,13 +165,13 @@ impl AnmFile {
     }
 
     writer.write_w1251_string(&self.name)?;
-    writer.write_i32::<T>(self.frame_start)?;
-    writer.write_i32::<T>(self.frame_end)?;
-    writer.write_f32::<T>(self.fps)?;
-    writer.write_u16::<T>(self.version)?;
+    writer.write_i32(self.frame_start)?;
+    writer.write_i32(self.frame_end)?;
+    writer.write_f32(self.fps)?;
+    writer.write_u16(self.version)?;
 
     for channel in Self::get_stored_order(self.version) {
-      self.get_channel(channel).write::<T>(writer)?;
+      self.get_channel(channel).write(writer)?;
     }
 
     Ok(())

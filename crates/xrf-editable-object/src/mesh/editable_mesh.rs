@@ -1,5 +1,6 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
+use xrf_chunk::{
+  ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter, XRayRead, XRayWrite,
+};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::narrow_format_size;
@@ -76,7 +77,7 @@ impl EditableMesh {
   /// Returns an error on a version other than [`Self::VERSION`], a missing required chunk, a chunk holding more or less
   /// than its fields, per-face lists not one per face, stored point faces the faces do not give, or a count running
   /// past its chunk.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut name: Option<String> = None;
     let mut bounds: Option<Aabb> = None;
@@ -92,50 +93,48 @@ impl EditableMesh {
 
     let layout: ChunkLayout = ChunkLayout::read(reader, |chunk| {
       match chunk.id {
-        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload()?),
         Self::NAME_CHUNK_ID if name.is_none() => name = Some(chunk.read_w1251_string_payload()?),
         Self::BOUNDS_CHUNK_ID if bounds.is_none() => {
           bounds = Some(EditableChunks::read_whole(chunk, "mesh bounds", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
         Self::FLAGS_CHUNK_ID if flags.is_none() => flags = Some(chunk.read_u8_payload()?),
         Self::OPTIONS_CHUNK_ID if options.is_none() => {
           options = Some(EditableChunks::read_whole(chunk, "mesh options", |chunk| {
-            Ok([chunk.read_u32::<T>()?, chunk.read_u32::<T>()?])
+            Ok([chunk.read_u32()?, chunk.read_u32()?])
           })?);
         }
         Self::POINTS_CHUNK_ID if points.is_none() => {
           points = Some(EditableChunks::read_whole(chunk, "mesh points", |chunk| {
-            MeshPoints::read::<T, D>(chunk)
+            MeshPoints::read::<D>(chunk)
           })?);
         }
         Self::FACES_CHUNK_ID if faces.is_none() => {
           faces = Some(EditableChunks::read_whole(chunk, "mesh faces", |chunk| {
-            EditableChunks::read_counted::<T, D, _>(chunk, EditableFace::SIZE, "mesh faces", |chunk| {
-              chunk.read_xr::<T, _>()
-            })
+            EditableChunks::read_counted::<D, _>(chunk, EditableFace::SIZE, "mesh faces", |chunk| chunk.read_xr())
           })?);
         }
         Self::SMOOTHING_GROUPS_CHUNK_ID if smoothing_groups.is_none() => {
-          smoothing_groups = Some(Self::read_smoothing_groups::<T, D>(chunk)?);
+          smoothing_groups = Some(Self::read_smoothing_groups::<D>(chunk)?);
         }
         Self::CORNER_NORMALS_CHUNK_ID if corner_normals.is_none() => {
-          corner_normals = Some(Self::read_corner_normals::<T, D>(chunk)?);
+          corner_normals = Some(Self::read_corner_normals::<D>(chunk)?);
         }
         Self::VMAP_REFERENCES_CHUNK_ID if vmap_references.is_none() => {
           vmap_references = Some(EditableChunks::read_whole(chunk, "vertex map references", |chunk| {
-            EditableChunks::read_counted::<T, D, _>(
+            EditableChunks::read_counted::<D, _>(
               chunk,
               EditableVMapReference::MIN_SERIALIZED_SIZE,
               "vertex map references",
-              |chunk| chunk.read_xr::<T, _>(),
+              |chunk| chunk.read_xr(),
             )
           })?);
         }
         Self::SURFACE_FACES_CHUNK_ID if surface_faces.is_none() => {
           surface_faces = Some(EditableChunks::read_whole(chunk, "surface faces", |chunk| {
-            let count: u16 = chunk.read_u16::<T>()?;
+            let count: u16 = chunk.read_u16()?;
             let mut lists: Vec<EditableSurfaceFaces> = chunk.new_bounded_vec(
               count.into(),
               EditableSurfaceFaces::MIN_SERIALIZED_SIZE,
@@ -143,7 +142,7 @@ impl EditableMesh {
             )?;
 
             for _ in 0..count {
-              lists.push(chunk.read_xr::<T, _>()?);
+              lists.push(chunk.read_xr()?);
             }
 
             Ok(lists)
@@ -151,8 +150,8 @@ impl EditableMesh {
         }
         Self::VMAPS_CHUNK_ID if vmaps.is_none() => {
           vmaps = Some(EditableChunks::read_whole(chunk, "vertex maps", |chunk| {
-            EditableChunks::read_counted::<T, D, _>(chunk, EditableVMap::MIN_SERIALIZED_SIZE, "vertex maps", |chunk| {
-              chunk.read_xr::<T, _>()
+            EditableChunks::read_counted::<D, _>(chunk, EditableVMap::MIN_SERIALIZED_SIZE, "vertex maps", |chunk| {
+              chunk.read_xr()
             })
           })?);
         }
@@ -202,48 +201,46 @@ impl EditableMesh {
   ///
   /// Returns an error when a list overflows its count field, per-face lists are not one per face, a face names a
   /// missing point while point faces are written, or a vertex map's lists disagree on its entry count.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_per_face_lists_match()?;
 
     let mut sequence: ChunkSequence = ChunkSequence::new();
 
-    sequence.push(Self::VERSION_CHUNK_ID, |writer| {
-      Ok(writer.write_u16::<T>(Self::VERSION)?)
-    })?;
+    sequence.push(Self::VERSION_CHUNK_ID, |writer| Ok(writer.write_u16(Self::VERSION)?))?;
     sequence.push(Self::NAME_CHUNK_ID, |writer| {
       writer.write_w1251_string(&self.name)?;
 
       Ok(())
     })?;
-    sequence.push(Self::BOUNDS_CHUNK_ID, |writer| self.bounds.write::<T>(writer))?;
+    sequence.push(Self::BOUNDS_CHUNK_ID, |writer| self.bounds.write(writer))?;
     sequence.push(Self::FLAGS_CHUNK_ID, |writer| Ok(writer.write_u8(self.flags)?))?;
 
     if let Some(options) = self.options {
       sequence.push(Self::OPTIONS_CHUNK_ID, |writer| {
-        writer.write_u32::<T>(options[0])?;
-        writer.write_u32::<T>(options[1])?;
+        writer.write_u32(options[0])?;
+        writer.write_u32(options[1])?;
 
         Ok(())
       })?;
     }
 
     sequence.push(Self::POINTS_CHUNK_ID, |writer| {
-      EditableChunks::write_counted::<T, _>(writer, &self.points, "Mesh points")?;
+      EditableChunks::write_counted(writer, &self.points, "Mesh points")?;
 
       if self.has_point_faces {
-        MeshPoints::write_faces::<T>(writer, &self.get_point_faces()?)?;
+        MeshPoints::write_faces(writer, &self.get_point_faces()?)?;
       }
 
       Ok(())
     })?;
     sequence.push(Self::FACES_CHUNK_ID, |writer| {
-      EditableChunks::write_counted::<T, _>(writer, &self.faces, "Mesh faces")
+      EditableChunks::write_counted(writer, &self.faces, "Mesh faces")
     })?;
 
     if let Some(groups) = &self.smoothing_groups {
       sequence.push(Self::SMOOTHING_GROUPS_CHUNK_ID, |writer| {
         for group in groups {
-          writer.write_u32::<T>(*group)?;
+          writer.write_u32(*group)?;
         }
 
         Ok(())
@@ -253,7 +250,7 @@ impl EditableMesh {
     if let Some(normals) = &self.corner_normals {
       sequence.push(Self::CORNER_NORMALS_CHUNK_ID, |writer| {
         for normal in normals.iter().flatten() {
-          normal.write::<T>(writer)?;
+          normal.write(writer)?;
         }
 
         Ok(())
@@ -261,13 +258,13 @@ impl EditableMesh {
     }
 
     sequence.push(Self::VMAP_REFERENCES_CHUNK_ID, |writer| {
-      EditableChunks::write_counted::<T, _>(writer, &self.vmap_references, "Vertex map references")
+      EditableChunks::write_counted(writer, &self.vmap_references, "Vertex map references")
     })?;
     sequence.push(Self::SURFACE_FACES_CHUNK_ID, |writer| {
-      writer.write_u16::<T>(narrow_format_size(self.surface_faces.len(), "Surface face lists")?)?;
+      writer.write_u16(narrow_format_size(self.surface_faces.len(), "Surface face lists")?)?;
 
       for list in &self.surface_faces {
-        list.write::<T>(writer)?;
+        list.write(writer)?;
       }
 
       Ok(())
@@ -275,11 +272,11 @@ impl EditableMesh {
 
     if let Some(vmaps) = &self.vmaps {
       sequence.push(Self::VMAPS_CHUNK_ID, |writer| {
-        EditableChunks::write_counted::<T, _>(writer, vmaps, "Vertex maps")
+        EditableChunks::write_counted(writer, vmaps, "Vertex maps")
       })?;
     }
 
-    self.layout.write::<T>(writer, sequence)
+    self.layout.write(writer, sequence)
   }
 
   /// Whether a face with no smoothing group of its own is drawn flat.
@@ -352,9 +349,7 @@ impl EditableMesh {
   }
 
   /// Reads the corner normals chunk, which stores no count: three normals per face, read until the chunk ends.
-  fn read_corner_normals<T: ByteOrder, D: ChunkDataSource>(
-    chunk: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<[Vector3d; 3]>> {
+  fn read_corner_normals<D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Vec<[Vector3d; 3]>> {
     const TRIPLE_SIZE: u64 = 36;
 
     let size: u64 = chunk.read_bytes_remain();
@@ -369,18 +364,14 @@ impl EditableMesh {
       chunk.new_bounded_vec(size / TRIPLE_SIZE, TRIPLE_SIZE, "corner normal triples")?;
 
     for _ in 0..size / TRIPLE_SIZE {
-      normals.push([
-        chunk.read_xr::<T, _>()?,
-        chunk.read_xr::<T, _>()?,
-        chunk.read_xr::<T, _>()?,
-      ]);
+      normals.push([chunk.read_xr()?, chunk.read_xr()?, chunk.read_xr()?]);
     }
 
     Ok(normals)
   }
 
   /// Reads the smoothing group chunk, which stores no count: `LoadMesh` reads a mask per face straight off it.
-  fn read_smoothing_groups<T: ByteOrder, D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
+  fn read_smoothing_groups<D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
     let size: u64 = chunk.read_bytes_remain();
 
     if !size.is_multiple_of(4) {
@@ -392,7 +383,7 @@ impl EditableMesh {
     let mut groups: Vec<u32> = chunk.new_bounded_vec(size / 4, 4, "smoothing groups")?;
 
     for _ in 0..size / 4 {
-      groups.push(chunk.read_u32::<T>()?);
+      groups.push(chunk.read_u32()?);
     }
 
     Ok(groups)
@@ -409,9 +400,9 @@ impl MeshPoints {
   /// A point's three floats.
   const POINT_SIZE: u64 = 12;
 
-  fn read<T: ByteOrder, D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Self> {
     let points: Vec<Vector3d> =
-      EditableChunks::read_counted::<T, D, _>(chunk, Self::POINT_SIZE, "mesh points", |chunk| chunk.read_xr::<T, _>())?;
+      EditableChunks::read_counted::<D, _>(chunk, Self::POINT_SIZE, "mesh points", |chunk| chunk.read_xr())?;
 
     if !chunk.has_data() {
       return Ok(Self {
@@ -428,7 +419,7 @@ impl MeshPoints {
       let mut faces: Vec<u32> = chunk.new_bounded_vec(count.into(), 4, "point faces")?;
 
       for _ in 0..count {
-        faces.push(chunk.read_u32::<T>()?);
+        faces.push(chunk.read_u32()?);
       }
 
       point_faces.push(faces);
@@ -441,12 +432,12 @@ impl MeshPoints {
   }
 
   /// Writes a count byte and the face indices for each point.
-  fn write_faces<T: ByteOrder>(writer: &mut ChunkWriter, point_faces: &[Vec<u32>]) -> XrfResult {
+  fn write_faces(writer: &mut ChunkWriter, point_faces: &[Vec<u32>]) -> XrfResult {
     for faces in point_faces {
       writer.write_u8(narrow_format_size(faces.len(), "Point faces")?)?;
 
       for face in faces {
-        writer.write_u32::<T>(*face)?;
+        writer.write_u32(*face)?;
       }
     }
 

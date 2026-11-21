@@ -1,7 +1,6 @@
 use xrf_anm::AnmFile;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_extension::XrayExtension;
 use xrf_vfs::XraySearch;
 
@@ -58,7 +57,6 @@ impl LevelObjectMotionsPart {
         .map_err(|error| error.to_string())?,
     };
 
-    AnmFile::read_from_bytes::<XRayByteOrder>(bytes)
-      .map_err(|error| format!("Object motion '{name}' cannot be read: {error}"))
+    AnmFile::read_from_bytes(bytes).map_err(|error| format!("Object motion '{name}' cannot be read: {error}"))
   }
 }

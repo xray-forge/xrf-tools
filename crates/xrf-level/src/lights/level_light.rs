@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -52,44 +51,40 @@ impl LevelLight {
 }
 
 impl ChunkReadWrite for LevelLight {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      kind: reader.read_u16::<T>()?,
-      level: reader.read_u16::<T>()?,
-      diffuse: reader.read_xr::<T, _>()?,
-      position: reader.read_xr::<T, _>()?,
-      direction: reader.read_xr::<T, _>()?,
-      range: reader.read_f32::<T>()?,
-      range_squared: reader.read_f32::<T>()?,
-      falloff: reader.read_f32::<T>()?,
-      attenuation_constant: reader.read_f32::<T>()?,
-      attenuation_linear: reader.read_f32::<T>()?,
-      attenuation_quadratic: reader.read_f32::<T>()?,
-      energy: reader.read_f32::<T>()?,
-      triangle: [
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      ],
+      kind: reader.read_u16()?,
+      level: reader.read_u16()?,
+      diffuse: reader.read_xr()?,
+      position: reader.read_xr()?,
+      direction: reader.read_xr()?,
+      range: reader.read_f32()?,
+      range_squared: reader.read_f32()?,
+      falloff: reader.read_f32()?,
+      attenuation_constant: reader.read_f32()?,
+      attenuation_linear: reader.read_f32()?,
+      attenuation_quadratic: reader.read_f32()?,
+      energy: reader.read_f32()?,
+      triangle: [reader.read_xr()?, reader.read_xr()?, reader.read_xr()?],
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.kind)?;
-    writer.write_u16::<T>(self.level)?;
-    writer.write_xr::<T, _>(&self.diffuse)?;
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_xr::<T, _>(&self.direction)?;
-    writer.write_f32::<T>(self.range)?;
-    writer.write_f32::<T>(self.range_squared)?;
-    writer.write_f32::<T>(self.falloff)?;
-    writer.write_f32::<T>(self.attenuation_constant)?;
-    writer.write_f32::<T>(self.attenuation_linear)?;
-    writer.write_f32::<T>(self.attenuation_quadratic)?;
-    writer.write_f32::<T>(self.energy)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.kind)?;
+    writer.write_u16(self.level)?;
+    writer.write_xr(&self.diffuse)?;
+    writer.write_xr(&self.position)?;
+    writer.write_xr(&self.direction)?;
+    writer.write_f32(self.range)?;
+    writer.write_f32(self.range_squared)?;
+    writer.write_f32(self.falloff)?;
+    writer.write_f32(self.attenuation_constant)?;
+    writer.write_f32(self.attenuation_linear)?;
+    writer.write_f32(self.attenuation_quadratic)?;
+    writer.write_f32(self.energy)?;
 
     for vertex in &self.triangle {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
     Ok(())

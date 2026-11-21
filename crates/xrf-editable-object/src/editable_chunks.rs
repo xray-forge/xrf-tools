@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
@@ -9,7 +8,7 @@ pub(crate) struct EditableChunks;
 
 impl EditableChunks {
   /// Frames what `write` puts in one child chunk and appends it to `destination`.
-  pub(crate) fn write<T: ByteOrder>(
+  pub(crate) fn write(
     destination: &mut ChunkWriter,
     id: u32,
     write: impl FnOnce(&mut ChunkWriter) -> XrfResult,
@@ -17,20 +16,20 @@ impl EditableChunks {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     write(&mut writer)?;
-    writer.flush_chunk_into::<T>(destination, id)?;
+    writer.flush_chunk_into(destination, id)?;
 
     Ok(())
   }
 
   /// Frames a run of children numbered from zero, which is how the SDK stores a list of meshes or bones: it opens
   /// child 0, 1, 2 and stops at the first number missing.
-  pub(crate) fn write_numbered<T: ByteOrder, I>(
+  pub(crate) fn write_numbered<I>(
     destination: &mut ChunkWriter,
     items: &[I],
     write: impl Fn(&I, &mut ChunkWriter) -> XrfResult,
   ) -> XrfResult {
     for (index, item) in items.iter().enumerate() {
-      Self::write::<T>(destination, narrow_format_size(index, "Numbered chunk")?, |writer| {
+      Self::write(destination, narrow_format_size(index, "Numbered chunk")?, |writer| {
         write(item, writer)
       })?;
     }
@@ -52,13 +51,13 @@ impl EditableChunks {
   }
 
   /// Reads a `u32` count and that many records, bounding the count by the bytes left before reserving for it.
-  pub(crate) fn read_counted<T: ByteOrder, D: ChunkDataSource, R>(
+  pub(crate) fn read_counted<D: ChunkDataSource, R>(
     chunk: &mut ChunkReader<D>,
     min_record_size: u64,
     what: &str,
     read: impl Fn(&mut ChunkReader<D>) -> XrfResult<R>,
   ) -> XrfResult<Vec<R>> {
-    let count: u32 = chunk.read_u32::<T>()?;
+    let count: u32 = chunk.read_u32()?;
     let mut records: Vec<R> = chunk.new_bounded_vec(count.into(), min_record_size, what)?;
 
     for _ in 0..count {
@@ -69,15 +68,11 @@ impl EditableChunks {
   }
 
   /// Writes a `u32` count and the records.
-  pub(crate) fn write_counted<T: ByteOrder, R: ChunkReadWrite>(
-    writer: &mut ChunkWriter,
-    records: &[R],
-    what: &str,
-  ) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(records.len(), what)?)?;
+  pub(crate) fn write_counted<R: ChunkReadWrite>(writer: &mut ChunkWriter, records: &[R], what: &str) -> XrfResult {
+    writer.write_u32(narrow_format_size(records.len(), what)?)?;
 
     for record in records {
-      record.write::<T>(writer)?;
+      record.write(writer)?;
     }
 
     Ok(())

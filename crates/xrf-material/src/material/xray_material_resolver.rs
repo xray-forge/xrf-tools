@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use xrf_chunk::{ChunkReader, XRayByteOrder};
+use xrf_chunk::ChunkReader;
 use xrf_error::XrfResult;
 use xrf_thm::{ThmBumpChunk, ThmFile, ThmMaterialChunk, ThmTextureType};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayResolution, XraySearch};
@@ -136,7 +136,7 @@ impl XrayMaterialResolver {
   /// A located descriptor as the engine's reader parses it, through the search's cache.
   pub fn read_descriptor(search: &XraySearch, descriptor: &XrayAsset) -> XrfResult<Arc<ThmFile>> {
     search.read_parsed(descriptor, |bytes| {
-      ThmFile::read_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)
+      ThmFile::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
     })
   }
 

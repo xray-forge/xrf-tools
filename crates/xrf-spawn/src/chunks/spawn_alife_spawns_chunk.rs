@@ -2,9 +2,8 @@ use std::fmt;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
 use xrf_utils::{assert_count_fits, assert_equal, assert_length, narrow_format_size};
@@ -39,21 +38,21 @@ impl SpawnALifeSpawnsChunk {
   ///
   /// Returns an error when the chunk's own layout cannot be read: its count, its objects, or one object's chunk, or when
   /// it holds another number of objects than it declares.
-  pub fn read_each<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_each<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     visit: impl FnMut(u32, XrfResult<AlifeObject>),
   ) -> XrfResult<u32> {
-    Self::walk::<T, _>(reader, visit).map(|(count, _)| count)
+    Self::walk(reader, visit).map(|(count, _)| count)
   }
 
   /// The walk behind both readers, answering the declared count and the objects chunk it walked to the end of.
-  fn walk<T: ByteOrder, D: ChunkDataSource>(
+  fn walk<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     mut visit: impl FnMut(u32, XrfResult<AlifeObject>),
   ) -> XrfResult<(u32, ChunkReader<D>)> {
     let mut count_reader: ChunkReader<D> = reader.read_child_by_index(Self::COUNT_CHUNK_ID)?;
     let mut objects_reader: ChunkReader<D> = reader.read_child_by_index(Self::OBJECTS_CHUNK_ID)?;
-    let count: u32 = count_reader.read_u32::<T>()?;
+    let count: u32 = count_reader.read_u32()?;
 
     count_reader.assert_read("Expect count chunk to be ended")?;
 
@@ -70,7 +69,7 @@ impl SpawnALifeSpawnsChunk {
     for object_reader in ChunkIterator::from_start(&mut objects_reader)? {
       let mut object_reader: ChunkReader<D> = object_reader?;
 
-      visit(object_reader.id, Self::read_object::<T, _>(&mut object_reader));
+      visit(object_reader.id, Self::read_object(&mut object_reader));
       visited += 1;
     }
 
@@ -85,9 +84,9 @@ impl SpawnALifeSpawnsChunk {
   }
 
   /// One object's chunk: its index, which is the chunk's id, then its data.
-  fn read_object<T: ByteOrder, D: ChunkDataSource>(object_reader: &mut ChunkReader<D>) -> XrfResult<AlifeObject> {
+  fn read_object<D: ChunkDataSource>(object_reader: &mut ChunkReader<D>) -> XrfResult<AlifeObject> {
     let mut index_reader: ChunkReader<D> = object_reader.read_child_by_index(Self::OBJECT_INDEX_CHUNK_ID)?;
-    let index: u16 = index_reader.read_u16::<T>()?;
+    let index: u16 = index_reader.read_u16()?;
 
     assert_equal(
       u32::from(index),
@@ -97,7 +96,7 @@ impl SpawnALifeSpawnsChunk {
     index_reader.assert_read("Expect ALife object index to be read")?;
 
     let mut data_reader: ChunkReader<D> = object_reader.read_child_by_index(Self::OBJECT_DATA_CHUNK_ID)?;
-    let data: AlifeObject = data_reader.read_xr::<T, _>()?;
+    let data: AlifeObject = data_reader.read_xr()?;
 
     data_reader.assert_read("Expect ALife object data to be read")?;
 
@@ -107,12 +106,12 @@ impl SpawnALifeSpawnsChunk {
 
 impl ChunkReadWrite for SpawnALifeSpawnsChunk {
   /// Read spawns chunk by position descriptor from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Reading ALife spawns chunk, {} bytes", reader.read_bytes_remain());
 
     let mut objects: Vec<AlifeObject> = Vec::new();
     let mut failure: Option<XrfError> = None;
-    let (count, objects_reader): (u32, ChunkReader<D>) = Self::walk::<T, _>(reader, |_, object| match object {
+    let (count, objects_reader): (u32, ChunkReader<D>) = Self::walk(reader, |_, object| match object {
       Ok(object) => objects.push(object),
       Err(error) => {
         failure.get_or_insert(error);
@@ -135,54 +134,46 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
   }
 
   /// Write ALife chunk data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
     let mut objects_writer: ChunkWriter = ChunkWriter::new();
     let vertex_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<T>(narrow_format_size(self.objects.len(), "alife objects")?)?;
+    count_writer.write_u32(narrow_format_size(self.objects.len(), "alife objects")?)?;
 
     for (index, object) in self.objects.iter().enumerate() {
       let mut object_writer: ChunkWriter = ChunkWriter::new();
 
       let mut index_writer: ChunkWriter = ChunkWriter::new();
-      index_writer.write_u16::<T>(narrow_format_size(index, "alife object index")?)?;
+      index_writer.write_u16(narrow_format_size(index, "alife object index")?)?;
       object_writer.write_all(
         index_writer
-          .flush_chunk_into_buffer::<T>(Self::OBJECT_INDEX_CHUNK_ID)?
+          .flush_chunk_into_buffer(Self::OBJECT_INDEX_CHUNK_ID)?
           .as_slice(),
       )?;
 
       let mut data_writer: ChunkWriter = ChunkWriter::new();
-      object.write::<T>(&mut data_writer)?;
+      object.write(&mut data_writer)?;
       object_writer.write_all(
         data_writer
-          .flush_chunk_into_buffer::<T>(Self::OBJECT_DATA_CHUNK_ID)?
+          .flush_chunk_into_buffer(Self::OBJECT_DATA_CHUNK_ID)?
           .as_slice(),
       )?;
 
       objects_writer.write_all(
         object_writer
-          .flush_chunk_into_buffer::<T>(narrow_format_size(index, "alife object chunk id")?)?
+          .flush_chunk_into_buffer(narrow_format_size(index, "alife object chunk id")?)?
           .as_slice(),
       )?;
     }
 
-    writer.write_all(
-      count_writer
-        .flush_chunk_into_buffer::<T>(Self::COUNT_CHUNK_ID)?
-        .as_slice(),
-    )?;
+    writer.write_all(count_writer.flush_chunk_into_buffer(Self::COUNT_CHUNK_ID)?.as_slice())?;
     writer.write_all(
       objects_writer
-        .flush_chunk_into_buffer::<T>(Self::OBJECTS_CHUNK_ID)?
+        .flush_chunk_into_buffer(Self::OBJECTS_CHUNK_ID)?
         .as_slice(),
     )?;
-    writer.write_all(
-      vertex_writer
-        .flush_chunk_into_buffer::<T>(Self::VERTEX_CHUNK_ID)?
-        .as_slice(),
-    )?;
+    writer.write_all(vertex_writer.flush_chunk_into_buffer(Self::VERTEX_CHUNK_ID)?.as_slice())?;
 
     log::debug!("Written ALife spawns chunk, {} bytes", writer.bytes_written());
 
@@ -230,8 +221,7 @@ impl fmt::Debug for SpawnALifeSpawnsChunk {
 mod tests {
   use std::io::Write;
 
-  use byteorder::WriteBytesExt;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayWrite};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -290,10 +280,10 @@ mod tests {
     let mut index_writer: ChunkWriter = ChunkWriter::new();
     let mut object_writer: ChunkWriter = ChunkWriter::new();
 
-    index_writer.write_u16::<XRayByteOrder>(index)?;
-    object_writer.write_all(&index_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?;
-    object_writer.write_all(&data.flush_chunk_into_buffer::<XRayByteOrder>(1)?)?;
-    object_writer.flush_chunk_into_buffer::<XRayByteOrder>(u32::from(index))
+    index_writer.write_u16(index)?;
+    object_writer.write_all(&index_writer.flush_chunk_into_buffer(0)?)?;
+    object_writer.write_all(&data.flush_chunk_into_buffer(1)?)?;
+    object_writer.flush_chunk_into_buffer(u32::from(index))
   }
 
   #[test]
@@ -304,19 +294,19 @@ mod tests {
     let mut objects_writer: ChunkWriter = ChunkWriter::new();
     let mut spawns_writer: ChunkWriter = ChunkWriter::new();
 
-    restrictor().write::<XRayByteOrder>(&mut readable)?;
+    restrictor().write(&mut readable)?;
     unreadable.write_all(&[0xFF; 4])?;
-    count_writer.write_u32::<XRayByteOrder>(2)?;
+    count_writer.write_u32(2)?;
     objects_writer.write_all(&object_chunk(0, &mut readable)?)?;
     objects_writer.write_all(&object_chunk(1, &mut unreadable)?)?;
-    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?;
-    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer::<XRayByteOrder>(1)?)?;
-    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer::<XRayByteOrder>(2)?)?;
+    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer(0)?)?;
+    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer(1)?)?;
+    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer(2)?)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+      ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
     let mut read: Vec<(u32, Option<AlifeObject>)> = Vec::new();
-    let count: u32 = SpawnALifeSpawnsChunk::read_each::<XRayByteOrder, _>(&mut reader, |index, object| {
+    let count: u32 = SpawnALifeSpawnsChunk::read_each(&mut reader, |index, object| {
       read.push((index, object.ok()));
     })?;
 
@@ -334,18 +324,18 @@ mod tests {
     let mut objects_writer: ChunkWriter = ChunkWriter::new();
     let mut spawns_writer: ChunkWriter = ChunkWriter::new();
 
-    restrictor().write::<XRayByteOrder>(&mut readable)?;
-    count_writer.write_u32::<XRayByteOrder>(2)?;
+    restrictor().write(&mut readable)?;
+    count_writer.write_u32(2)?;
     // One object, which is room enough for the count's bound to pass it.
     objects_writer.write_all(&object_chunk(0, &mut readable)?)?;
-    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?;
-    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer::<XRayByteOrder>(1)?)?;
-    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer::<XRayByteOrder>(2)?)?;
+    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer(0)?)?;
+    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer(1)?)?;
+    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer(2)?)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
-      ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+      ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
 
-    let error: String = SpawnALifeSpawnsChunk::read_each::<XRayByteOrder, _>(&mut reader, |_, _| {})
+    let error: String = SpawnALifeSpawnsChunk::read_each(&mut reader, |_, _| {})
       .expect_err("a count the objects fall short of")
       .to_string();
 
@@ -362,12 +352,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 28);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 28);
 
@@ -379,7 +368,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    let read: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk::read(&mut reader)?;
 
     assert_eq!(read.objects.len(), original.objects.len());
 
@@ -477,12 +466,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 395);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 395);
 
@@ -494,7 +482,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    let read: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk::read(&mut reader)?;
 
     assert_eq!(read.objects.len(), original.objects.len());
 
@@ -511,17 +499,17 @@ mod tests {
     let objects_writer: ChunkWriter = ChunkWriter::new();
     let vertex_writer: ChunkWriter = ChunkWriter::new();
 
-    count_writer.write_u32::<XRayByteOrder>(u32::MAX)?;
+    count_writer.write_u32(u32::MAX)?;
 
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes.extend(count_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnALifeSpawnsChunk::COUNT_CHUNK_ID)?);
-    bytes.extend(objects_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnALifeSpawnsChunk::OBJECTS_CHUNK_ID)?);
-    bytes.extend(vertex_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnALifeSpawnsChunk::VERTEX_CHUNK_ID)?);
+    bytes.extend(count_writer.flush_chunk_into_buffer(SpawnALifeSpawnsChunk::COUNT_CHUNK_ID)?);
+    bytes.extend(objects_writer.flush_chunk_into_buffer(SpawnALifeSpawnsChunk::OBJECTS_CHUNK_ID)?);
+    bytes.extend(vertex_writer.flush_chunk_into_buffer(SpawnALifeSpawnsChunk::VERTEX_CHUNK_ID)?);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
 
-    let error: String = SpawnALifeSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = SpawnALifeSpawnsChunk::read(&mut reader)
       .expect_err("expect the declared object count to exceed the objects chunk")
       .to_string();
 

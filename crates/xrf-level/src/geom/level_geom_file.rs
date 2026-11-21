@@ -2,9 +2,8 @@ use std::fs::File;
 use std::io::SeekFrom;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, XRayRead};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -45,8 +44,8 @@ impl LevelGeomFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not render geometry this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level render geometry was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -59,8 +58,8 @@ impl LevelGeomFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not render geometry this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how archived geometry arrives.
@@ -68,8 +67,8 @@ impl LevelGeomFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not render geometry this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -78,8 +77,8 @@ impl LevelGeomFile {
   ///
   /// Returns an error when a required chunk is absent, a declaration names a type `D3DDECLTYPE` does not, or a
   /// chunk does not end exactly where its buffers say it should.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Self::read_from_children::<T, _>(&reader.read_children()?)
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    Self::read_from_children(&reader.read_children()?)
   }
 
   /// Reads render geometry from children already read from it.
@@ -88,21 +87,21 @@ impl LevelGeomFile {
   ///
   /// Returns an error when a required chunk is absent, a declaration names a type `D3DDECLTYPE` does not, or a
   /// chunk does not end exactly where its buffers say it should.
-  pub fn read_from_children<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+  pub fn read_from_children<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     let mut vertices: ChunkReader<D> = ChunkReader::find_required_by_id(chunks, Self::VERTEX_BUFFERS_CHUNK_ID)?;
-    let vertex_buffers: Vec<LevelGeomVertexBuffer> = Self::read_vertex_buffers::<T, D>(&mut vertices)?;
+    let vertex_buffers: Vec<LevelGeomVertexBuffer> = Self::read_vertex_buffers::<D>(&mut vertices)?;
 
     vertices.assert_read("Expect all data to be read from level render geometry vertex buffers chunk")?;
 
     let mut indices: ChunkReader<D> = ChunkReader::find_required_by_id(chunks, Self::INDEX_BUFFERS_CHUNK_ID)?;
-    let index_buffers: Vec<LevelGeomIndexBuffer> = Self::read_index_buffers::<T, D>(&mut indices)?;
+    let index_buffers: Vec<LevelGeomIndexBuffer> = Self::read_index_buffers::<D>(&mut indices)?;
 
     indices.assert_read("Expect all data to be read from level render geometry index buffers chunk")?;
 
     let slide_windows: Vec<LevelGeomSlideWindowItem> =
       match ChunkReader::find_optional_by_id(chunks, Self::SLIDE_WINDOWS_CHUNK_ID) {
         Some(mut chunk) => {
-          let windows: Vec<LevelGeomSlideWindowItem> = Self::read_slide_windows::<T, D>(&mut chunk)?;
+          let windows: Vec<LevelGeomSlideWindowItem> = Self::read_slide_windows::<D>(&mut chunk)?;
 
           chunk.assert_read("Expect all data to be read from level render geometry slide windows chunk")?;
 
@@ -119,10 +118,8 @@ impl LevelGeomFile {
   }
 
   /// Reads every vertex buffer's declaration and count, stepping over its vertices.
-  fn read_vertex_buffers<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<LevelGeomVertexBuffer>> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_vertex_buffers<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<LevelGeomVertexBuffer>> {
+    let count: u32 = reader.read_u32()?;
     let mut buffers: Vec<LevelGeomVertexBuffer> = reader.new_bounded_vec(
       u64::from(count),
       LevelGeomVertexElement::SERIALIZED_SIZE + 4,
@@ -130,8 +127,8 @@ impl LevelGeomFile {
     )?;
 
     for _ in 0..count {
-      let declaration: Vec<LevelGeomVertexElement> = Self::read_declaration::<T, D>(reader)?;
-      let vertex_count: u32 = reader.read_u32::<T>()?;
+      let declaration: Vec<LevelGeomVertexElement> = Self::read_declaration::<D>(reader)?;
+      let vertex_count: u32 = reader.read_u32()?;
 
       let buffer: LevelGeomVertexBuffer = LevelGeomVertexBuffer {
         declaration,
@@ -154,13 +151,11 @@ impl LevelGeomFile {
   }
 
   /// Reads one declaration up to and including its terminator, keeping everything before it.
-  fn read_declaration<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<LevelGeomVertexElement>> {
+  fn read_declaration<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<LevelGeomVertexElement>> {
     let mut declaration: Vec<LevelGeomVertexElement> = Vec::new();
 
     loop {
-      let element: LevelGeomVertexElement = LevelGeomVertexElement::read::<T, D>(reader)?;
+      let element: LevelGeomVertexElement = LevelGeomVertexElement::read::<D>(reader)?;
 
       if element.is_terminator() {
         return Ok(declaration);
@@ -178,15 +173,13 @@ impl LevelGeomFile {
   }
 
   /// Reads every index buffer's count, stepping over its indices.
-  fn read_index_buffers<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<LevelGeomIndexBuffer>> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_index_buffers<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<LevelGeomIndexBuffer>> {
+    let count: u32 = reader.read_u32()?;
     let mut buffers: Vec<LevelGeomIndexBuffer> =
       reader.new_bounded_vec(u64::from(count), 4, "level render geometry index buffers")?;
 
     for _ in 0..count {
-      let index_count: u32 = reader.read_u32::<T>()?;
+      let index_count: u32 = reader.read_u32()?;
 
       let buffer: LevelGeomIndexBuffer = LevelGeomIndexBuffer {
         index_count,
@@ -202,10 +195,8 @@ impl LevelGeomFile {
   }
 
   /// Reads every progressive mesh's chain of detail levels, which are small enough to keep.
-  fn read_slide_windows<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<Vec<LevelGeomSlideWindowItem>> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_slide_windows<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<LevelGeomSlideWindowItem>> {
+    let count: u32 = reader.read_u32()?;
     let mut items: Vec<LevelGeomSlideWindowItem> = reader.new_bounded_vec(
       u64::from(count),
       LevelGeomSlideWindowItem::HEADER_SIZE,
@@ -214,13 +205,13 @@ impl LevelGeomFile {
 
     for _ in 0..count {
       let reserved: [u32; 4] = [
-        reader.read_u32::<T>()?,
-        reader.read_u32::<T>()?,
-        reader.read_u32::<T>()?,
-        reader.read_u32::<T>()?,
+        reader.read_u32()?,
+        reader.read_u32()?,
+        reader.read_u32()?,
+        reader.read_u32()?,
       ];
 
-      let count: u32 = reader.read_u32::<T>()?;
+      let count: u32 = reader.read_u32()?;
       let mut windows: Vec<LevelGeomSlideWindow> = reader.new_bounded_vec(
         u64::from(count),
         LevelGeomSlideWindow::SERIALIZED_SIZE,
@@ -228,7 +219,7 @@ impl LevelGeomFile {
       )?;
 
       for _ in 0..count {
-        windows.push(reader.read_xr::<T, _>()?);
+        windows.push(reader.read_xr()?);
       }
 
       items.push(LevelGeomSlideWindowItem { reserved, windows });

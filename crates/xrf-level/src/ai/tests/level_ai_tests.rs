@@ -1,5 +1,5 @@
 use uuid::uuid;
-use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector3d};
 
@@ -69,7 +69,7 @@ fn node_bytes(version: LevelAiVersion, node: &LevelAiNode) -> Vec<u8> {
 fn map_bytes(header: &LevelAiHeader, nodes: &[LevelAiNode]) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  header.write::<XRayByteOrder>(&mut writer)?;
+  header.write(&mut writer)?;
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 
@@ -122,11 +122,11 @@ fn reads_and_writes_back_the_header() -> XrfResult {
   let original: LevelAiHeader = header(LevelAiVersion::CsCop, 1_356_204);
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  original.write::<XRayByteOrder>(&mut writer)?;
+  original.write(&mut writer)?;
 
   assert_eq!(writer.bytes_written() as u64, LevelAiHeader::SIZE);
   assert_eq!(
-    LevelAiFile::read_from_bytes::<XRayByteOrder>(writer.flush_raw_into_buffer()?)?.header,
+    LevelAiFile::read_from_bytes(writer.flush_raw_into_buffer()?)?.header,
     original
   );
 
@@ -137,13 +137,13 @@ fn reads_and_writes_back_the_header() -> XrfResult {
 fn a_truncated_header_is_an_error_and_not_a_panic() -> XrfResult {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  header(LevelAiVersion::CsCop, 0).write::<XRayByteOrder>(&mut writer)?;
+  header(LevelAiVersion::CsCop, 0).write(&mut writer)?;
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 
   bytes.truncate(LevelAiHeader::SIZE as usize - 1);
 
-  assert!(LevelAiFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(LevelAiFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -153,19 +153,15 @@ fn decodes_a_node_of_every_version() -> XrfResult {
   for (version, widest_link) in VERSIONS {
     let expected = |widest_link: u32| sample_node_of(version, widest_link);
     let bytes: Vec<u8> = map_bytes(&header(version, 2), &[expected(widest_link), expected(0)])?;
-    let (file, nodes): (LevelAiFile, LevelAiNodes) = LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(bytes)?;
+    let (file, nodes): (LevelAiFile, LevelAiNodes) = LevelAiFile::read_with_nodes_from_bytes(bytes)?;
 
     assert_eq!(file.header.count, 2);
     assert_eq!(nodes.get_version(), version);
     assert_eq!(nodes.get_count(), 2);
-    assert_eq!(
-      nodes.get_node::<XRayByteOrder>(0),
-      Some(expected(widest_link)),
-      "{version:?}"
-    );
-    assert_eq!(nodes.get_node::<XRayByteOrder>(1), Some(expected(0)), "{version:?}");
-    assert_eq!(nodes.get_node::<XRayByteOrder>(2), None);
-    assert_eq!(nodes.iter_nodes::<XRayByteOrder>().count(), 2);
+    assert_eq!(nodes.get_node(0), Some(expected(widest_link)), "{version:?}");
+    assert_eq!(nodes.get_node(1), Some(expected(0)), "{version:?}");
+    assert_eq!(nodes.get_node(2), None);
+    assert_eq!(nodes.iter_nodes().count(), 2);
   }
 
   Ok(())
@@ -175,7 +171,7 @@ fn decodes_a_node_of_every_version() -> XrfResult {
 fn encodes_nodes_of_every_version_as_the_file_lays_them_out() -> XrfResult {
   for (version, widest_link) in VERSIONS {
     let nodes: [LevelAiNode; 2] = [sample_node_of(version, widest_link), sample_node_of(version, 0)];
-    let encoded: LevelAiNodes = LevelAiNodes::from_nodes::<XRayByteOrder>(version, &nodes)?;
+    let encoded: LevelAiNodes = LevelAiNodes::from_nodes(version, &nodes)?;
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     encoded.write(&mut writer)?;
@@ -185,11 +181,7 @@ fn encodes_nodes_of_every_version_as_the_file_lays_them_out() -> XrfResult {
       [node_bytes(version, &nodes[0]), node_bytes(version, &nodes[1])].concat(),
       "{version:?}"
     );
-    assert_eq!(
-      encoded.iter_nodes::<XRayByteOrder>().collect::<Vec<LevelAiNode>>(),
-      nodes,
-      "{version:?}"
-    );
+    assert_eq!(encoded.iter_nodes().collect::<Vec<LevelAiNode>>(), nodes, "{version:?}");
   }
 
   Ok(())
@@ -202,7 +194,7 @@ fn a_value_past_its_bits_is_refused_rather_than_cut() {
 
     change(&mut node);
 
-    LevelAiNodes::from_nodes::<XRayByteOrder>(version, &[node])
+    LevelAiNodes::from_nodes(version, &[node])
       .expect_err("the value is refused")
       .to_string()
   };
@@ -247,11 +239,10 @@ fn a_link_past_the_node_count_is_no_neighbour() {
 #[test]
 fn writes_the_map_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = map_bytes(&header(LevelAiVersion::CsCop, 2), &[sample_node(9), sample_node(0)])?;
-  let (file, nodes): (LevelAiFile, LevelAiNodes) =
-    LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let (file, nodes): (LevelAiFile, LevelAiNodes) = LevelAiFile::read_with_nodes_from_bytes(bytes.clone())?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&nodes, &mut writer)?;
+  file.write(&nodes, &mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -261,7 +252,7 @@ fn writes_the_map_back_byte_for_byte() -> XrfResult {
 #[test]
 fn nodes_that_are_not_the_ones_the_header_counts_are_refused() -> XrfResult {
   let mut bytes: Vec<u8> = map_bytes(&header(LevelAiVersion::CsCop, 2), &[sample_node(0)])?;
-  let error: String = LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(bytes.clone())
+  let error: String = LevelAiFile::read_with_nodes_from_bytes(bytes.clone())
     .expect_err("a missing node is refused")
     .to_string();
 
@@ -273,7 +264,7 @@ fn nodes_that_are_not_the_ones_the_header_counts_are_refused() -> XrfResult {
   bytes.extend(node_bytes(LevelAiVersion::CsCop, &sample_node(0)));
   bytes.push(0);
 
-  assert!(LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(LevelAiFile::read_with_nodes_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -284,7 +275,7 @@ fn a_version_the_engine_refuses_is_refused() -> XrfResult {
 
   header.version = 7;
 
-  let error: String = LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(map_bytes(&header, &[])?)
+  let error: String = LevelAiFile::read_with_nodes_from_bytes(map_bytes(&header, &[])?)
     .expect_err("version 7 is not loaded")
     .to_string();
 
@@ -295,14 +286,13 @@ fn a_version_the_engine_refuses_is_refused() -> XrfResult {
 
 #[test]
 fn writing_nodes_the_header_does_not_count_is_refused() -> XrfResult {
-  let (file, nodes): (LevelAiFile, LevelAiNodes) = LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>(
-    map_bytes(&header(LevelAiVersion::CsCop, 1), &[sample_node(0)])?,
-  )?;
+  let (file, nodes): (LevelAiFile, LevelAiNodes) =
+    LevelAiFile::read_with_nodes_from_bytes(map_bytes(&header(LevelAiVersion::CsCop, 1), &[sample_node(0)])?)?;
   let mut other: LevelAiFile = file;
 
   other.header.count = 2;
 
-  assert!(other.write::<XRayByteOrder>(&nodes, &mut ChunkWriter::new()).is_err());
+  assert!(other.write(&nodes, &mut ChunkWriter::new()).is_err());
 
   Ok(())
 }

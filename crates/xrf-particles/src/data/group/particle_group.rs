@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::assert_equal;
@@ -65,12 +64,11 @@ impl ChunkReadWrite for ParticleGroup {
   ///
   /// Returns a parsing error naming the chunk when a required one is missing or any is malformed, and when the version
   /// is not [`Self::VERSION`].
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    let version: u16 = ParticleRecordChunks::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| {
-      it.read_u16_payload::<T>()
-    })?;
+    let version: u16 =
+      ParticleRecordChunks::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| it.read_u16_payload())?;
 
     if version != Self::VERSION {
       return Err(XrfError::new_parsing_error(format!(
@@ -84,22 +82,18 @@ impl ChunkReadWrite for ParticleGroup {
       name: ParticleRecordChunks::read_required(&chunks, Self::NAME_CHUNK_ID, "name", |it| {
         it.read_w1251_string_payload()
       })?,
-      flags: ParticleRecordChunks::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| {
-        it.read_u32_payload::<T>()
-      })?,
-      effects: ParticleRecordChunks::read_optional(&chunks, Self::EFFECTS_CHUNK_ID, "effects", |it| {
-        it.read_xr_list::<T, _>()
-      })?
-      .unwrap_or_default(),
+      flags: ParticleRecordChunks::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| it.read_u32_payload())?,
+      effects: ParticleRecordChunks::read_optional(&chunks, Self::EFFECTS_CHUNK_ID, "effects", |it| it.read_xr_list())?
+        .unwrap_or_default(),
       time_limit: ParticleRecordChunks::read_optional(&chunks, Self::TIME_LIMIT_CHUNK_ID, "time_limit", |it| {
-        it.read_f32_payload::<T>()
+        it.read_f32_payload()
       })?
       .unwrap_or(0.0),
       description: ParticleRecordChunks::read_optional(&chunks, Self::DESCRIPTION_CHUNK_ID, "description", |it| {
-        ParticleDescription::read::<T, _>(it)
+        ParticleDescription::read(it)
       })?,
       effects_old: ParticleRecordChunks::read_optional(&chunks, Self::EFFECTS2_CHUNK_ID, "old effects", |it| {
-        it.read_xr_list::<T, _>()
+        it.read_xr_list()
       })?,
     };
 
@@ -109,40 +103,40 @@ impl ChunkReadWrite for ParticleGroup {
   }
 
   /// Write particle group data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut version_chunk_writer: ChunkWriter = ChunkWriter::new();
-    version_chunk_writer.write_u16::<T>(self.version)?;
-    version_chunk_writer.flush_chunk_into::<T>(writer, Self::VERSION_CHUNK_ID)?;
+    version_chunk_writer.write_u16(self.version)?;
+    version_chunk_writer.flush_chunk_into(writer, Self::VERSION_CHUNK_ID)?;
 
     let mut name_chunk_writer: ChunkWriter = ChunkWriter::new();
     name_chunk_writer.write_w1251_string(&self.name)?;
-    name_chunk_writer.flush_chunk_into::<T>(writer, Self::NAME_CHUNK_ID)?;
+    name_chunk_writer.flush_chunk_into(writer, Self::NAME_CHUNK_ID)?;
 
     // The SDK's authorship record follows the name, as it does in an effect.
     if let Some(description) = &self.description {
       let mut description_chunk_writer: ChunkWriter = ChunkWriter::new();
-      description.write::<T>(&mut description_chunk_writer)?;
-      description_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
+      description.write(&mut description_chunk_writer)?;
+      description_chunk_writer.flush_chunk_into(writer, Self::DESCRIPTION_CHUNK_ID)?;
     }
 
     let mut flags_chunk_writer: ChunkWriter = ChunkWriter::new();
-    flags_chunk_writer.write_u32::<T>(self.flags)?;
-    flags_chunk_writer.flush_chunk_into::<T>(writer, Self::FLAGS_CHUNK_ID)?;
+    flags_chunk_writer.write_u32(self.flags)?;
+    flags_chunk_writer.flush_chunk_into(writer, Self::FLAGS_CHUNK_ID)?;
 
     let mut effects_chunk_writer: ChunkWriter = ChunkWriter::new();
-    effects_chunk_writer.write_xr_list::<T, _>(&self.effects)?;
-    effects_chunk_writer.flush_chunk_into::<T>(writer, Self::EFFECTS_CHUNK_ID)?;
+    effects_chunk_writer.write_xr_list(&self.effects)?;
+    effects_chunk_writer.flush_chunk_into(writer, Self::EFFECTS_CHUNK_ID)?;
 
     let mut time_limit_chunk_writer: ChunkWriter = ChunkWriter::new();
-    time_limit_chunk_writer.write_f32::<T>(self.time_limit)?;
-    time_limit_chunk_writer.flush_chunk_into::<T>(writer, Self::TIME_LIMIT_CHUNK_ID)?;
+    time_limit_chunk_writer.write_f32(self.time_limit)?;
+    time_limit_chunk_writer.flush_chunk_into(writer, Self::TIME_LIMIT_CHUNK_ID)?;
 
     if let Some(effects_old) = &self.effects_old
       && !effects_old.is_empty()
     {
       let mut effects_old_chunk_writer: ChunkWriter = ChunkWriter::new();
-      effects_old_chunk_writer.write_xr_list::<T, _>(effects_old)?;
-      effects_old_chunk_writer.flush_chunk_into::<T>(writer, Self::EFFECTS2_CHUNK_ID)?;
+      effects_old_chunk_writer.write_xr_list(effects_old)?;
+      effects_old_chunk_writer.flush_chunk_into(writer, Self::EFFECTS2_CHUNK_ID)?;
     }
 
     Ok(())

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
@@ -21,9 +20,9 @@ impl LevelGlowsChunk {
   /// # Errors
   ///
   /// Returns an error when the chunk does not divide into whole records, which is what the R1 loader asserts on.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      glows: reader.read_xr_records::<T, _>(LevelGlow::SERIALIZED_SIZE, "level glows chunk")?,
+      glows: reader.read_xr_records(LevelGlow::SERIALIZED_SIZE, "level glows chunk")?,
     })
   }
 }

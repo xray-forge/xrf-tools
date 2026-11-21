@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -38,25 +37,25 @@ impl AlifeObjectCustomZone {
 
 impl ChunkFieldReadWrite for AlifeObjectCustomZone {
   /// Read ALife custom zone object data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      max_power: reader.read_f32::<T>()?,
-      owner_id: reader.read_u32::<T>()?,
-      enabled_time: reader.read_u32::<T>()?,
-      disabled_time: reader.read_u32::<T>()?,
-      start_time_shift: reader.read_u32::<T>()?,
+      base: reader.read_xr()?,
+      max_power: reader.read_f32()?,
+      owner_id: reader.read_u32()?,
+      enabled_time: reader.read_u32()?,
+      disabled_time: reader.read_u32()?,
+      start_time_shift: reader.read_u32()?,
     })
   }
 
   /// Write custom zone object data into the writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_f32::<T>(self.max_power)?;
-    writer.write_u32::<T>(self.owner_id)?;
-    writer.write_u32::<T>(self.enabled_time)?;
-    writer.write_u32::<T>(self.disabled_time)?;
-    writer.write_u32::<T>(self.start_time_shift)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    writer.write_f32(self.max_power)?;
+    writer.write_u32(self.owner_id)?;
+    writer.write_u32(self.enabled_time)?;
+    writer.write_u32(self.disabled_time)?;
+    writer.write_u32(self.start_time_shift)?;
 
     Ok(())
   }
@@ -105,7 +104,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -154,12 +153,11 @@ mod tests {
       start_time_shift: 300,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 126);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 126);
 
@@ -169,7 +167,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeObjectCustomZone::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeObjectCustomZone::read(&mut reader)?, original);
 
     Ok(())
   }

@@ -18,12 +18,11 @@ level and ambient effects.
 
 ```rust,no_run
 use glam::{Mat4, Vec3};
-use xrf_chunk::XRayByteOrder;
 use xrf_engine_target::XrayEngine;
 use xrf_particles::{ParticleEngineRules, ParticleLibrary, ParticleObject, ParticleUpdateContext, ParticlesFile};
 
 fn main() -> xrf_error::XrfResult {
-  let file = ParticlesFile::read_from_path::<XRayByteOrder, _>(&"gamedata/particles.xr")?;
+  let file = ParticlesFile::read_from_path(&"gamedata/particles.xr")?;
 
   println!("{} effects, {} groups", file.effects.effects.len(), file.groups.groups.len());
 
@@ -56,7 +55,7 @@ fn main() -> xrf_error::XrfResult {
 `ParticlesFile` is the whole library: a `header` (version 1), an `effects` chunk and a `groups` chunk.
 
 - Read with `read_from_path`, `read_from_bytes`, `read_from_file` or `read_from_chunk`; write with `write_to_path` or
-  `write_to`. Each takes the byte order as a type parameter (`xrf_chunk::XRayByteOrder` for game files).
+  `write_to`.
 - Strings are Windows-1251.
 
 Reading follows `CPSLibrary::Load`:

@@ -1,9 +1,10 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+use xrf_chunk::{
+  ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite,
+};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::format_path;
@@ -56,21 +57,21 @@ impl LevelCformHeader {
 
 impl ChunkReadWrite for LevelCformHeader {
   /// Read level collision form header from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      version: reader.read_u32::<T>()?,
-      vertex_count: reader.read_u32::<T>()?,
-      face_count: reader.read_u32::<T>()?,
-      bounds: reader.read_xr::<T, _>()?,
+      version: reader.read_u32()?,
+      vertex_count: reader.read_u32()?,
+      face_count: reader.read_u32()?,
+      bounds: reader.read_xr()?,
     })
   }
 
   /// Write level collision form header into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.version)?;
-    writer.write_u32::<T>(self.vertex_count)?;
-    writer.write_u32::<T>(self.face_count)?;
-    writer.write_xr::<T, _>(&self.bounds)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.version)?;
+    writer.write_u32(self.vertex_count)?;
+    writer.write_u32(self.face_count)?;
+    writer.write_xr(&self.bounds)?;
 
     Ok(())
   }
@@ -88,8 +89,8 @@ impl LevelCformFile {
   pub const FILE_NAME: &'static str = "level.cform";
 
   /// Read level collision form file from provided path.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level collision form file was not read: {}, error: {}",
         format_path(path.as_ref()),
@@ -99,16 +100,16 @@ impl LevelCformFile {
   }
 
   /// Read level collision form file from file.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads the header from a chunk reader over any data source.
   ///
   /// The route an archived level file takes: a volume holds no file to slice, only bytes.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      header: reader.read_xr::<T, _>()?,
+      header: reader.read_xr()?,
     })
   }
 
@@ -118,35 +119,35 @@ impl LevelCformFile {
   /// # Errors
   ///
   /// Returns an error when the header or the payload it counts is truncated.
-  pub fn read_with_materials_from_chunk<T: ByteOrder, D: ChunkDataSource>(
+  pub fn read_with_materials_from_chunk<D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
   ) -> XrfResult<(Self, LevelCformMaterials)> {
-    let file: Self = Self::read_from_chunk::<T, _>(reader)?;
-    let materials: LevelCformMaterials = LevelCformMaterials::read_from_chunk::<T, _>(reader, &file.header)?;
+    let file: Self = Self::read_from_chunk(reader)?;
+    let materials: LevelCformMaterials = LevelCformMaterials::read_from_chunk(reader, &file.header)?;
 
     Ok((file, materials))
   }
 
   /// Reads the header and the vertices and faces it counts, which only a consumer walking the collision form wants.
-  pub fn read_with_geometry_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<(Self, LevelCformGeometry)> {
+  pub fn read_with_geometry_from_bytes(bytes: Vec<u8>) -> XrfResult<(Self, LevelCformGeometry)> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(bytes)?;
-    let file: Self = Self::read_from_chunk::<T, _>(&mut reader)?;
-    let geometry: LevelCformGeometry = LevelCformGeometry::read_from_chunk::<T, _>(&mut reader, &file.header)?;
+    let file: Self = Self::read_from_chunk(&mut reader)?;
+    let geometry: LevelCformGeometry = LevelCformGeometry::read_from_chunk(&mut reader, &file.header)?;
 
     Ok((file, geometry))
   }
 
   /// Whether no face lies straight above each point, the faces tested as they are read rather than kept.
-  pub fn read_open_above_from_bytes<T: ByteOrder>(bytes: Vec<u8>, points: &[Vector3d<f32>]) -> XrfResult<Vec<bool>> {
+  pub fn read_open_above_from_bytes(bytes: Vec<u8>, points: &[Vector3d<f32>]) -> XrfResult<Vec<bool>> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(bytes)?;
-    let file: Self = Self::read_from_chunk::<T, _>(&mut reader)?;
+    let file: Self = Self::read_from_chunk(&mut reader)?;
 
-    LevelCformCover::read_open_above::<T, _>(&mut reader, &file.header, points)
+    LevelCformCover::read_open_above(&mut reader, &file.header, points)
   }
 
   /// Reads the vertices and faces alone, the header read only for the counts it holds.
-  pub fn read_geometry_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<LevelCformGeometry> {
-    Self::read_with_geometry_from_bytes::<T>(bytes).map(|(_, geometry)| geometry)
+  pub fn read_geometry_from_bytes(bytes: Vec<u8>) -> XrfResult<LevelCformGeometry> {
+    Self::read_with_geometry_from_bytes(bytes).map(|(_, geometry)| geometry)
   }
 
   /// Writes the header as held, then `geometry` as [`Self::read_with_geometry_from_bytes`] reads it; a file read and
@@ -155,11 +156,7 @@ impl LevelCformFile {
   /// # Errors
   ///
   /// Returns an error when the header's counts are not `geometry`'s.
-  pub fn write_with_geometry<T: ByteOrder>(
-    &self,
-    geometry: &LevelCformGeometry,
-    writer: &mut ChunkWriter,
-  ) -> XrfResult {
+  pub fn write_with_geometry(&self, geometry: &LevelCformGeometry, writer: &mut ChunkWriter) -> XrfResult {
     let counts: (usize, usize) = (geometry.get_vertices().len(), geometry.get_faces().len());
 
     if (self.header.vertex_count as usize, self.header.face_count as usize) != counts {
@@ -169,7 +166,7 @@ impl LevelCformFile {
       )));
     }
 
-    writer.write_xr::<T, _>(&self.header)?;
-    geometry.write::<T>(writer)
+    writer.write_xr(&self.header)?;
+    geometry.write(writer)
   }
 }

@@ -1,12 +1,11 @@
 use std::io::SeekFrom;
 
-use byteorder::ReadBytesExt;
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::chunk_constants::{CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK};
 use crate::reader::chunk_reader::ChunkReader;
-use crate::{ChunkDataSource, XRayByteOrder};
+use crate::{ChunkDataSource, XRayRead};
 
 /// Walks the child chunks laid out back to back in a reader's payload, each cut as a window of the same source.
 ///
@@ -73,13 +72,11 @@ impl<T: ChunkDataSource> Iterator for ChunkIterator<'_, T> {
       )));
     }
 
-    // todo: Hardcoded byte order, should be part of generics.
-    let id: u32 = match self.reader.read_u32::<XRayByteOrder>() {
+    let id: u32 = match self.reader.read_u32() {
       Ok(id) => id,
       Err(error) => return self.fail(error.into()),
     };
-    // todo: Hardcoded byte order, should be part of generics.
-    let size: u32 = match self.reader.read_u32::<XRayByteOrder>() {
+    let size: u32 = match self.reader.read_u32() {
       Ok(size) => size,
       Err(error) => return self.fail(error.into()),
     };

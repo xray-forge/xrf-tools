@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_error::XrfResult;
 use xrf_geometry::TraceHit;
@@ -174,7 +173,7 @@ impl Scene {
       ..ThmTextureParamChunk::default()
     });
     std::fs::create_dir_all(path.parent().unwrap_or(root))?;
-    thumbnail.write_to_path::<XRayByteOrder, _>(&path.with_extension("thm"))
+    thumbnail.write_to_path(&path.with_extension("thm"))
   }
 
   fn write_leaf(path: &Path, width: u32) -> XrfResult {

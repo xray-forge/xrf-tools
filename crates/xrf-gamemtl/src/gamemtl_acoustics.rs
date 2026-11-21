@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// How a material treats sound that reaches it, `SGameMtl::MtlAcoustics`.
@@ -225,31 +224,23 @@ impl GameMtlAcoustics {
 }
 
 impl ChunkReadWrite for GameMtlAcoustics {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      absorption: [
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-      ],
-      scattering: reader.read_f32::<T>()?,
-      transmission: [
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-        reader.read_f32::<T>()?,
-      ],
+      absorption: [reader.read_f32()?, reader.read_f32()?, reader.read_f32()?],
+      scattering: reader.read_f32()?,
+      transmission: [reader.read_f32()?, reader.read_f32()?, reader.read_f32()?],
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for value in self.absorption {
-      writer.write_f32::<T>(value)?;
+      writer.write_f32(value)?;
     }
 
-    writer.write_f32::<T>(self.scattering)?;
+    writer.write_f32(self.scattering)?;
 
     for value in self.transmission {
-      writer.write_f32::<T>(value)?;
+      writer.write_f32(value)?;
     }
 
     Ok(())

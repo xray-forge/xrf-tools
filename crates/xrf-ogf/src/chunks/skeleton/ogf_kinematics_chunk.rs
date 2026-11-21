@@ -1,7 +1,6 @@
 use std::io::Write;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
@@ -21,7 +20,7 @@ impl OgfKinematicsChunk {
 // Not `ChunkReadWrite`: the layout depends on which of the two ids the chunk was stored under, which a record read
 // cannot be told.
 impl OgfKinematicsChunk {
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, chunk_id: u32) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, chunk_id: u32) -> XrfResult<Self> {
     log::info!(
       "Reading motion refs chunk: {} bytes, chunk id {} ",
       reader.read_bytes_remain(),
@@ -31,7 +30,7 @@ impl OgfKinematicsChunk {
     let mut motion_refs: Vec<String> = Vec::new();
 
     if chunk_id == Self::CHUNK_ID {
-      for _ in 0..reader.read_u32::<T>()? {
+      for _ in 0..reader.read_u32()? {
         motion_refs.push(reader.read_w1251_string()?);
       }
     } else {
@@ -50,9 +49,9 @@ impl OgfKinematicsChunk {
   }
 
   /// Writes the chunk back exactly as read, trailing bytes included.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if self.source_chunk_id == Self::CHUNK_ID {
-      writer.write_u32::<T>(narrow_format_size(self.motion_refs.len(), "ogf motion refs")?)?;
+      writer.write_u32(narrow_format_size(self.motion_refs.len(), "ogf motion refs")?)?;
 
       for motion_ref in &self.motion_refs {
         writer.write_w1251_string(motion_ref)?;

@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_level::{BuildAimapFile, BuildPrjFile, LevelHomFile, LevelSomFile};
@@ -68,13 +67,13 @@ impl LevelBuildExport {
     Self::FILE_NAMES.into_iter().filter(|name| is_present(name)).collect()
   }
 
-  /// Each file by its path in the level's directory, in `T`'s byte order: `build.prj` and `level.ltx` always, each
+  /// Each file by its path in the level's directory: `build.prj` and `level.ltx` always, each
   /// optional file where it is present, and each breakable part under `meshes`.
   ///
   /// # Errors
   ///
   /// Returns an error when a file does not write.
-  pub fn into_files<T: ByteOrder>(self) -> XrfResult<BTreeMap<String, Vec<u8>>> {
+  pub fn into_files(self) -> XrfResult<BTreeMap<String, Vec<u8>>> {
     let encode = |write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult<Vec<u8>> {
       let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -85,28 +84,25 @@ impl LevelBuildExport {
     let mut files: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut insert = |name: &str, bytes: Vec<u8>| files.insert(name.to_owned(), bytes);
 
-    insert(
-      BuildPrjFile::FILE_NAME,
-      encode(&|writer| self.project.write::<T>(writer))?,
-    );
+    insert(BuildPrjFile::FILE_NAME, encode(&|writer| self.project.write(writer))?);
     insert(LevelMapConversion::FILE_NAME, self.map);
 
     if let Some(hom) = &self.hom {
-      insert(LevelHomFile::FILE_NAME, encode(&|writer| hom.write::<T>(writer))?);
+      insert(LevelHomFile::FILE_NAME, encode(&|writer| hom.write(writer))?);
     }
 
     if let Some(som) = &self.som {
-      insert(LevelSomFile::FILE_NAME, encode(&|writer| som.write::<T>(writer))?);
+      insert(LevelSomFile::FILE_NAME, encode(&|writer| som.write(writer))?);
     }
 
     if let Some(ai_map) = &self.ai_map {
-      insert(BuildAimapFile::FILE_NAME, encode(&|writer| ai_map.write::<T>(writer))?);
+      insert(BuildAimapFile::FILE_NAME, encode(&|writer| ai_map.write(writer))?);
     }
 
     if let Some(details) = self.details {
       insert(
         LevelBuildDetails::FILE_NAME,
-        encode(&|writer| details.file.write::<T>(writer))?,
+        encode(&|writer| details.file.write(writer))?,
       );
       insert(LevelBuildDetails::ATLAS_FILE_NAME, details.atlas);
     }
@@ -117,7 +113,7 @@ impl LevelBuildExport {
     }
 
     for part in &self.breakable_parts {
-      insert(&part.path, part.write::<T>()?);
+      insert(&part.path, part.write()?);
     }
 
     Ok(files)

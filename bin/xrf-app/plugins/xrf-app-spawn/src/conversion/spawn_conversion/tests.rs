@@ -7,7 +7,6 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use uuid::Uuid;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
-use xrf_chunk::XRayByteOrder;
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 use xrf_test_utils::GeneratedResources;
 
@@ -112,7 +111,7 @@ fn conversions_round_trip_and_retain_the_output() {
   let request: SpawnConvertRequest = request("round_trip");
 
   synthetic_spawn()
-    .write_to_path::<XRayByteOrder, _>(&request.source)
+    .write_to_path(&request.source)
     .expect("write synthetic spawn");
 
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
@@ -175,9 +174,7 @@ fn an_output_already_there_is_refused_before_reading_unless_forced() {
     assert_eq!(fs::read(&existing).unwrap(), b"existing output", "{operation:?}");
   }
 
-  synthetic_spawn()
-    .write_to_path::<XRayByteOrder, _>(&request.source)
-    .expect("packed source");
+  synthetic_spawn().write_to_path(&request.source).expect("packed source");
 
   let unpacked = SpawnConversion::Unpack
     .convert(
@@ -204,12 +201,10 @@ fn cancellation_during_reading_stops_before_output_but_writing_finishes() {
         SpawnConversion::Pack => {
           request.source.set_extension("chunks");
           synthetic_spawn()
-            .export_to_path::<XRayByteOrder, _>(&request.source)
+            .export_to_path(&request.source)
             .expect("unpacked source");
         }
-        SpawnConversion::Unpack => synthetic_spawn()
-          .write_to_path::<XRayByteOrder, _>(&request.source)
-          .expect("packed source"),
+        SpawnConversion::Unpack => synthetic_spawn().write_to_path(&request.source).expect("packed source"),
       }
 
       let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());

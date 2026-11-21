@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -35,21 +34,17 @@ impl AlifeLevelChanger {
 
 impl ChunkFieldReadWrite for AlifeLevelChanger {
   /// Read ALife level changer object data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    let base: AlifeObjectSpaceRestrictor = reader.read_xr::<T, _>()?;
-    let dest_game_vertex_id: u16 = reader.read_u16::<T>()?;
-    let dest_level_vertex_id: u32 = reader.read_u32::<T>()?;
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let base: AlifeObjectSpaceRestrictor = reader.read_xr()?;
+    let dest_game_vertex_id: u16 = reader.read_u16()?;
+    let dest_level_vertex_id: u32 = reader.read_u32()?;
     // Three floats where the angles that follow are one vector, as `STATE_Write` writes them.
-    let dest_position: Vector3d = Vector3d::new(
-      reader.read_f32::<T>()?,
-      reader.read_f32::<T>()?,
-      reader.read_f32::<T>()?,
-    );
-    let dest_direction: Vector3d = reader.read_xr::<T, _>()?;
+    let dest_position: Vector3d = Vector3d::new(reader.read_f32()?, reader.read_f32()?, reader.read_f32()?);
+    let dest_direction: Vector3d = reader.read_xr()?;
     let dest_level_name: String = reader.read_w1251_string()?;
     let dest_graph_point: String = reader.read_w1251_string()?;
     let silent_mode: u8 = reader.read_u8()?;
-    let (enabled, hint): (u8, String) = ScriptSaveMarker::read_or_constructed::<T, _, _>(
+    let (enabled, hint): (u8, String) = ScriptSaveMarker::read_or_constructed(
       reader,
       Self::SCRIPT_CLASS,
       || (1, String::from(Self::CONSTRUCTED_HINT)),
@@ -71,25 +66,25 @@ impl ChunkFieldReadWrite for AlifeLevelChanger {
   }
 
   /// Write object data into the writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
 
-    writer.write_u16::<T>(self.dest_game_vertex_id)?;
-    writer.write_u32::<T>(self.dest_level_vertex_id)?;
+    writer.write_u16(self.dest_game_vertex_id)?;
+    writer.write_u32(self.dest_level_vertex_id)?;
 
     // `CSE_ALifeLevelChanger::STATE_Write` puts the position down as three floats and the angles as one vector; the
     // bytes are the same, the fields are not.
     for component in self.dest_position.to_array() {
-      writer.write_f32::<T>(component)?;
+      writer.write_f32(component)?;
     }
 
-    writer.write_xr::<T, _>(&self.dest_direction)?;
+    writer.write_xr(&self.dest_direction)?;
 
     writer.write_w1251_string(&self.dest_level_name)?;
     writer.write_w1251_string(&self.dest_graph_point)?;
     writer.write_u8(self.silent_mode)?;
 
-    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.enabled)?;
       writer.write_w1251_string(&self.hint)?;
 
@@ -149,7 +144,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::{Affine3d, Sphere, Vector3d};
@@ -202,14 +197,13 @@ mod tests {
       hint: String::from("hint"),
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 173);
     // The script's marker counts its flag and the hint with its terminator, whatever the hint says.
     assert_eq!(writer.buffer[171..], [6, 0]);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 173);
 
@@ -218,7 +212,7 @@ mod tests {
     assert_eq!(file.bytes_remaining(), 173 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-    let read_object: AlifeLevelChanger = AlifeLevelChanger::read::<XRayByteOrder, _>(&mut reader)?;
+    let read_object: AlifeLevelChanger = AlifeLevelChanger::read(&mut reader)?;
 
     assert_eq!(read_object, original);
 

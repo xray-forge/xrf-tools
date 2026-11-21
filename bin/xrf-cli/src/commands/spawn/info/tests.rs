@@ -2,7 +2,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
-use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 
 use crate::commands::spawn::fixtures::{new_level_object, new_root_spawn, write_level_spawn_list};
@@ -26,7 +25,7 @@ fn run(path: &Path) -> CommandResult<Option<Value>> {
 fn reports_a_root_spawn_as_its_kind() -> CommandResult {
   let path: PathBuf = GeneratedResources::create_dir("spawn_info/root")?.join("all.spawn");
 
-  new_root_spawn().write_to_path::<XRayByteOrder, _>(&path)?;
+  new_root_spawn().write_to_path(&path)?;
 
   let result: Value = run(&path)?.expect("a root spawn is reported");
 

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_environment::{Thunderbolt, ThunderboltKey};
 use xrf_light_anim::LightAnimFile;
 use xrf_material::{XraySurfaceDraw, XraySurfaceResolver};
@@ -53,7 +52,7 @@ impl<'s, 'a> LevelBoltReader<'s, 'a> {
       animations: source
         .search
         .read(LightAnimFile::FILE_NAME)
-        .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
+        .and_then(LightAnimFile::read_from_bytes)
         .inspect_err(|error| LevelReport::uncoloured_thunderbolts(LightAnimFile::FILE_NAME, error))
         .ok(),
       animator_indices: HashMap::new(),

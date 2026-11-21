@@ -9,7 +9,7 @@ animations against it, and the desktop app's level viewer and archive describer 
 ## Read and write a library
 
 ```rust
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_light_anim::{LightAnimFile, LightAnimItem, LightAnimKey};
 
 fn main() -> xrf_error::XrfResult {
@@ -27,9 +27,9 @@ fn main() -> xrf_error::XrfResult {
   };
 
   let mut writer = ChunkWriter::new();
-  library.write::<XRayByteOrder>(&mut writer)?;
+  library.write(&mut writer)?;
 
-  let restored = LightAnimFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?;
+  let restored = LightAnimFile::read_from_bytes(writer.buffer)?;
   let item = restored.find_item("koster_01").expect("the animation is in the library");
   let keys = item.to_loaded_keys(restored.is_bgr());
 

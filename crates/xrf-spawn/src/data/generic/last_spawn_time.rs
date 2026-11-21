@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -44,25 +43,25 @@ impl LastSpawnTime {
 
 impl ChunkFieldReadWrite for LastSpawnTime {
   /// Read the trailing spawn time from whatever budget the object chunk has left; a flag other than 0 or 1 is refused.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     if reader.is_ended() {
       return Ok(Self::Absent);
     }
 
-    Ok(match reader.read_xr_optional::<T, Time>()? {
+    Ok(match reader.read_xr_optional::<Time>()? {
       Some(time) => Self::Set(time),
       None => Self::Unset,
     })
   }
 
   /// Write the trailing spawn time back exactly as it was stored.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
       Self::Absent => {}
       Self::Unset => writer.write_u8(0)?,
       Self::Set(time) => {
         writer.write_u8(1)?;
-        writer.write_xr::<T, _>(time)?;
+        writer.write_xr(time)?;
       }
     }
 
@@ -72,7 +71,7 @@ impl ChunkFieldReadWrite for LastSpawnTime {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -83,16 +82,16 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let filename: String = GeneratedResources::sample_name(file!(), name);
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), expected_size);
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    LastSpawnTime::read::<XRayByteOrder, _>(&mut reader)
+    LastSpawnTime::read(&mut reader)
   }
 
   #[test]

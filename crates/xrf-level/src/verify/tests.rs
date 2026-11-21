@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use uuid::Uuid;
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector3d};
 use xrf_report::{CheckReport, Status};
@@ -87,10 +87,7 @@ fn ai_map(links: &[[u32; 4]]) -> XrfResult<Vec<u8>> {
   };
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  LevelAiFile { header }.write::<XRayByteOrder>(
-    &LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &nodes)?,
-    &mut writer,
-  )?;
+  LevelAiFile { header }.write(&LevelAiNodes::from_nodes(LevelAiVersion::CsCop, &nodes)?, &mut writer)?;
 
   Ok(writer.buffer)
 }

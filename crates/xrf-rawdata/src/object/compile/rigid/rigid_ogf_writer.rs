@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
 use xrf_editable_object::{EditableObjectFile, EditableSurface};
 use xrf_error::{XrfError, XrfResult};
@@ -28,7 +27,7 @@ impl RigidOgfWriter {
   //
   // todo: write a progressive object's sliding windows (`MT_PROGRESSIVE`, `OGF_SWIDATA` from `VIPM_Convert`); it is
   // written at full detail, as `MT_NORMAL`.
-  pub(crate) fn write<T: ByteOrder>(
+  pub(crate) fn write(
     object: &EditableObjectFile,
     geometry: &RigidGeometry,
     source: &ObjectCompileSource,
@@ -41,14 +40,14 @@ impl RigidOgfWriter {
           "A static object keeps no face to export once degenerate ones are dropped",
         ));
       }
-      [split] => Self::write_part::<T>(&mut file, split)?,
+      [split] => Self::write_part(&mut file, split)?,
       splits => {
-        OgfExportChunks::write_chunk::<T, _>(
+        OgfExportChunks::write_chunk(
           &mut file,
           OgfHeaderChunk::CHUNK_ID,
           &OgfExportChunks::header(OgfModelType::Hierarchy, &Self::get_bounds(splits)),
         )?;
-        OgfExportChunks::write_chunk::<T, _>(
+        OgfExportChunks::write_chunk(
           &mut file,
           OgfDescriptionChunk::CHUNK_ID,
           &OgfExportChunks::description(object, source),
@@ -59,31 +58,31 @@ impl RigidOgfWriter {
           .map(|split| {
             let mut child: ChunkWriter = ChunkWriter::new();
 
-            Self::write_part::<T>(&mut child, split)?;
+            Self::write_part(&mut child, split)?;
             child.flush_raw_into_buffer()
           })
           .collect::<XrfResult<_>>()?;
 
-        OgfChildrenChunk::write_nested::<T>(&mut file, &children)?;
+        OgfChildrenChunk::write_nested(&mut file, &children)?;
       }
     }
 
-    Self::write_collision::<T>(&mut file, &geometry.splits)?;
+    Self::write_collision(&mut file, &geometry.splits)?;
 
     file.flush_raw_into_buffer()
   }
 
   /// A split's visual, `SSplit::SavePart`: its header, texture, vertices and indices.
-  fn write_part<T: ByteOrder>(writer: &mut ChunkWriter, split: &RigidSplit) -> XrfResult {
+  fn write_part(writer: &mut ChunkWriter, split: &RigidSplit) -> XrfResult {
     let format: OgfFvf = OgfFvf::from_raw(EditableSurface::POSITION_NORMAL_UV_FVF)
       .expect("the export's vertex format is a flexible vertex format");
 
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       writer,
       OgfHeaderChunk::CHUNK_ID,
       &OgfExportChunks::header(OgfModelType::Normal, &Self::get_bounds(std::slice::from_ref(split))),
     )?;
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       writer,
       OgfTextureChunk::CHUNK_ID,
       &OgfTextureChunk {
@@ -107,11 +106,11 @@ impl RigidOgfWriter {
       .collect();
     let indices: Vec<u16> = split.faces.iter().flatten().copied().collect();
 
-    OgfGeometry::write_static::<T>(writer, &format, &vertices, &indices)
+    OgfGeometry::write_static(writer, &format, &vertices, &indices)
   }
 
   /// The collision mesh: every split's vertex positions in turn, and their faces, numbered past the splits before.
-  fn write_collision<T: ByteOrder>(writer: &mut ChunkWriter, splits: &[RigidSplit]) -> XrfResult {
+  fn write_collision(writer: &mut ChunkWriter, splits: &[RigidSplit]) -> XrfResult {
     let mut vertices: Vec<Vector3d> = Vec::new();
     let mut faces: Vec<OgfCollisionFace> = Vec::new();
 
@@ -125,12 +124,12 @@ impl RigidOgfWriter {
       vertices.extend(split.vertices.iter().map(|vertex| vertex.position));
     }
 
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       writer,
       OgfCollisionVerticesChunk::CHUNK_ID,
       &OgfCollisionVerticesChunk { vertices },
     )?;
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       writer,
       OgfCollisionIndicesChunk::CHUNK_ID,
       &OgfCollisionIndicesChunk { faces },

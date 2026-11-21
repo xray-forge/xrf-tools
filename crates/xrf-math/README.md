@@ -18,13 +18,13 @@ It also holds the engine's float epsilons and the display-colour helpers.
 - It depends only on `xrf-chunk` and `xrf-error`. The spawn, level, skeleton, visual, OGF and particle crates build on
   it.
 - Formats use these types rather than their own tuples or structs.
-- Every type stored as floats reads and writes through `xrf_chunk::ChunkReadWrite`, in the caller's byte order.
+- Every type stored as floats reads and writes through `xrf_chunk::ChunkReadWrite`.
 - All serialize with Serde in camelCase.
 
 ## Read, write and transform
 
 ```rust
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_math::{Matrix4x4, Vector3d};
 
 fn main() -> xrf_error::XrfResult {
@@ -44,12 +44,12 @@ fn main() -> xrf_error::XrfResult {
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  matrix.write::<XRayByteOrder>(&mut writer)?;
+  matrix.write(&mut writer)?;
   assert_eq!(writer.bytes_written() as u64, Matrix4x4::SERIALIZED_SIZE);
 
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
-  assert_eq!(Matrix4x4::read::<XRayByteOrder, _>(&mut reader)?, matrix);
+  assert_eq!(Matrix4x4::read(&mut reader)?, matrix);
 
   Ok(())
 }

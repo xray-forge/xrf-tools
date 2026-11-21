@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Vector2d, Vector3d};
 
@@ -26,20 +25,20 @@ impl OgfLodVertex {
 }
 
 impl ChunkReadWrite for OgfLodVertex {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      position: reader.read_xr::<T, _>()?,
-      texture_coordinate: reader.read_xr::<T, _>()?,
-      rgb_hemi: reader.read_u32::<T>()?,
+      position: reader.read_xr()?,
+      texture_coordinate: reader.read_xr()?,
+      rgb_hemi: reader.read_u32()?,
       sun: reader.read_u8()?,
       padding: [reader.read_u8()?, reader.read_u8()?, reader.read_u8()?],
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_xr::<T, _>(&self.texture_coordinate)?;
-    writer.write_u32::<T>(self.rgb_hemi)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.position)?;
+    writer.write_xr(&self.texture_coordinate)?;
+    writer.write_u32(self.rgb_hemi)?;
     writer.write_u8(self.sun)?;
 
     for byte in self.padding {

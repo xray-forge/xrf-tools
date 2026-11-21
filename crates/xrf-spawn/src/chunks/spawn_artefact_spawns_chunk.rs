@@ -1,9 +1,8 @@
 use std::fmt;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, LtxImportExport, LtxRecordReader, LtxRecordWriter};
 use xrf_utils::{assert_length, narrow_format_size};
@@ -26,10 +25,10 @@ impl SpawnArtefactSpawnsChunk {
 impl ChunkReadWrite for SpawnArtefactSpawnsChunk {
   /// Read header chunk by position descriptor.
   /// Parses binary data into artefact spawns chunk representation object.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Reading artefacts spawns chunk: {} bytes", reader.read_bytes_remain());
 
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut nodes: Vec<ArtefactSpawnPoint> = reader.new_bounded_vec(
       count.into(),
       ArtefactSpawnPoint::MIN_SERIALIZED_SIZE,
@@ -38,7 +37,7 @@ impl ChunkReadWrite for SpawnArtefactSpawnsChunk {
 
     // Parsing CLevelPoint structure, 20 bytes per one.
     for _ in 0..count {
-      nodes.push(ArtefactSpawnPoint::read::<T, _>(reader)?);
+      nodes.push(ArtefactSpawnPoint::read(reader)?);
     }
 
     assert_length(&nodes, count as usize, "Expected defined count of nodes to be read")?;
@@ -49,11 +48,11 @@ impl ChunkReadWrite for SpawnArtefactSpawnsChunk {
 
   /// Write artefact spawns into chunk writer.
   /// Writes artefact spawns data in binary format.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(self.nodes.len(), "artefact spawn nodes")?)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(narrow_format_size(self.nodes.len(), "artefact spawn nodes")?)?;
 
     for node in &self.nodes {
-      node.write::<T>(writer)?;
+      node.write(writer)?;
     }
 
     log::debug!("Written artefact spawns chunk, {} bytes", writer.bytes_written());
@@ -101,7 +100,7 @@ impl fmt::Debug for SpawnArtefactSpawnsChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -130,12 +129,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 44);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename).unwrap(), 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename).unwrap(), 0)?;
 
     assert_eq!(bytes_written, 44);
 
@@ -147,10 +145,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(
-      SpawnArtefactSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(SpawnArtefactSpawnsChunk::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -159,7 +154,7 @@ mod tests {
   fn rejects_point_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
 
-    let error: String = SpawnArtefactSpawnsChunk::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = SpawnArtefactSpawnsChunk::read(&mut reader)
       .expect_err("expect the declared point count to exceed the chunk")
       .to_string();
 

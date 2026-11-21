@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::{EditableBone, EditableBoneMass, EditableObjectFile};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
@@ -41,7 +40,7 @@ fn compiled(object: &EditableObjectFile) -> XrfResult<OgfFile> {
     built_at: 1_000,
   };
 
-  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(object, &source)?.bytes)
+  OgfFile::read_from_bytes(ObjectCompiler::compile(object, &source)?.bytes)
 }
 
 fn verify_against(change: impl FnOnce(&mut EditableObjectFile)) -> XrfResult<ObjectVerification> {

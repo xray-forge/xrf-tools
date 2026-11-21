@@ -6,7 +6,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-byteorder = { workspace = true }
 fileslice = { workspace = true }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }

@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_math::Vector3d;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 
@@ -24,11 +23,9 @@ impl LevelAiGraphVerifier {
   pub fn verify_source<S: LevelFileSource + ?Sized>(source: &S) -> LevelAiGraphVerifyResult {
     let started: Instant = Instant::now();
     let subject: String = source.describe(LevelAiFile::FILE_NAME);
-    let read = source.read(LevelAiFile::FILE_NAME).and_then(|bytes| {
-      bytes
-        .map(LevelAiFile::read_with_nodes_from_bytes::<XRayByteOrder>)
-        .transpose()
-    });
+    let read = source
+      .read(LevelAiFile::FILE_NAME)
+      .and_then(|bytes| bytes.map(LevelAiFile::read_with_nodes_from_bytes).transpose());
 
     match read {
       Ok(Some((file, nodes))) => Self::verify(&file.header, &nodes, &subject),
@@ -50,11 +47,7 @@ impl LevelAiGraphVerifier {
   pub fn verify(header: &LevelAiHeader, nodes: &LevelAiNodes, subject: &str) -> LevelAiGraphVerifyResult {
     let started: Instant = Instant::now();
     let count: u32 = header.count.min(u32::try_from(nodes.get_count()).unwrap_or(u32::MAX));
-    let links: Vec<[u32; 4]> = nodes
-      .iter_nodes::<XRayByteOrder>()
-      .take(count as usize)
-      .map(|node| node.links)
-      .collect();
+    let links: Vec<[u32; 4]> = nodes.iter_nodes().take(count as usize).map(|node| node.links).collect();
     let mut census: LevelAiGraphCensus = LevelAiGraphCensus {
       nodes: count,
       ..LevelAiGraphCensus::default()
@@ -109,7 +102,7 @@ impl LevelAiGraphVerifier {
 
     let position = |node: u32| -> String {
       nodes
-        .get_node::<XRayByteOrder>(node as usize)
+        .get_node(node as usize)
         .map(|decoded| {
           let Vector3d { x, y, z } = header.get_node_position(&decoded);
 

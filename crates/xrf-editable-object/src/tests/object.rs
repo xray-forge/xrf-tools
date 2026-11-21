@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkPayload, XRayByteOrder};
+use xrf_chunk::ChunkPayload;
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
@@ -6,7 +6,7 @@ use crate::tests::fixtures;
 use crate::{EditableObjectFile, EditableOccluder};
 
 fn read(bytes: Vec<u8>) -> XrfResult<EditableObjectFile> {
-  EditableObjectFile::read_from_bytes::<XRayByteOrder>(bytes)
+  EditableObjectFile::read_from_bytes(bytes)
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn an_occluder_is_read_from_its_flags_sight_before_sound() -> XrfResult {
 fn an_object_is_written_back_byte_for_byte() -> XrfResult {
   let original: Vec<u8> = fixtures::dynamic_object();
 
-  assert_eq!(read(original.clone())?.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(read(original.clone())?.write_to_bytes()?, original);
 
   Ok(())
 }
@@ -99,7 +99,7 @@ fn a_chunk_nothing_names_survives_at_the_end_of_every_container() -> XrfResult {
     object.bones.as_ref().map(|bones| bones[0].layout.kept.clone()),
     Some(vec![sentinel])
   );
-  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(object.write_to_bytes()?, original);
 
   Ok(())
 }
@@ -118,7 +118,7 @@ fn a_chunk_nothing_names_comes_back_where_the_file_stored_it() -> XrfResult {
   let object: EditableObjectFile = read(original.clone())?;
 
   assert_eq!(object.layout.kept.len(), 1);
-  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(object.write_to_bytes()?, original);
 
   Ok(())
 }
@@ -139,7 +139,7 @@ fn an_object_built_in_code_is_written_in_the_editors_order() -> XrfResult {
     bone.layout.order.clear();
   }
 
-  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(object.write_to_bytes()?, original);
 
   Ok(())
 }
@@ -150,7 +150,7 @@ fn a_named_chunk_added_after_reading_goes_where_the_editor_puts_it() -> XrfResul
 
   object.embedded_motions = Some(vec![7]);
 
-  let ids: Vec<u32> = chunk_ids(&object.write_to_bytes::<XRayByteOrder>()?)?;
+  let ids: Vec<u32> = chunk_ids(&object.write_to_bytes()?)?;
 
   assert_eq!(
     ids
@@ -314,7 +314,7 @@ fn embedded_motions_are_kept_as_stored() -> XrfResult {
   let object: EditableObjectFile = read(original.clone())?;
 
   assert_eq!(object.embedded_motions, Some(vec![1, 2, 3]));
-  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(object.write_to_bytes()?, original);
 
   Ok(())
 }
@@ -324,9 +324,9 @@ fn an_object_written_to_a_path_reads_back_as_itself() -> XrfResult {
   let object: EditableObjectFile = read(fixtures::dynamic_object())?;
   let path = GeneratedResources::path("xrf-editable-object/round-trip/nested/object.object");
 
-  object.write_to_path::<XRayByteOrder, _>(&path)?;
+  object.write_to_path(&path)?;
 
-  assert_eq!(EditableObjectFile::read_from_path::<XRayByteOrder, _>(&path)?, object);
+  assert_eq!(EditableObjectFile::read_from_path(&path)?, object);
 
   Ok(())
 }

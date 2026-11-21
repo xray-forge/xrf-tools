@@ -4,7 +4,6 @@ use std::time::Instant;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_geometry::BvhTracer;
 use xrf_job::parallel::prelude::*;
 use xrf_level::{LevelLight, LevelLightsChunk, LevelLightsFile};
@@ -107,7 +106,7 @@ impl LevelHemiPart {
     let file: TauriResult<Option<LevelLightsFile>> =
       source.read_optional_file(search, Self::LIGHTS_FILE).and_then(|bytes| {
         bytes
-          .map(|bytes| LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))
+          .map(|bytes| LevelLightsFile::read_from_bytes(bytes).map_err(|error| error.to_string()))
           .transpose()
       });
 

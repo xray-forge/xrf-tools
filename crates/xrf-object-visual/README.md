@@ -11,7 +11,6 @@ of its own so that renderer builds taking `xrf-visual` do not pull in the compil
 ## Draw an object
 
 ```rust,no_run
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_material::{XraySurfaceResolver, XrayTextureScope};
 use xrf_object_visual::ObjectVisual;
@@ -20,7 +19,7 @@ use xrf_vfs::{XrayMountMode, XraySearchPlan};
 use xrf_visual::VisualSurfaces;
 
 fn main() -> xrf_error::XrfResult {
-  let object = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&"rawdata/objects/example.object")?;
+  let object = EditableObjectFile::read_from_path(&"rawdata/objects/example.object")?;
   let source = ObjectCompileSource {
     source_file: String::from("example.object"),
     convertor: String::from("example"),

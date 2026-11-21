@@ -1,10 +1,9 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_animation_envelope::AnimationEnvelope;
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -61,8 +60,8 @@ impl PpeFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not an effect this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Post process effect file was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -75,8 +74,8 @@ impl PpeFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not an effect this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived effect arrives.
@@ -84,8 +83,8 @@ impl PpeFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not an effect this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads an effect off a reader positioned at its first byte, `BasicPostProcessAnimator::Load`.
@@ -98,8 +97,8 @@ impl PpeFile {
   ///
   /// Returns an error when the version is one this does not read, or the payload does not account for every
   /// parameter the version declares.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let version: u32 = reader.read_u32::<T>()?;
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let version: u32 = reader.read_u32()?;
 
     if !Self::SUPPORTED_VERSIONS.contains(&version) {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -109,16 +108,16 @@ impl PpeFile {
     }
 
     let effect: Self = Self {
-      base_color: PpeColor::read::<T, D>(reader)?,
-      add_color: PpeColor::read::<T, D>(reader)?,
-      gray_color: PpeColor::read::<T, D>(reader)?,
-      gray_value: AnimationEnvelope::read::<T, D>(reader)?,
-      blur: AnimationEnvelope::read::<T, D>(reader)?,
-      duality_horizontal: AnimationEnvelope::read::<T, D>(reader)?,
-      duality_vertical: AnimationEnvelope::read::<T, D>(reader)?,
-      noise_intensity: AnimationEnvelope::read::<T, D>(reader)?,
-      noise_granularity: AnimationEnvelope::read::<T, D>(reader)?,
-      noise_fps: AnimationEnvelope::read::<T, D>(reader)?,
+      base_color: PpeColor::read::<D>(reader)?,
+      add_color: PpeColor::read::<D>(reader)?,
+      gray_color: PpeColor::read::<D>(reader)?,
+      gray_value: AnimationEnvelope::read::<D>(reader)?,
+      blur: AnimationEnvelope::read::<D>(reader)?,
+      duality_horizontal: AnimationEnvelope::read::<D>(reader)?,
+      duality_vertical: AnimationEnvelope::read::<D>(reader)?,
+      noise_intensity: AnimationEnvelope::read::<D>(reader)?,
+      noise_granularity: AnimationEnvelope::read::<D>(reader)?,
+      noise_fps: AnimationEnvelope::read::<D>(reader)?,
       color_map: if version >= Self::COLOR_MAP_VERSION {
         // Anomaly's `fade_in_out.ppe` is one: the engine reads its colour map from whatever memory follows the file.
         if reader.is_ended() {
@@ -128,7 +127,7 @@ impl PpeFile {
           )));
         }
 
-        Some(PpeColorMap::read::<T, D>(reader)?)
+        Some(PpeColorMap::read::<D>(reader)?)
       } else {
         None
       },
@@ -145,19 +144,19 @@ impl PpeFile {
   /// # Errors
   ///
   /// Returns an error when an envelope carries more keys than its `u16` count holds.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.get_version())?;
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.get_version())?;
 
     for (_, color) in self.get_colors() {
-      color.write::<T>(writer)?;
+      color.write(writer)?;
     }
 
     for (_, value) in self.get_values() {
-      value.write::<T>(writer)?;
+      value.write(writer)?;
     }
 
     if let Some(color_map) = &self.color_map {
-      color_map.write::<T>(writer)?;
+      color_map.write(writer)?;
     }
 
     Ok(())

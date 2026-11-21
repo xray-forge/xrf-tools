@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -136,17 +135,17 @@ impl Aabb {
 /// `Fbox`: the lowest corner, then the highest.
 impl ChunkFieldReadWrite for Aabb {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      min: reader.read_xr::<T, _>()?,
-      max: reader.read_xr::<T, _>()?,
+      min: reader.read_xr()?,
+      max: reader.read_xr()?,
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.min)?;
-    writer.write_xr::<T, _>(&self.max)
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.min)?;
+    writer.write_xr(&self.max)
   }
 }
 

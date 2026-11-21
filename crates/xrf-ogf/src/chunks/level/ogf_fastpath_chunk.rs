@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
@@ -23,13 +22,13 @@ impl OgfFastpathChunk {
   ///
   /// Returns an error when the chunk holds no geometry container, which the engine opens unconditionally, or a chunk
   /// it holds does not read whole.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     Ok(Self {
-      geometry: ChunkReader::find_required_by_id(&chunks, OgfGeometryContainerChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      geometry: ChunkReader::find_required_by_id(&chunks, OgfGeometryContainerChunk::CHUNK_ID)?.read_xr()?,
       swi: match ChunkReader::find_optional_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        Some(mut chunk) => Some(chunk.read_xr()?),
         None => None,
       },
     })
@@ -41,17 +40,17 @@ impl OgfFastpathChunk {
   /// # Errors
   ///
   /// Returns an error when the writer fails.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut geometry: ChunkWriter = ChunkWriter::new();
 
-    geometry.write_xr::<T, _>(&self.geometry)?;
-    geometry.flush_chunk_into::<T>(&mut writer.buffer, OgfGeometryContainerChunk::CHUNK_ID)?;
+    geometry.write_xr(&self.geometry)?;
+    geometry.flush_chunk_into(&mut writer.buffer, OgfGeometryContainerChunk::CHUNK_ID)?;
 
     if let Some(swi) = &self.swi {
       let mut windows: ChunkWriter = ChunkWriter::new();
 
-      windows.write_xr::<T, _>(swi)?;
-      windows.flush_chunk_into::<T>(&mut writer.buffer, OgfSwiDataChunk::CHUNK_ID)?;
+      windows.write_xr(swi)?;
+      windows.flush_chunk_into(&mut writer.buffer, OgfSwiDataChunk::CHUNK_ID)?;
     }
 
     Ok(())

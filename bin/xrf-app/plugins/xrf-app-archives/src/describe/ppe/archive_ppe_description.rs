@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_ppe::PpeFile;
 
@@ -34,7 +33,7 @@ impl ArchivePpeDescription {
   /// Returns an error when the entry's bytes cannot be read, or when they are not an effect this reader can walk - a
   /// version it does not implement, or a payload the fixed parameter run does not account for.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: PpeFile = PpeFile::read_from_bytes(source.read_bytes(name)?)?;
 
     Ok(Self {
       version: file.get_version(),

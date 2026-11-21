@@ -2,9 +2,8 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
@@ -88,8 +87,8 @@ impl ThmSoundFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a sound thumbnail [`Self::read_from_chunk`] reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Sound thumbnail was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -102,8 +101,8 @@ impl ThmSoundFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a sound thumbnail [`Self::read_from_chunk`] reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads a sound thumbnail as `ESoundThumbnail::Load` does.
@@ -112,7 +111,7 @@ impl ThmSoundFile {
   ///
   /// Returns an error, where the SDK fails or asserts, for a version other than [`Self::VERSION`], a type other than
   /// [`Self::THUMBNAIL_TYPE`], a missing parameter chunk, or a chunk too short for its fields.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut thumbnail_type: Option<u32> = None;
     let mut parameters: Option<(f32, f32, f32, u32)> = None;
@@ -125,28 +124,28 @@ impl ThmSoundFile {
     for mut chunk in reader.read_children()? {
       let is_folded: bool = match chunk.id {
         ThmFile::VERSION_CHUNK_ID if version.is_none() => {
-          version = Some(chunk.read_u16::<T>()?);
+          version = Some(chunk.read_u16()?);
           true
         }
         ThmFile::THUMBNAIL_TYPE_CHUNK_ID if thumbnail_type.is_none() => {
-          thumbnail_type = Some(chunk.read_u32::<T>()?);
+          thumbnail_type = Some(chunk.read_u32()?);
           true
         }
         Self::PARAMETERS_CHUNK_ID if parameters.is_none() => {
           parameters = Some((
-            chunk.read_f32::<T>()?,
-            chunk.read_f32::<T>()?,
-            chunk.read_f32::<T>()?,
-            chunk.read_u32::<T>()?,
+            chunk.read_f32()?,
+            chunk.read_f32()?,
+            chunk.read_f32()?,
+            chunk.read_u32()?,
           ));
           true
         }
         Self::BASE_VOLUME_CHUNK_ID if file.base_volume.is_none() => {
-          file.base_volume = Some(chunk.read_f32::<T>()?);
+          file.base_volume = Some(chunk.read_f32()?);
           true
         }
         Self::MAX_AI_DISTANCE_CHUNK_ID if file.max_ai_distance.is_none() => {
-          file.max_ai_distance = Some(chunk.read_f32::<T>()?);
+          file.max_ai_distance = Some(chunk.read_f32()?);
           true
         }
         _ => false,
@@ -176,10 +175,10 @@ impl ThmSoundFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be written.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     Ok(StagedFile::write_creating_directories(
       path.as_ref(),
-      &self.write_to_bytes::<T>()?,
+      &self.write_to_bytes()?,
     )?)
   }
 
@@ -188,10 +187,10 @@ impl ThmSoundFile {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut bytes)?;
+    self.write_to(&mut bytes)?;
 
     Ok(bytes)
   }
@@ -202,36 +201,36 @@ impl ThmSoundFile {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write_to<T: ByteOrder>(&self, destination: &mut dyn Write) -> XrfResult {
+  pub fn write_to(&self, destination: &mut dyn Write) -> XrfResult {
     let trailing: &[ThmTrailingBytes] = &self.trailing;
 
-    ThmChunks::write::<T>(destination, ThmFile::VERSION_CHUNK_ID, trailing, |writer| {
-      Ok(writer.write_u16::<T>(Self::VERSION)?)
+    ThmChunks::write(destination, ThmFile::VERSION_CHUNK_ID, trailing, |writer| {
+      Ok(writer.write_u16(Self::VERSION)?)
     })?;
-    ThmChunks::write::<T>(destination, ThmFile::THUMBNAIL_TYPE_CHUNK_ID, trailing, |writer| {
-      Ok(writer.write_u32::<T>(Self::THUMBNAIL_TYPE)?)
+    ThmChunks::write(destination, ThmFile::THUMBNAIL_TYPE_CHUNK_ID, trailing, |writer| {
+      Ok(writer.write_u32(Self::THUMBNAIL_TYPE)?)
     })?;
-    ThmChunks::write::<T>(destination, Self::PARAMETERS_CHUNK_ID, trailing, |writer| {
-      writer.write_f32::<T>(self.quality)?;
-      writer.write_f32::<T>(self.min_distance)?;
-      writer.write_f32::<T>(self.max_distance)?;
-      writer.write_u32::<T>(self.game_type)?;
+    ThmChunks::write(destination, Self::PARAMETERS_CHUNK_ID, trailing, |writer| {
+      writer.write_f32(self.quality)?;
+      writer.write_f32(self.min_distance)?;
+      writer.write_f32(self.max_distance)?;
+      writer.write_u32(self.game_type)?;
 
       Ok(())
     })?;
 
     if let Some(base_volume) = self.base_volume {
-      ThmChunks::write::<T>(destination, Self::BASE_VOLUME_CHUNK_ID, trailing, |writer| {
-        Ok(writer.write_f32::<T>(base_volume)?)
+      ThmChunks::write(destination, Self::BASE_VOLUME_CHUNK_ID, trailing, |writer| {
+        Ok(writer.write_f32(base_volume)?)
       })?;
     }
 
     if let Some(max_ai_distance) = self.max_ai_distance {
-      ThmChunks::write::<T>(destination, Self::MAX_AI_DISTANCE_CHUNK_ID, trailing, |writer| {
-        Ok(writer.write_f32::<T>(max_ai_distance)?)
+      ThmChunks::write(destination, Self::MAX_AI_DISTANCE_CHUNK_ID, trailing, |writer| {
+        Ok(writer.write_f32(max_ai_distance)?)
       })?;
     }
 
-    ThmChunks::write_extra::<T>(destination, &self.extra)
+    ThmChunks::write_extra(destination, &self.extra)
   }
 }

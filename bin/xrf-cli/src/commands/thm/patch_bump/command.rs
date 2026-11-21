@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_thm::{ThmBumpChunk, ThmBumpMode, ThmFile, ThmTextureEdit};
@@ -68,7 +67,7 @@ impl GenericCommand for PatchBumpCommand {
       )
     })?;
     let previous: ThmBumpChunk = Self::read_bump(path, &original)?;
-    let patched: Vec<u8> = Self::edit_of(to).rewrite::<XRayByteOrder>(&original)?.ok_or_else(|| {
+    let patched: Vec<u8> = Self::edit_of(to).rewrite(&original)?.ok_or_else(|| {
       XrfError::new_verify_error(format!(
         "Refused to patch {}, which would not be written back byte for byte, so its other chunks could not be kept",
         format_path(path)
@@ -118,7 +117,7 @@ impl GenericCommand for PatchBumpCommand {
 impl PatchBumpCommand {
   /// The bump declaration the descriptor `original` holds, which a descriptor without one cannot be patched to.
   fn read_bump(path: &Path, original: &[u8]) -> XrfResult<ThmBumpChunk> {
-    ThmFile::read_from_bytes::<XRayByteOrder>(original.to_vec())?
+    ThmFile::read_from_bytes(original.to_vec())?
       .bump
       .ok_or_else(|| XrfError::new_not_found_error(format!("THM file declares no bump chunk: {}", format_path(path))))
   }

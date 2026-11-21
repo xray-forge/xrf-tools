@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::compiler_table::{ShaderCompilerFile, ShaderCompilerShader};
@@ -26,7 +26,7 @@ fn library(shaders: &[Vec<u8>]) -> Vec<u8> {
 
 #[test]
 fn reads_every_record_of_a_plain_array() -> XrfResult {
-  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(library(&[
+  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes(library(&[
     shader("default", &[], 0x3F),
     shader("def_vertex", &[], 0x07),
   ]))?;
@@ -40,8 +40,7 @@ fn reads_every_record_of_a_plain_array() -> XrfResult {
 
 #[test]
 fn names_the_flags_a_shader_sets() -> XrfResult {
-  let file: ShaderCompilerFile =
-    ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(library(&[shader("default", &[], 0x07)]))?;
+  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes(library(&[shader("default", &[], 0x07)]))?;
 
   assert_eq!(
     file.shaders[0].get_named_flags(),
@@ -54,7 +53,7 @@ fn names_the_flags_a_shader_sets() -> XrfResult {
 #[test]
 fn answers_each_flag_by_its_bit_in_shader_xrlc() -> XrfResult {
   // `Shader_xrLC::Flags`, low bit first: collision, rendering, optimize UV, vertex lighting, casts shadow, sharp light.
-  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(library(&[
+  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes(library(&[
     shader("default", &[], 0b01_0011),
     shader("def_vertex", &[], 0b10_1100),
   ]))?;
@@ -81,14 +80,14 @@ fn keeps_what_the_editor_left_past_a_name_so_a_library_rewrites_exactly() -> Xrf
   // `Shader_xrLC` writes its whole `char Name[128]` out of a struct it never zeroes, so vanilla's own first record
   // still carries a `0` from a name that used to be longer. Zero-padding on write would change every shipped file.
   let original: Vec<u8> = library(&[shader("default", b"0", 0x3F)]);
-  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes(original.clone())?;
 
   assert_eq!(file.shaders[0].name, "default");
   assert_eq!(file.shaders[0].name_trailing[1], b'0');
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.flush_raw_into_buffer()?, original);
 
@@ -97,8 +96,7 @@ fn keeps_what_the_editor_left_past_a_name_so_a_library_rewrites_exactly() -> Xrf
 
 #[test]
 fn finds_a_shader_the_way_the_compiler_matches_a_name() -> XrfResult {
-  let file: ShaderCompilerFile =
-    ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(library(&[shader("def_shadow", &[], 0x3F)]))?;
+  let file: ShaderCompilerFile = ShaderCompilerFile::read_from_bytes(library(&[shader("def_shadow", &[], 0x3F)]))?;
 
   assert!(file.find_shader("DEF_SHADOW").is_some());
   assert!(file.find_shader("missing").is_none());
@@ -113,7 +111,7 @@ fn refuses_a_library_that_does_not_divide_into_whole_records() -> XrfResult {
 
   bytes.truncate(bytes.len() - 4);
 
-  assert!(ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(ShaderCompilerFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -124,7 +122,7 @@ fn refuses_a_name_field_with_no_terminator() -> XrfResult {
 
   bytes[..ShaderCompilerShader::NAME_SIZE].fill(b'x');
 
-  assert!(ShaderCompilerFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(ShaderCompilerFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }

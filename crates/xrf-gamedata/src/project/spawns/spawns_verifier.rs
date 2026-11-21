@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
-use xrf_spawn::{SpawnFile, XRayByteOrder};
+use xrf_spawn::SpawnFile;
 
 use crate::project::gamedata_check::GamedataCheck;
 use crate::project::spawns::verify_spawns_result::GamedataSpawnsVerificationResult;
@@ -69,10 +69,7 @@ impl SpawnsVerifier<'_> {
   /// The finding reading one spawn file raises, addressed by its logical path and read through the VFS, so an archived
   /// spawn file is verified too.
   fn verify_spawn(&self, path: &str) -> Option<Finding> {
-    let error = self
-      .project
-      .read_parsed(path, SpawnFile::read_from_chunk::<XRayByteOrder, _>)
-      .err()?;
+    let error = self.project.read_parsed(path, SpawnFile::read_from_chunk).err()?;
 
     Some(GamedataFindingFactory::for_asset(
       GamedataVerificationRule::SpawnsRead,

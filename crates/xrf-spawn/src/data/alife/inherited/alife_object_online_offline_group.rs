@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -22,17 +21,17 @@ pub struct AlifeObjectOnlineOfflineGroup {
 
 impl ChunkFieldReadWrite for AlifeObjectOnlineOfflineGroup {
   /// Read the group from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      members: reader.read_u16_vector::<T>()?,
+      base: reader.read_xr()?,
+      members: reader.read_u16_vector()?,
     })
   }
 
   /// Write the group into the chunk.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_u16_vector::<T>(&self.members)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    writer.write_u16_vector(&self.members)?;
 
     Ok(())
   }
@@ -91,7 +90,7 @@ impl AlifeObjectOnlineOfflineGroup {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
 
@@ -103,16 +102,13 @@ mod tests {
     let original: AlifeObjectOnlineOfflineGroup = AlifeObjectOnlineOfflineGroup::new_mock(vec![6511, 6523]);
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.buffer.len(), 27 + 4 + 4);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
-    assert_eq!(
-      AlifeObjectOnlineOfflineGroup::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(AlifeObjectOnlineOfflineGroup::read(&mut reader)?, original);
     reader.assert_read("Expect the group to be read whole")?;
 
     Ok(())

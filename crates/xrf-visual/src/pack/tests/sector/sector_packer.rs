@@ -1,7 +1,6 @@
 //! What one sector becomes: one vertex array every drawable of it was moved onto, and one index array grouped by
 //! the surface that draws it.
 
-use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelSectorComposition, LevelShadersChunk, LevelVisualsChunk};
 
 use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
@@ -104,11 +103,8 @@ fn test_packs_a_sector_into_one_buffer_of_parallel_arrays() {
   let table: LevelShadersChunk = new_shaders(&["", "default/stone,lmap"]);
   let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, Some(&table), &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let description: &SectorDescription = &package.description;
 
   assert_eq!(description.sector, 0);
@@ -145,7 +141,7 @@ fn test_packs_a_range_two_drawables_share_only_once() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(
     package.description.geometry.vertex_count, 2,
@@ -166,7 +162,7 @@ fn test_moves_indices_onto_the_vertices_a_range_was_packed_at() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   // The first drawable stores 0, 1, 0 and the second 1, 1, 0; each is moved onto the vertices it was packed at,
   // and the winding of every triangle is reversed on the way in.
@@ -188,11 +184,8 @@ fn test_groups_drawables_by_the_shader_entry_that_dresses_them() {
   ]);
   let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, Some(&table), &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let sections = &package.description.sections;
 
   assert_eq!(sections.len(), 2, "two surfaces, two draws");
@@ -227,11 +220,8 @@ fn test_bounds_each_section_by_the_vertices_it_draws() {
   let table: LevelShadersChunk = new_shaders(&["", "def_shaders\\def_vertex/wall", "def_shaders\\def_vertex/floor"]);
   let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, Some(&table), &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let centers: Vec<(f32, f32, f32)> = package
     .description
     .sections
@@ -265,7 +255,7 @@ fn test_leaves_out_a_drawable_whose_range_it_cannot_read() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.skipped.len(), 1);
   assert_eq!(package.description.skipped[0].drawable, 2);
@@ -305,7 +295,7 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
   let source = new_open_geometry(bytes);
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let lightmap = package
     .description
     .geometry
@@ -334,7 +324,7 @@ fn test_mirrors_the_level_into_renderer_space() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let positions: Vec<f32> = new_read_floats(&package, package.description.geometry.positions);
 
   assert_eq!(positions, vec![0.0, 0.0, -1.0, 1.0, 0.0, -2.0]);
@@ -346,7 +336,7 @@ fn test_packs_a_sector_that_reaches_nothing_into_an_empty_package() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(7, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(7, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.sector, 7);
   assert_eq!(package.description.geometry.vertex_count, 0);
@@ -363,7 +353,7 @@ fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(
     package.description.geometry.vertex_count, 0,
@@ -396,7 +386,7 @@ fn test_packs_one_mesh_for_every_place_it_stands() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.instances.len(), 1, "one mesh");
 
@@ -425,7 +415,7 @@ fn test_packs_each_places_hemisphere_terms_beside_its_transform() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   let group: &SectorInstanceGroup = &package.description.instances[0];
   let hemi: Vec<f32> = new_read_floats(&package, group.hemi);
@@ -449,7 +439,7 @@ fn test_keeps_instances_of_different_surfaces_apart() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.instances.len(), 2);
   assert_eq!(package.description.instances[0].surface.shader_id, 1);
@@ -467,7 +457,7 @@ fn test_still_shares_a_range_no_transform_places() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.geometry.vertex_count, 2);
   assert!(package.description.instances.is_empty());
@@ -481,7 +471,7 @@ fn test_packs_the_stored_vertex_byte_for_byte_but_each_direction_z() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let geometry = &package.description.geometry;
 
   // Stored blue, green, red, alpha: normal [0, 128, 255, 77], tangent [0, 128, 255, 0], binormal [255, 128, 0, 0].
@@ -529,7 +519,7 @@ fn test_packs_a_baked_colour_and_widens_a_missing_lightmap_coordinate_to_zero() 
   let source = new_open_geometry(bytes);
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let geometry = &package.description.geometry;
 
   assert_eq!(
@@ -571,8 +561,7 @@ fn test_packs_only_the_attributes_the_caller_draws_with() {
     ..SectorAttributes::default()
   };
 
-  let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), wanted);
+  let package: SectorPackage = SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), wanted);
   let geometry = &package.description.geometry;
 
   assert!(geometry.normals.is_some(), "what the caller asked for is packed");
@@ -596,7 +585,7 @@ fn test_packs_everything_a_sector_declares_for_a_caller_that_wants_it_all() {
   let source = new_open_geometry(bytes);
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let geometry = &package.description.geometry;
 
   assert!(geometry.normals.is_some() && geometry.tangents.is_some() && geometry.binormals.is_some());
@@ -622,7 +611,7 @@ fn test_packs_a_trees_mesh_in_its_own_declaration() {
   let source = new_open_geometry(new_tree_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let geometry = &package.description.instances[0].geometry;
 
   assert_eq!(geometry.uv_components, 4);
@@ -640,7 +629,7 @@ fn test_leaves_out_a_tree_declaration_baked_into_a_sector() {
   let source = new_open_geometry(new_tree_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.skipped.len(), 1);
   assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Unsupported);
@@ -661,11 +650,8 @@ fn test_packs_an_impostor_and_names_it_from_every_tree_of_its_clump() {
   let table: LevelShadersChunk = new_shaders(&["", "trees\\trees/pine", "", "details\\lod/level_lods"]);
   let source = new_open_geometry(new_tree_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, Some(&table), &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let impostors = package
     .description
     .impostors
@@ -720,16 +706,10 @@ fn test_bakes_a_progressive_static_at_its_whole_detail_alone() {
   let plain: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(1, 0, 4, 3, 6)]);
   let source = new_open_geometry(new_progressive_geometry(false, &[]));
 
-  let package: SectorPackage = SectorPacker::new(&windowed, None, &source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&windowed),
-    SectorAttributes::all(),
-  );
-  let expected: SectorPackage = SectorPacker::new(&plain, None, &source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&plain),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&windowed, None, &source).pack(0, &new_composition(&windowed), SectorAttributes::all());
+  let expected: SectorPackage =
+    SectorPacker::new(&plain, None, &source).pack(0, &new_composition(&plain), SectorAttributes::all());
 
   assert_eq!(new_read_indices(&package).len(), 6, "the whole detail's two triangles");
   assert_eq!(new_read_indices(&package), new_read_indices(&expected));
@@ -743,7 +723,7 @@ fn test_packs_a_progressive_tree_whole_with_a_band_for_each_window() {
   let source = new_open_geometry(new_progressive_geometry(true, &[&PROGRESSIVE_WINDOWS]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let group: &SectorInstanceGroup = &package.description.instances[0];
 
   assert_eq!(
@@ -791,7 +771,7 @@ fn test_cuts_a_table_of_many_windows_into_a_few_bands() {
   let source = new_open_geometry(new_progressive_geometry(true, &[&windows]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let progressive: &SectorProgressive = package.description.instances[0].progressive.as_ref().expect("bands");
 
   assert_eq!(progressive.windows, 10);
@@ -808,7 +788,7 @@ fn test_leaves_out_a_tree_whose_window_reaches_past_its_indices() {
   let source = new_open_geometry(new_progressive_geometry(true, &[&[(6, 2, 4), (0, 1, 3)]]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert!(package.description.instances.is_empty());
   assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Malformed);
@@ -859,7 +839,7 @@ fn test_cuts_each_drawable_of_a_section_into_clusters_of_its_own() {
   let source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let description: &SectorDescription = &package.description;
   let ranges: Vec<u32> = new_read_bytes(&package, description.geometry.clusters.ranges)
     .as_chunks::<4>()
@@ -889,7 +869,7 @@ fn test_leaves_out_a_tree_whose_indices_name_a_vertex_past_its_mesh() {
   let source = new_open_geometry(new_tree_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert!(package.description.instances.is_empty());
   assert_eq!(
@@ -919,7 +899,7 @@ fn test_leaves_out_a_drawable_whose_window_starts_past_what_a_buffer_addresses()
   let source = new_open_geometry(new_progressive_geometry(false, &[]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.geometry.index_count, 0);
   assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Malformed);
@@ -938,7 +918,7 @@ fn test_leaves_out_a_tree_whose_window_wraps_past_what_32_bits_hold() {
   let source = new_open_geometry(new_progressive_geometry(true, &[&[(u32::MAX, 2, 4), (0, 1, 3)]]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert!(package.description.instances.is_empty());
   assert!(
@@ -963,7 +943,7 @@ fn test_stands_a_clump_without_an_impostor_it_cannot_read() {
   let source = new_open_geometry(new_tree_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert!(package.description.impostors.is_none());
   assert_eq!(package.description.instances[0].drawables, vec![2]);
@@ -983,7 +963,7 @@ fn test_leaves_out_a_progressive_static_whose_windows_it_cannot_read() {
   let source = new_open_geometry(new_progressive_geometry(false, &[]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.skipped.len(), 1);
   assert_eq!(package.description.skipped[0].drawable, 1);
@@ -1005,7 +985,7 @@ fn test_leaves_out_a_progressive_tree_whose_window_table_the_level_lacks() {
   let source = new_open_geometry(new_progressive_geometry(true, &[&PROGRESSIVE_WINDOWS]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
   let skipped: &[SectorSkip] = &package.description.skipped;
 
   assert!(package.description.instances.is_empty());
@@ -1029,7 +1009,7 @@ fn test_leaves_out_a_progressive_static_carrying_no_window() {
   let source = new_open_geometry(new_progressive_geometry(false, &[]));
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+    SectorPacker::new(&run, None, &source).pack(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.geometry.index_count, 0);
   assert!(

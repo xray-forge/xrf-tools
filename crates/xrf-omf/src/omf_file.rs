@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
@@ -17,8 +16,8 @@ pub struct OmfFile {
 }
 
 impl OmfFile {
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "OMF file was not read: {}, error: {}",
         format_path(path.as_ref()),
@@ -27,34 +26,34 @@ impl OmfFile {
     })?)
   }
 
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived omf arrives: a volume holds no file to open.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
   ///
   /// The route an archived omf takes: a volume holds no file to slice, only bytes.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    Self::read_from_chunks::<T, _>(&chunks)
+    Self::read_from_chunks(&chunks)
   }
 
-  pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+  pub fn read_from_chunks<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     assert_equal(chunks.len(), 2, "Unexpected chunks count in omf file, expected 2")?;
 
     let parameters: SkeletonMotionParametersChunk =
       ChunkReader::find_required_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID)?
-        .read_xr::<T, _>()
+        .read_xr()
         .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF parameters: {error}")))?;
 
     let motions: SkeletonMotionsChunk = ChunkReader::find_required_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)?
-      .read_xr::<T, _>()
+      .read_xr()
       .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF motions: {error}")))?;
 
     if parameters.motions.len() != motions.motions.len() {
@@ -71,16 +70,16 @@ impl OmfFile {
 
 impl OmfFile {
   /// Write omf file data into provided path.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut bytes)?;
+    self.write_to(&mut bytes)?;
 
     Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
   /// Write omf file data into the writer.
-  pub fn write_to<T: ByteOrder>(&self, writer: &mut dyn Write) -> XrfResult {
+  pub fn write_to(&self, writer: &mut dyn Write) -> XrfResult {
     if self.parameters.motions.len() != self.motions.motions.len() {
       return Err(XrfError::new_invalid_error(format!(
         "Cannot write OMF file, count of motions and motions definitions mismatch: {} definitions, {} motions",
@@ -90,12 +89,12 @@ impl OmfFile {
     }
 
     let mut motions_writer: ChunkWriter = ChunkWriter::new();
-    motions_writer.write_xr::<T, _>(&self.motions)?;
-    motions_writer.flush_chunk_into::<T>(writer, SkeletonMotionsChunk::CHUNK_ID)?;
+    motions_writer.write_xr(&self.motions)?;
+    motions_writer.flush_chunk_into(writer, SkeletonMotionsChunk::CHUNK_ID)?;
 
     let mut parameters_writer: ChunkWriter = ChunkWriter::new();
-    parameters_writer.write_xr::<T, _>(&self.parameters)?;
-    parameters_writer.flush_chunk_into::<T>(writer, SkeletonMotionParametersChunk::CHUNK_ID)?;
+    parameters_writer.write_xr(&self.parameters)?;
+    parameters_writer.flush_chunk_into(writer, SkeletonMotionParametersChunk::CHUNK_ID)?;
 
     Ok(())
   }
@@ -144,7 +143,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_chunk::{ChunkReader, XRayByteOrder};
+  use xrf_chunk::ChunkReader;
   use xrf_error::XrfResult;
   use xrf_skeleton::{
     SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
@@ -189,11 +188,11 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "write_read.omf");
     let original: OmfFile = new_mock(4);
 
-    original.write_to_path::<XRayByteOrder, _>(&GeneratedResources::path(&filename))?;
+    original.write_to_path(&GeneratedResources::path(&filename))?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.read_children()?;
-    let read: OmfFile = OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
+    let read: OmfFile = OmfFile::read_from_chunks(&chunks)?;
 
     assert_eq!(read.parameters.version, original.parameters.version);
     assert_eq!(read.parameters.parts, original.parameters.parts);
@@ -211,7 +210,7 @@ mod tests {
     fs::write(&path, b"previous")?;
     StagingFaults::fail_next_write();
 
-    assert!(new_mock(4).write_to_path::<XRayByteOrder, _>(&path).is_err());
+    assert!(new_mock(4).write_to_path(&path).is_err());
     RefusedPublication::assert_left_previous(&path, b"previous");
 
     Ok(())
@@ -224,7 +223,7 @@ mod tests {
     file.motions.motions.pop();
 
     assert!(
-      file.write_to::<XRayByteOrder>(&mut Vec::new()).is_err(),
+      file.write_to(&mut Vec::new()).is_err(),
       "Expect write to reject mismatched motions and definitions counts"
     );
   }
@@ -234,7 +233,7 @@ mod tests {
     let chunks: Vec<ChunkReader> = Vec::new();
 
     assert!(
-      OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks).is_err(),
+      OmfFile::read_from_chunks(&chunks).is_err(),
       "Expect read to reject an unexpected OMF chunks count"
     );
   }
@@ -244,7 +243,7 @@ mod tests {
     let file: OmfFile = new_mock(SkeletonMotionParametersChunk::MAXIMUM_VERSION + 1);
 
     assert!(
-      file.write_to::<XRayByteOrder>(&mut Vec::new()).is_err(),
+      file.write_to(&mut Vec::new()).is_err(),
       "Expect write to reject unsupported omf version"
     );
   }
@@ -254,9 +253,9 @@ mod tests {
     // `motions_value::load` reads any version up to its own with one layout, so a bank from before marks still loads.
     let mut bytes: Vec<u8> = Vec::new();
 
-    new_mock(2).write_to::<XRayByteOrder>(&mut bytes)?;
+    new_mock(2).write_to(&mut bytes)?;
 
-    let read: OmfFile = OmfFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+    let read: OmfFile = OmfFile::read_from_bytes(bytes)?;
 
     assert_eq!(read.parameters.version, 2);
     assert_eq!(read.parameters.motions, new_mock(2).parameters.motions);
@@ -335,11 +334,11 @@ mod tests {
     original.motions.motions[0].label = String::from("\u{2019}<\u{0427}\u{2019}\u{201A}m");
     original.parameters.motions[0].motion = 50_992;
 
-    original.write_to_path::<XRayByteOrder, _>(&GeneratedResources::path(&filename))?;
+    original.write_to_path(&GeneratedResources::path(&filename))?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.read_children()?;
-    let read: OmfFile = OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
+    let read: OmfFile = OmfFile::read_from_chunks(&chunks)?;
 
     assert_eq!(read.motions.motions, original.motions.motions);
     assert_eq!(read.parameters.motions[0].motion, 50_992);

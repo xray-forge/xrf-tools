@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_ogf::{OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk};
 
@@ -48,7 +47,7 @@ fn new_visuals(run: &[Vec<u8>]) -> XrfResult<LevelVisualsChunk> {
 
   let level: Vec<u8> = chunk(LevelVisualsChunk::CHUNK_ID, &body)?;
 
-  Ok(LevelFile::read_visuals_from_bytes::<XRayByteOrder>(level)?.expect("a run of visuals"))
+  Ok(LevelFile::read_visuals_from_bytes(level)?.expect("a run of visuals"))
 }
 
 /// One hierarchy linking two drawables, which is the shape every shipped sector has.

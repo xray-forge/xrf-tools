@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
-use xrf_chunk::{ChunkFieldRecorder, XRayByteOrder};
+use xrf_chunk::ChunkFieldRecorder;
 use xrf_editable_level::{EditableShape, EditableShapeObject, EditableSpawnPointKind, EditableSpawnPointObject};
 use xrf_ini::IniSection;
 use xrf_math::{Aabb, Sphere, Vector3d};
@@ -51,9 +51,7 @@ fn packet(visual: &str) -> IniSection {
 
   // The flags every editor-saved packet carries, including `M_SPAWN_VERSION`.
   entity.header.script_flags = 33;
-  entity
-    .write_spawn_packet::<XRayByteOrder, _>(&mut recorder)
-    .expect("the packet writes");
+  entity.write_spawn_packet(&mut recorder).expect("the packet writes");
   LevelSpawnDataFields::write_section(&recorder.into_fields(), &mut data).expect("the packet saves");
 
   data

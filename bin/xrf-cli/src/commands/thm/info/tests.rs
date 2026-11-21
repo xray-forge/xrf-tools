@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use serde_json::Value;
-use xrf_chunk::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmGroupFile, ThmObjectFile, ThmSoundFile};
 
@@ -43,38 +42,28 @@ fn assert_reported<T: Serialize>(name: &str, bytes: &[u8], kind: &str, expected:
 fn reports_a_texture_descriptor_as_the_reader_reads_it() -> CommandResult {
   let descriptor: ThmFile = texture_descriptor();
 
-  assert_reported(
-    "texture.thm",
-    &descriptor.write_to_bytes::<XRayByteOrder>()?,
-    "texture",
-    &descriptor,
-  )
+  assert_reported("texture.thm", &descriptor.write_to_bytes()?, "texture", &descriptor)
 }
 
 #[test]
 fn reports_an_object_thumbnail_with_its_size() -> CommandResult {
   let object: ThmObjectFile = object_thumbnail()?;
 
-  assert_reported(
-    "object.thm",
-    &object.write_to_bytes::<XRayByteOrder>()?,
-    "object",
-    &object,
-  )
+  assert_reported("object.thm", &object.write_to_bytes()?, "object", &object)
 }
 
 #[test]
 fn tells_a_group_thumbnail_from_the_object_type_it_is_stamped_with() -> CommandResult {
   let group: ThmGroupFile = group_thumbnail()?;
 
-  assert_reported("group.thm", &group.write_to_bytes::<XRayByteOrder>()?, "group", &group)
+  assert_reported("group.thm", &group.write_to_bytes()?, "group", &group)
 }
 
 #[test]
 fn reports_a_sound_thumbnail_with_its_parameters() -> CommandResult {
   let sound: ThmSoundFile = sound_thumbnail();
 
-  assert_reported("sound.thm", &sound.write_to_bytes::<XRayByteOrder>()?, "sound", &sound)
+  assert_reported("sound.thm", &sound.write_to_bytes()?, "sound", &sound)
 }
 
 #[test]

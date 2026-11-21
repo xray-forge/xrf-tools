@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
@@ -14,7 +13,7 @@ use crate::ai::level_ai_version::LevelAiVersion;
 /// them or a total, so the run is not unpacked into records. Keeping the bytes also keeps the light bits older
 /// compilers left behind the links, which makes [`Self::write`] give back the file it read.
 ///
-/// The decoders take the byte order because the bytes are held as the file stores them.
+/// The decoders read the bytes as the file stores them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LevelAiNodes {
   version: LevelAiVersion,
@@ -51,12 +50,12 @@ impl LevelAiNodes {
   /// # Errors
   ///
   /// Returns an error when a node holds a value its layout has no room for ([`LevelAiNode`]'s encoder).
-  pub fn from_nodes<T: ByteOrder>(version: LevelAiVersion, nodes: &[LevelAiNode]) -> XrfResult<Self> {
+  pub fn from_nodes(version: LevelAiVersion, nodes: &[LevelAiNode]) -> XrfResult<Self> {
     let size: usize = version.get_node_size() as usize;
     let mut bytes: Vec<u8> = vec![0; nodes.len() * size];
 
     for (node, packed) in nodes.iter().zip(bytes.chunks_exact_mut(size)) {
-      node.encode::<T>(packed, &version.get_node_layout())?;
+      node.encode(packed, &version.get_node_layout())?;
     }
 
     Ok(Self { version, bytes })
@@ -73,22 +72,22 @@ impl LevelAiNodes {
   }
 
   /// One node, by index, or none past the end.
-  pub fn get_node<T: ByteOrder>(&self, index: usize) -> Option<LevelAiNode> {
+  pub fn get_node(&self, index: usize) -> Option<LevelAiNode> {
     let size: usize = self.version.get_node_size() as usize;
     let start: usize = index.checked_mul(size)?;
 
     self
       .bytes
       .get(start..start.checked_add(size)?)
-      .map(|bytes| LevelAiNode::decode::<T>(bytes, &self.version.get_node_layout()))
+      .map(|bytes| LevelAiNode::decode(bytes, &self.version.get_node_layout()))
   }
 
   /// Every node, in order.
-  pub fn iter_nodes<T: ByteOrder>(&self) -> impl Iterator<Item = LevelAiNode> + '_ {
+  pub fn iter_nodes(&self) -> impl Iterator<Item = LevelAiNode> + '_ {
     self
       .bytes
       .chunks_exact(self.version.get_node_size() as usize)
-      .map(|bytes| LevelAiNode::decode::<T>(bytes, &self.version.get_node_layout()))
+      .map(|bytes| LevelAiNode::decode(bytes, &self.version.get_node_layout()))
   }
 
   /// Writes the nodes back as they were read.

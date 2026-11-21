@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
@@ -21,9 +20,9 @@ impl LevelDynamicLightsChunk {
   /// # Errors
   ///
   /// Returns an error when the chunk does not divide into whole records, which the engine verifies too.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      lights: reader.read_xr_records::<T, _>(LevelDynamicLight::SERIALIZED_SIZE, "level dynamic lights chunk")?,
+      lights: reader.read_xr_records(LevelDynamicLight::SERIALIZED_SIZE, "level dynamic lights chunk")?,
     })
   }
 

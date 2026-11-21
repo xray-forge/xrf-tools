@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 
 use crate::level::level_bundle::LevelBundle;
@@ -37,7 +37,7 @@ fn bundle() -> LevelBundle {
 fn write(bundle: &LevelBundle) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  bundle.write::<XRayByteOrder>(&mut writer)?;
+  bundle.write(&mut writer)?;
 
   writer.flush_raw_into_buffer()
 }
@@ -45,7 +45,7 @@ fn write(bundle: &LevelBundle) -> XrfResult<Vec<u8>> {
 #[test]
 fn test_a_written_bundle_reads_back_and_writes_again_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = write(&bundle())?;
-  let read: LevelBundle = LevelBundle::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let read: LevelBundle = LevelBundle::read_from_bytes(bytes.clone())?;
 
   assert_eq!(read.header, bundle().header);
   assert_eq!(read.shaders, bundle().shaders);

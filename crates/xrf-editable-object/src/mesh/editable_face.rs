@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::EditableFaceCorner;
@@ -17,23 +16,23 @@ impl EditableFace {
 }
 
 impl ChunkReadWrite for EditableFace {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut corners: [EditableFaceCorner; 3] = Default::default();
 
     for corner in &mut corners {
       *corner = EditableFaceCorner {
-        point: reader.read_u32::<T>()?,
-        vmap_reference: reader.read_u32::<T>()?,
+        point: reader.read_u32()?,
+        vmap_reference: reader.read_u32()?,
       };
     }
 
     Ok(Self { corners })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for corner in &self.corners {
-      writer.write_u32::<T>(corner.point)?;
-      writer.write_u32::<T>(corner.vmap_reference)?;
+      writer.write_u32(corner.point)?;
+      writer.write_u32(corner.vmap_reference)?;
     }
 
     Ok(())

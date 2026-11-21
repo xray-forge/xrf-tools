@@ -1,6 +1,6 @@
 // Layouts older editors saved, each reduced from a file in the CoP SDK 0.7 `rawdata` to the bytes that carry it.
 
-use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 
 use crate::tests::fixtures;
@@ -30,12 +30,12 @@ fn a_description_with_64_bit_times_reads_and_comes_back() -> XrfResult {
   // 783 of the SDK's 1,762 objects, `objects\detail\det_hvosh.object` among them.
   for width in [EditableTimeWidth::Seconds32, EditableTimeWidth::Seconds64] {
     let original: Vec<u8> = object(&fixtures::words(&[0]), &description(width.get_size()));
-    let object: EditableObjectFile = EditableObjectFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+    let object: EditableObjectFile = EditableObjectFile::read_from_bytes(original.clone())?;
     let description = object.description.as_ref().expect("expect the description");
 
     assert_eq!(description.time_width, width);
     assert_eq!(description.modified_at, 1_242_207_821);
-    assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original, "{width:?}");
+    assert_eq!(object.write_to_bytes()?, original, "{width:?}");
   }
 
   Ok(())
@@ -47,23 +47,23 @@ fn a_description_no_width_accounts_for_is_refused() {
 
   bytes.push(0);
 
-  assert!(EditableObjectFile::read_from_bytes::<XRayByteOrder>(object(&fixtures::words(&[0]), &bytes)).is_err());
+  assert!(EditableObjectFile::read_from_bytes(object(&fixtures::words(&[0]), &bytes)).is_err());
 }
 
 #[test]
 fn a_one_byte_flags_chunk_reads_as_r_chunk_reads_it() -> XrfResult {
   // `objects\editor\shadertest_sphere.object`, saved in 2008.
   let original: Vec<u8> = object(&[1], &description(4));
-  let mut object: EditableObjectFile = EditableObjectFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let mut object: EditableObjectFile = EditableObjectFile::read_from_bytes(original.clone())?;
 
   assert!(object.is_dynamic());
   assert_eq!(object.flags_size, 1);
-  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(object.write_to_bytes()?, original);
 
   object.flags = 0x100;
 
   assert!(
-    object.write_to_bytes::<XRayByteOrder>().is_err(),
+    object.write_to_bytes().is_err(),
     "a flag past the stored byte has nowhere to go"
   );
 
@@ -72,7 +72,7 @@ fn a_one_byte_flags_chunk_reads_as_r_chunk_reads_it() -> XrfResult {
 
 #[test]
 fn an_empty_flags_chunk_is_refused() {
-  assert!(EditableObjectFile::read_from_bytes::<XRayByteOrder>(object(&[], &description(4))).is_err());
+  assert!(EditableObjectFile::read_from_bytes(object(&[], &description(4))).is_err());
 }
 
 fn mesh_with_points(points: &[u8]) -> XrfResult<EditableMesh> {
@@ -93,7 +93,7 @@ fn mesh_with_points(points: &[u8]) -> XrfResult<EditableMesh> {
   let mut reader: ChunkReader<InMemoryChunkDataSource> =
     ChunkReader::from_vec(fixtures::chunk(0, &children))?.read_child_by_index(0)?;
 
-  EditableMesh::read::<XRayByteOrder, _>(&mut reader)
+  EditableMesh::read(&mut reader)
 }
 
 fn points_payload(faces: &[&[u32]]) -> Vec<u8> {
@@ -112,7 +112,7 @@ fn points_payload(faces: &[&[u32]]) -> Vec<u8> {
 fn written_points(mesh: &EditableMesh) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  mesh.write::<XRayByteOrder>(&mut writer)?;
+  mesh.write(&mut writer)?;
 
   let mut written: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(writer.buffer)?;
 

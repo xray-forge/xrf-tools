@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -110,8 +109,8 @@ impl Default for ClearSkyShooting {
 }
 
 impl ChunkFieldReadWrite for ClearSkyShooting {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    ScriptSaveMarker::read::<T, _, _>(reader, Self::PROFILE, |reader| {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    ScriptSaveMarker::read(reader, Self::PROFILE, |reader| {
       let game_type: String = reader.read_w1251_string()?;
       let wpn_type: String = reader.read_w1251_string()?;
       let stand_way: Option<String> = ScriptToString::parse_text(reader.read_w1251_string()?);
@@ -119,7 +118,7 @@ impl ChunkFieldReadWrite for ClearSkyShooting {
       let stand_way_back: Option<String> = ScriptToString::parse_text(reader.read_w1251_string()?);
       let look_way_back: Option<String> = ScriptToString::parse_text(reader.read_w1251_string()?);
       let obj_name: Option<String> = ScriptToString::parse_text(reader.read_w1251_string()?);
-      let win: ClearSkyShootingWin = reader.read_xr::<T, _>()?;
+      let win: ClearSkyShootingWin = reader.read_xr()?;
       let distance: u8 = reader.read_u8()?;
       let ammo: u8 = reader.read_u8()?;
 
@@ -129,7 +128,7 @@ impl ChunkFieldReadWrite for ClearSkyShooting {
 
       ScriptAbsentState::read_u8(reader, Self::PROFILE, "inventory items count", 0)?;
 
-      let prev_time: u32 = reader.read_u32::<T>()?;
+      let prev_time: u32 = reader.read_u32()?;
 
       ScriptAbsentState::read_string(reader, Self::PROFILE, "current game", NIL)?;
 
@@ -150,8 +149,8 @@ impl ChunkFieldReadWrite for ClearSkyShooting {
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    ScriptSaveMarker::write::<T, _>(writer, Self::PROFILE, |writer| {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    ScriptSaveMarker::write(writer, Self::PROFILE, |writer| {
       writer.write_w1251_string(&self.game_type)?;
       writer.write_w1251_string(&self.wpn_type)?;
 
@@ -165,7 +164,7 @@ impl ChunkFieldReadWrite for ClearSkyShooting {
         writer.write_w1251_string(ScriptToString::format_text(text.as_deref()))?;
       }
 
-      writer.write_xr::<T, _>(&self.win)?;
+      writer.write_xr(&self.win)?;
       writer.write_u8(self.distance)?;
       writer.write_u8(self.ammo)?;
       // No targets.
@@ -173,7 +172,7 @@ impl ChunkFieldReadWrite for ClearSkyShooting {
       writer.write_u8(self.target_counter)?;
       // No inventory taken.
       writer.write_u8(0)?;
-      writer.write_u32::<T>(self.prev_time)?;
+      writer.write_u32(self.prev_time)?;
       // No game in progress.
       writer.write_w1251_string(NIL)
     })
@@ -182,7 +181,7 @@ impl ChunkFieldReadWrite for ClearSkyShooting {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
 
@@ -196,13 +195,11 @@ mod tests {
   fn reads_and_writes_the_constructed_state() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    ClearSkyShooting::default().write::<XRayByteOrder>(&mut writer)?;
+    ClearSkyShooting::default().write(&mut writer)?;
 
     assert_eq!(writer.buffer, CONSTRUCTED);
     assert_eq!(
-      ClearSkyShooting::read::<XRayByteOrder, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(
-        CONSTRUCTED
-      )?)?,
+      ClearSkyShooting::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(CONSTRUCTED)?)?,
       ClearSkyShooting::default()
     );
 
@@ -216,10 +213,9 @@ mod tests {
 
     bytes.extend_from_slice(b"count\0");
 
-    let error: String =
-      ClearSkyShooting::read::<XRayByteOrder, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&bytes)?)
-        .expect_err("a game in progress")
-        .to_string();
+    let error: String = ClearSkyShooting::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&bytes)?)
+      .expect_err("a game in progress")
+      .to_string();
 
     assert!(error.contains("CMGShooting holds current game \"count\""), "{error}");
 

@@ -14,12 +14,11 @@ and level viewers use what it produces. It does not render; surface alpha and TH
 ## Prepare a model for a viewer
 
 ```rust,no_run
-use xrf_chunk::XRayByteOrder;
 use xrf_ogf::OgfFile;
 use xrf_visual::VisualPacker;
 
 fn main() -> xrf_error::XrfResult {
-  let file = OgfFile::read_from_path::<XRayByteOrder, _>(&"gamedata/meshes/example.ogf")?;
+  let file = OgfFile::read_from_path(&"gamedata/meshes/example.ogf")?;
   let package = VisualPacker::pack(&file);
 
   assert_eq!(package.description.buffer_length as usize, package.buffer.len());
@@ -64,13 +63,12 @@ Computed bounds are absent when no submesh produced geometry.
 ## Resolve external assets
 
 ```rust,no_run
-use xrf_chunk::XRayByteOrder;
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayMountMode, XraySearchPlan};
 use xrf_visual::{VisualDependencies, VisualPacker};
 
 fn main() -> xrf_error::XrfResult {
-  let file = OgfFile::read_from_path::<XRayByteOrder, _>(&"gamedata/meshes/example.ogf")?;
+  let file = OgfFile::read_from_path(&"gamedata/meshes/example.ogf")?;
   let package = VisualPacker::pack(&file);
   let search = XraySearchPlan::new()
     .with_root_mode("gamedata", "gamedata", XrayMountMode::Directory)?

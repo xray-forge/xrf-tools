@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -74,24 +73,23 @@ impl AlifeClearSkyActor {
   const TASK_MANAGER: &'static str = "CRandomTask";
   const MINIGAMES_MANAGER: &'static str = "CMinigames";
 
-  fn read_script_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<ClearSkyActorScriptState> {
-    let task_ids: ClearSkyObjectCollection = ScriptSaveMarker::read::<T, _, _>(reader, Self::TASK_MANAGER, |reader| {
-      ScriptAbsentState::read_u16::<T, _>(reader, Self::TASK_MANAGER, "tasks count", 0)?;
+  fn read_script_state<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<ClearSkyActorScriptState> {
+    let task_ids: ClearSkyObjectCollection = ScriptSaveMarker::read(reader, Self::TASK_MANAGER, |reader| {
+      ScriptAbsentState::read_u16(reader, Self::TASK_MANAGER, "tasks count", 0)?;
 
-      let task_ids: ClearSkyObjectCollection = reader.read_xr::<T, _>()?;
+      let task_ids: ClearSkyObjectCollection = reader.read_xr()?;
 
       ScriptAbsentState::read_u8(reader, Self::TASK_MANAGER, "rewards count", 0)?;
-      ScriptAbsentState::read_u16::<T, _>(reader, Self::TASK_MANAGER, "upgrade tasks count", 0)?;
+      ScriptAbsentState::read_u16(reader, Self::TASK_MANAGER, "upgrade tasks count", 0)?;
 
       Ok(task_ids)
     })?;
-    let squad_ids: ClearSkyObjectCollection = reader.read_xr::<T, _>()?;
-    let minigames: Vec<ClearSkyMinigame> =
-      ScriptSaveMarker::read::<T, _, _>(reader, Self::MINIGAMES_MANAGER, |reader| {
-        let count: u16 = reader.read_u16::<T>()?;
+    let squad_ids: ClearSkyObjectCollection = reader.read_xr()?;
+    let minigames: Vec<ClearSkyMinigame> = ScriptSaveMarker::read(reader, Self::MINIGAMES_MANAGER, |reader| {
+      let count: u16 = reader.read_u16()?;
 
-        (0..count).map(|_| reader.read_xr::<T, _>()).collect()
-      })?;
+      (0..count).map(|_| reader.read_xr()).collect()
+    })?;
 
     Ok(ClearSkyActorScriptState {
       task_ids,
@@ -100,21 +98,21 @@ impl AlifeClearSkyActor {
     })
   }
 
-  fn write_script_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    ScriptSaveMarker::write::<T, _>(writer, Self::TASK_MANAGER, |writer| {
+  fn write_script_state<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    ScriptSaveMarker::write(writer, Self::TASK_MANAGER, |writer| {
       // No tasks given.
-      writer.write_u16::<T>(0)?;
-      writer.write_xr::<T, _>(&self.task_ids)?;
+      writer.write_u16(0)?;
+      writer.write_xr(&self.task_ids)?;
       // No rewards and no upgrade tasks.
       writer.write_u8(0)?;
-      writer.write_u16::<T>(0)
+      writer.write_u16(0)
     })?;
-    writer.write_xr::<T, _>(&self.squad_ids)?;
-    ScriptSaveMarker::write::<T, _>(writer, Self::MINIGAMES_MANAGER, |writer| {
-      writer.write_u16::<T>(narrow_format_size(self.minigames.len(), "minigames")?)?;
+    writer.write_xr(&self.squad_ids)?;
+    ScriptSaveMarker::write(writer, Self::MINIGAMES_MANAGER, |writer| {
+      writer.write_u16(narrow_format_size(self.minigames.len(), "minigames")?)?;
 
       for minigame in &self.minigames {
-        writer.write_xr::<T, _>(minigame)?;
+        writer.write_xr(minigame)?;
       }
 
       Ok(())
@@ -144,19 +142,19 @@ impl AlifePacketsReadWrite for AlifeClearSkyActor {
 
   /// Read the actor from both packets. Its `STATE_Read` returns before its own fields under the Level Editor, so the
   /// editor's form ending at the server class's fields takes the managers' constructor state.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
-    let base: AlifeObjectActor = AlifeObjectActor::read::<T, _, _>(spawn, update, layout)?;
-    let state: ClearSkyActorScriptState = ScriptSaveMarker::read_or_constructed::<T, _, _>(
+    let base: AlifeObjectActor = AlifeObjectActor::read(spawn, update, layout)?;
+    let state: ClearSkyActorScriptState = ScriptSaveMarker::read_or_constructed(
       spawn,
       Self::SCRIPT_CLASS,
       ClearSkyActorScriptState::new_constructed,
-      Self::read_script_state::<T, _>,
+      Self::read_script_state,
     )?;
 
     Ok(Self {
@@ -168,7 +166,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyActor {
   }
 
   /// Write the actor into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
@@ -176,11 +174,9 @@ impl AlifePacketsReadWrite for AlifeClearSkyActor {
   ) -> XrfResult {
     layout.assert_clear_sky_script_version(Self::SCRIPT_CLASS)?;
 
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    ScriptSaveMarker::write::<T, _>(spawn, Self::SCRIPT_CLASS, |writer| {
-      self.write_script_state::<T, _>(writer)
-    })
+    ScriptSaveMarker::write(spawn, Self::SCRIPT_CLASS, |writer| self.write_script_state(writer))
   }
 
   /// Import actor data from ltx file section.
@@ -226,7 +222,7 @@ impl AlifePacketsReadWrite for AlifeClearSkyActor {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkWriter, XRayByteOrder};
+  use xrf_chunk::ChunkWriter;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -239,15 +235,15 @@ mod tests {
   #[test]
   fn writes_the_managers_closed_by_the_actors_marker() -> XrfResult {
     let original: AlifeClearSkyActor = AlifeClearSkyActor::new_mock(Vector3d::new(256.24, 19.81, 550.82));
-    let (base_spawn_size, base_update_size, _) = original.base.read_back::<XRayByteOrder>(SpawnLayout::CLEAR_SKY)?;
+    let (base_spawn_size, base_update_size, _) = original.base.read_back(SpawnLayout::CLEAR_SKY)?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CLEAR_SKY)?;
+    original.write(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CLEAR_SKY)?;
 
     assert_eq!(spawn.buffer.len() - base_spawn_size, 169 + 2);
     assert_eq!(spawn.buffer[spawn.buffer.len() - 2..], [169, 0]);
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CLEAR_SKY)?,
+      original.read_back(SpawnLayout::CLEAR_SKY)?,
       (base_spawn_size + 171, base_update_size, original)
     );
 

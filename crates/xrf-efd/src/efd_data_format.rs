@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
 /// How wide the real numbers of an evaluation function are stored: its result range and every weight.
@@ -55,18 +54,18 @@ impl EfdDataFormat {
   }
 
   /// Reads one real at this format's width.
-  pub(crate) fn read_real<T: ByteOrder, D: ChunkDataSource>(self, reader: &mut ChunkReader<D>) -> XrfResult<f64> {
+  pub(crate) fn read_real<D: ChunkDataSource>(self, reader: &mut ChunkReader<D>) -> XrfResult<f64> {
     Ok(match self {
-      Self::Double => reader.read_f64::<T>()?,
-      Self::Float => f64::from(reader.read_f32::<T>()?),
+      Self::Double => reader.read_f64()?,
+      Self::Float => f64::from(reader.read_f32()?),
     })
   }
 
   /// Writes one real at this format's width, narrowing it for the float layout as the builder's cast does.
-  pub(crate) fn write_real<T: ByteOrder>(self, writer: &mut ChunkWriter, value: f64) -> XrfResult {
+  pub(crate) fn write_real(self, writer: &mut ChunkWriter, value: f64) -> XrfResult {
     match self {
-      Self::Double => writer.write_f64::<T>(value)?,
-      Self::Float => writer.write_f32::<T>(value as f32)?,
+      Self::Double => writer.write_f64(value)?,
+      Self::Float => writer.write_f32(value as f32)?,
     }
 
     Ok(())

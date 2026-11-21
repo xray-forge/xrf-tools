@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelSndStaticFile;
 
@@ -23,7 +22,7 @@ impl ArchiveLevelSndStaticDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not a sound list this reader can walk.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes(source.read_bytes(name)?)?;
 
     Ok(Self {
       scheduled: file.get_scheduled_count(),

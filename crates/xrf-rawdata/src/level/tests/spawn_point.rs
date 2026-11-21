@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{EditableObjectPart, EditableSpawnPointKind, EditableSpawnPointObject, EditableTextPart};
 use xrf_error::XrfResult;
 use xrf_level::{LevelEnvModFile, LevelEnvModifier, LevelGameRPoint};
@@ -47,7 +47,7 @@ fn environment(modifiers: Vec<LevelEnvModifier>) -> LevelEnvModFile {
 fn bytes_of(file: &LevelEnvModFile) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   Ok(writer.buffer)
 }

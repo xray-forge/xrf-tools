@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
@@ -19,15 +18,15 @@ impl OgfCollisionVerticesChunk {
 }
 
 impl ChunkReadWrite for OgfCollisionVerticesChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      vertices: reader.read_xr_records::<T, _>(Self::VERTEX_SIZE, "ogf collision vertices chunk")?,
+      vertices: reader.read_xr_records(Self::VERTEX_SIZE, "ogf collision vertices chunk")?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
     Ok(())

@@ -1,6 +1,6 @@
 //! Visuals carrying the malformed shapes issue 0014 is about, and the well-formed one they are judged against.
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Sphere, Vector3d};
 
@@ -47,7 +47,7 @@ fn raw_oversized_chunk(id: u32, declared: u32, payload: &[u8]) -> Vec<u8> {
 pub(crate) fn header_bytes() -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  writer.write_xr::<XRayByteOrder, _>(&OgfHeaderChunk {
+  writer.write_xr(&OgfHeaderChunk {
     version: 4,
     model_type: 3,
     shader_id: 0,
@@ -61,7 +61,7 @@ pub(crate) fn header_bytes() -> XrfResult<Vec<u8>> {
     },
   })?;
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfHeaderChunk::CHUNK_ID)
+  writer.flush_chunk_into_buffer(OgfHeaderChunk::CHUNK_ID)
 }
 
 /// Count, then that many NUL-terminated paths.

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::{AnmChannel, AnmFile};
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_ppe::PpeFile;
 use xrf_test_utils::GeneratedResources;
 
@@ -46,7 +46,7 @@ fn new_motion_bytes(value: f32) -> Vec<u8> {
     channels,
   };
 
-  motion.write_to_bytes::<XRayByteOrder>().unwrap()
+  motion.write_to_bytes().unwrap()
 }
 
 /// A version 1 effect whose blur is keyed once at `value`.
@@ -79,7 +79,7 @@ fn new_falling_grain_effect_bytes() -> Vec<u8> {
 fn write_effect(effect: &PpeFile) -> Vec<u8> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  effect.write::<XRayByteOrder>(&mut writer).unwrap();
+  effect.write(&mut writer).unwrap();
 
   writer.buffer
 }

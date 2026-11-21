@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkPayload, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkPayload, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 
@@ -418,7 +418,7 @@ pub(super) fn binary_part_bytes(chunks: &[ChunkPayload]) -> XrfResult<Vec<u8>> {
   let mut file: ChunkWriter = ChunkWriter::new();
 
   for chunk in chunks {
-    chunk.write::<XRayByteOrder>(&mut file)?;
+    chunk.write(&mut file)?;
   }
 
   Ok(file.buffer)
@@ -435,7 +435,7 @@ pub(super) fn chunk(id: u32, bytes: &[u8]) -> ChunkPayload {
 pub(super) fn guid_bytes(guid: &EditableLevelGuid) -> XrfResult<Vec<u8>> {
   let mut bytes: Vec<u8> = Vec::new();
 
-  guid.write::<XRayByteOrder>(&mut bytes)?;
+  guid.write(&mut bytes)?;
 
   Ok(bytes)
 }

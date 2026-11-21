@@ -6,7 +6,6 @@ use std::time::{Duration, Instant};
 use xrf_error::XrfResult;
 use xrf_ltx::{LTX_SYMBOL_SCHEME, Ltx, LtxResolution, Section};
 use xrf_ogf::OgfFile;
-use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
@@ -110,10 +109,7 @@ impl WeaponsVerifier<'_> {
 
     match self.find(XrayAssetType::Ogf, visual) {
       Some(path) => {
-        if let Err(error) = self
-          .project
-          .read_parsed(&path, OgfFile::read_from_chunk::<XRayByteOrder, _>)
-        {
+        if let Err(error) = self.project.read_parsed(&path, OgfFile::read_from_chunk) {
           problems.push(format!(
             "Weapon section [{name}] visual '{visual}' does not read: {error}"
           ));

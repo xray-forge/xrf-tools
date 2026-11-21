@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
 use xrf_editable_object::{EditableBone, EditableObjectFile};
 use xrf_error::XrfResult;
@@ -37,17 +36,17 @@ impl SkeletonOgfWriter {
   ///
   /// Returns an error where the object's own motions do not export (see [`MotionExport::of`]), and where a chunk does
   /// not write, such as a description time past the 32-bit times it was authored with.
-  pub(crate) fn write<T: ByteOrder>(
+  pub(crate) fn write(
     object: &EditableObjectFile,
     geometry: &SkeletonGeometry,
     source: &ObjectCompileSource,
   ) -> XrfResult<Vec<u8>> {
     let bones: &[EditableBone] = object.bones.as_deref().unwrap_or_default();
     let motion_references: &[String] = object.motion_references.as_deref().unwrap_or_default();
-    let motions: Option<MotionExport> = MotionExport::of::<T>(object)?;
+    let motions: Option<MotionExport> = MotionExport::of(object)?;
     let mut file: ChunkWriter = ChunkWriter::new();
 
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       &mut file,
       OgfHeaderChunk::CHUNK_ID,
       &OgfExportChunks::header(
@@ -59,7 +58,7 @@ impl SkeletonOgfWriter {
         &Self::get_bounds(geometry.splits.iter().flat_map(|split| &split.vertices)),
       ),
     )?;
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       &mut file,
       OgfDescriptionChunk::CHUNK_ID,
       &OgfExportChunks::description(object, source),
@@ -68,12 +67,12 @@ impl SkeletonOgfWriter {
     let children: Vec<Vec<u8>> = geometry
       .splits
       .iter()
-      .map(Self::write_child::<T>)
+      .map(Self::write_child)
       .collect::<XrfResult<_>>()?;
 
-    OgfChildrenChunk::write_nested::<T>(&mut file, &children)?;
+    OgfChildrenChunk::write_nested(&mut file, &children)?;
 
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       &mut file,
       OgfBonesChunk::CHUNK_ID,
       &OgfBonesChunk {
@@ -94,12 +93,12 @@ impl SkeletonOgfWriter {
     OgfIkDataChunk {
       bones: bones.iter().map(Self::ik_data).collect(),
     }
-    .write::<T>(&mut ik_data)?;
-    ik_data.flush_chunk_into::<T>(&mut file, OgfIkDataChunk::CHUNK_ID)?;
+    .write(&mut ik_data)?;
+    ik_data.flush_chunk_into(&mut file, OgfIkDataChunk::CHUNK_ID)?;
 
     // The class script is written terminated (`w_stringZ`), the LODs as a line (`w_string`).
     if let Some(script) = object.class_script.as_deref().filter(|script| !script.is_empty()) {
-      OgfExportChunks::write_chunk::<T, _>(
+      OgfExportChunks::write_chunk(
         &mut file,
         OgfUserDataChunk::CHUNK_ID,
         &OgfUserDataChunk {
@@ -109,7 +108,7 @@ impl SkeletonOgfWriter {
     }
 
     if let Some(lods) = object.lods.as_deref().filter(|lods| !lods.is_empty()) {
-      OgfExportChunks::write_chunk::<T, _>(
+      OgfExportChunks::write_chunk(
         &mut file,
         OgfLodsChunk::CHUNK_ID,
         &OgfLodsChunk {
@@ -120,8 +119,8 @@ impl SkeletonOgfWriter {
 
     // An object referencing motion files plays those and writes none of its own (`ExportMotionKeys`).
     if let Some(motions) = &motions {
-      OgfExportChunks::write_chunk::<T, _>(&mut file, SkeletonMotionsChunk::CHUNK_ID, &motions.motions)?;
-      OgfExportChunks::write_chunk::<T, _>(&mut file, SkeletonMotionParametersChunk::CHUNK_ID, &motions.parameters)?;
+      OgfExportChunks::write_chunk(&mut file, SkeletonMotionsChunk::CHUNK_ID, &motions.motions)?;
+      OgfExportChunks::write_chunk(&mut file, SkeletonMotionParametersChunk::CHUNK_ID, &motions.parameters)?;
     } else if !motion_references.is_empty() {
       let mut kinematics: ChunkWriter = ChunkWriter::new();
 
@@ -130,8 +129,8 @@ impl SkeletonOgfWriter {
         motion_refs: motion_references.to_vec(),
         trailing: Vec::new(),
       }
-      .write::<T>(&mut kinematics)?;
-      kinematics.flush_chunk_into::<T>(&mut file, OgfKinematicsChunk::CHUNK_ID)?;
+      .write(&mut kinematics)?;
+      kinematics.flush_chunk_into(&mut file, OgfKinematicsChunk::CHUNK_ID)?;
     }
 
     file.flush_raw_into_buffer()
@@ -139,15 +138,15 @@ impl SkeletonOgfWriter {
 
   /// A split's visual, `CExportSkeleton::SSplit::Save`: a static skinned child (no sliding windows yet), its texture,
   /// vertices and indices.
-  fn write_child<T: ByteOrder>(split: &SkeletonSplit) -> XrfResult<Vec<u8>> {
+  fn write_child(split: &SkeletonSplit) -> XrfResult<Vec<u8>> {
     let mut child: ChunkWriter = ChunkWriter::new();
 
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       &mut child,
       OgfHeaderChunk::CHUNK_ID,
       &OgfExportChunks::header(OgfModelType::SkeletonGeomdefSt, &Self::get_bounds(&split.vertices)),
     )?;
-    OgfExportChunks::write_chunk::<T, _>(
+    OgfExportChunks::write_chunk(
       &mut child,
       OgfTextureChunk::CHUNK_ID,
       &OgfTextureChunk {
@@ -164,7 +163,7 @@ impl SkeletonOgfWriter {
       .collect();
     let indices: Vec<u16> = split.faces.iter().flatten().copied().collect();
 
-    OgfGeometry::write_skinned::<T>(&mut child, &vertices, &indices)?;
+    OgfGeometry::write_skinned(&mut child, &vertices, &indices)?;
 
     child.flush_raw_into_buffer()
   }

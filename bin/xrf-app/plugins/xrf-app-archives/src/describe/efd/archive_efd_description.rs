@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_efd::{EfdFile, EfdVariable};
 use xrf_error::XrfResult;
 
@@ -33,7 +32,7 @@ impl ArchiveEfdDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not an evaluation function this reader can walk.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: EfdFile = EfdFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: EfdFile = EfdFile::read_from_bytes(source.read_bytes(name)?)?;
 
     Ok(Self {
       builder_version: file.builder_version,

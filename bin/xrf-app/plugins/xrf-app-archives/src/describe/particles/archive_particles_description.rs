@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
 
@@ -28,7 +27,7 @@ impl ArchiveParticlesDescription {
   /// Returns an error when the entry's bytes cannot be read, or when they are not a particle library this reader can
   /// walk.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: ParticlesFile = ParticlesFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: ParticlesFile = ParticlesFile::read_from_bytes(source.read_bytes(name)?)?;
 
     let effects: Vec<ArchiveParticlesEffect> = ArchiveParticlesEffect::of_all(source, &file.effects.effects);
     let defined: HashSet<&str> = file.effects.effects.iter().map(|effect| effect.name.as_str()).collect();

@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_chunk::XRayByteOrder;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{
   LevelBuildExporter, LevelBuildImpostorLimit, LevelBuildReport, LevelBuildRequest, LevelExportedPrevious,
@@ -121,7 +120,7 @@ impl GenericCommand for BuildCommand {
       is_forced: matches.get_flag("force"),
     };
     let report: LevelBuildReport =
-      LevelBuildExporter::build_to_directory::<XRayByteOrder>(&request, &CliJob::for_output(context.get_output()))?;
+      LevelBuildExporter::build_to_directory(&request, &CliJob::for_output(context.get_output()))?;
 
     Self::print(context.get_output(), &report);
     context.set_result(|| &report)?;

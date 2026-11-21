@@ -8,7 +8,6 @@ use xrf_extension::XrayExtension;
 use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_duration, format_path, format_portable_path};
 
 use crate::commands::omf::repack::{OmfRepackOutcome, OmfRepackStatistics, OmfRepackVerifyReport};
@@ -150,10 +149,10 @@ impl RepackCommand {
     );
 
     let started_at: Instant = Instant::now();
-    let omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(&path)?;
+    let omf_file: OmfFile = OmfFile::read_from_path(&path)?;
     let read_duration: Duration = started_at.elapsed();
 
-    omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
+    omf_file.write_to_path(&destination)?;
 
     let write_duration: Duration = started_at.elapsed() - read_duration;
 
@@ -205,10 +204,10 @@ impl RepackCommand {
   /// One omf file's bytes, and the same file read from them and written back.
   fn repack_into_buffer(path: &Path) -> XrfResult<(Vec<u8>, Vec<u8>)> {
     let original: Vec<u8> = fs::read(path)?;
-    let omf_file: OmfFile = OmfFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+    let omf_file: OmfFile = OmfFile::read_from_bytes(original.clone())?;
     let mut repacked: Vec<u8> = Vec::with_capacity(original.len());
 
-    omf_file.write_to::<XRayByteOrder>(&mut repacked)?;
+    omf_file.write_to(&mut repacked)?;
 
     Ok((original, repacked))
   }

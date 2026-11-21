@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+pub(crate) mod bytes;
 pub(crate) mod chunk_constants;
 pub(crate) mod field;
 pub(crate) mod iterator;
@@ -8,8 +9,10 @@ pub(crate) mod read_write;
 pub(crate) mod reader;
 pub(crate) mod source;
 pub(crate) mod writer;
-pub(crate) mod xray_byte_order;
 
+pub use crate::bytes::xray_bytes::XRayBytes;
+pub use crate::bytes::xray_read::XRayRead;
+pub use crate::bytes::xray_write::XRayWrite;
 pub use crate::chunk_constants::{
   CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FIELD_SIZE, CHUNK_ID_MASK, CHUNK_SIZE_FIELD_SIZE,
 };
@@ -37,4 +40,3 @@ pub use crate::reader::chunk_trailing::ChunkTrailing;
 pub use crate::source::chunk_data_source::ChunkDataSource;
 pub use crate::source::chunk_memory_source::InMemoryChunkDataSource;
 pub use crate::writer::chunk_writer::ChunkWriter;
-pub use crate::xray_byte_order::XRayByteOrder;

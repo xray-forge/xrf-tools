@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -29,30 +28,26 @@ impl AlifePacketsReadWrite for AlifeObjectStationaryMgun {
   fn set_spawned_update(&mut self, _: &SpawnPacketHeader) {}
 
   /// Read the gun from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
-    spawn: &mut S,
-    update: &mut U,
-    _: SpawnLayout,
-  ) -> XrfResult<Self> {
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(spawn: &mut S, update: &mut U, _: SpawnLayout) -> XrfResult<Self> {
     Ok(Self {
-      base: spawn.read_xr::<T, _>()?,
+      base: spawn.read_xr()?,
       update_working: update.read_u8()?,
-      update_enemy_direction: RawFloat::read_array::<T, _, 3>(update)?,
+      update_enemy_direction: RawFloat::read_array::<_, 3>(update)?,
     })
   }
 
   /// Write the gun into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     _: SpawnLayout,
   ) -> XrfResult {
-    spawn.write_xr::<T, _>(&self.base)?;
+    spawn.write_xr(&self.base)?;
 
     update.write_u8(self.update_working)?;
 
-    RawFloat::write_array::<T, _>(update, &self.update_enemy_direction)
+    RawFloat::write_array(update, &self.update_enemy_direction)
   }
 
   /// Import the gun from ltx config section.
@@ -90,7 +85,6 @@ impl AlifePacketsReadWrite for AlifeObjectStationaryMgun {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
 
@@ -127,7 +121,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectStationaryMgun = new_object();
-    let (spawn_size, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (spawn_size, update_size, read) = original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(
       (spawn_size, update_size, read),

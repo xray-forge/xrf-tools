@@ -3,7 +3,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
@@ -73,7 +72,7 @@ fn write_descriptor(root: &Path, name: &str, bump: &str) -> XrfResult {
     name: bump.to_owned(),
     ..Default::default()
   });
-  file.write_to_path::<XRayByteOrder, _>(&root.join("textures").join(format!("{name}.thm")))
+  file.write_to_path(&root.join("textures").join(format!("{name}.thm")))
 }
 
 #[test]
@@ -91,7 +90,7 @@ fn compares_each_declared_set_and_tells_its_own_bump_from_a_borrowed_one() -> Xr
   // A descriptor left behind by a texture since removed.
   write_descriptor(&root, "removed", "stone_bump")?;
   // A descriptor declaring no bump is no set.
-  ThmFile::new_texture().write_to_path::<XRayByteOrder, _>(&root.join("textures").join("plain.thm"))?;
+  ThmFile::new_texture().write_to_path(&root.join("textures").join("plain.thm"))?;
 
   let search: XraySearch = XrayRoots::one(root, XrayMountMode::Directory)
     .to_search_plan()?

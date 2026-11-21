@@ -1,5 +1,4 @@
 use clap::{ArgMatches, Command};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfError;
 use xrf_level::LevelFile;
 use xrf_material::XrayTextureScope;
@@ -56,7 +55,7 @@ impl GenericCommand for AlbedoCommand {
         assets.describe_file(LevelFile::FILE_NAME)
       ))
     })?;
-    let level: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(bundle)?;
+    let level: LevelFile = LevelFile::read_from_bytes(bundle)?;
     let scope: XrayTextureScope = XrayTextureScope::of_level(XrayLogicalPath::new(&assets.describe())?);
 
     xrf_output::info!(output, "Measuring the albedo of compiled level {}", assets.describe());

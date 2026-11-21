@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
-use xrf_chunk::{ChunkLayout, XRayByteOrder};
+use xrf_chunk::ChunkLayout;
 use xrf_editable_level::{
   EditableAiMapParams, EditableAiMapTool, EditableBinaryPart, EditableDetailObjectTool, EditableGlowObject,
   EditableLevelGuid, EditableLightObject, EditableObjectPart, EditableSectorItem, EditableSectorObject,
@@ -61,8 +61,8 @@ fn ai_map_part() -> Vec<u8> {
   };
 
   EditableAiMapTool::new(bounds, EditableAiMapParams::default(), Vec::new())
-    .to_part::<XRayByteOrder>(SCENE_GUID)
-    .and_then(|part| part.write_to_bytes::<XRayByteOrder>())
+    .to_part(SCENE_GUID)
+    .and_then(|part| part.write_to_bytes())
     .expect("the AI map writes")
 }
 
@@ -205,11 +205,7 @@ fn a_binary_tool_whose_stream_does_not_read_is_a_problem_of_its_counts() {
     layout: ChunkLayout::default(),
   };
 
-  write_scene_part(
-    &source,
-    "detail_object.part",
-    details.write_to_bytes::<XRayByteOrder>().unwrap(),
-  );
+  write_scene_part(&source, "detail_object.part", details.write_to_bytes().unwrap());
   write_scene_part(&source, "ai_map.part", ai_map_part());
 
   let opened: Arc<SessionSnapshot<SelectedScene>> = open(&AssetMountState::new(), &source);

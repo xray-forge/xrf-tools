@@ -1,7 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -46,17 +45,17 @@ impl From<[f32; 2]> for Vector2d {
 /// An `Fvector2`: two floats, as the engine writes one with two `w_float`.
 impl ChunkFieldReadWrite for Vector2d {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      x: reader.read_f32::<T>()?,
-      y: reader.read_f32::<T>()?,
+      x: reader.read_f32()?,
+      y: reader.read_f32()?,
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_f32::<T>(self.x)?;
-    writer.write_f32::<T>(self.y)
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_f32(self.x)?;
+    writer.write_f32(self.y)
   }
 }
 
@@ -85,7 +84,7 @@ impl FromStr for Vector2d {
 mod tests {
   use std::str::FromStr;
 
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
 
   use crate::vector_2d::Vector2d;
@@ -95,13 +94,10 @@ mod tests {
     let original: Vector2d = Vector2d::new(0.25, -1.5);
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written() as u64, Vector2d::SERIALIZED_SIZE);
-    assert_eq!(
-      Vector2d::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&writer.buffer)?)?,
-      original
-    );
+    assert_eq!(Vector2d::read(&mut ChunkReader::from_bytes(&writer.buffer)?)?, original);
 
     Ok(())
   }

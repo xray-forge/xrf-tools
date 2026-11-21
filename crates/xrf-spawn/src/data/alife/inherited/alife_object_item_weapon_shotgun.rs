@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -26,12 +25,12 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
   }
 
   /// Read a shotgun from both packets; the shells loaded end its update packet.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
-    let base: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::read::<T, _, _>(spawn, update, layout)?;
+    let base: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::read(spawn, update, layout)?;
     let count: u8 = update.read_u8()?;
 
     Ok(Self {
@@ -45,7 +44,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
   /// # Errors
   ///
   /// Refuses more shells than the count's byte holds.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
@@ -58,7 +57,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
       ))
     })?;
 
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
     update.write_u8(count)?;
     update.write_bytes(&self.update_ammo_ids)?;
 
@@ -96,7 +95,6 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -119,7 +117,7 @@ mod tests {
     let original: AlifeObjectItemWeaponShotgun = new_object();
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?,
       (60, 63 + 1 + 3, original)
     );
 
@@ -134,10 +132,7 @@ mod tests {
     original.base.base.base.update_state = None;
     original.update_ammo_ids.clear();
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (60, 11, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (60, 11, original));
 
     Ok(())
   }
@@ -149,7 +144,7 @@ mod tests {
     original.update_ammo_ids = vec![0; 256];
 
     let error: String = original
-      .read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)
+      .read_back(SpawnLayout::CALL_OF_PRIPYAT)
       .expect_err("256 shells")
       .to_string();
 

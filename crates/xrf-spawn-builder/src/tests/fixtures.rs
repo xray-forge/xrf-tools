@@ -1,5 +1,4 @@
 use uuid::Uuid;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::{LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
 use xrf_math::{Aabb, Affine3d, Vector3d};
@@ -56,10 +55,7 @@ pub(crate) fn grid(columns: u32, rows: u32, holes: &[(u32, u32)], guid: Uuid) ->
     guid,
   };
 
-  SpawnAiMap::new(
-    header,
-    &LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &nodes)?,
-  )
+  SpawnAiMap::new(header, &LevelAiNodes::from_nodes(LevelAiVersion::CsCop, &nodes)?)
 }
 
 /// A graph point standing on its cell's node, connecting nowhere.
@@ -202,7 +198,7 @@ pub(crate) fn spawn_file(objects: &[AlifeObject]) -> XrfResult<LevelSpawnFile> {
     objects: objects
       .iter()
       .enumerate()
-      .map(|(index, object)| LevelSpawnObject::from_alife_object::<XRayByteOrder>(index as u32, object))
+      .map(|(index, object)| LevelSpawnObject::from_alife_object(index as u32, object))
       .collect::<XrfResult<_>>()?,
   })
 }

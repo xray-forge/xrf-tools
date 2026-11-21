@@ -2,7 +2,7 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
-use xrf_spawn::{AnySpawnFile, LevelSpawnExport, XRayByteOrder};
+use xrf_spawn::{AnySpawnFile, LevelSpawnExport};
 
 use crate::commands::packed_file::PackedFileUnpacked;
 
@@ -59,7 +59,7 @@ impl PackedFileFormat for ParticlesFile {
   type Unpacked = ();
 
   fn read(path: &Path) -> XrfResult<Self> {
-    Self::read_from_path::<XRayByteOrder, _>(&path)
+    Self::read_from_path(&path)
   }
 
   fn import(path: &Path) -> XrfResult<Self> {
@@ -67,7 +67,7 @@ impl PackedFileFormat for ParticlesFile {
   }
 
   fn write(&self, path: &Path) -> XrfResult {
-    self.write_to_path::<XRayByteOrder, _>(&path)
+    self.write_to_path(&path)
   }
 
   fn export(&self, path: &Path) -> XrfResult {
@@ -84,24 +84,24 @@ impl PackedFileFormat for AnySpawnFile {
   type Unpacked = Option<LevelSpawnExport>;
 
   fn read(path: &Path) -> XrfResult<Self> {
-    Self::read_from_path::<XRayByteOrder, _>(&path)
+    Self::read_from_path(&path)
   }
 
   fn import(path: &Path) -> XrfResult<Self> {
-    Self::import_from_path::<XRayByteOrder, _>(&path)
+    Self::import_from_path(&path)
   }
 
   fn write(&self, path: &Path) -> XrfResult {
     match self {
-      Self::Root(file) => file.write_to_path::<XRayByteOrder, _>(&path),
-      Self::Level(file) => file.write_to_path::<XRayByteOrder, _>(&path),
+      Self::Root(file) => file.write_to_path(&path),
+      Self::Level(file) => file.write_to_path(&path),
     }
   }
 
   fn export(&self, path: &Path) -> XrfResult<Self::Unpacked> {
     match self {
-      Self::Root(file) => file.export_to_path::<XRayByteOrder, _>(&path).map(|()| None),
-      Self::Level(file) => file.export_to_path::<XRayByteOrder, _>(&path).map(Some),
+      Self::Root(file) => file.export_to_path(&path).map(|()| None),
+      Self::Level(file) => file.export_to_path(&path).map(Some),
     }
   }
 }

@@ -12,7 +12,7 @@ library and everything resolved against it.
 ## Read and write a library
 
 ```rust
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial, GameMtlPair, GameMtlVersion};
 
 fn main() -> xrf_error::XrfResult {
@@ -29,9 +29,9 @@ fn main() -> xrf_error::XrfResult {
   let library = GameMtlFile::new(vec![grass, barrel], vec![pair]);
   let mut writer = ChunkWriter::new();
 
-  library.write::<XRayByteOrder>(&mut writer)?;
+  library.write(&mut writer)?;
 
-  let restored = GameMtlFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?;
+  let restored = GameMtlFile::read_from_bytes(writer.buffer)?;
 
   assert_eq!(restored, library);
   assert_eq!(restored.material_index, 2);

@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_skeleton::{SkeletonJointKind, SkeletonJointLimit};
 
@@ -16,28 +15,24 @@ pub struct EditableBoneJoint {
 }
 
 impl ChunkReadWrite for EditableBoneJoint {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      kind: SkeletonJointKind::from(reader.read_u32::<T>()?),
-      limits: [
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      ],
-      spring_factor: reader.read_f32::<T>()?,
-      damping_factor: reader.read_f32::<T>()?,
+      kind: SkeletonJointKind::from(reader.read_u32()?),
+      limits: [reader.read_xr()?, reader.read_xr()?, reader.read_xr()?],
+      spring_factor: reader.read_f32()?,
+      damping_factor: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(u32::from(self.kind))?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(u32::from(self.kind))?;
 
     for limit in &self.limits {
-      limit.write::<T>(writer)?;
+      limit.write(writer)?;
     }
 
-    writer.write_f32::<T>(self.spring_factor)?;
-    writer.write_f32::<T>(self.damping_factor)?;
+    writer.write_f32(self.spring_factor)?;
+    writer.write_f32(self.damping_factor)?;
 
     Ok(())
   }

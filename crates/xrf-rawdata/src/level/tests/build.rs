@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelOptions, EditableObjectTransform, EditablePortalObject, EditableSceneObject,
   EditableSectorItem, EditableSectorObject,
@@ -444,7 +443,7 @@ fn makes_a_breakable_of_a_breakable_part_in_the_frame_of_its_box() -> XrfResult 
   let AlifeObjectInherited::CseAlifeObjectBreakable(breakable) = &entity.inherited else {
     panic!("a breakable_object");
   };
-  let part: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(written.write::<XRayByteOrder>()?)?;
+  let part: OgfFile = OgfFile::read_from_bytes(written.write()?)?;
   let ik_data = part.ik_data.as_ref().expect("bones' physics");
 
   // The file goes where the level's other files are listed, the packet names it as the Build does.

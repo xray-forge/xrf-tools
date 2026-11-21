@@ -7,8 +7,7 @@ Reads and writes the game's `.spawn` files:
 - **Level spawn lists**, which a level's server spawns on load.
 
 It depends on `xrf-chunk`, `xrf-math` and `xrf-ltx` (for the LTX form a set is unpacked into). Users: the CLI's `spawn`
-commands, the desktop app's spawn descriptions and level view, and `xrf-visual`, which places spawned lamps. It
-re-exports `XRayByteOrder`, the byte order every reader here takes.
+commands, the desktop app's spawn descriptions and level view, and `xrf-visual`, which places spawned lamps.
 
 ## Two formats share `.spawn`
 
@@ -193,7 +192,7 @@ vertices with the distance between them, a level changer's destination, and an a
 ```rust
 use xrf_chunk::ChunkWriter;
 use xrf_math::Vector3d;
-use xrf_spawn::{LevelSpawnFile, LevelSpawnObject, XRayByteOrder};
+use xrf_spawn::{LevelSpawnFile, LevelSpawnObject};
 
 # fn main() -> xrf_error::XrfResult {
 let list: LevelSpawnFile = LevelSpawnFile {
@@ -213,9 +212,9 @@ let list: LevelSpawnFile = LevelSpawnFile {
 };
 let mut writer: ChunkWriter = ChunkWriter::new();
 
-list.write::<XRayByteOrder>(&mut writer)?;
+list.write(&mut writer)?;
 
-let read: LevelSpawnFile = LevelSpawnFile::read_from_bytes::<XRayByteOrder>(writer.buffer.clone())?;
+let read: LevelSpawnFile = LevelSpawnFile::read_from_bytes(writer.buffer.clone())?;
 
 assert_eq!(read, list);
 assert_eq!(read.count_sections().get("medkit"), Some(&1));

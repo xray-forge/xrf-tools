@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::{EaxEnvironment, SoundEnvironment, SoundEnvironmentFile};
@@ -9,7 +9,7 @@ fn chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
 
   writer.buffer = payload.to_vec();
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
+  writer.flush_chunk_into_buffer(id)
 }
 
 /// One preset, as the library stores it.
@@ -42,13 +42,13 @@ fn library(environments: &[Vec<u8>]) -> XrfResult<Vec<u8>> {
 }
 
 fn read(environments: &[Vec<u8>]) -> XrfResult<SoundEnvironmentFile> {
-  SoundEnvironmentFile::read_from_bytes::<XRayByteOrder>(library(environments)?)
+  SoundEnvironmentFile::read_from_bytes(library(environments)?)
 }
 
 fn write(file: &SoundEnvironmentFile) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   writer.flush_raw_into_buffer()
 }
@@ -93,7 +93,7 @@ fn finds_a_preset_the_way_the_engine_matches_a_name() -> XrfResult {
 fn reads_presets_by_chunk_id_whatever_order_the_file_holds_them_in() -> XrfResult {
   // `SoundEnvironment_LIB::Load` opens chunk 0, then 1, by id, and a level addresses a preset by that number.
   let bytes: Vec<u8> = [chunk(1, &environment(4, "cave"))?, chunk(0, &environment(4, "room"))?].concat();
-  let file: SoundEnvironmentFile = SoundEnvironmentFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: SoundEnvironmentFile = SoundEnvironmentFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.get_environment_index("room"), Some(0));
   assert_eq!(file.get_environment_index("cave"), Some(1));
@@ -107,15 +107,11 @@ fn refuses_a_preset_chunk_the_engine_never_reaches() -> XrfResult {
   let repeat: Vec<u8> = [chunk(0, &environment(4, "room"))?, chunk(0, &environment(4, "cave"))?].concat();
 
   assert_eq!(
-    SoundEnvironmentFile::read_from_bytes::<XRayByteOrder>(gap)
-      .unwrap_err()
-      .to_string(),
+    SoundEnvironmentFile::read_from_bytes(gap).unwrap_err().to_string(),
     "Invalid error: Sound environment library has no chunk 1, so the engine never loads chunk 2"
   );
   assert_eq!(
-    SoundEnvironmentFile::read_from_bytes::<XRayByteOrder>(repeat)
-      .unwrap_err()
-      .to_string(),
+    SoundEnvironmentFile::read_from_bytes(repeat).unwrap_err().to_string(),
     "Invalid error: Sound environment library repeats chunk 0, which the engine never loads"
   );
 
@@ -137,7 +133,7 @@ fn refuses_a_preset_newer_than_it_writes_back() {
 #[test]
 fn writes_a_library_back_byte_for_byte() -> XrfResult {
   let original: Vec<u8> = library(&[environment(4, "cave"), environment(3, "room")])?;
-  let file: SoundEnvironmentFile = SoundEnvironmentFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let file: SoundEnvironmentFile = SoundEnvironmentFile::read_from_bytes(original.clone())?;
 
   assert_eq!(write(&file)?, original);
 
@@ -152,7 +148,7 @@ fn normalizes_a_library_to_the_version_the_engine_saves() -> XrfResult {
 
   assert_eq!(file.environments[0].environment, Some(EaxEnvironment::Generic));
   assert_eq!(
-    SoundEnvironmentFile::read_from_bytes::<XRayByteOrder>(write(&file)?)?.environments[0].get_version(),
+    SoundEnvironmentFile::read_from_bytes(write(&file)?)?.environments[0].get_version(),
     4
   );
 

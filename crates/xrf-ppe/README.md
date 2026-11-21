@@ -10,11 +10,10 @@ describer and the animation verifier read effects through it.
 ## Read an effect
 
 ```rust,no_run
-use xrf_chunk::XRayByteOrder;
 use xrf_ppe::PpeFile;
 
 fn main() -> xrf_error::XrfResult {
-  let effect = PpeFile::read_from_path::<XRayByteOrder, _>(&"gamedata/anims/psi.ppe")?;
+  let effect = PpeFile::read_from_path(&"gamedata/anims/psi.ppe")?;
 
   println!("version {}, {} keys", effect.get_version(), effect.get_keys_count());
   println!("{} seconds", effect.get_length_seconds());
@@ -32,7 +31,7 @@ fn main() -> xrf_error::XrfResult {
 ```
 
 Use `read_from_bytes` for owned bytes (including archive entries), `read_from_file` for an open file, or `read` for a
-reader at the effect's first byte. `XRayByteOrder` selects the little-endian layout.
+reader at the effect's first byte.
 
 ## Parameters
 
@@ -134,15 +133,15 @@ Editing mirrors the SDK's post-process editor (`CPostProcessParam`):
 `PpeFile::write` produces the complete file in `writer.buffer`, with no chunk header:
 
 ```rust
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_ppe::PpeFile;
 
 fn main() -> xrf_error::XrfResult {
   let effect = PpeFile::default();
 
   let mut writer = ChunkWriter::new();
-  effect.write::<XRayByteOrder>(&mut writer)?;
-  let restored = PpeFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?;
+  effect.write(&mut writer)?;
+  let restored = PpeFile::read_from_bytes(writer.buffer)?;
 
   assert_eq!(restored, effect);
   assert_eq!(restored.get_version(), PpeFile::FIRST_VERSION);

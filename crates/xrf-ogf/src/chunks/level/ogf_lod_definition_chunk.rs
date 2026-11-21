@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Aabb;
@@ -42,17 +41,17 @@ impl OgfLodDefinitionChunk {
 }
 
 impl ChunkReadWrite for OgfLodDefinitionChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let definition: Self = Self {
       facets: [
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
+        reader.read_xr()?,
+        reader.read_xr()?,
+        reader.read_xr()?,
+        reader.read_xr()?,
+        reader.read_xr()?,
+        reader.read_xr()?,
+        reader.read_xr()?,
+        reader.read_xr()?,
       ],
     };
 
@@ -61,9 +60,9 @@ impl ChunkReadWrite for OgfLodDefinitionChunk {
     Ok(definition)
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for facet in &self.facets {
-      writer.write_xr::<T, _>(facet)?;
+      writer.write_xr(facet)?;
     }
 
     Ok(())
@@ -72,7 +71,7 @@ impl ChunkReadWrite for OgfLodDefinitionChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_math::{Aabb, Vector2d, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -108,12 +107,12 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let original: OgfLodDefinitionChunk = definition();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     // Eight facets of four 28-byte corners: the struct's padding is on disk, 896 bytes on every level measured.
     assert_eq!(writer.bytes_written(), 8 * 4 * OgfLodVertex::SIZE);
 
-    writer.flush_chunk_into::<XRayByteOrder>(
+    writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       OgfLodDefinitionChunk::CHUNK_ID,
     )?;
@@ -123,7 +122,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(OgfLodDefinitionChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(OgfLodDefinitionChunk::read(&mut reader)?, original);
 
     Ok(())
   }

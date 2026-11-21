@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::reader::chunk_reader::ChunkReader;
@@ -10,7 +9,7 @@ use crate::writer::chunk_writer::ChunkWriter;
 /// The format decides what absence looks like on disk, such as a leading presence flag, which is why this is its own
 /// trait rather than a blanket implementation over [`crate::ChunkReadWrite`].
 pub trait ChunkReadWriteOptional: Sized {
-  fn read_optional<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>>;
+  fn read_optional<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>>;
 
-  fn write_optional<T: ByteOrder>(writer: &mut ChunkWriter, it: Option<&Self>) -> XrfResult;
+  fn write_optional(writer: &mut ChunkWriter, it: Option<&Self>) -> XrfResult;
 }

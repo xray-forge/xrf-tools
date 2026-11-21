@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_geometry::BvhTracer;
 use xrf_job::JobHandle;
@@ -25,7 +24,7 @@ fn level(name: &str, aimap: &BuildAimapFile) -> XrfResult<Fixture> {
   let fixture: Fixture = Fixture::new(file!(), name)?;
 
   Fixture::write(&fixture.level.join(BuildAimapFile::FILE_NAME), |writer| {
-    aimap.write::<XRayByteOrder>(writer)
+    aimap.write(writer)
   })?;
 
   Ok(fixture)
@@ -47,8 +46,7 @@ fn writes_the_map_the_compiler_compiles_and_checks_it_as_a_graph() -> XrfResult 
   let fixture: Fixture = level("full", &aimap())?;
   let report: LevelCompileReport =
     LevelCompiler::compile(&request(&fixture, AiMapCovers::Full, false), &JobHandle::inert())?;
-  let cform: BuildCformFile =
-    BuildCformFile::read_from_path::<XRayByteOrder, _>(&fixture.level.join(BuildCformFile::FILE_NAME))?;
+  let cform: BuildCformFile = BuildCformFile::read_from_path(&fixture.level.join(BuildCformFile::FILE_NAME))?;
   let tracer: BvhTracer = cform.build_tracer();
   let shadows: ShadowMaterials = ShadowMaterials::new_opaque(cform.raycast_faces.len());
   let expected: AiMapCompilation = AiMapCompiler::compile(

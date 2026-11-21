@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, XRayBytes};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -29,8 +28,8 @@ impl LevelGeomSource<xrf_chunk::InMemoryChunkDataSource> {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened or is not render geometry this reads.
-  pub fn open_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::open_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn open_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::open_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level render geometry was not opened: {}, error: {error}",
         format_path(path.as_ref())
@@ -43,8 +42,8 @@ impl LevelGeomSource<xrf_chunk::InMemoryChunkDataSource> {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read or is not render geometry this reads.
-  pub fn open_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::open_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn open_from_file(file: File) -> XrfResult<Self> {
+    Self::open_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Opens render geometry from bytes already in hand, which is how an archived level arrives.
@@ -52,8 +51,8 @@ impl LevelGeomSource<xrf_chunk::InMemoryChunkDataSource> {
   /// # Errors
   ///
   /// Returns an error when the bytes are not render geometry this reads.
-  pub fn open_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::open_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn open_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::open_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 }
 
@@ -63,10 +62,8 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// # Errors
   ///
   /// Returns an error when a required chunk is absent or the geometry's shape cannot be read.
-  pub fn open_from_chunk<T: ByteOrder, S: ChunkDataSource>(
-    reader: &mut ChunkReader<S>,
-  ) -> XrfResult<LevelGeomSource<S>> {
-    LevelGeomSource::open_from_children::<T>(&reader.read_children()?)
+  pub fn open_from_chunk<S: ChunkDataSource>(reader: &mut ChunkReader<S>) -> XrfResult<LevelGeomSource<S>> {
+    LevelGeomSource::open_from_children(&reader.read_children()?)
   }
 
   /// Opens render geometry from children already read from it.
@@ -74,9 +71,9 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// # Errors
   ///
   /// Returns an error when a required chunk is absent or the geometry's shape cannot be read.
-  pub fn open_from_children<T: ByteOrder>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+  pub fn open_from_children(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     Ok(Self {
-      file: LevelGeomFile::read_from_children::<T, _>(chunks)?,
+      file: LevelGeomFile::read_from_children(chunks)?,
       indices: ChunkReader::find_required_by_id(chunks, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?,
       vertices: ChunkReader::find_required_by_id(chunks, LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID)?,
     })
@@ -93,12 +90,12 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   ///
   /// Returns an error when the buffer does not exist, the range reaches past its vertices, or its declaration is
   /// one xrLC does not write.
-  pub fn read_vertices<T: ByteOrder>(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<LevelVertex>> {
+  pub fn read_vertices(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<LevelVertex>> {
     let range: LevelVertexRange = self.locate_vertices(buffer, base, count)?;
 
     Self::read_payload_with(&self.vertices, range.offset, range.size, "vertices", |bytes| {
       LevelVertexBytes::each(&range.layout, bytes)
-        .map(|vertex| vertex.decode::<T>())
+        .map(|vertex| vertex.decode())
         .collect()
     })
   }
@@ -145,7 +142,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// # Errors
   ///
   /// Returns an error when the buffer does not exist or the range reaches past its indices.
-  pub fn read_indices<T: ByteOrder>(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<u16>> {
+  pub fn read_indices(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<u16>> {
     let declared: &LevelGeomIndexBuffer = self
       .file
       .index_buffers
@@ -164,7 +161,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
           .as_chunks::<2>()
           .0
           .iter()
-          .map(|index| T::read_u16(index))
+          .map(|index| XRayBytes::read_u16(index))
           .collect()
       },
     )
@@ -176,12 +173,12 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// # Errors
   ///
   /// Returns an error when the indices or the window cannot be read, or the window reaches past the indices.
-  pub fn read_full_detail_indices<T: ByteOrder>(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<u16>>> {
+  pub fn read_full_detail_indices(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<u16>>> {
     let Some(container) = &visual.geometry else {
       return Ok(None);
     };
     let indices: Vec<u16> =
-      self.read_indices::<T>(container.index_buffer_id, container.index_base, container.index_count)?;
+      self.read_indices(container.index_buffer_id, container.index_base, container.index_count)?;
     let Some(window) = visual.get_full_detail_window(&self.file)? else {
       return Ok(Some(indices));
     };

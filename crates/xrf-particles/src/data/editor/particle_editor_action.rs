@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::narrow_format_size;
@@ -195,32 +194,32 @@ impl ChunkReadWrite for ParticleEditorAction {
   /// # Errors
   ///
   /// Returns an error for a type no editor action is made of, a version no SDK wrote, or a reader that ends early.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let action_type: ParticleActionType = ParticleActionType::from(reader.read_u32::<T>()?);
-    let version: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let action_type: ParticleActionType = ParticleActionType::from(reader.read_u32()?);
+    let version: u32 = reader.read_u32()?;
     let mut action: Self = Self {
       action_type,
       version,
       name: reader.read_w1251_string()?,
-      flags: reader.read_u32::<T>()?,
+      flags: reader.read_u32()?,
       properties: ParticleEditorSchema::get_defaults(action_type, version)?,
     };
 
     for index in action.list_stored_order() {
-      action.properties[index].value = action.properties[index].value.read_same_kind::<T, _>(reader)?;
+      action.properties[index].value = action.properties[index].value.read_same_kind(reader)?;
     }
 
     Ok(action)
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.action_type)?;
-    writer.write_u32::<T>(self.version)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.action_type)?;
+    writer.write_u32(self.version)?;
     writer.write_w1251_string(&self.name)?;
-    writer.write_u32::<T>(self.flags)?;
+    writer.write_u32(self.flags)?;
 
     for index in self.list_stored_order() {
-      self.properties[index].value.write::<T>(writer)?;
+      self.properties[index].value.write(writer)?;
     }
 
     Ok(())
@@ -229,13 +228,13 @@ impl ChunkReadWrite for ParticleEditorAction {
 
 impl ChunkReadWriteList for ParticleEditorAction {
   /// Reads the count and the actions `CPEDef::Load` reads from the editor data chunk.
-  fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read_list<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
+    let count: u32 = reader.read_u32()?;
     let mut actions: Vec<Self> =
       reader.new_bounded_vec(count.into(), Self::MIN_SERIALIZED_SIZE, "particle editor actions")?;
 
     for _ in 0..count {
-      actions.push(reader.read_xr::<T, _>()?);
+      actions.push(reader.read_xr()?);
     }
 
     reader.assert_read("Expect particle editor actions to fill their chunk")?;
@@ -243,11 +242,11 @@ impl ChunkReadWriteList for ParticleEditorAction {
     Ok(actions)
   }
 
-  fn write_list<T: ByteOrder>(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(list.len(), "particle editor actions")?)?;
+  fn write_list(writer: &mut ChunkWriter, list: &[Self]) -> XrfResult {
+    writer.write_u32(narrow_format_size(list.len(), "particle editor actions")?)?;
 
     for action in list {
-      writer.write_xr::<T, _>(action)?;
+      writer.write_xr(action)?;
     }
 
     Ok(())

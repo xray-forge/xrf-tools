@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -46,8 +45,8 @@ impl LevelSndEnvFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a sound environment mesh this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level sound environment mesh was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -60,8 +59,8 @@ impl LevelSndEnvFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a sound environment mesh this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived mesh arrives.
@@ -69,8 +68,8 @@ impl LevelSndEnvFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a sound environment mesh this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -79,7 +78,7 @@ impl LevelSndEnvFile {
   ///
   /// Returns an error when a chunk is absent, the mesh is not exactly what its header counts, or a face names a vertex
   /// or an environment the file does not hold - the last of which the engine asserts on.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut names: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::NAMES_CHUNK_ID)?;
     let mut environments: Vec<String> = Vec::new();
@@ -89,7 +88,7 @@ impl LevelSndEnvFile {
     }
 
     let mut geometry: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?;
-    let header: LevelCformHeader = geometry.read_xr::<T, _>()?;
+    let header: LevelCformHeader = geometry.read_xr()?;
     let mut vertices: Vec<Vector3d<f32>> = geometry.new_bounded_vec(
       u64::from(header.vertex_count),
       Self::VERTEX_SIZE,
@@ -97,7 +96,7 @@ impl LevelSndEnvFile {
     )?;
 
     for _ in 0..header.vertex_count {
-      vertices.push(geometry.read_xr::<T, _>()?);
+      vertices.push(geometry.read_xr()?);
     }
 
     let mut faces: Vec<LevelSndEnvFace> = geometry.new_bounded_vec(
@@ -107,7 +106,7 @@ impl LevelSndEnvFile {
     )?;
 
     for _ in 0..header.face_count {
-      faces.push(geometry.read_xr::<T, _>()?);
+      faces.push(geometry.read_xr()?);
     }
 
     geometry.assert_read("Expect all data to be read from level sound environment geometry chunk")?;
@@ -131,7 +130,7 @@ impl LevelSndEnvFile {
   ///
   /// Returns an error when a face names a vertex or an environment the file does not hold, or the writer refuses the
   /// bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.assert_faces_resolve()?;
 
     let mut names: ChunkWriter = ChunkWriter::new();
@@ -140,7 +139,7 @@ impl LevelSndEnvFile {
       names.write_w1251_string(environment)?;
     }
 
-    names.flush_chunk_into::<T>(&mut writer.buffer, Self::NAMES_CHUNK_ID)?;
+    names.flush_chunk_into(&mut writer.buffer, Self::NAMES_CHUNK_ID)?;
 
     let mut geometry: ChunkWriter = ChunkWriter::new();
 
@@ -150,17 +149,17 @@ impl LevelSndEnvFile {
       face_count: narrow_format_size(self.faces.len(), "sound environment faces")?,
       bounds: self.bounds,
     }
-    .write::<T>(&mut geometry)?;
+    .write(&mut geometry)?;
 
     for vertex in &self.vertices {
-      geometry.write_xr::<T, _>(vertex)?;
+      geometry.write_xr(vertex)?;
     }
 
     for face in &self.faces {
-      geometry.write_xr::<T, _>(face)?;
+      geometry.write_xr(face)?;
     }
 
-    geometry.flush_chunk_into::<T>(&mut writer.buffer, Self::GEOMETRY_CHUNK_ID)?;
+    geometry.flush_chunk_into(&mut writer.buffer, Self::GEOMETRY_CHUNK_ID)?;
 
     Ok(())
   }

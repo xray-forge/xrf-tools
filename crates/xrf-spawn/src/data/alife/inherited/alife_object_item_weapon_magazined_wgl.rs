@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -25,7 +24,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazinedWgl {
 
   /// Read a magazined weapon with a launcher from both packets. Its grenade mode opens the update packet, ahead of
   /// every field it inherits, as `CSE_ALifeItemWeaponMagazinedWGL::UPDATE_Read` takes it first.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
@@ -33,13 +32,13 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazinedWgl {
     let update_grenade_mode: u8 = update.read_u8()?;
 
     Ok(Self {
-      base: AlifeObjectItemWeaponMagazined::read::<T, _, _>(spawn, update, layout)?,
+      base: AlifeObjectItemWeaponMagazined::read(spawn, update, layout)?,
       update_grenade_mode,
     })
   }
 
   /// Write a magazined weapon with a launcher into both packets, its grenade mode first in the update packet.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
@@ -47,7 +46,7 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazinedWgl {
   ) -> XrfResult {
     update.write_u8(self.update_grenade_mode)?;
 
-    self.base.write::<T, _, _>(spawn, update, layout)
+    self.base.write(spawn, update, layout)
   }
 
   /// Read magazined weapon with launcher from ltx config section.
@@ -81,7 +80,6 @@ impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazinedWgl {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -102,10 +100,7 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemWeaponMagazinedWgl = new_object();
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (60, 64, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (60, 64, original));
 
     Ok(())
   }
@@ -117,7 +112,7 @@ mod tests {
     let mut spawn: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
     let mut update: xrf_chunk::ChunkWriter = xrf_chunk::ChunkWriter::new();
 
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
+    original.write(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     // Grenade mode, then ten items, enabled, with both velocities left out.
     assert_eq!(update.buffer[..2], [1, 0b1110_1010]);

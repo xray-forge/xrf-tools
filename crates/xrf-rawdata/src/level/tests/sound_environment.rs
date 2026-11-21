@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_4;
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
   EditableCustomObject, EditableLevelValue, EditableObjectPart, EditableObjectTransform, EditableShape,
   EditableShapeElement, EditableSoundEnvironmentObject, EditableTextPart,
@@ -57,7 +57,7 @@ fn export(part: &EditableObjectPart<EditableSoundEnvironmentObject>) -> XrfResul
 fn bytes_of(file: &LevelSndEnvFile) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   Ok(writer.buffer)
 }

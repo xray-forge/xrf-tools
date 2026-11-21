@@ -9,13 +9,13 @@ knows no format itself.
 ## Write and read a chunk
 
 ```rust
-use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReader, ChunkWriter};
 
 fn main() -> xrf_error::XrfResult {
   let mut writer = ChunkWriter::new();
   writer.buffer.extend_from_slice(b"data");
 
-  let bytes = writer.flush_chunk_into_buffer::<XRayByteOrder>(7)?;
+  let bytes = writer.flush_chunk_into_buffer(7)?;
 
   let mut root = ChunkReader::from_vec(bytes)?;
   let mut child = root.read_child_by_index(0)?;
@@ -73,8 +73,9 @@ A chunk header is two `u32` fields, ID then payload size (`CHUNK_HEADER_SIZE`). 
 flush methods read that buffer without changing it, so clear it or create another writer before constructing an
 unrelated payload. A payload larger than a `u32` can declare is refused.
 
-`XRayByteOrder` is little-endian. Payload reads and the writer's header take the byte order as a type parameter, but
-the child iterators always read headers little-endian.
+Every X-Ray format is little-endian, and so is everything here. `XRayRead` and `XRayWrite` read and write each number
+width on any reader or writer, `ChunkReader` and `ChunkWriter` among them; `XRayBytes` does the same at the front of a
+byte slice already in hand. No other crate names a byte order.
 
 Strings are null-terminated Windows-1251, read up to 10,240 bytes unless a `_limited` form gives another bound, and
 decoded through `xrf_utils::decode_w1251_field_to_string`. No byte order mark is looked for: a string opening on
@@ -105,8 +106,8 @@ a Windows-1251 string, raw bytes, the position (`w_tell`), a `u16` patch (`w_see
   form) from a blanket impl, so its bytes are its fields over a `ChunkWriter` and the two forms cannot drift. Every
   `xrf-math` chunk type and every `xrf-spawn` ALife class and value is written this way.
 
-The traits' methods share their names with `byteorder`'s (`write_u16::<T>`), so a file using both on a `ChunkWriter`
-must call one through its trait.
+The traits' methods share their names with `XRayRead`'s and `XRayWrite`'s (`write_u16`), so a file using both on a
+`ChunkWriter` calls one through its trait.
 
 ## Layout of a container
 

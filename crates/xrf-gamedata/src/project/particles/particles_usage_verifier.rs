@@ -7,7 +7,7 @@ use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 use xrf_ltx::Ltx;
 use xrf_particles::ParticlesFile;
-use xrf_spawn::{SpawnFile, XRayByteOrder};
+use xrf_spawn::SpawnFile;
 
 use crate::project::gamedata_check::GamedataCheck;
 use crate::project::particles::verify_particles_usage_result::GamedataParticlesUsageVerificationResult;
@@ -65,7 +65,7 @@ impl ParticlesUsageVerifier<'_> {
 
       // Read from the source that answered the enumeration, rather than searching the mounts again by path.
       let mut chunks = self.project.read_resolved_chunks(&library)?;
-      let particles_file: ParticlesFile = ParticlesFile::read_from_chunk::<XRayByteOrder, _>(&mut chunks)?;
+      let particles_file: ParticlesFile = ParticlesFile::read_from_chunk(&mut chunks)?;
 
       names.extend(
         particles_file
@@ -116,9 +116,7 @@ impl ParticlesUsageVerifier<'_> {
 
       result.checked_spawn_files_count += 1;
 
-      let spawn_file: Arc<SpawnFile> = match self.project.read_parsed(spawn_path, |chunk| {
-        SpawnFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-      }) {
+      let spawn_file: Arc<SpawnFile> = match self.project.read_parsed(spawn_path, SpawnFile::read_from_chunk) {
         Ok(spawn_file) => spawn_file,
         Err(error) => {
           result.findings.push(GamedataFindingFactory::for_asset(

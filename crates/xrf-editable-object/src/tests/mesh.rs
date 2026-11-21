@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkPayload, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkPayload, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -10,13 +10,13 @@ fn read(children: &[u8]) -> XrfResult<EditableMesh> {
   let mut reader: ChunkReader<InMemoryChunkDataSource> =
     ChunkReader::from_vec(fixtures::chunk(0, children))?.read_child_by_index(0)?;
 
-  EditableMesh::read::<XRayByteOrder, _>(&mut reader)
+  EditableMesh::read(&mut reader)
 }
 
 fn write(mesh: &EditableMesh) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  mesh.write::<XRayByteOrder>(&mut writer)?;
+  mesh.write(&mut writer)?;
 
   Ok(writer.buffer)
 }

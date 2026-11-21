@@ -3,7 +3,6 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureParamChunk};
@@ -39,7 +38,7 @@ fn run(source: &Path, arguments: &[&str]) -> CommandResult<Value> {
 }
 
 fn read(path: &Path) -> CommandResult<ThmFile> {
-  Ok(ThmFile::read_from_path::<XRayByteOrder, _>(&path)?)
+  Ok(ThmFile::read_from_path(&path)?)
 }
 
 #[test]

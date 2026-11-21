@@ -1,6 +1,6 @@
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelAiFile, LevelAiGrid, LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L};
@@ -79,7 +79,7 @@ impl AiMapCompiler {
       bounds,
       guid: Uuid::nil(),
     };
-    let packed: LevelAiNodes = LevelAiNodes::from_nodes::<XRayByteOrder>(Self::VERSION, &nodes)?;
+    let packed: LevelAiNodes = LevelAiNodes::from_nodes(Self::VERSION, &nodes)?;
     let guid: AiMapGuid = match replaced {
       Some(replaced) if Self::is_same_graph(&header, &nodes, replaced) => {
         header.guid = replaced.file.header.guid;
@@ -130,7 +130,7 @@ impl AiMapCompiler {
 
     nodes
       .iter()
-      .zip(replaced.nodes.iter_nodes::<XRayByteOrder>())
+      .zip(replaced.nodes.iter_nodes())
       .all(|(ours, their)| cell(header, ours) == cell(theirs, &their) && links(header, ours) == links(theirs, &their))
   }
 
@@ -145,7 +145,7 @@ impl AiMapCompiler {
         ..header.clone()
       },
     }
-    .write::<XRayByteOrder>(nodes, &mut writer)?;
+    .write(nodes, &mut writer)?;
 
     let digest = Sha256::digest(&writer.buffer);
     let mut bytes: [u8; 16] = [0; 16];

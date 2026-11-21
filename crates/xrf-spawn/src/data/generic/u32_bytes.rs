@@ -1,7 +1,6 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -12,7 +11,7 @@ use xrf_utils::vector_from_string_sized;
 pub struct U32Bytes(pub u8, pub u8, pub u8, pub u8);
 
 impl ChunkFieldReadWrite for U32Bytes {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self(
       reader.read_u8()?,
       reader.read_u8()?,
@@ -21,7 +20,7 @@ impl ChunkFieldReadWrite for U32Bytes {
     ))
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     writer.write_u8(self.0)?;
     writer.write_u8(self.1)?;
     writer.write_u8(self.2)?;

@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::texture::thm_material::ThmMaterial;
@@ -28,10 +27,10 @@ impl Default for ThmMaterialChunk {
 }
 
 impl ChunkReadWrite for ThmMaterialChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunk: Self = Self {
-      material: ThmMaterial::from(reader.read_u32::<T>()?),
-      weight: reader.read_f32::<T>()?,
+      material: ThmMaterial::from(reader.read_u32()?),
+      weight: reader.read_f32()?,
     };
 
     // Bytes past the fields are the descriptor's to keep, as `ThmFile::trailing`.
@@ -39,9 +38,9 @@ impl ChunkReadWrite for ThmMaterialChunk {
     Ok(chunk)
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.material.into())?;
-    writer.write_f32::<T>(self.weight)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.material.into())?;
+    writer.write_f32(self.weight)?;
 
     Ok(())
   }

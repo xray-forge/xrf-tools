@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One level of detail of a progressive mesh, `FSlideWindow` (`xrCore/FMesh.hpp`).
@@ -19,18 +18,18 @@ impl LevelGeomSlideWindow {
 }
 
 impl ChunkReadWrite for LevelGeomSlideWindow {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      offset: reader.read_u32::<T>()?,
-      triangles: reader.read_u16::<T>()?,
-      vertices: reader.read_u16::<T>()?,
+      offset: reader.read_u32()?,
+      triangles: reader.read_u16()?,
+      vertices: reader.read_u16()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.offset)?;
-    writer.write_u16::<T>(self.triangles)?;
-    writer.write_u16::<T>(self.vertices)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.offset)?;
+    writer.write_u16(self.triangles)?;
+    writer.write_u16(self.vertices)?;
 
     Ok(())
   }

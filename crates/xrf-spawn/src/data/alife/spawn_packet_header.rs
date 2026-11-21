@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -69,15 +68,12 @@ impl SpawnPacketHeader {
   /// # Errors
   ///
   /// Returns an error when `write` fails, or when the state outgrows its `u16` size.
-  pub fn write_state<T: ByteOrder, W: ChunkFieldWriter>(
-    writer: &mut W,
-    write: impl FnOnce(&mut W) -> XrfResult,
-  ) -> XrfResult {
+  pub fn write_state<W: ChunkFieldWriter>(writer: &mut W, write: impl FnOnce(&mut W) -> XrfResult) -> XrfResult {
     let opened: usize = writer.get_position();
 
-    writer.write_u16::<T>(0)?;
+    writer.write_u16(0)?;
     write(writer)?;
-    writer.patch_u16::<T>(
+    writer.patch_u16(
       opened,
       narrow_format_size(writer.get_position() - opened, "spawn packet state")?,
     )
@@ -90,13 +86,13 @@ impl SpawnPacketHeader {
   ///
   /// Returns an error when `read` fails, or, in bytes, when the size is less than its own two bytes or counts other
   /// than the fields `read` took.
-  pub fn read_state<T: ByteOrder, R: ChunkFieldReader, V>(
+  pub fn read_state<R: ChunkFieldReader, V>(
     &self,
     reader: &mut R,
     read: impl FnOnce(&mut R) -> XrfResult<V>,
   ) -> XrfResult<V> {
     let opened: usize = reader.get_position();
-    let size: u16 = reader.read_u16::<T>()?;
+    let size: u16 = reader.read_u16()?;
 
     if reader.is_field_form() {
       return read(reader);
@@ -126,8 +122,8 @@ impl SpawnPacketHeader {
 /// As `CSE_Abstract::Spawn_Read` reads it, refusing another action than `M_SPAWN` and a spawn version of neither
 /// Clear Sky's nor Call of Pripyat's layout.
 impl ChunkFieldReadWrite for SpawnPacketHeader {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    let net_action: u16 = reader.read_u16::<T>()?;
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let net_action: u16 = reader.read_u16()?;
 
     if net_action != NET_ACTION_SPAWN {
       return Err(XrfError::new_parsing_error(format!(
@@ -139,24 +135,24 @@ impl ChunkFieldReadWrite for SpawnPacketHeader {
     let name: String = reader.read_w1251_string()?;
     let script_game_id: u8 = reader.read_u8()?;
     let script_rp: u8 = reader.read_u8()?;
-    let position: Vector3d = reader.read_xr::<T, _>()?;
-    let direction: Vector3d = reader.read_xr::<T, _>()?;
-    let respawn_time: u16 = reader.read_u16::<T>()?;
-    let id: u16 = reader.read_u16::<T>()?;
-    let parent_id: u16 = reader.read_u16::<T>()?;
-    let phantom_id: u16 = reader.read_u16::<T>()?;
-    let script_flags: u16 = reader.read_u16::<T>()?;
+    let position: Vector3d = reader.read_xr()?;
+    let direction: Vector3d = reader.read_xr()?;
+    let respawn_time: u16 = reader.read_u16()?;
+    let id: u16 = reader.read_u16()?;
+    let parent_id: u16 = reader.read_u16()?;
+    let phantom_id: u16 = reader.read_u16()?;
+    let script_flags: u16 = reader.read_u16()?;
     let version: u16 = if script_flags & Self::FLAG_SPAWN_VERSION == 0 {
       0
     } else {
-      reader.read_u16::<T>()?
+      reader.read_u16()?
     };
 
     Self::assert_supported_version(version, &name, script_flags)?;
 
-    let game_type: u16 = reader.read_u16::<T>()?;
-    let script_version: u16 = reader.read_u16::<T>()?;
-    let client_data_size: u16 = reader.read_u16::<T>()?;
+    let game_type: u16 = reader.read_u16()?;
+    let script_version: u16 = reader.read_u16()?;
+    let client_data_size: u16 = reader.read_u16()?;
     let client_data: Vec<u8> = reader.read_bytes(usize::from(client_data_size))?;
 
     Ok(Self {
@@ -176,33 +172,33 @@ impl ChunkFieldReadWrite for SpawnPacketHeader {
       game_type,
       script_version,
       client_data,
-      spawn_id: reader.read_u16::<T>()?,
+      spawn_id: reader.read_u16()?,
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_u16::<T>(self.net_action)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_u16(self.net_action)?;
     writer.write_w1251_string(&self.section)?;
     writer.write_w1251_string(&self.name)?;
     writer.write_u8(self.script_game_id)?;
     writer.write_u8(self.script_rp)?;
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_xr::<T, _>(&self.direction)?;
-    writer.write_u16::<T>(self.respawn_time)?;
-    writer.write_u16::<T>(self.id)?;
-    writer.write_u16::<T>(self.parent_id)?;
-    writer.write_u16::<T>(self.phantom_id)?;
-    writer.write_u16::<T>(self.script_flags)?;
+    writer.write_xr(&self.position)?;
+    writer.write_xr(&self.direction)?;
+    writer.write_u16(self.respawn_time)?;
+    writer.write_u16(self.id)?;
+    writer.write_u16(self.parent_id)?;
+    writer.write_u16(self.phantom_id)?;
+    writer.write_u16(self.script_flags)?;
 
     if self.script_flags & Self::FLAG_SPAWN_VERSION != 0 {
-      writer.write_u16::<T>(self.version)?;
+      writer.write_u16(self.version)?;
     }
 
-    writer.write_u16::<T>(self.game_type)?;
-    writer.write_u16::<T>(self.script_version)?;
-    writer.write_u16::<T>(narrow_format_size(self.client_data.len(), "spawn packet client data")?)?;
+    writer.write_u16(self.game_type)?;
+    writer.write_u16(self.script_version)?;
+    writer.write_u16(narrow_format_size(self.client_data.len(), "spawn packet client data")?)?;
     writer.write_bytes(&self.client_data)?;
-    writer.write_u16::<T>(self.spawn_id)
+    writer.write_u16(self.spawn_id)
   }
 }
 
@@ -269,7 +265,7 @@ impl LtxImportExport for SpawnPacketHeader {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
@@ -301,9 +297,9 @@ mod tests {
   fn read_back(version: u16) -> XrfResult<SpawnPacketHeader> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    writer.write_xr::<XRayByteOrder, _>(&new_header(version))?;
+    writer.write_xr(&new_header(version))?;
 
-    ChunkReader::<InMemoryChunkDataSource>::from_bytes(&writer.buffer)?.read_xr::<XRayByteOrder, _>()
+    ChunkReader::<InMemoryChunkDataSource>::from_bytes(&writer.buffer)?.read_xr()
   }
 
   fn import_back(version: u16) -> XrfResult<SpawnPacketHeader> {

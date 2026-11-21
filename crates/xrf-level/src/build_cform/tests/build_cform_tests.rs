@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_math::Vector2d;
 
@@ -57,7 +57,7 @@ fn a_raycast_record_is_the_width_the_compiler_blits_it_at() {
 
 #[test]
 fn a_build_cform_reads_its_geometry_and_one_raycast_record_per_face() -> XrfResult {
-  let file: BuildCformFile = BuildCformFile::read_from_bytes::<XRayByteOrder>(form_bytes(4, [0, 1, 2])?)?;
+  let file: BuildCformFile = BuildCformFile::read_from_bytes(form_bytes(4, [0, 1, 2])?)?;
 
   assert_eq!(file.version, BuildCformFile::CURRENT_VERSION);
   assert_eq!(file.bounds.max.y, 1.0);
@@ -81,10 +81,10 @@ fn a_build_cform_reads_its_geometry_and_one_raycast_record_per_face() -> XrfResu
 #[test]
 fn a_build_cform_is_written_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = form_bytes(4, [2, 0, 1])?;
-  let file: BuildCformFile = BuildCformFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: BuildCformFile = BuildCformFile::read_from_bytes(bytes.clone())?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -94,7 +94,7 @@ fn a_build_cform_is_written_back_byte_for_byte() -> XrfResult {
 #[test]
 fn a_build_cform_of_another_version_is_refused() -> XrfResult {
   // xrAI and the detail light compiler both assert `CFORM_CURRENT_VERSION`.
-  let error: String = BuildCformFile::read_from_bytes::<XRayByteOrder>(form_bytes(3, [0, 1, 2])?)
+  let error: String = BuildCformFile::read_from_bytes(form_bytes(3, [0, 1, 2])?)
     .expect_err("expect the version to be refused")
     .to_string();
 
@@ -105,7 +105,7 @@ fn a_build_cform_of_another_version_is_refused() -> XrfResult {
 
 #[test]
 fn a_build_cform_naming_a_missing_vertex_is_refused() -> XrfResult {
-  let error: String = BuildCformFile::read_from_bytes::<XRayByteOrder>(form_bytes(4, [0, 1, 3])?)
+  let error: String = BuildCformFile::read_from_bytes(form_bytes(4, [0, 1, 3])?)
     .expect_err("expect the corner past the vertices to be refused")
     .to_string();
 
@@ -122,7 +122,7 @@ fn a_build_cform_whose_raycast_records_miss_a_face_is_refused() -> XrfResult {
   records.extend(raycast_payload());
   bytes.extend(chunk(BuildCformFile::RAYCAST_FACES_CHUNK_ID, &records)?);
 
-  let error: String = BuildCformFile::read_from_bytes::<XRayByteOrder>(bytes)
+  let error: String = BuildCformFile::read_from_bytes(bytes)
     .expect_err("expect the extra record to be refused")
     .to_string();
 

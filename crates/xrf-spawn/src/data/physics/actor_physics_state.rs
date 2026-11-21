@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -72,17 +71,17 @@ impl ActorPhysicsState {
 /// The body as an actor's update packet saves it.
 impl ChunkFieldReadWrite for ActorPhysicsState {
   /// Refuses a dead body larger than the engine's buffer for one.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    Ok(match reader.read_u16::<T>()? {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    Ok(match reader.read_u16()? {
       0 => Self::Absent,
       1 => Self::Alive {
         enabled: reader.read_u8()?,
-        angular_velocity: RawFloat::read_array::<T, _, 3>(reader)?,
-        linear_velocity: RawFloat::read_array::<T, _, 3>(reader)?,
-        force: RawFloat::read_array::<T, _, 3>(reader)?,
-        torque: RawFloat::read_array::<T, _, 3>(reader)?,
-        position: RawFloat::read_array::<T, _, 3>(reader)?,
-        rotation: RawFloat::read_array::<T, _, 4>(reader)?,
+        angular_velocity: RawFloat::read_array::<_, 3>(reader)?,
+        linear_velocity: RawFloat::read_array::<_, 3>(reader)?,
+        force: RawFloat::read_array::<_, 3>(reader)?,
+        torque: RawFloat::read_array::<_, 3>(reader)?,
+        position: RawFloat::read_array::<_, 3>(reader)?,
+        rotation: RawFloat::read_array::<_, 4>(reader)?,
       },
       bone_count => {
         let bone_data_size: u8 = reader.read_u8()?;
@@ -91,8 +90,8 @@ impl ChunkFieldReadWrite for ActorPhysicsState {
         Self::Dead {
           bone_count,
           bone_data_size,
-          low_corner: RawFloat::read_array::<T, _, 3>(reader)?,
-          high_corner: RawFloat::read_array::<T, _, 3>(reader)?,
+          low_corner: RawFloat::read_array::<_, 3>(reader)?,
+          high_corner: RawFloat::read_array::<_, 3>(reader)?,
           bones: reader.read_bytes(bones_size)?,
         }
       }
@@ -101,9 +100,9 @@ impl ChunkFieldReadWrite for ActorPhysicsState {
 
   /// Refuses a dead body of fewer than two bones, which reads back as another state, one whose bones are not the size
   /// its counts give, and one larger than the engine's buffer for it.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
-      Self::Absent => writer.write_u16::<T>(0)?,
+      Self::Absent => writer.write_u16(0)?,
       Self::Alive {
         enabled,
         angular_velocity,
@@ -113,14 +112,14 @@ impl ChunkFieldReadWrite for ActorPhysicsState {
         position,
         rotation,
       } => {
-        writer.write_u16::<T>(1)?;
+        writer.write_u16(1)?;
         writer.write_u8(*enabled)?;
 
         for floats in [angular_velocity, linear_velocity, force, torque, position] {
-          RawFloat::write_array::<T, _>(writer, floats)?;
+          RawFloat::write_array(writer, floats)?;
         }
 
-        RawFloat::write_array::<T, _>(writer, rotation)?;
+        RawFloat::write_array(writer, rotation)?;
       }
       Self::Dead {
         bone_count,
@@ -145,10 +144,10 @@ impl ChunkFieldReadWrite for ActorPhysicsState {
           )));
         }
 
-        writer.write_u16::<T>(*bone_count)?;
+        writer.write_u16(*bone_count)?;
         writer.write_u8(*bone_data_size)?;
-        RawFloat::write_array::<T, _>(writer, low_corner)?;
-        RawFloat::write_array::<T, _>(writer, high_corner)?;
+        RawFloat::write_array(writer, low_corner)?;
+        RawFloat::write_array(writer, high_corner)?;
         writer.write_bytes(bones)?;
       }
     }
@@ -255,7 +254,7 @@ impl ActorPhysicsState {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -266,10 +265,10 @@ mod tests {
   fn read_back(state: &ActorPhysicsState) -> XrfResult<(usize, ActorPhysicsState)> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    state.write::<XRayByteOrder>(&mut writer)?;
+    state.write(&mut writer)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
-    let read: ActorPhysicsState = ActorPhysicsState::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: ActorPhysicsState = ActorPhysicsState::read(&mut reader)?;
 
     reader.assert_read("Expect the whole body to be read")?;
 
@@ -336,10 +335,7 @@ mod tests {
       bones: vec![0; 1010],
     };
 
-    let error: String = body
-      .write::<XRayByteOrder>(&mut writer)
-      .expect_err("1034 bytes")
-      .to_string();
+    let error: String = body.write(&mut writer).expect_err("1034 bytes").to_string();
 
     assert!(error.contains("overruns the engine's 1024 byte buffer"), "{error}");
   }
@@ -355,10 +351,7 @@ mod tests {
       bones: vec![0; 10],
     };
 
-    let error: String = body
-      .write::<XRayByteOrder>(&mut writer)
-      .expect_err("one bone")
-      .to_string();
+    let error: String = body.write(&mut writer).expect_err("one bone").to_string();
 
     assert!(error.contains("writes the count of another state"), "{error}");
   }

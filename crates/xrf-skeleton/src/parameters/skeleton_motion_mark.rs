@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkLine, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkLine, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::{assert_length, narrow_format_size};
 
@@ -20,15 +19,15 @@ impl SkeletonMotionMark {
 }
 
 impl ChunkReadWrite for SkeletonMotionMark {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let name: ChunkLine = reader.read_w1251_line()?;
 
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut intervals: Vec<(f32, f32)> =
       reader.new_bounded_vec(count.into(), Self::MIN_INTERVAL_SIZE, "skeleton motion mark intervals")?;
 
     for _ in 0..count {
-      intervals.push((reader.read_f32::<T>()?, reader.read_f32::<T>()?));
+      intervals.push((reader.read_f32()?, reader.read_f32()?));
     }
 
     assert_length(
@@ -44,16 +43,16 @@ impl ChunkReadWrite for SkeletonMotionMark {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_line(&self.name, &self.terminator)?;
-    writer.write_u32::<T>(narrow_format_size(
+    writer.write_u32(narrow_format_size(
       self.intervals.len(),
       "skeleton motion mark intervals",
     )?)?;
 
     for (from, to) in &self.intervals {
-      writer.write_f32::<T>(*from)?;
-      writer.write_f32::<T>(*to)?;
+      writer.write_f32(*from)?;
+      writer.write_f32(*to)?;
     }
 
     Ok(())
@@ -62,7 +61,7 @@ impl ChunkReadWrite for SkeletonMotionMark {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -79,17 +78,17 @@ mod tests {
       intervals: vec![(0.25, 0.75), (1.5, 2.0)],
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     // 4 name bytes + 2 terminator bytes + 4 count bytes + 4 interval floats.
     assert_eq!(writer.bytes_written(), 4 + 2 + 4 + 16);
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SkeletonMotionMark::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -105,14 +104,14 @@ mod tests {
       intervals: Vec::new(),
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SkeletonMotionMark::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -130,7 +129,7 @@ mod tests {
     .concat();
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
 
-    let mark: SkeletonMotionMark = SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)?;
+    let mark: SkeletonMotionMark = SkeletonMotionMark::read(&mut reader)?;
 
     assert_eq!(
       mark,
@@ -143,7 +142,7 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    mark.write::<XRayByteOrder>(&mut writer)?;
+    mark.write(&mut writer)?;
 
     assert_eq!(writer.buffer, bytes, "Expect a repack to be byte identical");
 
@@ -155,7 +154,7 @@ mod tests {
     // An empty name and its terminator, then a count no payload can satisfy.
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[13, 10, 255, 255, 255, 255])?;
 
-    let error: String = SkeletonMotionMark::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = SkeletonMotionMark::read(&mut reader)
       .expect_err("expect the declared interval count to exceed the chunk")
       .to_string();
 

@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::build_prj::build_prj_file::BuildPrjFile;
@@ -191,7 +191,7 @@ fn every_record_is_the_width_the_editor_blits_it_at() {
 
 #[test]
 fn a_project_reads_every_chunk_the_editor_writes() -> XrfResult {
-  let file: BuildPrjFile = BuildPrjFile::read_from_bytes::<XRayByteOrder>(project_bytes(18)?)?;
+  let file: BuildPrjFile = BuildPrjFile::read_from_bytes(project_bytes(18)?)?;
 
   assert_eq!(file.version, BuildPrjFile::CURRENT_VERSION);
   assert_eq!(file.params.smooth_angle, 75.0);
@@ -229,10 +229,10 @@ fn a_project_reads_every_chunk_the_editor_writes() -> XrfResult {
 fn a_project_of_either_version_is_written_back_byte_for_byte() -> XrfResult {
   for version in [BuildPrjFile::SOC_VERSION, BuildPrjFile::CURRENT_VERSION] {
     let bytes: Vec<u8> = project_bytes(version)?;
-    let file: BuildPrjFile = BuildPrjFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+    let file: BuildPrjFile = BuildPrjFile::read_from_bytes(bytes.clone())?;
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    file.write::<XRayByteOrder>(&mut writer)?;
+    file.write(&mut writer)?;
 
     assert_eq!(writer.buffer, bytes, "version {version}");
   }
@@ -242,7 +242,7 @@ fn a_project_of_either_version_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_soc_project_carries_no_smoothing_groups() -> XrfResult {
-  let file: BuildPrjFile = BuildPrjFile::read_from_bytes::<XRayByteOrder>(project_bytes(17)?)?;
+  let file: BuildPrjFile = BuildPrjFile::read_from_bytes(project_bytes(17)?)?;
 
   assert_eq!(file.smoothing_groups, None);
   assert_eq!(file.mu_models[0].smoothing_groups, None);
@@ -253,12 +253,12 @@ fn a_soc_project_carries_no_smoothing_groups() -> XrfResult {
 
 #[test]
 fn a_name_changed_without_its_trailing_bytes_is_refused_rather_than_misframed() -> XrfResult {
-  let mut file: BuildPrjFile = BuildPrjFile::read_from_bytes::<XRayByteOrder>(project_bytes(18)?)?;
+  let mut file: BuildPrjFile = BuildPrjFile::read_from_bytes(project_bytes(18)?)?;
 
   file.render_shaders[0].name.value = String::from("def_shaders\\def_vertex");
 
   let error: String = file
-    .write::<XRayByteOrder>(&mut ChunkWriter::new())
+    .write(&mut ChunkWriter::new())
     .expect_err("expect the name to overrun its field")
     .to_string();
 
@@ -268,19 +268,19 @@ fn a_name_changed_without_its_trailing_bytes_is_refused_rather_than_misframed() 
   );
 
   file.render_shaders[0].name = BuildPrjName::new("def_shaders\\def_vertex", BuildPrjName::LONG_SIZE)?;
-  file.write::<XRayByteOrder>(&mut ChunkWriter::new())?;
+  file.write(&mut ChunkWriter::new())?;
 
   Ok(())
 }
 
 #[test]
 fn a_multi_use_model_disagreeing_with_the_version_is_refused() -> XrfResult {
-  let mut file: BuildPrjFile = BuildPrjFile::read_from_bytes::<XRayByteOrder>(project_bytes(18)?)?;
+  let mut file: BuildPrjFile = BuildPrjFile::read_from_bytes(project_bytes(18)?)?;
 
   file.mu_models[0].smoothing_groups = None;
 
   let error: String = file
-    .write::<XRayByteOrder>(&mut ChunkWriter::new())
+    .write(&mut ChunkWriter::new())
     .expect_err("expect the missing groups to be refused")
     .to_string();
 
@@ -295,7 +295,7 @@ fn a_project_carrying_a_chunk_no_editor_writes_is_refused() -> XrfResult {
 
   bytes.extend(chunk(17, &[0; 4])?);
 
-  let error: String = BuildPrjFile::read_from_bytes::<XRayByteOrder>(bytes)
+  let error: String = BuildPrjFile::read_from_bytes(bytes)
     .expect_err("expect the unknown chunk to be refused")
     .to_string();
 
@@ -313,7 +313,7 @@ fn a_project_carrying_a_chunk_twice_is_refused_rather_than_rewritten_short() -> 
 
   bytes.extend(chunk(BuildPrjFile::GLOWS_CHUNK_ID, &[])?);
 
-  let error: String = BuildPrjFile::read_from_bytes::<XRayByteOrder>(bytes)
+  let error: String = BuildPrjFile::read_from_bytes(bytes)
     .expect_err("expect the repeated chunk to be refused")
     .to_string();
 
@@ -324,7 +324,7 @@ fn a_project_carrying_a_chunk_twice_is_refused_rather_than_rewritten_short() -> 
 
 #[test]
 fn a_project_of_a_version_no_editor_writes_is_refused() -> XrfResult {
-  let error: String = BuildPrjFile::read_from_bytes::<XRayByteOrder>(project_bytes(19)?)
+  let error: String = BuildPrjFile::read_from_bytes(project_bytes(19)?)
     .expect_err("expect the version to be refused")
     .to_string();
 

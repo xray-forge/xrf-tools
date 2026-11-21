@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_utils::narrow_format_size;
@@ -29,15 +28,15 @@ impl LevelWallmark {
 }
 
 impl ChunkReadWrite for LevelWallmark {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let center: Vector3d<f32> = reader.read_xr::<T, _>()?;
-    let radius: f32 = reader.read_f32::<T>()?;
-    let count: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let center: Vector3d<f32> = reader.read_xr()?;
+    let radius: f32 = reader.read_f32()?;
+    let count: u32 = reader.read_u32()?;
     let mut vertices: Vec<LevelWallmarkVertex> =
       reader.new_bounded_vec(count.into(), LevelWallmarkVertex::SERIALIZED_SIZE, "wallmark vertices")?;
 
     for _ in 0..count {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
     Ok(Self {
@@ -47,13 +46,13 @@ impl ChunkReadWrite for LevelWallmark {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.center)?;
-    writer.write_f32::<T>(self.radius)?;
-    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "wallmark vertices")?)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_xr(&self.center)?;
+    writer.write_f32(self.radius)?;
+    writer.write_u32(narrow_format_size(self.vertices.len(), "wallmark vertices")?)?;
 
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
     Ok(())

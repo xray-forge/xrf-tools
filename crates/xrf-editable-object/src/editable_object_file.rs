@@ -2,8 +2,9 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
+use xrf_chunk::{
+  ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter, XRayBytes, XRayWrite,
+};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path, narrow_format_size};
 
@@ -94,11 +95,11 @@ impl EditableObjectFile {
   /// # Errors
   ///
   /// Returns an error where the stored motions are not ones [`EditableMotion::read_list`] reads.
-  pub fn get_embedded_motions<T: ByteOrder>(&self) -> XrfResult<Vec<EditableMotion>> {
+  pub fn get_embedded_motions(&self) -> XrfResult<Vec<EditableMotion>> {
     self
       .embedded_motions
       .as_deref()
-      .map_or_else(|| Ok(Vec::new()), EditableMotion::read_list::<T>)
+      .map_or_else(|| Ok(Vec::new()), EditableMotion::read_list)
   }
 
   /// Reads an editable object from a path.
@@ -106,8 +107,8 @@ impl EditableObjectFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not an editable object [`Self::read_from_chunk`] reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Editable object was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -120,8 +121,8 @@ impl EditableObjectFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not an editable object [`Self::read_from_chunk`] reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads an editable object from bytes already in hand.
@@ -129,8 +130,8 @@ impl EditableObjectFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not an editable object [`Self::read_from_chunk`] reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads the file's root, which must hold the body chunk alone: the SDK reads nothing else, so anything beside it
@@ -140,11 +141,11 @@ impl EditableObjectFile {
   ///
   /// Returns an error when the root holds anything but one body chunk, or the body is not one
   /// [`Self::read_from_body_chunk`] reads.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     match chunks.as_mut_slice() {
-      [body] if body.id == Self::BODY_CHUNK_ID => Self::read_from_body_chunk::<T, D>(body),
+      [body] if body.id == Self::BODY_CHUNK_ID => Self::read_from_body_chunk::<D>(body),
       _ => Err(XrfError::new_parsing_error(format!(
         "Editable object root holds chunks {:?}, expected the body chunk {} alone",
         chunks.iter().map(|chunk| chunk.id).collect::<Vec<u32>>(),
@@ -160,7 +161,7 @@ impl EditableObjectFile {
   /// Returns an error on a version other than [`Self::VERSION`], no flags chunk, a chunk holding more or less than its
   /// fields, a mesh or bone list not numbered from zero, a count running past its chunk, or a mesh or bone that fails
   /// to read.
-  pub fn read_from_body_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_body_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut flags: Option<u32> = None;
     let mut flags_size: u8 = Self::FLAGS_SIZE;
@@ -177,11 +178,11 @@ impl EditableObjectFile {
 
     let layout: ChunkLayout = ChunkLayout::read(reader, |chunk| {
       match chunk.id {
-        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload()?),
         Self::FLAGS_CHUNK_ID if flags.is_none() => {
           flags_size = Self::check_flags_size(chunk.read_bytes_remain())?;
           flags = Some(
-            u32::try_from(T::read_uint(&chunk.read_remaining()?, flags_size.into()))
+            u32::try_from(XRayBytes::read_uint(&chunk.read_remaining()?, flags_size.into()))
               .map_err(|_| XrfError::new_parsing_error("Object flags do not fit 32 bits"))?,
           );
         }
@@ -190,44 +191,41 @@ impl EditableObjectFile {
         }
         Self::LODS_CHUNK_ID if lods.is_none() => lods = Some(chunk.read_w1251_string_payload()?),
         Self::MESHES_CHUNK_ID if meshes.is_none() => {
-          meshes = Some(chunk.read_numbered_children("mesh", |chunk| EditableMesh::read::<T, D>(chunk))?);
+          meshes = Some(chunk.read_numbered_children("mesh", |chunk| EditableMesh::read::<D>(chunk))?);
         }
         Self::SURFACES_CHUNK_ID if surfaces.is_none() => {
           surfaces = Some(EditableChunks::read_whole(chunk, "surfaces", |chunk| {
-            EditableChunks::read_counted::<T, D, _>(chunk, EditableSurface::MIN_SERIALIZED_SIZE, "surfaces", |chunk| {
-              chunk.read_xr::<T, _>()
+            EditableChunks::read_counted::<D, _>(chunk, EditableSurface::MIN_SERIALIZED_SIZE, "surfaces", |chunk| {
+              chunk.read_xr()
             })
           })?);
         }
         Self::BONES_CHUNK_ID if bones.is_none() => {
-          bones = Some(chunk.read_numbered_children("bone", |chunk| EditableBone::read::<T, D>(chunk))?);
+          bones = Some(chunk.read_numbered_children("bone", |chunk| EditableBone::read::<D>(chunk))?);
         }
         Self::EMBEDDED_MOTIONS_CHUNK_ID if embedded_motions.is_none() => {
           embedded_motions = Some(chunk.read_remaining()?);
         }
         Self::MOTION_REFERENCES_CHUNK_ID if motion_references.is_none() => {
           motion_references = Some(EditableChunks::read_whole(chunk, "motion references", |chunk| {
-            EditableChunks::read_counted::<T, D, _>(chunk, 1, "motion references", |chunk| chunk.read_w1251_string())
+            EditableChunks::read_counted::<D, _>(chunk, 1, "motion references", |chunk| chunk.read_w1251_string())
           })?);
         }
         Self::BONE_PARTS_CHUNK_ID if bone_parts.is_none() => {
           bone_parts = Some(EditableChunks::read_whole(chunk, "bone parts", |chunk| {
-            EditableChunks::read_counted::<T, D, _>(
-              chunk,
-              EditableBonePart::MIN_SERIALIZED_SIZE,
-              "bone parts",
-              |chunk| chunk.read_xr::<T, _>(),
-            )
+            EditableChunks::read_counted::<D, _>(chunk, EditableBonePart::MIN_SERIALIZED_SIZE, "bone parts", |chunk| {
+              chunk.read_xr()
+            })
           })?);
         }
         Self::ACTOR_TRANSFORM_CHUNK_ID if actor_transform.is_none() => {
           actor_transform = Some(EditableChunks::read_whole(chunk, "actor transform", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
         Self::DESCRIPTION_CHUNK_ID if description.is_none() => {
           description = Some(EditableChunks::read_whole(chunk, "description", |chunk| {
-            chunk.read_xr::<T, _>()
+            chunk.read_xr()
           })?);
         }
         _ => return Ok(false),
@@ -264,10 +262,10 @@ impl EditableObjectFile {
   /// # Errors
   ///
   /// Returns an error when the object cannot be written as [`Self::write_to_bytes`] says, or the file cannot be.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     Ok(StagedFile::write_creating_directories(
       path.as_ref(),
-      &self.write_to_bytes::<T>()?,
+      &self.write_to_bytes()?,
     )?)
   }
 
@@ -277,12 +275,12 @@ impl EditableObjectFile {
   ///
   /// Returns an error when a list is longer than its count holds, a mesh's lists disagree, or a string cannot be
   /// encoded.
-  pub fn write_to_bytes<T: ByteOrder>(&self) -> XrfResult<Vec<u8>> {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    self.write_body::<T>(&mut writer)?;
+    self.write_body(&mut writer)?;
 
-    writer.flush_chunk_into_buffer::<T>(Self::BODY_CHUNK_ID)
+    writer.flush_chunk_into_buffer(Self::BODY_CHUNK_ID)
   }
 
   /// Writes the body's children as [`Self::layout`] lays them out, and any it does not list in the order
@@ -291,12 +289,10 @@ impl EditableObjectFile {
   /// # Errors
   ///
   /// Returns an error as [`Self::write_to_bytes`] does.
-  pub fn write_body<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write_body(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut sequence: ChunkSequence = ChunkSequence::new();
 
-    sequence.push(Self::VERSION_CHUNK_ID, |writer| {
-      Ok(writer.write_u16::<T>(Self::VERSION)?)
-    })?;
+    sequence.push(Self::VERSION_CHUNK_ID, |writer| Ok(writer.write_u16(Self::VERSION)?))?;
 
     if let Some(class_script) = &self.class_script {
       sequence.push(Self::CLASS_SCRIPT_CHUNK_ID, |writer| {
@@ -326,26 +322,26 @@ impl EditableObjectFile {
 
       let mut bytes: [u8; 4] = [0; 4];
 
-      T::write_uint(&mut bytes, self.flags.into(), size);
+      XRayBytes::write_uint(&mut bytes, self.flags.into(), size);
 
       Ok(writer.write_all(&bytes[..size])?)
     })?;
 
     if let Some(meshes) = &self.meshes {
       sequence.push(Self::MESHES_CHUNK_ID, |writer| {
-        EditableChunks::write_numbered::<T, _>(writer, meshes, |mesh, writer| mesh.write::<T>(writer))
+        EditableChunks::write_numbered(writer, meshes, |mesh, writer| mesh.write(writer))
       })?;
     }
 
     if let Some(surfaces) = &self.surfaces {
       sequence.push(Self::SURFACES_CHUNK_ID, |writer| {
-        EditableChunks::write_counted::<T, _>(writer, surfaces, "Surfaces")
+        EditableChunks::write_counted(writer, surfaces, "Surfaces")
       })?;
     }
 
     if let Some(bones) = &self.bones {
       sequence.push(Self::BONES_CHUNK_ID, |writer| {
-        EditableChunks::write_numbered::<T, _>(writer, bones, |bone, writer| bone.write::<T>(writer))
+        EditableChunks::write_numbered(writer, bones, |bone, writer| bone.write(writer))
       })?;
     }
 
@@ -355,7 +351,7 @@ impl EditableObjectFile {
 
     if let Some(references) = &self.motion_references {
       sequence.push(Self::MOTION_REFERENCES_CHUNK_ID, |writer| {
-        writer.write_u32::<T>(narrow_format_size(references.len(), "Motion references")?)?;
+        writer.write_u32(narrow_format_size(references.len(), "Motion references")?)?;
 
         for reference in references {
           writer.write_w1251_string(reference)?;
@@ -367,19 +363,19 @@ impl EditableObjectFile {
 
     if let Some(parts) = &self.bone_parts {
       sequence.push(Self::BONE_PARTS_CHUNK_ID, |writer| {
-        EditableChunks::write_counted::<T, _>(writer, parts, "Bone parts")
+        EditableChunks::write_counted(writer, parts, "Bone parts")
       })?;
     }
 
     if let Some(transform) = &self.actor_transform {
-      sequence.push(Self::ACTOR_TRANSFORM_CHUNK_ID, |writer| transform.write::<T>(writer))?;
+      sequence.push(Self::ACTOR_TRANSFORM_CHUNK_ID, |writer| transform.write(writer))?;
     }
 
     if let Some(description) = &self.description {
-      sequence.push(Self::DESCRIPTION_CHUNK_ID, |writer| description.write::<T>(writer))?;
+      sequence.push(Self::DESCRIPTION_CHUNK_ID, |writer| description.write(writer))?;
     }
 
-    self.layout.write::<T>(writer, sequence)
+    self.layout.write(writer, sequence)
   }
 
   /// Whether the object is a dynamic model the Actor Editor exports to its own OGF, rather than level geometry.

@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::gamemtl_acoustics::GameMtlAcoustics;
@@ -13,7 +13,7 @@ fn chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
 
   writer.buffer = payload.to_vec();
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
+  writer.flush_chunk_into_buffer(id)
 }
 
 /// A terminated Windows-1251 string.
@@ -116,7 +116,7 @@ fn library(materials: &[Vec<u8>], pairs: &[Vec<u8>]) -> XrfResult<Vec<u8>> {
 
 /// A library holding one of each, which is the shape the round trips are taken over.
 fn sample() -> XrfResult<GameMtlFile> {
-  GameMtlFile::read_from_bytes::<XRayByteOrder>(library(
+  GameMtlFile::read_from_bytes(library(
     &[material(0, "default", Some("everything else"))?],
     &[pair(0, GameMtlPair::NO_PARENT_ID)?],
   )?)
@@ -148,7 +148,7 @@ fn reads_a_material_declaring_only_the_chunks_the_engine_asserts_on() -> XrfResu
   bytes.extend(chunk(GameMtlMaterial::PHYSICS_CHUNK_ID, &floats(&[0.0; 5]))?);
   bytes.extend(chunk(GameMtlMaterial::FACTORS_CHUNK_ID, &floats(&[0.0; 4]))?);
 
-  let file: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(library(&[bytes], &[])?)?;
+  let file: GameMtlFile = GameMtlFile::read_from_bytes(library(&[bytes], &[])?)?;
   let material: &GameMtlMaterial = &file.materials[0];
 
   // Each absent chunk reads as absent rather than as the engine's fallback, which a writer would otherwise invent.
@@ -239,7 +239,7 @@ fn tells_the_game_apart_by_the_newest_chunk_a_material_carries() -> XrfResult {
 
 #[test]
 fn distinguishes_an_absent_description_from_an_empty_one() -> XrfResult {
-  let file: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(library(
+  let file: GameMtlFile = GameMtlFile::read_from_bytes(library(
     &[material(0, "default", None)?, material(1, "metal", Some(""))?],
     &[],
   )?)?;
@@ -270,8 +270,7 @@ fn reads_a_pair_and_the_lists_it_names() -> XrfResult {
 
 #[test]
 fn a_pair_naming_a_parent_is_counted_as_inheriting() -> XrfResult {
-  let file: GameMtlFile =
-    GameMtlFile::read_from_bytes::<XRayByteOrder>(library(&[material(0, "default", None)?], &[pair(1, 0)?])?)?;
+  let file: GameMtlFile = GameMtlFile::read_from_bytes(library(&[material(0, "default", None)?], &[pair(1, 0)?])?)?;
 
   assert!(file.pairs[0].has_parent());
   assert_eq!(file.get_inheriting_pairs_count(), 1);
@@ -307,9 +306,9 @@ fn builds_a_library_numbering_on_from_its_highest_numbers() -> XrfResult {
   );
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
-  let restored: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(writer.flush_raw_into_buffer()?)?;
+  let restored: GameMtlFile = GameMtlFile::read_from_bytes(writer.flush_raw_into_buffer()?)?;
 
   assert_eq!(restored, file);
   assert_eq!((restored.material_index, restored.material_pair_index), (10, 3));
@@ -342,7 +341,7 @@ fn labels_a_pair_by_its_materials_and_counts_the_pairs_naming_each_list_entry() 
 
 #[test]
 fn finds_a_material_by_the_number_a_collision_face_stores() -> XrfResult {
-  let file: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(library(
+  let file: GameMtlFile = GameMtlFile::read_from_bytes(library(
     &[material(7, "concrete", None)?, material(9, "metal", None)?],
     &[],
   )?)?;
@@ -369,10 +368,10 @@ fn writes_a_library_back_byte_for_byte() -> XrfResult {
     &[material(0, "default", Some("everything else"))?],
     &[pair(0, GameMtlPair::NO_PARENT_ID)?],
   )?;
-  let file: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
+  let file: GameMtlFile = GameMtlFile::read_from_bytes(original.clone())?;
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.flush_raw_into_buffer()?, original);
 
@@ -392,7 +391,7 @@ fn refuses_a_chunk_holding_more_than_the_engine_reads() -> XrfResult {
     &[],
   )?;
 
-  assert!(GameMtlFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(GameMtlFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -405,7 +404,7 @@ fn refuses_a_version_the_engine_gives_up_on() -> XrfResult {
 
   bytes.extend(chunk(GameMtlFile::AUTOINCREMENT_CHUNK_ID, &[0; 8])?);
 
-  assert!(GameMtlFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(GameMtlFile::read_from_bytes(bytes).is_err());
 
   Ok(())
 }

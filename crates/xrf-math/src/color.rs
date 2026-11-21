@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -27,27 +26,27 @@ impl Color {
 /// Four floats, red first.
 impl ChunkFieldReadWrite for Color {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      r: reader.read_f32::<T>()?,
-      g: reader.read_f32::<T>()?,
-      b: reader.read_f32::<T>()?,
-      a: reader.read_f32::<T>()?,
+      r: reader.read_f32()?,
+      g: reader.read_f32()?,
+      b: reader.read_f32()?,
+      a: reader.read_f32()?,
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_f32::<T>(self.r)?;
-    writer.write_f32::<T>(self.g)?;
-    writer.write_f32::<T>(self.b)?;
-    writer.write_f32::<T>(self.a)
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_f32(self.r)?;
+    writer.write_f32(self.g)?;
+    writer.write_f32(self.b)?;
+    writer.write_f32(self.a)
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
 
   use crate::color::Color;
@@ -57,14 +56,11 @@ mod tests {
     let original: Color = Color::new(0.25, 0.5, 0.75, 1.0);
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written() as u64, Color::SERIALIZED_SIZE);
     assert_eq!(&writer.buffer[..4], &0.25_f32.to_le_bytes());
-    assert_eq!(
-      Color::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(&writer.buffer)?)?,
-      original
-    );
+    assert_eq!(Color::read(&mut ChunkReader::from_bytes(&writer.buffer)?)?, original);
 
     Ok(())
   }

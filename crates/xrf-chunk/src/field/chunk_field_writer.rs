@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
@@ -17,16 +16,16 @@ pub trait ChunkFieldWriter {
 
   fn write_u8(&mut self, value: u8) -> XrfResult;
 
-  fn write_u16<T: ByteOrder>(&mut self, value: u16) -> XrfResult;
+  fn write_u16(&mut self, value: u16) -> XrfResult;
 
-  fn write_u32<T: ByteOrder>(&mut self, value: u32) -> XrfResult;
+  fn write_u32(&mut self, value: u32) -> XrfResult;
 
-  fn write_u64<T: ByteOrder>(&mut self, value: u64) -> XrfResult;
+  fn write_u64(&mut self, value: u64) -> XrfResult;
 
-  fn write_f32<T: ByteOrder>(&mut self, value: f32) -> XrfResult;
+  fn write_f32(&mut self, value: f32) -> XrfResult;
 
   /// Three floats as one value, `w_vec3`.
-  fn write_vector3<T: ByteOrder>(&mut self, value: [f32; 3]) -> XrfResult;
+  fn write_vector3(&mut self, value: [f32; 3]) -> XrfResult;
 
   /// A null-terminated Windows-1251 string, `w_stringZ`.
   fn write_w1251_string(&mut self, value: &str) -> XrfResult;
@@ -38,35 +37,35 @@ pub trait ChunkFieldWriter {
   fn get_position(&self) -> usize;
 
   /// Overwrites the `u16` at `at` in the bytes, `w_seek`: a field recorded there keeps the value it was written with.
-  fn patch_u16<T: ByteOrder>(&mut self, at: usize, value: u16) -> XrfResult;
+  fn patch_u16(&mut self, at: usize, value: u16) -> XrfResult;
 
-  fn write_xr<T: ByteOrder, V: ChunkFieldReadWrite>(&mut self, value: &V) -> XrfResult
+  fn write_xr<V: ChunkFieldReadWrite>(&mut self, value: &V) -> XrfResult
   where
     Self: Sized,
   {
-    value.write_fields::<T, Self>(self)
+    value.write_fields::<Self>(self)
   }
 
-  fn write_xr_list<T: ByteOrder, V: ChunkFieldReadWriteList>(&mut self, list: &[V]) -> XrfResult
+  fn write_xr_list<V: ChunkFieldReadWriteList>(&mut self, list: &[V]) -> XrfResult
   where
     Self: Sized,
   {
-    V::write_field_list::<T, Self>(self, list)
+    V::write_field_list::<Self>(self, list)
   }
 
-  fn write_xr_optional<T: ByteOrder, V: ChunkFieldReadWriteOptional>(&mut self, value: Option<&V>) -> XrfResult
+  fn write_xr_optional<V: ChunkFieldReadWriteOptional>(&mut self, value: Option<&V>) -> XrfResult
   where
     Self: Sized,
   {
-    V::write_field_optional::<T, Self>(self, value)
+    V::write_field_optional::<Self>(self, value)
   }
 
   /// An `xr_vector<u16>` as `save_data` writes it: a `u32` count, then each.
-  fn write_u16_vector<T: ByteOrder>(&mut self, values: &[u16]) -> XrfResult {
-    self.write_u32::<T>(narrow_format_size(values.len(), "u16 vector length")?)?;
+  fn write_u16_vector(&mut self, values: &[u16]) -> XrfResult {
+    self.write_u32(narrow_format_size(values.len(), "u16 vector length")?)?;
 
     for value in values {
-      self.write_u16::<T>(*value)?;
+      self.write_u16(*value)?;
     }
 
     Ok(())

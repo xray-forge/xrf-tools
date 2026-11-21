@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
 
@@ -24,16 +23,16 @@ impl BuildPrjMuReference {
 }
 
 impl ChunkReadWrite for BuildPrjMuReference {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let model: u32 = reader.read_u32::<T>()?;
-    let transform: Matrix4x4 = reader.read_xr::<T, _>()?;
-    let flags: u32 = reader.read_u32::<T>()?;
-    let sector: u16 = reader.read_u16::<T>()?;
-    let sector_padding: u16 = reader.read_u16::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let model: u32 = reader.read_u32()?;
+    let transform: Matrix4x4 = reader.read_xr()?;
+    let flags: u32 = reader.read_u32()?;
+    let sector: u16 = reader.read_u16()?;
+    let sector_padding: u16 = reader.read_u16()?;
     let mut reserved: [u32; 8] = [0; 8];
 
     for value in &mut reserved {
-      *value = reader.read_u32::<T>()?;
+      *value = reader.read_u32()?;
     }
 
     Ok(Self {
@@ -46,15 +45,15 @@ impl ChunkReadWrite for BuildPrjMuReference {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.model)?;
-    writer.write_xr::<T, _>(&self.transform)?;
-    writer.write_u32::<T>(self.flags)?;
-    writer.write_u16::<T>(self.sector)?;
-    writer.write_u16::<T>(self.sector_padding)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.model)?;
+    writer.write_xr(&self.transform)?;
+    writer.write_u32(self.flags)?;
+    writer.write_u16(self.sector)?;
+    writer.write_u16(self.sector_padding)?;
 
     for value in self.reserved {
-      writer.write_u32::<T>(value)?;
+      writer.write_u32(value)?;
     }
 
     Ok(())

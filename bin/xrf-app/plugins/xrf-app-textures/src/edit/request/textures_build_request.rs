@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use xrf_app_core::TauriResult;
 use xrf_app_core::jobs::JobResource;
-use xrf_chunk::XRayByteOrder;
 use xrf_texture::{BuildTextureNormalMap, BuildTextureRecipe, ImageFileReader, TextureEncodingQuality};
 use xrf_thm::ThmFile;
 use xrf_utils::{error_to_string, format_path};
@@ -62,7 +61,7 @@ impl TexturesBuildRequest {
     let files: TextureFiles = TextureFiles::of(Path::new(path));
 
     Ok(Some(BuildTextureNormalMap {
-      descriptor: ThmFile::read_from_path::<XRayByteOrder, _>(&files.descriptor).map_err(|error| {
+      descriptor: ThmFile::read_from_path(&files.descriptor).map_err(|error| {
         format!(
           "Cannot read the descriptor of normal map {}: {error}",
           format_path(&files.descriptor)

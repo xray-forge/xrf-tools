@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
@@ -12,16 +11,16 @@ pub struct EditableActorTransform {
 }
 
 impl ChunkReadWrite for EditableActorTransform {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      position: reader.read_xr::<T, _>()?,
-      rotation: reader.read_xr::<T, _>()?,
+      position: reader.read_xr()?,
+      rotation: reader.read_xr()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.position.write::<T>(writer)?;
-    self.rotation.write::<T>(writer)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.position.write(writer)?;
+    self.rotation.write(writer)?;
 
     Ok(())
   }

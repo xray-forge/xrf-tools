@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_ogf::OgfFile;
@@ -82,8 +81,8 @@ impl GenericCommand for VerifyCommand {
 
 impl VerifyCommand {
   fn verify(source: &Path, reference: &Path) -> XrfResult<ObjectVerification> {
-    let object: EditableObjectFile = EditableObjectFile::read_from_path::<XRayByteOrder, _>(&source)?;
-    let reference: OgfFile = OgfFile::read_from_path::<XRayByteOrder, _>(&reference)?;
+    let object: EditableObjectFile = EditableObjectFile::read_from_path(&source)?;
+    let reference: OgfFile = OgfFile::read_from_path(&reference)?;
 
     ObjectVerifier::verify(&object, &reference)
   }

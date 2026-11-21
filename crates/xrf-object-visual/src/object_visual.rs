@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfStaticVertex, OgfVertexData};
@@ -30,7 +29,7 @@ impl ObjectVisual {
     options: &ObjectCompileOptions,
   ) -> XrfResult<Self> {
     let file: OgfFile = ObjectCompiler::compile_with(object, source, options)
-      .and_then(|compiled| OgfFile::read_from_bytes::<XRayByteOrder>(compiled.bytes))?;
+      .and_then(|compiled| OgfFile::read_from_bytes(compiled.bytes))?;
 
     Ok(Self {
       package: Self::pack(&file),

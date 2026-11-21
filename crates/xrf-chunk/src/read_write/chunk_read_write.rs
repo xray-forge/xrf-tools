@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::reader::chunk_reader::ChunkReader;
@@ -11,7 +10,7 @@ use crate::writer::chunk_writer::ChunkWriter;
 /// already in memory, which is what an entry read out of a `.db` volume is. Writing always goes into a [`ChunkWriter`]
 /// buffer, which the caller frames and places.
 pub trait ChunkReadWrite: Sized {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self>;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self>;
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult;
 }

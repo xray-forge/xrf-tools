@@ -8,7 +8,6 @@ use xrf_extension::XrayExtension;
 use xrf_job::parallel::prelude::*;
 use xrf_ogf::OgfNormalization;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::{StagedFile, format_path};
 
 use crate::commands::ogf::fix::ogf_fix_file_report::OgfFixFileReport;
@@ -119,7 +118,7 @@ impl<'a> OgfFixer<'a> {
       Err(error) => return Self::fail(output, source, format!("File was not read: {error}")),
     };
 
-    let normalization: OgfNormalization = match OgfNormalization::normalize::<XRayByteOrder>(&original) {
+    let normalization: OgfNormalization = match OgfNormalization::normalize(&original) {
       Ok(normalization) => normalization,
       Err(error) => return Self::fail(output, source, error.to_string()),
     };
@@ -133,7 +132,7 @@ impl<'a> OgfFixer<'a> {
     }
 
     if is_changed {
-      if let Err(error) = normalization.assert_engine_reads_the_same::<XRayByteOrder>(&original) {
+      if let Err(error) = normalization.assert_engine_reads_the_same(&original) {
         return Self::fail(output, source, error.to_string());
       }
 

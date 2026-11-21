@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::narrow_format_size;
@@ -28,12 +27,9 @@ impl BuildPrjMuModel {
   /// # Errors
   ///
   /// Returns an error when the model is truncated or its name is not Windows-1251.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
-    has_smoothing_groups: bool,
-  ) -> XrfResult<Self> {
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, has_smoothing_groups: bool) -> XrfResult<Self> {
     let name: String = reader.read_w1251_string()?;
-    let vertex_count: u32 = reader.read_u32::<T>()?;
+    let vertex_count: u32 = reader.read_u32()?;
     let mut vertices: Vec<Vector3d<f32>> = reader.new_bounded_vec(
       u64::from(vertex_count),
       BuildPrjFile::VERTEX_SIZE,
@@ -41,10 +37,10 @@ impl BuildPrjMuModel {
     )?;
 
     for _ in 0..vertex_count {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
-    let face_count: u32 = reader.read_u32::<T>()?;
+    let face_count: u32 = reader.read_u32()?;
     let mut faces: Vec<BuildPrjFace> = reader.new_bounded_vec(
       u64::from(face_count),
       BuildPrjFace::SERIALIZED_SIZE,
@@ -52,16 +48,16 @@ impl BuildPrjMuModel {
     )?;
 
     for _ in 0..face_count {
-      faces.push(reader.read_xr::<T, _>()?);
+      faces.push(reader.read_xr()?);
     }
 
-    let lod: u16 = reader.read_u16::<T>()?;
+    let lod: u16 = reader.read_u16()?;
     let smoothing_groups: Option<Vec<u32>> = if has_smoothing_groups {
       let mut groups: Vec<u32> =
         reader.new_bounded_vec(u64::from(face_count), 4, "multi-use model smoothing groups")?;
 
       for _ in 0..face_count {
-        groups.push(reader.read_u32::<T>()?);
+        groups.push(reader.read_u32()?);
       }
 
       Some(groups)
@@ -84,7 +80,7 @@ impl BuildPrjMuModel {
   ///
   /// Returns an error when the smoothing groups do not match the faces one for one, a count does not fit its field, or
   /// the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if let Some(groups) = &self.smoothing_groups
       && groups.len() != self.faces.len()
     {
@@ -97,22 +93,22 @@ impl BuildPrjMuModel {
     }
 
     writer.write_w1251_string(&self.name)?;
-    writer.write_u32::<T>(narrow_format_size(self.vertices.len(), "multi-use model vertices")?)?;
+    writer.write_u32(narrow_format_size(self.vertices.len(), "multi-use model vertices")?)?;
 
     for vertex in &self.vertices {
-      writer.write_xr::<T, _>(vertex)?;
+      writer.write_xr(vertex)?;
     }
 
-    writer.write_u32::<T>(narrow_format_size(self.faces.len(), "multi-use model faces")?)?;
+    writer.write_u32(narrow_format_size(self.faces.len(), "multi-use model faces")?)?;
 
     for face in &self.faces {
-      writer.write_xr::<T, _>(face)?;
+      writer.write_xr(face)?;
     }
 
-    writer.write_u16::<T>(self.lod)?;
+    writer.write_u16(self.lod)?;
 
     for group in self.smoothing_groups.iter().flatten() {
-      writer.write_u32::<T>(*group)?;
+      writer.write_u32(*group)?;
     }
 
     Ok(())

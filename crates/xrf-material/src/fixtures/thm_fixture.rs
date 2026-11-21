@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmMaterial, ThmMaterialChunk, ThmTextureFlag,
   ThmTextureParamChunk, ThmTextureType, ThmTrailingBytes,
@@ -103,9 +102,6 @@ impl ThmFixture {
   ///
   /// Never for a fixture of sane size: the only failure a chunk writer can report is a payload past `u32::MAX`.
   pub fn to_bytes(&self) -> Vec<u8> {
-    self
-      .file
-      .write_to_bytes::<XRayByteOrder>()
-      .expect("fixture descriptor is writable")
+    self.file.write_to_bytes().expect("fixture descriptor is writable")
   }
 }

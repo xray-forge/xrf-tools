@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -30,7 +29,7 @@ impl ParticleEffectSprite {
 
 impl ChunkReadWrite for ParticleEffectSprite {
   /// Read effect sprite data from chunk redder.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let particle_sprite: Self = Self {
       shader_name: reader.read_w1251_string()?,
       texture_name: reader.read_w1251_string()?,
@@ -42,7 +41,7 @@ impl ChunkReadWrite for ParticleEffectSprite {
   }
 
   /// Write sprite data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.shader_name)?;
     writer.write_w1251_string(&self.texture_name)?;
 
@@ -94,7 +93,7 @@ mod tests {
   use std::path::Path;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -111,11 +110,11 @@ mod tests {
       texture_name: String::from("texture_name"),
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 25);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -130,7 +129,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    let read_sprite: ParticleEffectSprite = ParticleEffectSprite::read::<XRayByteOrder, _>(&mut reader)?;
+    let read_sprite: ParticleEffectSprite = ParticleEffectSprite::read(&mut reader)?;
 
     assert_eq!(read_sprite, original);
 

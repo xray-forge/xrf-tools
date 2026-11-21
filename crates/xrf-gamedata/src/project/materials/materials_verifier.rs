@@ -5,7 +5,7 @@ use std::time::Instant;
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlPair};
 use xrf_ltx::Ltx;
-use xrf_spawn::{AlifeObjectInherited, SpawnFile, XRayByteOrder};
+use xrf_spawn::{AlifeObjectInherited, SpawnFile};
 
 use crate::project::gamedata_check::GamedataCheck;
 use crate::project::materials::verify_materials_result::GamedataMaterialsVerificationResult;
@@ -221,9 +221,7 @@ impl MaterialsVerifier<'_> {
         return;
       }
 
-      let spawn: Arc<SpawnFile> = match self.project.read_parsed(spawn_path, |chunk| {
-        SpawnFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-      }) {
+      let spawn: Arc<SpawnFile> = match self.project.read_parsed(spawn_path, SpawnFile::read_from_chunk) {
         Ok(spawn) => spawn,
         // An unreadable spawn file is the spawns check's finding, not this one's.
         Err(_) => continue,

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -49,27 +48,27 @@ impl AlifePacketsReadWrite for AlifeMonster {
   }
 
   /// Read the monster from both packets; the script class adds to the spawn packet alone.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectMonsterBase::read::<T, _, _>(spawn, update, layout)?,
-      offline_state: spawn.read_xr::<T, _>()?,
+      base: AlifeObjectMonsterBase::read(spawn, update, layout)?,
+      offline_state: spawn.read_xr()?,
     })
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    spawn.write_xr::<T, _>(&self.offline_state)
+    spawn.write_xr(&self.offline_state)
   }
 
   /// Import monster data from ltx file section.
@@ -99,7 +98,7 @@ impl AlifePacketsReadWrite for AlifeMonster {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -117,7 +116,7 @@ mod tests {
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update)?;
     let monster: AlifeMonster =
-      AlifeMonster::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
+      AlifeMonster::read(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     spawn_reader.assert_read("Expect the game's spawn packet to be read whole")?;
     update_reader.assert_read("Expect the game's update packet to be read whole")?;
@@ -134,7 +133,7 @@ mod tests {
     let mut spawn_writer: ChunkWriter = ChunkWriter::new();
     let mut update_writer: ChunkWriter = ChunkWriter::new();
 
-    monster.write::<XRayByteOrder, _, _>(&mut spawn_writer, &mut update_writer, SpawnLayout::CALL_OF_PRIPYAT)?;
+    monster.write(&mut spawn_writer, &mut update_writer, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((spawn_writer.buffer, update_writer.buffer), (spawn, update));
 
@@ -150,13 +149,12 @@ mod tests {
 
     original
       .base
-      .write::<XRayByteOrder, _, _>(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
+      .write(&mut spawn, &mut update, SpawnLayout::CALL_OF_PRIPYAT)?;
     spawn.buffer.extend_from_slice(b"450\0scheme@test\0");
 
     let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn.buffer)?;
     let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&update.buffer)?;
-    let read: AlifeMonster =
-      AlifeMonster::read::<XRayByteOrder, _, _>(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
+    let read: AlifeMonster = AlifeMonster::read(&mut spawn_reader, &mut update_reader, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     spawn_reader.assert_read("Expect the tail to close the spawn packet")?;
 
@@ -175,14 +173,14 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeMonster = AlifeMonster::new_mock(Vector3d::new(-12.5, 0.75, 310.0));
-    let (base_spawn_size, _, _) = original.base.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (base_spawn_size, _, _) = original.base.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
     let mut spawn: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder, _, _>(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CALL_OF_PRIPYAT)?;
+    original.write(&mut spawn, &mut ChunkWriter::new(), SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(&spawn.buffer[base_spawn_size..], b"nil\0nil\0");
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?,
       (base_spawn_size + 8, 52, original)
     );
 

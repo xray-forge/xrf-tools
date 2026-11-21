@@ -6,7 +6,6 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_omf::{OmfFile, OmfMotionsProcessor};
 use xrf_output::OutputOptions;
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfRenameMotionsReport;
@@ -95,7 +94,7 @@ impl RenameMotionsCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let renames: HashMap<String, String> = Self::read_map(map_path)?;
-    let mut omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(&path)?;
+    let mut omf_file: OmfFile = OmfFile::read_from_path(&path)?;
 
     if is_strict && let Err(error) = Self::assert_map_covers_all_motions(path, &omf_file, &renames) {
       // The guard refuses before anything is renamed, but the names the file holds are exactly what
@@ -140,7 +139,7 @@ impl RenameMotionsCommand {
       return Ok(());
     }
 
-    omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
+    omf_file.write_to_path(&destination)?;
 
     xrf_output::success!(output, "Renamed omf file written into {}", format_path(destination));
 

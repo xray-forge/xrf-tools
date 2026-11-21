@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_editable_level::EditableLevelOptions;
 use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelLightsFile};
@@ -18,16 +17,16 @@ pub(crate) struct LevelBundleStep;
 impl LevelSceneStep for LevelBundleStep {
   const FILES: &'static [&'static str] = &[LevelFile::FILE_NAME, LevelLightsFile::FILE_NAME];
 
-  fn decompile<T: ByteOrder>(
+  fn decompile(
     sources: &mut LevelSceneSources,
     _options: &LevelDecompileOptions,
     draft: &mut LevelSceneDraft,
   ) -> XrfResult {
-    let Some(bundle) = sources.get_bundle::<T>()? else {
+    let Some(bundle) = sources.get_bundle()? else {
       return Ok(());
     };
     let lights: Option<LevelLightsFile> =
-      sources.take_read(LevelLightsFile::FILE_NAME, LevelLightsFile::read_from_bytes::<T>)?;
+      sources.take_read(LevelLightsFile::FILE_NAME, LevelLightsFile::read_from_bytes)?;
 
     if let Some(lights) = &lights {
       let options: &mut EditableLevelOptions = &mut draft.level_options;

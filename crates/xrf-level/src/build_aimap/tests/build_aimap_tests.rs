@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_math::{AiNodePosition, Vector3d};
 
@@ -53,7 +53,7 @@ fn a_node_is_twenty_bytes_in_the_sdk_version_and_twenty_four_in_ix_ray_s() {
 
 #[test]
 fn an_sdk_map_reads_three_byte_links_and_its_invalid_link_as_their_widest_value() -> XrfResult {
-  let file: BuildAimapFile = BuildAimapFile::read_from_bytes::<XRayByteOrder>(map_bytes(1, 3)?)?;
+  let file: BuildAimapFile = BuildAimapFile::read_from_bytes(map_bytes(1, 3)?)?;
 
   assert_eq!(file.version, BuildAimapFile::NARROW_LINKS_VERSION);
   assert_eq!(file.params.patch_size, 0.7);
@@ -74,7 +74,7 @@ fn an_sdk_map_reads_three_byte_links_and_its_invalid_link_as_their_widest_value(
 
 #[test]
 fn an_ix_ray_map_reads_four_byte_links() -> XrfResult {
-  let file: BuildAimapFile = BuildAimapFile::read_from_bytes::<XRayByteOrder>(map_bytes(2, 4)?)?;
+  let file: BuildAimapFile = BuildAimapFile::read_from_bytes(map_bytes(2, 4)?)?;
 
   assert_eq!(file.nodes[1].links, [1, u32::MAX, u32::MAX, u32::MAX]);
   assert_eq!(
@@ -91,7 +91,7 @@ fn an_ix_ray_map_reads_four_byte_links() -> XrfResult {
 
 #[test]
 fn a_node_sits_where_the_editor_unpacks_it() -> XrfResult {
-  let file: BuildAimapFile = BuildAimapFile::read_from_bytes::<XRayByteOrder>(map_bytes(1, 3)?)?;
+  let file: BuildAimapFile = BuildAimapFile::read_from_bytes(map_bytes(1, 3)?)?;
 
   assert_eq!(
     file.get_node_position(&file.nodes[1]),
@@ -110,10 +110,10 @@ fn a_node_sits_where_the_editor_unpacks_it() -> XrfResult {
 fn a_map_of_either_version_is_written_back_byte_for_byte() -> XrfResult {
   for (version, link_size) in [(1, 3), (2, 4)] {
     let bytes: Vec<u8> = map_bytes(version, link_size)?;
-    let file: BuildAimapFile = BuildAimapFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+    let file: BuildAimapFile = BuildAimapFile::read_from_bytes(bytes.clone())?;
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    file.write::<XRayByteOrder>(&mut writer)?;
+    file.write(&mut writer)?;
 
     assert_eq!(writer.buffer, bytes, "version {version}");
   }
@@ -123,12 +123,12 @@ fn a_map_of_either_version_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_link_too_wide_for_an_sdk_map_is_refused_rather_than_cut() -> XrfResult {
-  let mut file: BuildAimapFile = BuildAimapFile::read_from_bytes::<XRayByteOrder>(map_bytes(1, 3)?)?;
+  let mut file: BuildAimapFile = BuildAimapFile::read_from_bytes(map_bytes(1, 3)?)?;
 
   file.nodes[0].links[0] = 1 << 24;
 
   let error: String = file
-    .write::<XRayByteOrder>(&mut ChunkWriter::new())
+    .write(&mut ChunkWriter::new())
     .expect_err("expect the wide link to be refused")
     .to_string();
 
@@ -139,7 +139,7 @@ fn a_link_too_wide_for_an_sdk_map_is_refused_rather_than_cut() -> XrfResult {
 
 #[test]
 fn a_map_of_a_version_no_editor_writes_is_refused() -> XrfResult {
-  let error: String = BuildAimapFile::read_from_bytes::<XRayByteOrder>(map_bytes(3, 4)?)
+  let error: String = BuildAimapFile::read_from_bytes(map_bytes(3, 4)?)
     .expect_err("expect the version to be refused")
     .to_string();
 

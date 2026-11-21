@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
@@ -360,7 +360,7 @@ impl GamedataProject {
   ///
   /// Returns a not-found error when the project holds no library, and otherwise whatever reading it answers with.
   pub(crate) fn game_materials(&self) -> XrfResult<Arc<GameMtlFile>> {
-    self.read_parsed(GameMtlFile::FILE_NAME, GameMtlFile::read_from_chunk::<XRayByteOrder, _>)
+    self.read_parsed(GameMtlFile::FILE_NAME, GameMtlFile::read_from_chunk)
   }
 
   /// Resolves an OGF reference under the `meshes` namespace.

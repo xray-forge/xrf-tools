@@ -2,9 +2,8 @@ use std::fmt;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter};
 use xrf_utils::{assert_length, narrow_format_size};
@@ -26,14 +25,14 @@ impl SpawnPatrolsChunk {
 
 impl ChunkReadWrite for SpawnPatrolsChunk {
   /// Read patrols list from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Reading patrols chunk, bytes {}", reader.read_bytes_remain());
 
     let mut meta_reader: ChunkReader<D> = reader.read_child_by_index(Self::META_NESTED_CHUNK_ID)?;
     let mut data_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_NESTED_CHUNK_ID)?;
 
-    let count: u32 = meta_reader.read_u32::<T>()?;
-    let patrols: Vec<Patrol> = data_reader.read_xr_list::<T, _>()?;
+    let count: u32 = meta_reader.read_u32()?;
+    let patrols: Vec<Patrol> = data_reader.read_xr_list()?;
 
     assert_length(&patrols, count as usize, "Expect defined count of patrols to be read")?;
 
@@ -45,21 +44,21 @@ impl ChunkReadWrite for SpawnPatrolsChunk {
   }
 
   /// Write patrols data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut meta_writer: ChunkWriter = ChunkWriter::new();
     let mut data_writer: ChunkWriter = ChunkWriter::new();
 
-    meta_writer.write_u32::<T>(narrow_format_size(self.patrols.len(), "spawn patrols")?)?;
-    data_writer.write_xr_list::<T, _>(&self.patrols)?;
+    meta_writer.write_u32(narrow_format_size(self.patrols.len(), "spawn patrols")?)?;
+    data_writer.write_xr_list(&self.patrols)?;
 
     writer.write_all(
       meta_writer
-        .flush_chunk_into_buffer::<T>(Self::META_NESTED_CHUNK_ID)?
+        .flush_chunk_into_buffer(Self::META_NESTED_CHUNK_ID)?
         .as_slice(),
     )?;
     writer.write_all(
       data_writer
-        .flush_chunk_into_buffer::<T>(Self::DATA_NESTED_CHUNK_ID)?
+        .flush_chunk_into_buffer(Self::DATA_NESTED_CHUNK_ID)?
         .as_slice(),
     )?;
 
@@ -125,7 +124,7 @@ impl fmt::Debug for SpawnPatrolsChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -192,12 +191,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 450);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 450);
 
@@ -206,7 +204,7 @@ mod tests {
     assert_eq!(file.bytes_remaining(), 450 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-    let read: SpawnPatrolsChunk = SpawnPatrolsChunk::read::<XRayByteOrder, _>(&mut reader)?;
+    let read: SpawnPatrolsChunk = SpawnPatrolsChunk::read(&mut reader)?;
 
     assert_eq!(read, original);
 

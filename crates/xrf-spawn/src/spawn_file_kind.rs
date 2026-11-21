@@ -1,7 +1,6 @@
 use std::io::ErrorKind;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
@@ -21,8 +20,8 @@ pub enum SpawnFileKind {
 
 impl SpawnFileKind {
   /// The kind a file's top-level chunks make it, reading no more than the header chunk's own bytes.
-  pub fn of_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> Self {
-    match Self::read_root_header::<T, D>(chunks) {
+  pub fn of_chunks<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> Self {
+    match Self::read_root_header::<D>(chunks) {
       Some(_) => Self::Root,
       None => Self::Level,
     }
@@ -32,9 +31,9 @@ impl SpawnFileKind {
   ///
   /// A level list numbers its packets from zero, so its first chunk shares the header's id: only whether that chunk
   /// reads whole as a header tells the two apart.
-  pub fn read_root_header<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> Option<SpawnHeaderChunk> {
+  pub fn read_root_header<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> Option<SpawnHeaderChunk> {
     ChunkReader::find_optional_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?
-      .read_xr::<T, SpawnHeaderChunk>()
+      .read_xr::<SpawnHeaderChunk>()
       .ok()
   }
 
@@ -71,7 +70,7 @@ impl SpawnFileKind {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
 
@@ -85,14 +84,14 @@ mod tests {
   fn read_kind(bytes: Vec<u8>) -> XrfResult<SpawnFileKind> {
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;
 
-    Ok(SpawnFileKind::of_chunks::<XRayByteOrder, _>(&chunks))
+    Ok(SpawnFileKind::of_chunks(&chunks))
   }
 
   #[test]
   fn tells_a_root_spawn_by_its_header() -> XrfResult {
     let mut bytes: Vec<u8> = Vec::new();
 
-    EmptySpawnFile::build().write_to::<XRayByteOrder>(&mut bytes)?;
+    EmptySpawnFile::build().write_to(&mut bytes)?;
 
     assert_eq!(read_kind(bytes)?, SpawnFileKind::Root);
 
@@ -116,7 +115,7 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    list.write::<XRayByteOrder>(&mut writer)?;
+    list.write(&mut writer)?;
 
     assert_eq!(read_kind(writer.flush_raw_into_buffer()?)?, SpawnFileKind::Level);
 

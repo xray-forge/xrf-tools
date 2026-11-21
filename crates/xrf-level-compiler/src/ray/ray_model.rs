@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_geometry::BvhTracer;
 use xrf_level::{BuildCformFile, BuildPrjFile};
@@ -27,11 +26,10 @@ impl RayModel {
   /// Returns an error when an input is unreadable or the shadow materials cannot be loaded (`ShadowMaterials::load`).
   pub(crate) fn read(request: &LevelCompileRequest) -> XrfResult<Self> {
     let level: &Path = &request.level;
-    let cform: BuildCformFile =
-      BuildCformFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildCformFile::FILE_NAME))?;
-    let project: BuildPrjFile = BuildPrjFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildPrjFile::FILE_NAME))?;
+    let cform: BuildCformFile = BuildCformFile::read_from_path(&level.join(BuildCformFile::FILE_NAME))?;
+    let project: BuildPrjFile = BuildPrjFile::read_from_path(&level.join(BuildPrjFile::FILE_NAME))?;
     let library: ShaderCompilerFile =
-      ShaderCompilerFile::read_from_path::<XRayByteOrder, _>(&request.gamedata.join(ShaderCompilerFile::FILE_NAME))?;
+      ShaderCompilerFile::read_from_path(&request.gamedata.join(ShaderCompilerFile::FILE_NAME))?;
     let shadows: ShadowMaterials = ShadowMaterials::load(&ShadowMaterialsRequest {
       project: &project,
       faces: &cform.raycast_faces,

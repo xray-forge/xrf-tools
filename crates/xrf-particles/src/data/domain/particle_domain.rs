@@ -1,9 +1,8 @@
 use std::fmt::Display;
 use std::str::FromStr;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -24,34 +23,34 @@ pub struct ParticleDomain {
 
 impl ChunkReadWrite for ParticleDomain {
   /// Read particle domain from chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      domain_type: reader.read_u32::<T>()?,
+      domain_type: reader.read_u32()?,
       coordinates: ParticleDomainPoints {
-        p1: reader.read_xr::<T, _>()?,
-        p2: reader.read_xr::<T, _>()?,
+        p1: reader.read_xr()?,
+        p2: reader.read_xr()?,
       },
       basis: ParticleDomainBasis {
-        u: reader.read_xr::<T, _>()?,
-        v: reader.read_xr::<T, _>()?,
+        u: reader.read_xr()?,
+        v: reader.read_xr()?,
       },
-      radius1: reader.read_f32::<T>()?,
-      radius2: reader.read_f32::<T>()?,
-      radius1_sqr: reader.read_f32::<T>()?,
-      radius2_sqr: reader.read_f32::<T>()?,
+      radius1: reader.read_f32()?,
+      radius2: reader.read_f32()?,
+      radius1_sqr: reader.read_f32()?,
+      radius2_sqr: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.domain_type)?;
-    writer.write_xr::<T, _>(&self.coordinates.p1)?;
-    writer.write_xr::<T, _>(&self.coordinates.p2)?;
-    writer.write_xr::<T, _>(&self.basis.u)?;
-    writer.write_xr::<T, _>(&self.basis.v)?;
-    writer.write_f32::<T>(self.radius1)?;
-    writer.write_f32::<T>(self.radius2)?;
-    writer.write_f32::<T>(self.radius1_sqr)?;
-    writer.write_f32::<T>(self.radius2_sqr)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.domain_type)?;
+    writer.write_xr(&self.coordinates.p1)?;
+    writer.write_xr(&self.coordinates.p2)?;
+    writer.write_xr(&self.basis.u)?;
+    writer.write_xr(&self.basis.v)?;
+    writer.write_f32(self.radius1)?;
+    writer.write_f32(self.radius2)?;
+    writer.write_f32(self.radius1_sqr)?;
+    writer.write_f32(self.radius2_sqr)?;
 
     Ok(())
   }
@@ -165,7 +164,7 @@ mod tests {
   use std::str::FromStr;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -178,11 +177,11 @@ mod tests {
 
     let original: ParticleDomain = ParticleDomain::new_mock();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 68);
 
-    let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
+    let bytes_written: usize = writer.flush_chunk_into(
       &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
@@ -197,7 +196,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(ParticleDomain::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(ParticleDomain::read(&mut reader)?, original);
 
     Ok(())
   }

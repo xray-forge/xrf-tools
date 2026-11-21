@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_editable_level::{EditableObjectPart, EditableShapeElement, EditableSpawnPointKind, EditableSpawnPointObject};
 use xrf_error::XrfResult;
 use xrf_math::{Sphere, Vector3d};
@@ -18,9 +18,9 @@ use crate::level::tests::spawn_data::restrictor;
 pub(super) fn listed<S: ChunkReadWrite>(packet: &S, id: u32) -> XrfResult<LevelSpawnObject> {
   let mut bytes: ChunkWriter = ChunkWriter::new();
 
-  packet.write::<XRayByteOrder>(&mut bytes)?;
+  packet.write(&mut bytes)?;
 
-  LevelSpawnObject::read::<XRayByteOrder, _>(id, &mut ChunkReader::from_bytes(&bytes.buffer)?)
+  LevelSpawnObject::read(id, &mut ChunkReader::from_bytes(&bytes.buffer)?)
 }
 
 fn restrictor_named(name: &str) -> SpawnPacket<AlifeObjectSpaceRestrictor> {
@@ -71,7 +71,7 @@ fn decompile_with_root(
   respawn: &LevelSpawnFile,
   root: &[AlifeObject],
 ) -> XrfResult<LevelEntityDecompile> {
-  LevelEntityConversion::decompile::<XRayByteOrder>(
+  LevelEntityConversion::decompile(
     &LevelEntitySources {
       spawn: Some(spawn),
       respawn: Some(respawn),
@@ -84,7 +84,7 @@ fn decompile_with_root(
 
 // As xrAI builds it into a root spawn: its spawn id, vertices and distance filled in.
 fn built(packet: &SpawnPacket<AlifeObjectSpaceRestrictor>) -> XrfResult<AlifeObject> {
-  let mut object: AlifeObject = listed(packet, 0)?.read_alife_object::<XRayByteOrder>()?;
+  let mut object: AlifeObject = listed(packet, 0)?.read_alife_object()?;
   let base = object.inherited.get_abstract_mut().expect("an abstract object");
 
   base.game_vertex_id = 17;
@@ -98,7 +98,7 @@ fn built(packet: &SpawnPacket<AlifeObjectSpaceRestrictor>) -> XrfResult<AlifeObj
 fn bytes_of(list: Option<&LevelSpawnFile>) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  list.expect("a spawn list").write::<XRayByteOrder>(&mut writer)?;
+  list.expect("a spawn list").write(&mut writer)?;
 
   Ok(writer.buffer)
 }
@@ -152,10 +152,8 @@ fn decompiles_entities_at_their_place_with_their_shapes_attached() -> XrfResult 
 #[test]
 fn exports_entities_back_to_their_spawn_lists() -> XrfResult {
   let (spawn, respawn) = lists()?;
-  let exported: LevelEntityExport = LevelEntityConversion::export::<XRayByteOrder>(&EditableObjectPart::new(
-    GUID,
-    decompile(&spawn, &respawn)?.entities,
-  ))?;
+  let exported: LevelEntityExport =
+    LevelEntityConversion::export(&EditableObjectPart::new(GUID, decompile(&spawn, &respawn)?.entities))?;
 
   assert_eq!(bytes_of(exported.spawn.as_ref())?, bytes_of(Some(&spawn))?);
   assert_eq!(bytes_of(exported.respawn.as_ref())?, bytes_of(Some(&respawn))?);
@@ -179,8 +177,7 @@ fn exports_the_spawn_point_name_place_and_shape_over_the_packet() -> XrfResult {
     radius: 1.5,
   }];
 
-  let exported: LevelEntityExport =
-    LevelEntityConversion::export::<XRayByteOrder>(&EditableObjectPart::new(GUID, entities))?;
+  let exported: LevelEntityExport = LevelEntityConversion::export(&EditableObjectPart::new(GUID, entities))?;
   let mut expected: SpawnPacket<AlifeObjectSpaceRestrictor> = restrictor_named("test_moved");
 
   expected.header.position = Vector3d::new(10.0, 20.0, 30.0);
@@ -232,7 +229,7 @@ fn refuses_to_export_an_entity_of_a_volume_without_a_shape() -> XrfResult {
 
   entities[0].attached = None;
 
-  let error: String = LevelEntityConversion::export::<XRayByteOrder>(&EditableObjectPart::new(GUID, entities))
+  let error: String = LevelEntityConversion::export(&EditableObjectPart::new(GUID, entities))
     .unwrap_err()
     .to_string();
 
@@ -279,8 +276,7 @@ fn takes_a_root_spawns_objects_in_place_of_the_level_spawn_list() -> XrfResult {
     "a restrictor's update packet is empty"
   );
 
-  let exported: LevelEntityExport =
-    LevelEntityConversion::export::<XRayByteOrder>(&EditableObjectPart::new(GUID, decompiled.entities))?;
+  let exported: LevelEntityExport = LevelEntityConversion::export(&EditableObjectPart::new(GUID, decompiled.entities))?;
   let objects: Vec<LevelSpawnObject> = exported.spawn.expect("level.spawn").objects;
 
   assert_eq!(
@@ -299,7 +295,7 @@ fn leaves_out_entities_folded_into_objects() -> XrfResult {
   let root: [AlifeObject; 2] = [built(&restrictor())?, built(&restrictor_named("test_added"))?];
   let folded: [String; 2] = [String::from("test_restrictor"), String::from("test_respawned")];
   let decompile_folded = |root: &[AlifeObject]| {
-    LevelEntityConversion::decompile::<XRayByteOrder>(
+    LevelEntityConversion::decompile(
       &LevelEntitySources {
         spawn: Some(&spawn),
         respawn: Some(&respawn),

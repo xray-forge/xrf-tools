@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -31,8 +30,8 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a spawn list this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Level spawn list was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -45,8 +44,8 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a spawn list this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived list arrives.
@@ -54,8 +53,8 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a spawn list this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -63,8 +62,8 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when a chunk does not open with a spawn packet.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Self::read_from_chunks::<T, D>(reader.read_children()?)
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    Self::read_from_chunks::<D>(reader.read_children()?)
   }
 
   /// Reads from top-level chunks already walked, as for a caller that first asked
@@ -73,13 +72,13 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when a chunk does not open with a spawn packet.
-  pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: Vec<ChunkReader<D>>) -> XrfResult<Self> {
+  pub fn read_from_chunks<D: ChunkDataSource>(chunks: Vec<ChunkReader<D>>) -> XrfResult<Self> {
     let mut objects: Vec<LevelSpawnObject> = Vec::with_capacity(chunks.len());
 
     for mut chunk in chunks {
       let id: u32 = chunk.id;
 
-      objects.push(LevelSpawnObject::read::<T, D>(id, &mut chunk)?);
+      objects.push(LevelSpawnObject::read::<D>(id, &mut chunk)?);
     }
 
     Ok(Self { objects })
@@ -90,12 +89,12 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for object in &self.objects {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      object.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut writer.buffer, object.id)?;
+      object.write(&mut chunk)?;
+      chunk.flush_chunk_into(&mut writer.buffer, object.id)?;
     }
 
     Ok(())
@@ -107,10 +106,10 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when the list cannot be encoded or the file cannot be written.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    self.write::<T>(&mut writer)?;
+    self.write(&mut writer)?;
 
     Ok(StagedFile::write_creating_directories(path.as_ref(), &writer.buffer)?)
   }
@@ -121,11 +120,11 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or a record does not import.
-  pub fn import_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+  pub fn import_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     let mut objects: Vec<LevelSpawnObject> = Vec::new();
 
     LtxRecordReader::read_path(path.as_ref().join(Self::UNPACKED_FILE_NAME), |record| {
-      objects.push(LevelSpawnObject::import_record::<T, _>(record.name(), record)?);
+      objects.push(LevelSpawnObject::import_record(record.name(), record)?);
 
       Ok(())
     })?;
@@ -139,12 +138,12 @@ impl LevelSpawnFile {
   /// # Errors
   ///
   /// Returns an error when an object's record cannot be written, or the file cannot be.
-  pub fn export_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult<LevelSpawnExport> {
+  pub fn export_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult<LevelSpawnExport> {
     let mut ltx: LtxRecordWriter = LtxRecordWriter::new();
     let mut export: LevelSpawnExport = LevelSpawnExport::default();
 
     for (index, object) in self.objects.iter().enumerate() {
-      object.export_record::<T>(index, &mut ltx, &mut export)?;
+      object.export_record(index, &mut ltx, &mut export)?;
     }
 
     ltx.write_to_path(path.as_ref().join(Self::UNPACKED_FILE_NAME))?;
@@ -171,7 +170,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_chunk::{ChunkWriter, XRayByteOrder};
+  use xrf_chunk::ChunkWriter;
   use xrf_error::XrfResult;
   use xrf_test_utils::GeneratedResources;
   use xrf_utils::encode_bytes_to_base64;
@@ -185,16 +184,16 @@ mod tests {
   fn packed(list: &LevelSpawnFile) -> XrfResult<Vec<u8>> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    list.write::<XRayByteOrder>(&mut writer)?;
+    list.write(&mut writer)?;
 
     writer.flush_raw_into_buffer()
   }
 
   fn unpack_and_import(list: &LevelSpawnFile, folder: &str) -> XrfResult<(LevelSpawnFile, LevelSpawnExport, String)> {
     let path: PathBuf = GeneratedResources::create_dir(folder)?;
-    let export: LevelSpawnExport = list.export_to_path::<XRayByteOrder, _>(&path)?;
+    let export: LevelSpawnExport = list.export_to_path(&path)?;
     let text: String = fs::read_to_string(path.join(LevelSpawnFile::UNPACKED_FILE_NAME))?;
-    let imported: LevelSpawnFile = LevelSpawnFile::import_from_path::<XRayByteOrder, _>(&path)?;
+    let imported: LevelSpawnFile = LevelSpawnFile::import_from_path(&path)?;
 
     Ok((imported, export, text))
   }
@@ -303,7 +302,7 @@ mod tests {
     )?;
 
     assert_eq!(
-      LevelSpawnFile::import_from_path::<XRayByteOrder, _>(&path)?,
+      LevelSpawnFile::import_from_path(&path)?,
       LevelSpawnFile { objects: vec![bolt] }
     );
 
@@ -319,7 +318,7 @@ mod tests {
       "[0]\r\nform = sketch\r\n",
     )?;
 
-    let error: String = LevelSpawnFile::import_from_path::<XRayByteOrder, _>(&path)
+    let error: String = LevelSpawnFile::import_from_path(&path)
       .expect_err("an unknown form")
       .to_string();
 

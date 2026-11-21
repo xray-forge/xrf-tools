@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::{assert_length, narrow_format_size};
 
@@ -19,14 +18,14 @@ impl OgfBonesChunk {
 }
 
 impl ChunkReadWrite for OgfBonesChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Reading bones chunk: {} bytes", reader.read_bytes_remain());
 
-    let count: u32 = reader.read_u32::<T>()?;
+    let count: u32 = reader.read_u32()?;
     let mut bones: Vec<OgfBone> = reader.new_bounded_vec(count.into(), OgfBone::MIN_SERIALIZED_SIZE, "ogf bones")?;
 
     for _ in 0..count {
-      bones.push(reader.read_xr::<T, _>()?);
+      bones.push(reader.read_xr()?);
     }
 
     reader.assert_read("Expect all data to be read from ogf bones chunk")?;
@@ -35,11 +34,11 @@ impl ChunkReadWrite for OgfBonesChunk {
     Ok(Self { bones })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(narrow_format_size(self.bones.len(), "ogf bones")?)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(narrow_format_size(self.bones.len(), "ogf bones")?)?;
 
     for bone in &self.bones {
-      writer.write_xr::<T, _>(bone)?;
+      writer.write_xr(bone)?;
     }
 
     Ok(())
@@ -48,7 +47,7 @@ impl ChunkReadWrite for OgfBonesChunk {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
 
   use crate::chunks::skeleton::ogf_bones_chunk::OgfBonesChunk;
@@ -57,7 +56,7 @@ mod tests {
   fn rejects_bone_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[255, 255, 255, 255])?;
 
-    let error: String = OgfBonesChunk::read::<XRayByteOrder, _>(&mut reader)
+    let error: String = OgfBonesChunk::read(&mut reader)
       .expect_err("expect the declared bone count to exceed the chunk")
       .to_string();
 

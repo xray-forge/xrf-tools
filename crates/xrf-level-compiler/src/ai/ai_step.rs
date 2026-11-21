@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, LevelAiFile, LevelAiGraphVerifier, LevelAiGraphVerifyResult};
@@ -35,8 +34,7 @@ impl AiStep {
   pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
     let level: &Path = &request.level;
     let output: PathBuf = level.join(Self::OUTPUT);
-    let aimap: BuildAimapFile =
-      BuildAimapFile::read_from_path::<XRayByteOrder, _>(&level.join(BuildAimapFile::FILE_NAME))?;
+    let aimap: BuildAimapFile = BuildAimapFile::read_from_path(&level.join(BuildAimapFile::FILE_NAME))?;
     let replaced: Option<AiMap> = Self::read_replaced(&output);
     let model: Option<RayModel> = match request.ai_covers {
       AiMapCovers::None => None,

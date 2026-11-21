@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_build_info::{BuildInfo, build_info};
-use xrf_chunk::XRayByteOrder;
 use xrf_output::OutputOptions;
 use xrf_rawdata::{LevelDecompileReport, LevelDecompileRequest, LevelSceneDecompiler, LevelSurfaces};
 
@@ -150,7 +149,7 @@ impl GenericCommand for DecompileCommand {
       is_forced: matches.get_flag("force"),
       link_policy: LinkPolicyArgument::of(matches),
     };
-    let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path::<XRayByteOrder>(
+    let report: LevelDecompileReport = LevelSceneDecompiler::decompile_to_path(
       &request,
       "xrf-cli level decompile",
       &build.get_tool_version(),

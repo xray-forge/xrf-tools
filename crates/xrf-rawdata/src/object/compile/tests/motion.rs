@@ -1,5 +1,4 @@
 use xrf_animation_envelope::AnimationEnvelope;
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::{EditableBoneMotion, EditableMotion, EditableObjectFile};
 use xrf_error::XrfResult;
 use xrf_math::{Quaternion, Vector3d};
@@ -15,7 +14,7 @@ use crate::object::decompile::object_inference::ObjectInference;
 fn run(rotations: &[[i16; 4]], translations: &[Vector3d]) -> XrfResult<(u8, SkeletonBoneMotion)> {
   let mut keys: Vec<u8> = Vec::new();
 
-  MotionKeys::write::<XRayByteOrder>(&mut keys, rotations, translations)?;
+  MotionKeys::write(&mut keys, rotations, translations)?;
 
   let flags: u8 = keys[0];
   let motion: SkeletonMotion = SkeletonMotion {
@@ -24,7 +23,7 @@ fn run(rotations: &[[i16; 4]], translations: &[Vector3d]) -> XrfResult<(u8, Skel
     keys,
   };
 
-  Ok((flags, motion.decode_bone_motions::<XRayByteOrder>(1)?.remove(0)))
+  Ok((flags, motion.decode_bone_motions(1)?.remove(0)))
 }
 
 fn along_x(values: &[f32]) -> Vec<Vector3d> {
@@ -73,7 +72,7 @@ fn playing(motion: EditableMotion) -> XrfResult<EditableObjectFile> {
   let mut object: EditableObjectFile = authored()?;
 
   object.motion_references = None;
-  object.embedded_motions = Some(EditableMotion::write_list::<XRayByteOrder>(&[motion])?);
+  object.embedded_motions = Some(EditableMotion::write_list(&[motion])?);
 
   Ok(object)
 }
@@ -117,7 +116,7 @@ fn samples_each_frame_of_the_objects_own_motion() -> XrfResult {
   let file: OgfFile = compile(&animated(EditableMotion::STOP_AT_END_FLAG)?)?;
   let motions: &[SkeletonMotion] = &file.motions.as_ref().expect("Expect the object's motions").motions;
   let parameters: &SkeletonMotionParametersChunk = file.motion_parameters.as_ref().expect("Expect their parameters");
-  let bones: Vec<SkeletonBoneMotion> = motions[0].decode_bone_motions::<XRayByteOrder>(3)?;
+  let bones: Vec<SkeletonBoneMotion> = motions[0].decode_bone_motions(3)?;
 
   assert_eq!(file.header.model_type, OgfModelType::SkeletonAnim.to_raw());
   assert!(
@@ -161,8 +160,8 @@ fn decompiles_its_motions_into_keys_that_compile_alike() -> XrfResult {
   for (motion, other) in motions(&second).iter().zip(&motions(&first)) {
     assert_eq!((&motion.label, motion.count), (&other.label, other.count));
 
-    let runs: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<XRayByteOrder>(3)?;
-    let others: Vec<SkeletonBoneMotion> = other.decode_bone_motions::<XRayByteOrder>(3)?;
+    let runs: Vec<SkeletonBoneMotion> = motion.decode_bone_motions(3)?;
+    let others: Vec<SkeletonBoneMotion> = other.decode_bone_motions(3)?;
 
     for (run, other) in runs.iter().zip(&others) {
       for frame in 0..motion.count as usize {

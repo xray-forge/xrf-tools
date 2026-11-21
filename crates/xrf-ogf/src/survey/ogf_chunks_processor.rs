@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
 use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
@@ -61,10 +60,10 @@ impl OgfChunksProcessor {
   ///
   /// Rewinds `reader` first, so a caller that has just read the visual through [`crate::OgfFile::read_from_chunk`]
   /// surveys the same bytes without reading or copying them again.
-  pub fn collect_chunks<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<OgfChunkSurvey> {
+  pub fn collect_chunks<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<OgfChunkSurvey> {
     reader.reset_pos()?;
 
-    let (mut chunks, residue) = OgfResidue::read_root_chunks::<T, _>(reader)?;
+    let (mut chunks, residue) = OgfResidue::read_root_chunks(reader)?;
     let mut entries: Vec<OgfChunkEntry> = Vec::new();
 
     Self::walk(&mut chunks, 0, &mut entries)?;
@@ -73,8 +72,8 @@ impl OgfChunksProcessor {
   }
 
   /// Chunk ids present in the visual `reader` opens that the reader does not understand, deduplicated and sorted.
-  pub fn find_unknown_chunk_ids<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
-    let mut unknown: Vec<u32> = Self::collect_chunks::<T, D>(reader)?
+  pub fn find_unknown_chunk_ids<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
+    let mut unknown: Vec<u32> = Self::collect_chunks::<D>(reader)?
       .entries
       .into_iter()
       .map(|it| it.id)

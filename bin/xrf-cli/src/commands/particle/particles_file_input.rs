@@ -1,7 +1,6 @@
 use clap::ArgMatches;
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::core::arguments::InputArgument;
 use crate::core::command::CommandInput;
@@ -21,6 +20,6 @@ impl ParticlesFileInput {
   ///
   /// Returns an error when the file cannot be read or is no particle library.
   pub(crate) fn open(matches: &ArgMatches) -> XrfResult<ParticlesFile> {
-    ParticlesFile::read_from_path::<XRayByteOrder, _>(InputArgument::of(matches))
+    ParticlesFile::read_from_path(InputArgument::of(matches))
   }
 }

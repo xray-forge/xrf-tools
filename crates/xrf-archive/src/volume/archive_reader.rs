@@ -6,8 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use byteorder::ReadBytesExt;
-use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, XRayByteOrder};
+use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, XRayRead};
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::LzhufDecoder;
 use xrf_utils::{
@@ -102,12 +101,12 @@ impl ArchiveReader {
     let mut root_path: Option<String> = None;
 
     loop {
-      let raw_chunk_id: u32 = match self.file.read_u32::<XRayByteOrder>() {
+      let raw_chunk_id: u32 = match self.file.read_u32() {
         Ok(data) => data,
         Err(error) if error.kind() == UnexpectedEof => break,
         Err(error) => return Err(error.into()),
       };
-      let chunk_size: u32 = self.file.read_u32::<XRayByteOrder>()?;
+      let chunk_size: u32 = self.file.read_u32()?;
 
       // A chunk's payload lives in this file, so a declared size beyond it is corruption — checked before the size can
       // reach an allocation.
@@ -225,15 +224,15 @@ impl ArchiveReader {
     let mut name_buffer: [u8; MAXIMUM_ENTRY_NAME_SIZE] = [0u8; MAXIMUM_ENTRY_NAME_SIZE];
 
     loop {
-      let header_size: u16 = match reader.read_u16::<XRayByteOrder>() {
+      let header_size: u16 = match reader.read_u16() {
         Ok(data) => data,
         Err(error) if error.kind() == UnexpectedEof => break,
         Err(error) => return Err(error.into()),
       };
 
-      let size_real: u32 = reader.read_u32::<XRayByteOrder>()?;
-      let size_compressed: u32 = reader.read_u32::<XRayByteOrder>()?;
-      let crc: u32 = reader.read_u32::<XRayByteOrder>()?;
+      let size_real: u32 = reader.read_u32()?;
+      let size_compressed: u32 = reader.read_u32()?;
+      let crc: u32 = reader.read_u32()?;
 
       // Checked: a corrupt header smaller than its own fixed prefix must be an error, not an underflow.
       let name_size: u16 = header_size.checked_sub(DESCRIPTOR_ROW_FIELDS_SIZE).ok_or_else(|| {
@@ -254,7 +253,7 @@ impl ArchiveReader {
 
       reader.read_exact(name_bytes)?;
 
-      let offset: u32 = reader.read_u32::<XRayByteOrder>()?;
+      let offset: u32 = reader.read_u32()?;
       let name: Arc<str> = Arc::from(decode_bytes_to_string_without_bom_handling(
         name_bytes,
         Self::header_encoding(),
@@ -275,8 +274,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use byteorder::{LittleEndian, WriteBytesExt};
-  use xrf_chunk::CHUNK_ID_COMPRESSED_MASK;
+  use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, XRayWrite};
   use xrf_lzhuf::LzhufEncoder;
   use xrf_test_utils::GeneratedResources;
 
@@ -316,8 +314,8 @@ mod tests {
     // Chunk id 1, declared size u32::MAX: the size must be rejected against the file length before any allocation.
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes.write_u32::<LittleEndian>(1).expect("chunk id");
-    bytes.write_u32::<LittleEndian>(u32::MAX).expect("chunk size");
+    bytes.write_u32(1).expect("chunk id");
+    bytes.write_u32(u32::MAX).expect("chunk size");
 
     let path: PathBuf = volume("absurd_size.db0", &bytes);
     let error = ArchiveReader::from_path(&path)
@@ -333,17 +331,15 @@ mod tests {
     // Chunk id 1 holding one descriptor whose header_size (8) is smaller than the fixed 16-byte prefix.
     let mut descriptors: Vec<u8> = Vec::new();
 
-    descriptors.write_u16::<LittleEndian>(8).expect("header size");
-    descriptors.write_u32::<LittleEndian>(0).expect("size real");
-    descriptors.write_u32::<LittleEndian>(0).expect("size compressed");
-    descriptors.write_u32::<LittleEndian>(0).expect("crc");
+    descriptors.write_u16(8).expect("header size");
+    descriptors.write_u32(0).expect("size real");
+    descriptors.write_u32(0).expect("size compressed");
+    descriptors.write_u32(0).expect("crc");
 
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes.write_u32::<LittleEndian>(1).expect("chunk id");
-    bytes
-      .write_u32::<LittleEndian>(descriptors.len() as u32)
-      .expect("chunk size");
+    bytes.write_u32(1).expect("chunk id");
+    bytes.write_u32(descriptors.len() as u32).expect("chunk size");
     bytes.extend_from_slice(&descriptors);
 
     let path: PathBuf = volume("short_header.db0", &bytes);
@@ -360,13 +356,11 @@ mod tests {
     let metadata: &[u8] = b"[header]\r\nauto_load = true\r\n";
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes.write_u32::<LittleEndian>(666).expect("chunk id");
-    bytes
-      .write_u32::<LittleEndian>(metadata.len() as u32)
-      .expect("chunk size");
+    bytes.write_u32(666).expect("chunk id");
+    bytes.write_u32(metadata.len() as u32).expect("chunk size");
     bytes.extend_from_slice(metadata);
-    bytes.write_u32::<LittleEndian>(1).expect("chunk id");
-    bytes.write_u32::<LittleEndian>(0).expect("chunk size");
+    bytes.write_u32(1).expect("chunk id");
+    bytes.write_u32(0).expect("chunk size");
 
     let path: PathBuf = volume("no_entry_point.db0", &bytes);
     let error = ArchiveReader::from_path(&path)
@@ -382,18 +376,16 @@ mod tests {
     // A descriptor declaring a 20-character name the chunk does not contain.
     let mut descriptors: Vec<u8> = Vec::new();
 
-    descriptors.write_u16::<LittleEndian>(36).expect("header size");
-    descriptors.write_u32::<LittleEndian>(4).expect("size real");
-    descriptors.write_u32::<LittleEndian>(4).expect("size compressed");
-    descriptors.write_u32::<LittleEndian>(0).expect("crc");
+    descriptors.write_u16(36).expect("header size");
+    descriptors.write_u32(4).expect("size real");
+    descriptors.write_u32(4).expect("size compressed");
+    descriptors.write_u32(0).expect("crc");
     descriptors.extend_from_slice(b"tru"); // 3 bytes where 20 were declared.
 
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes.write_u32::<LittleEndian>(1).expect("chunk id");
-    bytes
-      .write_u32::<LittleEndian>(descriptors.len() as u32)
-      .expect("chunk size");
+    bytes.write_u32(1).expect("chunk id");
+    bytes.write_u32(descriptors.len() as u32).expect("chunk size");
     bytes.extend_from_slice(&descriptors);
 
     let path: PathBuf = volume("truncated.db0", &bytes);
@@ -412,25 +404,19 @@ mod tests {
     let name: &[u8] = b"meshes\\crate.ogf";
     let mut descriptors: Vec<u8> = Vec::new();
 
-    descriptors
-      .write_u16::<LittleEndian>(16 + name.len() as u16)
-      .expect("header size");
-    descriptors.write_u32::<LittleEndian>(4).expect("size real");
-    descriptors.write_u32::<LittleEndian>(4).expect("size compressed");
-    descriptors.write_u32::<LittleEndian>(7).expect("crc");
+    descriptors.write_u16(16 + name.len() as u16).expect("header size");
+    descriptors.write_u32(4).expect("size real");
+    descriptors.write_u32(4).expect("size compressed");
+    descriptors.write_u32(7).expect("crc");
     descriptors.extend_from_slice(name);
-    descriptors.write_u32::<LittleEndian>(0).expect("offset");
+    descriptors.write_u32(0).expect("offset");
 
     let stored: Vec<u8> =
       ArchiveHeaderCipher::Russian.encode(&LzhufEncoder::compress(&descriptors).expect("table compresses"));
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes
-      .write_u32::<LittleEndian>(CHUNK_ID_COMPRESSED_MASK | 1)
-      .expect("chunk id");
-    bytes
-      .write_u32::<LittleEndian>(stored.len() as u32)
-      .expect("chunk size");
+    bytes.write_u32(CHUNK_ID_COMPRESSED_MASK | 1).expect("chunk id");
+    bytes.write_u32(stored.len() as u32).expect("chunk size");
     bytes.extend_from_slice(&stored);
 
     let path: PathBuf = volume("enciphered.db0", &bytes);
@@ -448,19 +434,17 @@ mod tests {
     // A 520-byte name fills the engine's buffer and leaves no room for its terminator.
     let mut descriptors: Vec<u8> = Vec::new();
 
-    descriptors.write_u16::<LittleEndian>(16 + 520).expect("header size");
-    descriptors.write_u32::<LittleEndian>(0).expect("size real");
-    descriptors.write_u32::<LittleEndian>(0).expect("size compressed");
-    descriptors.write_u32::<LittleEndian>(0).expect("crc");
+    descriptors.write_u16(16 + 520).expect("header size");
+    descriptors.write_u32(0).expect("size real");
+    descriptors.write_u32(0).expect("size compressed");
+    descriptors.write_u32(0).expect("crc");
     descriptors.extend_from_slice(&[b'a'; 520]);
-    descriptors.write_u32::<LittleEndian>(0).expect("offset");
+    descriptors.write_u32(0).expect("offset");
 
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes.write_u32::<LittleEndian>(1).expect("chunk id");
-    bytes
-      .write_u32::<LittleEndian>(descriptors.len() as u32)
-      .expect("chunk size");
+    bytes.write_u32(1).expect("chunk id");
+    bytes.write_u32(descriptors.len() as u32).expect("chunk size");
     bytes.extend_from_slice(&descriptors);
 
     let path: PathBuf = volume("long_name.db0", &bytes);

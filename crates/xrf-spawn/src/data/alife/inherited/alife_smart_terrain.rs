@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -50,8 +49,8 @@ impl AlifeSmartTerrain {
 
 impl ChunkFieldReadWrite for AlifeSmartTerrain {
   /// Read ALife smart terrain data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    let base: AlifeSmartZone = reader.read_xr::<T, AlifeSmartZone>()?;
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    let base: AlifeSmartZone = reader.read_xr::<AlifeSmartZone>()?;
     let [
       arriving_objects_count,
       object_job_descriptors_count,
@@ -59,7 +58,7 @@ impl ChunkFieldReadWrite for AlifeSmartTerrain {
       smart_terrain_actor_control,
       respawn_point,
       staying_objects_count,
-    ] = ScriptSaveMarker::read_or_constructed::<T, _, _>(
+    ] = ScriptSaveMarker::read_or_constructed(
       reader,
       Self::SCRIPT_CLASS,
       || [0; 6],
@@ -90,12 +89,12 @@ impl ChunkFieldReadWrite for AlifeSmartTerrain {
   }
 
   /// Write smart terrain data into the writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     self.assert_compiled_state()?;
 
-    writer.write_xr::<T, _>(&self.base)?;
+    writer.write_xr(&self.base)?;
 
-    ScriptSaveMarker::write::<T, _>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write(writer, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.arriving_objects_count)?;
       writer.write_u8(self.object_job_descriptors_count)?;
       writer.write_u8(self.dead_objects_infos_count)?;
@@ -149,7 +148,7 @@ impl LtxImportExport for AlifeSmartTerrain {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
   use xrf_math::{Affine3d, Sphere, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -204,13 +203,12 @@ mod tests {
     let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
     let original: AlifeSmartTerrain = new_terrain();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 114);
     assert_eq!(writer.buffer[112..], [6, 0]);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 114);
 
@@ -220,7 +218,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeSmartTerrain::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeSmartTerrain::read(&mut reader)?, original);
 
     Ok(())
   }
@@ -233,7 +231,7 @@ mod tests {
     terrain.respawn_point = 1;
 
     let error: String = terrain
-      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .write(&mut ChunkWriter::new())
       .expect_err("a respawn point without its records")
       .to_string();
 

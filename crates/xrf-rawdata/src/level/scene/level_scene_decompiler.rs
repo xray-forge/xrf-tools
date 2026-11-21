@@ -1,7 +1,6 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use byteorder::ByteOrder;
 use xrf_editable_level::{EditableLevelGuid, EditableLevelPart};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobScope};
@@ -105,8 +104,8 @@ impl LevelSceneDecompiler {
   ///
   /// Returns an error when the directory holds none of [`Self::get_source_files`], a file cannot be read or is not
   /// what its name says, the root spawn cannot be read or lacks an objects chunk or graph, or a step refuses its data.
-  pub fn decompile<T: ByteOrder>(directory: &Path, options: &LevelDecompileOptions) -> XrfResult<LevelSceneDecompile> {
-    Self::decompile_with::<T>(directory, options, &JobHandle::inert())
+  pub fn decompile(directory: &Path, options: &LevelDecompileOptions) -> XrfResult<LevelSceneDecompile> {
+    Self::decompile_with(directory, options, &JobHandle::inert())
   }
 
   /// [`Self::decompile`], reporting each step to `job` and stopping once it is cancelled: between steps, and between
@@ -115,7 +114,7 @@ impl LevelSceneDecompiler {
   /// # Errors
   ///
   /// As [`Self::decompile`], or a cancelled error once `job` is cancelled.
-  pub fn decompile_with<T: ByteOrder>(
+  pub fn decompile_with(
     directory: &Path,
     options: &LevelDecompileOptions,
     job: &JobHandle,
@@ -139,16 +138,14 @@ impl LevelSceneDecompiler {
     let root_spawn: Option<LevelRootSpawn> = options
       .root_spawn
       .as_deref()
-      .map(|path| LevelRootSpawn::read::<T>(path, directory))
+      .map(|path| LevelRootSpawn::read(path, directory))
       .transpose()?;
     let guid: EditableLevelGuid = sources.get_guid(root_spawn.as_ref().and_then(LevelRootSpawn::get_guid_hash));
-    let spawn: Option<LevelSpawnFile> = sources.take_read(
-      LevelEntityConversion::SPAWN_FILE_NAME,
-      LevelSpawnFile::read_from_bytes::<T>,
-    )?;
+    let spawn: Option<LevelSpawnFile> =
+      sources.take_read(LevelEntityConversion::SPAWN_FILE_NAME, LevelSpawnFile::read_from_bytes)?;
     let respawn: Option<LevelSpawnFile> = sources.take_read(
       LevelEntityConversion::RESPAWN_FILE_NAME,
-      LevelSpawnFile::read_from_bytes::<T>,
+      LevelSpawnFile::read_from_bytes,
     )?;
     let object_library: LevelObjectLibrary = LevelObjectLibrary::list(&options.libraries)?;
     let mut draft: LevelSceneDraft = LevelSceneDraft::new(
@@ -162,19 +159,19 @@ impl LevelSceneDecompiler {
     );
 
     begin(1)?;
-    LevelMapStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelMapStep::decompile(&mut sources, options, &mut draft)?;
     begin(2)?;
-    LevelGeometryStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelGeometryStep::decompile(&mut sources, options, &mut draft)?;
     begin(3)?;
-    LevelBundleStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelBundleStep::decompile(&mut sources, options, &mut draft)?;
     begin(4)?;
-    LevelCompanionStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelCompanionStep::decompile(&mut sources, options, &mut draft)?;
     begin(5)?;
-    LevelDetailStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelDetailStep::decompile(&mut sources, options, &mut draft)?;
     begin(6)?;
-    LevelAiMapStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelAiMapStep::decompile(&mut sources, options, &mut draft)?;
     begin(7)?;
-    LevelGameStep::decompile::<T>(&mut sources, options, &mut draft)?;
+    LevelGameStep::decompile(&mut sources, options, &mut draft)?;
     steps.advance();
 
     Ok(draft.finish(options, &sources))
@@ -190,7 +187,7 @@ impl LevelSceneDecompiler {
   /// [`LevelDecompileRequest::get_object_outputs`]); when the decompile fails or is cancelled; unforced, when a library
   /// copy or texture it writes exists; when a link the request's policy refuses stands where a file goes; or when a
   /// file does not write or a stale one is not removed.
-  pub fn decompile_to_path<T: ByteOrder>(
+  pub fn decompile_to_path(
     request: &LevelDecompileRequest,
     tool: &str,
     tool_version: &str,
@@ -204,7 +201,7 @@ impl LevelSceneDecompiler {
     scene_outputs.assert_free(request.is_forced)?;
     object_outputs.assert_free(request.is_forced)?;
 
-    let decompiled: LevelSceneDecompile = Self::decompile_with::<T>(source, &options, job)?;
+    let decompiled: LevelSceneDecompile = Self::decompile_with(source, &options, job)?;
     // Resolved before anything is removed or written, so a name that would leave its root refuses the whole run.
     let written_scene: Vec<PathBuf> = decompiled.get_written_scene_paths(destination)?;
     let written_objects: Vec<PathBuf> = decompiled.get_written_object_paths(&objects)?;
@@ -241,7 +238,7 @@ impl LevelSceneDecompiler {
           .and_then(OsStr::to_str)
           .is_some_and(EditableLevelPart::is_part_file_name)
       })?);
-      decompiled.write_checked::<T>(write)?;
+      decompiled.write_checked(write)?;
       // The family's names are the SDK's too: only what a decompile's sidecar marks is this run's to remove.
       removed.extend(object_outputs.remove_stale_where(&written_objects, ObjectProvenance::is_decompiled)?);
     }

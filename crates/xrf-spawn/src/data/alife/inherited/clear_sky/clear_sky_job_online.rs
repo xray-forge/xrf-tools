@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -70,7 +69,7 @@ impl ClearSkyJobOnline {
 }
 
 impl ChunkFieldReadWrite for ClearSkyJobOnline {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(match reader.read_u8()? {
       Self::ONLINE => Self::Online,
       Self::OFFLINE => Self::Offline,
@@ -85,7 +84,7 @@ impl ChunkFieldReadWrite for ClearSkyJobOnline {
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     match self {
       Self::Online => writer.write_u8(Self::ONLINE),
       Self::Offline => writer.write_u8(Self::OFFLINE),
@@ -100,7 +99,7 @@ impl ChunkFieldReadWrite for ClearSkyJobOnline {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
 
@@ -119,13 +118,13 @@ mod tests {
     ] {
       let mut writer: ChunkWriter = ChunkWriter::new();
 
-      value.write::<XRayByteOrder>(&mut writer)?;
+      value.write(&mut writer)?;
 
       assert_eq!(writer.buffer, bytes);
 
       let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
 
-      assert_eq!(ClearSkyJobOnline::read::<XRayByteOrder, _>(&mut reader)?, value);
+      assert_eq!(ClearSkyJobOnline::read(&mut reader)?, value);
       assert!(reader.is_ended());
 
       let mut ltx: Ltx = Ltx::new();
@@ -145,9 +144,7 @@ mod tests {
   #[test]
   fn refuses_a_kind_it_would_write_back_otherwise() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(b"\x04x\0")?;
-    let error: String = ClearSkyJobOnline::read::<XRayByteOrder, _>(&mut reader)
-      .expect_err("kind 4")
-      .to_string();
+    let error: String = ClearSkyJobOnline::read(&mut reader).expect_err("kind 4").to_string();
 
     assert!(error.contains("Job online kind 4"), "{error}");
 

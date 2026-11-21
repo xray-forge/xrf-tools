@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use xrf_chunk::{ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_chunk::{ChunkWriter, InMemoryChunkDataSource};
 use xrf_dds::RgbaImage;
 use xrf_editable_level::{EditableObjectTransform, EditableSectorItem};
 use xrf_editable_object::EditableObjectFile;
@@ -53,7 +53,7 @@ fn chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {
 
   writer.buffer = payload.to_vec();
 
-  writer.flush_chunk_into_buffer::<XRayByteOrder>(id)
+  writer.flush_chunk_into_buffer(id)
 }
 
 fn geometry(squares: &[[[f32; 3]; 4]]) -> XrfResult<LevelGeomSource<InMemoryChunkDataSource>> {
@@ -82,7 +82,7 @@ fn geometry(squares: &[[[f32; 3]; 4]]) -> XrfResult<LevelGeomSource<InMemoryChun
 
   bytes.extend(chunk(LevelGeomFile::INDEX_BUFFERS_CHUNK_ID, &indices)?);
 
-  LevelGeomSource::open_from_bytes::<XRayByteOrder>(bytes)
+  LevelGeomSource::open_from_bytes(bytes)
 }
 
 fn header(model_type: u8) -> OgfHeaderChunk {
@@ -201,7 +201,7 @@ fn decompile_from(
   library: Option<&LevelInstanceLibrary>,
   impostors: Option<&LevelTreeImpostorAtlas>,
 ) -> XrfResult<LevelGeometryDecompile> {
-  LevelGeometryConversion::decompile::<XRayByteOrder, _>(
+  LevelGeometryConversion::decompile(
     LevelGeometrySources {
       name: "test",
       level,
@@ -963,7 +963,7 @@ fn drops_the_static_copies_of_wall_marks() -> XrfResult {
       }],
     }],
   };
-  let decompiled: LevelGeometryDecompile = LevelGeometryConversion::decompile::<XRayByteOrder, _>(
+  let decompiled: LevelGeometryDecompile = LevelGeometryConversion::decompile(
     LevelGeometrySources {
       name: "test",
       level: &level((0, 1)),

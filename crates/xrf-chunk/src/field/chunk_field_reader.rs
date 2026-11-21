@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::read_write::chunk_field_read_write::ChunkFieldReadWrite;
@@ -15,16 +14,16 @@ pub trait ChunkFieldReader {
 
   fn read_u8(&mut self) -> XrfResult<u8>;
 
-  fn read_u16<T: ByteOrder>(&mut self) -> XrfResult<u16>;
+  fn read_u16(&mut self) -> XrfResult<u16>;
 
-  fn read_u32<T: ByteOrder>(&mut self) -> XrfResult<u32>;
+  fn read_u32(&mut self) -> XrfResult<u32>;
 
-  fn read_u64<T: ByteOrder>(&mut self) -> XrfResult<u64>;
+  fn read_u64(&mut self) -> XrfResult<u64>;
 
-  fn read_f32<T: ByteOrder>(&mut self) -> XrfResult<f32>;
+  fn read_f32(&mut self) -> XrfResult<f32>;
 
   /// Three floats as one value, `r_vec3`.
-  fn read_vector3<T: ByteOrder>(&mut self) -> XrfResult<[f32; 3]>;
+  fn read_vector3(&mut self) -> XrfResult<[f32; 3]>;
 
   /// A null-terminated Windows-1251 string, `r_stringZ`.
   fn read_w1251_string(&mut self) -> XrfResult<String>;
@@ -51,31 +50,31 @@ pub trait ChunkFieldReader {
     Ok(Vec::new())
   }
 
-  fn read_xr<T: ByteOrder, V: ChunkFieldReadWrite>(&mut self) -> XrfResult<V>
+  fn read_xr<V: ChunkFieldReadWrite>(&mut self) -> XrfResult<V>
   where
     Self: Sized,
   {
-    V::read_fields::<T, Self>(self)
+    V::read_fields::<Self>(self)
   }
 
-  fn read_xr_list<T: ByteOrder, V: ChunkFieldReadWriteList>(&mut self) -> XrfResult<Vec<V>>
+  fn read_xr_list<V: ChunkFieldReadWriteList>(&mut self) -> XrfResult<Vec<V>>
   where
     Self: Sized,
   {
-    V::read_field_list::<T, Self>(self)
+    V::read_field_list::<Self>(self)
   }
 
-  fn read_xr_optional<T: ByteOrder, V: ChunkFieldReadWriteOptional>(&mut self) -> XrfResult<Option<V>>
+  fn read_xr_optional<V: ChunkFieldReadWriteOptional>(&mut self) -> XrfResult<Option<V>>
   where
     Self: Sized,
   {
-    V::read_field_optional::<T, Self>(self)
+    V::read_field_optional::<Self>(self)
   }
 
   /// An `xr_vector<u16>` as `load_data` reads it: a `u32` count, then each.
-  fn read_u16_vector<T: ByteOrder>(&mut self) -> XrfResult<Vec<u16>> {
-    let count: u32 = self.read_u32::<T>()?;
+  fn read_u16_vector(&mut self) -> XrfResult<Vec<u16>> {
+    let count: u32 = self.read_u32()?;
 
-    (0..count).map(|_| self.read_u16::<T>()).collect()
+    (0..count).map(|_| self.read_u16()).collect()
   }
 }

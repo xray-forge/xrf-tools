@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt};
+use xrf_chunk::XRayRead;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::{Quaternion, Vector3d};
 
@@ -42,24 +42,24 @@ impl<'a> SkeletonMotionCursor<'a> {
     Ok(self.take(1)?[0])
   }
 
-  pub(crate) fn read_rotation<T: ByteOrder>(&mut self) -> XrfResult<Quaternion> {
+  pub(crate) fn read_rotation(&mut self) -> XrfResult<Quaternion> {
     let mut bytes: &[u8] = self.take(Self::ROTATION_KEY_SIZE)?;
 
     Ok(Quaternion {
-      x: f32::from(bytes.read_i16::<T>()?) / Self::KEY_QUANT,
-      y: f32::from(bytes.read_i16::<T>()?) / Self::KEY_QUANT,
-      z: f32::from(bytes.read_i16::<T>()?) / Self::KEY_QUANT,
-      w: f32::from(bytes.read_i16::<T>()?) / Self::KEY_QUANT,
+      x: f32::from(bytes.read_i16()?) / Self::KEY_QUANT,
+      y: f32::from(bytes.read_i16()?) / Self::KEY_QUANT,
+      z: f32::from(bytes.read_i16()?) / Self::KEY_QUANT,
+      w: f32::from(bytes.read_i16()?) / Self::KEY_QUANT,
     })
   }
 
-  pub(crate) fn read_translation_key_16<T: ByteOrder>(&mut self) -> XrfResult<[f32; 3]> {
+  pub(crate) fn read_translation_key_16(&mut self) -> XrfResult<[f32; 3]> {
     let mut bytes: &[u8] = self.take(Self::TRANSLATION_KEY_16_SIZE)?;
 
     Ok([
-      f32::from(bytes.read_i16::<T>()?),
-      f32::from(bytes.read_i16::<T>()?),
-      f32::from(bytes.read_i16::<T>()?),
+      f32::from(bytes.read_i16()?),
+      f32::from(bytes.read_i16()?),
+      f32::from(bytes.read_i16()?),
     ])
   }
 
@@ -73,13 +73,13 @@ impl<'a> SkeletonMotionCursor<'a> {
     ])
   }
 
-  pub(crate) fn read_vector<T: ByteOrder>(&mut self) -> XrfResult<Vector3d> {
+  pub(crate) fn read_vector(&mut self) -> XrfResult<Vector3d> {
     let mut bytes: &[u8] = self.take(3 * size_of::<f32>())?;
 
     Ok(Vector3d {
-      x: bytes.read_f32::<T>()?,
-      y: bytes.read_f32::<T>()?,
-      z: bytes.read_f32::<T>()?,
+      x: bytes.read_f32()?,
+      y: bytes.read_f32()?,
+      z: bytes.read_f32()?,
     })
   }
 

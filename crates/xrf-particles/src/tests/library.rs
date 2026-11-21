@@ -1,7 +1,6 @@
 //! Editing a library as the SDK's particle editor does: adding, renaming and removing effects and groups, and the
 //! faults it refuses to save over.
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
 use crate::{
@@ -27,7 +26,7 @@ fn effect(name: &str) -> XrfResult<ParticleEffect> {
     editor_data: None,
   };
 
-  effect.set_editor_actions::<XRayByteOrder>(&[ParticleEditorAction::new(ParticleActionType::KillOld)?])?;
+  effect.set_editor_actions(&[ParticleEditorAction::new(ParticleActionType::KillOld)?])?;
 
   Ok(effect)
 }
@@ -161,7 +160,7 @@ fn finds_the_faults_the_sdk_refuses_to_save() -> XrfResult {
   let mut file: ParticlesFile = library();
   let mut endless: ParticleEffect = effect("fx\\endless")?;
 
-  endless.set_editor_actions::<XRayByteOrder>(&[ParticleEditorAction::new(ParticleActionType::Move)?])?;
+  endless.set_editor_actions(&[ParticleEditorAction::new(ParticleActionType::Move)?])?;
 
   file.insert_effect(effect("fx\\smoke")?)?;
   file.insert_effect(endless)?;
@@ -177,7 +176,7 @@ fn finds_the_faults_the_sdk_refuses_to_save() -> XrfResult {
   ))?;
 
   assert_eq!(
-    file.validate::<XRayByteOrder>(),
+    file.validate(),
     [
       ParticlesFileIssue::MissingKillOld {
         effect: String::from("fx\\endless")

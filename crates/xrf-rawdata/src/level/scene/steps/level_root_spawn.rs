@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_spawn::{AlifeObject, SpawnFile, SpawnLevelObjects};
@@ -23,7 +22,7 @@ impl LevelRootSpawn {
   ///
   /// Returns an error when the spawn cannot be read or holds no objects chunk or graph, or the directory names no
   /// level.
-  pub(crate) fn read<T: ByteOrder>(path: &Path, directory: &Path) -> XrfResult<Self> {
+  pub(crate) fn read(path: &Path, directory: &Path) -> XrfResult<Self> {
     let bytes: Vec<u8> = std::fs::read(path)
       .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))?;
     let sha256: String = Sidecar::get_sha256_hex(&bytes);
@@ -32,7 +31,7 @@ impl LevelRootSpawn {
       .and_then(|name| name.to_str())
       .ok_or_else(|| XrfError::new_invalid_error(format!("{} names no level", format_path(directory))))?;
     let chunks = ChunkReader::from_vec(bytes)?.read_children()?;
-    let objects: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks::<T, _>(&chunks, level)?;
+    let objects: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks(&chunks, level)?;
 
     Ok(Self {
       record: LevelSceneRootSpawn {

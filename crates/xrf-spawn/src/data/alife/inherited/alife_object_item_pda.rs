@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -25,28 +24,28 @@ impl AlifePacketsReadWrite for AlifeObjectItemPda {
   }
 
   /// Read pda object data from both packets; its own fields are all in the spawn packet.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectItem::read::<T, _, _>(spawn, update, layout)?,
-      owner: spawn.read_u16::<T>()?,
+      base: AlifeObjectItem::read(spawn, update, layout)?,
+      owner: spawn.read_u16()?,
       character: spawn.read_w1251_string()?,
       info_portion: spawn.read_w1251_string()?,
     })
   }
 
   /// Write pda object data into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
-    spawn.write_u16::<T>(self.owner)?;
+    self.base.write(spawn, update, layout)?;
+    spawn.write_u16(self.owner)?;
     spawn.write_w1251_string(&self.character)?;
     spawn.write_w1251_string(&self.info_portion)?;
 
@@ -87,7 +86,6 @@ impl AlifePacketsReadWrite for AlifeObjectItemPda {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -110,10 +108,7 @@ mod tests {
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectItemPda = new_object();
 
-    assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
-      (77, 54, original)
-    );
+    assert_eq!(original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?, (77, 54, original));
 
     Ok(())
   }

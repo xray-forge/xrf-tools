@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 
@@ -29,7 +28,7 @@ impl ArchiveGameMtlDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not a material library this reader can walk.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: GameMtlFile = GameMtlFile::read_from_bytes(source.read_bytes(name)?)?;
 
     Ok(Self {
       version: file.version,

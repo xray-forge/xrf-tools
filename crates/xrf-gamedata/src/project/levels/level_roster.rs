@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
-use xrf_spawn::{SpawnFile, SpawnGraphsChunk, XRayByteOrder};
+use xrf_spawn::{SpawnFile, SpawnGraphsChunk};
 
 use crate::project::levels::roster_level::RosterLevel;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
@@ -36,7 +36,7 @@ impl LevelRoster {
       let graphs: SpawnGraphsChunk = project
         .read_bytes(path)
         .and_then(ChunkReader::from_vec)
-        .and_then(|mut chunk| SpawnFile::read_graphs_from_chunk::<XRayByteOrder, _>(&mut chunk))
+        .and_then(|mut chunk| SpawnFile::read_graphs_from_chunk(&mut chunk))
         .map_err(|error| {
           XrfError::new_verify_error(format!("Failed to read level roster from spawn file {source}: {error}"))
         })?;

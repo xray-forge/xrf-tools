@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -44,18 +43,18 @@ impl AlifeObjectMonsterAbstract {
 impl AlifeObjectMonsterAbstract {
   /// `m_task_reached`, a `bool` the bytes hold raw and fields as a `u16` of 0 or 1
   /// (`CSE_ALifeMonsterAbstract::STATE_Read`).
-  fn read_task_reached<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<u8> {
+  fn read_task_reached<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<u8> {
     if reader.is_field_form() {
-      Ok(u8::from(reader.read_u16::<T>()? != 0))
+      Ok(u8::from(reader.read_u16()? != 0))
     } else {
       reader.read_u8()
     }
   }
 
   /// As `CSE_ALifeMonsterAbstract::STATE_Write` writes it.
-  fn write_task_reached<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_task_reached<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     if writer.is_field_form() {
-      writer.write_u16::<T>(u16::from(self.task_reached != 0))
+      writer.write_u16(u16::from(self.task_reached != 0))
     } else {
       writer.write_u8(self.task_reached)
     }
@@ -74,42 +73,42 @@ impl AlifePacketsReadWrite for AlifeObjectMonsterAbstract {
   }
 
   /// Read the monster from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectCreature::read::<T, _, _>(spawn, update, layout)?,
+      base: AlifeObjectCreature::read(spawn, update, layout)?,
       out_space_restrictors: spawn.read_w1251_string()?,
       in_space_restrictors: spawn.read_w1251_string()?,
-      smart_terrain_id: spawn.read_u16::<T>()?,
-      task_reached: Self::read_task_reached::<T, _>(spawn)?,
-      update_next_game_vertex_id: update.read_u16::<T>()?,
-      update_previous_game_vertex_id: update.read_u16::<T>()?,
-      update_distance_from_point: update.read_f32::<T>()?,
-      update_distance_to_point: update.read_f32::<T>()?,
+      smart_terrain_id: spawn.read_u16()?,
+      task_reached: Self::read_task_reached(spawn)?,
+      update_next_game_vertex_id: update.read_u16()?,
+      update_previous_game_vertex_id: update.read_u16()?,
+      update_distance_from_point: update.read_f32()?,
+      update_distance_to_point: update.read_f32()?,
     })
   }
 
   /// Write the monster into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
     spawn.write_w1251_string(&self.out_space_restrictors)?;
     spawn.write_w1251_string(&self.in_space_restrictors)?;
-    spawn.write_u16::<T>(self.smart_terrain_id)?;
-    self.write_task_reached::<T, _>(spawn)?;
+    spawn.write_u16(self.smart_terrain_id)?;
+    self.write_task_reached(spawn)?;
 
-    update.write_u16::<T>(self.update_next_game_vertex_id)?;
-    update.write_u16::<T>(self.update_previous_game_vertex_id)?;
-    update.write_f32::<T>(self.update_distance_from_point)?;
-    update.write_f32::<T>(self.update_distance_to_point)?;
+    update.write_u16(self.update_next_game_vertex_id)?;
+    update.write_u16(self.update_previous_game_vertex_id)?;
+    update.write_f32(self.update_distance_from_point)?;
+    update.write_f32(self.update_distance_to_point)?;
 
     Ok(())
   }
@@ -179,7 +178,6 @@ impl AlifeObjectMonsterAbstract {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -210,7 +208,7 @@ mod tests {
     let original: AlifeObjectMonsterAbstract = new_object();
 
     assert_eq!(
-      original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?,
+      original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?,
       (88 + 36 + 14 + 2 + 1, 40 + 12, original)
     );
 

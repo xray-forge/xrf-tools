@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -40,24 +39,24 @@ impl ParticlesFile {
   ];
 
   /// Read particles from provided path.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path)?)
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path)?)
   }
 
   /// Read particles from file.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from a chunk reader over any data source.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    Self::read_from_chunks::<T, _>(&chunks)
+    Self::read_from_chunks(&chunks)
   }
 
   /// Reads a library from its root chunks, as `CPSLibrary::Load` does: the header is required, and a library without
@@ -67,7 +66,7 @@ impl ParticlesFile {
   ///
   /// Returns an error when the header is missing or is not version 1, when a root chunk is one the engine does not
   /// read, which a rewrite would drop, or when a first-generation chunk is present, which this crate does not read.
-  pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+  pub fn read_from_chunks<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     assert(
       !chunks.iter().any(|it| it.id == ParticlesFirstgenChunk::CHUNK_ID),
       "Unexpected first-gen chunk in particles file, unpacking not implemented",
@@ -82,29 +81,29 @@ impl ParticlesFile {
     }
 
     Ok(Self {
-      header: ChunkReader::find_required_by_id(chunks, ParticlesHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      header: ChunkReader::find_required_by_id(chunks, ParticlesHeaderChunk::CHUNK_ID)?.read_xr()?,
       effects: ChunkReader::find_optional_by_id(chunks, ParticlesEffectsChunk::CHUNK_ID)
-        .map(|mut it| it.read_xr::<T, _>())
+        .map(|mut it| it.read_xr())
         .transpose()?
         .unwrap_or_default(),
       groups: ChunkReader::find_optional_by_id(chunks, ParticlesGroupsChunk::CHUNK_ID)
-        .map(|mut it| it.read_xr::<T, _>())
+        .map(|mut it| it.read_xr())
         .transpose()?
         .unwrap_or_default(),
     })
   }
 
   /// Write particles file data to the file by provided path.
-  pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
+  pub fn write_to_path<P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut bytes)?;
+    self.write_to(&mut bytes)?;
 
     Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
   /// Write particles file data to the writer.
-  pub fn write_to<T: ByteOrder>(&self, writer: &mut dyn Write) -> XrfResult {
+  pub fn write_to(&self, writer: &mut dyn Write) -> XrfResult {
     log::info!(
       "Writing particles file: version {}, {} effects, {} groups",
       self.header.version,
@@ -113,16 +112,16 @@ impl ParticlesFile {
     );
 
     let mut header_chunk_writer: ChunkWriter = ChunkWriter::new();
-    header_chunk_writer.write_xr::<T, _>(&self.header)?;
-    header_chunk_writer.flush_chunk_into::<T>(writer, ParticlesHeaderChunk::CHUNK_ID)?;
+    header_chunk_writer.write_xr(&self.header)?;
+    header_chunk_writer.flush_chunk_into(writer, ParticlesHeaderChunk::CHUNK_ID)?;
 
     let mut effects_chunk_writer: ChunkWriter = ChunkWriter::new();
-    effects_chunk_writer.write_xr::<T, _>(&self.effects)?;
-    effects_chunk_writer.flush_chunk_into::<T>(writer, ParticlesEffectsChunk::CHUNK_ID)?;
+    effects_chunk_writer.write_xr(&self.effects)?;
+    effects_chunk_writer.flush_chunk_into(writer, ParticlesEffectsChunk::CHUNK_ID)?;
 
     let mut group_chunk_writer: ChunkWriter = ChunkWriter::new();
-    group_chunk_writer.write_xr::<T, _>(&self.groups)?;
-    group_chunk_writer.flush_chunk_into::<T>(writer, ParticlesGroupsChunk::CHUNK_ID)?;
+    group_chunk_writer.write_xr(&self.groups)?;
+    group_chunk_writer.flush_chunk_into(writer, ParticlesGroupsChunk::CHUNK_ID)?;
 
     Ok(())
   }
@@ -197,11 +196,11 @@ impl ParticlesFile {
   /// action, then groups playing undefined effects or spawning unnamed children.
   ///
   /// An effect is judged by its editor actions where it keeps them, as the SDK does, and by its compiled ones otherwise.
-  pub fn validate<T: ByteOrder>(&self) -> Vec<ParticlesFileIssue> {
+  pub fn validate(&self) -> Vec<ParticlesFileIssue> {
     let mut issues: Vec<ParticlesFileIssue> = Vec::new();
 
     for effect in &self.effects.effects {
-      let has_kill_old: bool = match effect.read_editor_actions::<T>() {
+      let has_kill_old: bool = match effect.read_editor_actions() {
         Ok(Some(actions)) => actions
           .iter()
           .any(|action| action.action_type == ParticleActionType::KillOld),

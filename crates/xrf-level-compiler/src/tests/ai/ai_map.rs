@@ -1,5 +1,4 @@
 use uuid::Uuid;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_level::{BuildAimapFile, BuildAimapNode, BuildAimapParams, LevelAiNode, LevelAiVersion};
@@ -75,7 +74,7 @@ fn compile(replaced: Option<&AiMap>) -> XrfResult<AiMapCompilation> {
 }
 
 fn nodes(map: &AiMap) -> Vec<LevelAiNode> {
-  map.nodes.iter_nodes::<XRayByteOrder>().collect()
+  map.nodes.iter_nodes().collect()
 }
 
 #[test]
@@ -158,7 +157,7 @@ fn keeps_the_replaced_identity_while_the_graph_stands() -> XrfResult {
   let mut changed: Vec<LevelAiNode> = nodes(&replaced);
 
   changed[0].links[2] = (1 << LevelAiVersion::CsCop.get_link_bits()) - 1;
-  replaced.nodes = xrf_level::LevelAiNodes::from_nodes::<XRayByteOrder>(LevelAiVersion::CsCop, &changed)?;
+  replaced.nodes = xrf_level::LevelAiNodes::from_nodes(LevelAiVersion::CsCop, &changed)?;
 
   let derived: AiMapCompilation = compile(Some(&replaced))?;
 

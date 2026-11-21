@@ -2,7 +2,7 @@
 //!
 //! Stored layouts are framed by hand from `EParticleAction::Save`, so the reader cannot pass by agreeing with its writer.
 
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
@@ -34,7 +34,7 @@ fn stored_bounce() -> Vec<u8> {
 }
 
 fn read_action(bytes: &[u8]) -> XrfResult<ParticleEditorAction> {
-  ParticleEditorAction::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(bytes)?)
+  ParticleEditorAction::read(&mut ChunkReader::from_bytes(bytes)?)
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn reads_properties_in_the_order_the_sdk_stores_them() -> XrfResult {
 fn writes_an_action_back_byte_for_byte() -> XrfResult {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  read_action(&stored_bounce())?.write::<XRayByteOrder>(&mut writer)?;
+  read_action(&stored_bounce())?.write(&mut writer)?;
 
   assert_eq!(writer.flush_raw_into_buffer()?, stored_bounce());
 
@@ -193,7 +193,7 @@ fn saves_an_effects_editor_actions_and_compiles_the_enabled_ones() -> XrfResult 
     ParticleEditorAction::new(ParticleActionType::Move)?,
   ];
 
-  effect.set_editor_actions::<XRayByteOrder>(&actions)?;
+  effect.set_editor_actions(&actions)?;
 
   assert_eq!(
     effect
@@ -203,7 +203,7 @@ fn saves_an_effects_editor_actions_and_compiles_the_enabled_ones() -> XrfResult 
       .collect::<Vec<_>>(),
     [ParticleActionType::KillOld, ParticleActionType::Move]
   );
-  assert_eq!(effect.read_editor_actions::<XRayByteOrder>()?, Some(actions));
+  assert_eq!(effect.read_editor_actions()?, Some(actions));
 
   Ok(())
 }
@@ -215,11 +215,11 @@ fn keeps_editor_data_that_does_not_decode_as_it_is() -> XrfResult {
     value: vec![1, 0, 0, 0, 99],
   };
 
-  assert!(editor_data.read_actions::<XRayByteOrder>().is_err());
+  assert!(editor_data.read_actions().is_err());
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  editor_data.write::<XRayByteOrder>(&mut writer)?;
+  editor_data.write(&mut writer)?;
 
   assert_eq!(writer.flush_raw_into_buffer()?, editor_data.value);
 

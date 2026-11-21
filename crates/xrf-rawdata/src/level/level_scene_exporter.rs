@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use byteorder::ByteOrder;
 use xrf_chunk::ChunkWriter;
 use xrf_editable_level::{
   EditableFogVolumeObject, EditableLevelGuid, EditableLevelScene, EditableObjectPart, EditableParticleObject,
@@ -49,7 +48,7 @@ impl LevelSceneExporter {
     LevelEntityConversion::RESPAWN_FILE_NAME,
   ];
 
-  /// Each file the build writes from the scene, by name, as written in `T`'s byte order:
+  /// Each file the build writes from the scene, by name:
   ///
   /// - `level.game`, `level.env_mod` and `level.fog_vol` for every scene, from its way and spawn parts and its fog
   ///   volumes, each empty where the scene has no such tool;
@@ -63,10 +62,7 @@ impl LevelSceneExporter {
   /// # Errors
   ///
   /// Returns an error when the scene's GUID or a tool's part does not read, or a conversion refuses what a part holds.
-  pub fn export<T: ByteOrder>(
-    scene: &EditableLevelScene,
-    built: &[AlifeObject],
-  ) -> XrfResult<BTreeMap<&'static str, Vec<u8>>> {
+  pub fn export(scene: &EditableLevelScene, built: &[AlifeObject]) -> XrfResult<BTreeMap<&'static str, Vec<u8>>> {
     let guid: EditableLevelGuid = scene.level.get_guid()?;
     let mut files: BTreeMap<&'static str, Vec<u8>> = BTreeMap::new();
     let spawn: EditableObjectPart<EditableSpawnPointObject> = Self::get_part(scene, guid)?;
@@ -78,65 +74,56 @@ impl LevelSceneExporter {
           rpoints: LevelSpawnPointConversion::export_respawn_points(&spawn),
           ways: LevelWayConversion::export(&Self::get_part::<EditableWayObject>(scene, guid)?)?,
         }
-        .write::<T>(writer)
+        .write(writer)
       })?,
     );
     files.insert(
       LevelEnvModFile::FILE_NAME,
-      Self::encode(|writer| LevelSpawnPointConversion::export_environment_modifiers(&spawn).write::<T>(writer))?,
+      Self::encode(|writer| LevelSpawnPointConversion::export_environment_modifiers(&spawn).write(writer))?,
     );
 
-    let entities: LevelEntityExport = LevelEntityConversion::export::<T>(&spawn)?;
-    let spawn_list: Option<LevelSpawnFile> = Self::prepend_built::<T>(built, entities.spawn)?;
+    let entities: LevelEntityExport = LevelEntityConversion::export(&spawn)?;
+    let spawn_list: Option<LevelSpawnFile> = Self::prepend_built(built, entities.spawn)?;
 
     for (name, list) in [
       (LevelEntityConversion::SPAWN_FILE_NAME, spawn_list),
       (LevelEntityConversion::RESPAWN_FILE_NAME, entities.respawn),
     ] {
       if let Some(list) = list {
-        files.insert(name, Self::encode(|writer| list.write::<T>(writer))?);
+        files.insert(name, Self::encode(|writer| list.write(writer))?);
       }
     }
 
     let fog: LevelFogVolFile =
       LevelFogVolumeConversion::export(&Self::get_part::<EditableFogVolumeObject>(scene, guid)?)?;
 
-    files.insert(
-      LevelFogVolFile::FILE_NAME,
-      Self::encode(|writer| fog.write::<T>(writer))?,
-    );
+    files.insert(LevelFogVolFile::FILE_NAME, Self::encode(|writer| fog.write(writer))?);
 
     if let Some(file) = LevelParticleConversion::export(&Self::get_part::<EditableParticleObject>(scene, guid)?) {
-      files.insert(
-        LevelPsStaticFile::FILE_NAME,
-        Self::encode(|writer| file.write::<T>(writer))?,
-      );
+      files.insert(LevelPsStaticFile::FILE_NAME, Self::encode(|writer| file.write(writer))?);
     }
 
     if let Some(file) = LevelSoundSourceConversion::export(&Self::get_part::<EditableSoundSourceObject>(scene, guid)?) {
       files.insert(
         LevelSndStaticFile::FILE_NAME,
-        Self::encode(|writer| file.write::<T>(writer))?,
+        Self::encode(|writer| file.write(writer))?,
       );
     }
 
     if let Some(file) =
       LevelSoundEnvironmentConversion::export(&Self::get_part::<EditableSoundEnvironmentObject>(scene, guid)?)?
     {
-      files.insert(
-        LevelSndEnvFile::FILE_NAME,
-        Self::encode(|writer| file.write::<T>(writer))?,
-      );
+      files.insert(LevelSndEnvFile::FILE_NAME, Self::encode(|writer| file.write(writer))?);
     }
 
     if let Some(tool) = scene.get_tool(EditableWallmarkTool::TOOL_NAME) {
       let file: LevelWallmarksFile =
-        LevelWallmarkConversion::export(&EditableWallmarkTool::read_from_scene_tool::<T>(tool)?);
+        LevelWallmarkConversion::export(&EditableWallmarkTool::read_from_scene_tool(tool)?);
 
       if !file.slots.is_empty() {
         files.insert(
           LevelWallmarksFile::FILE_NAME,
-          Self::encode(|writer| file.write::<T>(writer))?,
+          Self::encode(|writer| file.write(writer))?,
         );
       }
     }
@@ -195,10 +182,7 @@ impl LevelSceneExporter {
   }
 
   /// `list` with `built` before its entities, every one numbered again in order; none where both are empty.
-  fn prepend_built<T: ByteOrder>(
-    built: &[AlifeObject],
-    list: Option<LevelSpawnFile>,
-  ) -> XrfResult<Option<LevelSpawnFile>> {
+  fn prepend_built(built: &[AlifeObject], list: Option<LevelSpawnFile>) -> XrfResult<Option<LevelSpawnFile>> {
     if built.is_empty() {
       return Ok(list);
     }
@@ -206,7 +190,7 @@ impl LevelSceneExporter {
     let mut objects: Vec<LevelSpawnObject> = built
       .iter()
       .zip(0u32..)
-      .map(|(entity, id)| LevelSpawnObject::from_alife_object::<T>(id, entity))
+      .map(|(entity, id)| LevelSpawnObject::from_alife_object(id, entity))
       .collect::<XrfResult<_>>()?;
 
     for (mut object, id) in list

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::{
   LevelEnvModFile, LevelFogVolFile, LevelGameFile, LevelPsStaticFile, LevelSndEnvFile, LevelSndStaticFile,
@@ -45,22 +44,22 @@ impl LevelPlacementsPart {
 
       Arc::new(LevelPlacements {
         particles: Self::read(source, search, LevelPsStaticFile::FILE_NAME, |bytes| {
-          LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes)
+          LevelPsStaticFile::read_from_bytes(bytes)
         }),
         sounds: Self::read(source, search, LevelSndStaticFile::FILE_NAME, |bytes| {
-          LevelSndStaticFile::read_from_bytes::<XRayByteOrder>(bytes)
+          LevelSndStaticFile::read_from_bytes(bytes)
         }),
         sound_environments: Self::read(source, search, LevelSndEnvFile::FILE_NAME, |bytes| {
-          LevelSndEnvFile::read_from_bytes::<XRayByteOrder>(bytes)
+          LevelSndEnvFile::read_from_bytes(bytes)
         }),
         fog_volumes: Self::read(source, search, LevelFogVolFile::FILE_NAME, |bytes| {
-          LevelFogVolFile::read_from_bytes::<XRayByteOrder>(bytes)
+          LevelFogVolFile::read_from_bytes(bytes)
         }),
         env_modifiers: Self::read(source, search, LevelEnvModFile::FILE_NAME, |bytes| {
-          LevelEnvModFile::read_from_bytes::<XRayByteOrder>(bytes)
+          LevelEnvModFile::read_from_bytes(bytes)
         }),
         game: Self::read(source, search, LevelGameFile::FILE_NAME, |bytes| {
-          LevelGameFile::read_from_bytes::<XRayByteOrder>(bytes)
+          LevelGameFile::read_from_bytes(bytes)
         }),
       })
     })

@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One triangle of the collision mesh the SDK exports beside a static visual: three `u32` corners into the collision
@@ -15,19 +14,15 @@ impl OgfCollisionFace {
 }
 
 impl ChunkReadWrite for OgfCollisionFace {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      vertices: [
-        reader.read_u32::<T>()?,
-        reader.read_u32::<T>()?,
-        reader.read_u32::<T>()?,
-      ],
+      vertices: [reader.read_u32()?, reader.read_u32()?, reader.read_u32()?],
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in self.vertices {
-      writer.write_u32::<T>(vertex)?;
+      writer.write_u32(vertex)?;
     }
 
     Ok(())

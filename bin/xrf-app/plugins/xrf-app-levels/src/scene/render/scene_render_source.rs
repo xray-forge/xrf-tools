@@ -5,7 +5,6 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_render::{ResolvedTexture, TextureResolver};
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
@@ -265,7 +264,7 @@ impl WorldLevelSource for SceneRenderSource {
     let read_models = |object: &SceneDrawnObject| -> TauriResult<SceneObjectModels> {
       objects
         .read(&object.logical_path)
-        .and_then(EditableObjectFile::read_from_bytes::<XRayByteOrder>)
+        .and_then(EditableObjectFile::read_from_bytes)
         .map_err(|error| format!("Library object '{}' does not read: {error}", object.logical_path))
         .and_then(|file| compiler.compile(object, file, &Self::list_asked(object, names)))
         .inspect_err(|reason| LevelReport::undrawn_scene_object(&object.reference, reason))

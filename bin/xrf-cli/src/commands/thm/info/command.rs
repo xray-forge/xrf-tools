@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::{ArgMatches, Command};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_thm::{
@@ -37,11 +36,11 @@ impl GenericCommand for InfoCommand {
 
     xrf_output::info!(output, "Read thm file {}", format_path(path));
 
-    let report: ThmInfoReport = match ThmKind::detect::<XRayByteOrder>(bytes.clone())? {
-      Some(ThmKind::Texture) => ThmInfoReport::Texture(ThmFile::read_from_bytes::<XRayByteOrder>(bytes)?),
-      Some(ThmKind::Object) => ThmInfoReport::Object(ThmObjectFile::read_from_bytes::<XRayByteOrder>(bytes)?),
-      Some(ThmKind::Group) => ThmInfoReport::Group(ThmGroupFile::read_from_bytes::<XRayByteOrder>(bytes)?),
-      Some(ThmKind::Sound) => ThmInfoReport::Sound(ThmSoundFile::read_from_bytes::<XRayByteOrder>(bytes)?),
+    let report: ThmInfoReport = match ThmKind::detect(bytes.clone())? {
+      Some(ThmKind::Texture) => ThmInfoReport::Texture(ThmFile::read_from_bytes(bytes)?),
+      Some(ThmKind::Object) => ThmInfoReport::Object(ThmObjectFile::read_from_bytes(bytes)?),
+      Some(ThmKind::Group) => ThmInfoReport::Group(ThmGroupFile::read_from_bytes(bytes)?),
+      Some(ThmKind::Sound) => ThmInfoReport::Sound(ThmSoundFile::read_from_bytes(bytes)?),
       None => {
         return Err(
           XrfError::new_invalid_error(format!(

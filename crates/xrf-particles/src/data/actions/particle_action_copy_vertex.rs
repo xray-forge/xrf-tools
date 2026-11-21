@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -15,18 +14,18 @@ pub struct ParticleActionCopyVertex {
 }
 
 impl ChunkReadWrite for ParticleActionCopyVertex {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      action_flags: reader.read_u32::<T>()?,
-      action_type: reader.read_xr::<T, _>()?,
-      copy_position: reader.read_u32::<T>()?,
+      action_flags: reader.read_u32()?,
+      action_type: reader.read_xr()?,
+      copy_position: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.action_flags)?;
-    writer.write_xr::<T, _>(&self.action_type)?;
-    writer.write_u32::<T>(self.copy_position)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.action_flags)?;
+    writer.write_xr(&self.action_type)?;
+    writer.write_u32(self.copy_position)?;
 
     Ok(())
   }

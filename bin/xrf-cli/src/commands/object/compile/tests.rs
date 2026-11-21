@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::{ChunkLayout, ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkLayout, ChunkReadWrite, ChunkWriter};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_level::{DetailModel, DetailVertex};
@@ -58,7 +58,7 @@ fn refuses_to_replace_an_ogf_without_force() -> XrfResult {
   let source: PathBuf = root.join("model.object");
   let destination: PathBuf = root.join("model.ogf");
 
-  empty_object(EditableObjectFile::DYNAMIC_FLAG).write_to_path::<XRayByteOrder, _>(&source)?;
+  empty_object(EditableObjectFile::DYNAMIC_FLAG).write_to_path(&source)?;
   fs::write(&destination, b"exported")?;
 
   let error: String = get_error(compile(&source, &destination, &[]));
@@ -94,7 +94,7 @@ fn compiles_a_decompiled_detail_model_back_to_its_bytes_through_the_sidecar() ->
   };
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  leaf.write::<XRayByteOrder>(&mut writer)?;
+  leaf.write(&mut writer)?;
   fs::write(&model, writer.flush_raw_into_buffer()?)?;
 
   let decompiled: CommandResult = run_command(
@@ -122,7 +122,7 @@ fn refuses_an_object_without_a_mesh_and_writes_nothing() -> XrfResult {
   let source: PathBuf = root.join("model.object");
   let destination: PathBuf = root.join("model.ogf");
 
-  empty_object(0).write_to_path::<XRayByteOrder, _>(&source)?;
+  empty_object(0).write_to_path(&source)?;
 
   let error: String = get_error(compile(&source, &destination, &["--force"]));
 

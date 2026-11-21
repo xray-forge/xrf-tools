@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use glam::Vec3;
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_level::{
@@ -41,7 +41,7 @@ impl Fixture {
       height: 4,
       ..ThmTextureParamChunk::default()
     });
-    thumbnail.write_to_path::<XRayByteOrder, _>(&gamedata.join("textures").join("ground.thm"))?;
+    thumbnail.write_to_path(&gamedata.join("textures").join("ground.thm"))?;
 
     Self::write(&gamedata.join(ShaderCompilerFile::FILE_NAME), |writer| {
       ShaderCompilerFile {
@@ -55,19 +55,15 @@ impl Fixture {
           lightmap_density: 1.0,
         }],
       }
-      .write::<XRayByteOrder>(writer)
+      .write(writer)
     })?;
-    Self::write(&level.join("build.details"), |writer| {
-      details().write::<XRayByteOrder>(writer)
-    })?;
-    Self::write(&level.join(LevelLightsFile::FILE_NAME), |writer| {
-      lights().write::<XRayByteOrder>(writer)
-    })?;
+    Self::write(&level.join("build.details"), |writer| details().write(writer))?;
+    Self::write(&level.join(LevelLightsFile::FILE_NAME), |writer| lights().write(writer))?;
     Self::write(&level.join(BuildCformFile::FILE_NAME), |writer| {
-      Self::cform().write::<XRayByteOrder>(writer)
+      Self::cform().write(writer)
     })?;
     Self::write(&level.join(BuildPrjFile::FILE_NAME), |writer| {
-      Self::project()?.write::<XRayByteOrder>(writer)
+      Self::project()?.write(writer)
     })?;
 
     Ok(Self { gamedata, level })
@@ -183,8 +179,7 @@ impl Fixture {
 fn writes_the_details_lit_as_the_lighter_lights_them() -> XrfResult {
   let fixture: Fixture = Fixture::new(file!(), "lit")?;
   let report: LevelCompileReport = LevelCompiler::compile(&fixture.request(false), &JobHandle::inert())?;
-  let written: LevelDetailsFile =
-    LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&fixture.level.join(LevelDetailsFile::FILE_NAME))?;
+  let written: LevelDetailsFile = LevelDetailsFile::read_from_path(&fixture.level.join(LevelDetailsFile::FILE_NAME))?;
 
   assert_eq!(written, lighting()?.details);
   assert_eq!(
@@ -226,10 +221,7 @@ fn refuses_to_overwrite_the_details_unless_forced() -> XrfResult {
 
   LevelCompiler::compile(&fixture.request(true), &JobHandle::inert())?;
 
-  assert_eq!(
-    LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&output)?,
-    lighting()?.details
-  );
+  assert_eq!(LevelDetailsFile::read_from_path(&output)?, lighting()?.details);
 
   Ok(())
 }

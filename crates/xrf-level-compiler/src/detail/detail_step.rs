@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_level::{LevelDetailsFile, LevelLightsFile};
@@ -32,9 +32,8 @@ impl DetailStep {
   /// is cancelled, or `level.details` is not written; the file is then left as it was.
   pub(crate) fn run(request: &LevelCompileRequest, job: &JobHandle) -> XrfResult<LevelCompileStepRun> {
     let level: &Path = &request.level;
-    let details: LevelDetailsFile = LevelDetailsFile::read_from_path::<XRayByteOrder, _>(&level.join(Self::SOURCE))?;
-    let lights: LevelLightsFile =
-      LevelLightsFile::read_from_path::<XRayByteOrder, _>(&level.join(LevelLightsFile::FILE_NAME))?;
+    let details: LevelDetailsFile = LevelDetailsFile::read_from_path(&level.join(Self::SOURCE))?;
+    let lights: LevelLightsFile = LevelLightsFile::read_from_path(&level.join(LevelLightsFile::FILE_NAME))?;
     let model: RayModel = RayModel::read(request)?;
     let lighting: DetailLighting = DetailLighter::light(
       &DetailLightRequest {
@@ -47,7 +46,7 @@ impl DetailStep {
     )?;
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    lighting.details.write::<XRayByteOrder>(&mut writer)?;
+    lighting.details.write(&mut writer)?;
     CompilerOutput::write(&level.join(Self::OUTPUT), &writer.buffer)?;
 
     Ok(LevelCompileStepRun::DetailLighter {

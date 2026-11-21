@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelLightsFile;
 
@@ -28,7 +27,7 @@ impl ArchiveLevelLightsDescription {
   ///
   /// Returns an error when the entry's bytes cannot be read, or are not a light list this reader can walk.
   pub fn read(source: &ArchiveDescribeSource<'_>, name: &str) -> XrfResult<Self> {
-    let file: LevelLightsFile = LevelLightsFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
+    let file: LevelLightsFile = LevelLightsFile::read_from_bytes(source.read_bytes(name)?)?;
 
     Ok(Self {
       lights: file.get_lights_count(),

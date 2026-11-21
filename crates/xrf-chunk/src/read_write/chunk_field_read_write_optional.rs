@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_error::XrfResult;
 
 use crate::field::chunk_field_reader::ChunkFieldReader;
@@ -15,22 +14,22 @@ pub trait ChunkFieldReadWriteOptional: Sized {
   /// # Errors
   ///
   /// Returns an error when the reader does not hold the value or its absence.
-  fn read_field_optional<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>>;
+  fn read_field_optional<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Option<Self>>;
 
   /// # Errors
   ///
   /// Returns an error when the writer refuses a value.
-  fn write_field_optional<T: ByteOrder, W: ChunkFieldWriter>(writer: &mut W, value: Option<&Self>) -> XrfResult;
+  fn write_field_optional<W: ChunkFieldWriter>(writer: &mut W, value: Option<&Self>) -> XrfResult;
 }
 
 impl<F: ChunkFieldReadWriteOptional> ChunkReadWriteOptional for F {
   #[inline]
-  fn read_optional<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>> {
-    Self::read_field_optional::<T, _>(reader)
+  fn read_optional<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Option<Self>> {
+    Self::read_field_optional(reader)
   }
 
   #[inline]
-  fn write_optional<T: ByteOrder>(writer: &mut ChunkWriter, value: Option<&Self>) -> XrfResult {
-    Self::write_field_optional::<T, _>(writer, value)
+  fn write_optional(writer: &mut ChunkWriter, value: Option<&Self>) -> XrfResult {
+    Self::write_field_optional(writer, value)
   }
 }

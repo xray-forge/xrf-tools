@@ -1,9 +1,8 @@
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxRecordWriter, LtxSectionWrite, LtxWrite, Section};
 
@@ -28,15 +27,15 @@ impl SpawnHeaderChunk {
 impl ChunkReadWrite for SpawnHeaderChunk {
   /// Read header chunk by position descriptor.
   /// Parses binary data into header chunk representation object.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Parsing header chunk, {} bytes", reader.read_bytes_remain());
 
     let header: Self = Self {
-      version: reader.read_u32::<T>()?,
-      guid: Uuid::from_u128(reader.read_u128::<T>()?),
-      graph_guid: Uuid::from_u128(reader.read_u128::<T>()?),
-      objects_count: reader.read_u32::<T>()?,
-      levels_count: reader.read_u32::<T>()?,
+      version: reader.read_u32()?,
+      guid: Uuid::from_u128(reader.read_u128()?),
+      graph_guid: Uuid::from_u128(reader.read_u128()?),
+      objects_count: reader.read_u32()?,
+      levels_count: reader.read_u32()?,
     };
 
     reader.assert_read("Expect header chunk to be ended")?;
@@ -46,12 +45,12 @@ impl ChunkReadWrite for SpawnHeaderChunk {
 
   /// Write header data into chunk writer.
   /// Writes header data in binary format.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.version)?;
-    writer.write_u128::<T>(self.guid.as_u128())?;
-    writer.write_u128::<T>(self.graph_guid.as_u128())?;
-    writer.write_u32::<T>(self.objects_count)?;
-    writer.write_u32::<T>(self.levels_count)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.version)?;
+    writer.write_u128(self.guid.as_u128())?;
+    writer.write_u128(self.graph_guid.as_u128())?;
+    writer.write_u32(self.objects_count)?;
+    writer.write_u32(self.levels_count)?;
 
     log::debug!("Written header chunk, {} bytes", writer.bytes_written());
 
@@ -110,7 +109,7 @@ mod tests {
 
   use serde_json::to_string_pretty;
   use uuid::{Uuid, uuid};
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::FileImportExport;
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -122,7 +121,7 @@ mod tests {
     // One child of id 0 and size 0: the read must fail rather than answer a default header.
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0; 8])?.read_child_by_index(0)?;
 
-    let original: XrfResult<SpawnHeaderChunk> = SpawnHeaderChunk::read::<XRayByteOrder, _>(&mut reader);
+    let original: XrfResult<SpawnHeaderChunk> = SpawnHeaderChunk::read(&mut reader);
 
     assert!(original.is_err(), "Expected failure with empty chunk");
 
@@ -143,12 +142,11 @@ mod tests {
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 44);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 44);
 
@@ -160,7 +158,7 @@ mod tests {
       .read_child_by_index(0)
       .expect("0 index chunk to exist");
 
-    assert_eq!(SpawnHeaderChunk::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(SpawnHeaderChunk::read(&mut reader)?, original);
 
     Ok(())
   }

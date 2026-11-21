@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use byteorder::ByteOrder;
 use glam::{DVec3, Vec3};
 use xrf_editable_level::{EditableCustomObject, EditableSceneObject};
 use xrf_editable_object::EditableObjectFile;
@@ -35,20 +34,14 @@ impl LevelInstanceCutouts {
   ///
   /// Returns an error when a placed object's file does not read, or, as in the Build, a face names a surface, point or
   /// game material that does not exist.
-  pub(crate) fn of<T: ByteOrder>(
-    placements: &[LevelInstancePlacement],
-    game_materials: &GameMtlFile,
-  ) -> XrfResult<Self> {
+  pub(crate) fn of(placements: &[LevelInstancePlacement], game_materials: &GameMtlFile) -> XrfResult<Self> {
     let mut objects: HashMap<&PathBuf, EditableObjectFile> = HashMap::new();
     let mut ladders: LevelBuildParts = LevelBuildParts::new(GameMtlMaterial::FLAG_CLIMABLE);
     let mut breakables: LevelBuildParts = LevelBuildParts::new(GameMtlMaterial::FLAG_BREAKABLE);
 
     for placement in placements {
       if !objects.contains_key(&placement.path) {
-        objects.insert(
-          &placement.path,
-          EditableObjectFile::read_from_path::<T, _>(&placement.path)?,
-        );
+        objects.insert(&placement.path, EditableObjectFile::read_from_path(&placement.path)?);
       }
 
       let object: &EditableObjectFile = &objects[&placement.path];

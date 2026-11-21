@@ -3,7 +3,6 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
@@ -27,8 +26,7 @@ fn rewriting_existing_refs_lands_on_the_normalized_source() -> XrfResult {
   let path: PathBuf = write_fixture("unchanged_rewrite.ogf", source.clone())?;
   let existing: Vec<String> = fixtures::DECLARED_REFS.map(String::from).to_vec();
 
-  let rewritten: Vec<u8> =
-    OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, &existing)?;
+  let rewritten: Vec<u8> = OgfMotionRefsProcessor::write_motion_refs_to_buffer(fs::read(&path)?, &existing)?;
 
   assert_ne!(
     rewritten, source,
@@ -36,7 +34,7 @@ fn rewriting_existing_refs_lands_on_the_normalized_source() -> XrfResult {
   );
   assert_eq!(
     rewritten,
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&source)?,
+    OgfNormalization::normalize_bytes(&source)?,
     "Expect the rewrite to agree with the guard's target byte for byte"
   );
 
@@ -51,7 +49,7 @@ fn patching_a_split_reference_visual_is_allowed_and_reports_what_it_dropped() ->
 
   // The whole point of the issue: this call used to fail before it could reach the chunk it edits.
   let report: OgfRefsPatchReport =
-    OgfMotionRefsProcessor::patch_motion_refs_to_path::<XRayByteOrder>(&path, &path, &replacement, false)?;
+    OgfMotionRefsProcessor::patch_motion_refs_to_path(&path, &path, &replacement, false)?;
 
   assert_eq!(
     report.discarded_size, 34,
@@ -59,7 +57,7 @@ fn patching_a_split_reference_visual_is_allowed_and_reports_what_it_dropped() ->
   );
   assert_eq!(report.patched_count, 1);
 
-  let patched: OgfFile = OgfFile::read_from_path::<XRayByteOrder, _>(&path)?;
+  let patched: OgfFile = OgfFile::read_from_path(&path)?;
 
   assert_eq!(patched.kinematics.map(|it| it.motion_refs), Some(replacement));
   assert!(
@@ -77,13 +75,11 @@ fn patching_a_well_formed_visual_still_reproduces_it_exactly() -> XrfResult {
   let path: PathBuf = write_fixture("patch_well_formed.ogf", source.clone())?;
   let existing: Vec<String> = fixtures::DECLARED_REFS.map(String::from).to_vec();
 
-  let rewritten: Vec<u8> =
-    OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, &existing)?;
+  let rewritten: Vec<u8> = OgfMotionRefsProcessor::write_motion_refs_to_buffer(fs::read(&path)?, &existing)?;
 
   assert_eq!(rewritten, source, "Expect an unchanged rewrite to reproduce the source");
 
-  let report: OgfRefsPatchReport =
-    OgfMotionRefsProcessor::patch_motion_refs_to_path::<XRayByteOrder>(&path, &path, &existing, true)?;
+  let report: OgfRefsPatchReport = OgfMotionRefsProcessor::patch_motion_refs_to_path(&path, &path, &existing, true)?;
 
   assert_eq!(report.discarded_size, 0);
   assert_eq!(
@@ -100,13 +96,8 @@ fn refuses_to_patch_a_visual_it_cannot_account_for() -> XrfResult {
   let original: Vec<u8> = fs::read(&path)?;
 
   assert!(
-    OgfMotionRefsProcessor::patch_motion_refs_to_path::<XRayByteOrder>(
-      &path,
-      &path,
-      &[String::from("actors\\anything")],
-      false
-    )
-    .is_err(),
+    OgfMotionRefsProcessor::patch_motion_refs_to_path(&path, &path, &[String::from("actors\\anything")], false)
+      .is_err(),
     "Expect a file the reader refuses to stay unpatched rather than be rewritten to its last good chunk"
   );
   assert_eq!(fs::read(&path)?, original, "Expect the refused source to be untouched");
@@ -121,12 +112,12 @@ fn renaming_a_texture_also_normalizes_the_motion_refs_chunk() -> XrfResult {
   let path: PathBuf = write_fixture("texture_rename.ogf", source.clone())?;
 
   let (rewritten, patched_count) =
-    OgfTextureRefsProcessor::write_texture_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, "any", "any")?;
+    OgfTextureRefsProcessor::write_texture_refs_to_buffer(fs::read(&path)?, "any", "any")?;
 
   assert_eq!(patched_count, 0, "Expect no texture reference in this fixture");
   assert_eq!(
     rewritten,
-    OgfNormalization::normalize_bytes::<XRayByteOrder>(&source)?,
+    OgfNormalization::normalize_bytes(&source)?,
     "Expect both raw patchers to produce the same normalized bytes for the same source"
   );
 

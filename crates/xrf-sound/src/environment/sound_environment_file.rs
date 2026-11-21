@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -26,8 +25,8 @@ impl SoundEnvironmentFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a sound environment library this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Sound environment library was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -40,8 +39,8 @@ impl SoundEnvironmentFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a sound environment library this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived library arrives.
@@ -49,8 +48,8 @@ impl SoundEnvironmentFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a sound environment library this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -62,7 +61,7 @@ impl SoundEnvironmentFile {
   ///
   /// Returns an error when a preset cannot be read, one does not fill the chunk holding it, or a chunk is one the
   /// engine never reaches.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut environments: Vec<SoundEnvironment> = Vec::with_capacity(chunks.len());
 
@@ -84,7 +83,7 @@ impl SoundEnvironmentFile {
         }));
       }
 
-      let environment: SoundEnvironment = SoundEnvironment::read::<T, D>(&mut chunk)?;
+      let environment: SoundEnvironment = SoundEnvironment::read::<D>(&mut chunk)?;
 
       chunk.assert_read("Expect all data to be read from sound environment chunk")?;
 
@@ -99,12 +98,12 @@ impl SoundEnvironmentFile {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes, or the presets outnumber the chunk ids.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for (index, environment) in self.environments.iter().enumerate() {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      environment.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(
+      environment.write(&mut chunk)?;
+      chunk.flush_chunk_into(
         &mut writer.buffer,
         narrow_format_size(index, "sound environment chunk")?,
       )?;

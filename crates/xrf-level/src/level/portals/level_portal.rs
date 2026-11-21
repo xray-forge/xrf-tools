@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -36,24 +35,24 @@ impl LevelPortal {
 }
 
 impl ChunkReadWrite for LevelPortal {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let sector_front: u16 = reader.read_u16::<T>()?;
-    let sector_back: u16 = reader.read_u16::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let sector_front: u16 = reader.read_u16()?;
+    let sector_back: u16 = reader.read_u16()?;
     let mut vertices: Vec<Vector3d> = Vec::with_capacity(Self::MAXIMUM_VERTICES);
 
     for _ in 0..Self::MAXIMUM_VERTICES {
-      vertices.push(reader.read_xr::<T, _>()?);
+      vertices.push(reader.read_xr()?);
     }
 
     Ok(Self {
       sector_back,
       sector_front,
-      vertex_count: reader.read_u32::<T>()?,
+      vertex_count: reader.read_u32()?,
       vertices,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if self.vertices.len() != Self::MAXIMUM_VERTICES {
       return Err(XrfError::new_invalid_error(format!(
         "Unexpected level portal of {} vertices, where the record has room for exactly {}",
@@ -62,14 +61,14 @@ impl ChunkReadWrite for LevelPortal {
       )));
     }
 
-    writer.write_u16::<T>(self.sector_front)?;
-    writer.write_u16::<T>(self.sector_back)?;
+    writer.write_u16(self.sector_front)?;
+    writer.write_u16(self.sector_back)?;
 
     for vertex in &self.vertices {
-      vertex.write::<T>(writer)?;
+      vertex.write(writer)?;
     }
 
-    writer.write_u32::<T>(self.vertex_count)?;
+    writer.write_u32(self.vertex_count)?;
 
     Ok(())
   }

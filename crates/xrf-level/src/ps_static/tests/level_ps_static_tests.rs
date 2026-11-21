@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::ps_static::level_ps_static_file::LevelPsStaticFile;
@@ -40,7 +40,7 @@ fn a_static_particle_reads_its_effect_and_the_place_it_sits() -> XrfResult {
     (Some(24), "weapons\\generic_shoot"),
   ])?;
 
-  let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.version, LevelPsStaticFile::CURRENT_VERSION);
   assert_eq!(file.placements.len(), 2);
@@ -58,7 +58,7 @@ fn a_placement_restricted_to_some_modes_is_told_from_one_that_plays_in_all() -> 
     (Some(24), "weapons\\generic_shoot"),
   ])?;
 
-  let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes(bytes)?;
 
   assert!(file.placements[0].is_every_game_type());
   assert!(!file.placements[1].is_every_game_type());
@@ -70,11 +70,11 @@ fn a_placement_restricted_to_some_modes_is_told_from_one_that_plays_in_all() -> 
 #[test]
 fn a_placement_list_is_written_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = file_bytes(&[(Some(PS_STATIC_ALL_GAME_TYPES), "zones\\zone_acidic_idle")])?;
-  let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 
@@ -84,11 +84,11 @@ fn a_placement_list_is_written_back_byte_for_byte() -> XrfResult {
 #[test]
 fn a_placement_disagreeing_with_its_version_is_refused_rather_than_written() -> XrfResult {
   let bytes: Vec<u8> = file_bytes(&[(Some(0), "zones\\zone_acidic_idle")])?;
-  let mut file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let mut file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes(bytes)?;
 
   file.placements[0].game_types = None;
 
-  assert!(file.write::<XRayByteOrder>(&mut ChunkWriter::new()).is_err());
+  assert!(file.write(&mut ChunkWriter::new()).is_err());
 
   Ok(())
 }

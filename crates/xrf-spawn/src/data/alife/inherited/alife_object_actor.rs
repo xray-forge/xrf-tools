@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -49,45 +48,45 @@ impl AlifePacketsReadWrite for AlifeObjectActor {
   }
 
   /// Read the actor from both packets.
-  fn read<T: ByteOrder, S: ChunkFieldReader, U: ChunkFieldReader>(
+  fn read<S: ChunkFieldReader, U: ChunkFieldReader>(
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult<Self> {
     Ok(Self {
-      base: AlifeObjectCreature::read::<T, _, _>(spawn, update, layout)?,
-      trader: AlifeObjectTraderAbstract::read_state::<T, _>(spawn, layout)?,
-      skeleton: spawn.read_xr::<T, _>()?,
-      holder_id: spawn.read_u16::<T>()?,
-      update_movement_state: update.read_u16::<T>()?,
-      update_acceleration: update.read_xr::<T, _>()?,
-      update_velocity: update.read_xr::<T, _>()?,
-      update_radiation: update.read_f32::<T>()?,
+      base: AlifeObjectCreature::read(spawn, update, layout)?,
+      trader: AlifeObjectTraderAbstract::read_state(spawn, layout)?,
+      skeleton: spawn.read_xr()?,
+      holder_id: spawn.read_u16()?,
+      update_movement_state: update.read_u16()?,
+      update_acceleration: update.read_xr()?,
+      update_velocity: update.read_xr()?,
+      update_radiation: update.read_f32()?,
       update_weapon: update.read_u8()?,
-      update_body: update.read_xr::<T, ActorPhysicsState>()?,
+      update_body: update.read_xr::<ActorPhysicsState>()?,
     })
   }
 
   /// Write the actor into both packets.
-  fn write<T: ByteOrder, S: ChunkFieldWriter, U: ChunkFieldWriter>(
+  fn write<S: ChunkFieldWriter, U: ChunkFieldWriter>(
     &self,
     spawn: &mut S,
     update: &mut U,
     layout: SpawnLayout,
   ) -> XrfResult {
-    self.base.write::<T, _, _>(spawn, update, layout)?;
+    self.base.write(spawn, update, layout)?;
 
-    self.trader.write_state::<T, _>(spawn, layout)?;
-    spawn.write_xr::<T, _>(&self.skeleton)?;
-    spawn.write_u16::<T>(self.holder_id)?;
+    self.trader.write_state(spawn, layout)?;
+    spawn.write_xr(&self.skeleton)?;
+    spawn.write_u16(self.holder_id)?;
 
-    update.write_u16::<T>(self.update_movement_state)?;
-    update.write_xr::<T, _>(&self.update_acceleration)?;
-    update.write_xr::<T, _>(&self.update_velocity)?;
-    update.write_f32::<T>(self.update_radiation)?;
+    update.write_u16(self.update_movement_state)?;
+    update.write_xr(&self.update_acceleration)?;
+    update.write_xr(&self.update_velocity)?;
+    update.write_f32(self.update_radiation)?;
     update.write_u8(self.update_weapon)?;
 
-    update.write_xr::<T, _>(&self.update_body)
+    update.write_xr(&self.update_body)
   }
 
   /// Import actor data from ltx config section.
@@ -177,7 +176,6 @@ impl AlifeObjectActor {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::XRayByteOrder;
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
@@ -204,7 +202,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AlifeObjectActor = AlifeObjectActor::new_mock(Vector3d::new(256.24, 19.81, 550.82));
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (_, update_size, read) = original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61, original));
 
@@ -218,7 +216,7 @@ mod tests {
 
     original.update_body = new_alive_body([1.0, 2.0, 3.0]);
 
-    let (_, update_size, read) = original.read_back::<XRayByteOrder>(SpawnLayout::CALL_OF_PRIPYAT)?;
+    let (_, update_size, read) = original.read_back(SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!((update_size, read), (61 + 1 + 5 * 12 + 16, original));
 

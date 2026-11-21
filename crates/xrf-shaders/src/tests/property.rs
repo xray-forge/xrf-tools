@@ -1,6 +1,6 @@
 //! What one property reads as, and where a field's width is the contract.
 
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 use crate::library::{
@@ -9,13 +9,13 @@ use crate::library::{
 use crate::tests::fixtures;
 
 fn read(bytes: &[u8]) -> XrfResult<ShaderBlenderProperty> {
-  ShaderBlenderProperty::read::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(bytes)?)
+  ShaderBlenderProperty::read(&mut ChunkReader::from_bytes(bytes)?)
 }
 
 fn write(property: &ShaderBlenderProperty) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  property.write::<XRayByteOrder>(&mut writer)?;
+  property.write(&mut writer)?;
 
   writer.flush_raw_into_buffer()
 }

@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -78,62 +77,62 @@ impl AlifeObjectHangingLamp {
 
 impl ChunkFieldReadWrite for AlifeObjectHangingLamp {
   /// Read hanging lamp data from the chunk.
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      skeleton: reader.read_xr::<T, _>()?,
-      main_color: reader.read_u32::<T>()?,
-      main_brightness: reader.read_f32::<T>()?,
+      base: reader.read_xr()?,
+      skeleton: reader.read_xr()?,
+      main_color: reader.read_u32()?,
+      main_brightness: reader.read_f32()?,
       color_animator: reader.read_w1251_string()?,
-      main_range: reader.read_f32::<T>()?,
-      light_flags: reader.read_u16::<T>()?,
+      main_range: reader.read_f32()?,
+      light_flags: reader.read_u16()?,
       startup_animation: reader.read_w1251_string()?,
       fixed_bones: reader.read_w1251_string()?,
-      health: reader.read_f32::<T>()?,
-      virtual_size: reader.read_f32::<T>()?,
-      ambient_radius: reader.read_f32::<T>()?,
-      ambient_power: reader.read_f32::<T>()?,
+      health: reader.read_f32()?,
+      virtual_size: reader.read_f32()?,
+      ambient_radius: reader.read_f32()?,
+      ambient_power: reader.read_f32()?,
       ambient_texture: reader.read_w1251_string()?,
       light_texture: reader.read_w1251_string()?,
       light_bone: reader.read_w1251_string()?,
-      spot_cone_angle: reader.read_f32::<T>()?,
+      spot_cone_angle: reader.read_f32()?,
       glow_texture: reader.read_w1251_string()?,
-      glow_radius: reader.read_f32::<T>()?,
+      glow_radius: reader.read_f32()?,
       light_ambient_bone: reader.read_w1251_string()?,
-      volumetric_quality: reader.read_f32::<T>()?,
-      volumetric_intensity: reader.read_f32::<T>()?,
-      volumetric_distance: reader.read_f32::<T>()?,
+      volumetric_quality: reader.read_f32()?,
+      volumetric_intensity: reader.read_f32()?,
+      volumetric_distance: reader.read_f32()?,
     })
   }
 
   /// Write skeleton data into the writer.
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_xr::<T, _>(&self.skeleton)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    writer.write_xr(&self.skeleton)?;
 
-    writer.write_u32::<T>(self.main_color)?;
-    writer.write_f32::<T>(self.main_brightness)?;
+    writer.write_u32(self.main_color)?;
+    writer.write_f32(self.main_brightness)?;
     writer.write_w1251_string(&self.color_animator)?;
-    writer.write_f32::<T>(self.main_range)?;
-    writer.write_u16::<T>(self.light_flags)?;
+    writer.write_f32(self.main_range)?;
+    writer.write_u16(self.light_flags)?;
     writer.write_w1251_string(&self.startup_animation)?;
     writer.write_w1251_string(&self.fixed_bones)?;
-    writer.write_f32::<T>(self.health)?;
+    writer.write_f32(self.health)?;
 
-    writer.write_f32::<T>(self.virtual_size)?;
-    writer.write_f32::<T>(self.ambient_radius)?;
-    writer.write_f32::<T>(self.ambient_power)?;
+    writer.write_f32(self.virtual_size)?;
+    writer.write_f32(self.ambient_radius)?;
+    writer.write_f32(self.ambient_power)?;
     writer.write_w1251_string(&self.ambient_texture)?;
     writer.write_w1251_string(&self.light_texture)?;
     writer.write_w1251_string(&self.light_bone)?;
-    writer.write_f32::<T>(self.spot_cone_angle)?;
+    writer.write_f32(self.spot_cone_angle)?;
     writer.write_w1251_string(&self.glow_texture)?;
-    writer.write_f32::<T>(self.glow_radius)?;
+    writer.write_f32(self.glow_radius)?;
 
     writer.write_w1251_string(&self.light_ambient_bone)?;
-    writer.write_f32::<T>(self.volumetric_quality)?;
-    writer.write_f32::<T>(self.volumetric_intensity)?;
-    writer.write_f32::<T>(self.volumetric_distance)?;
+    writer.write_f32(self.volumetric_quality)?;
+    writer.write_f32(self.volumetric_intensity)?;
+    writer.write_f32(self.volumetric_distance)?;
 
     Ok(())
   }
@@ -216,7 +215,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -274,12 +273,11 @@ mod tests {
       volumetric_distance: 3.1,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 234);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 234);
 
@@ -289,7 +287,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(AlifeObjectHangingLamp::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(AlifeObjectHangingLamp::read(&mut reader)?, original);
 
     Ok(())
   }

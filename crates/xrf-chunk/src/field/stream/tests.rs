@@ -1,11 +1,10 @@
 use std::collections::VecDeque;
 
-use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::{
   ChunkField, ChunkFieldKind, ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldRecorder, ChunkFieldReplay,
-  ChunkFieldSource, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder,
+  ChunkFieldSource, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayBytes,
 };
 
 // Ignores the kind asked, so the replay's own kind check is what a test sees.
@@ -38,34 +37,34 @@ struct Sample {
 }
 
 impl ChunkFieldReadWrite for Sample {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
-    reader.read_u16::<T>()?;
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+    reader.read_u16()?;
 
     Ok(Self {
       flag: reader.read_u8()?,
-      id: reader.read_u16::<T>()?,
-      count: reader.read_u32::<T>()?,
-      stamp: reader.read_u64::<T>()?,
-      scale: reader.read_f32::<T>()?,
-      at: reader.read_vector3::<T>()?,
+      id: reader.read_u16()?,
+      count: reader.read_u32()?,
+      stamp: reader.read_u64()?,
+      scale: reader.read_f32()?,
+      at: reader.read_vector3()?,
       name: reader.read_w1251_string()?,
-      ids: reader.read_u16_vector::<T>()?,
+      ids: reader.read_u16_vector()?,
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
     let opened: usize = writer.get_position();
 
-    writer.write_u16::<T>(0)?;
+    writer.write_u16(0)?;
     writer.write_u8(self.flag)?;
-    writer.write_u16::<T>(self.id)?;
-    writer.write_u32::<T>(self.count)?;
-    writer.write_u64::<T>(self.stamp)?;
-    writer.write_f32::<T>(self.scale)?;
-    writer.write_vector3::<T>(self.at)?;
+    writer.write_u16(self.id)?;
+    writer.write_u32(self.count)?;
+    writer.write_u64(self.stamp)?;
+    writer.write_f32(self.scale)?;
+    writer.write_vector3(self.at)?;
     writer.write_w1251_string(&self.name)?;
-    writer.write_u16_vector::<T>(&self.ids)?;
-    writer.patch_u16::<T>(opened, (writer.get_position() - opened) as u16)
+    writer.write_u16_vector(&self.ids)?;
+    writer.patch_u16(opened, (writer.get_position() - opened) as u16)
   }
 }
 
@@ -89,16 +88,13 @@ fn writes_bytes_and_fields_from_one_write() -> XrfResult {
   let mut bytes: ChunkWriter = ChunkWriter::new();
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
 
-  sample.write::<XRayByteOrder>(&mut bytes)?;
-  sample.write_fields::<XRayByteOrder, _>(&mut recorder)?;
+  sample.write(&mut bytes)?;
+  sample.write_fields(&mut recorder)?;
 
   assert!(!bytes.is_field_form());
   assert!(recorder.is_field_form());
   assert_eq!(recorder.get_position(), bytes.bytes_written());
-  assert_eq!(
-    XRayByteOrder::read_u16(&bytes.buffer[..2]) as usize,
-    bytes.bytes_written()
-  );
+  assert_eq!(XRayBytes::read_u16(&bytes.buffer[..2]) as usize, bytes.bytes_written());
   assert_eq!(
     recorder.into_fields(),
     vec![
@@ -118,7 +114,7 @@ fn writes_bytes_and_fields_from_one_write() -> XrfResult {
 
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes.buffer)?;
 
-  assert_eq!(Sample::read::<XRayByteOrder, _>(&mut reader)?, sample);
+  assert_eq!(Sample::read(&mut reader)?, sample);
   assert!(reader.is_ended());
 
   Ok(())
@@ -129,13 +125,13 @@ fn replays_recorded_fields() -> XrfResult {
   let sample: Sample = new_sample();
   let mut recorder: ChunkFieldRecorder = ChunkFieldRecorder::new();
 
-  sample.write_fields::<XRayByteOrder, _>(&mut recorder)?;
+  sample.write_fields(&mut recorder)?;
 
   let position: usize = recorder.get_position();
   let mut source: QueuedFields = QueuedFields(recorder.into_fields().into());
   let mut replay: ChunkFieldReplay<'_, QueuedFields> = ChunkFieldReplay::new(&mut source);
 
-  assert_eq!(Sample::read_fields::<XRayByteOrder, _>(&mut replay)?, sample);
+  assert_eq!(Sample::read_fields(&mut replay)?, sample);
   assert_eq!(replay.get_position(), position);
   assert!(source.0.is_empty());
 
@@ -145,7 +141,7 @@ fn replays_recorded_fields() -> XrfResult {
 #[test]
 fn refuses_a_field_of_another_kind() {
   let mut source: QueuedFields = QueuedFields(VecDeque::from([ChunkField::U8(1)]));
-  let error: String = Sample::read_fields::<XRayByteOrder, _>(&mut ChunkFieldReplay::new(&mut source))
+  let error: String = Sample::read_fields(&mut ChunkFieldReplay::new(&mut source))
     .expect_err("a u8 where the size's u16 stands")
     .to_string();
 

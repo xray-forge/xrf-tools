@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use xrf_chunk::{ChunkField, ChunkFieldKind, ChunkFieldReplay, ChunkFieldSource};
 use xrf_editable_level::EditableLevelValue;
 use xrf_error::{XrfError, XrfResult};
@@ -68,9 +67,9 @@ impl<'a> LevelSpawnDataFields<'a> {
   ///
   /// Returns an error where the packet is not of a known class, its state does not read whole, or it holds a field
   /// past the packet's last.
-  pub fn read_entity<T: ByteOrder>(data: &IniSection) -> XrfResult<AlifeObject> {
+  pub fn read_entity(data: &IniSection) -> XrfResult<AlifeObject> {
     let mut fields: LevelSpawnDataFields<'_> = LevelSpawnDataFields::new(data);
-    let entity: AlifeObject = AlifeObject::read_spawn_packet::<T, _>(&mut ChunkFieldReplay::new(&mut fields))?;
+    let entity: AlifeObject = AlifeObject::read_spawn_packet(&mut ChunkFieldReplay::new(&mut fields))?;
 
     fields.assert_read()?;
 
@@ -83,8 +82,8 @@ impl<'a> LevelSpawnDataFields<'a> {
   /// # Errors
   ///
   /// Returns an error where the packet does not read ([`Self::read_entity`]).
-  pub fn read_visual<T: ByteOrder>(data: &IniSection) -> XrfResult<Option<String>> {
-    Ok(Self::read_entity::<T>(data)?.inherited.get_visual().map(str::to_owned))
+  pub fn read_visual(data: &IniSection) -> XrfResult<Option<String>> {
+    Ok(Self::read_entity(data)?.inherited.get_visual().map(str::to_owned))
   }
 
   /// Refuses a numbered field past the last one read: the editor would ignore it, so it belongs to another layout

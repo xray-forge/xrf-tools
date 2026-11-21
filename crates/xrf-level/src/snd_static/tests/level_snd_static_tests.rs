@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
 use crate::snd_static::level_snd_static_file::LevelSndStaticFile;
@@ -34,7 +34,7 @@ fn file_bytes(sounds: &[(&str, (u32, u32))]) -> XrfResult<Vec<u8>> {
 #[test]
 fn a_static_sound_reads_the_file_it_plays_and_where_it_sits() -> XrfResult {
   let bytes: Vec<u8> = file_bytes(&[("ambient\\wind_trees_1", (0, 0))])?;
-  let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes(bytes)?;
 
   assert_eq!(file.sounds.len(), 1);
   assert_eq!(file.sounds[0].sound, "ambient\\wind_trees_1");
@@ -47,7 +47,7 @@ fn a_static_sound_reads_the_file_it_plays_and_where_it_sits() -> XrfResult {
 #[test]
 fn a_window_of_two_zeroes_is_no_window_rather_than_one_of_no_length() -> XrfResult {
   let bytes: Vec<u8> = file_bytes(&[("ambient\\wind_trees_1", (0, 0)), ("ambient\\house_wind1", (6, 20))])?;
-  let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+  let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes(bytes)?;
 
   assert!(!file.sounds[0].active.is_bounded());
   assert!(file.sounds[1].active.is_bounded());
@@ -59,11 +59,11 @@ fn a_window_of_two_zeroes_is_no_window_rather_than_one_of_no_length() -> XrfResu
 #[test]
 fn a_sound_list_is_written_back_byte_for_byte() -> XrfResult {
   let bytes: Vec<u8> = file_bytes(&[("ambient\\wind_trees_1", (0, 0)), ("ambient\\house_wind1", (6, 20))])?;
-  let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let file: LevelSndStaticFile = LevelSndStaticFile::read_from_bytes(bytes.clone())?;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  file.write::<XRayByteOrder>(&mut writer)?;
+  file.write(&mut writer)?;
 
   assert_eq!(writer.buffer, bytes);
 

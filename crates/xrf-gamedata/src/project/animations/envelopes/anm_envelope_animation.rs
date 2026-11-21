@@ -1,6 +1,5 @@
 use xrf_animation_envelope::AnimationEnvelope;
 use xrf_anm::{AnmChannel, AnmFile};
-use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_vfs::XrayAssetType;
 
@@ -21,7 +20,7 @@ impl EnvelopeAnimation for AnmFile {
   const VALUE_RULE: GamedataVerificationRule = GamedataVerificationRule::AnimationsObjectMotionValue;
 
   fn read_file(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_bytes::<XRayByteOrder>(bytes)
+    Self::read_from_bytes(bytes)
   }
 
   // The motion chunk alone: `COMotion::LoadMotion` finds that chunk and reads nothing else, so any other a file carries
@@ -31,7 +30,7 @@ impl EnvelopeAnimation for AnmFile {
       return Ok(None);
     }
 
-    self.write_to_bytes::<XRayByteOrder>().map(Some)
+    self.write_to_bytes().map(Some)
   }
 
   fn get_channels(&self) -> Vec<(String, &AnimationEnvelope)> {

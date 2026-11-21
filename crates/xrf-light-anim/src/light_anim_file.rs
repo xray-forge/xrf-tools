@@ -1,9 +1,8 @@
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -35,8 +34,8 @@ impl LightAnimFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be opened, or is not a colour animation library this reads.
-  pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
-    Self::read_from_file::<T>(File::open(path).map_err(|error| {
+  pub fn read_from_path<P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
+    Self::read_from_file(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "Light animation library was not read: {}, error: {error}",
         format_path(path.as_ref())
@@ -49,8 +48,8 @@ impl LightAnimFile {
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is not a colour animation library this reads.
-  pub fn read_from_file<T: ByteOrder>(file: File) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  pub fn read_from_file(file: File) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_file(file)?)
   }
 
   /// Reads from bytes already in hand, which is how an archived library arrives.
@@ -58,8 +57,8 @@ impl LightAnimFile {
   /// # Errors
   ///
   /// Returns an error when the bytes are not a colour animation library this reads.
-  pub fn read_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Self> {
-    Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  pub fn read_from_bytes(bytes: Vec<u8>) -> XrfResult<Self> {
+    Self::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
   }
 
   /// Reads from a chunk reader over any data source.
@@ -68,15 +67,15 @@ impl LightAnimFile {
   ///
   /// Returns an error when an animation cannot be read. A file carrying no version chunk reads as version 0, which
   /// is what `ELightAnimLibrary::Load` does with one.
-  pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     Ok(Self {
       version: match ChunkReader::find_optional_by_id(&chunks, Self::VERSION_CHUNK_ID) {
-        Some(mut chunk) => chunk.read_u16::<T>()?,
+        Some(mut chunk) => chunk.read_u16()?,
         None => Self::BGR_VERSION,
       },
-      items: Self::read_items::<T, D>(&mut ChunkReader::find_required_by_id(&chunks, Self::ITEMS_CHUNK_ID)?)?,
+      items: Self::read_items::<D>(&mut ChunkReader::find_required_by_id(&chunks, Self::ITEMS_CHUNK_ID)?)?,
     })
   }
 
@@ -85,34 +84,34 @@ impl LightAnimFile {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut version: ChunkWriter = ChunkWriter::new();
 
-    version.write_u16::<T>(self.version)?;
-    version.flush_chunk_into::<T>(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
+    version.write_u16(self.version)?;
+    version.flush_chunk_into(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
 
     let mut items: ChunkWriter = ChunkWriter::new();
 
     for (index, item) in self.items.iter().enumerate() {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      item.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut items.buffer, index as u32)?;
+      item.write(&mut chunk)?;
+      chunk.flush_chunk_into(&mut items.buffer, index as u32)?;
     }
 
-    items.flush_chunk_into::<T>(&mut writer.buffer, Self::ITEMS_CHUNK_ID)?;
+    items.flush_chunk_into(&mut writer.buffer, Self::ITEMS_CHUNK_ID)?;
 
     Ok(())
   }
 
   /// Reads the animations `ELightAnimLibrary::Load` reaches: chunk 0, 1, 2 and on, stopping at the first id the list
   /// lacks, so an animation numbered past a gap is one the game never has.
-  fn read_items<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<LightAnimItem>> {
+  fn read_items<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<LightAnimItem>> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut items: Vec<LightAnimItem> = Vec::with_capacity(chunks.len());
 
     while let Some(mut chunk) = ChunkReader::find_optional_by_id(&chunks, items.len() as u32) {
-      items.push(LightAnimItem::read::<T, D>(&mut chunk)?);
+      items.push(LightAnimItem::read::<D>(&mut chunk)?);
     }
 
     Ok(items)

@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelAiFile, LevelGameFile};
 use xrf_spawn::{AlifeObject, GraphCrossTableCell, LevelSpawnFile, SpawnSectionClasses};
@@ -57,7 +56,7 @@ impl SpawnLevelFiles {
     spawn
       .objects
       .iter()
-      .map(|packet| packet.read_alife_object_by::<XRayByteOrder>(classes))
+      .map(|packet| packet.read_alife_object_by(classes))
       .collect()
   }
 
@@ -82,14 +81,12 @@ impl SpawnLevelFiles {
   }
 
   fn read_unnamed(directory: &Path, classes: &SpawnSectionClasses) -> XrfResult<Self> {
-    let (file, nodes) =
-      LevelAiFile::read_with_nodes_from_path::<XRayByteOrder, _>(&directory.join(LevelAiFile::FILE_NAME))?;
-    let spawn: LevelSpawnFile =
-      LevelSpawnFile::read_from_path::<XRayByteOrder, _>(&directory.join(LevelSpawnFile::FILE_NAME))?;
+    let (file, nodes) = LevelAiFile::read_with_nodes_from_path(&directory.join(LevelAiFile::FILE_NAME))?;
+    let spawn: LevelSpawnFile = LevelSpawnFile::read_from_path(&directory.join(LevelSpawnFile::FILE_NAME))?;
     let game_path = directory.join(LevelGameFile::FILE_NAME);
     let game: Option<LevelGameFile> = game_path
       .is_file()
-      .then(|| LevelGameFile::read_from_path::<XRayByteOrder, _>(&game_path))
+      .then(|| LevelGameFile::read_from_path(&game_path))
       .transpose()?;
     let map: SpawnAiMap = SpawnAiMap::new(file.header, &nodes)?;
     let objects: Vec<AlifeObject> = Self::read_objects(&spawn, classes)?;

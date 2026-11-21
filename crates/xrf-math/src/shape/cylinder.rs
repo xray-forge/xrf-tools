@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -25,20 +24,20 @@ impl Cylinder {
 /// `Fcylinder`: centre, axis, height, radius.
 impl ChunkFieldReadWrite for Cylinder {
   #[inline]
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      center: reader.read_xr::<T, _>()?,
-      direction: reader.read_xr::<T, _>()?,
-      height: reader.read_f32::<T>()?,
-      radius: reader.read_f32::<T>()?,
+      center: reader.read_xr()?,
+      direction: reader.read_xr()?,
+      height: reader.read_f32()?,
+      radius: reader.read_f32()?,
     })
   }
 
   #[inline]
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_xr::<T, _>(&self.center)?;
-    writer.write_xr::<T, _>(&self.direction)?;
-    writer.write_f32::<T>(self.height)?;
-    writer.write_f32::<T>(self.radius)
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_xr(&self.center)?;
+    writer.write_xr(&self.direction)?;
+    writer.write_f32(self.height)?;
+    writer.write_f32(self.radius)
   }
 }

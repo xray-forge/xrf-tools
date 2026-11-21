@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
-use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::GeneratedResources;
 
 use crate::core::command::command_testing::run_command_for_result;
@@ -152,7 +151,7 @@ pub(crate) fn create_library(name: &str) -> XrfResult<PathBuf> {
   fs::write(unpacked.join("effects.ltx"), EFFECTS)?;
   fs::write(unpacked.join("groups.ltx"), GROUPS)?;
 
-  ParticlesFile::import_from_path(&unpacked)?.write_to_path::<XRayByteOrder, _>(&packed)?;
+  ParticlesFile::import_from_path(&unpacked)?.write_to_path(&packed)?;
 
   Ok(packed)
 }

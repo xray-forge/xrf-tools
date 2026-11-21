@@ -1,7 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -25,16 +24,16 @@ impl ScaledDirection {
 }
 
 impl ChunkFieldReadWrite for ScaledDirection {
-  fn read_fields<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
+  fn read_fields<R: ChunkFieldReader>(reader: &mut R) -> XrfResult<Self> {
     Ok(Self {
-      direction: reader.read_u16::<T>()?,
-      magnitude: reader.read_f32::<T>()?,
+      direction: reader.read_u16()?,
+      magnitude: reader.read_f32()?,
     })
   }
 
-  fn write_fields<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
-    writer.write_u16::<T>(self.direction)?;
-    writer.write_f32::<T>(self.magnitude)?;
+  fn write_fields<W: ChunkFieldWriter>(&self, writer: &mut W) -> XrfResult {
+    writer.write_u16(self.direction)?;
+    writer.write_f32(self.magnitude)?;
 
     Ok(())
   }
@@ -71,7 +70,7 @@ impl FromStr for ScaledDirection {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
 
@@ -85,13 +84,13 @@ mod tests {
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.buffer.len(), 6);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
-    assert_eq!(ScaledDirection::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(ScaledDirection::read(&mut reader)?, original);
 
     Ok(())
   }

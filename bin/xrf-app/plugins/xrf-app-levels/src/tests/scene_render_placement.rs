@@ -4,7 +4,6 @@ use std::sync::Arc;
 use glam::{Mat4, Vec3};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_level::{EditableCustomObject, EditableObjectTransform, EditableSceneObject};
 use xrf_editable_object::EditableObjectFile;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
@@ -64,7 +63,7 @@ fn a_scene_object_stands_where_the_level_build_places_its_points() {
     .nth(2)
     .expect("the scene lies in a rawdata tree")
     .join(SceneSource::OBJECTS_DIRECTORY);
-  let built: LevelBuildExport = LevelBuildExporter::export::<XRayByteOrder>(
+  let built: LevelBuildExport = LevelBuildExporter::export(
     &opened.scene,
     &LevelBuildSources {
       objects: &[objects],

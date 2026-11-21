@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, META_TYPE_FIELD};
 use xrf_utils::assert_equal;
@@ -20,12 +19,12 @@ impl ParticleDescription {
 
 impl ChunkReadWrite for ParticleDescription {
   /// Read particle effect description data from chunk redder.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let particle_description: Self = Self {
       creator: reader.read_w1251_string()?,
       editor: reader.read_w1251_string()?,
-      created_time: reader.read_u32::<T>()?,
-      edit_time: reader.read_u32::<T>()?,
+      created_time: reader.read_u32()?,
+      edit_time: reader.read_u32()?,
     };
 
     reader.assert_read("Expect particle description chunk to be ended")?;
@@ -34,11 +33,11 @@ impl ChunkReadWrite for ParticleDescription {
   }
 
   /// Write particle effect description data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.creator)?;
     writer.write_w1251_string(&self.editor)?;
-    writer.write_u32::<T>(self.created_time)?;
-    writer.write_u32::<T>(self.edit_time)?;
+    writer.write_u32(self.created_time)?;
+    writer.write_u32(self.edit_time)?;
 
     Ok(())
   }

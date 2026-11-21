@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector3d};
 use xrf_test_utils::GeneratedResources;
@@ -27,7 +27,7 @@ fn test_read_write() -> XrfResult {
   let mut writer: ChunkWriter = ChunkWriter::new();
   let original: LevelCformHeader = sample();
 
-  original.write::<XRayByteOrder>(&mut writer)?;
+  original.write(&mut writer)?;
 
   assert_eq!(writer.bytes_written() as u64, LevelCformHeader::SIZE);
 
@@ -36,7 +36,7 @@ fn test_read_write() -> XrfResult {
     &filename,
   ))?)?;
 
-  let read: LevelCformFile = LevelCformFile::read_from_file::<XRayByteOrder>(GeneratedResources::open(
+  let read: LevelCformFile = LevelCformFile::read_from_file(GeneratedResources::open(
     &GeneratedResources::sample_name(file!(), &filename),
   )?)?;
 
@@ -79,14 +79,14 @@ fn writes_a_form_back_byte_for_byte_its_header_derived_from_its_geometry() -> Xr
     }
   );
 
-  file.write_with_geometry::<XRayByteOrder>(&geometry, &mut writer)?;
+  file.write_with_geometry(&geometry, &mut writer)?;
 
   let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
-  let (read, read_geometry) = LevelCformFile::read_with_geometry_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let (read, read_geometry) = LevelCformFile::read_with_geometry_from_bytes(bytes.clone())?;
   let mut again: ChunkWriter = ChunkWriter::new();
 
   assert_eq!((read.clone(), read_geometry.clone()), (file, geometry));
-  read.write_with_geometry::<XRayByteOrder>(&read_geometry, &mut again)?;
+  read.write_with_geometry(&read_geometry, &mut again)?;
   assert_eq!(again.flush_raw_into_buffer()?, bytes);
   assert_eq!(bytes.len(), LevelCformHeader::SIZE as usize + 3 * 12 + 16);
 
@@ -102,7 +102,7 @@ fn refuses_to_write_a_header_counting_other_than_its_geometry() -> XrfResult {
 
   assert!(
     LevelCformFile { header }
-      .write_with_geometry::<XRayByteOrder>(&geometry, &mut ChunkWriter::new())
+      .write_with_geometry(&geometry, &mut ChunkWriter::new())
       .is_err()
   );
   assert!(LevelCformHeader::of(&LevelCformGeometry::new(Vec::new(), Vec::new())?).is_err());
@@ -123,7 +123,7 @@ fn reads_the_vertices_and_faces_the_header_counts() -> XrfResult {
     },
   };
 
-  header.write::<XRayByteOrder>(&mut writer)?;
+  header.write(&mut writer)?;
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 
@@ -138,7 +138,7 @@ fn reads_the_vertices_and_faces_the_header_counts() -> XrfResult {
   // Material 5, shadows suppressed, sector 7.
   bytes.extend_from_slice(&(5_u32 | (1 << 14) | (7 << 16)).to_le_bytes());
 
-  let (file, geometry) = LevelCformFile::read_with_geometry_from_bytes::<XRayByteOrder>(bytes)?;
+  let (file, geometry) = LevelCformFile::read_with_geometry_from_bytes(bytes)?;
   let face: LevelCformFace = geometry.get_faces()[0];
 
   assert_eq!(file.header, header);
@@ -166,7 +166,7 @@ fn a_face_naming_a_vertex_past_the_count_is_an_error() -> XrfResult {
       max: Vector3d::new(0.0, 0.0, 0.0),
     },
   }
-  .write::<XRayByteOrder>(&mut writer)?;
+  .write(&mut writer)?;
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 
@@ -176,7 +176,7 @@ fn a_face_naming_a_vertex_past_the_count_is_an_error() -> XrfResult {
     bytes.extend_from_slice(&index.to_le_bytes());
   }
 
-  assert!(LevelCformFile::read_with_geometry_from_bytes::<XRayByteOrder>(bytes).is_err());
+  assert!(LevelCformFile::read_with_geometry_from_bytes(bytes).is_err());
 
   Ok(())
 }
@@ -194,7 +194,7 @@ fn new_form(vertices: &[[f32; 3]], faces: &[[u32; 3]]) -> XrfResult<Vec<u8>> {
       max: Vector3d::new(0.0, 0.0, 0.0),
     },
   }
-  .write::<XRayByteOrder>(&mut writer)?;
+  .write(&mut writer)?;
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 
@@ -237,7 +237,7 @@ fn tells_which_points_have_nothing_straight_above_them() -> XrfResult {
 
   // Under the roof; over it; over the floor alone; beside a wall seen edge-on from above.
   assert_eq!(
-    LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, &points)?,
+    LevelCformFile::read_open_above_from_bytes(bytes, &points)?,
     vec![false, true, true, true]
   );
 
@@ -257,7 +257,7 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
       max: Vector3d::new(1.0, 0.0, 1.0),
     },
   }
-  .write::<XRayByteOrder>(&mut writer)?;
+  .write(&mut writer)?;
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 
@@ -272,8 +272,7 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
     bytes.extend_from_slice(&packed.to_le_bytes());
   }
 
-  let (file, materials) =
-    LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)?;
+  let (file, materials) = LevelCformFile::read_with_materials_from_chunk(&mut ChunkReader::from_vec(bytes)?)?;
 
   assert_eq!(file.header.face_count, 3);
   assert_eq!(materials.get_ids().iter().copied().collect::<Vec<u16>>(), [5, 9]);
@@ -295,11 +294,9 @@ fn reads_the_edge_material_ids_from_memory_and_from_a_file() -> XrfResult {
   }
 
   let path = GeneratedResources::write("cform/edge_materials.cform", &bytes)?;
-  let from_file = LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_file(
-    std::fs::File::open(&path)?,
-  )?)?;
-  let from_memory =
-    LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)?;
+  let from_file =
+    LevelCformFile::read_with_materials_from_chunk(&mut ChunkReader::from_file(std::fs::File::open(&path)?)?)?;
+  let from_memory = LevelCformFile::read_with_materials_from_chunk(&mut ChunkReader::from_vec(bytes)?)?;
 
   std::fs::remove_file(path)?;
 
@@ -318,9 +315,7 @@ fn a_form_holding_fewer_faces_than_it_counts_is_an_error_when_reading_materials(
 
   bytes.truncate(bytes.len() - 4);
 
-  assert!(
-    LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?).is_err()
-  );
+  assert!(LevelCformFile::read_with_materials_from_chunk(&mut ChunkReader::from_vec(bytes)?).is_err());
 
   Ok(())
 }
@@ -329,7 +324,7 @@ fn a_form_holding_fewer_faces_than_it_counts_is_an_error_when_reading_materials(
 fn a_face_naming_a_vertex_past_the_count_is_an_error_when_testing_the_sky() -> XrfResult {
   let bytes: Vec<u8> = new_form(&[[0.0, 0.0, 0.0]], &[[0, 0, 3]])?;
 
-  assert!(LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, &[Vector3d::new(0.0, 0.0, 0.0)]).is_err());
+  assert!(LevelCformFile::read_open_above_from_bytes(bytes, &[Vector3d::new(0.0, 0.0, 0.0)]).is_err());
 
   Ok(())
 }
@@ -339,7 +334,7 @@ fn truncated_header_is_an_error_and_not_a_panic() -> XrfResult {
   let filename: String = String::from("truncated.cform");
   let mut writer: ChunkWriter = ChunkWriter::new();
 
-  sample().write::<XRayByteOrder>(&mut writer)?;
+  sample().write(&mut writer)?;
 
   let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
 
@@ -348,7 +343,7 @@ fn truncated_header_is_an_error_and_not_a_panic() -> XrfResult {
   GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?.write_all(&bytes)?;
 
   assert!(
-    LevelCformFile::read_from_file::<XRayByteOrder>(GeneratedResources::open(&GeneratedResources::sample_name(
+    LevelCformFile::read_from_file(GeneratedResources::open(&GeneratedResources::sample_name(
       file!(),
       &filename
     ))?)

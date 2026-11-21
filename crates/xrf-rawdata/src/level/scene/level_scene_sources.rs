@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use byteorder::ByteOrder;
 use sha2::{Digest, Sha256};
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_editable_level::EditableLevelGuid;
@@ -181,15 +180,15 @@ impl LevelSceneSources {
   /// # Errors
   ///
   /// Returns an error when the bundle is not one.
-  pub(crate) fn get_bundle<T: ByteOrder>(&mut self) -> XrfResult<Option<Rc<LevelBundle>>> {
+  pub(crate) fn get_bundle(&mut self) -> XrfResult<Option<Rc<LevelBundle>>> {
     if self.bundle.is_none() {
       let bundle: Option<Rc<LevelBundle>> = match self.take(LevelFile::FILE_NAME) {
         Some(bytes) => {
           let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;
 
           Some(Rc::new(LevelBundle {
-            file: LevelFile::read_from_chunks::<T, _>(&chunks)?,
-            visuals: LevelFile::read_visuals_from_chunks::<T, _>(&chunks)?,
+            file: LevelFile::read_from_chunks(&chunks)?,
+            visuals: LevelFile::read_visuals_from_chunks(&chunks)?,
           }))
         }
         None => None,

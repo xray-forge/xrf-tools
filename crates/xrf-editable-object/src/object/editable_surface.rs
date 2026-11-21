@@ -1,5 +1,4 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One surface of an editable object, `CSurface` as `EOBJ_CHUNK_SURFACES3` stores it: what a face's material is made
@@ -56,7 +55,7 @@ impl EditableSurface {
 }
 
 impl ChunkReadWrite for EditableSurface {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       name: reader.read_w1251_string()?,
       shader: reader.read_w1251_string()?,
@@ -64,22 +63,22 @@ impl ChunkReadWrite for EditableSurface {
       game_material: reader.read_w1251_string()?,
       texture: reader.read_w1251_string()?,
       vmap: reader.read_w1251_string()?,
-      flags: reader.read_u32::<T>()?,
-      fvf: reader.read_u32::<T>()?,
-      texture_coordinate_count: reader.read_u32::<T>()?,
+      flags: reader.read_u32()?,
+      fvf: reader.read_u32()?,
+      texture_coordinate_count: reader.read_u32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
     writer.write_w1251_string(&self.shader)?;
     writer.write_w1251_string(&self.compiler_shader)?;
     writer.write_w1251_string(&self.game_material)?;
     writer.write_w1251_string(&self.texture)?;
     writer.write_w1251_string(&self.vmap)?;
-    writer.write_u32::<T>(self.flags)?;
-    writer.write_u32::<T>(self.fvf)?;
-    writer.write_u32::<T>(self.texture_coordinate_count)?;
+    writer.write_u32(self.flags)?;
+    writer.write_u32(self.fvf)?;
+    writer.write_u32(self.texture_coordinate_count)?;
 
     Ok(())
   }

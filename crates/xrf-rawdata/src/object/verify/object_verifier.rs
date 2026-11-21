@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
@@ -31,7 +30,7 @@ impl ObjectVerifier {
   ///
   /// Returns an error where the compile does, or where its OGF does not read back.
   pub fn verify(object: &EditableObjectFile, reference: &OgfFile) -> XrfResult<ObjectVerification> {
-    let compiled: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(
+    let compiled: OgfFile = OgfFile::read_from_bytes(
       ObjectCompiler::compile(
         object,
         &ObjectCompileSource {

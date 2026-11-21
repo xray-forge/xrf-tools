@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 /// One triangle of a sound environment mesh: a `CDB::TRI` whose packed word names the environment on either side
@@ -23,13 +22,9 @@ impl LevelSndEnvFace {
 }
 
 impl ChunkReadWrite for LevelSndEnvFace {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let vertices: [u32; 3] = [
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-      reader.read_u32::<T>()?,
-    ];
-    let packed: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let vertices: [u32; 3] = [reader.read_u32()?, reader.read_u32()?, reader.read_u32()?];
+    let packed: u32 = reader.read_u32()?;
 
     Ok(Self {
       vertices,
@@ -38,12 +33,12 @@ impl ChunkReadWrite for LevelSndEnvFace {
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for vertex in self.vertices {
-      writer.write_u32::<T>(vertex)?;
+      writer.write_u32(vertex)?;
     }
 
-    writer.write_u32::<T>(u32::from(self.front) | (u32::from(self.back) << 16))?;
+    writer.write_u32(u32::from(self.front) | (u32::from(self.back) << 16))?;
 
     Ok(())
   }

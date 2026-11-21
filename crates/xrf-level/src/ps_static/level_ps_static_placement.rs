@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Matrix4x4, Vector3d};
 
@@ -38,17 +37,13 @@ impl LevelPsStaticPlacement {
   /// # Errors
   ///
   /// Returns an error when the payload ends inside the record.
-  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, version: u32) -> XrfResult<Self> {
-    let game_types: Option<u16> = if version > 0 {
-      Some(reader.read_u16::<T>()?)
-    } else {
-      None
-    };
+  pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, version: u32) -> XrfResult<Self> {
+    let game_types: Option<u16> = if version > 0 { Some(reader.read_u16()?) } else { None };
 
     Ok(Self {
       game_types,
       effect: reader.read_w1251_string()?,
-      transform: reader.read_xr::<T, _>()?,
+      transform: reader.read_xr()?,
     })
   }
 
@@ -57,13 +52,13 @@ impl LevelPsStaticPlacement {
   /// # Errors
   ///
   /// Returns an error when the writer refuses the bytes.
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     if let Some(game_types) = self.game_types {
-      writer.write_u16::<T>(game_types)?;
+      writer.write_u16(game_types)?;
     }
 
     writer.write_w1251_string(&self.effect)?;
-    writer.write_xr::<T, _>(&self.transform)?;
+    writer.write_xr(&self.transform)?;
 
     Ok(())
   }

@@ -6,7 +6,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-byteorder = { workspace = true }
 crc32fast = { workspace = true }
 log = { workspace = true }
 lzokay = { workspace = true }

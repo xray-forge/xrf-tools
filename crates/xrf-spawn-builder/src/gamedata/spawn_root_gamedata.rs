@@ -2,7 +2,6 @@ use std::ffi::OsStr;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
@@ -85,7 +84,7 @@ impl SpawnRootGamedata {
     stages.advance();
     job.check_cancelled()?;
     job.set_detail(Some(destination.display().to_string()));
-    build.spawn.write_to_path::<XRayByteOrder, _>(&destination)?;
+    build.spawn.write_to_path(&destination)?;
     stages.advance();
 
     Ok(SpawnRootOutcome {

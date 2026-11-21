@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
-use byteorder::ByteOrder;
 use xrf_editable_level::{
   EditableAiMapTool, EditableBuildParams, EditableDetailObjectTool, EditableGlowObject, EditableLevelGuid,
   EditableLevelOptions, EditableLevelScene, EditableLightObject, EditableObjectPart, EditablePortalObject,
@@ -61,10 +60,7 @@ impl LevelBuildExporter {
   ///
   /// Returns an error, as the Build stops, when the scene is of draft quality, a part does not read, a placed object,
   /// light or portal does not build, or the details or impostors need a textures root `sources` lacks or do not export.
-  pub fn export<T: ByteOrder>(
-    scene: &EditableLevelScene,
-    sources: &LevelBuildSources<'_>,
-  ) -> XrfResult<LevelBuildExport> {
+  pub fn export(scene: &EditableLevelScene, sources: &LevelBuildSources<'_>) -> XrfResult<LevelBuildExport> {
     let game_materials: &GameMtlFile = sources.game_materials;
     let guid: EditableLevelGuid = scene.level.get_guid()?;
     let options: EditableLevelOptions = scene.level.get_level_options()?;
@@ -83,7 +79,7 @@ impl LevelBuildExporter {
     let mut library: LevelBuildLibrary<'_> = LevelBuildLibrary::new(sources.objects, held.0);
     let textures: LevelBuildTextures<'_> = LevelBuildTextures::new(sources.textures, held.1);
 
-    library.load::<T>(placed.objects.iter().map(|object| object.reference.as_str()))?;
+    library.load(placed.objects.iter().map(|object| object.reference.as_str()))?;
 
     let by_name: HashMap<&str, &EditableSceneObject> = placed
       .objects
@@ -201,7 +197,7 @@ impl LevelBuildExporter {
 
     if let Some(tool) = scene.get_tool(EditableWallmarkTool::TOOL_NAME) {
       geometry.add_wallmarks(
-        &EditableWallmarkTool::read_from_scene_tool::<T>(tool)?,
+        &EditableWallmarkTool::read_from_scene_tool(tool)?,
         &sectors,
         &mut tables,
       )?;
@@ -215,8 +211,8 @@ impl LevelBuildExporter {
           ));
         }
 
-        Some(LevelBuildDetails::export::<T>(
-          &EditableDetailObjectTool::read_from_scene_tool::<T>(tool)?,
+        Some(LevelBuildDetails::export(
+          &EditableDetailObjectTool::read_from_scene_tool(tool)?,
           &mut library,
           &textures,
         )?)
@@ -225,7 +221,7 @@ impl LevelBuildExporter {
     };
     // `ESceneAIMapTool::Export` writes nothing for a map of no node.
     let ai_map: Option<BuildAimapFile> = match scene.get_tool(EditableAiMapTool::TOOL_NAME) {
-      Some(tool) => Some(EditableAiMapTool::read_from_scene_tool::<T>(tool)?)
+      Some(tool) => Some(EditableAiMapTool::read_from_scene_tool(tool)?)
         .filter(|tool| !tool.nodes.is_empty())
         .map(|tool| LevelAiMapConversion::export(&tool)),
       None => None,
@@ -383,8 +379,8 @@ impl LevelBuildExporter {
   /// Returns an error when an unforced build finds a file it owns (before reading the scene), the scene or game
   /// materials do not read, the scene places objects but no game materials are named, no objects root is found, the
   /// export fails, the job is cancelled, or a file does not write or remove.
-  pub fn build_to_directory<T: ByteOrder>(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
-    Self::build_to_directory_checked::<T>(request, job, |_| Ok(()))
+  pub fn build_to_directory(request: &LevelBuildRequest, job: &JobHandle) -> XrfResult<LevelBuildReport> {
+    Self::build_to_directory_checked(request, job, |_| Ok(()))
   }
 
   /// [`Self::build_to_directory`], handing the level compiler's files to `check` once made and before any is written,
@@ -393,7 +389,7 @@ impl LevelBuildExporter {
   /// # Errors
   ///
   /// Returns an error where [`Self::build_to_directory`] does, or `check` does.
-  pub fn build_to_directory_checked<T: ByteOrder>(
+  pub fn build_to_directory_checked(
     request: &LevelBuildRequest,
     job: &JobHandle,
     check: impl FnOnce(&LevelBuildExport) -> XrfResult,
@@ -407,7 +403,7 @@ impl LevelBuildExporter {
 
     job.set_detail(Some(String::from("Reading the scene")));
 
-    let scene: EditableLevelScene = EditableLevelScene::read_from_path::<T, _>(source)?;
+    let scene: EditableLevelScene = EditableLevelScene::read_from_path(source)?;
 
     if request.game_materials.is_none() {
       Self::assert_no_objects(&scene)?;
@@ -429,9 +425,9 @@ impl LevelBuildExporter {
           )));
         }
 
-        let game_materials: GameMtlFile = GameMtlFile::read_from_path::<T, _>(game_materials)?;
+        let game_materials: GameMtlFile = GameMtlFile::read_from_path(game_materials)?;
         let textures: PathBuf = request.get_textures_root();
-        let mut export: LevelBuildExport = Self::export::<T>(
+        let mut export: LevelBuildExport = Self::export(
           &scene,
           &LevelBuildSources {
             objects: &objects,
@@ -453,7 +449,7 @@ impl LevelBuildExporter {
         // Packing the build project and geometry takes long on a large scene; a cancel need not wait for it.
         job.check_cancelled()?;
 
-        (export.into_files::<T>()?, Some(census), entities, refused)
+        (export.into_files()?, Some(census), entities, refused)
       }
       None => (BTreeMap::new(), None, Vec::new(), Vec::new()),
     };
@@ -463,7 +459,7 @@ impl LevelBuildExporter {
     job.set_detail(Some(String::from("Game files")));
 
     files.extend(
-      LevelSceneExporter::export::<T>(&scene, &entities)?
+      LevelSceneExporter::export(&scene, &entities)?
         .into_iter()
         .map(|(name, bytes)| (name.to_owned(), bytes)),
     );

@@ -1,4 +1,3 @@
-use xrf_chunk::XRayByteOrder;
 use xrf_editable_object::{EditableBone, EditableObjectFile};
 use xrf_error::XrfResult;
 use xrf_ogf::OgfFile;
@@ -30,7 +29,7 @@ fn part() -> XrfResult<OgfFile> {
     built_at: 0,
   };
 
-  OgfFile::read_from_bytes::<XRayByteOrder>(ObjectCompiler::compile(&authored, &source)?.bytes)
+  OgfFile::read_from_bytes(ObjectCompiler::compile(&authored, &source)?.bytes)
 }
 
 #[test]

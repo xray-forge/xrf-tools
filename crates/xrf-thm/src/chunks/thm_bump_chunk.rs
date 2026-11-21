@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
 use crate::bump::thm_bump_mode::ThmBumpMode;
@@ -38,10 +37,10 @@ impl Default for ThmBumpChunk {
 }
 
 impl ChunkReadWrite for ThmBumpChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let bump: Self = Self {
-      virtual_height: reader.read_f32::<T>()?,
-      mode: ThmBumpMode::from(reader.read_u32::<T>()?),
+      virtual_height: reader.read_f32()?,
+      mode: ThmBumpMode::from(reader.read_u32()?),
       name: reader.read_w1251_string()?,
     };
 
@@ -50,9 +49,9 @@ impl ChunkReadWrite for ThmBumpChunk {
     Ok(bump)
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_f32::<T>(self.virtual_height)?;
-    writer.write_u32::<T>(self.mode.into())?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_f32(self.virtual_height)?;
+    writer.write_u32(self.mode.into())?;
     writer.write_w1251_string(&self.name)?;
 
     Ok(())

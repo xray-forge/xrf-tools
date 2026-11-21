@@ -1,7 +1,6 @@
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -58,7 +57,7 @@ impl ParticlesEffectsChunk {
 impl ChunkReadWrite for ParticlesEffectsChunk {
   /// Read effects chunk by position descriptor.
   /// Parses binary data into version chunk representation object.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut effects: Vec<ParticleEffect> = Vec::new();
 
@@ -69,7 +68,7 @@ impl ChunkReadWrite for ParticlesEffectsChunk {
     );
 
     for mut chunk in chunks {
-      effects.push(ParticleEffect::read::<T, _>(&mut chunk)?);
+      effects.push(ParticleEffect::read(&mut chunk)?);
     }
 
     effects.sort_by(|first, second| first.name.cmp(&second.name));
@@ -80,15 +79,15 @@ impl ChunkReadWrite for ParticlesEffectsChunk {
   }
 
   /// Write particle effects data into chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     for (index, effect) in self.effects.iter().enumerate() {
       let mut effect_writer: ChunkWriter = ChunkWriter::new();
 
-      effect.write::<T>(&mut effect_writer)?;
+      effect.write(&mut effect_writer)?;
 
       writer.write_all(
         effect_writer
-          .flush_chunk_into_buffer::<T>(narrow_format_size(index, "particle effect chunk id")?)?
+          .flush_chunk_into_buffer(narrow_format_size(index, "particle effect chunk id")?)?
           .as_slice(),
       )?;
     }

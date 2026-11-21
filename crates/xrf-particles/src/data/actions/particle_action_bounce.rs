@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
 
@@ -20,24 +19,24 @@ pub struct ParticleActionBounce {
 
 impl ChunkReadWrite for ParticleActionBounce {
   /// Read particle_action bounce.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      action_flags: reader.read_u32::<T>()?,
-      action_type: reader.read_xr::<T, _>()?,
-      position: reader.read_xr::<T, _>()?,
-      one_minus_friction: reader.read_f32::<T>()?,
-      resilience: reader.read_f32::<T>()?,
-      cutoff_sqr: reader.read_f32::<T>()?,
+      action_flags: reader.read_u32()?,
+      action_type: reader.read_xr()?,
+      position: reader.read_xr()?,
+      one_minus_friction: reader.read_f32()?,
+      resilience: reader.read_f32()?,
+      cutoff_sqr: reader.read_f32()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<T>(self.action_flags)?;
-    writer.write_xr::<T, _>(&self.action_type)?;
-    writer.write_xr::<T, _>(&self.position)?;
-    writer.write_f32::<T>(self.one_minus_friction)?;
-    writer.write_f32::<T>(self.resilience)?;
-    writer.write_f32::<T>(self.cutoff_sqr)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u32(self.action_flags)?;
+    writer.write_xr(&self.action_type)?;
+    writer.write_xr(&self.position)?;
+    writer.write_f32(self.one_minus_friction)?;
+    writer.write_f32(self.resilience)?;
+    writer.write_f32(self.cutoff_sqr)?;
 
     Ok(())
   }
@@ -83,7 +82,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -106,12 +105,11 @@ mod tests {
       cutoff_sqr: 4.35,
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    original.write(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 88);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    let bytes_written: usize = writer.flush_chunk_into(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 88);
 
@@ -121,7 +119,7 @@ mod tests {
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
-    assert_eq!(ParticleActionBounce::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(ParticleActionBounce::read(&mut reader)?, original);
 
     Ok(())
   }

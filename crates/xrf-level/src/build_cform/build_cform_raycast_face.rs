@@ -1,6 +1,5 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector2d;
 
@@ -27,14 +26,14 @@ impl BuildCformRaycastFace {
 }
 
 impl ChunkReadWrite for BuildCformRaycastFace {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let material: u16 = reader.read_u16::<T>()?;
-    let material_padding: u16 = reader.read_u16::<T>()?;
-    let game_material: u32 = reader.read_u32::<T>()?;
+  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let material: u16 = reader.read_u16()?;
+    let material_padding: u16 = reader.read_u16()?;
+    let game_material: u32 = reader.read_u32()?;
     let mut texture_coordinates: [Vector2d; 3] = [Vector2d::ZERO; 3];
 
     for coordinate in &mut texture_coordinates {
-      *coordinate = reader.read_xr::<T, _>()?;
+      *coordinate = reader.read_xr()?;
     }
 
     Ok(Self {
@@ -42,22 +41,22 @@ impl ChunkReadWrite for BuildCformRaycastFace {
       material_padding,
       game_material,
       texture_coordinates,
-      reserved: reader.read_u16::<T>()?,
-      trailing_padding: reader.read_u16::<T>()?,
+      reserved: reader.read_u16()?,
+      trailing_padding: reader.read_u16()?,
     })
   }
 
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u16::<T>(self.material)?;
-    writer.write_u16::<T>(self.material_padding)?;
-    writer.write_u32::<T>(self.game_material)?;
+  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_u16(self.material)?;
+    writer.write_u16(self.material_padding)?;
+    writer.write_u32(self.game_material)?;
 
     for coordinate in &self.texture_coordinates {
-      writer.write_xr::<T, _>(coordinate)?;
+      writer.write_xr(coordinate)?;
     }
 
-    writer.write_u16::<T>(self.reserved)?;
-    writer.write_u16::<T>(self.trailing_padding)?;
+    writer.write_u16(self.reserved)?;
+    writer.write_u16(self.trailing_padding)?;
 
     Ok(())
   }

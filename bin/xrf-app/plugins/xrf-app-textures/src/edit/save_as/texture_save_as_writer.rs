@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, FileStamp};
-use xrf_chunk::XRayByteOrder;
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_thm::{ThmFile, ThmFormat};
 use xrf_utils::{OutputFiles, error_to_string, format_path};
@@ -149,7 +148,7 @@ impl TextureSaveAsWriter {
     }
 
     Ok(Some(
-      ThmFile::read_from_bytes::<XRayByteOrder>(Self::read_original(search, file)?).map_err(error_to_string)?,
+      ThmFile::read_from_bytes(Self::read_original(search, file)?).map_err(error_to_string)?,
     ))
   }
 

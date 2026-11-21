@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use xrf_app_core::assets::FileStamp;
-use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_test_utils::GeneratedResources;
@@ -113,7 +112,7 @@ pub(crate) fn target(path: &Path) -> TextureSaveTarget {
 }
 
 pub(crate) fn read_descriptor(path: &Path) -> ThmFile {
-  ThmFile::read_from_path::<XRayByteOrder, _>(&path).expect("written descriptor parses")
+  ThmFile::read_from_path(&path).expect("written descriptor parses")
 }
 
 /// A loose asset at `path`, as the VFS would have reported it.

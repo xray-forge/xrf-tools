@@ -1,4 +1,3 @@
-use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
@@ -22,17 +21,17 @@ impl AlifeStateReadWrite for AlifeObjectTrader {
   ///
   /// `CSE_ALifeTrader::STATE_Read` follows its two bases with three blocks gated below version 118,
   /// none of which the supported versions reach.
-  fn read_state<T: ByteOrder, R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
+  fn read_state<R: ChunkFieldReader>(reader: &mut R, layout: SpawnLayout) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      trader: AlifeObjectTraderAbstract::read_state::<T, _>(reader, layout)?,
+      base: reader.read_xr()?,
+      trader: AlifeObjectTraderAbstract::read_state(reader, layout)?,
     })
   }
 
   /// Write trader data into the chunk.
-  fn write_state<T: ByteOrder, W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    self.trader.write_state::<T, _>(writer, layout)
+  fn write_state<W: ChunkFieldWriter>(&self, writer: &mut W, layout: SpawnLayout) -> XrfResult {
+    writer.write_xr(&self.base)?;
+    self.trader.write_state(writer, layout)
   }
 
   /// Import trader object data from ltx config section.
@@ -56,7 +55,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_ltx::Ltx;
   use xrf_test_utils::GeneratedResources;
@@ -106,14 +105,14 @@ mod tests {
     let mut writer: ChunkWriter = ChunkWriter::new();
     let original: AlifeObjectTrader = new_mock();
 
-    original.write_state::<XRayByteOrder, _>(&mut writer, SpawnLayout::CALL_OF_PRIPYAT)?;
+    original.write_state(&mut writer, SpawnLayout::CALL_OF_PRIPYAT)?;
 
     assert_eq!(writer.bytes_written(), 126);
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&writer.buffer)?;
 
     assert_eq!(
-      AlifeObjectTrader::read_state::<XRayByteOrder, _>(&mut reader, SpawnLayout::CALL_OF_PRIPYAT)?,
+      AlifeObjectTrader::read_state(&mut reader, SpawnLayout::CALL_OF_PRIPYAT)?,
       original
     );
     reader.assert_read("Expect the trader to be read whole")?;
