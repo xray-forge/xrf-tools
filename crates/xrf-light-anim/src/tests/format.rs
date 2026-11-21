@@ -148,7 +148,7 @@ fn reads_a_key_before_frame_zero_as_the_engine_does() -> XrfResult {
 
   file.write(&mut writer)?;
 
-  assert_eq!(writer.flush_raw_into_buffer()?, original);
+  assert_eq!(writer.into_bytes(), original);
 
   assert_eq!(file.items[0].keys[0].frame, -1);
   assert_eq!(
@@ -242,7 +242,7 @@ fn writes_a_library_back_byte_for_byte() -> XrfResult {
 
   file.write(&mut writer)?;
 
-  assert_eq!(writer.flush_raw_into_buffer()?, original);
+  assert_eq!(writer.into_bytes(), original);
 
   Ok(())
 }

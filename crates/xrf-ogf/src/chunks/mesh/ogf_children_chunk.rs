@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
@@ -54,14 +52,10 @@ impl OgfChildrenChunk {
     let mut nested: ChunkWriter = ChunkWriter::new();
 
     for (index, child) in children.iter().enumerate() {
-      let mut numbered: ChunkWriter = ChunkWriter::new();
+      let id: u32 = u32::try_from(index)
+        .map_err(|_| XrfError::new_invalid_error("An OGF holds more children than a u32 numbers"))?;
 
-      numbered.write_all(child)?;
-      numbered.flush_chunk_into(
-        &mut nested,
-        u32::try_from(index)
-          .map_err(|_| XrfError::new_invalid_error("An OGF holds more children than a u32 numbers"))?,
-      )?;
+      ChunkWriter::write_framed(&mut nested, id, child)?;
     }
 
     nested.flush_chunk_into(writer, Self::CHUNK_ID)?;

@@ -52,7 +52,7 @@ fn write(file: &SoundEnvironmentFile) -> XrfResult<Vec<u8>> {
 
   file.write(&mut writer)?;
 
-  writer.flush_raw_into_buffer()
+  Ok(writer.into_bytes())
 }
 
 #[test]

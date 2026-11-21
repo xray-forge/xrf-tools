@@ -42,7 +42,7 @@ impl ParticleEffectEditorData {
     ParticleEditorAction::write_list(&mut writer, actions)?;
 
     Ok(Self {
-      value: writer.flush_raw_into_buffer()?,
+      value: writer.into_bytes(),
     })
   }
 }

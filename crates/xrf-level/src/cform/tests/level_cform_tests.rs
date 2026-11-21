@@ -81,13 +81,13 @@ fn writes_a_form_back_byte_for_byte_its_header_derived_from_its_geometry() -> Xr
 
   file.write_with_geometry(&geometry, &mut writer)?;
 
-  let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let bytes: Vec<u8> = writer.into_bytes();
   let (read, read_geometry) = LevelCformFile::read_with_geometry_from_bytes(bytes.clone())?;
   let mut again: ChunkWriter = ChunkWriter::new();
 
   assert_eq!((read.clone(), read_geometry.clone()), (file, geometry));
   read.write_with_geometry(&read_geometry, &mut again)?;
-  assert_eq!(again.flush_raw_into_buffer()?, bytes);
+  assert_eq!(again.into_bytes(), bytes);
   assert_eq!(bytes.len(), LevelCformHeader::SIZE as usize + 3 * 12 + 16);
 
   Ok(())
@@ -125,7 +125,7 @@ fn reads_the_vertices_and_faces_the_header_counts() -> XrfResult {
 
   header.write(&mut writer)?;
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   for value in [0.0_f32, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0] {
     bytes.extend_from_slice(&value.to_le_bytes());
@@ -168,7 +168,7 @@ fn a_face_naming_a_vertex_past_the_count_is_an_error() -> XrfResult {
   }
   .write(&mut writer)?;
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   bytes.extend_from_slice(&[0; 12]);
 
@@ -196,7 +196,7 @@ fn new_form(vertices: &[[f32; 3]], faces: &[[u32; 3]]) -> XrfResult<Vec<u8>> {
   }
   .write(&mut writer)?;
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   for value in vertices.iter().flatten() {
     bytes.extend_from_slice(&value.to_le_bytes());
@@ -259,7 +259,7 @@ fn reads_each_material_the_faces_name_once() -> XrfResult {
   }
   .write(&mut writer)?;
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   bytes.extend_from_slice(&[0; 36]);
 
@@ -336,7 +336,7 @@ fn truncated_header_is_an_error_and_not_a_panic() -> XrfResult {
 
   sample().write(&mut writer)?;
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   bytes.truncate(LevelCformHeader::SIZE as usize - 1);
 

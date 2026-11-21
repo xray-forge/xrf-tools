@@ -39,7 +39,7 @@ fn write(bundle: &LevelBundle) -> XrfResult<Vec<u8>> {
 
   bundle.write(&mut writer)?;
 
-  writer.flush_raw_into_buffer()
+  Ok(writer.into_bytes())
 }
 
 #[test]

@@ -1,5 +1,4 @@
 use std::fmt;
-use std::io::Write;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -146,34 +145,18 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
 
       let mut index_writer: ChunkWriter = ChunkWriter::new();
       index_writer.write_u16(narrow_format_size(index, "alife object index")?)?;
-      object_writer.write_all(
-        index_writer
-          .flush_chunk_into_buffer(Self::OBJECT_INDEX_CHUNK_ID)?
-          .as_slice(),
-      )?;
+      index_writer.flush_chunk_into(&mut object_writer, Self::OBJECT_INDEX_CHUNK_ID)?;
 
       let mut data_writer: ChunkWriter = ChunkWriter::new();
       object.write(&mut data_writer)?;
-      object_writer.write_all(
-        data_writer
-          .flush_chunk_into_buffer(Self::OBJECT_DATA_CHUNK_ID)?
-          .as_slice(),
-      )?;
+      data_writer.flush_chunk_into(&mut object_writer, Self::OBJECT_DATA_CHUNK_ID)?;
 
-      objects_writer.write_all(
-        object_writer
-          .flush_chunk_into_buffer(narrow_format_size(index, "alife object chunk id")?)?
-          .as_slice(),
-      )?;
+      object_writer.flush_chunk_into(&mut objects_writer, narrow_format_size(index, "alife object chunk id")?)?;
     }
 
-    writer.write_all(count_writer.flush_chunk_into_buffer(Self::COUNT_CHUNK_ID)?.as_slice())?;
-    writer.write_all(
-      objects_writer
-        .flush_chunk_into_buffer(Self::OBJECTS_CHUNK_ID)?
-        .as_slice(),
-    )?;
-    writer.write_all(vertex_writer.flush_chunk_into_buffer(Self::VERTEX_CHUNK_ID)?.as_slice())?;
+    count_writer.flush_chunk_into(writer, Self::COUNT_CHUNK_ID)?;
+    objects_writer.flush_chunk_into(writer, Self::OBJECTS_CHUNK_ID)?;
+    vertex_writer.flush_chunk_into(writer, Self::VERTEX_CHUNK_ID)?;
 
     log::debug!("Written ALife spawns chunk, {} bytes", writer.bytes_written());
 
@@ -281,8 +264,8 @@ mod tests {
     let mut object_writer: ChunkWriter = ChunkWriter::new();
 
     index_writer.write_u16(index)?;
-    object_writer.write_all(&index_writer.flush_chunk_into_buffer(0)?)?;
-    object_writer.write_all(&data.flush_chunk_into_buffer(1)?)?;
+    index_writer.flush_chunk_into(&mut object_writer, 0)?;
+    data.flush_chunk_into(&mut object_writer, 1)?;
     object_writer.flush_chunk_into_buffer(u32::from(index))
   }
 
@@ -299,9 +282,9 @@ mod tests {
     count_writer.write_u32(2)?;
     objects_writer.write_all(&object_chunk(0, &mut readable)?)?;
     objects_writer.write_all(&object_chunk(1, &mut unreadable)?)?;
-    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer(0)?)?;
-    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer(1)?)?;
-    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer(2)?)?;
+    count_writer.flush_chunk_into(&mut spawns_writer, 0)?;
+    objects_writer.flush_chunk_into(&mut spawns_writer, 1)?;
+    ChunkWriter::new().flush_chunk_into(&mut spawns_writer, 2)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
       ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
@@ -328,9 +311,9 @@ mod tests {
     count_writer.write_u32(2)?;
     // One object, which is room enough for the count's bound to pass it.
     objects_writer.write_all(&object_chunk(0, &mut readable)?)?;
-    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer(0)?)?;
-    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer(1)?)?;
-    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer(2)?)?;
+    count_writer.flush_chunk_into(&mut spawns_writer, 0)?;
+    objects_writer.flush_chunk_into(&mut spawns_writer, 1)?;
+    ChunkWriter::new().flush_chunk_into(&mut spawns_writer, 2)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
       ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?;
@@ -503,9 +486,9 @@ mod tests {
 
     let mut bytes: Vec<u8> = Vec::new();
 
-    bytes.extend(count_writer.flush_chunk_into_buffer(SpawnALifeSpawnsChunk::COUNT_CHUNK_ID)?);
-    bytes.extend(objects_writer.flush_chunk_into_buffer(SpawnALifeSpawnsChunk::OBJECTS_CHUNK_ID)?);
-    bytes.extend(vertex_writer.flush_chunk_into_buffer(SpawnALifeSpawnsChunk::VERTEX_CHUNK_ID)?);
+    count_writer.flush_chunk_into(&mut bytes, SpawnALifeSpawnsChunk::COUNT_CHUNK_ID)?;
+    objects_writer.flush_chunk_into(&mut bytes, SpawnALifeSpawnsChunk::OBJECTS_CHUNK_ID)?;
+    vertex_writer.flush_chunk_into(&mut bytes, SpawnALifeSpawnsChunk::VERTEX_CHUNK_ID)?;
 
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?;
 

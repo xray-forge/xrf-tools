@@ -245,8 +245,8 @@ impl ChunkReadWrite for AlifeObject {
     update_chunk.write_u16(NET_ACTION_UPDATE)?;
     update_chunk.write_all(&update.buffer)?;
 
-    writer.write_all(&spawn_chunk.flush_chunk_into_buffer(Self::DATA_SPAWN_CHUNK_ID)?)?;
-    writer.write_all(&update_chunk.flush_chunk_into_buffer(Self::DATA_UPDATE_CHUNK_ID)?)?;
+    spawn_chunk.flush_chunk_into(writer, Self::DATA_SPAWN_CHUNK_ID)?;
+    update_chunk.flush_chunk_into(writer, Self::DATA_UPDATE_CHUNK_ID)?;
 
     Ok(())
   }
@@ -343,7 +343,7 @@ mod tests {
 
     let mut spawn_data_writer: ChunkWriter = ChunkWriter::new();
     spawn_data_writer.write_u16(object_data_writer.bytes_written() as u16)?;
-    spawn_data_writer.write_all(&object_data_writer.flush_raw_into_buffer()?)?;
+    object_data_writer.flush_raw_into(&mut spawn_data_writer)?;
 
     // An empty update packet: its length, then `M_UPDATE`.
     let mut update_data_writer: ChunkWriter = ChunkWriter::new();
@@ -352,7 +352,7 @@ mod tests {
 
     let mut bytes: Vec<u8> = spawn_data_writer.flush_chunk_into_buffer(0)?;
 
-    bytes.extend(update_data_writer.flush_chunk_into_buffer(1)?);
+    update_data_writer.flush_chunk_into(&mut bytes, 1)?;
 
     let path: PathBuf = GeneratedResources::write("alife_object/unknown_clsid.chunk", bytes)?;
 

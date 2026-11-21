@@ -61,8 +61,10 @@ Then:
   chunk) and writes with `write_records`, each in one pass over the bytes. The record type implements
   `ChunkRecord<SIZE>`, whose `decode` and `encode` state its layout once; `u16`, `u32`, `f32` and `xrf-math`'s
   `Vector3d<f32>` already do. Reading such an array one field at a time is about nine times slower.
-- Build a payload with `ChunkWriter`, then use `flush_chunk_into` or `flush_chunk_into_buffer` for a framed chunk, or
-  `flush_raw_into` for raw bytes.
+- Build a payload with `ChunkWriter` and place it in its parent framed with `flush_chunk_into(&mut parent, id)`, or raw
+  with `flush_raw_into`; bytes already held frame with `ChunkWriter::write_framed`, never copied into a writer first.
+  Take a root's bytes with `into_bytes`. `flush_chunk_into_buffer` gives a framed chunk as a value, for a caller that
+  wants one; it is not how a child joins its parent.
 - Implement `ChunkReadWrite` for a format's typed payload; `ChunkReadWriteList` and `ChunkReadWriteOptional` cover
   repeated or absent chunks, and `read_xr`, `write_xr` and their list and optional forms delegate to them.
 

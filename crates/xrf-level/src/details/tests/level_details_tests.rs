@@ -80,8 +80,8 @@ fn library_bytes() -> XrfResult<Vec<u8>> {
   // the objects are written.
   let mut bytes: Vec<u8> = objects.flush_chunk_into_buffer(LevelDetailsFile::OBJECTS_CHUNK_ID)?;
 
-  bytes.extend(slots.flush_chunk_into_buffer(LevelDetailsFile::SLOTS_CHUNK_ID)?);
-  bytes.extend(header.flush_chunk_into_buffer(LevelDetailsFile::HEADER_CHUNK_ID)?);
+  slots.flush_chunk_into(&mut bytes, LevelDetailsFile::SLOTS_CHUNK_ID)?;
+  header.flush_chunk_into(&mut bytes, LevelDetailsFile::HEADER_CHUNK_ID)?;
 
   Ok(bytes)
 }

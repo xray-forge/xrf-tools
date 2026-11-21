@@ -118,9 +118,9 @@ fn static_visual(model_type: OgfModelType, windows: Option<Vec<OgfSlideWindow>>)
     &[0, 1, 2, 0, 2, 3, 0, 1, 3],
   )?;
 
-  let mut bytes: Vec<u8> = file.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = file.into_bytes();
 
-  bytes.extend(geometry.flush_raw_into_buffer()?);
+  bytes.extend(geometry.into_bytes());
 
   if let Some(windows) = windows {
     let mut swi: ChunkWriter = ChunkWriter::new();
@@ -130,7 +130,7 @@ fn static_visual(model_type: OgfModelType, windows: Option<Vec<OgfSlideWindow>>)
       windows,
     }
     .write(&mut swi)?;
-    bytes.extend(swi.flush_chunk_into_buffer(OgfSwiDataChunk::CHUNK_ID)?);
+    swi.flush_chunk_into(&mut bytes, OgfSwiDataChunk::CHUNK_ID)?;
   }
 
   OgfFile::read_from_bytes(bytes)
@@ -200,7 +200,7 @@ fn names_the_source_in_the_sidecar_by_the_hash_of_the_bytes_read() -> XrfResult 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   leaf.write(&mut writer)?;
-  std::fs::write(&request.source, writer.flush_raw_into_buffer()?)?;
+  std::fs::write(&request.source, writer.into_bytes())?;
   ObjectDecompiler::decompile_to_path(&request, "test", "1.0.0")?;
 
   assert_eq!(

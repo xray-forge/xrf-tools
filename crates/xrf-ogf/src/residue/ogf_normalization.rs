@@ -31,7 +31,7 @@ impl OgfNormalization {
         false => OgfRawPatch::read_payload(chunk)?,
       };
 
-      OgfRawPatch::write_chunk(&mut bytes, chunk.id, payload)?;
+      OgfRawPatch::write_chunk(&mut bytes, chunk.id, &payload)?;
     }
 
     Ok(Self { bytes, residue })

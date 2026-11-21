@@ -90,7 +90,7 @@ impl ThmChunks {
   /// Writes every chunk no field holds, after the folded ones, as it was read.
   pub(crate) fn write_extra(destination: &mut dyn Write, extra: &[ThmExtraChunk]) -> XrfResult {
     for chunk in extra {
-      Self::write(destination, chunk.id, &[], |writer| chunk.write(writer))?;
+      ChunkWriter::write_framed(destination, chunk.id, &chunk.data)?;
     }
 
     Ok(())

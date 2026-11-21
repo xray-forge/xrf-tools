@@ -96,7 +96,7 @@ impl EditableMotion {
       motion.write(&mut writer)?;
     }
 
-    writer.flush_raw_into_buffer()
+    Ok(writer.into_bytes())
   }
 
   fn write(&self, writer: &mut ChunkWriter) -> XrfResult {

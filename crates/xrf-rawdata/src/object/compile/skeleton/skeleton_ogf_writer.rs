@@ -133,7 +133,7 @@ impl SkeletonOgfWriter {
       kinematics.flush_chunk_into(&mut file, OgfKinematicsChunk::CHUNK_ID)?;
     }
 
-    file.flush_raw_into_buffer()
+    Ok(file.into_bytes())
   }
 
   /// A split's visual, `CExportSkeleton::SSplit::Save`: a static skinned child (no sliding windows yet), its texture,
@@ -165,7 +165,7 @@ impl SkeletonOgfWriter {
 
     OgfGeometry::write_skinned(&mut child, &vertices, &indices)?;
 
-    child.flush_raw_into_buffer()
+    Ok(child.into_bytes())
   }
 
   /// A vertex laid out in its split's `link_count` as `Save` lays it: bones strongest first, a two-link vertex

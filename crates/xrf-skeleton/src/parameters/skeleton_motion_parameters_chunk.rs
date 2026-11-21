@@ -141,7 +141,7 @@ mod tests {
 
     chunk.write(&mut writer)?;
 
-    writer.flush_raw_into_buffer()
+    Ok(writer.into_bytes())
   }
 
   /// Writes partitions without the writer's own check, as a tool that does not share it would.
@@ -152,7 +152,7 @@ mod tests {
     writer.write_xr_list(parts)?;
     SkeletonMotionDefinition::write_list(&mut writer, &[], 4)?;
 
-    writer.flush_raw_into_buffer()
+    Ok(writer.into_bytes())
   }
 
   fn read(bytes: &[u8]) -> XrfResult<SkeletonMotionParametersChunk> {

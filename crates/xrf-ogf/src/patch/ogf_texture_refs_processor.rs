@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -88,7 +87,7 @@ impl OgfTextureRefsProcessor {
         OgfRawPatch::read_payload(chunk)?
       };
 
-      OgfRawPatch::write_chunk(&mut buffer, chunk.id, payload)?;
+      OgfRawPatch::write_chunk(&mut buffer, chunk.id, &payload)?;
     }
 
     Ok((buffer, patched_count))
@@ -126,22 +125,16 @@ impl OgfTextureRefsProcessor {
           let mut texture_writer: ChunkWriter = ChunkWriter::new();
 
           renamed.write(&mut texture_writer)?;
-          texture_writer.flush_raw_into_buffer()?
+          texture_writer.into_bytes()
         } else {
           inner.reset_pos()?;
           inner.read_remaining()?
         };
 
-        let mut inner_writer: ChunkWriter = ChunkWriter::new();
-
-        inner_writer.write_all(&payload)?;
-        inner_writer.flush_chunk_into(&mut nested_buffer, inner.id)?;
+        ChunkWriter::write_framed(&mut nested_buffer, inner.id, &payload)?;
       }
 
-      let mut nested_writer: ChunkWriter = ChunkWriter::new();
-
-      nested_writer.write_all(&nested_buffer)?;
-      nested_writer.flush_chunk_into(&mut buffer, nested.id)?;
+      ChunkWriter::write_framed(&mut buffer, nested.id, &nested_buffer)?;
     }
 
     Ok(buffer)

@@ -79,12 +79,12 @@ impl OgfMotionRefsProcessor {
         }
         .write(&mut kinematics_writer)?;
 
-        kinematics_writer.flush_raw_into_buffer()?
+        kinematics_writer.into_bytes()
       } else {
         OgfRawPatch::read_payload(chunk)?
       };
 
-      OgfRawPatch::write_chunk(&mut buffer, chunk.id, payload)?;
+      OgfRawPatch::write_chunk(&mut buffer, chunk.id, &payload)?;
     }
 
     if patched_count != 1 {

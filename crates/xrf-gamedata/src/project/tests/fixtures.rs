@@ -7,7 +7,7 @@ pub(crate) fn game_materials_bytes(library: &GameMtlFile) -> Vec<u8> {
 
   library.write(&mut writer).unwrap();
 
-  writer.flush_raw_into_buffer().unwrap()
+  writer.into_bytes()
 }
 
 /// A library holding every material the engine looks up by name, a static ground material numbered 5 and a dynamic

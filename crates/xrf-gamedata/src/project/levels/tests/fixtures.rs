@@ -100,10 +100,7 @@ pub(crate) fn level_file_bytes(version: u16, with_shaders: bool, references: &[&
   .write(&mut header_writer)
   .unwrap();
 
-  let mut bytes: Vec<u8> = chunk_bytes(
-    LevelHeaderChunk::CHUNK_ID,
-    &header_writer.flush_raw_into_buffer().unwrap(),
-  );
+  let mut bytes: Vec<u8> = chunk_bytes(LevelHeaderChunk::CHUNK_ID, &header_writer.into_bytes());
 
   if with_shaders {
     let mut shaders_writer: ChunkWriter = ChunkWriter::new();
@@ -117,10 +114,7 @@ pub(crate) fn level_file_bytes(version: u16, with_shaders: bool, references: &[&
     .write(&mut shaders_writer)
     .unwrap();
 
-    bytes.extend(chunk_bytes(
-      LevelShadersChunk::CHUNK_ID,
-      &shaders_writer.flush_raw_into_buffer().unwrap(),
-    ));
+    bytes.extend(chunk_bytes(LevelShadersChunk::CHUNK_ID, &shaders_writer.into_bytes()));
   }
 
   bytes
@@ -143,7 +137,7 @@ pub(crate) fn ai_map_bytes(version: u32, count: u32, guid: Uuid) -> Vec<u8> {
   .write(&mut writer)
   .unwrap();
 
-  writer.flush_raw_into_buffer().unwrap()
+  writer.into_bytes()
 }
 
 pub(crate) fn cform_bytes(version: u32) -> Vec<u8> {
@@ -161,7 +155,7 @@ pub(crate) fn cform_bytes(version: u32) -> Vec<u8> {
   .write(&mut writer)
   .unwrap();
 
-  writer.flush_raw_into_buffer().unwrap()
+  writer.into_bytes()
 }
 
 /// A collision form of one vertex and a face of each material given, all naming that vertex.
@@ -180,7 +174,7 @@ pub(crate) fn cform_faces_bytes(materials: &[u16]) -> Vec<u8> {
   .write(&mut writer)
   .unwrap();
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer().unwrap();
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   bytes.extend_from_slice(&[0; 12]);
 
@@ -227,10 +221,7 @@ pub(crate) fn spawn_graph_bytes(levels: &[(&str, u8, Uuid)], cross_tables: Vec<G
 
   graphs.write(&mut graphs_writer).unwrap();
 
-  chunk_bytes(
-    SpawnGraphsChunk::CHUNK_ID,
-    &graphs_writer.flush_raw_into_buffer().unwrap(),
-  )
+  chunk_bytes(SpawnGraphsChunk::CHUNK_ID, &graphs_writer.into_bytes())
 }
 
 pub(crate) fn cross_table(level_guid: Uuid, game_guid: Uuid, nodes_count: u32) -> GraphCrossTable {

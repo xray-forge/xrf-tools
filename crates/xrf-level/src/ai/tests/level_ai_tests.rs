@@ -71,7 +71,7 @@ fn map_bytes(header: &LevelAiHeader, nodes: &[LevelAiNode]) -> XrfResult<Vec<u8>
 
   header.write(&mut writer)?;
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   for node in nodes {
     bytes.extend(node_bytes(LevelAiVersion::from_number(header.version)?, node));
@@ -125,10 +125,7 @@ fn reads_and_writes_back_the_header() -> XrfResult {
   original.write(&mut writer)?;
 
   assert_eq!(writer.bytes_written() as u64, LevelAiHeader::SIZE);
-  assert_eq!(
-    LevelAiFile::read_from_bytes(writer.flush_raw_into_buffer()?)?.header,
-    original
-  );
+  assert_eq!(LevelAiFile::read_from_bytes(writer.into_bytes())?.header, original);
 
   Ok(())
 }
@@ -139,7 +136,7 @@ fn a_truncated_header_is_an_error_and_not_a_panic() -> XrfResult {
 
   header(LevelAiVersion::CsCop, 0).write(&mut writer)?;
 
-  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let mut bytes: Vec<u8> = writer.into_bytes();
 
   bytes.truncate(LevelAiHeader::SIZE as usize - 1);
 

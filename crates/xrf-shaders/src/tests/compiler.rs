@@ -89,7 +89,7 @@ fn keeps_what_the_editor_left_past_a_name_so_a_library_rewrites_exactly() -> Xrf
 
   file.write(&mut writer)?;
 
-  assert_eq!(writer.flush_raw_into_buffer()?, original);
+  assert_eq!(writer.into_bytes(), original);
 
   Ok(())
 }

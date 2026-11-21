@@ -46,7 +46,7 @@ fn encode_model(model: &DetailModel) -> XrfResult<Vec<u8>> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   model.write(&mut writer)?;
-  writer.flush_raw_into_buffer()
+  Ok(writer.into_bytes())
 }
 
 fn compile(object: &EditableObjectFile) -> XrfResult<ObjectCompile> {

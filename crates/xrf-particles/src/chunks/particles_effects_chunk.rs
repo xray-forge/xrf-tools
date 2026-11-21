@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -84,12 +83,7 @@ impl ChunkReadWrite for ParticlesEffectsChunk {
       let mut effect_writer: ChunkWriter = ChunkWriter::new();
 
       effect.write(&mut effect_writer)?;
-
-      writer.write_all(
-        effect_writer
-          .flush_chunk_into_buffer(narrow_format_size(index, "particle effect chunk id")?)?
-          .as_slice(),
-      )?;
+      effect_writer.flush_chunk_into(writer, narrow_format_size(index, "particle effect chunk id")?)?;
     }
 
     log::info!(

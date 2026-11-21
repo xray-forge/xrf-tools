@@ -81,7 +81,7 @@ fn writes_an_action_back_byte_for_byte() -> XrfResult {
 
   read_action(&stored_bounce())?.write(&mut writer)?;
 
-  assert_eq!(writer.flush_raw_into_buffer()?, stored_bounce());
+  assert_eq!(writer.into_bytes(), stored_bounce());
 
   Ok(())
 }
@@ -226,7 +226,7 @@ fn keeps_editor_data_that_does_not_decode_as_it_is() -> XrfResult {
 
   editor_data.write(&mut writer)?;
 
-  assert_eq!(writer.flush_raw_into_buffer()?, editor_data.value);
+  assert_eq!(writer.into_bytes(), editor_data.value);
 
   Ok(())
 }

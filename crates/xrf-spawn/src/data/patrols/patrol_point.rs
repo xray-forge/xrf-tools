@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{
   ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite,
@@ -67,10 +65,10 @@ impl ChunkReadWriteList for PatrolPoint {
       point_index_writer.write_u32(index)?;
       point.write(&mut point_writer)?;
 
-      point_chunk_writer.write_all(&point_index_writer.flush_chunk_into_buffer(Self::INDEX_CHUNK_ID)?)?;
-      point_chunk_writer.write_all(&point_writer.flush_chunk_into_buffer(Self::DATA_CHUNK_ID)?)?;
+      point_index_writer.flush_chunk_into(&mut point_chunk_writer, Self::INDEX_CHUNK_ID)?;
+      point_writer.flush_chunk_into(&mut point_chunk_writer, Self::DATA_CHUNK_ID)?;
 
-      writer.write_all(&point_chunk_writer.flush_chunk_into_buffer(index)?)?;
+      point_chunk_writer.flush_chunk_into(writer, index)?;
     }
 
     Ok(())

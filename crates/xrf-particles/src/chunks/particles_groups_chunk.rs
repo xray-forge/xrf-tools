@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -84,8 +83,7 @@ impl ChunkReadWrite for ParticlesGroupsChunk {
       let mut group_writer: ChunkWriter = ChunkWriter::new();
 
       group_writer.write_xr(group)?;
-      writer
-        .write_all(&group_writer.flush_chunk_into_buffer(narrow_format_size(index, "particle group chunk id")?)?)?;
+      group_writer.flush_chunk_into(writer, narrow_format_size(index, "particle group chunk id")?)?;
     }
 
     log::info!("Written groups chunk, {} bytes", writer.bytes_written());

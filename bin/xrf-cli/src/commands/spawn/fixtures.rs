@@ -103,7 +103,7 @@ pub(crate) fn write_level_spawn_list(path: &Path, objects: Vec<LevelSpawnObject>
 
   LevelSpawnFile { objects }.write(&mut writer)?;
 
-  let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+  let bytes: Vec<u8> = writer.into_bytes();
 
   fs::write(path, &bytes)?;
 

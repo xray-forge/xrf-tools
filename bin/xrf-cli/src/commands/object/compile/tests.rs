@@ -95,7 +95,7 @@ fn compiles_a_decompiled_detail_model_back_to_its_bytes_through_the_sidecar() ->
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   leaf.write(&mut writer)?;
-  fs::write(&model, writer.flush_raw_into_buffer()?)?;
+  fs::write(&model, writer.into_bytes())?;
 
   let decompiled: CommandResult = run_command(
     &DecompileCommand,

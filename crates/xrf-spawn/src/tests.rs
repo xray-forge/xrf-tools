@@ -96,7 +96,7 @@ fn writes_a_list_back_byte_for_byte() -> XrfResult {
 
   file.write(&mut writer)?;
 
-  assert_eq!(writer.flush_raw_into_buffer()?, original);
+  assert_eq!(writer.into_bytes(), original);
 
   Ok(())
 }

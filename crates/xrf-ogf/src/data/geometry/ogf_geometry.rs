@@ -269,7 +269,7 @@ mod tests {
 
     OgfGeometry::write_skinned(&mut writer, vertices, indices)?;
 
-    let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+    let bytes: Vec<u8> = writer.into_bytes();
     let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
 
     Ok(
@@ -369,7 +369,7 @@ mod tests {
 
     OgfGeometry::write_static(&mut writer, &format, &vertices, &[0, 0, 0])?;
 
-    let bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+    let bytes: Vec<u8> = writer.into_bytes();
     let chunks = ChunkReader::from_bytes(&bytes)?.read_children()?;
     let geometry: OgfGeometry =
       OgfGeometry::read_from_chunks(&chunks, Some(OgfModelType::Normal))?.expect("geometry chunks are present");
@@ -430,9 +430,9 @@ mod tests {
 
     let mut source: ChunkWriter = ChunkWriter::new();
 
-    source.write_all(&vertices.flush_chunk_into_buffer(OgfGeometry::VERTICES_CHUNK_ID)?)?;
-    source.write_all(&indices.flush_chunk_into_buffer(OgfGeometry::INDICES_CHUNK_ID)?)?;
+    vertices.flush_chunk_into(&mut source, OgfGeometry::VERTICES_CHUNK_ID)?;
+    indices.flush_chunk_into(&mut source, OgfGeometry::INDICES_CHUNK_ID)?;
 
-    source.flush_raw_into_buffer()
+    Ok(source.into_bytes())
   }
 }

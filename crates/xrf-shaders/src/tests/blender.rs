@@ -16,7 +16,7 @@ fn write(blender: &ShaderBlender) -> XrfResult<Vec<u8>> {
 
   blender.write(&mut writer)?;
 
-  writer.flush_raw_into_buffer()
+  Ok(writer.into_bytes())
 }
 
 #[test]

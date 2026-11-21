@@ -59,7 +59,7 @@ impl RigidOgfWriter {
             let mut child: ChunkWriter = ChunkWriter::new();
 
             Self::write_part(&mut child, split)?;
-            child.flush_raw_into_buffer()
+            Ok(child.into_bytes())
           })
           .collect::<XrfResult<_>>()?;
 
@@ -69,7 +69,7 @@ impl RigidOgfWriter {
 
     Self::write_collision(&mut file, &geometry.splits)?;
 
-    file.flush_raw_into_buffer()
+    Ok(file.into_bytes())
   }
 
   /// A split's visual, `SSplit::SavePart`: its header, texture, vertices and indices.

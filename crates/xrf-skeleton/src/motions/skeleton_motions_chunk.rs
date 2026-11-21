@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, narrow_format_size};
@@ -75,18 +73,13 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
 
     count_writer.write_u32(narrow_format_size(self.motions.len(), "skeleton motions")?)?;
-    writer.write_all(count_writer.flush_chunk_into_buffer(Self::COUNT_CHUNK_ID)?.as_slice())?;
+    count_writer.flush_chunk_into(writer, Self::COUNT_CHUNK_ID)?;
 
     for (index, motion) in self.motions.iter().enumerate() {
       let mut motion_writer: ChunkWriter = ChunkWriter::new();
 
       motion.write(&mut motion_writer)?;
-
-      writer.write_all(
-        motion_writer
-          .flush_chunk_into_buffer(narrow_format_size(index + 1, "skeleton motion chunk id")?)?
-          .as_slice(),
-      )?;
+      motion_writer.flush_chunk_into(writer, narrow_format_size(index + 1, "skeleton motion chunk id")?)?;
     }
 
     log::info!(
@@ -119,7 +112,7 @@ mod tests {
     let mut bytes: Vec<u8> = Vec::new();
 
     for (id, child) in children {
-      bytes.extend(child.flush_chunk_into_buffer(id)?);
+      child.flush_chunk_into(&mut bytes, id)?;
     }
 
     SkeletonMotionsChunk::read(&mut ChunkReader::<InMemoryChunkDataSource>::from_bytes(&bytes)?)

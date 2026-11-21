@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{
   ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite,
@@ -85,7 +83,7 @@ impl ChunkReadWriteList for Patrol {
 
       patrol.write(&mut patrol_writer)?;
 
-      writer.write_all(&patrol_writer.flush_chunk_into_buffer(narrow_format_size(index, "patrol chunk id")?)?)?;
+      patrol_writer.flush_chunk_into(writer, narrow_format_size(index, "patrol chunk id")?)?;
     }
 
     Ok(())
@@ -140,18 +138,18 @@ impl ChunkReadWrite for Patrol {
     let mut links_writer: ChunkWriter = ChunkWriter::new();
 
     meta_writer.write_w1251_string(&self.name)?;
-    writer.write_all(&meta_writer.flush_chunk_into_buffer(Self::META_CHUNK_ID)?)?;
+    meta_writer.flush_chunk_into(writer, Self::META_CHUNK_ID)?;
 
     point_count_writer.write_u32(narrow_format_size(self.points.len(), "patrol points")?)?;
-    data_writer.write_all(&point_count_writer.flush_chunk_into_buffer(Self::DATA_POINT_COUNT_CHUNK_ID)?)?;
+    point_count_writer.flush_chunk_into(&mut data_writer, Self::DATA_POINT_COUNT_CHUNK_ID)?;
 
     points_writer.write_xr_list(&self.points)?;
-    data_writer.write_all(&points_writer.flush_chunk_into_buffer(Self::DATA_POINT_DATA_CHUNK_ID)?)?;
+    points_writer.flush_chunk_into(&mut data_writer, Self::DATA_POINT_DATA_CHUNK_ID)?;
 
     links_writer.write_xr_list(&self.links)?;
-    data_writer.write_all(&links_writer.flush_chunk_into_buffer(Self::DATA_LIST_CHUNK_ID)?)?;
+    links_writer.flush_chunk_into(&mut data_writer, Self::DATA_LIST_CHUNK_ID)?;
 
-    writer.write_all(&data_writer.flush_chunk_into_buffer(Self::DATA_CHUNK_ID)?)?;
+    data_writer.flush_chunk_into(writer, Self::DATA_CHUNK_ID)?;
 
     Ok(())
   }

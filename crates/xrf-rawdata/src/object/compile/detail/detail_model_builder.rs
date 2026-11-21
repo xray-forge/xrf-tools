@@ -42,7 +42,7 @@ impl DetailModelBuilder {
     model.write(&mut writer)?;
 
     Ok(ObjectCompile {
-      bytes: writer.flush_raw_into_buffer()?,
+      bytes: writer.into_bytes(),
       children: 1,
       vertices: model.vertices.len(),
       faces: model.get_triangles_count(),

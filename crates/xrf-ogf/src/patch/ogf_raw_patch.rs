@@ -64,11 +64,8 @@ impl OgfRawPatch {
   }
 
   /// Appends a chunk of `id` holding `payload` to `buffer`, its header declaring the payload's own size.
-  pub(crate) fn write_chunk(buffer: &mut Vec<u8>, id: u32, payload: Vec<u8>) -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-
-    writer.buffer = payload;
-    writer.flush_chunk_into(buffer, id)?;
+  pub(crate) fn write_chunk(buffer: &mut Vec<u8>, id: u32, payload: &[u8]) -> XrfResult {
+    ChunkWriter::write_framed(buffer, id, payload)?;
 
     Ok(())
   }

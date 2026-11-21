@@ -140,7 +140,7 @@ mod tests {
     }
     .write(&mut writer)?;
 
-    assert_eq!(writer.flush_raw_into_buffer()?.len(), 8);
+    assert_eq!(writer.into_bytes().len(), 8);
 
     Ok(())
   }

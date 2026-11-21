@@ -308,7 +308,7 @@ fn builds_a_library_numbering_on_from_its_highest_numbers() -> XrfResult {
 
   file.write(&mut writer)?;
 
-  let restored: GameMtlFile = GameMtlFile::read_from_bytes(writer.flush_raw_into_buffer()?)?;
+  let restored: GameMtlFile = GameMtlFile::read_from_bytes(writer.into_bytes())?;
 
   assert_eq!(restored, file);
   assert_eq!((restored.material_index, restored.material_pair_index), (10, 3));
@@ -373,7 +373,7 @@ fn writes_a_library_back_byte_for_byte() -> XrfResult {
 
   file.write(&mut writer)?;
 
-  assert_eq!(writer.flush_raw_into_buffer()?, original);
+  assert_eq!(writer.into_bytes(), original);
 
   Ok(())
 }

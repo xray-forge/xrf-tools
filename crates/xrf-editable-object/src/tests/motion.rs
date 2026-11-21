@@ -18,7 +18,7 @@ fn channel(values: &[f32]) -> AnimationEnvelope {
 
   channel.write(&mut writer).expect("the channel writes");
 
-  let bytes: Vec<u8> = writer.flush_raw_into_buffer().expect("the channel writes");
+  let bytes: Vec<u8> = writer.into_bytes();
 
   AnimationEnvelope::read(&mut ChunkReader::from_bytes(&bytes).expect("the channel reads")).expect("the channel reads")
 }

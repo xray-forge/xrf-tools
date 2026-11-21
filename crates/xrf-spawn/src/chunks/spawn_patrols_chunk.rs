@@ -1,5 +1,4 @@
 use std::fmt;
-use std::io::Write;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -51,16 +50,8 @@ impl ChunkReadWrite for SpawnPatrolsChunk {
     meta_writer.write_u32(narrow_format_size(self.patrols.len(), "spawn patrols")?)?;
     data_writer.write_xr_list(&self.patrols)?;
 
-    writer.write_all(
-      meta_writer
-        .flush_chunk_into_buffer(Self::META_NESTED_CHUNK_ID)?
-        .as_slice(),
-    )?;
-    writer.write_all(
-      data_writer
-        .flush_chunk_into_buffer(Self::DATA_NESTED_CHUNK_ID)?
-        .as_slice(),
-    )?;
+    meta_writer.flush_chunk_into(writer, Self::META_NESTED_CHUNK_ID)?;
+    data_writer.flush_chunk_into(writer, Self::DATA_NESTED_CHUNK_ID)?;
 
     log::debug!("Written patrols chunk, {} bytes", writer.bytes_written());
 

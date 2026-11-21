@@ -186,7 +186,7 @@ mod tests {
 
     list.write(&mut writer)?;
 
-    writer.flush_raw_into_buffer()
+    Ok(writer.into_bytes())
   }
 
   fn unpack_and_import(list: &LevelSpawnFile, folder: &str) -> XrfResult<(LevelSpawnFile, LevelSpawnExport, String)> {

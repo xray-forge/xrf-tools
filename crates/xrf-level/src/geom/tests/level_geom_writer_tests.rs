@@ -199,10 +199,7 @@ fn writes_a_geometry_file_that_reads_back_whole() -> XrfResult {
 
   buffers.write(&mut writer)?;
 
-  assert_eq!(
-    LevelGeomBuffers::read_from_bytes(writer.flush_raw_into_buffer()?)?,
-    buffers
-  );
+  assert_eq!(LevelGeomBuffers::read_from_bytes(writer.into_bytes())?, buffers);
 
   Ok(())
 }

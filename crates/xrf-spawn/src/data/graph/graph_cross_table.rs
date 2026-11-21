@@ -4,8 +4,8 @@ use std::io::Write;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{
-  ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkSizePackedIterator, ChunkWriter,
-  InMemoryChunkDataSource, XRayRead, XRayWrite,
+  CHUNK_SIZE_FIELD_SIZE, ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkSizePackedIterator,
+  ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_length, narrow_format_size};
@@ -53,22 +53,15 @@ impl GraphCrossTable {
 
   /// Export cross-tables as a separate gct chunk file's bytes.
   pub fn export_list(cross_tables: &[Self], file: &mut dyn Write) -> XrfResult {
-    let mut cross_tables_writer: ChunkWriter = ChunkWriter::new();
+    let mut writer: ChunkWriter = ChunkWriter::new();
 
-    for cross_table in cross_tables {
-      let mut cross_table_writer: ChunkWriter = ChunkWriter::new();
-      cross_table_writer.write_xr(cross_table)?;
+    Self::write_list(&mut writer, cross_tables)?;
+    writer.flush_raw_into(file)
+  }
 
-      cross_tables_writer.write_u32(narrow_format_size(
-        cross_table_writer.bytes_written() + 4,
-        "graph cross table",
-      )?)?;
-      cross_tables_writer.write_all(&cross_table_writer.flush_raw_into_buffer()?)?;
-    }
-
-    cross_tables_writer.flush_raw_into(file)?;
-
-    Ok(())
+  /// The bytes [`ChunkReadWrite::write`] gives the table: its header, then a cell for each node.
+  pub fn get_serialized_size(&self) -> usize {
+    Self::HEADER_SIZE as usize + self.cells.len() * GraphCrossTableCell::SIZE
   }
 }
 
@@ -87,17 +80,15 @@ impl ChunkReadWriteList for GraphCrossTable {
     Ok(cross_tables)
   }
 
-  /// Write cross tables list data into the writer.
+  /// Write cross tables list data into the writer: each table's size, counting its own four bytes, then the table, which
+  /// is written in place because its size is known before it is.
   fn write_list(writer: &mut ChunkWriter, cross_tables: &[Self]) -> XrfResult {
     for table in cross_tables {
-      let mut table_writer: ChunkWriter = ChunkWriter::new();
-      table_writer.write_xr(table)?;
-
       writer.write_u32(narrow_format_size(
-        table_writer.bytes_written() + 4,
+        table.get_serialized_size() + CHUNK_SIZE_FIELD_SIZE as usize,
         "graph cross table",
       )?)?;
-      writer.write_all(&table_writer.buffer)?;
+      table.write(writer)?;
     }
 
     Ok(())

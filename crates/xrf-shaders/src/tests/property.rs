@@ -17,7 +17,7 @@ fn write(property: &ShaderBlenderProperty) -> XrfResult<Vec<u8>> {
 
   property.write(&mut writer)?;
 
-  writer.flush_raw_into_buffer()
+  Ok(writer.into_bytes())
 }
 
 #[test]

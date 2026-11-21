@@ -117,7 +117,7 @@ mod tests {
 
     list.write(&mut writer)?;
 
-    assert_eq!(read_kind(writer.flush_raw_into_buffer()?)?, SpawnFileKind::Level);
+    assert_eq!(read_kind(writer.into_bytes())?, SpawnFileKind::Level);
 
     Ok(())
   }

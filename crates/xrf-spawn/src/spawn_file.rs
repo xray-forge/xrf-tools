@@ -426,7 +426,7 @@ mod tests {
 
     let mut bytes: Vec<u8> = graphs_writer.flush_chunk_into_buffer(SpawnGraphsChunk::CHUNK_ID)?;
 
-    bytes.extend(patrols_writer.flush_chunk_into_buffer(SpawnPatrolsChunk::CHUNK_ID)?);
+    patrols_writer.flush_chunk_into(&mut bytes, SpawnPatrolsChunk::CHUNK_ID)?;
 
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;
     let graph: SpawnLevelGraph = SpawnFile::read_level_graph_from_chunks(&chunks, "Zaton")?;
