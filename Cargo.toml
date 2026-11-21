@@ -102,8 +102,6 @@ pollster = "1.0.1"
 proc-macro2 = "1.0.107"
 profiling = "1.0.18"
 quote = "1.0.47"
-# xrf-job's alone: every other crate fans out through `xrf_job::parallel`, so pools are built in one place.
-rayon = "1.12.0"
 resvg = { version = "0.49.0", default-features = false }
 rtrb = "0.4.1"
 rustc-hash = "2.1.3"
