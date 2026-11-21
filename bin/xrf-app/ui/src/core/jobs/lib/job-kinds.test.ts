@@ -3,6 +3,14 @@ import { dirname, resolve } from "path";
 
 import { describe, expect, it, jest } from "@jest/globals";
 import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
+import {
+  TEXTURES_JOB_COMPARE_ENCODINGS,
+  TEXTURES_JOB_MAKE_BUMP,
+  TEXTURES_JOB_SAVE,
+  TEXTURES_JOB_SAVE_AS,
+} from "@xrf/ipc/types/xrf-app-textures";
+
+import { EToolId } from "@/core/routing/tool";
 
 import { findJobKind, JOB_KINDS } from "./job-kinds";
 
@@ -35,5 +43,16 @@ describe("JOB_KINDS", () => {
 
   it("describes no kind the backend does not declare", () => {
     expect(Object.keys(JOB_KINDS).sort()).toEqual([...DECLARED_KINDS].sort());
+  });
+
+  it("credits the textures editor for the jobs it starts", () => {
+    for (const kind of [
+      TEXTURES_JOB_SAVE,
+      TEXTURES_JOB_SAVE_AS,
+      TEXTURES_JOB_MAKE_BUMP,
+      TEXTURES_JOB_COMPARE_ENCODINGS,
+    ]) {
+      expect(findJobKind(kind)?.source).toBe(EToolId.TEXTURES_EDITOR);
+    }
   });
 });

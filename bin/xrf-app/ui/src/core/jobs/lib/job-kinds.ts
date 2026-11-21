@@ -21,6 +21,7 @@ import {
   TEXTURES_JOB_COMPARE_ENCODINGS,
   TEXTURES_JOB_MAKE_BUMP,
   TEXTURES_JOB_SAVE,
+  TEXTURES_JOB_SAVE_AS,
 } from "@xrf/ipc/types/xrf-app-textures";
 import {
   TRANSLATIONS_JOB_BUILD,
@@ -165,8 +166,13 @@ export const JOB_KINDS: Readonly<Record<JobKind, IJobKindDescriptor>> = {
   },
   [TEXTURES_JOB_SAVE]: {
     kind: TEXTURES_JOB_SAVE,
-    source: EToolId.TEXTURES_EXPLORER,
+    source: EToolId.TEXTURES_EDITOR,
     label: "Texture save",
+  },
+  [TEXTURES_JOB_SAVE_AS]: {
+    kind: TEXTURES_JOB_SAVE_AS,
+    source: EToolId.TEXTURES_EDITOR,
+    label: "Texture save as",
   },
   [TEXTURES_JOB_BUILD]: {
     kind: TEXTURES_JOB_BUILD,
@@ -175,12 +181,12 @@ export const JOB_KINDS: Readonly<Record<JobKind, IJobKindDescriptor>> = {
   },
   [TEXTURES_JOB_MAKE_BUMP]: {
     kind: TEXTURES_JOB_MAKE_BUMP,
-    source: EToolId.TEXTURES_EXPLORER,
+    source: EToolId.TEXTURES_EDITOR,
     label: "Bump pair generation",
   },
   [TEXTURES_JOB_COMPARE_ENCODINGS]: {
     kind: TEXTURES_JOB_COMPARE_ENCODINGS,
-    source: EToolId.TEXTURES_EXPLORER,
+    source: EToolId.TEXTURES_EDITOR,
     label: "Texture format comparison",
   },
 };
