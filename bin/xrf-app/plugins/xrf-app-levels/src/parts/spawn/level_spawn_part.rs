@@ -8,7 +8,7 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayInputRecord, XrayLogicalPath, XraySearch};
 
-use crate::level::{LevelSource, SelectedLevel};
+use crate::level::{LevelConfigs, LevelSource, SelectedLevel};
 use crate::parts::LevelSpawn;
 use crate::report::LevelReport;
 use crate::spawn::LevelSpawnRelease;
@@ -40,9 +40,9 @@ impl LevelSpawnPart {
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by, which every
   /// later ask answers with again.
   pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
-    current
-      .parts
-      .get_or_record::<Self>(search, |search| Self::read(&current.source, search))
+    current.parts.get_or_record::<Self>(search, |search| {
+      Self::read(&current.source, search, &LevelConfigs::of(current))
+    })
   }
 
   /// `parts` with the spawn an open read from `inputs` kept as the level's.
@@ -54,13 +54,17 @@ impl LevelSpawnPart {
     parts.with::<Self>(spawn, inputs)
   }
 
-  /// The spawned objects of a level, read by its name.
+  /// The spawned objects of a level, read by its name, with the objects a new game releases read through `configs`.
   ///
   /// # Errors
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by.
-  pub(crate) fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
-    Self::read_level(search, &source.require_name()?).map(Arc::new)
+  pub(crate) fn read(
+    source: &LevelSource,
+    search: &XraySearch,
+    configs: &LevelConfigs,
+  ) -> TauriResult<Arc<LevelSpawn>> {
+    Self::read_level(search, configs, &source.require_name()?).map(Arc::new)
   }
 
   /// The game's spawn's root chunks, and the path it was read by.
@@ -85,7 +89,7 @@ impl LevelSpawnPart {
 
   /// The objects standing on a level when a new game starts, by the level each game vertex belongs to, reading nothing
   /// of the spawn but its objects and the head of its graph.
-  fn read_level(search: &XraySearch, level: &str) -> TauriResult<LevelSpawn> {
+  fn read_level(search: &XraySearch, configs: &LevelConfigs, level: &str) -> TauriResult<LevelSpawn> {
     let started: Instant = Instant::now();
     let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) = Self::read_chunks(search)?;
     let read: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks::<XRayByteOrder, _>(&chunks, level)
@@ -93,7 +97,14 @@ impl LevelSpawnPart {
 
     LevelReport::spawn(level, path.as_str(), &read, started);
 
-    let released: HashMap<String, LevelSpawnRelease> = LevelSpawnRelease::read_new_game(search);
+    let released: HashMap<String, LevelSpawnRelease> = match configs.open(search) {
+      Ok(project) => LevelSpawnRelease::read_new_game(&project),
+      Err(error) => {
+        LevelReport::unreadable_releases(LevelConfigs::DIRECTORY, &error);
+
+        HashMap::new()
+      }
+    };
     let objects: Vec<AlifeObject> = read.objects;
     let releases: HashMap<usize, LevelSpawnRelease> = objects
       .iter()

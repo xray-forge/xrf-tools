@@ -138,7 +138,7 @@ impl OpenedLevel {
             let spawn: TauriResult<Arc<LevelSpawn>> = {
               profiling::scope!("level spawn");
 
-              LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs))
+              LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs), configs)
             };
 
             // The start is found over the spawn, so its inputs invalidate it too.
