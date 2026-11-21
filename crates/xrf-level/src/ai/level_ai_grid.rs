@@ -101,9 +101,15 @@ impl LevelAiGrid {
   pub fn unpack(&self, packed: u32) -> (f32, f32) {
     let row_length: u32 = self.row_length.max(1);
 
+    self.get_cell_position(i64::from(packed / row_length), i64::from(packed % row_length))
+  }
+
+  /// The corner [`Self::unpack`] gives the cell at `column` along x and `row` along z, for a cell off the grid too: a
+  /// search measuring how far cells lie from a point reaches past the grid's edge.
+  pub fn get_cell_position(&self, column: i64, row: i64) -> (f32, f32) {
     (
-      (packed / row_length) as f32 * self.cell_size + self.min_x,
-      (packed % row_length) as f32 * self.cell_size + self.min_z,
+      column as f32 * self.cell_size + self.min_x,
+      row as f32 * self.cell_size + self.min_z,
     )
   }
 

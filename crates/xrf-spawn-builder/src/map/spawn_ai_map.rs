@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::Box2Pick;
 use xrf_level::{LevelAiGrid, LevelAiHeader, LevelAiNode, LevelAiNodes};
@@ -12,6 +14,10 @@ pub(crate) struct SpawnAiMap {
 }
 
 impl SpawnAiMap {
+  /// How many cells from the grid's corner a position may lie for [`Self::find_nearest_node`] to search it ring by
+  /// ring: far enough for any map, near enough that ring arithmetic cannot overflow.
+  const RING_REACH: u64 = 1 << 40;
+
   /// # Errors
   ///
   /// Returns an error when the header's grid does not unpack ([`LevelAiHeader::get_grid`]) or its node count differs
@@ -119,11 +125,74 @@ impl SpawnAiMap {
       .unwrap_or_else(|| self.find_nearest_node(position))
   }
 
-  /// `CLevelGraph::vertex(position)`, the slow search: the first node whose cell contour comes nearest the position.
+  /// `CLevelGraph::vertex(position)`, the slow search: the node whose cell contour comes nearest the position, the
+  /// lowest-numbered of equals, which is the first the engine's walk over every node keeps.
   ///
-  /// A node whose cell is clearly farther across the ground than the best so far is skipped unmeasured; the margin
-  /// keeps rounding from skipping an equal.
+  /// Rather than walk every node, the search measures the cells in rings around the position's cell and stops at the
+  /// first ring whose cells all lie farther across the ground than the best contour distance so far: the floor
+  /// distance never exceeds the contour distance, so no node past it can come nearer. The engine's walk skips a node
+  /// by the same floor and margin, which keeps rounding from passing over an equal; both find the same node.
   pub(crate) fn find_nearest_node(&self, position: &Vector3d<f32>) -> u32 {
+    let (columns, rows): (i64, i64) = (i64::from(self.grid.get_column_length()), self.get_row_length());
+    let (centre_x, centre_z) = self.grid.find_cell(position.x, position.z);
+
+    // A position past the cells the rings count in, infinite included, is measured node by node.
+    if centre_x.unsigned_abs() > Self::RING_REACH || centre_z.unsigned_abs() > Self::RING_REACH {
+      return self.find_nearest_node_by_scan(position);
+    }
+
+    let half: f64 = f64::from(self.header.size) / 2.0;
+    let across = |from: f32, to: f32| (f64::from(to - from).abs() - half).max(0.0);
+    let reach = |distance: f32| f64::from(distance) * 1.001 + 0.01;
+    let (mut nearest, mut nearest_distance): (u32, f32) = (0, f32::MAX);
+    // The first ring holding a cell of the grid, for a position off it.
+    let first: i64 = [-centre_x, centre_x - (columns - 1), -centre_z, centre_z - (rows - 1)]
+      .into_iter()
+      .fold(0, i64::max);
+
+    for radius in first.. {
+      for node in self.get_ring_nodes(centre_x, centre_z, radius) {
+        let (x, z) = self.get_node_xz(node);
+
+        if across(x, position.x).powi(2) + across(z, position.z).powi(2) > reach(nearest_distance) {
+          continue;
+        }
+
+        let distance: f32 = self.get_contour_distance(node, position);
+
+        if distance < nearest_distance || (distance == nearest_distance && node < nearest) {
+          nearest = node;
+          nearest_distance = distance;
+        }
+      }
+
+      let is_grid_covered: bool = centre_x - radius <= 0
+        && centre_x + radius >= columns - 1
+        && centre_z - radius <= 0
+        && centre_z + radius >= rows - 1;
+
+      // Every cell past this ring lies a ring farther along x or along z, and so at least as far as the next ring's
+      // nearer side along that axis.
+      let next: i64 = radius + 1;
+      let (low_x, low_z) = self.grid.get_cell_position(centre_x - next, centre_z - next);
+      let (high_x, high_z) = self.grid.get_cell_position(centre_x + next, centre_z + next);
+      let beyond: f64 = across(low_x, position.x)
+        .min(across(high_x, position.x))
+        .powi(2)
+        .min(across(low_z, position.z).min(across(high_z, position.z)).powi(2));
+
+      if is_grid_covered || beyond > reach(nearest_distance) {
+        break;
+      }
+    }
+
+    nearest
+  }
+
+  /// [`Self::find_nearest_node`] as the engine walks it, every node in turn: the first node whose cell contour comes
+  /// nearest. A node whose cell is clearly farther across the ground than the best so far is skipped unmeasured; the
+  /// margin keeps rounding from skipping an equal.
+  pub(crate) fn find_nearest_node_by_scan(&self, position: &Vector3d<f32>) -> u32 {
     let half: f64 = f64::from(self.header.size) / 2.0;
     let across = |from: f32, to: f32| (f64::from(to - from).abs() - half).max(0.0);
     let (mut nearest, mut nearest_distance): (u32, f32) = (0, f32::MAX);
@@ -145,6 +214,48 @@ impl SpawnAiMap {
     }
 
     nearest
+  }
+
+  /// The nodes of the cells on the square ring `radius` cells around the cell at `column`, `row`, which may lie off the
+  /// grid; the ring of radius 0 is that cell alone.
+  fn get_ring_nodes(&self, column: i64, row: i64, radius: i64) -> impl Iterator<Item = u32> + '_ {
+    let columns: i64 = i64::from(self.grid.get_column_length());
+    let edges: Vec<i64> = if radius == 0 {
+      vec![column]
+    } else {
+      vec![column - radius, column + radius]
+    };
+    let sides: Vec<Range<u32>> = ((column - radius + 1).max(0)..=(column + radius - 1).min(columns - 1))
+      .flat_map(|side| {
+        [
+          self.get_row_nodes(side, row - radius, row - radius),
+          self.get_row_nodes(side, row + radius, row + radius),
+        ]
+      })
+      .collect();
+
+    edges
+      .into_iter()
+      .map(move |edge| self.get_row_nodes(edge, row - radius, row + radius))
+      .chain(sides)
+      .flatten()
+  }
+
+  /// The nodes of the cells in `column` from row `from` to row `to`, both included, each clipped to the grid: with
+  /// nodes sorted by packed cell, those of a run of cells along z lie together.
+  fn get_row_nodes(&self, column: i64, from: i64, to: i64) -> Range<u32> {
+    let rows: i64 = self.get_row_length();
+    let (from, to) = (from.max(0), to.min(rows - 1));
+
+    if !(0..i64::from(self.grid.get_column_length())).contains(&column) || from > to {
+      return 0..0;
+    }
+
+    let packed = |row: i64| (column * rows + row) as u32;
+    let (start, end) = (packed(from), packed(to) + 1);
+
+    self.nodes.partition_point(|node| node.packed_xz < start) as u32
+      ..self.nodes.partition_point(|node| node.packed_xz < end) as u32
   }
 
   /// `CLevelGraph::distance(position, vertex)`: the squared distance to the nearest edge of the node's cell contour
@@ -307,21 +418,12 @@ impl SpawnAiMap {
   /// The nodes, in node order, whose cells lie across the ground within `bounds` grown by a cell.
   pub(crate) fn get_nodes_within(&self, bounds: &Aabb) -> Vec<u32> {
     let size: f32 = self.grid.get_cell_size();
-    let row_length: i64 = self.get_row_length();
     let (min_x, min_z) = self.grid.find_cell(bounds.min.x - size, bounds.min.z - size);
     let (max_x, max_z) = self.grid.find_cell(bounds.max.x + size, bounds.max.z + size);
-    let mut nodes: Vec<u32> = Vec::new();
 
-    for x in min_x.max(0)..=max_x.min(i64::from(self.grid.get_column_length()) - 1) {
-      let packed = |z: i64| (x * row_length + z.clamp(0, row_length)) as u32;
-      let (from, to) = (packed(min_z), packed(max_z + 1));
-      let first: usize = self.nodes.partition_point(|node| node.packed_xz < from);
-      let last: usize = self.nodes.partition_point(|node| node.packed_xz < to);
-
-      nodes.extend(first as u32..last as u32);
-    }
-
-    nodes
+    (min_x.max(0)..=max_x.min(i64::from(self.grid.get_column_length()) - 1))
+      .flat_map(|x| self.get_row_nodes(x, min_z, max_z))
+      .collect()
   }
 
   /// The packed cell a point across the ground falls in.

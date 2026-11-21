@@ -143,6 +143,106 @@ fn finds_the_node_nearest_at_or_under_a_position_in_its_cell() -> XrfResult {
   Ok(())
 }
 
+/// A rough map of `columns` by `rows` 0.7 m cells off the origin, from `seed`: about a third of the cells empty, some
+/// holding a second floor above the first, each node at its own height on its own tilted plane. Unlinked: only the
+/// nearest-node searches read it.
+fn rough_map(columns: u32, rows: u32, seed: u64) -> XrfResult<SpawnAiMap> {
+  let mut state: u64 = seed;
+  let mut next = move || {
+    state ^= state << 13;
+    state ^= state >> 7;
+    state ^= state << 17;
+    state
+  };
+  let mut nodes: Vec<LevelAiNode> = Vec::new();
+
+  for packed in 0..columns * rows {
+    let floors: u64 = match next() % 6 {
+      0 | 1 => 0,
+      2 => 2,
+      _ => 1,
+    };
+
+    for _ in 0..floors {
+      let tilt = |value: u64| (value % 100) as f32 / 250.0 - 0.2;
+
+      nodes.push(LevelAiNode {
+        links: [NONE; 4],
+        high_cover: [0; 4],
+        low_cover: [0; 4],
+        plane: Vector3d::new(tilt(next()), 1.0, tilt(next())).to_compressed_normal(),
+        packed_xz: packed,
+        packed_y: (next() % 65536) as u16,
+        light: 0,
+      });
+    }
+  }
+
+  let header: LevelAiHeader = LevelAiHeader {
+    version: LevelAiVersion::CsCop as u32,
+    count: nodes.len() as u32,
+    size: 0.7,
+    size_y: 6.0,
+    bounds: Aabb {
+      min: Vector3d::new(-13.3, -2.0, 7.1),
+      max: Vector3d::new(-13.3 + (columns - 1) as f32 * 0.7, 4.0, 7.1 + (rows - 1) as f32 * 0.7),
+    },
+    guid: Uuid::nil(),
+  };
+
+  SpawnAiMap::new(header, &LevelAiNodes::from_nodes(LevelAiVersion::CsCop, &nodes)?)
+}
+
+// The search by rings must find the node the engine's walk over every node finds, wherever the position lies: over a
+// node, over an empty cell, on a cell's edge, off the grid near or far, above or under the floors.
+#[test]
+fn finds_the_nearest_node_the_walk_over_every_node_finds() -> XrfResult {
+  for (seed, columns, rows) in [
+    (0x9E37_79B9_7F4A_7C15_u64, 23, 17),
+    (0x2545_F491_4F6C_DD1D, 41, 9),
+    (7, 1, 30),
+  ] {
+    let map: SpawnAiMap = rough_map(columns, rows, seed)?;
+    let (min_x, min_z) = (-13.3_f32, 7.1_f32);
+    let mut positions: Vec<Vector3d> = Vec::new();
+
+    // A lattice half a cell apart, three cells past every side, at three heights; it lands on cell edges too.
+    for x in -6..=(columns.cast_signed() * 2 + 6) {
+      for z in -6..=(rows.cast_signed() * 2 + 6) {
+        for y in [-3.0, 0.4, 5.5] {
+          positions.push(Vector3d::new(
+            min_x + x as f32 * 0.35 - 0.35,
+            y,
+            min_z + z as f32 * 0.35 - 0.35,
+          ));
+        }
+      }
+    }
+
+    // Far off every side and corner.
+    for (x, z) in [
+      (-400.0, 10.0),
+      (500.0, 10.0),
+      (0.0, -350.0),
+      (0.0, 700.0),
+      (-900.0, -900.0),
+      (1.0e6, 3.0),
+    ] {
+      positions.push(Vector3d::new(x, 1.0, z));
+    }
+
+    for position in &positions {
+      assert_eq!(
+        map.find_nearest_node(position),
+        map.find_nearest_node_by_scan(position),
+        "nearest node to {position:?} on the {columns} by {rows} map of seed {seed:#x}"
+      );
+    }
+  }
+
+  Ok(())
+}
+
 // The engine's `vertex_plane_y` takes its height from `vertex_position`, so both lookups must agree.
 #[test]
 fn takes_a_node_plane_through_its_own_position() -> XrfResult {
