@@ -81,10 +81,10 @@ impl LevelCollisionIndex {
     lookup
   }
 
-  /// Marks the collision face a tree's triangle of `points`, placed in the level, lies on, where no static triangle
-  /// covers it already.
-  pub fn cover_tree(&mut self, points: &[Vector3d; 3]) {
-    self.find(points, LevelCollisionCover::Tree);
+  /// Where a tree's triangle of `points`, placed in the level, lies, marking the collision face it lies on as the
+  /// tree's where no static triangle covers it already.
+  pub fn find_tree(&mut self, points: &[Vector3d; 3]) -> LevelCollisionLookup {
+    self.find(points, LevelCollisionCover::Tree)
   }
 
   /// Marks the collision face a placed library object's collision-only triangle of `points` lies on, where no static

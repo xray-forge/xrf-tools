@@ -300,7 +300,7 @@ impl LevelTreeConversion {
     }
 
     surfaces
-      .dress(collision, placed)
+      .dress_tree(collision, placed)
       .into_iter()
       .map(|part| LevelVisualGeometry {
         vertices: geometry.vertices.clone(),

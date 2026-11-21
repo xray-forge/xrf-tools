@@ -3,8 +3,7 @@ use xrf_geometry::{ConvexOutline, SymmetricEigen};
 use xrf_level::BuildPrjPortal;
 use xrf_math::Vector3d;
 
-/// A portal's polygon simplified as the Build simplifies one of more corners than a compiled portal holds,
-/// `CPortal::Simplify`.
+/// A portal's polygon simplified as the Build simplifies every portal it updates, `CPortal::Simplify`.
 ///
 /// The corners' convex hull on their fitted plane loses the edge whose collapse adds least area until six corners
 /// are left, wound as the portal's own. Done in double precision, as the editor's geometry library does most of it.
@@ -18,6 +17,23 @@ struct PortalPlane {
 }
 
 impl LevelBuildPortal {
+  /// How far a simplified corner may lie from its own and still be taken as it: a portal already as the Build leaves
+  /// one, such as a decompiled one, keeps its corners to the bit rather than taking them back through the plane fit.
+  const KEPT_DISTANCE: f32 = xrf_math::EPS_L;
+
+  /// The polygon `vertices` export as: simplified, or `vertices` themselves where simplifying gives them back, each
+  /// corner within [`Self::KEPT_DISTANCE`] in the same order; none where the corners hold no plane or fewer than three
+  /// remain.
+  pub(crate) fn export(vertices: &[Vector3d]) -> Option<Vec<Vector3d>> {
+    let simplified: Vec<Vector3d> = Self::simplify(vertices)?;
+
+    Some(if Self::is_same_polygon(vertices, &simplified) {
+      vertices.to_vec()
+    } else {
+      simplified
+    })
+  }
+
   /// The simplified polygon of `vertices`; none where the corners hold no plane or fewer than three remain.
   pub(crate) fn simplify(vertices: &[Vector3d]) -> Option<Vec<Vector3d>> {
     let points: Vec<DVec3> = vertices.iter().map(|vertex| Vec3::from(vertex).as_dvec3()).collect();
@@ -82,6 +98,20 @@ impl LevelBuildPortal {
     let up: DVec3 = Self::normalize(look.cross(right))?;
 
     Some(PortalPlane { origin, right, up })
+  }
+
+  /// Whether `other` holds `vertices`' corners in their order, from whichever corner it starts, each within
+  /// [`Self::KEPT_DISTANCE`].
+  fn is_same_polygon(vertices: &[Vector3d], other: &[Vector3d]) -> bool {
+    let count: usize = vertices.len();
+
+    count == other.len()
+      && (0..count).any(|shift| {
+        vertices
+          .iter()
+          .enumerate()
+          .all(|(index, vertex)| vertex.distance(&other[(index + shift) % count]) <= Self::KEPT_DISTANCE)
+      })
   }
 
   /// `vector` normalized; none for a vector of no length.

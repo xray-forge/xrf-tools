@@ -341,17 +341,13 @@ impl LevelBuildExporter {
       )));
     }
 
-    let vertices: Vec<Vector3d> = if portal.vertices.len() > BuildPrjPortal::MAXIMUM_VERTICES {
-      LevelBuildPortal::simplify(&portal.vertices).ok_or_else(|| {
-        XrfError::new_invalid_error(format!(
-          "Portal '{}' of {} corners simplifies to no polygon, which the editor holds invalid",
-          portal.object.name,
-          portal.vertices.len()
-        ))
-      })?
-    } else {
-      portal.vertices.clone()
-    };
+    let vertices: Vec<Vector3d> = LevelBuildPortal::export(&portal.vertices).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "Portal '{}' of {} corners simplifies to no polygon, which the editor holds invalid",
+        portal.object.name,
+        portal.vertices.len()
+      ))
+    })?;
     let mut vertex_slots: [Vector3d; BuildPrjPortal::MAXIMUM_VERTICES] =
       [Vector3d::ZERO; BuildPrjPortal::MAXIMUM_VERTICES];
 

@@ -70,6 +70,35 @@ fn takes_the_occlusion_mesh_back_as_a_surface_of_the_occluder_material() -> XrfR
 }
 
 #[test]
+fn refuses_the_occluders_by_name_where_the_game_materials_hold_no_occluder_material() {
+  let library = |names: &[&str]| {
+    GameMtlFile::new(
+      names
+        .iter()
+        .zip(1u32..)
+        .map(|(name, id)| GameMtlMaterial::new(id, *name))
+        .collect(),
+      Vec::new(),
+    )
+  };
+  let clear_sky: GameMtlFile = library(&["materials\\stone"]);
+  let refusal = LevelOccluderConversion::refuse_hom("test", Some(&clear_sky)).expect("no materials\\occ to build");
+
+  assert_eq!(
+    (refusal.file.as_str(), refusal.object.as_str()),
+    ("level.hom", "levels\\test\\test_hom")
+  );
+  assert!(refusal.reason.contains("materials\\occ"), "{}", refusal.reason);
+  assert!(
+    LevelOccluderConversion::refuse_hom("test", Some(&library(&["materials\\stone", "materials\\occ"]))).is_none()
+  );
+  assert!(
+    LevelOccluderConversion::refuse_hom("test", None).is_none(),
+    "no library known, nothing to judge by"
+  );
+}
+
+#[test]
 fn takes_sound_occluders_back_with_the_material_of_their_occlusion_factor() -> XrfResult {
   let polygon = |x: f32, occlusion: f32| LevelSomPolygon {
     vertices: wall(x),

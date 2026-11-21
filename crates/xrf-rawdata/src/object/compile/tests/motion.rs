@@ -234,6 +234,25 @@ fn refuses_a_motion_moving_the_object_through_its_root() -> XrfResult {
 }
 
 #[test]
+fn refuses_by_name_a_frame_range_whose_keys_no_real_motion_needs_before_allocating_them() -> XrfResult {
+  // Within the format's 24-bit frame count, but 50 million keys over the object's three bones.
+  let motion: EditableMotion = EditableMotion {
+    frame_end: (1 << 24) - 2,
+    ..opening(EditableMotion::STOP_AT_END_FLAG)
+  };
+  let error: String = compile(&playing(motion)?)
+    .expect_err("expect a range of gigabytes of keys refused")
+    .to_string();
+
+  assert!(
+    error.contains("Motion 'open'") && error.contains("past the 16777216 a motion compiles to"),
+    "Unexpected error: {error}"
+  );
+
+  Ok(())
+}
+
+#[test]
 fn refuses_a_frame_range_or_rate_that_times_no_motion_before_sampling() -> XrfResult {
   for (frame_end, fps, reason) in [
     (i32::MAX, 30.0, "a range past the engine's 24-bit frame count"),

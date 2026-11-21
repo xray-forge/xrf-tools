@@ -66,6 +66,25 @@ impl LevelSurfaceInference {
     collision: &mut LevelCollisionIndex,
     geometry: LevelVisualGeometry,
   ) -> Vec<LevelVisualGeometry> {
+    self.dress_by(collision, geometry, LevelCollisionIndex::find_static)
+  }
+
+  /// [`Self::dress`] for a tree's triangles placed in the level, the collision faces they lie on marked as the tree's.
+  pub fn dress_tree(
+    &mut self,
+    collision: &mut LevelCollisionIndex,
+    geometry: LevelVisualGeometry,
+  ) -> Vec<LevelVisualGeometry> {
+    self.dress_by(collision, geometry, LevelCollisionIndex::find_tree)
+  }
+
+  /// `geometry` dressed from what `find` says each triangle lies on.
+  fn dress_by(
+    &mut self,
+    collision: &mut LevelCollisionIndex,
+    geometry: LevelVisualGeometry,
+    find: fn(&mut LevelCollisionIndex, &[Vector3d; 3]) -> LevelCollisionLookup,
+  ) -> Vec<LevelVisualGeometry> {
     let vertex_lighting: bool = geometry
       .vertices
       .first()
@@ -78,8 +97,7 @@ impl LevelSurfaceInference {
         .map(|index| geometry.vertices.get(usize::from(*index)).map(|vertex| vertex.position))
         .collect::<Option<Vec<Vector3d>>>()
         .and_then(|points| points.try_into().ok());
-      let lookup: LevelCollisionLookup =
-        points.map_or(LevelCollisionLookup::None, |points| collision.find_static(&points));
+      let lookup: LevelCollisionLookup = points.map_or(LevelCollisionLookup::None, |points| find(collision, &points));
 
       match lookup {
         LevelCollisionLookup::Exact(_) => self.census.exact_triangles += 1,

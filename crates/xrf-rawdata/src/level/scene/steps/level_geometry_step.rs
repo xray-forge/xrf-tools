@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_gamemtl::GameMtlFile;
 use xrf_job::JobHandle;
 use xrf_level::{
   LevelCformFile, LevelFile, LevelGeomFile, LevelGeomSource, LevelHomFile, LevelSomFile, LevelWallmarksFile,
@@ -29,10 +27,10 @@ use crate::level::scene::level_scene_draft::LevelSceneDraft;
 use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
 use crate::level::scene::level_scene_sources::LevelSceneSources;
+use crate::level::scene::steps::level_geometry_libraries::LevelGeometryLibraries;
 use crate::level::scene::steps::level_scene_step::LevelSceneStep;
 use crate::level::surfaces::level_shader_pairings::LevelShaderPairings;
 use crate::level::surfaces::level_surface_inference::LevelSurfaceInference;
-use crate::level::surfaces::level_surfaces::LevelSurfaces;
 use crate::level::trees::level_tree_impostor_atlas::LevelTreeImpostorAtlas;
 use crate::provenance::level_scene_geometry::LevelSceneGeometry;
 use crate::provenance::level_scene_inference::LevelSceneInference;
@@ -40,8 +38,6 @@ use crate::provenance::level_scene_instance_placement::LevelSceneInstancePlaceme
 use crate::provenance::level_scene_instances::LevelSceneInstances;
 use crate::provenance::level_scene_library_object::LevelSceneLibraryObject;
 use crate::provenance::level_scene_refusal::LevelSceneRefusal;
-use crate::provenance::level_scene_source::LevelSceneSource;
-use crate::provenance::level_scene_surface_libraries::LevelSceneSurfaceLibraries;
 use crate::provenance::level_scene_surfaces::LevelSceneSurfaces;
 use crate::provenance::level_scene_tree_match::LevelSceneTreeMatch;
 use crate::provenance::sidecar::Sidecar;
@@ -96,43 +92,29 @@ impl LevelSceneStep for LevelGeometryStep {
       .map(|wallmarks| LevelDecalIndex::new(&wallmarks));
     let breakable_parts: BTreeMap<String, OgfFile> = Self::read_breakable_parts(sources, draft);
     let impostors: Option<LevelTreeImpostorAtlas> = Self::read_impostors(sources, draft);
-    let surface_libraries: Option<(GameMtlFile, ShaderCompilerFile, LevelSceneSurfaceLibraries)> =
-      match (options.surfaces, &collision) {
-        (LevelSurfaces::Infer, Some(_)) => Some(Self::read_surface_libraries(options)?),
-        _ => None,
-      };
-    // The one `shaders_xrlc.xr` the surfaces are dressed from tells the library objects' surfaces too.
-    let named_shaders: Option<ShaderCompilerFile> = match (&surface_libraries, &options.compiler_shaders) {
-      (None, Some(path)) if !options.libraries.is_empty() => Some(ShaderCompilerFile::read_from_path(path)?),
-      _ => None,
-    };
-    let compiler_shaders: Option<&ShaderCompilerFile> = surface_libraries
-      .as_ref()
-      .map(|(_, shaders, _)| shaders)
-      .or(named_shaders.as_ref());
+    let libraries: LevelGeometryLibraries = LevelGeometryLibraries::read(options, collision.is_some())?;
     let (pairings, library, details) = Self::read_object_library(
       options,
       &mut draft.object_library,
       &draft.job,
-      compiler_shaders,
-      surface_libraries.is_some(),
+      libraries.get_compiler_shaders(),
+      libraries.inferred.is_some(),
     )?;
 
     draft.detail_library = Some(details);
 
-    let mut surfaces: Option<(LevelSurfaceInference, LevelSceneSurfaceLibraries)> = surface_libraries
-      .zip(pairings)
-      .map(|((game_materials, compiler_shaders, libraries), pairings)| {
-        (
-          LevelSurfaceInference::new(game_materials, compiler_shaders, pairings),
-          libraries,
-        )
-      });
-    // The inference holds its own; without it, the placements' ladders and breakables are told by this one.
-    let game_materials: Option<GameMtlFile> = match (&surfaces, &library, &options.game_materials) {
-      (None, Some(_), Some(path)) => Some(GameMtlFile::read_from_path(path)?),
-      _ => None,
-    };
+    let LevelGeometryLibraries {
+      inferred,
+      game_materials,
+      record: libraries,
+      ..
+    } = libraries;
+    let mut surfaces: Option<LevelSurfaceInference> =
+      inferred
+        .zip(pairings)
+        .map(|((game_materials, compiler_shaders), pairings)| {
+          LevelSurfaceInference::new(game_materials, compiler_shaders, pairings)
+        });
     let mut geometry: LevelGeometryDecompile = LevelGeometryConversion::decompile(
       LevelGeometrySources {
         name: &options.name,
@@ -149,7 +131,7 @@ impl LevelSceneStep for LevelGeometryStep {
         library: library.as_ref(),
         game_materials: game_materials.as_ref(),
       },
-      surfaces.as_mut().map(|(inference, _)| inference),
+      surfaces.as_mut(),
       &mut draft.context,
     )?;
 
@@ -219,8 +201,13 @@ impl LevelSceneStep for LevelGeometryStep {
     draft.geometry = Some(LevelSceneGeometry {
       objects: geometry.objects.iter().map(|object| object.reference.clone()).collect(),
       census: geometry.census,
-      surfaces: surfaces.map(|(inference, libraries)| LevelSceneSurfaces {
-        libraries,
+      libraries,
+      surfaces: surfaces.map(|inference| LevelSceneSurfaces {
+        object_roots: options
+          .libraries
+          .iter()
+          .map(|root| format_path(root).to_string())
+          .collect(),
         census: inference.into_census(),
       }),
       instances,
@@ -414,48 +401,5 @@ impl LevelGeometryStep {
     }
 
     parts
-  }
-
-  /// What dresses the surfaces beside the library's pairings: the game material and compiler shader libraries the
-  /// options name, each recorded with its hash.
-  fn read_surface_libraries(
-    options: &LevelDecompileOptions,
-  ) -> XrfResult<(GameMtlFile, ShaderCompilerFile, LevelSceneSurfaceLibraries)> {
-    let read = |path: Option<&PathBuf>, what: &str| -> XrfResult<(Vec<u8>, LevelSceneSource)> {
-      let path: &PathBuf = path.ok_or_else(|| {
-        XrfError::new_invalid_error(format!(
-          "Inferring surfaces needs the {what}; name it, or dress surfaces with the editor's defaults"
-        ))
-      })?;
-      let bytes: Vec<u8> = std::fs::read(path)
-        .map_err(|error| XrfError::new_read_error(format!("{} was not read: {error}", format_path(path))))?;
-      let record: LevelSceneSource = LevelSceneSource {
-        file: format_path(path).to_string(),
-        sha256: Sidecar::get_sha256_hex(&bytes),
-      };
-
-      Ok((bytes, record))
-    };
-    let (game_materials, game_materials_record) =
-      read(options.game_materials.as_ref(), "game material library (gamemtl.xr)")?;
-    let (compiler_shaders, compiler_shaders_record) = read(
-      options.compiler_shaders.as_ref(),
-      "compiler shader library (shaders_xrlc.xr)",
-    )?;
-    let libraries: LevelSceneSurfaceLibraries = LevelSceneSurfaceLibraries {
-      game_materials: game_materials_record,
-      compiler_shaders: compiler_shaders_record,
-      object_roots: options
-        .libraries
-        .iter()
-        .map(|root| format_path(root).to_string())
-        .collect(),
-    };
-
-    Ok((
-      GameMtlFile::read_from_bytes(game_materials)?,
-      ShaderCompilerFile::read_from_bytes(compiler_shaders)?,
-      libraries,
-    ))
   }
 }

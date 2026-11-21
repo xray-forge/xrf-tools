@@ -12,6 +12,7 @@ use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::level::parts::level_sound_occluder_census::LevelSoundOccluderCensus;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
 use crate::object::decompile::object_decompiler::ObjectDecompiler;
+use crate::provenance::level_scene_refusal::LevelSceneRefusal;
 
 /// A level's occluders back into the objects the Build exports them from (`SceneBuilder::BuildHOMModel` and
 /// `BuildSOMModel`), each polygon in the level's space, two-sided where the file says so.
@@ -42,11 +43,33 @@ impl LevelOccluderConversion {
       .collect();
 
     Self::decompile(
-      format!("levels\\{name}\\{name}_hom"),
+      Self::get_hom_reference(name),
       LevelHomFile::FILE_NAME,
       [(String::from(Self::OCCLUDER_GAME_MATERIAL), polygons)].into(),
       0,
     )
+  }
+
+  /// Why `level.hom` cannot come back as `<level>_hom`, where `game_materials`, the library the scene is built with,
+  /// hold no `materials\occ`: the Build would stop on its surface's game material (Clear Sky's library has none). None
+  /// where the library holds it, or no library is known.
+  pub fn refuse_hom(name: &str, game_materials: Option<&GameMtlFile>) -> Option<LevelSceneRefusal> {
+    game_materials?
+      .find_material_by_name(Self::OCCLUDER_GAME_MATERIAL)
+      .is_none()
+      .then(|| LevelSceneRefusal {
+        file: String::from(LevelHomFile::FILE_NAME),
+        object: Self::get_hom_reference(name),
+        reason: format!(
+          "The game materials hold no {0}, which the occluder object's surface takes, so no Build could take it back; \
+           decompile with game materials holding {0}, such as Call of Pripyat's, to keep the occluders",
+          Self::OCCLUDER_GAME_MATERIAL
+        ),
+      })
+  }
+
+  fn get_hom_reference(name: &str) -> String {
+    format!("levels\\{name}\\{name}_hom")
   }
 
   /// `level.som` as `<level>_som`, flagged a sound occluder: a surface per game material of `game_materials` whose

@@ -28,6 +28,11 @@ impl MotionExport {
   /// The most frames a motion holds: `CMotion` keeps its frame count in 24 bits.
   const MAX_FRAMES: u32 = (1 << 24) - 1;
 
+  /// The most keys a motion compiles to, frames times bones: a limit of this compiler, which no real motion reaches (64
+  /// bones over 262,144 frames, more than two hours at 30 frames a second), so a frame range a damaged file declares is
+  /// refused by the motion's name before its keys are allocated, rather than reserving gigabytes for them.
+  const MAX_KEYS: u64 = 1 << 24;
+
   /// The object's own motions, none for an object that keeps none or references motion files instead.
   ///
   /// # Errors
@@ -101,6 +106,19 @@ impl MotionExport {
       return Err(XrfError::new_invalid_error(format!(
         "Motion '{}' plays at {} frames a second, which times no frame",
         motion.name, motion.fps
+      )));
+    }
+
+    let keys: u64 = u64::from(count) * bones.len() as u64;
+
+    if keys > Self::MAX_KEYS {
+      return Err(XrfError::new_invalid_error(format!(
+        "Motion '{}' spans frames {} to {} over {} bones, {keys} keys, past the {} a motion compiles to",
+        motion.name,
+        motion.frame_start,
+        motion.frame_end,
+        bones.len(),
+        Self::MAX_KEYS
       )));
     }
 

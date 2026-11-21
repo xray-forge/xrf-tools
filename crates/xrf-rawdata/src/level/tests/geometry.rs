@@ -876,6 +876,39 @@ fn dresses_surfaces_from_the_collision_faces_they_lie_on() -> XrfResult {
 }
 
 #[test]
+fn counts_the_collision_a_trees_triangles_lie_on_as_the_trees_where_surfaces_are_inferred() -> XrfResult {
+  let face = |vertices: [u32; 3]| LevelCformFace {
+    vertices,
+    material: STONE,
+    is_shadow_suppressed: false,
+    is_wallmark_suppressed: false,
+    sector: 0,
+  };
+  let placement: Matrix4x4 = Matrix4x4::from_translation(&Vector3d::new(0.0, 0.0, 20.0));
+  // The trunk's collision: the tree's square, placed.
+  let trunk: Vec<Vector3d> = square(0.0)
+    .iter()
+    .map(|[x, y, z]| placement.transform_point(&Vector3d::new(*x, *y, *z)))
+    .collect();
+  let mut collision: LevelCollisionIndex =
+    LevelCollisionIndex::new(LevelCformGeometry::new(trunk, vec![face([0, 2, 1]), face([0, 3, 2])])?);
+  let decompiled: LevelGeometryDecompile = decompile_with(
+    &level((0, 1)),
+    vec![drawable(0), drawable(1), hierarchy(vec![0, 3]), tree(2, placement)],
+    Some(&mut collision),
+    Some(&mut inference()),
+  )?;
+
+  assert_eq!(decompiled.census.tree_triangles, 2);
+  assert_eq!(
+    decompiled.census.tree_collision_faces, 2,
+    "the trunk's faces are the tree's, though the tree is dressed from them"
+  );
+
+  Ok(())
+}
+
+#[test]
 fn gives_a_surface_on_no_collision_face_a_compiler_shader_of_no_collision() -> XrfResult {
   let mut inference: LevelSurfaceInference = inference();
   let decompiled: LevelGeometryDecompile = decompile_dressed(&mut collision(false, false)?, &mut inference)?;

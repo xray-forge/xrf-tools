@@ -7,6 +7,7 @@ use xrf_editable_level::{
 };
 use xrf_editable_object::{EditableMesh, EditableObjectFile};
 use xrf_error::{XrfError, XrfResult};
+use xrf_gamemtl::GameMtlFile;
 use xrf_level::{
   LevelCformFile, LevelFile, LevelGeomFile, LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVisual,
   LevelVisualsChunk,
@@ -140,7 +141,14 @@ impl LevelGeometryConversion {
     if let Some(hom) = sources.hom {
       decompile.census.occluder_polygons = hom.polygons.len();
 
-      if let Some(object) = LevelOccluderConversion::decompile_hom(name, hom)? {
+      let game_materials: Option<&GameMtlFile> = surfaces
+        .as_deref()
+        .map(LevelSurfaceInference::get_game_materials)
+        .or(sources.game_materials);
+
+      if let Some(refusal) = LevelOccluderConversion::refuse_hom(name, game_materials) {
+        decompile.refused.push(refusal);
+      } else if let Some(object) = LevelOccluderConversion::decompile_hom(name, hom)? {
         decompile.place(object, context);
       }
     }
@@ -566,7 +574,7 @@ impl LevelGeometryConversion {
         // A trunk's collision faces come back with its tree, not as collision of their own.
         if let Some(collision) = collision.as_deref_mut() {
           for points in Self::list_triangles(&geometry, visual.get_placement()) {
-            collision.cover_tree(&points);
+            collision.find_tree(&points);
           }
         }
 

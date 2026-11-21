@@ -345,7 +345,7 @@ fn refuses_a_portal_of_fewer_than_three_corners_naming_it() {
     sector_front: String::from("room"),
     sector_back: String::from("hall"),
     vertices: (0..corners)
-      .map(|index| Vector3d::new(index as f32, 0.0, 0.0))
+      .map(|index| Vector3d::new(index as f32, (index % 2) as f32, 0.0))
       .collect(),
   };
 
@@ -353,6 +353,61 @@ fn refuses_a_portal_of_fewer_than_three_corners_naming_it() {
 
   assert!(error.to_string().contains("'portal_0007'"), "{error}");
   assert!(LevelBuildExporter::get_portal(&portal(3), &sectors()).is_ok());
+}
+
+fn exported(vertices: Vec<Vector3d>) -> Vec<Vector3d> {
+  let portal: EditablePortalObject = EditablePortalObject {
+    object: EditableCustomObject::new(String::from("portal_0001"), EditableObjectTransform::default()),
+    sector_front: String::from("room"),
+    sector_back: String::from("hall"),
+    vertices,
+  };
+  let exported = LevelBuildExporter::get_portal(&portal, &sectors()).expect("a polygon");
+
+  exported.vertex_slots[..exported.vertex_count as usize].to_vec()
+}
+
+#[test]
+fn keeps_to_the_bit_a_portal_already_as_the_build_leaves_one() {
+  // Corners a plane fit gives back only within rounding: 0.1 is no float, nor its sum with the plane's offset.
+  let square: Vec<Vector3d> = vec![
+    Vector3d::new(0.1, 0.0, 3.7),
+    Vector3d::new(0.1, 2.3, 3.7),
+    Vector3d::new(2.9, 2.3, 3.7),
+    Vector3d::new(2.9, 0.0, 3.7),
+  ];
+
+  assert_eq!(exported(square.clone()), square);
+}
+
+#[test]
+fn simplifies_a_portal_of_few_corners_too_dropping_one_on_an_edge_and_flattening_one_off_the_plane() {
+  let on_an_edge: Vec<Vector3d> = exported(vec![
+    Vector3d::new(0.0, 0.0, 0.0),
+    Vector3d::new(0.0, 2.0, 0.0),
+    Vector3d::new(1.0, 2.0, 0.0),
+    Vector3d::new(2.0, 2.0, 0.0),
+    Vector3d::new(2.0, 0.0, 0.0),
+  ]);
+
+  assert_eq!(on_an_edge.len(), 4, "the corner on the top edge goes: {on_an_edge:?}");
+
+  let off_the_plane: Vec<Vector3d> = exported(vec![
+    Vector3d::new(0.0, 0.0, 0.0),
+    Vector3d::new(0.0, 2.0, 0.0),
+    Vector3d::new(2.0, 2.0, 0.2),
+    Vector3d::new(2.0, 0.0, 0.0),
+    Vector3d::new(1.0, -1.0, 0.0),
+  ]);
+  let normal: Vector3d = (&off_the_plane[1] - &off_the_plane[0]).cross(&(&off_the_plane[2] - &off_the_plane[0]));
+
+  assert_eq!(off_the_plane.len(), 5);
+  assert!(
+    off_the_plane
+      .iter()
+      .all(|vertex| (vertex - &off_the_plane[0]).dot(&normal).abs() < 1e-4),
+    "every corner on one plane: {off_the_plane:?}"
+  );
 }
 
 #[test]

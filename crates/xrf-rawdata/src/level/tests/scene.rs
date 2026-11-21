@@ -10,12 +10,14 @@ use xrf_editable_level::{
 };
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{MapXrfErr, XrfError, XrfResult};
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_job::{JobHandle, ProgressSink, RecordingSink};
 use xrf_level::{
   LevelEnvModFile, LevelEnvModifier, LevelFogVolFile, LevelGameFile, LevelGameRPoint, LevelGameWay, LevelGameWayLink,
   LevelGameWayPoint,
 };
 use xrf_math::Vector3d;
+use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_test_utils::{GeneratedResources, HostFilesystem};
 use xrf_utils::HostLinkPolicy;
 
@@ -31,6 +33,8 @@ use crate::level::scene::level_scene_decompiler::LevelSceneDecompiler;
 use crate::level::scene::level_scene_library_file::LevelSceneLibraryFile;
 use crate::level::scene::level_scene_object_file::LevelSceneObjectFile;
 use crate::level::scene::level_scene_texture_file::LevelSceneTextureFile;
+use crate::level::scene::steps::level_geometry_libraries::LevelGeometryLibraries;
+use crate::level::surfaces::level_surfaces::LevelSurfaces;
 use crate::level::tests::fixtures::GUID;
 use crate::object::compile::tangent_method::TangentMethod;
 use crate::object::decompile::geometry::source::surface_dress::SurfaceDress;
@@ -38,6 +42,7 @@ use crate::object::decompile::object_decompiler::ObjectDecompiler;
 use crate::provenance::level_scene_inference::LevelSceneInference;
 use crate::provenance::level_scene_provenance::LevelSceneProvenance;
 use crate::provenance::object_provenance::ObjectProvenance;
+use crate::provenance::sidecar::Sidecar;
 
 fn respawn_point(game_types: u16) -> LevelGameRPoint {
   LevelGameRPoint {
@@ -629,6 +634,93 @@ fn owns_the_levels_objects_refused_unforced_and_removed_forced_where_no_longer_w
       .any(|path| path.ends_with("Test_Level_Sector_9.object")),
     "{:?}",
     report.removed
+  );
+
+  Ok(())
+}
+
+#[test]
+fn records_the_game_materials_and_compiler_shaders_read_whatever_dresses_the_surfaces() -> XrfResult {
+  let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), "geometry_libraries"))?;
+  let game_materials: PathBuf = root.join("gamemtl.xr");
+  let compiler_shaders: PathBuf = root.join("shaders_xrlc.xr");
+  let game_materials_bytes: Vec<u8> =
+    bytes_of(|writer| GameMtlFile::new(vec![GameMtlMaterial::new(3, "materials\\stone")], Vec::new()).write(writer))?;
+  let compiler_shaders_bytes: Vec<u8> = bytes_of(|writer| {
+    ShaderCompilerFile {
+      shaders: vec![ShaderCompilerShader {
+        name: String::from("default"),
+        name_trailing: vec![0; ShaderCompilerShader::NAME_SIZE - "default".len()],
+        flags: 0b0011,
+        vertex_translucency: 0.0,
+        vertex_ambient: 0.0,
+        lightmap_density: 1.0,
+      }],
+    }
+    .write(writer)
+  })?;
+
+  std::fs::write(&game_materials, &game_materials_bytes)?;
+  std::fs::write(&compiler_shaders, &compiler_shaders_bytes)?;
+
+  let options = |surfaces: LevelSurfaces, libraries: Vec<PathBuf>| LevelDecompileOptions {
+    surfaces,
+    game_materials: Some(game_materials.clone()),
+    compiler_shaders: Some(compiler_shaders.clone()),
+    libraries,
+    ..LevelDecompileOptions::new("test_level", "test", "1.0.0")
+  };
+  let hashes = |libraries: &LevelGeometryLibraries| {
+    (
+      libraries
+        .record
+        .game_materials
+        .as_ref()
+        .map(|source| source.sha256.clone()),
+      libraries
+        .record
+        .compiler_shaders
+        .as_ref()
+        .map(|source| source.sha256.clone()),
+    )
+  };
+  let both = (
+    Some(Sidecar::get_sha256_hex(&game_materials_bytes)),
+    Some(Sidecar::get_sha256_hex(&compiler_shaders_bytes)),
+  );
+
+  let placing: LevelGeometryLibraries =
+    LevelGeometryLibraries::read(&options(LevelSurfaces::Defaults, vec![root]), true)?;
+
+  assert_eq!(
+    hashes(&placing),
+    both,
+    "the editor's defaults, read for the placed objects"
+  );
+  assert!(placing.inferred.is_none() && placing.game_materials.is_some());
+  assert_eq!(
+    hashes(&LevelGeometryLibraries::read(
+      &options(LevelSurfaces::Defaults, Vec::new()),
+      true
+    )?),
+    (None, None),
+    "nothing placed, nothing read"
+  );
+  assert_eq!(
+    hashes(&LevelGeometryLibraries::read(
+      &options(LevelSurfaces::Infer, Vec::new()),
+      true
+    )?),
+    both,
+    "inferred surfaces"
+  );
+  assert_eq!(
+    hashes(&LevelGeometryLibraries::read(
+      &options(LevelSurfaces::Infer, Vec::new()),
+      false
+    )?),
+    (None, None),
+    "no collision to infer from"
   );
 
   Ok(())
