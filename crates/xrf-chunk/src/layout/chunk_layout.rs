@@ -68,9 +68,14 @@ mod tests {
 
   use xrf_error::XrfResult;
 
-  use crate::{
-    ChunkLayout, ChunkPayload, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite,
-  };
+  use crate::bytes::xray_read::XRayRead;
+  use crate::bytes::xray_write::XRayWrite;
+  use crate::layout::chunk_layout::ChunkLayout;
+  use crate::layout::chunk_payload::ChunkPayload;
+  use crate::layout::chunk_sequence::ChunkSequence;
+  use crate::reader::chunk_reader::ChunkReader;
+  use crate::source::chunk_memory_source::InMemoryChunkDataSource;
+  use crate::writer::chunk_writer::ChunkWriter;
 
   fn container(children: &[ChunkPayload]) -> XrfResult<ChunkReader<InMemoryChunkDataSource>> {
     let mut payload: ChunkWriter = ChunkWriter::new();

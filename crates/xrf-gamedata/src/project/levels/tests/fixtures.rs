@@ -13,13 +13,16 @@ use xrf_spawn::{GraphCrossTable, GraphCrossTableCell, GraphHeader, GraphLevel, S
 use xrf_test_utils::GeneratedResources;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::levels::level_engine_constants::{
   AI_CURRENT_VERSION, CFORM_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION,
 };
 use crate::project::levels::levels_verifier::LevelsVerifier;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
 use crate::project::tests::fixtures::game_materials_bytes;
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
 pub(crate) static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
 

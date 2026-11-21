@@ -5,7 +5,7 @@ use std::net::{SocketAddr, TcpStream};
 use hyper::header::HeaderValue;
 use serde::Deserialize;
 
-use crate::TauriResult;
+use crate::tauri_result::TauriResult;
 use crate::transport::{
   TransportAnswer, TransportOrigins, TransportRoute, TransportRoutes, TransportServer, TransportToken,
 };

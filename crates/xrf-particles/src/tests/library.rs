@@ -3,11 +3,18 @@
 
 use xrf_error::XrfResult;
 
-use crate::{
-  ParticleActionType, ParticleEditorAction, ParticleEffect, ParticleGroup, ParticleGroupChild, ParticleGroupEffect,
-  ParticleGroupEffectFlags, ParticlesEffectsChunk, ParticlesFile, ParticlesFileIssue, ParticlesGroupsChunk,
-  ParticlesHeaderChunk,
-};
+use crate::chunks::particles_effects_chunk::ParticlesEffectsChunk;
+use crate::chunks::particles_groups_chunk::ParticlesGroupsChunk;
+use crate::chunks::particles_header_chunk::ParticlesHeaderChunk;
+use crate::data::actions::particle_action_type::ParticleActionType;
+use crate::data::editor::particle_editor_action::ParticleEditorAction;
+use crate::data::effect::particle_effect::ParticleEffect;
+use crate::data::group::particle_group::ParticleGroup;
+use crate::data::group::particle_group_child::ParticleGroupChild;
+use crate::data::group::particle_group_effect::ParticleGroupEffect;
+use crate::data::group::particle_group_effect_flags::ParticleGroupEffectFlags;
+use crate::particles_file::ParticlesFile;
+use crate::particles_file_issue::ParticlesFileIssue;
 
 fn effect(name: &str) -> XrfResult<ParticleEffect> {
   let mut effect: ParticleEffect = ParticleEffect {

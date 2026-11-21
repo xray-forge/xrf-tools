@@ -1,7 +1,8 @@
 use xrf_engine_target::XrayEngine;
 
 use super::fixtures::{EnvironmentFixture, extended_keyframe, sun_table, vanilla_keyframe};
-use crate::{EnvironmentReader, LevelWeather, LevelWeatherOption};
+use crate::catalog::EnvironmentReader;
+use crate::level::{LevelWeather, LevelWeatherOption};
 
 fn option(cycle: &str, graph: Option<&str>, state: Option<&str>) -> LevelWeatherOption {
   LevelWeatherOption {
@@ -126,7 +127,7 @@ fn reads_a_dltx_patch_into_its_cycle_rather_than_as_one() {
   assert_eq!(
     catalog.cycles[0].keyframes[1]
       .section
-      .get_number(crate::WeatherKey::FarPlane, XrayEngine::Extended),
+      .get_number(crate::weather::WeatherKey::FarPlane, XrayEngine::Extended),
     900.0
   );
 }

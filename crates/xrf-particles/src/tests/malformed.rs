@@ -5,7 +5,9 @@
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::{ParticleEffect, ParticleGroup, ParticlesFile};
+use crate::data::effect::particle_effect::ParticleEffect;
+use crate::data::group::particle_group::ParticleGroup;
+use crate::particles_file::ParticlesFile;
 
 /// One chunk: little-endian id and size, then the payload.
 fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {

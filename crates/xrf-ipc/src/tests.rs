@@ -2,7 +2,7 @@ use serde_json::json;
 use specta::Types;
 use specta::datatype::{DataType, Primitive};
 
-use crate::IpcConstant;
+use crate::ipc_constant::IpcConstant;
 
 #[test]
 fn keeps_an_f32_in_its_shortest_form() {

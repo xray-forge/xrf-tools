@@ -3,10 +3,13 @@ use std::time::{Duration, Instant};
 use xrf_math::Vector3d;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 
+use crate::ai::level_ai_file::LevelAiFile;
+use crate::ai::level_ai_header::LevelAiHeader;
+use crate::ai::level_ai_nodes::LevelAiNodes;
+use crate::ai::level_ai_parts::LevelAiParts;
 use crate::verify::level_ai_graph_census::LevelAiGraphCensus;
 use crate::verify::level_ai_graph_verify_result::LevelAiGraphVerifyResult;
 use crate::verify::level_file_source::LevelFileSource;
-use crate::{LevelAiFile, LevelAiHeader, LevelAiNodes, LevelAiParts};
 
 /// Checks a level's AI map as a graph, as xrAI's `-verify` does (`verify_level_graph.cpp`).
 ///

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
-use crate::XrayAssetRules;
+use crate::asset::XrayAssetRules;
 
 /// Asset category inferred from an X-Ray logical path's extension or recognized suffix.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

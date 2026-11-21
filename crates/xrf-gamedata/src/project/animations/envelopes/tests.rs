@@ -11,10 +11,11 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::project::animations::animations_verifier::AnimationsVerifier;
 use crate::project::gamedata_check::GamedataCheck;
-use crate::{
-  GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
-  GamedataVerificationStatus,
-};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 /// A two-second motion along x, as `COMotion::SaveMotion` frames one.
 fn new_motion_bytes(value: f32) -> Vec<u8> {

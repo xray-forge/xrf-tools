@@ -3,8 +3,10 @@ use std::io::SeekFrom;
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::bytes::xray_read::XRayRead;
 use crate::chunk_constants::CHUNK_SIZE_FIELD_SIZE;
-use crate::{ChunkDataSource, ChunkReader, XRayRead};
+use crate::reader::chunk_reader::ChunkReader;
+use crate::source::chunk_data_source::ChunkDataSource;
 
 /// Walks a payload stored as `[size][content]` records, where each size counts its own four bytes.
 ///
@@ -119,7 +121,10 @@ mod tests {
 
   use xrf_error::XrfResult;
 
-  use crate::{ChunkDataSource, ChunkReader, ChunkSizePackedIterator, InMemoryChunkDataSource};
+  use crate::iterator::chunk_size_packed_iterator::ChunkSizePackedIterator;
+  use crate::reader::chunk_reader::ChunkReader;
+  use crate::source::chunk_data_source::ChunkDataSource;
+  use crate::source::chunk_memory_source::InMemoryChunkDataSource;
 
   #[test]
   fn test_iterate_empty() -> XrfResult {

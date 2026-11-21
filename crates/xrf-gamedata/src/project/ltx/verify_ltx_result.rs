@@ -1,8 +1,10 @@
 use std::time::Duration;
 
 use xrf_ltx_project::{LtxProjectFormatResult, LtxProjectVerifyResult};
+use xrf_report::Finding;
 
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 #[derive(Default)]
 pub(crate) struct GamedataLtxVerificationResult {
@@ -42,12 +44,14 @@ impl GamedataCheckResult for GamedataLtxVerificationResult {
 #[cfg(test)]
 mod tests {
   use xrf_ltx_project::{LtxFinding, LtxProjectVerifyResult};
+  use xrf_report::Finding;
 
   use super::GamedataLtxVerificationResult;
-  use crate::{
-    Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
-  };
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_report::GamedataVerificationReport;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
 
   #[test]
   fn exposes_ltx_findings_in_reports() {

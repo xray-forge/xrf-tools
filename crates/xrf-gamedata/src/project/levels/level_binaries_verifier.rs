@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelCformMaterials, LevelFile};
+use xrf_report::Finding;
 
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::levels::level_binaries_outcome::LevelBinariesOutcome;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::{
@@ -10,7 +13,6 @@ use crate::project::levels::level_engine_constants::{
   LEVEL_PRODUCTION_VERSION,
 };
 use crate::project::levels::roster_level::RosterLevel;
-use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
 
 /// Reproduces the engine assertions raised while loading a level bundle.
 pub(crate) struct LevelBinariesVerifier<'a> {

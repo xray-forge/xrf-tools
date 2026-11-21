@@ -51,7 +51,8 @@ impl XrayEngineResolution {
 #[cfg(test)]
 mod tests {
   use super::XrayEngineResolution;
-  use crate::{XrayEngine, XrayEngineEvidence};
+  use crate::xray_engine::XrayEngine;
+  use crate::xray_engine_evidence::XrayEngineEvidence;
 
   #[test]
   fn describes_the_engine_and_what_decided_it() {

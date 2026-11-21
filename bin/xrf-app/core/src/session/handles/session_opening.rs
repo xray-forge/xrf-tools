@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use xrf_vfs::{XrayInputRecord, XrayRevision, XraySearch};
 
-use crate::TauriResult;
 use crate::assets::AssetMountState;
 use crate::session::{SessionDerived, SessionId, SessionParts, SessionSnapshot, Sessions};
+use crate::tauri_result::TauriResult;
 
 /// A handle reserved for one open: committed once with what the open read, or abandoned as it drops, so an open that
 /// fails on its way leaves no handle behind.

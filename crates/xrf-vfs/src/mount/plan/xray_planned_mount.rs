@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::XraySourceKind;
+use crate::source::XraySourceKind;
 
 /// One source to mount before it is opened or indexed.
 #[derive(Clone, Debug, PartialEq, Eq)]

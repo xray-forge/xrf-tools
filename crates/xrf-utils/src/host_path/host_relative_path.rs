@@ -111,7 +111,7 @@ mod tests {
   use std::path::{Path, PathBuf};
 
   use super::HostRelativePath;
-  use crate::HostFileName;
+  use crate::host_path::HostFileName;
 
   fn relative(name: &str) -> PathBuf {
     HostRelativePath::new(name, "Name")

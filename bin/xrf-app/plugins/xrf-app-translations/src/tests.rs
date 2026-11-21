@@ -14,9 +14,9 @@ use xrf_translation::{
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayChangeSet, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
-use crate::{
-  TranslationFormatGuard, TranslationProjectRead, TranslationProjects, TranslationSaveOutcome, TranslationSavePlan,
-};
+use crate::format::TranslationFormatGuard;
+use crate::project::{TranslationProjectRead, TranslationProjects};
+use crate::save::{TranslationSaveOutcome, TranslationSavePlan};
 
 /// Where a source project keeps its string tables, and therefore what a project opened over one is prefixed with.
 const PREFIX: &str = "translations";

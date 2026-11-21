@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use crate::XrayFileStamp;
+use crate::source::XrayFileStamp;
 
 /// One retained value, with what it weighs against the budget and when it was retained.
 #[derive(Debug)]

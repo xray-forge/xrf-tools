@@ -8,8 +8,11 @@ use xrf_shaders::ShaderCompilerFile;
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk};
 
+use crate::ai::ai_map_covers::AiMapCovers;
+use crate::compile::level_compile_request::LevelCompileRequest;
+use crate::compile::level_compile_step::LevelCompileStep;
+use crate::compile::level_compiler::LevelCompiler;
 use crate::tests::geometry::geometry_mesh::project;
-use crate::{AiMapCovers, LevelCompileRequest, LevelCompileStep, LevelCompiler};
 
 fn level(name: &str, files: &[&str]) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&GeneratedResources::sample_name(file!(), name))?;

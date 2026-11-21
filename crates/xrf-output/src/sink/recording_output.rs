@@ -2,7 +2,9 @@ use std::fmt::Display;
 use std::mem;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use crate::{Output, OutputChannel, OutputRecord};
+use crate::output_channel::OutputChannel;
+use crate::output_record::OutputRecord;
+use crate::sink::Output;
 
 /// Retains every workflow message instead of rendering it.
 #[derive(Default)]
@@ -37,7 +39,8 @@ impl Output for RecordingOutput {
 #[cfg(test)]
 mod tests {
   use super::{Output, RecordingOutput};
-  use crate::{OutputChannel, OutputRecord};
+  use crate::output_channel::OutputChannel;
+  use crate::output_record::OutputRecord;
 
   #[test]
   fn retains_messages_in_arrival_order() {

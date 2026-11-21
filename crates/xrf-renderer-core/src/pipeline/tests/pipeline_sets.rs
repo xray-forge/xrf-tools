@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use xrf_error::XrfError;
 
-use crate::{PipelineAsk, PipelineCache, PipelineMap, PipelineSet};
+use crate::pipeline::{PipelineAsk, PipelineCache, PipelineMap, PipelineSet};
 
 #[test]
 fn makes_a_set_again_once_a_generation_and_keeps_the_last_where_refused() {

@@ -1,10 +1,12 @@
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
+use crate::object::shape::editable_shape_element::EditableShapeElement;
+use crate::object::spawn::editable_spawn_point_kind::EditableSpawnPointKind;
+use crate::object::spawn::editable_spawn_point_object::EditableSpawnPointObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::{GUID, spawn_point_part_text};
-use crate::{
-  EditableObjectPart, EditableShapeElement, EditableSpawnPointKind, EditableSpawnPointObject, EditableTextPart,
-};
 
 fn read_spawn_points(text: &str) -> XrfResult<EditableObjectPart<EditableSpawnPointObject>> {
   EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(text.as_bytes())?)

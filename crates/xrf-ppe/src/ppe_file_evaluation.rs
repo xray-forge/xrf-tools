@@ -4,7 +4,9 @@ use std::time::Duration;
 
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationPlayback};
 
-use crate::{PpeColor, PpeFile, PpeScreen};
+use crate::ppe_color::PpeColor;
+use crate::ppe_file::PpeFile;
+use crate::ppe_screen::PpeScreen;
 
 /// What a keyed noise fps is multiplied by: the file stores the rate in hundredths.
 const NOISE_FPS_SCALE: f32 = 100.0;

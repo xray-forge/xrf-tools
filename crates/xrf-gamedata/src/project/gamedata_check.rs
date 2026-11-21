@@ -1,6 +1,8 @@
 use xrf_error::XrfResult;
 
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 
 /// One check a verification runs: what it judges is its own, and the project only lends it the assets to judge.
 ///

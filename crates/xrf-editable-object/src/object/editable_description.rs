@@ -3,7 +3,7 @@ use xrf_chunk::{
 };
 use xrf_error::{XrfError, XrfResult};
 
-use crate::EditableTimeWidth;
+use crate::object::editable_time_width::EditableTimeWidth;
 
 /// Who made an editable object and when, `EOBJ_CHUNK_DESC`. The times are Unix seconds, stored at the width of the
 /// `time_t` the saving editor was built with, 32 or 64 bits; the SDK's own objects hold both.

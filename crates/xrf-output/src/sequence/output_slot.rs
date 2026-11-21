@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::{OutputOptions, OutputSequence, RecordingOutput};
+use crate::output_options::OutputOptions;
+use crate::sequence::OutputSequence;
+use crate::sink::RecordingOutput;
 
 /// One unit of work's reserved position in an [`OutputSequence`].
 pub struct OutputSlot<'sequence> {

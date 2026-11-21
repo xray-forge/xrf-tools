@@ -117,7 +117,7 @@ fn front<const N: usize>(bytes: &[u8]) -> [u8; N] {
 
 #[cfg(test)]
 mod tests {
-  use crate::XRayBytes;
+  use crate::bytes::xray_bytes::XRayBytes;
 
   #[test]
   fn reads_and_writes_the_front_of_a_slice_little_endian() {

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use xrf_vfs::XrayRoots;
 
-use crate::Renderer;
+use crate::renderer::Renderer;
 use crate::texture::texture_watcher::TextureWatcher;
 
 /// Keeps every drawn texture current with its file: the roots shown sources read are watched for texture files written

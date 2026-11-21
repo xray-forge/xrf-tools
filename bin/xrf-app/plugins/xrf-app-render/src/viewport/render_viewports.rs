@@ -6,9 +6,11 @@ use tauri::ipc::Channel;
 use xrf_app_core::TauriResult;
 use xrf_renderer::{RenderHoldId, RenderViewportId, RenderWait, RenderWindowHost};
 
+use crate::renderer::Renderer;
 use crate::viewport::channel_event_sink::ChannelEventSink;
 use crate::viewport::viewport_windows::ViewportWindows;
-use crate::{Renderer, ViewportEvent, ViewportShows, WorldState};
+use crate::viewport::{ViewportEvent, ViewportShows};
+use crate::world::WorldState;
 
 /// The native viewports drawn into the application's windows, attached to the renderer and the world together, and the
 /// holds a page takes on the renderer between its viewports. Both are let go as their page asks, as it reloads or its

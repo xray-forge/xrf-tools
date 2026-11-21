@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use xrf_app_core::assets::AssetSource;
 use xrf_vfs::XrayRoots;
 
-use crate::EquipmentSheetSource;
+use crate::sprite::EquipmentSheetSource;
 
 /// Everything one opening of a sheet was asked to read.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

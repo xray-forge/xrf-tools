@@ -1,4 +1,4 @@
-use crate::OutputVerbosity;
+use crate::output_verbosity::OutputVerbosity;
 
 /// The kind of a workflow message, and the only thing that decides how it is rendered.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -26,7 +26,7 @@ impl OutputChannel {
 #[cfg(test)]
 mod tests {
   use super::OutputChannel;
-  use crate::OutputVerbosity;
+  use crate::output_verbosity::OutputVerbosity;
 
   #[test]
   fn renders_failures_at_every_verbosity() {

@@ -2,12 +2,21 @@ use xrf_chunk::{ChunkLayout, ChunkWriter, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, AiNodePosition, Sphere, Vector3d};
 
+use crate::part::editable_binary_part::EditableBinaryPart;
+use crate::part::editable_level_part::EditableLevelPart;
+use crate::scene::editable_scene_tool::EditableSceneTool;
 use crate::tests::fixtures::GUID;
-use crate::{
-  EditableAiMapNode, EditableAiMapParams, EditableAiMapTool, EditableBinaryPart, EditableDetailColorIndex,
-  EditableDetailHeader, EditableDetailObject, EditableDetailObjectTool, EditableLevelPart, EditableSceneTool,
-  EditableWallmark, EditableWallmarkSlot, EditableWallmarkTool, EditableWallmarkVertex,
-};
+use crate::tool::ai_map::editable_ai_map_node::EditableAiMapNode;
+use crate::tool::ai_map::editable_ai_map_params::EditableAiMapParams;
+use crate::tool::ai_map::editable_ai_map_tool::EditableAiMapTool;
+use crate::tool::detail_object::editable_detail_color_index::EditableDetailColorIndex;
+use crate::tool::detail_object::editable_detail_header::EditableDetailHeader;
+use crate::tool::detail_object::editable_detail_object::EditableDetailObject;
+use crate::tool::detail_object::editable_detail_object_tool::EditableDetailObjectTool;
+use crate::tool::wallmark::editable_wallmark::EditableWallmark;
+use crate::tool::wallmark::editable_wallmark_slot::EditableWallmarkSlot;
+use crate::tool::wallmark::editable_wallmark_tool::EditableWallmarkTool;
+use crate::tool::wallmark::editable_wallmark_vertex::EditableWallmarkVertex;
 
 fn fan() -> Vec<EditableWallmarkVertex> {
   [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [2.0, 1.0, 0.5], [0.0, 1.0, 0.5]]

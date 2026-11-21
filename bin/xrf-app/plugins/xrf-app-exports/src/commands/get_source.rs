@@ -4,7 +4,7 @@ use xrf_app_core::session::SessionId;
 use xrf_export::ExportSourceContent;
 use xrf_utils::error_to_string;
 
-use crate::ExportsProjects;
+use crate::project::ExportsProjects;
 
 /// Read the source the extern `name` is declared in, from the project `session_id` holds.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

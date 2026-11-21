@@ -6,14 +6,20 @@ use xrf_math::{Aabb, Matrix4x4, Vector3d};
 use xrf_ogf::OgfGeometryContainerChunk;
 use xrf_report::{Finding, Report, RuleId};
 
+use crate::geom::level_geom_file::LevelGeomFile;
+use crate::geom::level_geom_source::LevelGeomSource;
+use crate::geom::vertex::level_vertex::LevelVertex;
+use crate::level::level_file::LevelFile;
+use crate::level::portals::level_portal::LevelPortal;
+use crate::level::sectors::level_sector::LevelSector;
+use crate::level::sectors::level_sector_composition::LevelSectorComposition;
+use crate::level::shaders::level_shader_entry::LevelShaderEntry;
+use crate::level::visuals::level_visual::LevelVisual;
+use crate::level::visuals::level_visuals_chunk::LevelVisualsChunk;
 use crate::verify::level_file_source::LevelFileSource;
 use crate::verify::level_geometry_census::LevelGeometryCensus;
 use crate::verify::level_geometry_findings::LevelGeometryFindings;
 use crate::verify::level_geometry_verify_result::LevelGeometryVerifyResult;
-use crate::{
-  LevelFile, LevelGeomFile, LevelGeomSource, LevelPortal, LevelSector, LevelSectorComposition, LevelShaderEntry,
-  LevelVertex, LevelVisual, LevelVisualsChunk,
-};
 
 /// Reads every drawable visual of a compiled level the way the renderer would address it, and accounts for what could
 /// not be drawn. Every check here is an invariant the engine relies on without testing.

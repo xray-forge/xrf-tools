@@ -2,10 +2,19 @@ use std::collections::VecDeque;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::{
-  ChunkField, ChunkFieldKind, ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldRecorder, ChunkFieldReplay,
-  ChunkFieldSource, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayBytes,
-};
+use crate::bytes::xray_bytes::XRayBytes;
+use crate::field::chunk_field::ChunkField;
+use crate::field::chunk_field_kind::ChunkFieldKind;
+use crate::field::chunk_field_reader::ChunkFieldReader;
+use crate::field::chunk_field_writer::ChunkFieldWriter;
+use crate::field::stream::chunk_field_recorder::ChunkFieldRecorder;
+use crate::field::stream::chunk_field_replay::ChunkFieldReplay;
+use crate::field::stream::chunk_field_source::ChunkFieldSource;
+use crate::read_write::chunk_field_read_write::ChunkFieldReadWrite;
+use crate::read_write::chunk_read_write::ChunkReadWrite;
+use crate::reader::chunk_reader::ChunkReader;
+use crate::source::chunk_memory_source::InMemoryChunkDataSource;
+use crate::writer::chunk_writer::ChunkWriter;
 
 // Ignores the kind asked, so the replay's own kind check is what a test sees.
 struct QueuedFields(VecDeque<ChunkField>);

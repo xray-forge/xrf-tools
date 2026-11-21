@@ -4,9 +4,10 @@ use xrf_error::XrfResult;
 use xrf_job::JobOutcome;
 use xrf_report::{CheckReport, Report};
 
-use crate::{
-  GamedataCheckResult, GamedataVerificationCheckReport, GamedataVerificationStatus, GamedataVerificationType,
-};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_check_report::GamedataVerificationCheckReport;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 #[derive(Default)]
 pub struct GamedataVerificationReport {
@@ -106,13 +107,14 @@ impl GamedataVerificationReport {
 #[cfg(test)]
 mod tests {
   use xrf_error::XrfError;
-  use xrf_report::Status;
+  use xrf_report::{Finding, Status};
 
   use super::GamedataVerificationReport;
-  use crate::{
-    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
-  };
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
 
   struct TestCheckResult {
     findings: Vec<Finding>,

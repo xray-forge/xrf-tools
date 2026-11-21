@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 use xrf_skeleton::{SkeletonBoneShapeKind, SkeletonJointKind};
 
-use crate::EditableBone;
+use crate::bone::editable_bone::EditableBone;
 use crate::tests::fixtures;
 
 fn read(children: &[u8]) -> XrfResult<EditableBone> {

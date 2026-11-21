@@ -1,8 +1,8 @@
 use tauri::State;
 use xrf_vfs::XrayRootProbe;
 
-use crate::TauriResult;
 use crate::execution::ExecutionState;
+use crate::tauri_result::TauriResult;
 
 /// Describe what a path is, without mounting it; on the pool, since a probe scans the directory.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

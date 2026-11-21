@@ -5,13 +5,17 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_job::JobHandle;
 use xrf_ogf::{OgfFile, OgfResidueCause};
 use xrf_omf::OmfFile;
+use xrf_report::Finding;
 use xrf_shaders::ShaderLibraryFile;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 pub(crate) struct MeshAssetsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

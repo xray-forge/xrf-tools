@@ -2,9 +2,9 @@ use tauri::State;
 use xrf_engine_target::XrayEngineResolution;
 use xrf_vfs::XrayRoots;
 
-use crate::TauriResult;
 use crate::assets::AssetMountState;
 use crate::execution::ExecutionState;
+use crate::tauri_result::TauriResult;
 
 /// Detect which engine roots target, as an open left to detection would read them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

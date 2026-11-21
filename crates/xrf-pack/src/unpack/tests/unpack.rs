@@ -45,7 +45,7 @@ fn unpack_renders_a_summary_for_paths_that_are_not_valid_unicode() {
   use std::ffi::OsStr;
   use std::os::unix::ffi::OsStrExt;
 
-  use crate::ArchiveUnpackResult;
+  use crate::unpack::ArchiveUnpackResult;
 
   let directory: PathBuf = create_temporary_directory("non-utf8");
   let root: String = directory.display().to_string();

@@ -8,7 +8,8 @@ use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::{AnmChannel, AnmFile};
+use crate::anm_channel::AnmChannel;
+use crate::anm_file::AnmFile;
 
 /// One interpolating key, as version 5 lays it out: value, time, shape, then seven quantised parameters.
 fn new_curved_key_bytes(value: f32, time: f32, quantised: u16) -> Vec<u8> {

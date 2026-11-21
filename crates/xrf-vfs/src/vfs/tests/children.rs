@@ -1,7 +1,8 @@
 //! Lists what sits directly inside a logical directory.
 
+use crate::search::{XrayDirectoryListing, XrayLookupScope};
+use crate::vfs::XrayVfs;
 use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
-use crate::{XrayDirectoryListing, XrayLookupScope, XrayVfs};
 
 fn mounted(name: &str, files: &[&str]) -> XrayVfs {
   let mut vfs: XrayVfs = XrayVfs::new();

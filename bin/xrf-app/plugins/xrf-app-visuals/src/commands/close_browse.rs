@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
 
-use crate::VisualBrowses;
+use crate::browse::VisualBrowses;
 
 /// Close the browses `session_ids` name, committed or opening.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

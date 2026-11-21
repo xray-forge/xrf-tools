@@ -3,7 +3,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::{SpawnChunk, SpawnChunkKind, SpawnFiles};
+use crate::file::{SpawnChunk, SpawnChunkKind, SpawnFiles};
 
 /// One large chunk of the spawn `session_id` holds, copied on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

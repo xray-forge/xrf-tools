@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::{XrayMountId, XrayRevision};
+use crate::input::XrayRevision;
+use crate::mount::XrayMountId;
 
 /// The revisions a snapshot holds for its loose files and indexed directories, stored only where one moved past
 /// [`XrayRevision::MOUNTED`].

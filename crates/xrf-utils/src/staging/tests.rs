@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::StagedFile;
+use crate::staging::StagedFile;
 
 /// An empty directory of this case's own, since every assertion here is about what a destination holds.
 fn get_test_directory(name: &str) -> IoResult<PathBuf> {
@@ -126,7 +126,7 @@ fn names_a_sibling_after_its_target_and_knows_it_again() -> IoResult<()> {
 #[cfg(feature = "staging-faults")]
 #[test]
 fn keeps_the_previous_file_when_the_staged_write_fails() -> IoResult<()> {
-  use crate::StagingFaults;
+  use crate::staging::StagingFaults;
 
   let directory: PathBuf = get_test_directory("injected")?;
   let path: PathBuf = directory.join("config.json");

@@ -1,11 +1,15 @@
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
+use xrf_report::Finding;
 use xrf_spawn::SpawnFile;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::spawns::verify_spawns_result::GamedataSpawnsVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// The spawns check: every merged spawn file under `spawns` reads, the level spawn files aside.
 pub(crate) struct SpawnsVerifier<'a> {

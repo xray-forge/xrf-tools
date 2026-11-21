@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
-use crate::OutputFiles;
+use crate::output::OutputFiles;
 
 fn holding(case: &str, names: &[&str]) -> XrfResult<PathBuf> {
   let directory: PathBuf = GeneratedResources::create_dir(&format!("output/{case}"))?;

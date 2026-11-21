@@ -8,7 +8,7 @@ use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
 use xrf_visual::VisualSurfaces;
 
-use crate::ObjectVisual;
+use crate::object_visual::ObjectVisual;
 use crate::tests::fixtures::{compile_source, object_of, quad, surface};
 
 fn mount_search(tree: &FixtureTree) -> XraySearch {

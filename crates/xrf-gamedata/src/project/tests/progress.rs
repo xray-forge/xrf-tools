@@ -9,8 +9,11 @@ use xrf_job::{JobHandle, JobProgress, RecordingSink};
 use xrf_ltx_project::{LtxFormatOptions, LtxVerifyOptions};
 use xrf_test_utils::GeneratedResources;
 
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
 use crate::project::gamedata_project_verify::PHASE_CHECKS;
-use crate::{GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationType};
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// Opens a gamedata root holding only `configs/system.ltx`, which every check can run over.
 fn open(name: &str) -> (GamedataProject, PathBuf) {

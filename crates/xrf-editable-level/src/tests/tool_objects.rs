@@ -1,12 +1,19 @@
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniSection};
 
+use crate::level::editable_level_file::EditableLevelFile;
+use crate::object::editable_custom_object::EditableCustomObject;
+use crate::object::editable_object_transform::EditableObjectTransform;
+use crate::object::editable_scene_object::EditableSceneObject;
+use crate::object::editable_tool_object::EditableToolObject;
+use crate::part::editable_level_part::EditableLevelPart;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
+use crate::scene::editable_group_tool::EditableGroupTool;
+use crate::scene::editable_level_scene::EditableLevelScene;
+use crate::scene::editable_scene_tool::EditableSceneTool;
+use crate::scene::editable_tool_objects::EditableToolObjects;
 use crate::tests::fixtures::GUID;
-use crate::{
-  EditableCustomObject, EditableGroupTool, EditableLevelFile, EditableLevelPart, EditableLevelScene,
-  EditableObjectPart, EditableObjectTransform, EditableSceneObject, EditableSceneTool, EditableTextPart,
-  EditableToolObject, EditableToolObjects,
-};
 
 fn scene_object(name: &str) -> EditableSceneObject {
   EditableSceneObject {

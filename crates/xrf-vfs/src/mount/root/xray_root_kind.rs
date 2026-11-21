@@ -3,8 +3,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
-use crate::FsgameFile;
-use crate::mount::XrayMountPlan;
+use crate::mount::{FsgameFile, XrayMountPlan};
 
 /// The kind a probed path belongs to.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

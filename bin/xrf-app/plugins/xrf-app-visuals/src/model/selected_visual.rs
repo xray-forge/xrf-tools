@@ -8,7 +8,7 @@ use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayRoots, XraySearch};
 use xrf_visual::{VisualDependencies, VisualMotions, VisualPackage, VisualPacker, VisualSurfaces};
 
-use crate::{SelectedObject, SelectedObjectDescription, SelectedVisualDescription};
+use crate::model::{SelectedObject, SelectedObjectDescription, SelectedVisualDescription};
 
 /// One opened model: the visual packed for the renderer, what posing needs of it, and its description, made once at
 /// the open and shared by every answer.

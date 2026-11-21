@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 
-use crate::EditableObjectFile;
+use crate::editable_object_file::EditableObjectFile;
 use crate::tests::fixtures;
 
 fn object_with_lods(value: &[u8]) -> Vec<u8> {

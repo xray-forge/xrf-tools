@@ -1,7 +1,7 @@
 use std::io::{self, ErrorKind};
 use std::path::{Component, Path, PathBuf};
 
-use crate::TauriResult;
+use crate::tauri_result::TauriResult;
 
 /// A write destination, independent of the command that writes it.
 #[derive(Clone, Debug, PartialEq, Eq)]

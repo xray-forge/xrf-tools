@@ -1,6 +1,9 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use crate::{OutputOptions, OutputRecord, OutputSlot, RecordingOutput};
+use crate::output_options::OutputOptions;
+use crate::output_record::OutputRecord;
+use crate::sequence::OutputSlot;
+use crate::sink::RecordingOutput;
 
 /// Releases the messages of parallel work in the order the work was listed in.
 pub struct OutputSequence {
@@ -102,7 +105,9 @@ mod tests {
   use std::time::Duration;
 
   use super::{OutputSequence, OutputSlot};
-  use crate::{OutputOptions, OutputVerbosity, RecordingOutput};
+  use crate::output_options::OutputOptions;
+  use crate::output_verbosity::OutputVerbosity;
+  use crate::sink::RecordingOutput;
 
   fn recording() -> (Arc<RecordingOutput>, OutputOptions) {
     let output: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());

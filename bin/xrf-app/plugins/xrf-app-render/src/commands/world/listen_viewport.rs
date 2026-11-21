@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::RenderViewportId;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Hear the scene a viewport shows from its camera, the viewport being the focused window's active pane; every other
 /// scene plays on silent.

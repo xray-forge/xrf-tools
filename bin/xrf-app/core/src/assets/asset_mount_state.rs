@@ -9,10 +9,10 @@ use xrf_vfs::{
   XrayVfs, XrayVfsHost,
 };
 
-use crate::TauriResult;
 use crate::assets::change::{AssetChangeOrder, AssetChangeTicket};
 use crate::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetFanOut};
 use crate::session::{SessionChange, SessionFollower};
+use crate::tauri_result::TauriResult;
 
 /// A published change's place in the order it is heard in, with the snapshot it published.
 type AssetPublished = (AssetChangeTicket, Arc<XrayVfs>);

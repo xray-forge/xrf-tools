@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use xrf_app_core::TauriResult;
 
-use crate::RenderAnswer;
+use crate::renderer::RenderAnswer;
 
 fn wait(answer: Receiver<u32>) -> TauriResult<u32> {
   tauri::async_runtime::block_on(RenderAnswer::await_answer(

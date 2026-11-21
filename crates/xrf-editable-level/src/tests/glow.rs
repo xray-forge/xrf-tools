@@ -2,8 +2,11 @@ use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 use xrf_math::Vector3d;
 
+use crate::object::editable_glow_object::EditableGlowObject;
+use crate::object::spawn::editable_spawn_point_object::EditableSpawnPointObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::GUID;
-use crate::{EditableGlowObject, EditableObjectPart, EditableSpawnPointObject, EditableTextPart};
 
 // As the CoP SDK saves one, at a position `%f` prints exactly.
 fn glow_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {

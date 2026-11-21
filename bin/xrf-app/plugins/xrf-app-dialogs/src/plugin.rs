@@ -2,7 +2,7 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 use xrf_app_core::session::SessionScopes;
 
-use crate::DialogProjects;
+use crate::project::DialogProjects;
 
 /// The `dialogs` plugin: the dialog trees a tool browses, each dialog read with its phrases.
 pub struct DialogsPlugin;

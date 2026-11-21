@@ -4,7 +4,10 @@ use std::sync::Arc;
 
 use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 
-use crate::{ArchiveCompression, ArchiveExtensionUsage, ArchiveStatistics, ArchiveVolumeSummary};
+use crate::report::archive_compression::ArchiveCompression;
+use crate::report::archive_extension_usage::ArchiveExtensionUsage;
+use crate::report::archive_statistics::ArchiveStatistics;
+use crate::report::archive_volume_summary::ArchiveVolumeSummary;
 
 fn descriptor(name: &str, size_real: u32, size_compressed: u32, is_directory: bool) -> ArchiveFileDescriptor {
   let mut descriptor: ArchiveFileDescriptor =

@@ -4,10 +4,11 @@ use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use xrf_error::XrfResult;
 
 use crate::asset::XrayAssetType;
+use crate::input::XrayRevision;
+use crate::source::XrayFileStamp;
 use crate::vfs::cache::entries::XrayCacheEntries;
 use crate::vfs::cache::flight::{XrayCacheFlightClaim, XrayCacheFlights};
 use crate::vfs::cache::{XrayCacheKey, XrayCachePolicy, XrayCacheStats, XrayStampedCopy};
-use crate::{XrayFileStamp, XrayRevision};
 
 /// Parsed assets a VFS snapshot and its forks keep, so a second read of the same copy costs a hash lookup.
 ///

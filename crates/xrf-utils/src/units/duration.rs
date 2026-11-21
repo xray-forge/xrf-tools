@@ -91,7 +91,7 @@ mod tests {
 
   use serde::{Deserialize, Serialize};
 
-  use crate::{duration_to_millis, format_duration};
+  use crate::units::{duration_to_millis, format_duration};
 
   #[test]
   fn test_duration_to_millis() {

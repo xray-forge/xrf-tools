@@ -5,7 +5,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_vfs::XrayRoots;
 
-use crate::VisualBrowses;
+use crate::browse::VisualBrowses;
 
 /// Remember the browsed roots under an identity independent from the selected model.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

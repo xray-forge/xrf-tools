@@ -1,8 +1,11 @@
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
+use crate::part::editable_binary_part::EditableBinaryPart;
+use crate::part::editable_level_part::EditableLevelPart;
+use crate::part::editable_part_object::EditablePartObject;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::{GUID, binary_part_bytes, chunk, guid_bytes, spawn_part_text};
-use crate::{EditableBinaryPart, EditableLevelPart, EditablePartObject, EditableTextPart};
 
 #[test]
 fn reads_a_text_parts_objects_with_their_own_sections() -> XrfResult {

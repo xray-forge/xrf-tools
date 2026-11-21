@@ -67,7 +67,7 @@ fn format_bytes_as(bytes: u64, unit_index: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
+  use crate::units::{
     BYTES_PER_GIGABYTE, BYTES_PER_KILOBYTE, BYTES_PER_MEGABYTE, format_bytes, format_bytes_pair, megabytes_to_bytes,
   };
 

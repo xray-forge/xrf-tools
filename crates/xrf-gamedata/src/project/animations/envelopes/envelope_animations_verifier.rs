@@ -2,12 +2,15 @@ use std::marker::PhantomData;
 
 use xrf_animation_envelope::AnimationEnvelope;
 use xrf_error::XrfResult;
+use xrf_report::Finding;
 
 use crate::project::animations::envelopes::envelope_animation::EnvelopeAnimation;
 use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions};
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 
 /// Reads every file of one envelope animation format the game holds, writes each back, and evaluates each channel.
 pub(crate) struct EnvelopeAnimationsVerifier<'a, F> {

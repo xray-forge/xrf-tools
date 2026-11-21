@@ -6,14 +6,13 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress, JobScope};
 
-use crate::jobs::JobPhase;
-use crate::jobs::JobResource;
 use crate::jobs::job_conclusion::JobConclusion;
 use crate::jobs::job_description::JobDescription;
 use crate::jobs::job_registration::JobRegistration;
 use crate::jobs::job_registry::JobRegistry;
 use crate::jobs::job_start::JobStart;
 use crate::jobs::tests::kinds;
+use crate::jobs::{JobPhase, JobResource};
 
 fn new_registry() -> Arc<JobRegistry> {
   Arc::new(JobRegistry::new())

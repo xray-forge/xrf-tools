@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
+use crate::project::events::{GamedataEvent, GamedataListener};
 use crate::project::gamedata_verification_type::GamedataVerificationType;
-use crate::{GamedataEvent, GamedataListener};
 
 #[derive(Clone, Default)]
 pub struct GamedataProjectVerifyOptions {
@@ -48,7 +48,7 @@ impl GamedataProjectVerifyOptions {
 #[cfg(test)]
 mod tests {
   use super::GamedataProjectVerifyOptions;
-  use crate::GamedataVerificationType;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
 
   #[test]
   fn selected_checks_preserves_first_requested_order_and_removes_duplicates() {

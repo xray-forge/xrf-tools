@@ -5,7 +5,9 @@ use xrf_audio::{
   AudioTransportPlayback,
 };
 
-use crate::{AudioFocus, AudioSettings, AudioVolumes, PreviewEvents, PreviewTransports};
+use crate::focus::AudioFocus;
+use crate::preview::{PreviewEvents, PreviewTransports};
+use crate::settings::{AudioSettings, AudioVolumes};
 
 // The server plays to nothing: no device opens in a test.
 fn transports() -> PreviewTransports {

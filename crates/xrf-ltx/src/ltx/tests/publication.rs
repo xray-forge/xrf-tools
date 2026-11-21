@@ -5,7 +5,7 @@ use xrf_error::XrfResult;
 use xrf_test_utils::{GeneratedResources, RefusedPublication};
 use xrf_utils::StagingFaults;
 
-use crate::Ltx;
+use crate::ltx::Ltx;
 
 /// A write that fails part way leaves the config a caller had, and nothing staged beside it.
 #[test]

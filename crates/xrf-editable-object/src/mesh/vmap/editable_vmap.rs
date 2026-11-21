@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayR
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_count_fits, narrow_format_size};
 
-use crate::EditableVMapKind;
+use crate::mesh::vmap::editable_vmap_kind::EditableVMapKind;
 
 /// One vertex map of a mesh, `st_VMap` as `EMESH_CHUNK_VMAPS_2` stores it: a UV set or a bone's weights, each entry
 /// tied to the point it belongs to and, in a polygon map, to the face it is for.

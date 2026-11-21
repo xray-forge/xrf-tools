@@ -6,13 +6,13 @@ use xrf_dds::{DdsFile, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_job::parallel::prelude::*;
+use xrf_texture::ImageFileWriter;
 use xrf_utils::{HostDestination, HostRelativePath, OutputFiles, format_path};
 
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
 use crate::report::{SpriteListener, SpriteNotice};
-use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpriteUnpacker {}
 
@@ -172,11 +172,11 @@ mod tests {
   use xrf_dds::{DdsMipmaps, ImageFormat};
   use xrf_error::XrfError;
   use xrf_test_utils::GeneratedResources;
+  use xrf_texture::ImageFileWriter;
 
   use super::DescriptionSpriteUnpacker;
-  use crate::report::SpriteNoticeRecorder;
-  use crate::{DescriptionSpriteOptions, DescriptionSpriteResult, SpriteNotice, TextureFileDescriptor};
-  use xrf_texture::ImageFileWriter;
+  use crate::description::{DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor};
+  use crate::report::{SpriteNotice, SpriteNoticeRecorder};
 
   fn options_for_missing_source(is_strict: bool) -> DescriptionSpriteOptions {
     let root: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

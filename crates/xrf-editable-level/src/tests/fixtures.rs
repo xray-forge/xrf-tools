@@ -2,7 +2,8 @@ use xrf_chunk::{ChunkPayload, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 
-use crate::{EditableLevelGuid, EditablePartHeader};
+use crate::level::editable_level_guid::EditableLevelGuid;
+use crate::part::editable_part_header::EditablePartHeader;
 
 pub(super) const GUID: EditableLevelGuid = EditableLevelGuid {
   g0: 5065284203709945560,

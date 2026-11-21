@@ -5,7 +5,7 @@ use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
 use xrf_job::ExecutionRequest;
 use xrf_vfs::XrayRoots;
 
-use crate::{
+use crate::sprite::{
   EquipmentSheetLocation, EquipmentSheetSource, EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSpriteOpen,
   EquipmentSprites,
 };

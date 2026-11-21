@@ -385,7 +385,7 @@ impl LtxFieldScheme {
 #[cfg(test)]
 mod tests {
   use super::LtxFieldScheme;
-  use crate::Ltx;
+  use crate::ltx::Ltx;
   use crate::scheme::{LtxFieldDataType, TupleSeparator};
 
   #[test]

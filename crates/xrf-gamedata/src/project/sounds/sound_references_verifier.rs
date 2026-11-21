@@ -9,8 +9,11 @@ use xrf_ltx::Ltx;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath};
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 pub(crate) struct SoundReferencesVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

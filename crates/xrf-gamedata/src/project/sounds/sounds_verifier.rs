@@ -4,10 +4,11 @@ use xrf_error::XrfResult;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::sounds::sound_files_verifier::SoundFilesVerifier;
 use crate::project::sounds::sound_references_verifier::SoundReferencesVerifier;
 use crate::project::sounds::sounds_verification_result::GamedataSoundsVerificationResult;
-use crate::{GamedataProject, GamedataProjectVerifyOptions};
 
 pub(crate) struct SoundsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

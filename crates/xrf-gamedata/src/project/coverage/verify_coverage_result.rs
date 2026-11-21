@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 /// How much of what the project declared the run could actually read.
 #[derive(Default)]

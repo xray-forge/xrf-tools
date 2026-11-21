@@ -4,8 +4,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use xrf_error::XrfResult;
 
+use crate::mount::XrayMountId;
 use crate::path::{is_component_prefix, join, normalize, normalize_base};
-use crate::{XrayAssetSource, XrayMountId, XraySourceKind};
+use crate::source::{XrayAssetSource, XraySourceKind};
 
 /// One source mounted at a logical base.
 ///

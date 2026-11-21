@@ -10,8 +10,11 @@ use xrf_particles::ParticlesFile;
 use xrf_spawn::SpawnFile;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::particles::verify_particles_usage_result::GamedataParticlesUsageVerificationResult;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// The particle usage check: every effect or group configs, spawn custom data and material pairs name is in a particle
 /// library. A reference to a missing particle is fatal at runtime, the engine asserting on spawn, so it fails the check.

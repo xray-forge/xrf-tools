@@ -2,12 +2,14 @@ use std::time::Duration;
 
 use xrf_anm::AnmFile;
 use xrf_ppe::PpeFile;
+use xrf_report::Finding;
 
 use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
 use crate::project::animations::hud::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
 use crate::project::animations::hud::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
 use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 pub(crate) struct GamedataAnimationsVerificationResult {
   pub(crate) duration: Duration,
@@ -54,15 +56,18 @@ impl GamedataCheckResult for GamedataAnimationsVerificationResult {
 mod tests {
   use std::time::Duration;
 
+  use xrf_report::Finding;
+
   use super::GamedataAnimationsVerificationResult;
   use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
   use crate::project::animations::hud::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
   use crate::project::animations::hud::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
   use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
-  use crate::{
-    Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
-  };
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_report::GamedataVerificationReport;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
 
   #[test]
   fn exposes_animation_findings_in_reports() {

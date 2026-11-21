@@ -4,7 +4,12 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
-use crate::{CheckId, CheckReport, Finding, Report, RuleId, Status};
+use crate::check_id::CheckId;
+use crate::check_report::CheckReport;
+use crate::finding::Finding;
+use crate::report::Report;
+use crate::rule_id::RuleId;
+use crate::status::Status;
 
 #[test]
 fn serializes_in_the_shape_its_readers_expect() {

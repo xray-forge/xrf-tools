@@ -1,4 +1,4 @@
-use crate::{FsgameDeclaration, FsgameFile};
+use crate::mount::{FsgameDeclaration, FsgameFile};
 
 #[test]
 fn parses_a_declaration_with_every_field() {

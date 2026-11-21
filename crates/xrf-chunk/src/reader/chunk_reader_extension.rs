@@ -1,8 +1,9 @@
 use std::io::{Read, SeekFrom};
 
-use crate::{XRayBytes, XRayRead};
 use xrf_error::{XrfError, XrfResult};
 
+use crate::bytes::xray_bytes::XRayBytes;
+use crate::bytes::xray_read::XRayRead;
 use crate::read_write::chunk_read_write::ChunkReadWrite;
 use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
 use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;
@@ -242,9 +243,10 @@ impl<D: ChunkDataSource> ChunkReader<D> {
 
 #[cfg(test)]
 mod tests {
-  use crate::{XRayRead, XRayWrite};
   use xrf_error::XrfResult;
 
+  use crate::bytes::xray_read::XRayRead;
+  use crate::bytes::xray_write::XRayWrite;
   use crate::read_write::chunk_read_write::ChunkReadWrite;
   use crate::reader::chunk_reader::ChunkReader;
   use crate::source::chunk_data_source::ChunkDataSource;

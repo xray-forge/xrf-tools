@@ -1,6 +1,7 @@
 use xrf_error::XrfResult;
 
-use crate::{XrayLookupScope, XraySkippedMount};
+use crate::mount::XraySkippedMount;
+use crate::search::XrayLookupScope;
 
 /// One place a search looks, and the name a report calls it by: what Source's file system calls a path ID, a named
 /// group of mounts searched together.

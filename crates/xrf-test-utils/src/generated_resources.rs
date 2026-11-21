@@ -195,7 +195,7 @@ mod tests {
   use std::io::{Error as IoError, ErrorKind, Result as IoResult, Write};
   use std::path::{Path, PathBuf};
 
-  use crate::GeneratedResources;
+  use crate::generated_resources::GeneratedResources;
 
   #[test]
   fn writes_a_resource_and_reports_where_it_landed() -> IoResult<()> {

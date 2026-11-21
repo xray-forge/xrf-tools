@@ -5,9 +5,11 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 
-use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative, resolve_host_relative};
+use crate::path::{
+  XrayCollisionSite, XrayLogicalPath, XrayPathCollision, is_component_prefix, normalize, normalize_host_relative,
+  resolve_host_relative,
+};
 use crate::source::directory::{DirectoryAssetIndex, IndexedAsset};
-use crate::{XrayCollisionSite, XrayPathCollision};
 
 /// Maps X-Ray logical paths onto the files of one physical directory.
 #[derive(Clone, Debug)]
@@ -189,7 +191,7 @@ mod tests {
   use std::path::{Path, PathBuf};
 
   use super::XrayAssetIndex;
-  use crate::XrayCollisionSite;
+  use crate::path::XrayCollisionSite;
   use crate::source::directory::DirectoryAssetIndex;
 
   /// Three files folding onto one identity, as a case-sensitive filesystem holds them and a walk sorts them.

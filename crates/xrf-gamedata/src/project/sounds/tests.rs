@@ -12,8 +12,11 @@ use xrf_test_utils::GeneratedResources;
 use super::sounds_verification_result::GamedataSoundsVerificationResult;
 use super::sounds_verifier::SoundsVerifier;
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::tests::fixtures::{engine_game_materials, game_materials_bytes};
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
 fn open_project(name: &str, config: &str) -> (PathBuf, GamedataProject) {
   open_project_with_materials(name, config, None)

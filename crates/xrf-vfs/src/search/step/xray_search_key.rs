@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{XrayLookupScope, XraySearchStep};
+use crate::search::{XrayLookupScope, XraySearchStep};
 
 /// The scopes a search searches, in its order: its steps without their labels, which name nothing a lookup reads.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

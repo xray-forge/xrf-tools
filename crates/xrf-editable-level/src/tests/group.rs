@@ -2,11 +2,17 @@ use xrf_chunk::ChunkLayout;
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat};
 
+use crate::object::editable_custom_object::EditableCustomObject;
+use crate::object::editable_object_transform::EditableObjectTransform;
+use crate::object::editable_scene_object::EditableSceneObject;
+use crate::object::editable_tool_object::EditableToolObject;
+use crate::part::editable_binary_part::EditableBinaryPart;
+use crate::part::editable_level_part::EditableLevelPart;
+use crate::part::editable_text_part::EditableTextPart;
+use crate::scene::editable_group_member::EditableGroupMember;
+use crate::scene::editable_group_tool::EditableGroupTool;
+use crate::scene::editable_scene_tool::EditableSceneTool;
 use crate::tests::fixtures::GUID;
-use crate::{
-  EditableBinaryPart, EditableCustomObject, EditableGroupMember, EditableGroupTool, EditableLevelPart,
-  EditableObjectTransform, EditableSceneObject, EditableSceneTool, EditableTextPart, EditableToolObject,
-};
 
 // As GSC's `labx8` saves them: only the last group holds members, the second with a spawn data section.
 fn group_part(group: usize, classes: &[i32]) -> XrfResult<EditableLevelPart> {

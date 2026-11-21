@@ -1,4 +1,4 @@
-use crate::Finding;
+use xrf_report::Finding;
 
 /// What a sweep found over its items: how many it checked, how many raised a finding, and the findings, ordered by the
 /// asset they are about.

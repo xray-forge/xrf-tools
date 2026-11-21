@@ -6,11 +6,13 @@ use xrf_thm::{ThmBumpMode, ThmMaterial, ThmTextureFlag, ThmTextureType};
 use xrf_vfs::{XrayLogicalPath, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::tests::material_search::{BASE, BUMP, COMPANION, located_path, search_over, used_bump};
-use crate::{
+use crate::material::{
   XrayBumpMode, XrayBumpOutcome, XrayDetailUsage, XrayMaterialBump, XrayMaterialDeclaration, XrayMaterialDescriptor,
-  XrayMaterialDetail, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope,
+  XrayMaterialDetail, XrayMaterialResolver,
 };
+use crate::surface::{XraySurfaceDescriptor, XraySurfaceResolver};
+use crate::tests::material_search::{BASE, BUMP, COMPANION, located_path, search_over, used_bump};
+use crate::texture::XrayTextureScope;
 
 const LEVEL: &str = "k00_marsh";
 const DIRECTORY: &str = "levels\\k00_marsh";

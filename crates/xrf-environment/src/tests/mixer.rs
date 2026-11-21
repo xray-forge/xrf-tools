@@ -1,9 +1,9 @@
 use xrf_engine_target::XrayEngine;
 
 use super::fixtures::{EnvironmentFixture, extended_keyframe, sun_table, vanilla_keyframe};
-use crate::{
-  SunPosition, WeatherDescriptor, WeatherMix, WeatherMixPoint, WeatherMixer, WeatherModifier, WeatherSunSource,
-};
+use crate::definition::sun::SunPosition;
+use crate::mixer::{WeatherMix, WeatherMixPoint, WeatherMixer, WeatherModifier, WeatherSunSource};
+use crate::weather::WeatherDescriptor;
 
 /// A keyframe with some of its keys written otherwise.
 fn keyframe(written: String, overrides: &[(&str, &str)]) -> String {

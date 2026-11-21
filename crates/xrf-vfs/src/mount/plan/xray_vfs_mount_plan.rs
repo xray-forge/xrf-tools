@@ -1,9 +1,9 @@
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
-use crate::mount::{XrayMountPlan, XrayPlannedMount};
-use crate::source::{XrayArchiveSource, XrayDirectorySource};
-use crate::{XrayMountId, XraySkippedMount, XraySourceKind, XrayVfs};
+use crate::mount::{XrayMountId, XrayMountPlan, XrayPlannedMount, XraySkippedMount};
+use crate::source::{XrayArchiveSource, XrayDirectorySource, XraySourceKind};
+use crate::vfs::XrayVfs;
 
 impl XrayVfs {
   /// A snapshot holding what a plan mounts, for a test about one plan's sources.

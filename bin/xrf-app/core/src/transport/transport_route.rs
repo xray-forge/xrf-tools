@@ -4,7 +4,7 @@ use std::sync::Arc;
 use bytes::Bytes;
 use serde::de::DeserializeOwned;
 
-use crate::TauriResult;
+use crate::tauri_result::TauriResult;
 use crate::transport::{TransportAnswer, TransportRefusal};
 
 /// What calling a route comes to.

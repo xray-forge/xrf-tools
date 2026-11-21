@@ -1,6 +1,6 @@
-use crate::XRayRead;
 use xrf_error::XrfResult;
 
+use crate::bytes::xray_read::XRayRead;
 use crate::field::chunk_field_reader::ChunkFieldReader;
 use crate::reader::chunk_reader::ChunkReader;
 use crate::source::chunk_data_source::ChunkDataSource;

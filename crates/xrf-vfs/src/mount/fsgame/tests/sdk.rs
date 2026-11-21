@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::{FsgameFile, XraySdkInstallation, XraySearch};
+use crate::mount::{FsgameFile, XraySdkInstallation};
+use crate::search::XraySearch;
 
 // The CoP SDK 0.7 `editors\fs.ltx`, trimmed to the aliases these tests use.
 const CONTENTS: &str = "\

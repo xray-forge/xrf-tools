@@ -8,7 +8,8 @@ use xrf_engine_target::XrayEngine;
 use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_test_utils::GeneratedResources;
 
-use crate::{EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, EnvironmentRule};
+use crate::catalog::{EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader};
+use crate::section::finding::{EnvironmentFinding, EnvironmentRule};
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 

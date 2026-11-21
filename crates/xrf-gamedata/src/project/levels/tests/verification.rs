@@ -6,15 +6,16 @@ use std::sync::atomic::Ordering;
 use xrf_test_utils::GeneratedResources;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 use crate::project::levels::level_engine_constants::{AI_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION};
 use crate::project::levels::levels_verifier::LevelsVerifier;
 use crate::project::levels::tests::fixtures::*;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
 use crate::project::tests::fixtures::engine_game_materials;
-use crate::{
-  GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
-  GamedataVerificationStatus,
-};
 
 #[test]
 fn passes_on_a_consistent_level_tree() {

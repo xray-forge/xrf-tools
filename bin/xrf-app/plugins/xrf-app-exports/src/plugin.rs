@@ -2,7 +2,7 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 use xrf_app_core::session::SessionScopes;
 
-use crate::ExportsProjects;
+use crate::project::ExportsProjects;
 
 /// The `exports` plugin: the scripts projects whose externs a tool browses and writes manifests of.
 pub struct ExportsPlugin;

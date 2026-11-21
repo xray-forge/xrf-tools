@@ -5,15 +5,15 @@ use std::sync::Arc;
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::asset::{XrayAsset, XrayAssetRules, XrayAssetType};
 use crate::input::{XrayInput, XrayInputKind, XrayInputRecord};
+use crate::mount::{XrayMountId, XraySkippedMount};
+use crate::path::{XrayLogicalPath, XrayPathCollision};
 use crate::search::{
-  XrayDirectoryListing, XrayMountedEntry, XrayReadHandle, XrayResolution, XraySearchKey, XraySearchStep,
-  XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry,
+  XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayReadHandle, XrayResolution, XraySearchKey,
+  XraySearchStep, XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry,
 };
-use crate::{
-  XrayAsset, XrayAssetRules, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayPathCollision,
-  XraySkippedMount, XrayVfs,
-};
+use crate::vfs::XrayVfs;
 
 /// An ordered search across scopes of one VFS snapshot, first hit winning, and the only way to read it: what PhysicsFS
 /// and Source's file system call a search path.

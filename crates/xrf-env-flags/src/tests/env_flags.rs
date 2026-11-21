@@ -2,7 +2,8 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::{EnvFlagKind, EnvFlags};
+use crate::env_flag_kind::EnvFlagKind;
+use crate::env_flags::EnvFlags;
 
 #[test]
 fn names_every_variable_once() {

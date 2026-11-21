@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_renderer::{RenderLevelHit, RenderViewportId};
 
-use crate::{RenderPickRequest, Renderer};
+use crate::renderer::{RenderPickRequest, Renderer};
 
 /// Name what a viewport's level draws under a point, or nothing; glass is the nearest thing a click meets unless the
 /// pick passes it by.

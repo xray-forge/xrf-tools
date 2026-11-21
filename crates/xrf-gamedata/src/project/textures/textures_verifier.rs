@@ -3,10 +3,11 @@ use std::time::Instant;
 use xrf_error::XrfResult;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::textures::texture_bumps_verifier::TextureBumpsVerifier;
 use crate::project::textures::texture_files_verifier::TextureFilesVerifier;
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
-use crate::{GamedataProject, GamedataProjectVerifyOptions};
 
 /// The textures check: every `.dds` reads as an X-Ray texture, and every `.thm` bump declaration binds what it names.
 pub(crate) struct TexturesVerifier<'a> {

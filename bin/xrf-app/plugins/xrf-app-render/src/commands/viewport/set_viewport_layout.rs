@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::{RenderViewportId, RenderViewportLayout};
 
-use crate::Renderer;
+use crate::renderer::Renderer;
 
 /// Place a viewport where its element now is, and say what the page shows around it.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

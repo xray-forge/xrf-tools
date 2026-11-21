@@ -7,7 +7,8 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionId;
 use xrf_translation::TranslationEdit;
 
-use crate::{TranslationProjects, TranslationSaveOutcome, TranslationSavePlan};
+use crate::project::TranslationProjects;
+use crate::save::{TranslationSaveOutcome, TranslationSavePlan};
 
 /// Write one logical file's pending edits, grouped by the language each belongs to, into the project `session_id` holds.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

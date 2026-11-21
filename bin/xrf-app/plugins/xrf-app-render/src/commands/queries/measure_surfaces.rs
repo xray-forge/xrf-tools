@@ -4,7 +4,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldSurfaceGeometry;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Count what each shader table entry of a viewport's level draws across the sectors resident.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

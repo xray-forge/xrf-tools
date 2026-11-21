@@ -12,9 +12,9 @@ use xrf_export::ExportsProject;
 use xrf_job::ExecutionRequest;
 use xrf_test_utils::GeneratedResources;
 
-use crate::ExportsProjects;
 use crate::commands::open_project::exports_open_project;
 use crate::plugin::ExportsPlugin;
+use crate::project::ExportsProjects;
 
 /// The application as far as the plugin needs it, set up by the plugin itself.
 fn application() -> App<MockRuntime> {

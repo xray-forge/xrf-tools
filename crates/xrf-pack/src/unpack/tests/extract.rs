@@ -6,7 +6,7 @@ use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveProject};
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 
 use super::fixtures::{Entry, create_project, create_temporary_directory};
-use crate::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpacker};
+use crate::unpack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpacker};
 
 /// More entries than workers, which is what an ordinary run looks like.
 const TWO: NonZeroUsize = NonZeroUsize::new(2).expect("a non-zero worker count");

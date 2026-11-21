@@ -3,7 +3,9 @@ use std::path::PathBuf;
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::{XrayAssetType, XrayResolution, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
+use crate::asset::XrayAssetType;
+use crate::search::{XrayResolution, XraySearch, XraySearchPlan, XraySearchStep};
+use crate::vfs::XrayVfs;
 
 /// A loose X-Ray root, which is what an implied plan recognizes: a tree holding both `meshes` and `textures`.
 fn root(name: &str, files: &[&str]) -> PathBuf {

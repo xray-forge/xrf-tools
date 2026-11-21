@@ -8,7 +8,7 @@ use xrf_ogf::OgfFile;
 use xrf_omf::OmfFile;
 use xrf_vfs::XrayAssetType;
 
-use crate::GamedataProject;
+use crate::project::gamedata_project::GamedataProject;
 
 /// The motions a skinned visual plays, through the motion banks its motion refs name: what the weapons and HUD
 /// animation checks match `anm_*` fields against.

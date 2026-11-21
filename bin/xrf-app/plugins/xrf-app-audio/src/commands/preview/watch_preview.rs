@@ -1,9 +1,7 @@
 use tauri::State;
 use tauri::ipc::Channel;
 use xrf_app_core::TauriResult;
-use xrf_audio::AudioTransportState;
-
-use xrf_audio::AudioTransportId;
+use xrf_audio::{AudioTransportId, AudioTransportState};
 
 use crate::preview::PreviewTransports;
 

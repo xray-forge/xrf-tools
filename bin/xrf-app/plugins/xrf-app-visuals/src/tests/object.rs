@@ -6,7 +6,7 @@ use xrf_editable_object::{EditableFace, EditableMesh, EditableObjectFile, Editab
 use xrf_math::{Aabb, Vector3d};
 use xrf_rawdata::{ObjectInference, ObjectProvenance, TangentMethod};
 
-use crate::{SelectedObject, SelectedObjectDescription, SelectedObjectSurface};
+use crate::model::{SelectedObject, SelectedObjectDescription, SelectedObjectSurface};
 
 fn surface(name: &str, flags: u32) -> EditableSurface {
   EditableSurface {

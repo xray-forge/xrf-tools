@@ -8,11 +8,15 @@ use xrf_chunk::{
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path, narrow_format_size};
 
+use crate::bone::editable_bone::EditableBone;
 use crate::editable_chunks::EditableChunks;
-use crate::{
-  EditableActorTransform, EditableBone, EditableBonePart, EditableDescription, EditableMesh, EditableMotion,
-  EditableOccluder, EditableSurface,
-};
+use crate::mesh::editable_mesh::EditableMesh;
+use crate::motion::editable_motion::EditableMotion;
+use crate::object::editable_actor_transform::EditableActorTransform;
+use crate::object::editable_bone_part::EditableBonePart;
+use crate::object::editable_description::EditableDescription;
+use crate::object::editable_occluder::EditableOccluder;
+use crate::object::editable_surface::EditableSurface;
 
 /// An editable object, the `.object` file the SDK's Actor and Level editors open and an OGF is exported from. It holds
 /// what the export drops: shared points, vertex maps, smoothing groups and every surface's names.

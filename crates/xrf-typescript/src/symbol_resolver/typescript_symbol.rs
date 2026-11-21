@@ -1,10 +1,10 @@
 use super::typescript_function_signature::TypeScriptFunctionSignature;
 use super::typescript_object_property::TypeScriptObjectProperty;
-use crate::TypeScriptTypeRenderer;
 use crate::swc_common::SourceMap;
 use crate::swc_ecma_ast::{
   Decl, Expr, Lit, ModuleDecl, ModuleItem, ObjectLit, Pat, Program, Prop, PropName, Stmt, VarDecl,
 };
+use crate::typescript_type_renderer::TypeScriptTypeRenderer;
 
 /// The TypeScript contract resolved for one source symbol.
 #[derive(Clone, Debug, PartialEq, Eq)]

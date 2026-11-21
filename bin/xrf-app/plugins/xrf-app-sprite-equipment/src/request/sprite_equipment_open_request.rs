@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_app_core::session::SessionId;
 
-use crate::EquipmentSpriteOpen;
+use crate::sprite::EquipmentSpriteOpen;
 
 /// The complete identity and inputs of one sprite opening.
 #[derive(Clone, Debug, Deserialize, Serialize)]

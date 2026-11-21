@@ -1,4 +1,5 @@
-use crate::{XrayChange, XrayRevision};
+use crate::change::XrayChange;
+use crate::input::XrayRevision;
 
 /// What one commit or apply changed, and the project revision it made: the next snapshot's.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

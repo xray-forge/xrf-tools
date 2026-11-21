@@ -3,11 +3,13 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
+use xrf_audio_scene::{AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox, AudioSceneRules};
+
+use crate::acoustics::audio_acoustics::AudioAcoustics;
+use crate::control::engine::audio_engine_settings::AudioEngineSettings;
+use crate::output::offline::offline_session::OfflineSession;
+use crate::scene::report::audio_scene_report::AudioSceneReport;
 use crate::tests::fixtures::{MemorySounds, RATE, rms_left, tone};
-use crate::{
-  AudioAcoustics, AudioBus, AudioEngineSettings, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox,
-  AudioSceneReport, AudioSceneRules, OfflineSession,
-};
 
 const SCENE: u32 = 3;
 
@@ -108,16 +110,25 @@ mod steam {
   use std::time::{Duration, Instant};
 
   use assert_no_alloc::{assert_no_alloc, reset_violation_count, violation_count};
+  use xrf_audio_scene::{AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox};
   use xrf_error::XrfResult;
 
   use super::{emitter, frame, play, report};
+  use crate::acoustics::audio_acoustics::AudioAcoustics;
+  use crate::control::audio_play::AudioPlay;
+  use crate::control::engine::audio_engine_parts::AudioEngineParts;
+  use crate::control::engine::audio_engine_settings::AudioEngineSettings;
+  use crate::decode::decoded_sound::DecodedSound;
+  use crate::decode::sound_channels::SoundChannels;
+  use crate::mixer::audio_mixer::AudioMixer;
+  use crate::output::offline::offline_render::OfflineRender;
+  use crate::output::offline::offline_session::OfflineSession;
+  use crate::scene::host::audio_material::AudioMaterial;
+  use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
+  use crate::scene::host::audio_scene_mesh::AudioSceneMesh;
+  use crate::scene::report::audio_scene_report::AudioSceneReport;
   use crate::tests::fixtures::{MemorySounds, RATE, looped, rms_left, sine, tone};
   use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
-  use crate::{
-    AudioAcoustics, AudioBus, AudioEngineParts, AudioEngineSettings, AudioListener, AudioMaterial, AudioMixer,
-    AudioPlay, AudioSceneEmitter, AudioSceneFrame, AudioSceneGeometry, AudioSceneInbox, AudioSceneMesh,
-    AudioSceneReport, DecodedSound, OfflineRender, OfflineSession, SoundChannels,
-  };
 
   fn checkout_acoustics() -> AudioAcoustics {
     let directory: PathBuf = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../.sdks/steam-audio"));

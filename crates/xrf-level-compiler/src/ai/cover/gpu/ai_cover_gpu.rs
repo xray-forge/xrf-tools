@@ -2,9 +2,8 @@ use std::collections::VecDeque;
 use std::sync::Mutex;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_job::parallel;
 use xrf_job::parallel::prelude::*;
-use xrf_job::{JobHandle, JobScope};
+use xrf_job::{JobHandle, JobScope, parallel};
 
 use crate::ai::ai_vertex::AiVertex;
 use crate::ai::cover::ai_cover_query::AiCoverQuery;

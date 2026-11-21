@@ -3,9 +3,10 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 
+use crate::archive_project::ArchiveProject;
 use crate::payload::archive_located_entry::ArchiveLocatedEntry;
 use crate::payload::archive_open_volume::ArchiveOpenVolume;
-use crate::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
+use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor};
 
 /// Every volume of one project, open, positioned to serve any entry of it.
 pub struct ArchiveOpenVolumes<'a> {

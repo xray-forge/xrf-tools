@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::asset::{XrayAssetContainer, XrayAssetType};
 use crate::path::XrayLogicalPath;
-use crate::{XrayAssetContainer, XrayAssetType};
 
 /// One asset a mount resolved: its engine identity plus the container it came out of.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -104,7 +104,8 @@ pub fn require_writable_path(logical_path: &str, physical_path: Option<PathBuf>)
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use crate::{XrayAsset, XrayAssetContainer, XrayLogicalPath};
+  use crate::asset::{XrayAsset, XrayAssetContainer};
+  use crate::path::XrayLogicalPath;
 
   #[test]
   fn a_directory_asset_answers_a_physical_path() {

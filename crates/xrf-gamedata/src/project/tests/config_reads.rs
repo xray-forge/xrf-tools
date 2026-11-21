@@ -6,7 +6,10 @@ use std::path::PathBuf;
 use xrf_ltx_project::LtxReadCountersSnapshot;
 use xrf_test_utils::GeneratedResources;
 
-use crate::{GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationType};
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// Declares gamedata the way an installation does, so configs resolve one level below the path opened.
 const FSGAME: &str = "\

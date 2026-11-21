@@ -2,8 +2,11 @@ use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 use xrf_math::Vector3d;
 
+use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::light::editable_light_object::EditableLightObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::GUID;
-use crate::{EditableLightObject, EditableObjectPart, EditableTextPart, EditableToolObject};
 
 // As the CoP SDK saves `labx8`'s, at values `%f` prints exactly.
 fn light_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {

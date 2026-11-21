@@ -10,7 +10,7 @@ use xrf_error::XrfResult;
 use xrf_renderer::RenderCapture;
 use xrf_utils::StagedFile;
 
-use crate::RenderAnswer;
+use crate::renderer::RenderAnswer;
 
 /// A frame the renderer read back, written to a PNG file.
 pub struct CaptureFile;

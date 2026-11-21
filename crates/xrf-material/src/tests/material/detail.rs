@@ -3,8 +3,8 @@
 use xrf_thm::{ThmTextureFlag, ThmTextureType};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
+use crate::material::{XrayDetailUsage, XrayMaterialDescriptor};
 use crate::tests::material_search::{BASE, describe};
-use crate::{XrayDetailUsage, XrayMaterialDescriptor};
 
 #[test]
 fn a_detail_with_the_bump_flag_is_a_bump_detail() {

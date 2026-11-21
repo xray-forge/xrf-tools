@@ -6,7 +6,7 @@ use xrf_ogf::OgfModelType;
 use xrf_rawdata::ObjectCompileOptions;
 use xrf_visual::{VisualBounds, VisualSubmeshContent};
 
-use crate::ObjectVisual;
+use crate::object_visual::ObjectVisual;
 use crate::tests::fixtures::{compile_source, object_of, quad, surface};
 
 fn compile(object: &EditableObjectFile) -> ObjectVisual {

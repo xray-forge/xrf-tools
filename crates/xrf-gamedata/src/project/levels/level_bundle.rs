@@ -1,7 +1,7 @@
 use xrf_job::JobHandle;
 use xrf_vfs::XrayAssetType;
 
-use crate::GamedataProject;
+use crate::project::gamedata_project::GamedataProject;
 use crate::project::levels::level_engine_constants::LEVELS_DIRECTORY;
 
 /// One level bundle directory, addressed the way the engine addresses `$level$`.

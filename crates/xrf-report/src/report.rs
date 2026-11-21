@@ -1,6 +1,7 @@
 use serde::Serialize;
 
-use crate::{CheckReport, Status};
+use crate::check_report::CheckReport;
+use crate::status::Status;
 
 /// Immutable, finalized account of a command's checks and findings.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -38,7 +39,9 @@ mod tests {
   use std::time::Duration;
 
   use super::{CheckReport, Report, Status};
-  use crate::{CheckId, Finding, RuleId};
+  use crate::check_id::CheckId;
+  use crate::finding::Finding;
+  use crate::rule_id::RuleId;
 
   #[test]
   fn preserves_check_order_and_uses_pre_finalized_checks() {

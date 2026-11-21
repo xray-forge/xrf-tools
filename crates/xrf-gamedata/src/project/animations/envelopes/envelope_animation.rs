@@ -2,7 +2,7 @@ use xrf_animation_envelope::AnimationEnvelope;
 use xrf_error::XrfResult;
 use xrf_vfs::XrayAssetType;
 
-use crate::GamedataVerificationRule;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 /// A format of animation envelopes the animations check reads, writes back, evaluates and plays as the engine does, one
 /// implementation per format.

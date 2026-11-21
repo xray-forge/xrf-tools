@@ -3,8 +3,7 @@ use std::time::Duration;
 
 use tauri::State;
 use xrf_app_core::TauriResult;
-use xrf_app_render::RenderAnswer;
-use xrf_app_render::Renderer;
+use xrf_app_render::{RenderAnswer, Renderer};
 use xrf_renderer::RenderMemoryReport;
 
 use crate::diagnostics::memory::{GpuMemoryUsage, MemoryUsage, WebviewProcess, WebviewProcessProbe};

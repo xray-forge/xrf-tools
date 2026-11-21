@@ -2,7 +2,12 @@ use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 use xrf_utils::encode_string_to_w1251_bytes;
 
-use crate::{IniEncoding, IniField, IniFile, IniFormat, IniOverride, IniSection};
+use crate::ini_encoding::IniEncoding;
+use crate::ini_field::IniField;
+use crate::ini_file::IniFile;
+use crate::ini_format::IniFormat;
+use crate::ini_override::IniOverride;
+use crate::ini_section::IniSection;
 
 // As `CInifile::save_as` writes: a key past the column, an empty value, Cyrillic, and custom data spanning lines.
 const SAVED: &str = concat!(

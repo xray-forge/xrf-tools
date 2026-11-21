@@ -6,10 +6,15 @@ use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::{
-  ParticleAction, ParticleActionSource, ParticleActionType, ParticleEditorAction, ParticleEditorDomain,
-  ParticleEditorSchema, ParticleEditorValue, ParticleEffect, ParticleEffectEditorData,
-};
+use crate::data::actions::particle_action::ParticleAction;
+use crate::data::actions::particle_action_source::ParticleActionSource;
+use crate::data::actions::particle_action_type::ParticleActionType;
+use crate::data::editor::particle_editor_action::ParticleEditorAction;
+use crate::data::editor::particle_editor_domain::ParticleEditorDomain;
+use crate::data::editor::particle_editor_schema::ParticleEditorSchema;
+use crate::data::editor::particle_editor_value::ParticleEditorValue;
+use crate::data::effect::particle_effect::ParticleEffect;
+use crate::data::effect::particle_effect_editor_data::ParticleEffectEditorData;
 
 fn floats(values: &[f32]) -> Vec<u8> {
   values.iter().flat_map(|value| value.to_le_bytes()).collect()

@@ -8,11 +8,11 @@ use xrf_dds::{DdsFile, ImageFormat};
 use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
 use xrf_ltx::{Ltx, LtxSectionWrite};
 use xrf_test_utils::GeneratedResources;
+use xrf_texture::{ImageFileReshape, ImageFileWriter};
 
 use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker, InventorySpriteDescriptor};
 use crate::job_phases::SPRITE_PHASE_PACK_EQUIPMENT;
 use crate::report::{SpriteNotice, SpriteNoticeRecorder};
-use xrf_texture::{ImageFileReshape, ImageFileWriter};
 
 /// Cancels its job as soon as the pack has started on its first icon, while that icon is still being read and drawn.
 #[derive(Default)]

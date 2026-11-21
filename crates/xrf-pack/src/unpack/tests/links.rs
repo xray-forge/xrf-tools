@@ -12,7 +12,7 @@ use xrf_test_utils::HostFilesystem;
 use xrf_utils::HostLinkPolicy;
 
 use super::fixtures::{Entry, create_project, create_temporary_directory, unpack_with};
-use crate::{ArchiveExtractOptions, ArchiveUnpacker};
+use crate::unpack::{ArchiveExtractOptions, ArchiveUnpacker};
 
 const ONE: NonZeroUsize = NonZeroUsize::new(1).expect("a non-zero worker count");
 

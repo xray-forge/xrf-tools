@@ -3,9 +3,10 @@ use std::io::SeekFrom;
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::bytes::xray_read::XRayRead;
 use crate::chunk_constants::{CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK};
 use crate::reader::chunk_reader::ChunkReader;
-use crate::{ChunkDataSource, XRayRead};
+use crate::source::chunk_data_source::ChunkDataSource;
 
 /// Walks the child chunks laid out back to back in a reader's payload, each cut as a window of the same source.
 ///
@@ -128,7 +129,9 @@ mod tests {
 
   use xrf_error::XrfResult;
 
-  use crate::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource};
+  use crate::reader::chunk_reader::ChunkReader;
+  use crate::source::chunk_data_source::ChunkDataSource;
+  use crate::source::chunk_memory_source::InMemoryChunkDataSource;
 
   #[test]
   fn rejects_incomplete_chunk_header() -> XrfResult {

@@ -7,8 +7,8 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_translation::TranslationProjectDescriptor;
 
+use crate::project::{TranslationProjectRead, TranslationProjects};
 use crate::request::TranslationsOpenRequest;
-use crate::{TranslationProjectRead, TranslationProjects};
 
 /// Open a translations tree through the shared roots, read on the pool, recording what it reads so a commit to any of
 /// those files reads the project again.

@@ -14,9 +14,9 @@ use xrf_job::ExecutionRequest;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
-use crate::DialogProjects;
 use crate::commands::open_project::dialogs_open_project;
 use crate::plugin::DialogsPlugin;
+use crate::project::DialogProjects;
 use crate::request::DialogsOpenRequest;
 
 const DIALOG: &str = r#"<game_dialogs>

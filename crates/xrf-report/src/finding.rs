@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use serde::Serialize;
 
-use crate::RuleId;
+use crate::rule_id::RuleId;
 
 /// A single rule violation or checker error.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

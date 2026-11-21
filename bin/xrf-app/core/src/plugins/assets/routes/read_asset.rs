@@ -2,9 +2,9 @@ use serde::Deserialize;
 use tauri::{AppHandle, Manager};
 use xrf_vfs::XrayRoots;
 
-use crate::TauriResult;
 use crate::assets::AssetMountState;
 use crate::execution::ExecutionState;
+use crate::tauri_result::TauriResult;
 use crate::transport::TransportAnswer;
 
 #[derive(Deserialize)]

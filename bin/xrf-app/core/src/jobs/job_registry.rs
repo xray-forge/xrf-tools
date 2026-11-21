@@ -13,7 +13,6 @@ use uuid::Uuid;
 use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
 use xrf_utils::{error_to_string, format_duration, wall_clock_millis};
 
-use crate::TauriResult;
 use crate::execution::ExecutionState;
 use crate::jobs::job_conclusion::JobConclusion;
 use crate::jobs::job_description::JobDescription;
@@ -23,6 +22,7 @@ use crate::jobs::job_progress_sink::JobProgressSink;
 use crate::jobs::job_registration::JobRegistration;
 use crate::jobs::job_start::JobStart;
 use crate::jobs::{JobKind, JobResource};
+use crate::tauri_result::TauriResult;
 
 /// Finished jobs the listing keeps.
 const RETAINED_JOBS: usize = 20;

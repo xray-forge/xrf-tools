@@ -41,7 +41,7 @@ impl AnmChannel {
 
 #[cfg(test)]
 mod tests {
-  use crate::AnmChannel;
+  use crate::anm_channel::AnmChannel;
 
   #[test]
   fn each_channel_sits_where_the_engine_numbers_it() {

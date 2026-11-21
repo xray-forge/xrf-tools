@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::asset::{XrayAsset, XrayAssetType};
+use crate::input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord, XrayRevision};
+use crate::mount::XrayMountId;
+use crate::path::XrayLogicalPath;
+use crate::search::{XrayLookupScope, XraySearch, XraySearchKey};
 use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
-use crate::{
-  XrayAsset, XrayAssetType, XrayCachePolicy, XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord,
-  XrayLogicalPath, XrayLookupScope, XrayMountId, XrayRevision, XraySearch, XraySearchKey, XrayVfs,
-};
+use crate::vfs::{XrayCachePolicy, XrayVfs};
 
 /// A loose tree searched before an archive, returned with both mounts' ids.
 fn loose_over_archive(case: &str, loose: &[&str], archived: &[&str]) -> (Arc<XrayVfs>, XrayMountId, XrayMountId) {

@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::XrayFileStamp;
+use crate::source::XrayFileStamp;
 use crate::vfs::cache::XrayCacheKey;
 use crate::vfs::cache::entries::XrayCacheEntry;
 

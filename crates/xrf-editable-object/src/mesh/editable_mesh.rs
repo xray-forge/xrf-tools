@@ -6,7 +6,10 @@ use xrf_math::{Aabb, Vector3d};
 use xrf_utils::narrow_format_size;
 
 use crate::editable_chunks::EditableChunks;
-use crate::{EditableFace, EditableSurfaceFaces, EditableVMap, EditableVMapReference};
+use crate::mesh::editable_face::EditableFace;
+use crate::mesh::editable_surface_faces::EditableSurfaceFaces;
+use crate::mesh::vmap::editable_vmap::EditableVMap;
+use crate::mesh::vmap::editable_vmap_reference::EditableVMapReference;
 
 /// One mesh of an editable object, `CEditableMesh` as `CEditableMesh::SaveMesh` stores it: points, triangles that
 /// index them, the surfaces the triangles are made of, and the vertex maps their corners take UVs and weights from.

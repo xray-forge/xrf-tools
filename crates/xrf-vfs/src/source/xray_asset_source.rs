@@ -4,8 +4,10 @@ use std::path::{Path, PathBuf};
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::asset::XrayAssetContainer;
+use crate::path::XrayPathCollision;
+use crate::search::XrayShadowedCopy;
 use crate::source::{XrayDeclaredRoot, XrayFileStamp, XraySourceKind};
-use crate::{XrayAssetContainer, XrayPathCollision, XrayShadowedCopy};
 
 /// Names a source after the directory or volume set it was opened from, for [`XrayAssetSource::get_label`].
 pub fn label_from_path(path: &Path) -> String {

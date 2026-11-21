@@ -4,7 +4,7 @@ use walkdir::{DirEntry, Error as WalkError, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
 
-use crate::ArchiveDescriptor;
+use crate::volume::ArchiveDescriptor;
 
 /// Finds archive volumes and orders them for the project's merge.
 pub(crate) struct ArchiveVolumeDiscovery;
@@ -148,7 +148,7 @@ mod tests {
 
     use xrf_test_utils::GeneratedResources;
 
-    use crate::ArchiveProject;
+    use crate::archive_project::ArchiveProject;
 
     let root: PathBuf = GeneratedResources::path("archive_project_unreadable");
     let locked: PathBuf = root.join("locked");

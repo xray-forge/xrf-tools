@@ -1,6 +1,6 @@
 use std::any::TypeId;
 
-use crate::XrayRevision;
+use crate::input::XrayRevision;
 
 /// What identifies a retained value: its type, and the copy it was parsed from at the revision it was read at.
 ///

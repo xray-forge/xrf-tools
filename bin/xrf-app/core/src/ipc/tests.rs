@@ -5,7 +5,7 @@ use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder, mock_
 use tauri::webview::InvokeRequest;
 use tauri::{App, AppHandle, WebviewWindow, WebviewWindowBuilder};
 
-use crate::TauriResult;
+use crate::tauri_result::TauriResult;
 use crate::transport::{TransportAnswer, TransportRoutes};
 
 /// A domain declaring every kind of entry, since no real domain declares a raw command today.

@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::change::transaction::{XrayTransactionTarget, XrayTransactionWrite};
-use crate::{XrayInputRecord, XrayLogicalPath, XrayLookupScope, XraySearch, XraySearchKey, XrayVfs};
+use crate::input::XrayInputRecord;
+use crate::path::XrayLogicalPath;
+use crate::search::{XrayLookupScope, XraySearch, XraySearchKey};
+use crate::vfs::XrayVfs;
 
 /// One gesture's writes and deletes, committed all at once or not at all through [`XrayVfs::commit`].
 // todo: Tag a transaction with the owner that issued it (the application's session scope), so undoing it is that

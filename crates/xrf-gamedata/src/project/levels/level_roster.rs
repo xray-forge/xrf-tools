@@ -3,10 +3,13 @@ use std::collections::BTreeSet;
 use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
+use xrf_report::Finding;
 use xrf_spawn::{SpawnFile, SpawnGraphsChunk};
 
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::levels::roster_level::RosterLevel;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
 
 /// Levels the game graph declares, reconciled across every graph bearing spawn asset.
 pub(crate) struct LevelRoster {

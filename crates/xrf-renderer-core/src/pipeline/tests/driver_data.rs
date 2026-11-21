@@ -1,4 +1,4 @@
-use crate::PipelineCache;
+use crate::pipeline::PipelineCache;
 
 #[test]
 fn hands_the_driver_only_data_whose_checksum_holds() {

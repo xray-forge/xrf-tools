@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::XrayMountMode;
+use crate::mount::XrayMountMode;
 
 /// One place to read from, and how that place becomes mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_renderer::RenderViewportId;
 use xrf_world::{WorldWeatherPlay, WorldWeatherTransition};
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Play a weather in a viewport's level from now on: a cycle by name, a keyframe set by hand, or nothing.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

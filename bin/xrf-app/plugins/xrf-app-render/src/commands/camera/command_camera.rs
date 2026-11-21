@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldCameraCommand;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Ask a viewport's camera to reset or dolly.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

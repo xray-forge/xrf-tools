@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use crate::asset::{XrayAsset, XrayAssetType};
+use crate::search::XrayLookupScope;
+use crate::vfs::XrayVfs;
 use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
-use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayVfs};
 
 #[test]
 fn resolves_a_texture_reference_against_a_mounted_root() {
@@ -125,7 +127,7 @@ fn a_mount_searched_by_two_steps_hides_none_of_its_own_files() {
 
   vfs.mount_directory("", &loose).expect("directory mounts");
 
-  let search: crate::XraySearch = crate::XraySearch::new(vfs)
+  let search: crate::search::XraySearch = crate::search::XraySearch::new(vfs)
     .with_step("first", XrayLookupScope::all())
     .with_step("second", XrayLookupScope::all());
   let entries = search.list_shadowing_entries();
@@ -148,8 +150,9 @@ fn a_raw_read_and_a_parse_of_a_shadowed_copy_read_that_copy() {
     )
     .expect("archive mounts");
 
-  let search: crate::XraySearch = crate::XraySearch::new(vfs.with_cache_policy(crate::XrayCachePolicy::configs()))
-    .with_step("all", XrayLookupScope::all());
+  let search: crate::search::XraySearch =
+    crate::search::XraySearch::new(vfs.with_cache_policy(crate::vfs::XrayCachePolicy::configs()))
+      .with_step("all", XrayLookupScope::all());
   let shadowed: XrayAsset = search
     .list_shadowing_entries()
     .pop()

@@ -6,9 +6,10 @@ use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_vfs::{XrayMountId, XraySearch, XrayVfs};
 
 use crate::fixtures::FixtureTree;
+use crate::surface::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver};
 use crate::tests::material_search::search_over;
 use crate::tests::surface::surface_search::{CUT_OUT, describe, library};
-use crate::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XrayTextureScope};
+use crate::texture::XrayTextureScope;
 
 #[test]
 fn a_tree_without_a_library_answers_no_library_and_draws_opaque() {

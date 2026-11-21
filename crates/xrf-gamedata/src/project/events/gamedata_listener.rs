@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::GamedataEvent;
+use crate::project::events::GamedataEvent;
 
 /// What hears a gamedata verification's events, called on the thread that runs the verification.
 ///

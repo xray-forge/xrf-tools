@@ -4,7 +4,7 @@ use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::window::InvokingWindow;
 use xrf_translation::TranslationProjectDescriptor;
 
-use crate::TranslationProjects;
+use crate::project::TranslationProjects;
 
 /// The translations project `tool` holds in the asking window, the newest it opened, for a page attaching to it after a
 /// reload.

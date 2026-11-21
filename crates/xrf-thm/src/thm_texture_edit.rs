@@ -137,8 +137,12 @@ mod tests {
   use xrf_error::XrfResult;
 
   use super::ThmTextureEdit;
+  use crate::chunks::thm_texture_param_chunk::ThmTextureParamChunk;
   use crate::tests::fixtures::{descriptor, raw_chunk};
-  use crate::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk};
+  use crate::texture::thm_format::ThmFormat;
+  use crate::texture::thm_texture_flag::ThmTextureFlag;
+  use crate::texture::thm_texture_flags::ThmTextureFlags;
+  use crate::thm_file::ThmFile;
 
   #[test]
   fn sets_only_the_fields_it_names() {

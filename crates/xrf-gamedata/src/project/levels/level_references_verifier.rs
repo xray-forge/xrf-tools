@@ -3,10 +3,12 @@ use std::sync::Arc;
 use xrf_level::{LevelShaderReference, LevelShadersChunk};
 use xrf_shaders::ShaderLibraryFile;
 
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::LEVEL_FILE;
 use crate::project::levels::level_references_outcome::LevelReferencesOutcome;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
 
 /// Resolves the shader and texture table the level geometry is built against.
 pub(crate) struct LevelReferencesVerifier<'a> {

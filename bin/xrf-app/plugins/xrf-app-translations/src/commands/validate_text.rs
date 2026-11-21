@@ -3,7 +3,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionId;
 use xrf_utils::error_to_string;
 
-use crate::TranslationProjects;
+use crate::project::TranslationProjects;
 
 /// Report why a language cannot hold a value — a character its code page lacks, or a text too long for the game to
 /// load — or nothing when the value is writable.

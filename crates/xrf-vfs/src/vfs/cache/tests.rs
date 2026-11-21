@@ -7,8 +7,9 @@ use std::time::Duration;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::asset::XrayAssetType;
+use crate::input::XrayRevision;
+use crate::source::XrayFileStamp;
 use crate::vfs::cache::{XrayAssetCache, XrayCacheKey, XrayCachePolicy, XrayCacheStats};
-use crate::{XrayFileStamp, XrayRevision};
 
 /// Stands in for a parsed asset, so the store is exercised without a format crate.
 #[derive(Debug, Eq, PartialEq)]

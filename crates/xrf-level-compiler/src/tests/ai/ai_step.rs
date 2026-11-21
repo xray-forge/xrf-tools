@@ -9,16 +9,20 @@ use xrf_report::Status;
 use crate::ai::ai_map::AiMap;
 use crate::ai::ai_map_compilation::AiMapCompilation;
 use crate::ai::ai_map_compiler::AiMapCompiler;
+use crate::ai::ai_map_covers::AiMapCovers;
+use crate::ai::ai_map_guid::AiMapGuid;
 use crate::ai::ai_map_request::AiMapRequest;
+use crate::compile::level_compile_report::LevelCompileReport;
+use crate::compile::level_compile_request::LevelCompileRequest;
+use crate::compile::level_compile_step::LevelCompileStep;
+use crate::compile::level_compile_step_run::LevelCompileStepRun;
+use crate::compile::level_compiler::LevelCompiler;
+use crate::ray::ray_backend::RayBackend;
 use crate::ray::ray_scene::RayScene;
 use crate::ray::ray_tracing::RayTracing;
 use crate::shadow::shadow_materials::ShadowMaterials;
 use crate::tests::ai::ai_map::aimap;
 use crate::tests::detail::detail_step::Fixture;
-use crate::{
-  AiMapCovers, AiMapGuid, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun,
-  LevelCompiler, RayBackend,
-};
 
 fn level(name: &str, aimap: &BuildAimapFile) -> XrfResult<Fixture> {
   let fixture: Fixture = Fixture::new(file!(), name)?;

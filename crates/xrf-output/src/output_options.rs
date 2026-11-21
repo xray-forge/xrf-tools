@@ -1,7 +1,10 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
-use crate::{NoopOutput, Output, OutputChannel, OutputRecord, OutputVerbosity};
+use crate::output_channel::OutputChannel;
+use crate::output_record::OutputRecord;
+use crate::output_verbosity::OutputVerbosity;
+use crate::sink::{NoopOutput, Output};
 
 /// Runtime output configuration for a workflow.
 #[derive(Clone)]
@@ -85,7 +88,9 @@ mod tests {
   use std::sync::Arc;
 
   use super::{OutputOptions, OutputVerbosity};
-  use crate::{OutputChannel, OutputRecord, RecordingOutput};
+  use crate::output_channel::OutputChannel;
+  use crate::output_record::OutputRecord;
+  use crate::sink::RecordingOutput;
 
   fn messages(output: &RecordingOutput) -> Vec<String> {
     output

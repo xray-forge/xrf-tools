@@ -1,8 +1,11 @@
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 
+use crate::object::sector::editable_sector_item::EditableSectorItem;
+use crate::object::sector::editable_sector_object::EditableSectorObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::GUID;
-use crate::{EditableObjectPart, EditableSectorItem, EditableSectorObject, EditableTextPart};
 
 // As the CoP SDK saves `labx8`'s, its flags printed through `%d`.
 fn sector_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {

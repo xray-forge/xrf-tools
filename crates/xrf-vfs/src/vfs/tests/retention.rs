@@ -5,8 +5,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use xrf_error::XrfResult;
 
+use crate::asset::XrayAssetType;
+use crate::input::XrayRevision;
+use crate::mount::XrayMountId;
+use crate::search::XrayLookupScope;
 use crate::vfs::tests::fixtures::directory;
-use crate::{XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLookupScope, XrayMountId, XrayRevision, XrayVfs};
+use crate::vfs::{XrayCachePolicy, XrayCacheStats, XrayVfs};
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
 

@@ -10,7 +10,7 @@ use xrf_job::{JobHandle, JobOutcome, JobProgress};
 use xrf_spawn::SpawnFile;
 use xrf_utils::{OutputFiles, error_to_string};
 
-use crate::SpawnConversionResult;
+use crate::conversion::SpawnConversionResult;
 use crate::ipc::spawn::{SPAWN_JOB_PACK, SPAWN_JOB_UNPACK};
 use crate::request::SpawnConvertRequest;
 

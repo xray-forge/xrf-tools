@@ -12,8 +12,8 @@ use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_report::Status;
 use xrf_utils::error_to_string;
 
-use crate::GamedataCheckSummary;
 use crate::request::GamedataVerifyRequest;
+use crate::verify::GamedataCheckSummary;
 
 /// What a whole verification reports back to the desktop surface.
 #[derive(Clone, Debug, Serialize)]
@@ -107,8 +107,8 @@ mod tests {
   use xrf_report::Status;
   use xrf_test_utils::GeneratedResources;
 
-  use crate::GamedataVerifySummary;
   use crate::request::GamedataVerifyRequest;
+  use crate::verify::GamedataVerifySummary;
 
   struct CancelAtPhase {
     job: Mutex<Option<JobHandle>>,

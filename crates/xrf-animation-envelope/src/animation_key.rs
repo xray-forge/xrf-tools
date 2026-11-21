@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
-use crate::{AnimationInterpolation, AnimationShape};
+use crate::animation_interpolation::AnimationInterpolation;
+use crate::animation_shape::AnimationShape;
 
 /// One key of an animation envelope, `st_Key`: a value at a time, and the curve leading to it. Zero by default, as
 /// `st_Key::st_Key` leaves it.
@@ -89,7 +90,9 @@ mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
 
-  use crate::{AnimationInterpolation, AnimationKey, AnimationShape};
+  use crate::animation_interpolation::AnimationInterpolation;
+  use crate::animation_key::AnimationKey;
+  use crate::animation_shape::AnimationShape;
 
   fn new_interpolated_key_bytes() -> Vec<u8> {
     vec![

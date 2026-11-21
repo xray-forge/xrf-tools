@@ -4,10 +4,12 @@ use std::path::{Path, PathBuf};
 use serde_json::{Value, json};
 use xrf_test_utils::GeneratedResources;
 
-use crate::{
+use crate::manifest::ExternManifest;
+use crate::project::{
   ExportContractDescriptor, ExportDescriptor, ExportReturnDescriptor, ExportSourceContent, ExportSourceDescriptor,
-  ExportsProject, ExportsProjectParser, ExternFormat, ExternManifest,
+  ExportsProject, ExportsProjectParser,
 };
+use crate::render::ExternFormat;
 
 fn create_test_root(name: &str) -> PathBuf {
   GeneratedResources::create_dir(&format!("project-projection/{name}")).unwrap()

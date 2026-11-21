@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::XrayAsset;
+use crate::asset::XrayAsset;
 use crate::search::{XrayMountedEntry, XrayShadowedCopy};
 
 /// One engine path as the mounted order answers it: the copy a lookup reaches, and the copies it hides.

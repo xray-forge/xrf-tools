@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::TranslationLanguage;
+use crate::language::translation_language::TranslationLanguage;
 
 #[test]
 fn test_from_str() {

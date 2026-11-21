@@ -1,8 +1,9 @@
 use std::io::Write;
 
-use crate::{XRayBytes, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
+use crate::bytes::xray_bytes::XRayBytes;
+use crate::bytes::xray_write::XRayWrite;
 use crate::field::chunk_field_writer::ChunkFieldWriter;
 use crate::writer::chunk_writer::ChunkWriter;
 

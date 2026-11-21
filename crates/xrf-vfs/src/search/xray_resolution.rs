@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::XrayAsset;
+use crate::asset::XrayAsset;
 
 /// What one reference lookup came to.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

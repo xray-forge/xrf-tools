@@ -12,7 +12,10 @@ use crate::project::animations::hud::player_hud_animations_verifier::PlayerHudAn
 use crate::project::animations::hud::player_hud_motion_requests::PlayerHudMotionRequests;
 use crate::project::animations::hud::player_hud_motion_verdict::PlayerHudMotionVerdict;
 use crate::project::animations::hud::player_hud_motions::PlayerHudMotions;
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 
 fn motions(names: &[&str]) -> PlayerHudMotions {
   PlayerHudMotions::new(names.iter().map(|name| (*name).to_owned()).collect())

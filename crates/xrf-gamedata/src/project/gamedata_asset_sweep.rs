@@ -1,9 +1,11 @@
 use xrf_error::XrfResult;
 use xrf_job::parallel::prelude::*;
+use xrf_report::Finding;
 use xrf_utils::narrow_format_size;
 
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
-use crate::{Finding, GamedataFindingFactory, GamedataProjectVerifyOptions};
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 
 /// Verifies many independent items of one kind at once: assets, or the sections that name them.
 pub(crate) struct GamedataAssetSweep<'a> {

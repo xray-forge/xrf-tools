@@ -8,9 +8,12 @@ use xrf_shaders::{ShaderRenderer, XRayShader, XRayShaderScript};
 use xrf_vfs::XraySearch;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::shaders::gamedata_shader_source_loader::GamedataShaderSourceLoader;
 use crate::project::shaders::verify_shaders_result::GamedataShadersVerificationResult;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Logical directory holding the renderer shader trees.
 pub(crate) const SHADERS_DIRECTORY: &str = "shaders";
@@ -274,7 +277,9 @@ mod tests {
   use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
 
   use super::{SHADERS_DIRECTORY, ShadersVerifier};
-  use crate::{GamedataCheckResult, GamedataProjectVerifyOptions, GamedataVerificationRule};
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
   /// Mounts a gamedata tree, since the verifier addresses shaders by engine identity rather than by filesystem path.
   ///

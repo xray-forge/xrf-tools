@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::XrayAsset;
+use crate::asset::XrayAsset;
 
 /// One engine path as the mounted order answers it: the copy a lookup reaches, and how large it is.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

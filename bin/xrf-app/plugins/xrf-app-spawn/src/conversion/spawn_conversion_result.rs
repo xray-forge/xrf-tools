@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 use xrf_job::JobOutcome;
 
-use crate::SpawnConversion;
+use crate::conversion::SpawnConversion;
 
 /// What reached disk; cancellation is accepted only before writing begins.
 #[derive(Debug, Serialize)]

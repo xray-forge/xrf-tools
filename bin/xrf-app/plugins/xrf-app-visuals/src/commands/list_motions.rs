@@ -4,7 +4,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::VisualModels;
+use crate::model::VisualModels;
 
 /// Every motion the open visual can play, by name, read on the pool.
 ///

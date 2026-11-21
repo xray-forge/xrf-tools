@@ -1,4 +1,4 @@
-use crate::XrayMount;
+use crate::mount::XrayMount;
 
 /// One source a search reaches, and the step that reaches it.
 #[derive(Clone, Copy, Debug)]

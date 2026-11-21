@@ -115,7 +115,9 @@ mod tests {
   use xrf_vfs::{XrayMountMode, XrayRoots};
 
   use super::XrayEngineDetector;
-  use crate::{XrayEngine, XrayEngineEvidence, XrayEngineResolution};
+  use crate::xray_engine::XrayEngine;
+  use crate::xray_engine_evidence::XrayEngineEvidence;
+  use crate::xray_engine_resolution::XrayEngineResolution;
 
   const VANILLA_FSGAME: &str = "$fs_root$ = false| false|\n$game_data$ = false| true| $fs_root$| gamedata\\\n\
     $game_config$ = true| false| $game_data$| configs\\\n";

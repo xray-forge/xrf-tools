@@ -2,8 +2,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use xrf_job::testing::create_test_pool;
 
-use crate::GamedataProjectVerifyOptions;
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 
 /// The sweep the script, texture, sound, particle, mesh and animation checks share starts no item once the job is
 /// cancelled, so a check stopped mid-way reads no further assets.

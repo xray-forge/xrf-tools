@@ -5,15 +5,19 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_job::parallel::prelude::*;
 use xrf_ltx::{Ltx, LtxResolution, Section};
+use xrf_report::Finding;
 use xrf_utils::narrow_format_size;
 
 use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
 use crate::project::animations::hud::player_hud_motion_requests::PlayerHudMotionRequests;
 use crate::project::animations::hud::player_hud_motion_verdict::PlayerHudMotionVerdict;
 use crate::project::animations::hud::player_hud_motions::PlayerHudMotions;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
 use crate::project::gamedata_item_section::GamedataItemSection;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::gamedata_visual_motions::GamedataVisualMotions;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies the player hands: their visual plays motions, and every motion a weapon's HUD section asks of them.
 pub(crate) struct PlayerHudAnimationsVerifier<'a> {

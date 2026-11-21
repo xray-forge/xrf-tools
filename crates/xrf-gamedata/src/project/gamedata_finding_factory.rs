@@ -1,10 +1,10 @@
 use std::cmp::Ordering;
 use std::path::Path;
 
-use xrf_report::RuleId;
+use xrf_report::{Finding, RuleId};
 use xrf_utils::format_portable_path;
 
-use crate::{Finding, GamedataVerificationRule};
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 /// Constructs shared report findings from gamedata verification inputs.
 pub(crate) struct GamedataFindingFactory;
@@ -56,8 +56,10 @@ impl GamedataFindingFactory {
 
 #[cfg(test)]
 mod tests {
+  use xrf_report::Finding;
+
   use super::GamedataFindingFactory;
-  use crate::{Finding, GamedataVerificationRule};
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
   #[test]
   fn sorts_findings_by_asset_path_then_message() {

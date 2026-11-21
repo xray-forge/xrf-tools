@@ -16,7 +16,8 @@ use xrf_visual::{
 };
 use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
-use crate::{SelectedVisual, VisualPoses};
+use crate::model::SelectedVisual;
+use crate::pose::VisualPoses;
 
 /// The open model as the native renderer draws it: a scene of one object and no level, its textures read from the
 /// roots it was opened in, its skin kept for the renderer to pose, and its motions baked when a pose names one.

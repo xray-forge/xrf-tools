@@ -2,13 +2,17 @@ use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
+use xrf_report::Finding;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::particles::verify_particles_result::GamedataParticlesVerificationResult;
 use crate::project::textures::texture_files_verifier::TextureFilesVerifier;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// The particles check: every particle library reads, and every texture its effects draw is one the engine uploads.
 pub(crate) struct ParticlesVerifier<'a> {

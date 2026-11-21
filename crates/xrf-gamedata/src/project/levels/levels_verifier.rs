@@ -4,9 +4,13 @@ use std::time::Instant;
 
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
+use xrf_report::Finding;
 use xrf_shaders::ShaderLibraryFile;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::levels::level_binaries_outcome::LevelBinariesOutcome;
 use crate::project::levels::level_binaries_verifier::LevelBinariesVerifier;
 use crate::project::levels::level_bundle::LevelBundle;
@@ -16,7 +20,6 @@ use crate::project::levels::level_references_outcome::LevelReferencesOutcome;
 use crate::project::levels::level_references_verifier::LevelReferencesVerifier;
 use crate::project::levels::level_roster::LevelRoster;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions};
 
 pub(crate) struct LevelsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

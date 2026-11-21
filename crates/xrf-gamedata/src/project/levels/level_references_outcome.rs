@@ -1,4 +1,4 @@
-use crate::Finding;
+use xrf_report::Finding;
 
 /// Findings and counters from resolving what a level's geometry references.
 #[derive(Default)]

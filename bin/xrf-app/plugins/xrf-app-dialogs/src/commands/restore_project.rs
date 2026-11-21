@@ -6,7 +6,7 @@ use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::window::InvokingWindow;
 use xrf_dialog::DialogProjectDescriptor;
 
-use crate::{DialogProjects, OpenedDialogProject};
+use crate::project::{DialogProjects, OpenedDialogProject};
 
 /// The dialogs project `tool` holds in the asking window, the newest it opened, for a page attaching to it after a
 /// reload.

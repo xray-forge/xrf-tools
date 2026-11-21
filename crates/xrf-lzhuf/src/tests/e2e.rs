@@ -14,7 +14,8 @@ use std::path::{Path, PathBuf};
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::{LzhufDecoder, LzhufEncoder};
+use crate::decode::LzhufDecoder;
+use crate::encode::LzhufEncoder;
 
 const CONFIG_ASSET: &str = "system_fragment.ltx";
 const DESCRIPTOR_ASSET: &str = "file_descriptors.bin";

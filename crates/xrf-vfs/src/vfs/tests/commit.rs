@@ -5,13 +5,15 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::asset::XrayAsset;
+use crate::change::{XrayChange, XrayChangeKind, XrayChangeSet, XrayTransaction};
+use crate::input::{XrayInput, XrayInputKind, XrayInputRecord, XrayRevision};
+use crate::mount::XrayMountId;
+use crate::path::XrayLogicalPath;
+use crate::search::{XrayLookupScope, XraySearch, XraySearchKey};
 use crate::source::XrayDirectorySource;
 use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
-use crate::{
-  XrayAsset, XrayCachePolicy, XrayChange, XrayChangeKind, XrayChangeSet, XrayInput, XrayInputKind, XrayInputRecord,
-  XrayLogicalPath, XrayLookupScope, XrayMountId, XrayRevision, XraySearch, XraySearchKey, XrayTransaction, XrayVfs,
-  XrayVfsHost,
-};
+use crate::vfs::{XrayCachePolicy, XrayVfs, XrayVfsHost};
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
 

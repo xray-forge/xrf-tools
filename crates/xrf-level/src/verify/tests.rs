@@ -6,10 +6,18 @@ use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector3d};
 use xrf_report::{CheckReport, Status};
 
-use crate::{
-  LevelAiFile, LevelAiGraphCensus, LevelAiGraphVerifier, LevelAiGraphVerifyResult, LevelAiHeader, LevelAiNode,
-  LevelAiNodes, LevelAiVersion, LevelFile, LevelFileSource, LevelGeometryVerifier, LevelGeometryVerifyResult,
-};
+use crate::ai::level_ai_file::LevelAiFile;
+use crate::ai::level_ai_header::LevelAiHeader;
+use crate::ai::level_ai_node::LevelAiNode;
+use crate::ai::level_ai_nodes::LevelAiNodes;
+use crate::ai::level_ai_version::LevelAiVersion;
+use crate::level::level_file::LevelFile;
+use crate::verify::level_ai_graph_census::LevelAiGraphCensus;
+use crate::verify::level_ai_graph_verifier::LevelAiGraphVerifier;
+use crate::verify::level_ai_graph_verify_result::LevelAiGraphVerifyResult;
+use crate::verify::level_file_source::LevelFileSource;
+use crate::verify::level_geometry_verifier::LevelGeometryVerifier;
+use crate::verify::level_geometry_verify_result::LevelGeometryVerifyResult;
 
 /// A level's files held in memory, by name.
 #[derive(Default)]

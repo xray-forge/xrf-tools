@@ -2,9 +2,11 @@ use std::path::PathBuf;
 
 use xrf_vfs::XrayAssetContainer;
 
-use crate::{
-  ArchiveOrigins, ArchiveSourceUsage, ArchiveStatistics, ArchiveStatisticsEntry, ArchiveWorldStatisticsEntry,
-};
+use crate::collect::archive_statistics_entry::ArchiveStatisticsEntry;
+use crate::collect::archive_world_statistics_entry::ArchiveWorldStatisticsEntry;
+use crate::report::archive_origins::ArchiveOrigins;
+use crate::report::archive_source_usage::ArchiveSourceUsage;
+use crate::report::archive_statistics::ArchiveStatistics;
 
 const LOOSE_ROOT: &str = "C:/game/gamedata";
 const VOLUME: &str = "C:/game/db/textures.db0";

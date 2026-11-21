@@ -4,7 +4,7 @@ use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::window::InvokingWindow;
 use xrf_vfs::XrayRoots;
 
-use crate::VisualBrowses;
+use crate::browse::VisualBrowses;
 
 /// The roots `tool` browses in the asking window, the newest it opened.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

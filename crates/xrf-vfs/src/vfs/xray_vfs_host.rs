@@ -4,10 +4,10 @@ use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock};
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::{
-  XrayChange, XrayChangeSet, XrayLookupScope, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XrayTransaction,
-  XrayVfs,
-};
+use crate::change::{XrayChange, XrayChangeSet, XrayTransaction};
+use crate::mount::XrayRoots;
+use crate::search::{XrayLookupScope, XraySearch, XraySearchPlan, XraySearchStep};
+use crate::vfs::XrayVfs;
 
 /// The one owner of the current VFS snapshot, through which every mount goes: what an analysis host is to its analyses.
 ///

@@ -1,5 +1,7 @@
 use crate::input::{XrayInput, XrayInputAnswer, XrayInputKind};
-use crate::{XrayLogicalPath, XrayLookupScope, XrayVfs};
+use crate::path::XrayLogicalPath;
+use crate::search::XrayLookupScope;
+use crate::vfs::XrayVfs;
 
 impl XrayVfs {
   /// What this snapshot answers for an input now: two answers that differ mean what a build read of it changed between.

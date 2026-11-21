@@ -3,6 +3,7 @@ use std::time::Instant;
 use xrf_anm::AnmFile;
 use xrf_error::XrfResult;
 use xrf_ppe::PpeFile;
+use xrf_report::Finding;
 
 use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
 use crate::project::animations::envelopes::envelope_animations_verifier::EnvelopeAnimationsVerifier;
@@ -14,7 +15,9 @@ use crate::project::animations::hud::player_hud_animations_verification_result::
 use crate::project::animations::hud::player_hud_animations_verifier::PlayerHudAnimationsVerifier;
 use crate::project::animations::verify_animations_result::GamedataAnimationsVerificationResult;
 use crate::project::gamedata_check::GamedataCheck;
-use crate::{Finding, GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 
 /// The animations check: the player HUD and the HUD items, motion name collisions, and every object motion and
 /// post-process effect the game holds.

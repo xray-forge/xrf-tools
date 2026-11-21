@@ -4,8 +4,9 @@ use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_vfs::{XrayMountId, XraySearch, XrayVfs};
 
 use crate::fixtures::FixtureTree;
+use crate::surface::{XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver};
 use crate::tests::material_search::search_over;
-use crate::{XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XrayTextureScope};
+use crate::texture::XrayTextureScope;
 
 /// What every deferred cut-out tests against, whatever the blender authored.
 pub(crate) const CUT_OUT: XraySurfaceDraw = XraySurfaceDraw::AlphaTested {

@@ -1,6 +1,5 @@
-use std::fmt;
-use std::fs;
 use std::path::Path;
+use std::{fmt, fs};
 
 use serde::de::{Error as _, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};

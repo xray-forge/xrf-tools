@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::mount::XrayMountPlan;
-use crate::{FsgameFile, XrayLogicalPath, XrayRootKind};
+use crate::mount::{FsgameFile, XrayMountPlan, XrayRootKind};
+use crate::path::XrayLogicalPath;
 
 /// What a path turns out to be when planned, and why.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

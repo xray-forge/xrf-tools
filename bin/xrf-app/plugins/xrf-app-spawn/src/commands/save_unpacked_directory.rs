@@ -7,7 +7,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_utils::{OutputFiles, error_to_string};
 
-use crate::{SpawnFiles, SpawnSession};
+use crate::file::{SpawnFiles, SpawnSession};
 
 /// Write the spawn `session_id` holds into the directory `path` as unpacked chunks; refused where `path` exists, in
 /// any letter case, unless `is_forced`.

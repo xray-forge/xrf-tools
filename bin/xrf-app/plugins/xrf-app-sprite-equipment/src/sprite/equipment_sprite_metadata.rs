@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_sprite::EquipmentSlotOccupant;
 
-use crate::{EquipmentSheetLocation, EquipmentSpriteOpen};
+use crate::sprite::{EquipmentSheetLocation, EquipmentSpriteOpen};
 
 /// Everything the editor is told about one opened sheet.
 #[derive(Clone, Debug, Serialize)]

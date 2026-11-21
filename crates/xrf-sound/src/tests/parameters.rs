@@ -1,7 +1,9 @@
 use xrf_error::XrfResult;
 
 use crate::tests::fixtures::xray_comment;
-use crate::{XRaySoundCommentVersion, XRaySoundGameType, XRaySoundParameters};
+use crate::xray::xray_sound_comment_version::XRaySoundCommentVersion;
+use crate::xray::xray_sound_game_type::XRaySoundGameType;
+use crate::xray::xray_sound_parameters::XRaySoundParameters;
 
 #[test]
 fn reads_a_version_three_block() {

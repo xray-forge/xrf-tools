@@ -5,7 +5,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_visual::VisualMotionBake;
 
-use crate::VisualModels;
+use crate::model::VisualModels;
 
 /// Describe one of the open visual's motions as a pose of it would hold it, its frames, bones and length, posing none;
 /// read on the pool.

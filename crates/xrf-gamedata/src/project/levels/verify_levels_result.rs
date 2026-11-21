@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 #[derive(Default)]
 pub(crate) struct GamedataLevelsVerificationResult {
@@ -63,11 +66,15 @@ impl GamedataCheckResult for GamedataLevelsVerificationResult {
 mod tests {
   use std::time::Duration;
 
+  use xrf_report::Finding;
+
   use super::GamedataLevelsVerificationResult;
-  use crate::{
-    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
-    GamedataVerificationStatus, GamedataVerificationType,
-  };
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_report::GamedataVerificationReport;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
 
   #[test]
   fn skips_verification_without_a_game_graph() {

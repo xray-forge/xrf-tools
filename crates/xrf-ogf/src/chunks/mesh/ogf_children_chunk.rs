@@ -3,7 +3,7 @@ use std::io::Write;
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::OgfFile;
+use crate::ogf_file::OgfFile;
 
 /// Child visuals carried whole, `OGF_CHILDREN`: numbered chunks from zero, each a visual of its own.
 ///

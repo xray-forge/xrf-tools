@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfError;
 use xrf_test_utils::GeneratedResources;
 
-use crate::{ExternExport, ExternManifestParser};
+use crate::manifest::ExternExport;
+use crate::parse::ExternManifestParser;
 
 fn create_test_root(name: &str) -> PathBuf {
   GeneratedResources::create_dir(&format!("extern-parser/{name}")).unwrap()

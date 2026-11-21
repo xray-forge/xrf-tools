@@ -2,8 +2,10 @@ use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 use xrf_math::Vector3d;
 
+use crate::object::editable_portal_object::EditablePortalObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::GUID;
-use crate::{EditableObjectPart, EditablePortalObject, EditableTextPart};
 
 // As the CoP SDK saves `labx8`'s, at corners `%f` prints exactly, closing on its first corner as GSC's do.
 fn portal_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {

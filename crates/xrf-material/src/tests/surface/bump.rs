@@ -5,9 +5,10 @@ use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::ThmMaterial;
 
 use crate::fixtures::FixtureTree;
+use crate::material::XrayMaterialDescriptor;
+use crate::surface::XraySurfaceDescriptor;
 use crate::tests::material_search::{BASE, BUMP, COMPANION, located_path, used_bump};
 use crate::tests::surface::surface_search::describe_dressed;
-use crate::{XrayMaterialDescriptor, XraySurfaceDescriptor};
 
 /// A tree whose library defines `blender` and whose base texture declares a located pair, as `PhongMetal` at a half.
 fn bumped_tree(case: &str, blender: ShaderBlenderFixture) -> FixtureTree {

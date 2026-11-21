@@ -48,7 +48,7 @@ impl XrayAssetRules {
 #[cfg(test)]
 mod tests {
   use super::XrayAssetRules;
-  use crate::XrayAssetType;
+  use crate::asset::XrayAssetType;
   use crate::path::XrayLogicalPath;
 
   fn rules(asset_type: XrayAssetType) -> XrayAssetRules {

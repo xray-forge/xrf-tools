@@ -2,7 +2,8 @@ use std::fmt::{Display, Formatter};
 
 use serde::Serialize;
 
-use crate::{LevelGeomVertexBuffer, LevelVertexLayout};
+use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
+use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 
 /// The kind of vertex declaration a level stores a visual's geometry in, so two buffers sharing one count once.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]

@@ -17,6 +17,7 @@ pub(crate) mod gamedata_project_verify_options;
 pub(crate) mod gamedata_verification_check_report;
 pub(crate) mod gamedata_verification_report;
 pub(crate) mod gamedata_verification_rule;
+pub(crate) mod gamedata_verification_status;
 pub(crate) mod gamedata_verification_type;
 pub(crate) mod gamedata_visual_motions;
 pub(crate) mod levels;

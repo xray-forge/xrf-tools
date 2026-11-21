@@ -7,7 +7,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_export::{ExportsProject, ExternFormat};
 use xrf_utils::error_to_string;
 
-use crate::ExportsProjects;
+use crate::project::ExportsProjects;
 
 /// Write the manifest of every extern the project `session_id` holds to `path`, in the format its extension names.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

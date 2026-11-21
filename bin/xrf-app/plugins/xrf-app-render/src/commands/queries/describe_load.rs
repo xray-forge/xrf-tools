@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_renderer::{RenderLoadReport, RenderViewportId};
 
-use crate::Renderer;
+use crate::renderer::Renderer;
 
 /// Say how far the level a viewport was last asked to show has loaded, for a caller polling rather than listening; none
 /// before its view is made.

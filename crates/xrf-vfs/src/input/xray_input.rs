@@ -1,6 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
-use crate::{XrayInputKind, XraySearchKey};
+use crate::input::XrayInputKind;
+use crate::search::XraySearchKey;
 
 /// One thing a build can read and a change can move: a logical path as a search resolves it, or what sits under a
 /// directory.

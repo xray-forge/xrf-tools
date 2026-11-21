@@ -5,7 +5,7 @@ use std::time::UNIX_EPOCH;
 use serde::{Deserialize, Serialize};
 use xrf_utils::format_path;
 
-use crate::TauriResult;
+use crate::tauri_result::TauriResult;
 
 /// What was read at a path, so a later write cannot overwrite a change it never saw and a reload can tell the file
 /// moved.

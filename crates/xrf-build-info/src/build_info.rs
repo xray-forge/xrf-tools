@@ -106,7 +106,8 @@ macro_rules! build_info {
 
 #[cfg(test)]
 mod tests {
-  use crate::{BuildInfo, BuildKind};
+  use crate::build_info::BuildInfo;
+  use crate::build_kind::BuildKind;
 
   fn build(commit: Option<&'static str>) -> BuildInfo {
     BuildInfo {

@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use crate::{GamedataVerificationCheckReport, GamedataVerificationType};
+use crate::project::gamedata_verification_check_report::GamedataVerificationCheckReport;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// What a gamedata verification tells its listener: that it started, and each check as it finishes.
 ///

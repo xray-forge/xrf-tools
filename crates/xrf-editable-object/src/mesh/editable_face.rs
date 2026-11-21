@@ -1,7 +1,7 @@
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 
-use crate::EditableFaceCorner;
+use crate::mesh::editable_face_corner::EditableFaceCorner;
 
 /// One triangle of a mesh, `st_Face`. Corners sharing a point but not a vertex map reference mark a UV seam on a joined
 /// surface, which an OGF loses and a decompiler must weld back.

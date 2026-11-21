@@ -2,11 +2,12 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfError;
 
+use crate::asset::{XrayAsset, XrayAssetType};
+use crate::mount::XrayMountId;
+use crate::path::XrayLogicalPath;
+use crate::search::{XrayLookupScope, XrayResolution, XraySearch, XraySearchedSource};
+use crate::vfs::XrayVfs;
 use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
-use crate::{
-  XrayAsset, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayResolution, XraySearch,
-  XraySearchedSource, XrayVfs,
-};
 
 /// Two directory mounts, returned with the ids a scope selects them by.
 fn two_roots(case: &str, first: &[&str], second: &[&str]) -> (XrayVfs, XrayMountId, XrayMountId, PathBuf, PathBuf) {

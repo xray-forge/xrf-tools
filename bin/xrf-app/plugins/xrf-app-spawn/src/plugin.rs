@@ -2,7 +2,7 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 use xrf_app_core::session::SessionScopes;
 
-use crate::SpawnFiles;
+use crate::file::SpawnFiles;
 
 /// The `spawn` plugin: spawns opened in the editors, read chunk by chunk and saved, and conversions run as jobs.
 pub struct SpawnPlugin;

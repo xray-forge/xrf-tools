@@ -9,7 +9,7 @@ use xrf_app_core::jobs::{JobRegistry, JobStart};
 use xrf_job::JobProgress;
 use xrf_translation::TranslationFormatResult;
 
-use crate::TranslationsFormatRun;
+use crate::format::TranslationsFormatRun;
 use crate::ipc::translations::{TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT};
 use crate::request::TranslationsFormatRequest;
 

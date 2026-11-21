@@ -1,7 +1,9 @@
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 
-use crate::{EaxEnvironment, SoundEnvironment, SoundEnvironmentFile};
+use crate::environment::eax_environment::EaxEnvironment;
+use crate::environment::sound_environment::SoundEnvironment;
+use crate::environment::sound_environment_file::SoundEnvironmentFile;
 
 /// Frames a payload as one X-Ray chunk.
 fn chunk(id: u32, payload: &[u8]) -> XrfResult<Vec<u8>> {

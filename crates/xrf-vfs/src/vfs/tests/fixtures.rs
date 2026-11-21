@@ -5,7 +5,8 @@ use std::path::{Path, PathBuf};
 use xrf_error::{XrfError, XrfResult};
 use xrf_test_utils::GeneratedResources;
 
-use crate::{XrayAssetContainer, XrayAssetSource, XraySourceKind};
+use crate::asset::XrayAssetContainer;
+use crate::source::{XrayAssetSource, XraySourceKind};
 
 /// In-memory archive stand-in that avoids large volume fixtures.
 #[derive(Debug)]
@@ -13,7 +14,7 @@ pub(crate) struct FakeArchiveSource {
   label: String,
   root: PathBuf,
   entries: HashMap<String, Vec<u8>>,
-  collisions: Vec<crate::XrayPathCollision>,
+  collisions: Vec<crate::path::XrayPathCollision>,
 }
 
 impl FakeArchiveSource {
@@ -25,7 +26,7 @@ impl FakeArchiveSource {
         .iter()
         .map(|entry| {
           (
-            crate::XrayLogicalPath::normalize(entry).expect("test entry is a valid logical path"),
+            crate::path::XrayLogicalPath::normalize(entry).expect("test entry is a valid logical path"),
             label.as_bytes().to_vec(),
           )
         })
@@ -40,7 +41,7 @@ impl FakeArchiveSource {
   ///
   /// A real directory source derives these while indexing; a double is the only way to exercise reporting on a filesystem
   /// that cannot hold two paths differing only by case.
-  pub(crate) fn with_collision(mut self, collision: crate::XrayPathCollision) -> Self {
+  pub(crate) fn with_collision(mut self, collision: crate::path::XrayPathCollision) -> Self {
     self.collisions.push(collision);
 
     self
@@ -96,7 +97,7 @@ impl XrayAssetSource for FakeArchiveSource {
     self.entries.get(path).map(|bytes| bytes.len() as u64)
   }
 
-  fn get_collisions(&self) -> &[crate::XrayPathCollision] {
+  fn get_collisions(&self) -> &[crate::path::XrayPathCollision] {
     &self.collisions
   }
 }

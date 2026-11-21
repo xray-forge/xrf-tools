@@ -1,7 +1,9 @@
 //! Editable objects built byte by byte apart from the crate's writer, so a round trip proves the writer against the
 //! layout `CEditableObject::Save` produces rather than against itself.
 
-use crate::{EditableBone, EditableMesh, EditableObjectFile};
+use crate::bone::editable_bone::EditableBone;
+use crate::editable_object_file::EditableObjectFile;
+use crate::mesh::editable_mesh::EditableMesh;
 
 /// A chunk: id, payload size, payload.
 pub(crate) fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {

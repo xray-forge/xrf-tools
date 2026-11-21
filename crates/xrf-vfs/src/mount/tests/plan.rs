@@ -4,10 +4,10 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
-use crate::mount::XrayMountPlan;
-use crate::{
-  FsgameFile, XrayMountMode, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XraySourceKind, XrayVfs,
-};
+use crate::mount::{FsgameFile, XrayMountMode, XrayMountPlan, XrayRoots};
+use crate::search::{XraySearch, XraySearchPlan, XraySearchStep};
+use crate::source::XraySourceKind;
+use crate::vfs::XrayVfs;
 
 /// The alias order a real `fsgame.ltx` uses: archives declared before gamedata, which is what makes loose files win.
 const FSGAME: &str = "\
@@ -578,7 +578,7 @@ fn a_search_lists_what_sits_directly_inside_a_directory() {
     .expect("roots mount");
 
   let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
-  let listing: crate::XrayDirectoryListing = search.list_children("levels").expect("levels listed");
+  let listing: crate::search::XrayDirectoryListing = search.list_children("levels").expect("levels listed");
 
   assert_eq!(
     listing.directories,

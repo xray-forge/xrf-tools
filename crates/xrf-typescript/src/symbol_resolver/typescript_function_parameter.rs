@@ -1,6 +1,6 @@
-use crate::TypeScriptTypeRenderer;
 use crate::swc_common::{SourceMap, SourceMapper, Span};
 use crate::swc_ecma_ast::{Pat, TsTypeAnn};
+use crate::typescript_type_renderer::TypeScriptTypeRenderer;
 
 /// One parameter in a resolved TypeScript function signature.
 #[derive(Clone, Debug, PartialEq, Eq)]

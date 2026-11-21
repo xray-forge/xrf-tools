@@ -3,13 +3,19 @@ use std::f32::consts::FRAC_PI_2;
 use xrf_error::XrfResult;
 use xrf_math::{Affine3d, Matrix4x4, Vector2d, Vector3d};
 
+use crate::level::editable_level_value::EditableLevelValue;
+use crate::object::editable_object_transform::EditableObjectTransform;
+use crate::object::editable_particle_object::EditableParticleObject;
+use crate::object::editable_tool_object::EditableToolObject;
+use crate::object::fog_volume::editable_fog_volume_kind::EditableFogVolumeKind;
+use crate::object::fog_volume::editable_fog_volume_object::EditableFogVolumeObject;
+use crate::object::shape::editable_shape_element::EditableShapeElement;
+use crate::object::sound::editable_sound_environment_object::EditableSoundEnvironmentObject;
+use crate::object::sound::editable_sound_source_object::EditableSoundSourceObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::{
   GUID, fog_volume_part_text, particle_part_text, sound_environment_part_text, sound_source_part_text,
-};
-use crate::{
-  EditableFogVolumeKind, EditableFogVolumeObject, EditableLevelValue, EditableObjectPart, EditableObjectTransform,
-  EditableParticleObject, EditableShapeElement, EditableSoundEnvironmentObject, EditableSoundSourceObject,
-  EditableTextPart, EditableToolObject,
 };
 
 fn read_part<T: EditableToolObject>(text: &str) -> XrfResult<EditableObjectPart<T>> {

@@ -76,7 +76,9 @@ impl FromStr for XrayEngineChoice {
 #[cfg(test)]
 mod tests {
   use super::XrayEngineChoice;
-  use crate::{XrayEngine, XrayEngineEvidence, XrayEngineResolution};
+  use crate::xray_engine::XrayEngine;
+  use crate::xray_engine_evidence::XrayEngineEvidence;
+  use crate::xray_engine_resolution::XrayEngineResolution;
 
   #[test]
   fn spells_each_choice_as_it_parses_and_serializes() {

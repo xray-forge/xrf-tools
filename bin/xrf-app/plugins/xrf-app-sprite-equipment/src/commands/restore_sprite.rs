@@ -3,7 +3,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::window::InvokingWindow;
 
-use crate::{EquipmentSpriteMetadata, EquipmentSprites};
+use crate::sprite::{EquipmentSpriteMetadata, EquipmentSprites};
 
 /// The sheet `tool` holds in the asking window, the newest it opened, for a page attaching to it after a reload.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

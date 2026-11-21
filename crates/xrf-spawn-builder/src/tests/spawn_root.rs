@@ -8,7 +8,6 @@ use xrf_spawn::{
   SpawnGraphsChunk, SpawnSectionClasses,
 };
 
-use crate::SpawnRootOptions;
 use crate::gamedata::spawn_game_level::SpawnGameLevel;
 use crate::gamedata::spawn_game_levels::SpawnGameLevels;
 use crate::gamedata::spawn_level_files::SpawnLevelFiles;
@@ -21,6 +20,7 @@ use crate::root::spawn_actor_start::SpawnActorStart;
 use crate::root::spawn_root_build::SpawnRootBuild;
 use crate::root::spawn_root_builder::SpawnRootBuilder;
 use crate::root::spawn_root_level::SpawnRootLevel;
+use crate::root::spawn_root_options::SpawnRootOptions;
 use crate::tests::fixtures::{
   actor_object, changer_object, graph_point_object, grid, separator_object, spawn_file, zone_object,
 };

@@ -207,7 +207,7 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::XmlDescriptionCollection;
-  use crate::DescriptionSpriteOptions;
+  use crate::description::DescriptionSpriteOptions;
 
   #[test]
   fn returns_an_error_for_invalid_xml_in_strict_mode() {

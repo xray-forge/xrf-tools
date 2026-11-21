@@ -241,7 +241,7 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::TypeScriptTypeRenderer;
-  use crate::TypeScriptSource;
+  use crate::typescript_source::TypeScriptSource;
 
   /// Each exported type alias of `source`, rendered from its tree and canonically.
   fn render(name: &str, source: &str) -> Vec<(String, String)> {

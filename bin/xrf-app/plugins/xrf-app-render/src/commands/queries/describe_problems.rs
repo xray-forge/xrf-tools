@@ -4,7 +4,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldLevelProblems;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

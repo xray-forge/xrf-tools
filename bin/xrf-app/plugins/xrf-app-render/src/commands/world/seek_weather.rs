@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::RenderViewportId;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Play a viewport's weather on from a time of day, in seconds since midnight, ending the effect playing.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

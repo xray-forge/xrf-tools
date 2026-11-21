@@ -9,10 +9,11 @@ use std::path::PathBuf;
 use xrf_test_utils::GeneratedResources;
 
 use crate::mount::XrayMountPlan;
+use crate::path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
+use crate::search::{XrayLookupScope, XraySearch};
+use crate::source::XraySourceKind;
+use crate::vfs::XrayVfs;
 use crate::vfs::tests::fixtures::FakeArchiveSource;
-use crate::{
-  XrayCollisionSite, XrayLogicalPath, XrayLookupScope, XrayPathCollision, XraySearch, XraySourceKind, XrayVfs,
-};
 
 /// A search over every mount, which is what reports what all of them collide on.
 fn search_all(vfs: XrayVfs) -> XraySearch {

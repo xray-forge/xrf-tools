@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::OutputChannel;
+use crate::output_channel::OutputChannel;
 
 /// One message, rendered and kept.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -34,7 +34,7 @@ impl OutputRecord {
 #[cfg(test)]
 mod tests {
   use super::OutputRecord;
-  use crate::OutputChannel;
+  use crate::output_channel::OutputChannel;
 
   #[test]
   fn renders_a_message_into_an_owned_record() {

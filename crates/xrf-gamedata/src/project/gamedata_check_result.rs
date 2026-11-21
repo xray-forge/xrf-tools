@@ -1,6 +1,8 @@
 use std::time::Duration;
 
-use crate::{Finding, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 /// What one check answers, which its report is built from.
 pub trait GamedataCheckResult {

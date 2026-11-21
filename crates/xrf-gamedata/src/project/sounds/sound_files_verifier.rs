@@ -1,10 +1,14 @@
 use xrf_error::XrfResult;
+use xrf_report::Finding;
 use xrf_sound::SoundFile;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::sounds::sound_files_verification_result::GamedataSoundFilesVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 pub(crate) struct SoundFilesVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

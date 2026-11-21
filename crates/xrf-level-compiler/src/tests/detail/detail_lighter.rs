@@ -14,10 +14,11 @@ use xrf_math::Vector3d;
 use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_lighter::DetailLighter;
 use crate::detail::detail_lighting::DetailLighting;
+use crate::detail::detail_slot_counts::DetailSlotCounts;
+use crate::ray::ray_backend::RayBackend;
 use crate::ray::ray_scene::RayScene;
 use crate::ray::ray_tracing::RayTracing;
 use crate::shadow::shadow_materials::ShadowMaterials;
-use crate::{DetailSlotCounts, RayBackend};
 
 // Five 2 m slots along x: over open ground, over ground under a roof, over nothing, planting an object at no
 // density, and planting nothing.

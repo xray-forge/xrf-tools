@@ -7,8 +7,11 @@ use xrf_ltx::LtxStandardDialect;
 use xrf_report::CheckReport;
 use xrf_test_utils::GeneratedResources;
 
+use crate::gamedata::spawn_listed_level::SpawnListedLevel;
+use crate::gamedata::spawn_root_gamedata::SpawnRootGamedata;
+use crate::gamedata::spawn_root_request::SpawnRootRequest;
+use crate::root::spawn_root_options::SpawnRootOptions;
 use crate::root::spawn_root_report::SpawnRootReport;
-use crate::{SpawnListedLevel, SpawnRootGamedata, SpawnRootOptions, SpawnRootRequest};
 
 fn gamedata(case: &str) -> XrfResult<(PathBuf, PathBuf)> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("spawn-builder/gamedata/{case}"))?;

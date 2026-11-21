@@ -2,8 +2,12 @@ use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, Chunk
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::SkeletonBoneShape;
 
+use crate::bone::editable_bone_bind_pose::EditableBoneBindPose;
+use crate::bone::editable_bone_break::EditableBoneBreak;
+use crate::bone::editable_bone_definition::EditableBoneDefinition;
+use crate::bone::editable_bone_joint::EditableBoneJoint;
+use crate::bone::editable_bone_mass::EditableBoneMass;
 use crate::editable_chunks::EditableChunks;
-use crate::{EditableBoneBindPose, EditableBoneBreak, EditableBoneDefinition, EditableBoneJoint, EditableBoneMass};
 
 /// One bone of an editable object's skeleton, `CBone` as `CBone::Save` stores it.
 ///

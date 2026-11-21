@@ -3,9 +3,9 @@ use std::sync::Arc;
 use xrf_engine_target::XrayEngine;
 
 use super::mixer::{read_cycle, vanilla_fixture};
-use crate::{
-  WeatherDescriptor, WeatherEffectStart, WeatherEffectTimeline, WeatherMixer, WeatherPair, WeatherPlayedKeyframe,
-};
+use crate::mixer::WeatherMixer;
+use crate::playback::{WeatherEffectStart, WeatherEffectTimeline, WeatherPair, WeatherPlayedKeyframe};
+use crate::weather::WeatherDescriptor;
 
 /// Midnight, six, noon and nine at night.
 fn cycle() -> Vec<WeatherPlayedKeyframe> {

@@ -1,11 +1,15 @@
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
+use xrf_report::Finding;
 use xrf_vfs::XraySkippedMount;
 
 use crate::project::coverage::verify_coverage_result::GamedataCoverageVerificationResult;
 use crate::project::gamedata_check::GamedataCheck;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 /// Judges whether the run saw everything the project declared, which no content check can tell.
 ///

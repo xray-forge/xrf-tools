@@ -1,9 +1,9 @@
 use std::io::Write;
 
-use crate::XRayWrite;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{encode_string_to_w1251_bytes, narrow_format_size};
 
+use crate::bytes::xray_write::XRayWrite;
 use crate::read_write::chunk_read_write::ChunkReadWrite;
 use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
 use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;
@@ -98,7 +98,7 @@ impl ChunkWriter {
 mod tests {
   use xrf_error::XrfResult;
 
-  use crate::ChunkWriter;
+  use crate::writer::chunk_writer::ChunkWriter;
 
   #[test]
   fn test_write_w1251_string_empty() -> XrfResult {

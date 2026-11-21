@@ -8,8 +8,8 @@ use xrf_app_core::session::SessionSnapshot;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout};
 use xrf_utils::error_to_string;
 
+use crate::project::{DialogProjects, OpenedDialogProject};
 use crate::request::DialogsOpenRequest;
-use crate::{DialogProjects, OpenedDialogProject};
 
 /// Open a dialog tree, reading every dialog file and string table it holds on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

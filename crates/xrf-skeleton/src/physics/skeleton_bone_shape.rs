@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayR
 use xrf_error::XrfResult;
 use xrf_math::{Cylinder, Obb, Sphere};
 
-use crate::SkeletonBoneShapeKind;
+use crate::physics::SkeletonBoneShapeKind;
 
 /// A bone's collision shape, `SBoneShape`, as OGF visuals and editable objects store it. `kind` selects one of the
 /// three shapes; the engine keeps the other two as last edited.

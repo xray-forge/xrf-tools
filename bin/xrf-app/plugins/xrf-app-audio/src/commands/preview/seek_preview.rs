@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use tauri::State;
 use xrf_app_core::TauriResult;
-
 use xrf_audio::AudioTransportId;
 
 use crate::preview::PreviewTransports;

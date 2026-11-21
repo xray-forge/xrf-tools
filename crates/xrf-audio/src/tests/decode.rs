@@ -5,8 +5,11 @@ use xrf_error::XrfResult;
 use xrf_sound::SoundFile;
 use xrf_sound::fixtures::VorbisNoiseFixture;
 
+use crate::decode::decoded_sound::DecodedSound;
+use crate::decode::sound_channels::SoundChannels;
+use crate::decode::sound_decoder::SoundDecoder;
+use crate::decode::sound_peaks::SoundPeaks;
 use crate::tests::fixtures::{RATE, ramp, wav};
-use crate::{DecodedSound, SoundChannels, SoundDecoder, SoundPeaks};
 
 fn get_frame(sample: f32) -> i64 {
   (sample * 32768.0).round() as i64

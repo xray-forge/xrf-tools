@@ -2,7 +2,10 @@ use xrf_chunk::ChunkLayout;
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, Vector3d};
 
-use crate::{EditableFace, EditableFaceCorner, EditableMesh, EditableMeshNormals};
+use crate::mesh::editable_face::EditableFace;
+use crate::mesh::editable_face_corner::EditableFaceCorner;
+use crate::mesh::editable_mesh::EditableMesh;
+use crate::mesh::editable_mesh_normals::EditableMeshNormals;
 
 const BACK: u32 = 1 << 3;
 

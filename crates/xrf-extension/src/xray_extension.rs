@@ -411,7 +411,7 @@ mod tests {
       for extension in XrayExtension::ALL {
         assert_eq!(
           extension.matches(name),
-          crate::XrayExtensionOf::of(name).known() == Some(*extension),
+          crate::xray_extension_of::XrayExtensionOf::of(name).known() == Some(*extension),
           "{extension} disagrees with itself about '{name}'"
         );
       }

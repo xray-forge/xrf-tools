@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_app_core::window::InvokingWindow;
 use xrf_renderer::RenderHoldId;
 
-use crate::RenderViewports;
+use crate::viewport::RenderViewports;
 
 /// Release a hold the calling window's page took; another window's hold is left alone. The GPU stops a few seconds
 /// after the last hold and viewport go.

@@ -8,8 +8,8 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
 use xrf_job::JobProgress;
 
+use crate::conversion::{SpawnConversion, SpawnConversionResult};
 use crate::request::SpawnConvertRequest;
-use crate::{SpawnConversion, SpawnConversionResult};
 
 /// Pack a directory of spawn chunks into one file, as a tracked job sharing one lane with unpacking; refused where the
 /// file is already there, unless forced.

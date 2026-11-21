@@ -4,7 +4,7 @@ use std::path::Path;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::payload::archive_located_entry::ArchiveLocatedEntry;
-use crate::{ArchiveDescriptor, ArchiveFileDescriptor};
+use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor};
 
 /// One open volume, with the length every entry of it is bounded by.
 pub(super) struct ArchiveOpenVolume {

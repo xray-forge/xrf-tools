@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use xrf_renderer::{RenderSceneId, RenderViewportId};
 use xrf_world::WorldLevelSource;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// What each viewport was asked to show last, so a show that took longer to prepare never replaces one asked after it,
 /// and none reaches a viewport detached since it was asked. A clone orders the same shows.

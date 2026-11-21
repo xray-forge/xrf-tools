@@ -5,7 +5,8 @@ use std::path::PathBuf;
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchPlan};
+use crate::mount::{XrayMountMode, XrayRoot, XrayRoots};
+use crate::search::{XraySearch, XraySearchPlan};
 
 /// Builds a loose root holding one asset, since a plan is decided by what is actually there.
 fn root(name: &str, logical: &str) -> PathBuf {

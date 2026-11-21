@@ -2,8 +2,10 @@ use xrf_chunk::{ChunkPayload, ChunkReader, ChunkWriter, InMemoryChunkDataSource}
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
+use crate::mesh::editable_mesh::EditableMesh;
+use crate::mesh::vmap::editable_vmap::EditableVMap;
+use crate::mesh::vmap::editable_vmap_kind::EditableVMapKind;
 use crate::tests::fixtures;
-use crate::{EditableMesh, EditableVMap, EditableVMapKind};
 
 // The object's mesh list hands each mesh over inside a chunk of its own.
 fn read(children: &[u8]) -> XrfResult<EditableMesh> {

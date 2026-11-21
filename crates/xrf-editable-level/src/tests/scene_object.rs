@@ -1,8 +1,10 @@
 use xrf_error::XrfResult;
 use xrf_ini::{IniFile, IniFormat, IniSection};
 
+use crate::object::editable_scene_object::EditableSceneObject;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
 use crate::tests::fixtures::GUID;
-use crate::{EditableObjectPart, EditableSceneObject, EditableTextPart};
 
 // As the CoP SDK saves `labx8`'s, at a transform `%f` prints exactly.
 fn scene_object_part_text(fields: &[(&str, &str)]) -> XrfResult<String> {

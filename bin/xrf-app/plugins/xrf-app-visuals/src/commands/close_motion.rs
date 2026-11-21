@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
 
-use crate::VisualPoses;
+use crate::pose::VisualPoses;
 
 /// Close the posed motions `session_ids` name, committed or opening.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

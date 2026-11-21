@@ -2,8 +2,8 @@
 
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 
+use crate::surface::{XraySurfaceDescriptor, XraySurfaceTerrain, XraySurfaceTerrainLayer};
 use crate::tests::surface::surface_search::{describe_dressed, library};
-use crate::{XraySurfaceDescriptor, XraySurfaceTerrain, XraySurfaceTerrainLayer};
 
 /// Describes `shader` in a tree defining `blender`, dressed as a level dresses its terrain: the base, then its lightmap.
 fn describe_terrain(case: &str, blender: ShaderBlenderFixture, shader: &str) -> XraySurfaceDescriptor {

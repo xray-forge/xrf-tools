@@ -1,8 +1,12 @@
 use std::collections::{BTreeSet, HashMap};
 use std::time::Instant;
 
+use crate::change::XrayChange;
+use crate::mount::{XrayMount, XrayMountId};
+use crate::search::XrayLookupScope;
+use crate::source::XrayFileStamp;
+use crate::vfs::XrayVfs;
 use crate::vfs::cache::XrayStampedCopy;
-use crate::{XrayChange, XrayFileStamp, XrayLookupScope, XrayMount, XrayMountId, XrayVfs};
 
 impl XrayVfs {
   /// The loose copies the lineage retains values of, in the mounts `scopes` reach, whose file no longer looks as it did

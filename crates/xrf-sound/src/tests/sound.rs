@@ -2,8 +2,12 @@ use std::time::Duration;
 
 use xrf_error::XrfResult;
 
+use crate::sound_file::SoundFile;
+use crate::sound_metadata::SoundMetadata;
 use crate::tests::fixtures::{SAMPLES_COUNT, audio_packets, comment, identification, sound, sound_of, xray_comment};
-use crate::{SoundFile, SoundMetadata, XRaySoundCommentVersion, XRaySoundGameType, XRaySoundParameters};
+use crate::xray::xray_sound_comment_version::XRaySoundCommentVersion;
+use crate::xray::xray_sound_game_type::XRaySoundGameType;
+use crate::xray::xray_sound_parameters::XRaySoundParameters;
 
 #[test]
 fn reads_what_the_engine_loads_of_a_sound() -> XrfResult {

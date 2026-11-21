@@ -20,7 +20,9 @@ use xrf_renderer::{
 use xrf_visual::{LightsDescription, SectorPackage};
 use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
-use crate::{RenderViewports, Renderer, ViewportShows, WorldState};
+use crate::renderer::Renderer;
+use crate::viewport::{RenderViewports, ViewportShows};
+use crate::world::WorldState;
 
 /// A bundle holding nothing.
 struct EmptyBundle;

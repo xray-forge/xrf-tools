@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
+use crate::mount::{FsgameFile, XrayMountMode};
 use crate::path::XrayLogicalPath;
-use crate::{FsgameFile, XrayMountMode, XraySearchPlan};
+use crate::search::XraySearchPlan;
 
 /// An SDK installation: the editors' directory and its `fs.ltx`, which lays out the game's tree and the SDK's
 /// authoring tree, rawdata, under `$server_data_root$`.

@@ -1,8 +1,12 @@
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
+use crate::level::editable_build_params::EditableBuildParams;
+use crate::level::editable_level_camera::EditableLevelCamera;
+use crate::level::editable_level_file::EditableLevelFile;
+use crate::level::editable_level_options::EditableLevelOptions;
+use crate::level::editable_level_value::EditableLevelValue;
 use crate::tests::fixtures::{GUID, level_text};
-use crate::{EditableBuildParams, EditableLevelCamera, EditableLevelFile, EditableLevelOptions, EditableLevelValue};
 
 #[test]
 fn reads_a_scenes_main_file_and_writes_it_back_as_it_was() -> XrfResult {

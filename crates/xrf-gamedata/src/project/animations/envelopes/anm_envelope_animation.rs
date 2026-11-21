@@ -3,8 +3,8 @@ use xrf_anm::{AnmChannel, AnmFile};
 use xrf_error::XrfResult;
 use xrf_vfs::XrayAssetType;
 
-use crate::GamedataVerificationRule;
 use crate::project::animations::envelopes::envelope_animation::EnvelopeAnimation;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 impl EnvelopeAnimation for AnmFile {
   const ASSET_TYPE: XrayAssetType = XrayAssetType::Anm;

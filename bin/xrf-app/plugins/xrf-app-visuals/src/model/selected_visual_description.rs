@@ -6,7 +6,7 @@ use xrf_material::{XrayMaterialDescriptor, XraySurfaceDescriptor};
 use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription};
 
-use crate::SelectedObjectDescription;
+use crate::model::SelectedObjectDescription;
 
 /// What the viewer is showing, paired with where it came from: described once at the open and answered as held.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

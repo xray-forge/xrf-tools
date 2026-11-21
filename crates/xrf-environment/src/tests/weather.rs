@@ -1,7 +1,10 @@
 use xrf_engine_target::XrayEngine;
 
 use super::fixtures::{EnvironmentFixture, extended_keyframe, messages, sun_table, vanilla_keyframe};
-use crate::{EnvironmentRule, EnvironmentValue, SunPosition, WeatherCycleKind, WeatherDescriptor, WeatherKey};
+use crate::definition::sun::SunPosition;
+use crate::section::finding::EnvironmentRule;
+use crate::section::key::EnvironmentValue;
+use crate::weather::{WeatherCycleKind, WeatherDescriptor, WeatherKey};
 
 fn vanilla_cycle(keyframes: &str) -> EnvironmentFixture {
   EnvironmentFixture::new().with("environment\\weathers\\test.ltx", keyframes)
@@ -279,7 +282,7 @@ fn reads_the_sun_angles_written_for_openxray_on_monolith() {
   let fixture: EnvironmentFixture = vanilla_cycle(&(vanilla_keyframe("00:00:00") + &vanilla_keyframe("12:00:00")));
   let openxray = fixture.read(XrayEngine::Vanilla);
   let monolith = fixture.read(XrayEngine::Extended);
-  let noon = |catalog: &crate::EnvironmentCatalog| {
+  let noon = |catalog: &crate::catalog::EnvironmentCatalog| {
     WeatherDescriptor::new(&catalog.find_cycle("test").unwrap().keyframes[1], catalog.engine).sun_direction
   };
 

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use xrf_app_core::TauriResult;
 use xrf_spawn::SpawnFile;
 
-use crate::{SpawnChunk, SpawnChunkKind, SpawnSessionDescriptor};
+use crate::file::{SpawnChunk, SpawnChunkKind, SpawnSessionDescriptor};
 
 /// One opened spawn, as read: the file and what describes it, decided together.
 pub struct SpawnSession {

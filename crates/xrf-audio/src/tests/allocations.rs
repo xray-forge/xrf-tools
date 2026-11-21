@@ -2,12 +2,18 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use assert_no_alloc::{AllocDisabler, assert_no_alloc, reset_violation_count, violation_count};
+use xrf_audio_scene::AudioBus;
 
+use crate::control::audio_play::AudioPlay;
+use crate::control::engine::audio_engine_parts::AudioEngineParts;
+use crate::decode::decoded_sound::DecodedSound;
+use crate::decode::sound_channels::SoundChannels;
+use crate::mixer::tap::audio_tap::AudioTap;
+use crate::output::offline::offline_render::OfflineRender;
 use crate::tests::fixtures::{RATE, engine, looped, play_voices, ramp, rms_left, sine, stream, wav};
-use crate::{
-  AudioBus, AudioEngineParts, AudioPlay, AudioTap, AudioVoiceId, DecodedSound, OfflineRender, SoundChannels,
-  VoiceSource,
-};
+use crate::voice::audio_voice_id::AudioVoiceId;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
+use crate::voice::voice_source::VoiceSource;
 
 // Counts, rather than forbids, what is allocated or freed inside `assert_no_alloc`.
 #[global_allocator]
@@ -133,11 +139,11 @@ fn streams_without_allocating_on_the_audio_thread() {
 
   reset_violation_count();
 
-  while engine.get_playback(voice).state != crate::AudioVoiceState::Ended && Instant::now() < deadline {
+  while engine.get_playback(voice).state != AudioVoiceState::Ended && Instant::now() < deadline {
     assert_no_alloc(|| render.render_into(&mut out));
     std::thread::sleep(Duration::from_micros(200));
   }
 
-  assert_eq!(engine.get_playback(voice).state, crate::AudioVoiceState::Ended);
+  assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
   assert_eq!(violation_count(), 0);
 }

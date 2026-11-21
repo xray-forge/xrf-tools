@@ -1,4 +1,5 @@
-use crate::{XrayMountId, XraySourceKind};
+use crate::mount::XrayMountId;
+use crate::source::XraySourceKind;
 
 /// Which mounts a lookup scope admits.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]

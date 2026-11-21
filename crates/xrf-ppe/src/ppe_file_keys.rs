@@ -2,7 +2,10 @@
 
 use xrf_animation_envelope::AnimationEnvelope;
 
-use crate::{PpeColorChannel, PpeColorMap, PpeFile, PpeParameter};
+use crate::ppe_color_channel::PpeColorChannel;
+use crate::ppe_color_map::PpeColorMap;
+use crate::ppe_file::PpeFile;
+use crate::ppe_parameter::PpeParameter;
 
 impl PpeFile {
   /// How near a time must be to a key's for the editor to take it for that key, `FindKey`'s `0.01` in

@@ -123,7 +123,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::GeneratedResources;
 
-  use crate::Ltx;
+  use crate::ltx::Ltx;
 
   #[test]
   fn loads_each_file_matched_by_wildcard_include() -> XrfResult {

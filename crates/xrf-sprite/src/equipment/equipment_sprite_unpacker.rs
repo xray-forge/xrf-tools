@@ -2,11 +2,11 @@ use image::GenericImageView;
 use xrf_dds::DdsMipmaps;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
+use xrf_texture::ImageFileWriter;
 use xrf_utils::{HostDestination, HostRelativePath};
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, InventorySpriteDescriptor};
 use crate::report::{SpriteListener, SpriteNotice};
-use xrf_texture::ImageFileWriter;
 
 pub struct EquipmentSpriteUnpacker {}
 

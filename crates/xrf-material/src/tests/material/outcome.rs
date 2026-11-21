@@ -4,8 +4,10 @@ use xrf_thm::ThmBumpMode;
 use xrf_vfs::XrayResolution;
 
 use crate::fixtures::{FixtureTree, ThmFixture};
+use crate::material::{
+  XrayBumpFallback, XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor,
+};
 use crate::tests::material_search::{BASE, BUMP, COMPANION, describe, located_path, used_bump};
-use crate::{XrayBumpFallback, XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor};
 
 #[test]
 fn a_declaration_resolving_both_inputs_is_bumped() {

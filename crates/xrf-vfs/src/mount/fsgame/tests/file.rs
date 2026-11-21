@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::FsgameFile;
+use crate::mount::FsgameFile;
 
 /// The shape a real `fsgame.ltx` has, trimmed to the aliases these tests reason about.
 const CONTENTS: &str = "\

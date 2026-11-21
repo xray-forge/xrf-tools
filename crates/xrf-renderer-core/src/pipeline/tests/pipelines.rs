@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_renderer_derive::ShaderPermutation;
 
-use crate::{ComputePipelineDescription, PipelineCache, RenderPipelineDescription, ShaderPermutation, ShaderSource};
+use crate::pipeline::{
+  ComputePipelineDescription, PipelineCache, RenderPipelineDescription, ShaderPermutation, ShaderSource,
+};
 
-#[derive(Clone, Copy, crate::ShaderPermutation)]
+#[derive(Clone, Copy, ShaderPermutation)]
 struct Shadowing {
   is_shadow: bool,
   cascade: u32,
@@ -81,7 +84,7 @@ fn makes_a_pipeline_once_per_permutation_and_forgets_an_invalidated_module() {
   let source: TestSource = source();
   let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
     label: Some("counts"),
-    entries: &[crate::PassBindingLayout::storage(0, true)],
+    entries: &[crate::param::PassBindingLayout::storage(0, true)],
   });
   let describe = |is_shadow: bool| {
     ComputePipelineDescription::new("count", "count", "main")
@@ -153,7 +156,7 @@ fn makes_a_pipeline_whose_layout_leaves_a_slot_empty() {
   let cache: PipelineCache = PipelineCache::new();
   let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
     label: Some("counts"),
-    entries: &[crate::PassBindingLayout::storage(0, true)],
+    entries: &[crate::param::PassBindingLayout::storage(0, true)],
   });
   let description: ComputePipelineDescription = ComputePipelineDescription::new("count at one", "count_at_one", "main")
     .with_bind_group_layouts(&[None, Some(&layout)]);

@@ -58,7 +58,7 @@ impl From<AnimationBehavior> for u8 {
 
 #[cfg(test)]
 mod tests {
-  use crate::AnimationBehavior;
+  use crate::animation_behavior::AnimationBehavior;
 
   #[test]
   fn each_named_behavior_is_stored_as_the_number_the_engine_gives_it() {

@@ -3,8 +3,13 @@
 use image::{Rgba, RgbaImage};
 use xrf_error::XrfResult;
 
+use crate::chunks::thm_thumbnail_chunk::ThmThumbnailChunk;
+use crate::object::thm_group_file::ThmGroupFile;
+use crate::object::thm_object_file::ThmObjectFile;
+use crate::sound::thm_sound_file::ThmSoundFile;
 use crate::tests::fixtures::{descriptor, raw_chunk, read_chunk_ids};
-use crate::{ThmFile, ThmGroupFile, ThmKind, ThmObjectFile, ThmSoundFile, ThmThumbnailChunk};
+use crate::thm_file::ThmFile;
+use crate::thm_kind::ThmKind;
 
 /// A preview whose every texel differs from its mirror, so a flip in either direction shows.
 fn preview() -> RgbaImage {
@@ -133,7 +138,10 @@ fn refuses_a_preview_of_another_size() {
 
 #[test]
 fn a_type_change_brings_the_sdk_editors_defaults() {
-  use crate::{ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureType};
+  use crate::texture::thm_format::ThmFormat;
+  use crate::texture::thm_mip_filter::ThmMipFilter;
+  use crate::texture::thm_texture_flag::ThmTextureFlag;
+  use crate::texture::thm_texture_type::ThmTextureType;
 
   let mut descriptor: ThmFile = ThmFile::new_texture();
 

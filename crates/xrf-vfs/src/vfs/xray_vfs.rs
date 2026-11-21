@@ -6,16 +6,16 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
+use crate::asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType};
 use crate::input::{XrayRevision, XrayRevisions};
+use crate::mount::{XrayMount, XrayMountId, XraySkippedMount};
 use crate::path::{XrayLogicalPath, normalize, normalize_base};
-use crate::search::{XrayDirectoryListing, XrayMountSelection, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
-use crate::source::XrayDirectorySource;
+use crate::search::{
+  XrayDirectoryListing, XrayLookupScope, XrayMountSelection, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry,
+};
+use crate::source::{XrayAssetSource, XrayDirectorySource, XrayFileStamp, XraySourceKind};
 use crate::vfs::cache::{XrayAssetCache, XrayCacheKey, XrayCachePolicy, XrayCacheStats};
 use crate::vfs::trace::XrayReadTrace;
-use crate::{
-  XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetSource, XrayAssetType, XrayFileStamp, XrayLookupScope,
-  XrayMount, XrayMountId, XraySkippedMount, XraySourceKind,
-};
 
 /// A VFS snapshot: the engine's view of assets as several mounted sources in priority order, with the revisions of
 /// what they hold and what the snapshot retains after parsing.

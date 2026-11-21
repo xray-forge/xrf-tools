@@ -4,7 +4,7 @@ identifier!(RuleId, "rule ID");
 
 #[cfg(test)]
 mod tests {
-  use crate::RuleId;
+  use crate::rule_id::RuleId;
 
   #[test]
   fn rejects_an_empty_identifier() {

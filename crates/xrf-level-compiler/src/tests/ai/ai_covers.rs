@@ -6,7 +6,6 @@ use xrf_geometry::{BvhTracer, Tracer};
 use xrf_job::JobHandle;
 use xrf_math::{Aabb, Vector3d};
 
-use crate::RayBackend;
 use crate::ai::ai_vertex::AiVertex;
 use crate::ai::cover::ai_cover_pass::AiCoverPass;
 use crate::ai::cover::ai_cover_sector::AiCoverSector;
@@ -14,6 +13,7 @@ use crate::ai::cover::ai_cover_tracing::AiCoverTracing;
 use crate::ai::cover::ai_cover_tree::AiCoverTree;
 use crate::ai::cover::ai_cover_walk::AiCoverWalk;
 use crate::ai::cover::ai_node_covers::AiNodeCovers;
+use crate::ray::ray_backend::RayBackend;
 use crate::ray::ray_scene::RayScene;
 use crate::ray::ray_tracing::RayTracing;
 use crate::shadow::shadow_materials::ShadowMaterials;

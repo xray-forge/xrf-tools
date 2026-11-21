@@ -9,6 +9,9 @@ use crate::project::collisions::collisions_verifier::CollisionsVerifier;
 use crate::project::coverage::coverage_verifier::CoverageVerifier;
 use crate::project::environment::environment_verifier::EnvironmentVerifier;
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_check_report::GamedataVerificationCheckReport;
 use crate::project::levels::levels_verifier::LevelsVerifier;
 use crate::project::ltx::ltx_verifier::LtxVerifier;
 use crate::project::materials::materials_verifier::MaterialsVerifier;
@@ -21,7 +24,6 @@ use crate::project::sounds::sounds_verifier::SoundsVerifier;
 use crate::project::spawns::spawns_verifier::SpawnsVerifier;
 use crate::project::textures::textures_verifier::TexturesVerifier;
 use crate::project::weapons::weapons_verifier::WeaponsVerifier;
-use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport};
 
 /// One check a verification runs, spelled on the wire and the command line as it displays.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

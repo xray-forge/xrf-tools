@@ -4,7 +4,7 @@ identifier!(CheckId, "check ID");
 
 #[cfg(test)]
 mod tests {
-  use crate::CheckId;
+  use crate::check_id::CheckId;
 
   #[test]
   fn rejects_an_empty_identifier() {

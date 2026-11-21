@@ -11,7 +11,8 @@ use xrf_translation::{
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayChangeSet, XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayRoots, XraySearch};
 
-use crate::{TranslationProjects, TranslationSaveOutcome};
+use crate::project::TranslationProjects;
+use crate::save::TranslationSaveOutcome;
 
 /// What one save was addressed to, taken as a single read before the filesystem work begins.
 #[derive(Debug)]

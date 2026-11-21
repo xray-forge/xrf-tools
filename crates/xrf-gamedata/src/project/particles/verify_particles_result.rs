@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 #[derive(Default)]
 pub(crate) struct GamedataParticlesVerificationResult {
@@ -35,7 +38,7 @@ impl GamedataCheckResult for GamedataParticlesVerificationResult {
 #[cfg(test)]
 mod tests {
   use super::GamedataParticlesVerificationResult;
-  use crate::GamedataCheckResult;
+  use crate::project::gamedata_check_result::GamedataCheckResult;
 
   #[test]
   fn describes_particle_library_failures() {

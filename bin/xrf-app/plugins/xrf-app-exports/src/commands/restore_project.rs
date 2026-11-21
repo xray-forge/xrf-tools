@@ -4,7 +4,7 @@ use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::window::InvokingWindow;
 use xrf_export::ExportsProject;
 
-use crate::ExportsProjects;
+use crate::project::ExportsProjects;
 
 /// The exports project `tool` holds in the asking window, the newest it opened, for a page attaching to it after a
 /// reload.

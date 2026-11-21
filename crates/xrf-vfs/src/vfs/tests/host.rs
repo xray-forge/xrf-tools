@@ -9,9 +9,11 @@ use std::{fs, thread};
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::{
-  XrayAsset, XrayCachePolicy, XrayChangeKind, XrayChangeSet, XrayMountMode, XrayRoots, XraySearch, XrayVfs, XrayVfsHost,
-};
+use crate::asset::XrayAsset;
+use crate::change::{XrayChangeKind, XrayChangeSet};
+use crate::mount::{XrayMountMode, XrayRoots};
+use crate::search::XraySearch;
+use crate::vfs::{XrayCachePolicy, XrayVfs, XrayVfsHost};
 
 /// An installation whose `fsgame.ltx` declares archives and loose files, holding the files it is given.
 fn install(name: &str, files: &[&str]) -> PathBuf {
@@ -332,8 +334,8 @@ fn opening_a_missing_root_afresh_publishes_nothing() {
   let present: PathBuf = install("missing_present", &["gamedata/configs/system.ltx"]);
   let host: XrayVfsHost = XrayVfsHost::default();
   let spec: XrayRoots = XrayRoots::new([
-    crate::XrayRoot::new(present.clone(), XrayMountMode::Installation),
-    crate::XrayRoot::new(present.with_file_name("missing_absent"), XrayMountMode::Directory),
+    crate::mount::XrayRoot::new(present.clone(), XrayMountMode::Installation),
+    crate::mount::XrayRoot::new(present.with_file_name("missing_absent"), XrayMountMode::Directory),
   ]);
 
   host.search(&spec).expect("the roots mount");

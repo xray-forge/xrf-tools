@@ -1,4 +1,7 @@
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 /// Aggregated outcome of resolving every `.thm` bump declaration the way the renderer would.
 #[derive(Default)]
@@ -78,7 +81,8 @@ impl GamedataCheckResult for GamedataTextureBumpsVerificationResult {
 #[cfg(test)]
 mod tests {
   use super::GamedataTextureBumpsVerificationResult;
-  use crate::{GamedataCheckResult, GamedataVerificationStatus};
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
   #[test]
   fn a_missing_bump_fails_in_every_mode() {

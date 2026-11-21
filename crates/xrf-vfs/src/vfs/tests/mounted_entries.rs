@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
-use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
-use crate::{
-  XrayAssetContainer, XrayLookupScope, XrayMountedEntry, XraySearch, XraySearchPlan, XraySearchStep,
-  XrayShadowingEntry, XrayVfs,
+use crate::asset::XrayAssetContainer;
+use crate::search::{
+  XrayLookupScope, XrayMountedEntry, XraySearch, XraySearchPlan, XraySearchStep, XrayShadowingEntry,
 };
+use crate::vfs::XrayVfs;
+use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
 
 /// A loose tree in front of a volume set, which is what an installation with unpacked files is.
 fn layered(name: &str) -> XrayVfs {

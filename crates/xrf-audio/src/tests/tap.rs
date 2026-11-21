@@ -1,14 +1,26 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
+use xrf_audio_scene::AudioBus;
 use xrf_test_utils::TestSkip;
 
+use crate::control::audio_play::AudioPlay;
+use crate::control::audio_refusal::AudioRefusal;
+use crate::control::engine::audio_engine::AudioEngine;
+use crate::control::engine::audio_engine_parts::AudioEngineParts;
+use crate::decode::decoded_sound::DecodedSound;
+use crate::decode::sound_channels::SoundChannels;
+use crate::mixer::clock::audio_clock_anchor::AudioClockAnchor;
+use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
+use crate::mixer::tap::audio_tap::AudioTap;
+use crate::mixer::tap::audio_tap_block::AudioTapBlock;
+use crate::mixer::tap::audio_tap_end::AudioTapEnd;
+use crate::output::device::audio_output::AudioOutput;
+use crate::output::device::audio_output_choice::AudioOutputChoice;
+use crate::output::device::audio_output_status::AudioOutputStatus;
 use crate::output::device::stream::output_thread::OutputThread;
+use crate::output::offline::offline_render::OfflineRender;
 use crate::tests::fixtures::{RATE, engine, looped, once, sine};
-use crate::{
-  AudioBus, AudioClockAnchor, AudioEngine, AudioEngineParts, AudioMixerMeter, AudioOutput, AudioOutputChoice,
-  AudioOutputStatus, AudioPlay, AudioTap, AudioTapBlock, AudioTapEnd, DecodedSound, OfflineRender, SoundChannels,
-};
 
 // The most a click may land from its flash.
 const PICTURE_FRAME: Duration = Duration::from_nanos(16_666_667);
@@ -28,7 +40,7 @@ fn refuses_a_tap_past_those_the_mixer_can_hand_back() {
 
   assert_eq!(
     engine.open_tap(Duration::from_secs(1)).err(),
-    Some(crate::AudioRefusal::TapsBusy)
+    Some(AudioRefusal::TapsBusy)
   );
 
   drop((first, second));

@@ -2,7 +2,9 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 use xrf_app_core::session::SessionScopes;
 
-use crate::{VisualBrowses, VisualModels, VisualPoses};
+use crate::browse::VisualBrowses;
+use crate::model::VisualModels;
+use crate::pose::VisualPoses;
 
 /// The `visuals` plugin: models opened with their motions, the roots browsed for them, and a model shown in a viewport.
 pub struct VisualsPlugin;

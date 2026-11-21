@@ -3,7 +3,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
-use crate::{AnimationBehavior, AnimationKey};
+use crate::animation_behavior::AnimationBehavior;
+use crate::animation_key::AnimationKey;
 
 /// One animated channel, `CEnvelope` (`xrCore/Animation/Envelope.hpp`): how it behaves outside its keys, and the
 /// keys themselves. By default it holds no keys and is constant either side, as `CEnvelope::CEnvelope` starts one.
@@ -163,7 +164,11 @@ mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter};
   use xrf_error::{XrfError, XrfResult};
 
-  use crate::{AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationShape};
+  use crate::animation_behavior::AnimationBehavior;
+  use crate::animation_envelope::AnimationEnvelope;
+  use crate::animation_interpolation::AnimationInterpolation;
+  use crate::animation_key::AnimationKey;
+  use crate::animation_shape::AnimationShape;
 
   #[test]
   fn test_read_wide_exact_payload() -> XrfResult {

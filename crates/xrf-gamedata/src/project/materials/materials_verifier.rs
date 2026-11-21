@@ -8,8 +8,11 @@ use xrf_ltx::Ltx;
 use xrf_spawn::{AlifeObjectInherited, SpawnFile};
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::materials::verify_materials_result::GamedataMaterialsVerificationResult;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies the game material library against what the engine asserts on while loading it, and every name the engine,
 /// configs and spawn objects resolve against it.

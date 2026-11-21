@@ -4,14 +4,18 @@ use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_lua::XRayLuaScript;
+use xrf_report::Finding;
 use xrf_utils::read_as_string_from_w1251_encoded;
 use xrf_vfs::XrayAssetType;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::scripts::verify_scripts_result::GamedataScriptsVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// The scripts check: every runtime script the game holds parses as LuaJIT.
 pub(crate) struct ScriptsVerifier<'a> {

@@ -1,10 +1,12 @@
 use glam::Vec4;
+use xrf_renderer_derive::{PassParameters, ShaderStruct};
 
-use crate::{
-  AccelerationStructureBinding, GraphBuffer, GraphBufferAccess, GraphTexture, GraphTextureAccess, PassBinding,
-  PassParameters, PassResources, ShaderAtomicU32, ShaderDeclarations, ShaderStruct, StorageArray, StorageArrayMut,
+use crate::graph::{GraphBuffer, GraphBufferAccess, GraphTexture, GraphTextureAccess};
+use crate::param::{
+  AccelerationStructureBinding, PassBinding, PassParameters, PassResources, StorageArray, StorageArrayMut,
   StorageValue, StorageValueMut, UniformBinding,
 };
+use crate::shader::{ShaderAtomicU32, ShaderDeclarations};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]

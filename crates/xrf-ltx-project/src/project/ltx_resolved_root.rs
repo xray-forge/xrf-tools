@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex, OnceLock};
 
 use xrf_error::XrfResult;
-
 use xrf_ltx::LtxResolution;
 
 /// One root's resolved value, and the right to produce it.

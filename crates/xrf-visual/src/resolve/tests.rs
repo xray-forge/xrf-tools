@@ -8,10 +8,12 @@ use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
+use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
 use crate::data::visual::geometry::visual_submesh::VisualSubmesh;
 use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 use crate::data::visual::visual_description::VisualDescription;
 use crate::resolve::visual_dependencies::VisualDependencies;
+use crate::resolve::visual_texture_dependency::VisualTextureDependency;
 
 fn tree(case: &str, files: &[&str]) -> PathBuf {
   let root: PathBuf =
@@ -35,7 +37,7 @@ fn submesh(index: u32, texture: Option<&str>) -> VisualSubmesh {
     texture_name: texture.map(str::to_string),
     shader_name: None,
     content: VisualSubmeshContent::Skipped {
-      cause: crate::data::visual::geometry::visual_skip_cause::VisualSkipCause::Unsupported,
+      cause: VisualSkipCause::Unsupported,
       reason: "geometry is irrelevant to resolution".into(),
     },
   }
@@ -89,7 +91,7 @@ fn resolves_a_declared_texture_and_skips_a_submesh_declaring_none() {
   assert_eq!(dependencies.textures.len(), 1, "a submesh with no texture has no entry");
   assert_eq!(dependencies.find_texture(0), None);
 
-  let texture: &crate::VisualTextureDependency = dependencies.find_texture(1).expect("submesh 1 declares a texture");
+  let texture: &VisualTextureDependency = dependencies.find_texture(1).expect("submesh 1 declares a texture");
 
   assert_eq!(texture.reference, "wpn\\wpn_ak74");
   assert_eq!(texture.resolution.get_step(), Some("tree"));

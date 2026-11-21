@@ -1,10 +1,11 @@
 use glam::{Mat4, UVec4, Vec3, Vec4};
+use xrf_renderer_derive::ShaderStruct;
 
 use crate::shader::{ShaderAddressSpace, ShaderDeclarations, ShaderLayoutVerifier, ShaderStruct, ShaderType};
 
 /// A `vec3` followed by a scalar packs into sixteen bytes in WGSL and in Rust alike.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, crate::ShaderStruct)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 struct Light {
   position: Vec3,
   radius: f32,
@@ -14,7 +15,7 @@ struct Light {
 
 /// A struct holding another and an array of it, its end padded to WGSL's size.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, crate::ShaderStruct)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 struct Frame {
   view: Mat4,
   lights: [Light; 2],
@@ -24,7 +25,7 @@ struct Frame {
 
 /// A struct WGSL knows by another name than Rust does.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, crate::ShaderStruct)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Fog")]
 struct FogUniform {
   color: Vec4,
@@ -32,7 +33,7 @@ struct FogUniform {
 
 /// An array of scalars: fine in a storage buffer, refused in a uniform one, whose arrays step sixteen bytes.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, crate::ShaderStruct)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 struct Counts {
   values: [u32; 4],
 }
@@ -88,9 +89,9 @@ fn refuses_what_a_uniform_buffer_cannot_hold() {
 
 #[test]
 fn rewrites_a_stale_generated_file_once() {
-  let file: crate::GeneratedShaderFile = crate::GeneratedShaderFile::new(xrf_test_utils::GeneratedResources::path(
-    "generated_shader_file/frame.wgsl",
-  ));
+  let file: crate::shader::GeneratedShaderFile = crate::shader::GeneratedShaderFile::new(
+    xrf_test_utils::GeneratedResources::path("generated_shader_file/frame.wgsl"),
+  );
   let wgsl: String = ShaderDeclarations::new().declare::<Frame>().to_wgsl();
 
   assert!(file.sync(&wgsl).unwrap(), "a missing file is written");

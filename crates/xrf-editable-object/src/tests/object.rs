@@ -2,8 +2,9 @@ use xrf_chunk::ChunkPayload;
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
+use crate::editable_object_file::EditableObjectFile;
+use crate::object::editable_occluder::EditableOccluder;
 use crate::tests::fixtures;
-use crate::{EditableObjectFile, EditableOccluder};
 
 fn read(bytes: Vec<u8>) -> XrfResult<EditableObjectFile> {
   EditableObjectFile::read_from_bytes(bytes)

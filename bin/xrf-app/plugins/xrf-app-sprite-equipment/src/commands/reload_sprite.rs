@@ -4,7 +4,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
+use crate::sprite::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
 
 /// Read the sheet `previous_id` holds again, as it was asked for, into the new handle `session_id`; the previous handle
 /// is left as it is, for the page to close once the reload is shown, and a failed reload leaves it untouched.

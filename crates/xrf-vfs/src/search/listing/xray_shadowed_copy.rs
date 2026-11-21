@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::XrayAsset;
+use crate::asset::XrayAsset;
 
 /// One copy of an engine path that no lookup reaches, and how large it is.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

@@ -8,7 +8,10 @@ use xrf_test_utils::GeneratedResources;
 use super::environment_verifier::EnvironmentVerifier;
 use super::verify_environment_result::GamedataEnvironmentVerificationResult;
 use crate::project::gamedata_check::GamedataCheck;
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 

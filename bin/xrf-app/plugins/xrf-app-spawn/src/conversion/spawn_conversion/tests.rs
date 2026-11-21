@@ -10,7 +10,7 @@ use xrf_app_core::jobs::JobRegistry;
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 use xrf_test_utils::GeneratedResources;
 
-use crate::SpawnConversion;
+use crate::conversion::SpawnConversion;
 use crate::request::SpawnConvertRequest;
 use crate::tests::synthetic_spawn;
 

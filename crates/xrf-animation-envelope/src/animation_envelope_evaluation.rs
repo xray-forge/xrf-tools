@@ -1,7 +1,11 @@
 //! `evalEnvelope` (`xrCore/Animation/interp.cpp`): the value of a LightWave envelope at a time, between its keys by
 //! each key's shape and outside them by the envelope's behaviours.
 
-use crate::{AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationShape};
+use crate::animation_behavior::AnimationBehavior;
+use crate::animation_envelope::AnimationEnvelope;
+use crate::animation_interpolation::AnimationInterpolation;
+use crate::animation_key::AnimationKey;
+use crate::animation_shape::AnimationShape;
 
 /// How close `bez2_time` brings the curve's time to the one asked for.
 const BEZ2_TIME_TOLERANCE: f32 = 0.0001;
@@ -261,7 +265,11 @@ impl AnimationEnvelope {
 
 #[cfg(test)]
 mod tests {
-  use crate::{AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationShape};
+  use crate::animation_behavior::AnimationBehavior;
+  use crate::animation_envelope::AnimationEnvelope;
+  use crate::animation_interpolation::AnimationInterpolation;
+  use crate::animation_key::AnimationKey;
+  use crate::animation_shape::AnimationShape;
 
   fn key(time: f32, value: f32, shape: AnimationShape) -> AnimationKey {
     AnimationKey {

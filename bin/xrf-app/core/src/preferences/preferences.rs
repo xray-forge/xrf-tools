@@ -8,10 +8,10 @@ use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreBuilder};
 
-use crate::TauriResult;
 use crate::directories::AppDirectories;
 use crate::preferences::preference_key::PreferenceKey;
 use crate::preferences::preference_store::PreferenceStore;
+use crate::tauri_result::TauriResult;
 
 /// What the backend remembers between runs, unlike the page's local storage; kept in the application's data, beside
 /// the executable for a portable install.

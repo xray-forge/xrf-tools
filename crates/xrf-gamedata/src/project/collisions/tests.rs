@@ -11,10 +11,12 @@ use xrf_vfs::{
 
 use crate::project::collisions::collisions_verifier::CollisionsVerifier;
 use crate::project::gamedata_check::GamedataCheck;
-use crate::{
-  GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationReport,
-  GamedataVerificationStatus, GamedataVerificationType,
-};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_report::GamedataVerificationReport;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// A mount that holds nothing and reports the collisions it was built with.
 #[derive(Debug)]

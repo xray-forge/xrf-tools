@@ -8,9 +8,12 @@ use xrf_ltx::{Ltx, LtxResolution, Section};
 use crate::project::animations::hud::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
 use crate::project::gamedata_item_section::GamedataItemSection;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::gamedata_visual_motions::GamedataVisualMotions;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Motion the engine plays on the item model, and the `anm_*` field that asked for it.
 struct ExpectedItemMotion {

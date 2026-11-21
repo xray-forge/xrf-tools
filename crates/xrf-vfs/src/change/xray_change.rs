@@ -1,6 +1,8 @@
 use xrf_error::XrfResult;
 
-use crate::{XrayChangeKind, XrayLogicalPath, XrayMountId};
+use crate::change::XrayChangeKind;
+use crate::mount::XrayMountId;
+use crate::path::XrayLogicalPath;
 
 /// One logical path a change moved in one mount: what a commit wrote there, or what a watcher saw change on disk.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

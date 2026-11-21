@@ -1,4 +1,7 @@
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 #[derive(Default)]
 /// Aggregated outcome of validating sound references in configs and XML.

@@ -3,7 +3,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::window::InvokingWindow;
 use xrf_renderer::RenderHoldId;
 
-use crate::RenderViewports;
+use crate::viewport::RenderViewports;
 
 /// Start the renderer's GPU and keep it for the calling window's page, so a tool whose viewports come and go draws at
 /// once. Held until released, the page reloads or the window closes.

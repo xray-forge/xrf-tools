@@ -3,8 +3,7 @@ use std::num::NonZeroUsize;
 use std::sync::Mutex;
 use std::thread;
 
-use xrf_job::parallel;
-use xrf_job::{ExecutionOrigin, ExecutionRequest};
+use xrf_job::{ExecutionOrigin, ExecutionRequest, parallel};
 
 use crate::execution::execution_state::ExecutionState;
 

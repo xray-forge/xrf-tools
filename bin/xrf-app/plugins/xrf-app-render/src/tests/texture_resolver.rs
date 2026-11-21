@@ -7,7 +7,7 @@ use xrf_renderer::get_texture_name;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch, XrayTransaction};
 
-use crate::TextureResolver;
+use crate::texture::TextureResolver;
 
 const REFERENCE: &str = "prop\\prop_fence";
 

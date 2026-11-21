@@ -6,9 +6,9 @@ use xrf_archive::{ArchiveDescriptor, ArchiveProject};
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
-use crate::mount::XrayPlannedMount;
+use crate::mount::{FsgameFile, XrayPlannedMount, XrayRootProbe};
 use crate::path::{normalize, normalize_base};
-use crate::{FsgameFile, XrayRootProbe, XraySourceKind};
+use crate::source::XraySourceKind;
 
 /// What listing a declared directory said about the archive volumes it holds directly.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -1,10 +1,10 @@
 use std::io;
 use std::io::Write;
 
-use crate::XRayWrite;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::narrow_format_size;
 
+use crate::bytes::xray_write::XRayWrite;
 use crate::chunk_constants::CHUNK_HEADER_SIZE;
 
 /// A chunk payload being built, framed with its header only when flushed.

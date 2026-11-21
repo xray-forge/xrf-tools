@@ -1,7 +1,8 @@
 use xrf_engine_target::XrayEngine;
 
 use super::fixtures::{EnvironmentFixture, messages, vanilla_keyframe};
-use crate::{AmbientKey, EnvironmentRule};
+use crate::definition::ambient::AmbientKey;
+use crate::section::finding::EnvironmentRule;
 
 fn clean_day() -> EnvironmentFixture {
   EnvironmentFixture::new().with(

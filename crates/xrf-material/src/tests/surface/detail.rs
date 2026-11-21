@@ -5,9 +5,9 @@ use xrf_shaders::{ShaderBlender, ShaderBlenderClass};
 use xrf_thm::ThmTextureFlag;
 
 use crate::fixtures::{FixtureTree, ThmFixture};
+use crate::surface::{XraySurfaceDeclaration, XraySurfaceDescriptor};
 use crate::tests::material_search::{BASE, BUMP, COMPANION, used_bump};
 use crate::tests::surface::surface_search::describe_dressed;
-use crate::{XraySurfaceDeclaration, XraySurfaceDescriptor};
 
 const DETAIL: &str = "detail\\detail_grnd_grass";
 const DECLARED: &str = "detail\\detail_grnd_earth";

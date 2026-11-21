@@ -4,11 +4,11 @@ use xrf_thm::{ThmBumpMode, ThmTextureType};
 use xrf_vfs::{XrayMountId, XraySearch, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::tests::material_search::{BASE, BUMP, COMPANION, describe, search_over, used_bump};
-use crate::{
+use crate::material::{
   XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver,
-  XrayTextureScope,
 };
+use crate::tests::material_search::{BASE, BUMP, COMPANION, describe, search_over, used_bump};
+use crate::texture::XrayTextureScope;
 
 #[test]
 fn a_texture_without_a_descriptor_is_undeclared_and_flat() {

@@ -5,7 +5,7 @@ use std::io::Write;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, new_declared_vec, read_exact_at};
 
-use crate::{ArchiveDescriptor, ArchiveFileDescriptor};
+use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor};
 
 /// An entry whose stored byte range has been checked against its open volume.
 pub(super) struct ArchiveLocatedEntry<'a> {

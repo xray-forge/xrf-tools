@@ -3,8 +3,10 @@ use std::sync::Arc;
 use xrf_output::{OutputChannel, OutputOptions};
 use xrf_utils::{format_duration, format_path};
 
-use crate::GamedataVerificationType;
-use crate::{GamedataEvent, GamedataListener, GamedataVerificationCheckReport, GamedataVerificationStatus};
+use crate::project::events::{GamedataEvent, GamedataListener};
+use crate::project::gamedata_verification_check_report::GamedataVerificationCheckReport;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// What a person reads of a gamedata verification: each check's heading, what it found, and what it counted.
 ///

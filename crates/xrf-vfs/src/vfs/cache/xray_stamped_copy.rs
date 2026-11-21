@@ -1,4 +1,5 @@
-use crate::{XrayFileStamp, XrayRevision};
+use crate::input::XrayRevision;
+use crate::source::XrayFileStamp;
 
 /// A loose copy a retained value was parsed from, as the read saw its file.
 #[derive(Debug)]

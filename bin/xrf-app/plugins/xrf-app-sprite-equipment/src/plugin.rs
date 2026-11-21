@@ -2,7 +2,7 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 use xrf_app_core::session::SessionScopes;
 
-use crate::EquipmentSprites;
+use crate::sprite::EquipmentSprites;
 
 /// The `sprite-equipment` plugin: equipment sheets opened, previewed, reloaded and packed.
 pub struct SpriteEquipmentPlugin;

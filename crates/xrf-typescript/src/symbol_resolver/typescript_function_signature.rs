@@ -1,7 +1,7 @@
 use super::typescript_function_parameter::TypeScriptFunctionParameter;
-use crate::TypeScriptTypeRenderer;
 use crate::swc_common::SourceMap;
 use crate::swc_ecma_ast::{ArrowExpr, Function, Pat, TsTypeAnn};
+use crate::typescript_type_renderer::TypeScriptTypeRenderer;
 
 /// The TypeScript signature of a resolved callable symbol.
 #[derive(Clone, Debug, PartialEq, Eq)]

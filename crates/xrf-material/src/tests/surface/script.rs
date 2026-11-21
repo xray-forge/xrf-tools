@@ -4,8 +4,8 @@ use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 
 use crate::fixtures::FixtureTree;
+use crate::surface::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler};
 use crate::tests::surface::surface_search::{describe, describe_dressed, library};
-use crate::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler};
 
 /// The pass `shaders/r3/effects_lightplanes.s` declares, which is what a lamp's light planes are drawn with.
 const LIGHT_PLANES_SCRIPT: &str = r#"

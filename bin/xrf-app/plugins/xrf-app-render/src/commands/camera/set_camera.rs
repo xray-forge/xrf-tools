@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldCamera;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Describe a viewport's camera; described again from the same start, it keeps where it has been moved.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

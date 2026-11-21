@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayR
 use xrf_error::XrfResult;
 use xrf_utils::narrow_format_size;
 
-use crate::EditableVMapPoint;
+use crate::mesh::vmap::editable_vmap_point::EditableVMapPoint;
 
 /// The vertex map entries one face corner reads, `st_VMapPtLst`: its UV, then a weight per bone that moves it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

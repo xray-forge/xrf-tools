@@ -5,11 +5,15 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::parallel::prelude::*;
 use xrf_ltx::{Ltx, LtxResolution, Section};
+use xrf_report::Finding;
 
 use crate::project::animations::hud::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
 use crate::project::gamedata_item_section::GamedataItemSection;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::gamedata_visual_motions::GamedataVisualMotions;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies that motion names stay unique within the set of banks a hands model loads.
 pub(crate) struct HudMotionCollisionsVerifier<'a> {

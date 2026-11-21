@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
 
-use crate::TranslationProjects;
+use crate::project::TranslationProjects;
 
 /// Close the translations projects `session_ids` name, committed or opening; a closed one answers no read and takes no
 /// save.

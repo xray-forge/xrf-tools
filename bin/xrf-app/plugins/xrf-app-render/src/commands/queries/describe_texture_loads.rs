@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_renderer::{RenderTextureReport, RenderViewportId};
 
-use crate::Renderer;
+use crate::renderer::Renderer;
 
 /// Say what became of every texture a viewport's level samples.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

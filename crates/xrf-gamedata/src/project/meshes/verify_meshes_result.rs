@@ -1,8 +1,11 @@
 use std::time::Duration;
 
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsVerificationResult;
 use crate::project::meshes::shader_library_verification_result::GamedataShaderLibraryVerificationResult;
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 pub(crate) struct GamedataMeshesVerificationResult {
   pub(crate) duration: Duration,
@@ -56,13 +59,16 @@ impl GamedataCheckResult for GamedataMeshesVerificationResult {
 mod tests {
   use std::time::Duration;
 
+  use xrf_report::Finding;
+
   use super::GamedataMeshesVerificationResult;
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_report::GamedataVerificationReport;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
   use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsVerificationResult;
   use crate::project::meshes::shader_library_verification_result::GamedataShaderLibraryVerificationResult;
-  use crate::{
-    Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
-  };
 
   #[test]
   fn exposes_mesh_findings_in_reports() {

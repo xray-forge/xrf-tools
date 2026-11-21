@@ -1,4 +1,4 @@
-use crate::XrayAsset;
+use crate::asset::XrayAsset;
 
 /// What sits directly inside one logical directory.
 #[derive(Clone, Debug, Default)]

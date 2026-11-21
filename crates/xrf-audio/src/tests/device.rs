@@ -2,14 +2,22 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 use rtrb::RingBuffer;
+use xrf_audio_scene::AudioBus;
 
+use crate::control::audio_play::AudioPlay;
+use crate::control::engine::audio_engine_parts::AudioEngineParts;
+use crate::decode::decoded_sound::DecodedSound;
+use crate::decode::sound_channels::SoundChannels;
+use crate::mixer::audio_mixer::AudioMixer;
+use crate::output::device::audio_output::AudioOutput;
+use crate::output::device::audio_output_choice::AudioOutputChoice;
+use crate::output::device::audio_output_status::AudioOutputStatus;
 use crate::output::device::stream::mixer_holder::MixerHolder;
 use crate::output::device::stream::output_thread::OutputThread;
+use crate::output::offline::offline_render::OfflineRender;
 use crate::tests::fixtures::{RATE, engine, looped, once, sine};
-use crate::{
-  AudioBus, AudioEngineParts, AudioMixer, AudioOutput, AudioOutputChoice, AudioOutputStatus, AudioPlay, AudioVoiceId,
-  AudioVoiceState, DecodedSound, OfflineRender, SoundChannels,
-};
+use crate::voice::audio_voice_id::AudioVoiceId;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
 
 #[test]
 fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {

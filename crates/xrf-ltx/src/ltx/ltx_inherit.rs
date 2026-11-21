@@ -259,8 +259,7 @@ impl LtxInheritConvertor {
 mod test {
   use xrf_error::XrfResult;
 
-  use crate::Section;
-  use crate::ltx::Ltx;
+  use crate::ltx::{Ltx, Section};
 
   #[test]
   fn test_inheritance_chain() {

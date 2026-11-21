@@ -7,7 +7,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_export::{ExportsProject, ExportsProjectParser};
 use xrf_utils::error_to_string;
 
-use crate::ExportsProjects;
+use crate::project::ExportsProjects;
 
 /// Open the scripts project at `project_path` and parse every extern it declares, answering the whole project, which
 /// the page lists in full.

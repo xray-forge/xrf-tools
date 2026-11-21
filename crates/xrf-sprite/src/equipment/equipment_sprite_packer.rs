@@ -6,6 +6,7 @@ use image::{DynamicImage, GenericImage, ImageBuffer, Rgba};
 use xrf_dds::DdsFile;
 use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_extension::XrayExtension;
+use xrf_texture::{ImageFileReader, ImageFileWriter, ImageFit};
 use xrf_vfs::XrayLogicalPath;
 
 use crate::equipment::{
@@ -14,7 +15,6 @@ use crate::equipment::{
   LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
 use crate::report::{SpriteListener, SpriteNotice};
-use xrf_texture::{ImageFileReader, ImageFileWriter, ImageFit};
 
 pub struct EquipmentSpritePacker {}
 

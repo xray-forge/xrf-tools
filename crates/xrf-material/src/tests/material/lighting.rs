@@ -2,8 +2,8 @@
 
 use xrf_thm::{ThmMaterial, ThmTextureType};
 
-use crate::XrayMaterialDescriptor;
 use crate::fixtures::{FixtureTree, ThmFixture};
+use crate::material::XrayMaterialDescriptor;
 use crate::tests::material_search::{BASE, describe};
 
 #[test]

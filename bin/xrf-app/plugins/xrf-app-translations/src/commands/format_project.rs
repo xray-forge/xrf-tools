@@ -9,9 +9,10 @@ use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
 use xrf_job::JobProgress;
 use xrf_translation::TranslationFormatResult;
 
+use crate::format::{TranslationFormatGuard, TranslationsFormatRun};
 use crate::ipc::translations::TRANSLATIONS_JOB_FORMAT;
+use crate::project::TranslationProjects;
 use crate::request::TranslationsFormatRequest;
-use crate::{TranslationFormatGuard, TranslationProjects, TranslationsFormatRun};
 
 /// Normalize the JSON translation sources under a directory, refused while an open project holds any of them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

@@ -4,10 +4,11 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobOutcome;
 use xrf_report::{CheckId, CheckReport, Finding};
 
-use crate::{
-  GamedataCheckResult, GamedataFindingFactory, GamedataVerificationRule, GamedataVerificationStatus,
-  GamedataVerificationType,
-};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GamedataVerificationCheckReport {

@@ -1,8 +1,9 @@
 use xrf_error::XrfResult;
 
+use crate::mount::{XrayMount, XrayMountId};
 use crate::path::normalize;
 use crate::search::XrayMountSelection;
-use crate::{XrayMount, XrayMountId, XraySourceKind};
+use crate::source::XraySourceKind;
 
 /// Where one search step is allowed to look: which mounts, and which logical subtree of them.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
@@ -87,7 +88,8 @@ impl XrayLookupScope {
 #[cfg(test)]
 mod tests {
   use super::XrayMountSelection;
-  use crate::{XrayLookupScope, XraySourceKind};
+  use crate::search::XrayLookupScope;
+  use crate::source::XraySourceKind;
 
   #[test]
   fn defaults_to_everything() {

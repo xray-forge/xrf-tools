@@ -6,9 +6,12 @@ use std::path::PathBuf;
 use xrf_test_utils::GeneratedResources;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::weapons::verify_weapons_result::GamedataWeaponVerificationResult;
 use crate::project::weapons::weapons_verifier::WeaponsVerifier;
-use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
 /// A weapon section the check selects, with the fields given after its class keys.
 const WEAPON: &str = "[wpn_test]\nclass = WP_AK74\nweapon_class = assault_rifle\n$scheme = $item_weapon\n";

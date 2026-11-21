@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use xrf_job::parallel::ThreadPool;
 use xrf_vfs::{XrayInputRecord, XrayRevision, XrayRoots, XraySearch};
 
-use crate::TauriResult;
 use crate::assets::{AssetFanOut, AssetMountState};
 use crate::execution::ExecutionState;
 use crate::session::handles::sessions_state::SessionsState;
@@ -11,6 +10,7 @@ use crate::session::{
   Session, SessionBindings, SessionChange, SessionDerived, SessionFollower, SessionId, SessionOpening, SessionParts,
   SessionRelease, SessionScope, SessionScopes, SessionSnapshot,
 };
+use crate::tauri_result::TauriResult;
 
 /// Every opening of one kind of document, each a handle its opener closes: the many a domain holds at once, one for each
 /// tool and document. Each handle publishes its snapshots as one slot does, and is followed through commits with the

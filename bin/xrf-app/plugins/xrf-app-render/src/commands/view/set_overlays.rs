@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::{RenderOverlay, RenderViewportId};
 
-use crate::Renderer;
+use crate::renderer::Renderer;
 
 /// Set the helpers drawn over one viewport's frame: at once, or from the first frame showing `scene` (as a load report
 /// numbers it), so helpers sized to a model never stand over the one it replaces.

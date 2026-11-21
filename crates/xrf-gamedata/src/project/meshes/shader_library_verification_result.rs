@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
+use xrf_report::Finding;
 use xrf_shaders::ShaderLibraryFile;
 
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 pub(crate) struct GamedataShaderLibraryVerificationResult {
   pub(crate) blender_count: usize,

@@ -5,9 +5,12 @@ use std::path::PathBuf;
 
 use xrf_error::XrfError;
 
-use crate::mount::XrayMountPlan;
+use crate::asset::XrayAsset;
+use crate::mount::{XrayMountId, XrayMountPlan};
+use crate::path::XrayLogicalPath;
+use crate::search::XrayLookupScope;
+use crate::vfs::XrayVfs;
 use crate::vfs::tests::fixtures::directory;
-use crate::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayVfs};
 
 #[test]
 fn reads_an_asset_from_the_source_that_resolved_it() {

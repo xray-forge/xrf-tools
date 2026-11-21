@@ -7,7 +7,7 @@ use xrf_app_core::TauriResult;
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_renderer::{CaptureEvent, CaptureShot, RenderCapture};
 
-use crate::{CaptureFile, CaptureOutcome};
+use crate::capture::{CaptureFile, CaptureOutcome};
 
 /// A capture of many shots as its job names it: the capture in its errors and its log, its shots in its progress.
 pub struct CaptureNames {

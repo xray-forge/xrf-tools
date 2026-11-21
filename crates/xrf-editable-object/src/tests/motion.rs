@@ -3,7 +3,8 @@ use xrf_chunk::{ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_skeleton::SkeletonMotionMark;
 
-use crate::{EditableBoneMotion, EditableMotion};
+use crate::motion::editable_bone_motion::EditableBoneMotion;
+use crate::motion::editable_motion::EditableMotion;
 
 // Round-tripped through storage, since the narrow layout quantises the keys' parameters.
 fn channel(values: &[f32]) -> AnimationEnvelope {

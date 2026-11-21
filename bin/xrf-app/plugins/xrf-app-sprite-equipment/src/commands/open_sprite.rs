@@ -5,7 +5,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionSnapshot;
 
 use crate::request::SpriteEquipmentOpenRequest;
-use crate::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
+use crate::sprite::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
 
 /// Open an equipment sheet with the configuration naming what sits on it, read on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

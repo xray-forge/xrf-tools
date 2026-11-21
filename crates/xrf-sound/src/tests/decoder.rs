@@ -5,8 +5,9 @@ use ogg::writing::{PacketWriteEndInfo, PacketWriter};
 use xrf_error::XrfResult;
 
 use crate::fixtures::VorbisNoiseFixture;
+use crate::sound_file::SoundFile;
 use crate::vorbis::ogg_page_header::OggPageHeader;
-use crate::{SoundFile, VorbisDecoder};
+use crate::vorbis::vorbis_decoder::VorbisDecoder;
 
 fn decode_whole(bytes: &[u8]) -> XrfResult<Vec<f32>> {
   let mut decoder: VorbisDecoder<&[u8]> = VorbisDecoder::open(bytes)?;

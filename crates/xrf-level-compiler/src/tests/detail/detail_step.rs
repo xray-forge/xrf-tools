@@ -13,11 +13,14 @@ use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureParamChunk};
 
+use crate::compile::level_compile_report::LevelCompileReport;
+use crate::compile::level_compile_request::LevelCompileRequest;
+use crate::compile::level_compile_step::LevelCompileStep;
+use crate::compile::level_compile_step_run::LevelCompileStepRun;
+use crate::compile::level_compiler::LevelCompiler;
+use crate::detail::detail_slot_counts::DetailSlotCounts;
+use crate::ray::ray_backend::RayBackend;
 use crate::tests::detail::detail_lighter::{details, lighting, lights, triangles};
-use crate::{
-  DetailSlotCounts, LevelCompileReport, LevelCompileRequest, LevelCompileStep, LevelCompileStepRun, LevelCompiler,
-  RayBackend,
-};
 
 // Game data of one shadow-casting compiler shader and one opaque texture, its level the detail lighter tests' grid,
 // ground, roof and lights.

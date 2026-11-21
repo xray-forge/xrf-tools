@@ -10,10 +10,13 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::project::coverage::coverage_verifier::CoverageVerifier;
 use crate::project::gamedata_check::GamedataCheck;
-use crate::{
-  GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
-  GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
-};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_report::GamedataVerificationReport;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// An installation shaped like a real one: gamedata declared beside aliases that resolve inside it, and writable state
 /// directories that a copied install simply does not have yet.

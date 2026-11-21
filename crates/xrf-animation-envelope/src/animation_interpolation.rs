@@ -70,7 +70,7 @@ mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter};
   use xrf_error::XrfResult;
 
-  use crate::AnimationInterpolation;
+  use crate::animation_interpolation::AnimationInterpolation;
 
   #[test]
   fn test_read_write() -> XrfResult {

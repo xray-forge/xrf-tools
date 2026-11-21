@@ -8,11 +8,15 @@ use xrf_environment::{
   EnvironmentSection, WeatherDescriptor, WeatherKey,
 };
 use xrf_error::{XrfError, XrfResult};
+use xrf_report::Finding;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::project::environment::verify_environment_result::GamedataEnvironmentVerificationResult;
 use crate::project::gamedata_check::GamedataCheck;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 /// The environment check: `xrf-environment`'s findings over every environment config as this project's engine reads it,
 /// placed in the report, and each texture its weather keyframes name.

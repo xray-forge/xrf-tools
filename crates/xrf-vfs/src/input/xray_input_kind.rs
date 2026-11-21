@@ -1,4 +1,4 @@
-use crate::XrayLogicalPath;
+use crate::path::XrayLogicalPath;
 
 /// What of a search an input reads.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

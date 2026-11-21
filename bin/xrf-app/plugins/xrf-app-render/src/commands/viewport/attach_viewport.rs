@@ -7,8 +7,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::window::{InvokingWindow, WindowHandles};
 use xrf_renderer::{RenderViewportId, RenderWindowHost};
 
-use crate::viewport::WindowHostBuilder;
-use crate::{RenderViewports, ViewportEvent};
+use crate::viewport::{RenderViewports, ViewportEvent, WindowHostBuilder};
 
 /// Start drawing a native viewport into the calling window, telling the page what it costs and where its camera is
 /// through `events`.

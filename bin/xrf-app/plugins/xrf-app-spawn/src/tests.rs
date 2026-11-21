@@ -9,7 +9,7 @@ use xrf_job::ExecutionRequest;
 use xrf_spawn::SpawnFile;
 use xrf_test_utils::GeneratedResources;
 
-use crate::{SpawnChunk, SpawnChunkKind, SpawnFiles, SpawnSession};
+use crate::file::{SpawnChunk, SpawnChunkKind, SpawnFiles, SpawnSession};
 
 // One level, not none: a spawn of no levels exports an empty cross table file, which does not import back.
 pub(super) fn synthetic_spawn() -> SpawnFile {

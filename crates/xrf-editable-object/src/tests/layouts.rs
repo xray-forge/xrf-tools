@@ -3,8 +3,10 @@
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 
+use crate::editable_object_file::EditableObjectFile;
+use crate::mesh::editable_mesh::EditableMesh;
+use crate::object::editable_time_width::EditableTimeWidth;
 use crate::tests::fixtures;
-use crate::{EditableMesh, EditableObjectFile, EditableTimeWidth};
 
 fn object(flags: &[u8], description: &[u8]) -> Vec<u8> {
   let mut body: Vec<u8> = fixtures::chunk(EditableObjectFile::VERSION_CHUNK_ID, &0x0010u16.to_le_bytes());

@@ -6,7 +6,8 @@ use xrf_thm::ThmBumpMode;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::{XrayMaterialDescriptor, XrayMaterialResolver, XrayTextureScope};
+use crate::material::{XrayMaterialDescriptor, XrayMaterialResolver};
+use crate::texture::XrayTextureScope;
 
 pub(crate) const BASE: &str = "act\\act_stalker";
 pub(crate) const BUMP: &str = "act\\act_stalker_bump";

@@ -5,8 +5,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
-use crate::mount::XrayMountPlan;
-use crate::{FsgameFile, XrayRootKind, XrayRootProbe};
+use crate::mount::{FsgameFile, XrayMountPlan, XrayRootKind, XrayRootProbe};
 
 /// How a caller's path is turned into mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -133,7 +132,7 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::XrayMountMode;
-  use crate::XraySourceKind;
+  use crate::source::XraySourceKind;
 
   fn install(name: &str) -> PathBuf {
     let root: PathBuf = GeneratedResources::create_dir(&format!("xray_mount_mode/{name}")).expect("install root");

@@ -4,8 +4,10 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
+use crate::level::editable_level_guid::EditableLevelGuid;
+use crate::part::editable_level_part::EditableLevelPart;
+use crate::scene::editable_level_scene::EditableLevelScene;
 use crate::tests::fixtures::{GUID, binary_part_bytes, chunk, guid_bytes, level_text, spawn_part_text};
-use crate::{EditableLevelGuid, EditableLevelPart, EditableLevelScene};
 
 // `group.part3` follows a gap the editor stops at, and `spawn.~part` is an earlier save's copy, not a part.
 fn write_scene(root: &Path, part_guid: &EditableLevelGuid) -> XrfResult<PathBuf> {

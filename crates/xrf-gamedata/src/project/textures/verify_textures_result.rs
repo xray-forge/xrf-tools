@@ -1,8 +1,12 @@
 use std::time::Duration;
 
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
 use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
-use crate::{Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationStatus};
 
 pub(crate) struct GamedataTexturesVerificationResult {
   pub(crate) duration: Duration,
@@ -61,13 +65,17 @@ impl GamedataCheckResult for GamedataTexturesVerificationResult {
 mod tests {
   use std::time::Duration;
 
+  use xrf_report::Finding;
+
   use super::GamedataTexturesVerificationResult;
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_report::GamedataVerificationReport;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
   use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
   use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
-  use crate::{
-    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
-    GamedataVerificationStatus, GamedataVerificationType,
-  };
 
   #[test]
   fn exposes_texture_findings_in_reports() {

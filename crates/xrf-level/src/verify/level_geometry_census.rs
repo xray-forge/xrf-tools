@@ -4,7 +4,10 @@ use serde::Serialize;
 use xrf_math::Aabb;
 use xrf_ogf::{OgfGeometryContainerChunk, OgfModelType};
 
-use crate::{LevelGeomVertexBuffer, LevelGeometryLayoutKind, LevelVertex, LevelVertexLayout};
+use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
+use crate::geom::vertex::level_vertex::LevelVertex;
+use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
+use crate::verify::level_geometry_layout_kind::LevelGeometryLayoutKind;
 
 /// A normal the compiler wrote is a unit vector, so one whose length misses by more than this came out of the wrong
 /// element rather than out of rounding.

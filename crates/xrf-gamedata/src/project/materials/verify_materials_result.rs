@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 #[derive(Default)]
 pub(crate) struct GamedataMaterialsVerificationResult {
@@ -49,7 +52,10 @@ impl GamedataCheckResult for GamedataMaterialsVerificationResult {
 #[cfg(test)]
 mod tests {
   use super::GamedataMaterialsVerificationResult;
-  use crate::{GamedataCheckResult, GamedataFindingFactory, GamedataVerificationRule, GamedataVerificationStatus};
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
   #[test]
   fn fails_without_a_library_whatever_else_it_holds() {

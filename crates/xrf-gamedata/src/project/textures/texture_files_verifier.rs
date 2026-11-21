@@ -1,11 +1,15 @@
 use xrf_dds::DdsFile;
 use xrf_error::XrfResult;
+use xrf_report::Finding;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Every `.dds` the project holds reads as a texture the engine can upload.
 pub(crate) struct TextureFilesVerifier<'a> {

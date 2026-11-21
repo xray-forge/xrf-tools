@@ -1,14 +1,17 @@
 use glam::Vec4;
 
+use crate::graph::{
+  FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime, GraphTexture,
+  GraphTextureAccess, GraphTextureDescriptor,
+};
 use crate::param::tests::fixtures::{
   Blur, Clashing, ClashingLate, Count, ENVIRONMENT_CUBES, Environment, Head, Reflection, Scale, Settings, Shade,
   Surface, Traced, Undeclared,
 };
-use crate::{
-  FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime, GraphTexture,
-  GraphTextureAccess, GraphTextureDescriptor, PassParameters, ShaderBindings, ShaderDeclarations, StorageArray,
-  StorageArrayMut, StorageField, StorageValue, StorageValueMut,
+use crate::param::{
+  PassParameters, ShaderBindings, StorageArray, StorageArrayMut, StorageField, StorageValue, StorageValueMut,
 };
+use crate::shader::ShaderDeclarations;
 
 #[test]
 fn derives_the_layout_with_writable_bindings_kept_from_the_vertex_stage() {

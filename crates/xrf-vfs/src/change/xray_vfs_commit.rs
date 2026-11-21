@@ -7,11 +7,13 @@ use xrf_utils::format_path;
 
 use crate::change::disk::XrayDiskSwap;
 use crate::change::transaction::XrayTransactionTarget;
+use crate::change::{XrayChange, XrayChangeKind, XrayChangeSet, XrayTransaction};
+use crate::input::XrayRevision;
+use crate::mount::{XrayMount, XrayMountId};
 use crate::path::normalize;
-use crate::{
-  XrayAssetSource, XrayChange, XrayChangeKind, XrayChangeSet, XrayLookupScope, XrayMount, XrayMountId, XrayRevision,
-  XraySourceKind, XrayTransaction, XrayVfs,
-};
+use crate::search::XrayLookupScope;
+use crate::source::{XrayAssetSource, XraySourceKind};
+use crate::vfs::XrayVfs;
 
 impl XrayVfs {
   /// Writes a transaction to disk and answers the snapshot it leaves, with what it changed: every file or none.

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
-use crate::{Output, OutputChannel};
+use crate::output_channel::OutputChannel;
+use crate::sink::Output;
 
 /// Discards every workflow message.
 #[derive(Default)]
@@ -13,7 +14,7 @@ impl Output for NoopOutput {
 #[cfg(test)]
 mod tests {
   use super::{NoopOutput, Output};
-  use crate::OutputChannel;
+  use crate::output_channel::OutputChannel;
 
   #[test]
   fn discards_every_message() {

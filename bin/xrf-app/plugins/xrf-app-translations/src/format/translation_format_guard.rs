@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use xrf_app_core::TauriResult;
 use xrf_app_core::jobs::JobResource;
 
-use crate::TranslationProjects;
+use crate::project::TranslationProjects;
 
 /// What keeps a formatting run off the files an open editor holds: the editor's in-memory buffers are not covered by
 /// any lease, and a save after the format would put the pre-format content back.

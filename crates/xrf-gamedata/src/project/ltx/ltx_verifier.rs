@@ -6,10 +6,14 @@ use xrf_ltx_project::{
   LtxFinding, LtxFindingKind, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult,
   LtxVerifyOptions,
 };
+use xrf_report::Finding;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::ltx::verify_ltx_result::GamedataLtxVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// The LTX check: how every config is formatted, and whether it resolves against its section schemes.
 pub(crate) struct LtxVerifier<'a> {
@@ -116,10 +120,12 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_ltx_project::{LtxFinding, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult};
+  use xrf_report::Finding;
   use xrf_test_utils::GeneratedResources;
 
   use super::LtxVerifier;
-  use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
   #[test]
   fn collects_format_scheme_and_unreadable_findings_with_source_paths() {

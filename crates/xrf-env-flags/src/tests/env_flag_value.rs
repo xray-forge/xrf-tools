@@ -1,4 +1,4 @@
-use crate::EnvFlagValue;
+use crate::env_flag_value::EnvFlagValue;
 
 #[test]
 fn takes_a_switch_in_any_of_its_spellings_and_case() {

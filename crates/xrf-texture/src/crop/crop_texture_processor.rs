@@ -66,7 +66,7 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::CropTextureProcessor;
-  use crate::CropTextureOptions;
+  use crate::crop::CropTextureOptions;
 
   fn options_for(name: &str) -> CropTextureOptions {
     let resource: String = format!("xrf-texture/crop/{name}-source.dds");

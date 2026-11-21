@@ -7,13 +7,14 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_test_utils::GeneratedResources;
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 use crate::project::materials::materials_verifier::MaterialsVerifier;
 use crate::project::materials::verify_materials_result::GamedataMaterialsVerificationResult;
 use crate::project::tests::fixtures::{engine_game_materials, game_materials_bytes};
-use crate::{
-  GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
-  GamedataVerificationStatus,
-};
 
 fn verify(name: &str, library: Option<&GameMtlFile>, config: &str) -> GamedataMaterialsVerificationResult {
   let root: PathBuf = GeneratedResources::create_dir(&format!("materials/{name}")).unwrap();

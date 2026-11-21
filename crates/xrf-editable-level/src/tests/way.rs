@@ -2,11 +2,16 @@ use xrf_error::XrfResult;
 use xrf_ini::IniSection;
 use xrf_math::Vector3d;
 
+use crate::level::editable_level_value::EditableLevelValue;
+use crate::object::spawn::editable_spawn_point_object::EditableSpawnPointObject;
+use crate::object::way::editable_way_link::EditableWayLink;
+use crate::object::way::editable_way_object::EditableWayObject;
+use crate::object::way::editable_way_point::EditableWayPoint;
+use crate::part::editable_level_part::EditableLevelPart;
+use crate::part::editable_object_part::EditableObjectPart;
+use crate::part::editable_text_part::EditableTextPart;
+use crate::scene::editable_scene_tool::EditableSceneTool;
 use crate::tests::fixtures::{GUID, way_part_text};
-use crate::{
-  EditableLevelPart, EditableLevelValue, EditableObjectPart, EditableSceneTool, EditableSpawnPointObject,
-  EditableTextPart, EditableWayLink, EditableWayObject, EditableWayPoint,
-};
 
 fn read_ways(text: &str) -> XrfResult<EditableObjectPart<EditableWayObject>> {
   EditableObjectPart::read_from_text_part(&EditableTextPart::read_from_bytes(text.as_bytes())?)

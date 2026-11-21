@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_dialog::{DialogDescriptor, DialogProject};
 
-use crate::DialogProjects;
+use crate::project::DialogProjects;
 use crate::request::DialogsReadRequest;
 
 /// One dialog, with every phrase it declares.

@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::RenderViewportId;
 
-use crate::WorldState;
+use crate::world::WorldState;
 
 /// Play a weather ambient effect near a viewport's camera at once, ending the one playing; none plays indoors.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

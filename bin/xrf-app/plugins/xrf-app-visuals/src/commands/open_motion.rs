@@ -7,7 +7,8 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_visual::{VisualMotionBake, VisualMotionPose};
 
-use crate::{PosedVisualMotion, SelectedVisual, VisualModels, VisualPoses};
+use crate::model::{SelectedVisual, VisualModels};
+use crate::pose::{PosedVisualMotion, VisualPoses};
 
 /// Pose the open visual through one of its motions, held as `motion_id`, an opening of the viewer's own, and report
 /// what came out; baked on the pool.

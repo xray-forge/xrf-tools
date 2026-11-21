@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::{RenderViewOptions, RenderViewportId};
 
-use crate::Renderer;
+use crate::renderer::Renderer;
 
 /// Set what one viewport draws its scene with.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

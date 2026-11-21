@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
-use crate::{EditableFace, EditableMesh};
+use crate::mesh::editable_face::EditableFace;
+use crate::mesh::editable_mesh::EditableMesh;
 
 /// A mesh's normals as `CEditableMesh::GenerateVNormals` computes them for drawing and for the OGF export.
 ///

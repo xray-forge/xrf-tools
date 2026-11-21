@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
-use crate::{FsgameFile, XrayMountMode, XrayRoot, XraySearchPlan};
+use crate::mount::{FsgameFile, XrayMountMode, XrayRoot};
+use crate::search::XraySearchPlan;
 
 /// Everywhere a caller wants read: an optional subject asset, then ordered roots.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

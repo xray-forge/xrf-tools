@@ -6,9 +6,9 @@ use xrf_error::XrfResult;
 
 use super::typescript_project::TypeScriptProject;
 use super::typescript_symbol::TypeScriptSymbol;
-use crate::TypeScriptSource;
 use crate::swc_common::SourceMap;
 use crate::swc_ecma_ast::{ExportSpecifier, ImportSpecifier, ModuleDecl, ModuleItem, NamedExport, Program};
+use crate::typescript_source::TypeScriptSource;
 
 /// Resolves the contracts of the symbols TypeScript sources use within one project.
 ///
@@ -222,7 +222,8 @@ mod tests {
 
   use super::TypeScriptSymbolResolver;
   use crate::swc_ecma_ast::{ModuleDecl, ModuleItem, NamedExport, Program};
-  use crate::{TypeScriptFunctionParameter, TypeScriptObjectProperty, TypeScriptSource, TypeScriptSymbol};
+  use crate::symbol_resolver::{TypeScriptFunctionParameter, TypeScriptObjectProperty, TypeScriptSymbol};
+  use crate::typescript_source::TypeScriptSource;
 
   fn create_test_root(name: &str) -> PathBuf {
     GeneratedResources::create_dir(&format!("typescript-symbol-resolver/{name}")).unwrap()

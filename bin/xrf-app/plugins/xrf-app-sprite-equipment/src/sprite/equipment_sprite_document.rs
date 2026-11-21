@@ -14,7 +14,7 @@ use xrf_sprite::EquipmentSlotOccupant;
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XraySearch};
 
-use crate::{
+use crate::sprite::{
   EquipmentSheetLocation, EquipmentSheetSource, EquipmentSpriteMetadata, EquipmentSpriteOpen, EquipmentSprites,
 };
 

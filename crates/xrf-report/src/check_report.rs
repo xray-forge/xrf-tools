@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use serde::Serialize;
 
-use crate::{CheckId, Finding, Status};
+use crate::check_id::CheckId;
+use crate::finding::Finding;
+use crate::status::Status;
 
 /// Immutable report data for one command check.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -3,7 +3,7 @@ use tauri::{Manager, Runtime};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionScopes;
 
-use crate::{TranslationProjectRead, TranslationProjects};
+use crate::project::{TranslationProjectRead, TranslationProjects};
 
 /// The `translations` plugin: translations projects edited and saved, followed through commits, and verified,
 /// formatted, built and imported as jobs.

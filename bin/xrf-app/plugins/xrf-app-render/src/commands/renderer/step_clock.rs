@@ -3,7 +3,7 @@ use std::time::Duration;
 use tauri::State;
 use xrf_app_core::TauriResult;
 
-use crate::Renderer;
+use crate::renderer::Renderer;
 
 /// The longest clock step: a capture steps by a frame's time, and far longer steps only run the scenes' clocks towards
 /// the platform clock's limit.

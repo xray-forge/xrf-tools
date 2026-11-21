@@ -1,10 +1,19 @@
 use std::sync::Arc;
 
+use xrf_audio_scene::AudioBus;
+
+use crate::control::audio_play::AudioPlay;
+use crate::control::audio_refusal::AudioRefusal;
+use crate::control::engine::audio_engine_parts::AudioEngineParts;
+use crate::control::engine::audio_engine_settings::AudioEngineSettings;
+use crate::decode::decoded_sound::DecodedSound;
+use crate::decode::sound_channels::SoundChannels;
+use crate::output::offline::offline_render::OfflineRender;
 use crate::tests::fixtures::{RATE, engine, frequency_left, looped, once, rms_left, sine};
-use crate::{
-  AudioBus, AudioEngineParts, AudioPlay, AudioRefusal, AudioVoiceId, AudioVoicePlayback, AudioVoiceState, DecodedSound,
-  OfflineRender, SoundChannels, VoiceSource,
-};
+use crate::voice::audio_voice_id::AudioVoiceId;
+use crate::voice::playback::audio_voice_playback::AudioVoicePlayback;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
+use crate::voice::voice_source::VoiceSource;
 
 #[test]
 fn plays_a_sine_through_each_bus_at_each_volume() {
@@ -201,7 +210,7 @@ fn refuses_commands_while_no_buffer_takes_them() {
   let AudioEngineParts {
     mut engine,
     mixer: _mixer,
-  } = AudioEngineParts::new(crate::AudioEngineSettings {
+  } = AudioEngineParts::new(AudioEngineSettings {
     voices_count: 1,
     commands_count: 2,
   });
@@ -240,7 +249,7 @@ fn follows_a_voice_s_gain_and_rate_from_the_next_buffer() {
 #[test]
 fn keeps_the_last_of_many_writes_while_no_buffer_renders() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, RATE as usize, 1000.0, 0.5, SoundChannels::Mono));
-  let AudioEngineParts { mut engine, mixer } = AudioEngineParts::new(crate::AudioEngineSettings {
+  let AudioEngineParts { mut engine, mixer } = AudioEngineParts::new(AudioEngineSettings {
     voices_count: 1,
     commands_count: 4,
   });

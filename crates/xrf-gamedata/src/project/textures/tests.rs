@@ -3,15 +3,17 @@
 use std::fs;
 
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
+use xrf_report::Finding;
 use xrf_thm::{ThmBumpMode, ThmFile, ThmTextureType};
 
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::textures::textures_verifier::TexturesVerifier;
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
-use crate::{
-  Finding, GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
-  GamedataVerificationRule,
-};
 
 const BASE: &str = "act\\act_stalker";
 const BUMP: &str = "act\\act_stalker_bump";

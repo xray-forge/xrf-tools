@@ -65,7 +65,7 @@ impl From<AnimationShape> for u8 {
 
 #[cfg(test)]
 mod tests {
-  use crate::AnimationShape;
+  use crate::animation_shape::AnimationShape;
 
   #[test]
   fn each_named_shape_is_stored_as_the_number_the_engine_gives_it() {

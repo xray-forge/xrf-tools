@@ -11,13 +11,16 @@ use xrf_vfs::XrayAssetType;
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
 use crate::project::gamedata_check::GamedataCheck;
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
 use crate::project::gamedata_item_section::GamedataItemSection;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::gamedata_visual_motions::GamedataVisualMotions;
 use crate::project::weapons::verify_weapons_result::GamedataWeaponVerificationResult;
 use crate::project::weapons::weapon_sound_layer_issue::WeaponSoundLayerIssue;
 use crate::project::weapons::weapon_sound_source::WeaponSoundSource;
 use crate::project::weapons::weapon_sound_value::WeaponSoundValue;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// The weapons check: every weapon section's visuals, HUD, motion banks and sounds resolve as the engine loads them.
 ///

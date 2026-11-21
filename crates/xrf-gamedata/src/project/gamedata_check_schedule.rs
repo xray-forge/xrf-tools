@@ -3,7 +3,7 @@ use std::sync::{Mutex, PoisonError};
 
 use xrf_job::JobHandle;
 
-use crate::GamedataVerificationType;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// What a verification sweep is working on right now, while several checks are working at once.
 ///

@@ -1,7 +1,10 @@
 use std::marker::PhantomData;
 
+use xrf_report::Finding;
+
 use crate::project::animations::envelopes::envelope_animation::EnvelopeAnimation;
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 /// Aggregated outcome of reading, writing back and evaluating every file of one envelope animation format.
 pub(crate) struct GamedataEnvelopeAnimationsVerificationResult<F> {
@@ -48,7 +51,8 @@ mod tests {
   use xrf_ppe::PpeFile;
 
   use super::GamedataEnvelopeAnimationsVerificationResult;
-  use crate::{GamedataCheckResult, GamedataVerificationStatus};
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
   #[test]
   fn names_the_format_it_counts() {

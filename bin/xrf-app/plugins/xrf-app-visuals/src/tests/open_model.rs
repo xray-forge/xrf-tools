@@ -14,8 +14,8 @@ use xrf_job::ExecutionRequest;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::XrayRoots;
 
-use crate::VisualModels;
 use crate::commands::open_model::visuals_open_model;
+use crate::model::VisualModels;
 use crate::plugin::VisualsPlugin;
 
 /// The application as far as the plugin needs it, set up by the plugin itself.

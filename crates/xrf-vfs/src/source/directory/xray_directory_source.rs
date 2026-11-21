@@ -5,9 +5,10 @@ use std::path::{Path, PathBuf};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::path::{is_component_prefix, resolve_host_relative};
+use crate::asset::XrayAssetContainer;
+use crate::path::{XrayPathCollision, is_component_prefix, resolve_host_relative};
 use crate::source::directory::{DirectoryAssetIndex, XrayAssetIndex};
-use crate::{XrayAssetContainer, XrayAssetSource, XrayFileStamp, XrayPathCollision, XraySourceKind, label_from_path};
+use crate::source::{XrayAssetSource, XrayFileStamp, XraySourceKind, label_from_path};
 
 /// A directory of loose files, indexed once at mount time.
 ///
@@ -185,8 +186,7 @@ mod tests {
 
   use xrf_test_utils::GeneratedResources;
 
-  use crate::source::XrayDirectorySource;
-  use crate::{XrayAssetSource, XraySourceKind};
+  use crate::source::{XrayAssetSource, XrayDirectorySource, XraySourceKind};
 
   fn source(name: &str, files: &[&str]) -> XrayDirectorySource {
     let root: PathBuf =

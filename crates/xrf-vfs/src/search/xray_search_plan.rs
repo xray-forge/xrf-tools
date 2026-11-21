@@ -2,11 +2,10 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 
-use crate::mount::XrayMountPlan;
-use crate::{
-  XrayLookupScope, XrayMountId, XrayMountMode, XrayRootProbe, XraySearch, XraySearchStep, XraySkippedMount,
-  XraySourceKind, XrayVfs,
-};
+use crate::mount::{XrayMountId, XrayMountMode, XrayMountPlan, XrayRootProbe, XraySkippedMount};
+use crate::search::{XrayLookupScope, XraySearch, XraySearchStep};
+use crate::source::XraySourceKind;
+use crate::vfs::XrayVfs;
 
 /// One declared place to search, before it has been mounted.
 #[derive(Clone, Debug)]

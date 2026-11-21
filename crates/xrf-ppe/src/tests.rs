@@ -5,7 +5,12 @@ use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationPlayback,
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::XrfResult;
 
-use crate::{PpeColor, PpeColorChannel, PpeColorMap, PpeFile, PpeParameter, PpeScreen};
+use crate::ppe_color::PpeColor;
+use crate::ppe_color_channel::PpeColorChannel;
+use crate::ppe_color_map::PpeColorMap;
+use crate::ppe_file::PpeFile;
+use crate::ppe_parameter::PpeParameter;
+use crate::ppe_screen::PpeScreen;
 
 /// One interpolating key, as `st_Key::Load_2` lays it out: value, time, shape, then seven quantised parameters.
 fn new_key_bytes(value: f32, time: f32) -> Vec<u8> {

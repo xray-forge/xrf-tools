@@ -9,9 +9,9 @@ use xrf_app_core::jobs::{JobRegistry, JobStart};
 use xrf_job::JobProgress;
 use xrf_utils::format_path;
 
-use crate::GamedataVerifySummary;
 use crate::ipc::gamedata::GAMEDATA_JOB_VERIFY;
 use crate::request::GamedataVerifyRequest;
+use crate::verify::GamedataVerifySummary;
 
 /// Run the selected checks over a gamedata project, one verification at a time.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

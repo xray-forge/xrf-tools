@@ -139,7 +139,7 @@ impl LtxSchemeParser {
 #[cfg(test)]
 mod tests {
   use super::LtxSchemeParser;
-  use crate::Section;
+  use crate::ltx::Section;
 
   #[test]
   fn parses_dollar_strict_scheme_metadata() {

@@ -79,7 +79,8 @@ impl<W: Write + ?Sized> XRayWrite for W {}
 mod tests {
   use std::io::Cursor;
 
-  use crate::{XRayRead, XRayWrite};
+  use crate::bytes::xray_read::XRayRead;
+  use crate::bytes::xray_write::XRayWrite;
 
   #[test]
   fn writes_every_width_little_endian_and_reads_it_back() -> std::io::Result<()> {

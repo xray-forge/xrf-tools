@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
 
-use crate::VisualModels;
+use crate::model::VisualModels;
 
 /// Close the models `session_ids` name, committed or opening; a closed one answers no read.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

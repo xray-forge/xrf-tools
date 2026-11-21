@@ -9,7 +9,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
-use crate::AnmChannel;
+use crate::anm_channel::AnmChannel;
 
 /// The object motion file the engine plays a camera or an animated object from, `.anm` and `.anm1`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

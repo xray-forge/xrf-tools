@@ -7,9 +7,10 @@ use xrf_test_utils::GeneratedResources;
 use xrf_utils::LineEndings;
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
-use crate::{
-  ExternCallable, ExternDocumentation, ExternExport, ExternFormat, ExternManifest, ExternParameter, ExternValue,
+use crate::manifest::{
+  ExternCallable, ExternDocumentation, ExternExport, ExternManifest, ExternParameter, ExternValue,
 };
+use crate::render::ExternFormat;
 
 fn callable_manifest() -> ExternManifest {
   ExternManifest {

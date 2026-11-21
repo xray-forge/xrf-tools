@@ -3,13 +3,17 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_job::parallel::prelude::*;
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver};
+use xrf_report::Finding;
 use xrf_thm::{ThmFile, ThmTrailingBytes};
 use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayResolution, XraySearch};
 
+use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 use crate::project::textures::texture_bump_verdict::TextureBumpVerdict;
 use crate::project::textures::texture_bump_verification::TextureBumpVerification;
 use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Every bump a texture descriptor asks for is the bump the engine will bind.
 ///

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use crate::XrayVfs;
 use crate::input::{XrayInput, XrayInputAnswer};
+use crate::vfs::XrayVfs;
 
 /// The inputs some reads resolved, each with what its snapshot answered for it then.
 #[derive(Clone, Debug, Default)]

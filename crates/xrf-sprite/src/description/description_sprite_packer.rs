@@ -5,13 +5,13 @@ use image::{GenericImage, ImageBuffer, Rgba, RgbaImage};
 use xrf_dds::DdsFile;
 use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_extension::XrayExtension;
+use xrf_texture::ImageFileWriter;
 use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
 use crate::report::{SpriteListener, SpriteNotice};
-use xrf_texture::ImageFileWriter;
 
 pub struct DescriptionSpritePacker {}
 

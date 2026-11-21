@@ -11,12 +11,10 @@ use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::asset::XrayAsset;
-use crate::path::{XrayLogicalPath, is_component_prefix};
-use crate::{
-  XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XrayShadowedCopy,
-  XrayShadowingEntry, XraySourceKind, label_from_path,
-};
+use crate::asset::{XrayAsset, XrayAssetContainer};
+use crate::path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision, is_component_prefix};
+use crate::search::{XrayShadowedCopy, XrayShadowingEntry};
+use crate::source::{XrayAssetSource, XrayDeclaredRoot, XraySourceKind, label_from_path};
 
 /// Mounts an archive volume set as a read-only asset source.
 pub struct XrayArchiveSource {
@@ -426,7 +424,10 @@ mod tests {
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 
   use super::XrayArchiveSource;
-  use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XrayShadowedCopy};
+  use crate::asset::XrayAssetContainer;
+  use crate::path::{XrayCollisionSite, XrayPathCollision};
+  use crate::search::XrayShadowedCopy;
+  use crate::source::XrayAssetSource;
 
   const BASE: &str = "C:\\game\\db\\base.db0";
   const PATCH: &str = "C:\\game\\db\\patch.db1";

@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 use xrf_ppe::PpeFile;
 use xrf_vfs::XrayAssetType;
 
-use crate::GamedataVerificationRule;
 use crate::project::animations::envelopes::envelope_animation::EnvelopeAnimation;
+use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 impl EnvelopeAnimation for PpeFile {
   const ASSET_TYPE: XrayAssetType = XrayAssetType::Ppe;

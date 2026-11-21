@@ -3,8 +3,8 @@
 use xrf_thm::{ThmTextureFlag, ThmTextureType};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
+use crate::material::{XrayBumpNaming, XrayMaterialDescriptor};
 use crate::tests::material_search::{BASE, BUMP, COMPANION, describe, used_bump};
-use crate::{XrayBumpNaming, XrayMaterialDescriptor};
 
 #[test]
 fn a_declared_bump_is_named_and_a_flat_material_names_none() {

@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::XrayMountMode;
 
-use crate::{GamedataProject, GamedataProjectReadOptions};
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
 
 /// Declares gamedata the way a real installation does, so configs resolve one level below the path opened.
 const FSGAME: &str = "\

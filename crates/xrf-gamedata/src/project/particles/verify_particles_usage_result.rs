@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use xrf_report::Finding;
+
+use crate::project::gamedata_check_result::GamedataCheckResult;
+use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
 #[derive(Default)]
 pub(crate) struct GamedataParticlesUsageVerificationResult {
@@ -46,11 +49,15 @@ impl GamedataCheckResult for GamedataParticlesUsageVerificationResult {
 
 #[cfg(test)]
 mod tests {
+  use xrf_report::Finding;
+
   use super::GamedataParticlesUsageVerificationResult;
-  use crate::{
-    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
-    GamedataVerificationStatus, GamedataVerificationType,
-  };
+  use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_report::GamedataVerificationReport;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
 
   #[test]
   fn unreadable_spawn_files_fail_particle_usage_verification() {

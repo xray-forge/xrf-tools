@@ -3,11 +3,13 @@ use std::time::Instant;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::parallel::prelude::*;
 
+use crate::project::events::GamedataEvent;
 use crate::project::gamedata_check_schedule::GamedataCheckSchedule;
-use crate::{
-  GamedataEvent, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport,
-  GamedataVerificationReport, GamedataVerificationType,
-};
+use crate::project::gamedata_project::GamedataProject;
+use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+use crate::project::gamedata_verification_check_report::GamedataVerificationCheckReport;
+use crate::project::gamedata_verification_report::GamedataVerificationReport;
+use crate::project::gamedata_verification_type::GamedataVerificationType;
 
 /// How many checks may be working at once while somebody is reading.
 const CHECK_WINDOW: usize = 6;
@@ -135,10 +137,11 @@ mod tests {
   use xrf_vfs::{XraySearch, XrayVfs};
 
   use super::GamedataProject;
-  use crate::{
-    GamedataEvent, GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationStatus,
-    GamedataVerificationType,
-  };
+  use crate::project::events::GamedataEvent;
+  use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
+  use crate::project::gamedata_verification_check_report::GamedataVerificationCheckReport;
+  use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+  use crate::project::gamedata_verification_type::GamedataVerificationType;
 
   /// A project with nothing mounted, for asserting which checks run rather than what they find.
   fn empty_project() -> GamedataProject {

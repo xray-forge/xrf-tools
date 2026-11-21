@@ -1,6 +1,8 @@
 use xrf_error::XrfResult;
 
-use crate::{IniField, IniFile, IniSection};
+use crate::ini_field::IniField;
+use crate::ini_file::IniFile;
+use crate::ini_section::IniSection;
 
 #[test]
 fn reads_sections_and_trimmed_fields_skipping_comments_and_blank_lines() -> XrfResult {

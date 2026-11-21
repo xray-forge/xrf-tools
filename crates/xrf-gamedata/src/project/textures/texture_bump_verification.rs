@@ -1,4 +1,5 @@
-use crate::Finding;
+use xrf_report::Finding;
+
 use crate::project::textures::texture_bump_verdict::TextureBumpVerdict;
 
 /// What one texture descriptor's bump declaration came to: which count it lands in, and the findings it produced.

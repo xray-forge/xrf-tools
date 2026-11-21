@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfError;
 use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
-use crate::{HostDestination, HostLinkPolicy, HostRelativePath};
+use crate::host_path::{HostDestination, HostLinkPolicy, HostRelativePath};
 
 fn create_directory(name: &str) -> PathBuf {
   GeneratedResources::create_dir(&format!("host-path/{name}")).expect("temporary directory")
