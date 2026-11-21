@@ -31,7 +31,7 @@ impl SceneBinaryToolsPart {
   /// Counts every binary tool the scene holds a part of, in tool order; a tool whose stream does not read becomes a
   /// problem instead.
   pub(crate) fn read(scene: &SelectedScene) -> SceneBinaryToolsDescription {
-    profiling::scope!("scene binary tools");
+    xrf_profiler::scope!("scene binary tools");
 
     let mut description: SceneBinaryToolsDescription = SceneBinaryToolsDescription {
       tools: Vec::new(),

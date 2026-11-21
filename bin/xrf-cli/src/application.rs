@@ -88,7 +88,7 @@ pub(crate) fn run() -> ExitCode {
   // as an execution error and the command never sees it.
   let outcome: CommandResult = plan
     .install(|| {
-      profiling::scope!("command", &format!("{domain} {operation}"));
+      xrf_profiler::scope!("command", &format!("{domain} {operation}"));
 
       command.execute(arguments, &mut context)
     })

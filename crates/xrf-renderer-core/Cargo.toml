@@ -13,15 +13,12 @@ log = { workspace = true }
 naga = { workspace = true }
 offset-allocator = "0.2.0"
 pollster = { workspace = true }
-profiling = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-# The GPU zones' context; xrf-profiler pins the version and starts the client.
-tracy-client = { workspace = true, optional = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
 xrf-job = { workspace = true }
-xrf-profiler = { workspace = true, optional = true }
+xrf-profiler = { workspace = true }
 xrf-renderer-derive = { workspace = true }
 
 [dev-dependencies]
@@ -31,8 +28,6 @@ serde_json = { workspace = true }
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
 typescript-bindings = ["specta"]
-# GPU zones beside every crate's zones in a Tracy capture; only the `tracy` build profile turns it on.
-tracy = ["xrf-profiler/tracy", "dep:tracy-client"]
 
 [lints]
 workspace = true

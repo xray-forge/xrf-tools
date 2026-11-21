@@ -160,10 +160,10 @@ impl XrayVfsHost {
       return Ok(found);
     }
 
-    profiling::scope!("vfs mount");
+    xrf_profiler::scope!("vfs mount");
 
     let _mounting: MutexGuard<'_, ()> = {
-      profiling::scope!("vfs mount lock wait");
+      xrf_profiler::scope!("vfs mount lock wait");
 
       self.recover(self.mounting.lock())
     };

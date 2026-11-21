@@ -11,7 +11,6 @@ path = "src/lib.rs"
 
 [dependencies]
 indexmap = { workspace = true }
-profiling = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
@@ -19,6 +18,7 @@ xrf-error = { workspace = true }
 xrf-job = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-output = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 

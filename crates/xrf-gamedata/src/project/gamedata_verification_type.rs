@@ -125,7 +125,7 @@ impl GamedataVerificationType {
   where
     C: GamedataCheck<'a>,
   {
-    profiling::scope!("gamedata check", &self.to_string());
+    xrf_profiler::scope!("gamedata check", &self.to_string());
 
     GamedataVerificationCheckReport::from_check_result(self, C::new(project, options).verify())
   }

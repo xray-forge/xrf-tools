@@ -16,7 +16,6 @@ image = { workspace = true, features = ["png"] }
 log = { workspace = true }
 notify = { workspace = true }
 pollster = { workspace = true }
-profiling = { workspace = true }
 raw-window-handle = "0.6.2"
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
@@ -31,6 +30,7 @@ xrf-job = { workspace = true }
 xrf-material = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-particles = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-renderer-core = { workspace = true }
 xrf-renderer-derive = { workspace = true }
 xrf-utils = { workspace = true }
@@ -64,8 +64,6 @@ typescript-bindings = [
   "xrf-renderer-core/typescript-bindings",
   "xrf-visual/typescript-bindings",
 ]
-# Zones, GPU zones and frame marks for a Tracy capture.
-tracy = ["xrf-renderer-core/tracy"]
 # Upscales with NVIDIA DLSS on Vulkan and D3D12, built against its SDK as DEVELOPMENT.md sets it up.
 dlss = ["xrf-dlss/sdk"]
 

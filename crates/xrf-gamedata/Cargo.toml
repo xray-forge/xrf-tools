@@ -6,7 +6,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-profiling = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
@@ -26,6 +25,7 @@ xrf-ltx = { workspace = true }
 xrf-lua = { workspace = true }
 xrf-material = { workspace = true }
 xrf-output = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-report = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-shaders = { workspace = true }

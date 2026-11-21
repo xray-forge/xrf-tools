@@ -315,7 +315,7 @@ impl RenderThread {
 
     self.present_windows(&running.gpu.context.queue, windows, phases, cpu, span, &groups);
 
-    profiling::finish_frame!();
+    xrf_profiler::finish_frame!();
 
     true
   }
@@ -426,7 +426,7 @@ impl RenderThread {
     retried: &mut Vec<CaptureRetry>,
     started: Instant,
   ) -> XrfResult<ExecutedGraph> {
-    profiling::scope!("record");
+    xrf_profiler::scope!("record");
 
     let RunningGpu { gpu, runtime, .. } = running;
     let gpu: &GpuState = gpu;

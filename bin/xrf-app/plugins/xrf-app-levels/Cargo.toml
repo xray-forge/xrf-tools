@@ -13,7 +13,6 @@ build = "../../core/build.rs"
 glam = { workspace = true }
 image = { workspace = true, features = ["png", "tga"] }
 log = { workspace = true }
-profiling = { workspace = true }
 # Rasterises a level map's annotations, which it draws as an SVG.
 resvg = { workspace = true, features = ["text", "system-fonts"] }
 serde = { workspace = true }
@@ -51,6 +50,7 @@ xrf-math = { workspace = true, features = ["glam"] }
 xrf-object-visual = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-particles = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-rawdata = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-shaders = { workspace = true }

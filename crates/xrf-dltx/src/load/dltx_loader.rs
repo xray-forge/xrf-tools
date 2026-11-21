@@ -40,7 +40,7 @@ impl<'a> DltxLoader<'a> {
   ///
   /// Returns an error when the source cannot answer, or when a statement is one the engine would refuse to start on.
   pub(crate) fn load(mut self, root: &str) -> XrfResult<DltxLoadResult> {
-    profiling::scope!("dltx load", root);
+    xrf_profiler::scope!("dltx load", root);
 
     self.load_file(root, DltxDiscovery::BASE_DEPTH)?;
 

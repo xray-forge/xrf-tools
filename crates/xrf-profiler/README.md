@@ -1,20 +1,27 @@
 # xrf-profiler
 
-Starts the Tracy client every XRF binary streams its profiling zones to, and holds the features that turn it on.
+Starts the Tracy client every XRF binary streams its profiling zones to, and holds the only features that turn it on.
+It is the one crate that depends on [`profiling`](https://docs.rs/profiling) and `tracy-client`; every other crate
+profiles through it.
 
-Nothing here runs in a normal build. Without the `tracy` feature, [`start`] and [`send_message`] do nothing and every
-`profiling` scope compiles away.
+Nothing here runs in a normal build. Without the `tracy` feature, [`start`] and [`send_message`] do nothing, every scope
+compiles away and [`IS_ENABLED`] is `false`.
 
 ## Instrument code
 
-A crate marks its work with the [`profiling`](https://docs.rs/profiling) crate, depended on plainly with no feature:
+A crate marks its work through this one:
 
-- `profiling::scope!("vfs mount")`;
-- `profiling::scope!("gamedata check", name)`, with a detail;
-- `#[profiling::function]`.
+- `xrf_profiler::scope!("vfs mount")`;
+- `xrf_profiler::scope!("gamedata check", name)`, with a detail;
+- `xrf_profiler::finish_frame!()` where a frame ends, for the renderer.
 
 Cargo unifies features across a build. When a binary turns on `tracy` here (which turns on
-`profiling/profile-with-tracy`), every scope in every crate of that binary becomes a zone.
+`profiling/profile-with-tracy`), every scope in every crate of that binary becomes a zone; no other crate has a feature
+for it.
+
+A [`GpuTimeline`] puts GPU work on its own timeline beside the threads: the renderer sends each frame's passes as zones
+between the timestamps the GPU wrote. Skip the work of naming them when [`IS_ENABLED`] is `false`; the check folds
+away.
 
 Keep scopes coarse:
 

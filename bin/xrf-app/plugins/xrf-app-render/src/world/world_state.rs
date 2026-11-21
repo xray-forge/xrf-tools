@@ -27,7 +27,7 @@ impl WorldState {
 
   /// The world, locked for a command.
   pub fn lock(&self) -> MutexGuard<'_, World> {
-    profiling::scope!("lock world");
+    xrf_profiler::scope!("lock world");
 
     self.world.lock().unwrap_or_else(PoisonError::into_inner)
   }

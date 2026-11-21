@@ -7997,7 +7997,6 @@ dependencies = [
  "glam",
  "image",
  "log",
- "profiling",
  "resvg",
  "serde",
  "serde_json",
@@ -8035,6 +8034,7 @@ dependencies = [
  "xrf-object-visual",
  "xrf-ogf",
  "xrf-particles",
+ "xrf-profiler",
  "xrf-rawdata",
  "xrf-renderer",
  "xrf-shaders",
@@ -8060,7 +8060,6 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "objc2-quartz-core",
- "profiling",
  "serde",
  "specta",
  "tauri",
@@ -8318,7 +8317,6 @@ dependencies = [
  "env_logger",
  "indexmap 2.14.2",
  "log",
- "profiling",
  "serde",
  "serde_json",
  "uuid",
@@ -8415,11 +8413,11 @@ dependencies = [
 name = "xrf-dltx"
 version = "0.1.0"
 dependencies = [
- "profiling",
  "xrf-error",
  "xrf-extension",
  "xrf-ltx",
  "xrf-ltx-project",
+ "xrf-profiler",
  "xrf-test-utils",
  "xrf-vfs",
 ]
@@ -8559,7 +8557,6 @@ name = "xrf-gamedata"
 version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
- "profiling",
  "serde",
  "serde_json",
  "specta",
@@ -8586,6 +8583,7 @@ dependencies = [
  "xrf-output",
  "xrf-particles",
  "xrf-ppe",
+ "xrf-profiler",
  "xrf-report",
  "xrf-shaders",
  "xrf-sound",
@@ -8771,7 +8769,6 @@ name = "xrf-ltx-project"
 version = "0.1.0"
 dependencies = [
  "indexmap 2.14.2",
- "profiling",
  "rustc-hash 2.1.3",
  "serde",
  "specta",
@@ -8779,6 +8776,7 @@ dependencies = [
  "xrf-job",
  "xrf-ltx",
  "xrf-output",
+ "xrf-profiler",
  "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",
@@ -8986,7 +8984,6 @@ dependencies = [
  "notify",
  "objc2-metal",
  "pollster",
- "profiling",
  "raw-window-handle",
  "resvg",
  "serde",
@@ -9005,6 +9002,7 @@ dependencies = [
  "xrf-material",
  "xrf-math",
  "xrf-particles",
+ "xrf-profiler",
  "xrf-renderer-core",
  "xrf-renderer-derive",
  "xrf-test-utils",
@@ -9024,11 +9022,9 @@ dependencies = [
  "naga",
  "offset-allocator",
  "pollster",
- "profiling",
  "serde",
  "serde_json",
  "specta",
- "tracy-client",
  "wgpu",
  "xrf-error",
  "xrf-job",
@@ -9255,7 +9251,6 @@ version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
  "log",
- "profiling",
  "serde",
  "serde_json",
  "specta",
@@ -9263,6 +9258,7 @@ dependencies = [
  "xrf-archive",
  "xrf-error",
  "xrf-extension",
+ "xrf-profiler",
  "xrf-test-utils",
  "xrf-utils",
 ]

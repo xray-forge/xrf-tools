@@ -1,53 +1,30 @@
+use xrf_profiler::GpuTimeline;
+
 use crate::graph::timing::timed_pass::TimedPass;
 
-/// The graph's timed passes as Tracy GPU zones, one a pass a frame, from the stamps the timer reads back; nothing
-/// without the `tracy` feature or a running client.
+/// The graph's timed passes on the capture's GPU timeline, one zone a pass a frame, from the stamps the timer reads back;
+/// nothing unless the build streams to Tracy.
 #[derive(Default)]
 pub(crate) struct GpuZones {
-  #[cfg(feature = "tracy")]
-  context: Option<tracy_client::GpuContext>,
+  timeline: GpuTimeline,
 }
 
 impl GpuZones {
   /// Sends one frame's passes: each stamp after the first ends the pass it names, which began at the stamp before.
-  #[cfg(feature = "tracy")]
   pub(super) fn send(&mut self, stamps: &[u64], names: &[Option<TimedPass>], period: f32) {
-    let Some(first) = stamps.first() else {
+    if !xrf_profiler::IS_ENABLED {
       return;
-    };
-
-    if self.context.is_none() {
-      // The first stamp read back stands for now: the GPU's zones then sit a few frames late beside the CPU's.
-      self.context = tracy_client::Client::running().and_then(|client| {
-        client
-          .new_gpu_context(
-            Some("GPU"),
-            tracy_client::GpuContextType::Invalid,
-            first.cast_signed(),
-            period,
-          )
-          .ok()
-      });
     }
 
-    let Some(context) = &self.context else {
+    let Some(&first) = stamps.first() else {
       return;
     };
+    let zones = names.iter().enumerate().skip(1).filter_map(|(index, name)| {
+      name
+        .as_ref()
+        .map(|pass| (pass.to_name(), stamps[index - 1], stamps[index]))
+    });
 
-    for (index, name) in names.iter().enumerate().skip(1) {
-      let Some(pass) = name else {
-        continue;
-      };
-
-      if let Ok(mut span) = context.span_alloc(&pass.to_name(), "", "", 0) {
-        span.end_zone();
-        span.upload_timestamp_start(stamps[index - 1].cast_signed());
-        span.upload_timestamp_end(stamps[index].max(stamps[index - 1]).cast_signed());
-      }
-    }
+    self.timeline.send(first, period, zones);
   }
-
-  /// Nothing without the `tracy` feature.
-  #[cfg(not(feature = "tracy"))]
-  pub(super) fn send(&mut self, _stamps: &[u64], _names: &[Option<TimedPass>], _period: f32) {}
 }

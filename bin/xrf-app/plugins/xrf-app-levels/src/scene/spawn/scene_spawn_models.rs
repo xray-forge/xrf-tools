@@ -16,7 +16,7 @@ impl SceneSpawnModels {
   /// The spawn points of `scene`, indexed as the scene's objects are, whose packet names a visual `reader` finds. Empty
   /// where the scene has no game data or its spawn points do not read; the scene's objects report the latter.
   pub(crate) fn read(scene: &SelectedScene, reader: &SpawnVisualReader) -> Self {
-    profiling::scope!("scene spawn models");
+    xrf_profiler::scope!("scene spawn models");
 
     if scene.game.roots.is_empty() {
       return Self::default();

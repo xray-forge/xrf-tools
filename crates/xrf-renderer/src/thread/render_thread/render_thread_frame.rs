@@ -33,7 +33,7 @@ impl RenderThread {
   ///
   /// The scenes take what the world posted even when no window can be drawn, so no post is lost.
   pub(super) fn frame(&mut self) -> bool {
-    profiling::scope!("frame");
+    xrf_profiler::scope!("frame");
 
     let now: Instant = Instant::now();
     let delta: Duration = now.duration_since(self.last_frame);
@@ -111,7 +111,7 @@ impl RenderThread {
   /// plays what lives in it, and answers what each scene takes in. Without a GPU no scene could take in what the world
   /// posts, so the scenes wait for one rather than stream into nothing.
   fn advance_world(&mut self, now: Instant, delta: Duration) -> HashMap<RenderSceneId, RenderSceneFrame> {
-    profiling::scope!("advance world");
+    xrf_profiler::scope!("advance world");
 
     let mut world: MutexGuard<'_, dyn RenderWorld> = self.world.lock().unwrap_or_else(PoisonError::into_inner);
 
@@ -308,7 +308,7 @@ impl RenderThread {
     };
     let is_opening: bool = self.scenes.values().any(|scene| !scene.is_ready(&gpu.textures));
 
-    profiling::scope!("texture uploads");
+    xrf_profiler::scope!("texture uploads");
 
     gpu.textures.update(
       &gpu.context.device,
@@ -329,7 +329,7 @@ impl RenderThread {
       return;
     }
 
-    profiling::scope!("texture sweep");
+    xrf_profiler::scope!("texture sweep");
 
     self.textures_swept = now;
 
@@ -387,7 +387,7 @@ impl RenderThread {
       None
     };
 
-    profiling::scope!("frame report");
+    xrf_profiler::scope!("frame report");
 
     let composition: Vec<GraphPassTime> = if is_any_due {
       runtime.timer.take(GraphOwner::Frame)
@@ -429,7 +429,7 @@ impl RenderThread {
       .as_ref()
       .is_none_or(|(asked, _)| now.duration_since(*asked) >= ALLOCATOR_REPORT_EVERY)
     {
-      profiling::scope!("allocator report");
+      xrf_profiler::scope!("allocator report");
 
       let last: Option<&GpuMemory> = report.as_ref().and_then(|(_, held)| held.as_ref());
       let held: Option<GpuMemory> = GpuMemory::read(adapter, device, last);

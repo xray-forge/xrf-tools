@@ -120,7 +120,7 @@ impl RenderThread {
     let device: &wgpu::Device = &gpu.context.device;
     let finishing: Instant = Instant::now();
     let mut commands: Vec<wgpu::CommandBuffer> = {
-      profiling::scope!("finish", "frame");
+      xrf_profiler::scope!("finish", "frame");
 
       let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
@@ -138,7 +138,7 @@ impl RenderThread {
     let submitting: Instant = Instant::now();
 
     {
-      profiling::scope!("submit");
+      xrf_profiler::scope!("submit");
 
       gpu.context.queue.submit(commands);
     }
@@ -253,7 +253,7 @@ impl RenderThread {
       let presenting: Instant = Instant::now();
 
       {
-        profiling::scope!("present");
+        xrf_profiler::scope!("present");
 
         queue.present(image);
       }

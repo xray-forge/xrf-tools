@@ -13,7 +13,6 @@ build = "../../core/build.rs"
 image = { workspace = true, features = ["png", "tga"] }
 log = { workspace = true }
 notify = { workspace = true }
-profiling = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 tauri = { workspace = true }

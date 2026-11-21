@@ -6,17 +6,18 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-# Only `tracy` needs it, to turn `profiling`'s Tracy backend on for every crate that opens scopes.
-profiling = { workspace = true, optional = true }
+# This crate's alone: every other crate opens its scopes through `xrf_profiler::scope!`, so one feature here turns every
+# scope in a build into a zone.
+profiling = "1.0.18"
 # Tracy 0.14's protocol, which the workspace's Tracy tools speak and whose exporter reads GPU zones; the `-sys` crate is a
 # direct dependency only to pin it.
-tracy-client = { workspace = true, optional = true }
+tracy-client = { version = "=0.18.5", optional = true }
 tracy-client-sys = { version = "=0.29.0", optional = true }
 
 [features]
-# Every `profiling` scope in the build becomes a Tracy zone, streamed to a client this crate starts. Only the `tracy`
-# build profile turns it on.
-tracy = ["dep:profiling", "profiling/profile-with-tracy", "dep:tracy-client", "dep:tracy-client-sys"]
+# Every scope in the build becomes a Tracy zone, streamed to a client this crate starts, beside the GPU's timeline. Only
+# the `tracy` build profile turns it on.
+tracy = ["profiling/profile-with-tracy", "dep:tracy-client", "dep:tracy-client-sys"]
 # Every allocation and free goes to the capture too, with its call stack: costly, for finding what holds memory.
 tracy-memory = ["tracy"]
 

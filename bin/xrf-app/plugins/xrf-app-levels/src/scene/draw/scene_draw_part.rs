@@ -39,7 +39,7 @@ impl SceneDrawPart {
   /// The extent and per-object spheres of the scene objects `drawn`, from each `.object`'s mesh boxes placed as
   /// `CSceneObject::GetBox` places them, each library object read once without compiling it; and each object not drawn.
   fn read(drawn: &SceneDrawnObjects, objects: &XraySearch) -> SceneDraw {
-    profiling::scope!("scene draw");
+    xrf_profiler::scope!("scene draw");
 
     let mut boxes: HashMap<&str, XrfResult<Option<Aabb>>> = HashMap::new();
     let mut bounds: Option<Aabb> = None;

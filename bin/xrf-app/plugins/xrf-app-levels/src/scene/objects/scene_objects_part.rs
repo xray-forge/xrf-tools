@@ -41,7 +41,7 @@ impl SceneObjectsPart {
   /// Every object tool's objects, in the editor's tool order. A tool whose objects, group members included, do not read
   /// becomes a problem, as the editor fails that tool and loads the rest.
   pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> SceneObjectsDescription {
-    profiling::scope!("scene objects");
+    xrf_profiler::scope!("scene objects");
 
     let mut description: SceneObjectsDescription = SceneObjectsDescription {
       tools: Vec::new(),

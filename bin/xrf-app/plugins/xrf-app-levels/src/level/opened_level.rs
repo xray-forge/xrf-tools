@@ -35,7 +35,7 @@ impl OpenedLevel {
     dialect: Arc<dyn LtxDialect>,
     engine: impl FnOnce(&XraySearch, &XrayRoots) -> XrayEngineResolution,
   ) -> TauriResult<SessionDerived<SelectedLevel>> {
-    profiling::scope!("level open");
+    xrf_profiler::scope!("level open");
 
     let inputs: XrayInputRecord = XrayInputRecord::new();
     let search: XraySearch = search.with_recording(&inputs);
@@ -101,19 +101,19 @@ impl OpenedLevel {
       || {
         let (bundle, geometry) = parallel::join(
           || {
-            profiling::scope!("level bundle");
+            xrf_profiler::scope!("level bundle");
 
             LevelBundle::read(source, search)
           },
           || {
-            profiling::scope!("level geometry");
+            xrf_profiler::scope!("level geometry");
 
             LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs))
           },
         );
         let dressed: TauriResult<(LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>)> =
           bundle.map(|bundle| {
-            profiling::scope!("level surfaces and textures");
+            xrf_profiler::scope!("level surfaces and textures");
 
             let surfaces: Vec<XraySurfaceDescriptor> =
               LevelSurfacesPart::resolve(&bundle.level, &search.clone().with_recording(&surfaces_inputs), &scope);
@@ -137,7 +137,7 @@ impl OpenedLevel {
         let (spawned, (resolved, read_in)) = parallel::join(
           || -> (TauriResult<Arc<LevelSpawn>>, Vec<bool>) {
             let spawn: TauriResult<Arc<LevelSpawn>> = {
-              profiling::scope!("level spawn");
+              xrf_profiler::scope!("level spawn");
 
               LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs), configs)
             };
@@ -148,7 +148,7 @@ impl OpenedLevel {
             let open: Vec<bool> = spawn.as_deref().map_or_else(
               |_| Vec::new(),
               |found| {
-                profiling::scope!("level start");
+                xrf_profiler::scope!("level start");
 
                 LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), found)
               },
@@ -157,7 +157,7 @@ impl OpenedLevel {
             (spawn, open)
           },
           || -> (TauriResult<Arc<LtxResolution>>, Duration) {
-            profiling::scope!("level configs");
+            xrf_profiler::scope!("level configs");
 
             let started: Instant = Instant::now();
             let resolved: TauriResult<Arc<LtxResolution>> =
@@ -204,7 +204,7 @@ impl OpenedLevel {
     parts = LevelSurfacesPart::with(parts, Arc::new(surfaces), surfaces_inputs);
     parts = LevelTexturesPart::with(parts, Arc::new(textures), textures_inputs);
     let map: Option<LevelMapDescription> = {
-      profiling::scope!("level map");
+      xrf_profiler::scope!("level map");
 
       LevelMapPart::read(source, &search.clone().with_recording(&map_inputs))
     };

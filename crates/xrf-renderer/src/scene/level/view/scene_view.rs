@@ -156,7 +156,7 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
   ) -> SceneAsks {
-    profiling::scope!("prepare view");
+    xrf_profiler::scope!("prepare view");
 
     let (width, height) = frame.drawn;
 
@@ -202,7 +202,7 @@ impl SceneView {
     options: &RenderViewOptions,
     asks: &SceneAsks,
   ) {
-    profiling::scope!("finish view");
+    xrf_profiler::scope!("finish view");
 
     scene
       .lights
@@ -298,7 +298,7 @@ impl SceneView {
     textures: &'a TextureCache,
     frame: &ReadiedFrame,
   ) -> Option<SceneOutput> {
-    profiling::scope!("declare");
+    xrf_profiler::scope!("declare");
 
     let targets: &'a ViewTargets = self.targets.as_ref()?;
     let uses: ViewTargetUses = ViewTargetUses {

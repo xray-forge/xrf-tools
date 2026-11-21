@@ -47,7 +47,7 @@ impl WindowFrame {
     let acquiring: Instant = Instant::now();
 
     self.image = {
-      profiling::scope!("acquire");
+      xrf_profiler::scope!("acquire");
 
       window.acquire()
     };

@@ -168,7 +168,7 @@ impl LtxProject {
     prefix: Option<XrayLogicalPath>,
     options: LtxProjectOptions,
   ) -> XrfResult<Self> {
-    profiling::scope!("ltx project open");
+    xrf_profiler::scope!("ltx project open");
 
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
     let listings: LtxListingCache = LtxListingCache::default();
@@ -430,7 +430,7 @@ impl LtxProject {
 
   /// Reads one root and applies this project's dialect to it, retaining nothing.
   fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
-    profiling::scope!("ltx resolve", logical_path.as_str());
+    xrf_profiler::scope!("ltx resolve", logical_path.as_str());
 
     let source: LtxVfsSource<'_> = self.source();
 

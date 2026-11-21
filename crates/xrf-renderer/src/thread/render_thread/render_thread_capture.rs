@@ -191,7 +191,7 @@ impl RenderThread {
     frames: &[ReadiedView],
     now: Instant,
   ) -> Vec<RecordCopy> {
-    profiling::scope!("record frames");
+    xrf_profiler::scope!("record frames");
 
     frames
       .iter()

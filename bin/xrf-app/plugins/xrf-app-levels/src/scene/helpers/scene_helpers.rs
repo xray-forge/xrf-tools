@@ -29,7 +29,7 @@ impl SceneHelpers {
   /// first, a spawn point among `models` helped beside its model. A tool whose objects do not read draws none; the
   /// scene's objects report that.
   pub(crate) fn read(scene: &SelectedScene, models: &SceneSpawnModels) -> Self {
-    profiling::scope!("scene helpers");
+    xrf_profiler::scope!("scene helpers");
 
     let mut objects: Vec<RenderHelperObject> = Vec::new();
     let mut tools: Vec<SceneHelperToolCount> = Vec::new();

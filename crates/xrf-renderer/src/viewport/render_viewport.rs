@@ -396,7 +396,7 @@ impl RenderViewport {
     }
 
     if let Some(record) = self.record.as_mut() {
-      profiling::scope!("record frames");
+      xrf_profiler::scope!("record frames");
 
       record.poll();
     }

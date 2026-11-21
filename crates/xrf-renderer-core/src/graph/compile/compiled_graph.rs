@@ -268,7 +268,7 @@ impl<'a> CompiledGraph<'a> {
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
     mut timing: Option<&mut GroupStamps>,
   ) -> RecordedGroup {
-    profiling::scope!("encode group", group.name);
+    xrf_profiler::scope!("encode group", group.name);
 
     let recording: Instant = Instant::now();
     let out_of_memory: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
@@ -305,7 +305,7 @@ impl<'a> CompiledGraph<'a> {
             passes: run.iter().map(|pass| pass.pass.name).collect(),
           };
 
-          profiling::scope!("record", &timed.to_name());
+          xrf_profiler::scope!("record", &timed.to_name());
 
           Self::record_render_pass(&mut encoder, run, (device, cache, resources));
 
@@ -317,7 +317,7 @@ impl<'a> CompiledGraph<'a> {
             passes: vec![pass.pass.name],
           };
 
-          profiling::scope!("record", pass.pass.name);
+          xrf_profiler::scope!("record", pass.pass.name);
 
           let (is_marked, handed): (bool, Vec<wgpu::CommandBuffer>) =
             Self::record_pass(&mut encoder, pass, (device, cache, resources), timing.as_deref_mut());
@@ -351,7 +351,7 @@ impl<'a> CompiledGraph<'a> {
     let finishing: Instant = Instant::now();
 
     {
-      profiling::scope!("finish", group.name);
+      xrf_profiler::scope!("finish", group.name);
 
       commands.push(encoder.finish());
     }

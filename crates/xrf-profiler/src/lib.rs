@@ -1,9 +1,14 @@
 #![doc = include_str!("../README.md")]
 
-// The `tracy` feature takes `profiling` only to switch its Tracy backend on for the whole build; naming it here keeps
-// Cargo's unused-dependency lint from flagging that.
-#[cfg(feature = "tracy")]
-use profiling as _;
+pub(crate) mod gpu_timeline;
+
+pub use profiling::{finish_frame, scope};
+
+pub use crate::gpu_timeline::GpuTimeline;
+
+/// Whether this build streams to Tracy: work done only to describe a zone (naming it, gathering its stamps) can skip
+/// itself when not, and the check folds away.
+pub const IS_ENABLED: bool = cfg!(feature = "tracy");
 
 /// Starts the Tracy client, before any thread opens a zone; call once, first thing in a binary's `main`.
 ///

@@ -21,7 +21,6 @@ indexmap = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-profiling = { workspace = true }
 walkdir = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-ltx-project = { workspace = true }

@@ -7,13 +7,13 @@ rust-version.workspace = true
 
 [dependencies]
 log = { workspace = true }
-profiling = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 walkdir = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
+xrf-profiler = { workspace = true }
 xrf-utils = { workspace = true }
 
 [features]

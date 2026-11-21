@@ -48,7 +48,7 @@ impl OpenedScene {
   /// ([`EditableLevelScene::read_from_source`]).
   /// A part file that does not read, or one the editor would not load as its tool's, is kept as a problem on its tool.
   pub(crate) fn read(self, search: XraySearch) -> TauriResult<SessionDerived<SelectedScene>> {
-    profiling::scope!("scene open");
+    xrf_profiler::scope!("scene open");
 
     let Self {
       source,

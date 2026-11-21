@@ -614,7 +614,7 @@ impl RenderThread {
     let loading: Instant = Instant::now();
 
     {
-      profiling::scope!("load");
+      xrf_profiler::scope!("load");
 
       if let Some(overlays) = overlays {
         view_state.set_overlays(scene, device, &overlays.overlays, overlays.version, selection);
@@ -638,7 +638,7 @@ impl RenderThread {
 
     let preparing: Instant = Instant::now();
     let asks: SceneAsks = {
-      profiling::scope!("prepare");
+      xrf_profiler::scope!("prepare");
 
       let asks: SceneAsks = view_state.prepare(
         scene,

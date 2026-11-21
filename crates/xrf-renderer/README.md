@@ -185,7 +185,6 @@ Each group of passes declares the structs and modules its passes use (`declare_s
 | Feature               | Effect                                                                                    |
 | --------------------- | ----------------------------------------------------------------------------------------- |
 | `dlss`                | Upscales with NVIDIA DLSS on Vulkan and D3D12, built against its SDK (`xrf-dlss/sdk`)     |
-| `tracy`               | Zones, GPU zones and frame marks for a Tracy capture (`xrf-renderer-core/tracy`)          |
 | `typescript-bindings` | Derives the contract's Specta types and registers its constants for the generated mirrors |
 
 The renderer adapts third-party work, AMD FSR among it; [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) holds their

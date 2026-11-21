@@ -284,7 +284,7 @@ impl LevelParticles {
     let mut emitters: ProxyStore<ParticleEmitterProxy> = std::mem::take(&mut self.emitters);
 
     self.step = Some(self.workers.spawn_frame_task(move |is_parallel: bool| {
-      profiling::scope!("particles");
+      xrf_profiler::scope!("particles");
 
       let started: Instant = Instant::now();
       let context: ParticleUpdateContext<'_> = ParticleUpdateContext {
@@ -357,7 +357,7 @@ impl LevelParticles {
       return;
     };
 
-    profiling::scope!("particles wait");
+    xrf_profiler::scope!("particles wait");
 
     let Some(ParticleStep {
       emitters,
