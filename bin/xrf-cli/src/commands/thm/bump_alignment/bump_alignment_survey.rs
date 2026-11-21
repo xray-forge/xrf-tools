@@ -1,6 +1,6 @@
-use rayon::prelude::*;
 use xrf_dds::DdsFile;
 use xrf_error::XrfResult;
+use xrf_job::parallel::prelude::*;
 use xrf_material::{
   XrayBumpNaming, XrayMaterialBump, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver,
 };

@@ -2,10 +2,10 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use image::{GenericImageView, RgbaImage};
-use rayon::prelude::*;
 use xrf_dds::{DdsFile, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
+use xrf_job::parallel::prelude::*;
 use xrf_utils::{HostDestination, HostRelativePath, OutputFiles, format_path};
 
 use crate::description::{

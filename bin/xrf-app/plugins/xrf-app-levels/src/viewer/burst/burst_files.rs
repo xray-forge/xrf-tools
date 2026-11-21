@@ -4,6 +4,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use image::RgbaImage;
 use xrf_app_core::TauriResult;
 use xrf_app_render::CaptureFile;
+use xrf_job::parallel;
 
 /// Writes a burst's pictures as PNG on the worker pool, a few at once, so frames keep coming meanwhile: a fullscreen
 /// frame's PNG takes about 200 ms to encode and its marks' 90 ms, longer than the next frame takes to draw. A failed
@@ -41,7 +42,7 @@ impl BurstFiles {
     let sender: Sender<TauriResult> = self.sender.clone();
 
     self.pending += 1;
-    rayon::spawn(move || {
+    parallel::spawn(move || {
       let _ = sender.send(CaptureFile::write_png(&picture, &path, name));
     });
 

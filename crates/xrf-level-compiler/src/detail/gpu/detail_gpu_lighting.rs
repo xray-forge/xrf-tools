@@ -1,5 +1,5 @@
-use rayon::prelude::*;
 use xrf_error::XrfResult;
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
 use xrf_level::LevelDetailsFile;
 

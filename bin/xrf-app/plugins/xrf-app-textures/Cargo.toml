@@ -11,7 +11,6 @@ build = "../../core/build.rs"
 
 [dependencies]
 log = { workspace = true }
-rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 tauri = { workspace = true }
@@ -24,7 +23,7 @@ xrf-dds = { workspace = true }
 xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-material = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-texture = { workspace = true }

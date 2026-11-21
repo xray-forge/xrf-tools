@@ -13,7 +13,6 @@ bytemuck = { workspace = true, optional = true }
 glam = { workspace = true }
 log = { workspace = true }
 pollster = { workspace = true, optional = true }
-rayon = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }
 specta = { workspace = true, optional = true }

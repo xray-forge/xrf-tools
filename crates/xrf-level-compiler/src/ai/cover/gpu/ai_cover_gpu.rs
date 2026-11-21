@@ -1,8 +1,9 @@
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel;
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
 
 use crate::ai::ai_vertex::AiVertex;
@@ -37,7 +38,7 @@ impl AiCoverGpu<'_> {
     scope: &JobScope,
   ) -> XrfResult<Vec<AiNodeCovers>> {
     // One flood's marks a thread, kept across chunks: a node count's worth is too large to make again each time.
-    let queries: Vec<Mutex<AiCoverQuery>> = (0..rayon::current_num_threads())
+    let queries: Vec<Mutex<AiCoverQuery>> = (0..parallel::current_num_threads())
       .map(|_| Mutex::new(AiCoverQuery::new(vertices.len())))
       .collect();
     let aim = |nodes: &[u32]| Self::aim(vertices, nodes, &queries);
@@ -49,7 +50,7 @@ impl AiCoverGpu<'_> {
       job.check_cancelled()?;
 
       let next: Option<&[u32]> = if waiting.is_empty() { chunks.next() } else { None };
-      let (traced, aimed) = rayon::join(
+      let (traced, aimed) = parallel::join(
         || self.tracer.trace(&batch.rays, RayRules::COVERS),
         || next.map(aim).transpose(),
       );
@@ -67,7 +68,7 @@ impl AiCoverGpu<'_> {
     let targets: Vec<Vec<u32>> = nodes
       .par_iter()
       .map(|node| {
-        let mut query = queries[rayon::current_thread_index().unwrap_or(0) % queries.len()]
+        let mut query = queries[parallel::current_thread_index().unwrap_or(0) % queries.len()]
           .lock()
           .map_err(|_| XrfError::new_unexpected_error("An AI-map flood failed while holding its marks"))?;
 

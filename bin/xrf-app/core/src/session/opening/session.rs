@@ -2,7 +2,7 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::time::Instant;
 
-use rayon::ThreadPool;
+use xrf_job::parallel::ThreadPool;
 use xrf_vfs::{XrayInputRecord, XrayRevision, XrayVfs};
 
 use crate::TauriResult;

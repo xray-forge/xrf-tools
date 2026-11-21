@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use rayon::ThreadPool;
+use xrf_job::parallel::ThreadPool;
 use xrf_vfs::{XrayInputRecord, XrayRevision, XrayRoots, XraySearch};
 
 use crate::TauriResult;

@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use image::RgbaImage;
-use rayon::prelude::*;
+use xrf_job::parallel::prelude::*;
 
 use crate::mip::dds_mip_filter::DdsMipFilter;
 

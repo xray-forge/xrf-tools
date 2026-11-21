@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use rayon::ThreadPool;
+use xrf_job::parallel::ThreadPool;
 
 use crate::session::scopes::session_bindings::SessionBindings;
 use crate::session::{SessionId, SessionRelease, SessionScope};

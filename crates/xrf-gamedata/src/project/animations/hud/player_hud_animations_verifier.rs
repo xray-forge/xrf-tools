@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rayon::prelude::*;
 use xrf_error::XrfResult;
+use xrf_job::parallel::prelude::*;
 use xrf_ltx::{Ltx, LtxResolution, Section};
 use xrf_utils::narrow_format_size;
 

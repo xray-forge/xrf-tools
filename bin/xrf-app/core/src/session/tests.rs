@@ -6,7 +6,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use rayon::prelude::*;
+use xrf_job::parallel::ThreadPool;
+use xrf_job::parallel::prelude::*;
+use xrf_job::testing::create_test_pool;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{
   XrayAsset, XrayInputKind, XrayInputRecord, XrayLookupScope, XrayMountMode, XrayRevision, XrayRoots, XraySearch,
@@ -853,7 +855,7 @@ impl AssetChangeSubscriber for ChangeLog {
 
 /// A deferred derivation held until the test lets it go: it says when it starts, then waits.
 struct HeldDerivation {
-  pool: Arc<rayon::ThreadPool>,
+  pool: Arc<ThreadPool>,
   started: Receiver<()>,
   release: Sender<()>,
   calls: Arc<AtomicU32>,
@@ -862,12 +864,7 @@ struct HeldDerivation {
 impl HeldDerivation {
   /// A session deriving `"derived"`, read from nothing, on a pool of one thread, held as above.
   fn session() -> (Session<&'static str>, Self) {
-    let pool: Arc<rayon::ThreadPool> = Arc::new(
-      rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
-        .build()
-        .expect("a test pool"),
-    );
+    let pool: Arc<ThreadPool> = Arc::new(create_test_pool(1));
     let (started_sender, started) = mpsc::channel::<()>();
     let (release, released) = mpsc::channel::<()>();
     let (started_sender, released) = (Mutex::new(started_sender), Mutex::new(released));
@@ -1113,12 +1110,7 @@ fn a_panicking_subscriber_leaves_the_rest_to_hear_and_a_deferred_derivation_to_s
 #[test]
 fn a_deferred_derivation_that_panics_is_reported_failed_and_tried_again_by_the_next_change() {
   let (assets, search) = opened_tree("panicking_derivation", &["configs/system.ltx"]);
-  let pool: Arc<rayon::ThreadPool> = Arc::new(
-    rayon::ThreadPoolBuilder::new()
-      .num_threads(1)
-      .build()
-      .expect("a test pool"),
-  );
+  let pool: Arc<ThreadPool> = Arc::new(create_test_pool(1));
   let calls: Arc<AtomicU32> = Arc::default();
   let counted: Arc<AtomicU32> = Arc::clone(&calls);
   let session: Session<&str> = Session::new("test").with_deferred_derivation(Arc::clone(&pool), move |_, _| {

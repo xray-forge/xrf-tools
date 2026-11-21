@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_utils::{HostDestination, HostRelativePath, OutputFiles};
 

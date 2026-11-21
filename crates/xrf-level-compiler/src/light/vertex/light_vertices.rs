@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use glam::Vec3;
-use rayon::prelude::*;
 use xrf_geometry::{PointWelder, XrlcTracer};
+use xrf_job::parallel::prelude::*;
 use xrf_level::LevelLightRole;
 
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;

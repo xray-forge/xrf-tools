@@ -1,7 +1,7 @@
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use rayon::ThreadPool;
+use xrf_job::parallel::ThreadPool;
 
 /// The work a task runs, told whether it runs on a worker and may spread over the pool.
 type FrameTaskWork<T> = Box<dyn FnOnce(bool) -> T + Send>;

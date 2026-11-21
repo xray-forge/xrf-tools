@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_gamemtl::GameMtlFile;
+use xrf_job::parallel::prelude::*;
 use xrf_ltx::Ltx;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath};
 use xrf_xml::{XmlDocument, XmlParseOptions};

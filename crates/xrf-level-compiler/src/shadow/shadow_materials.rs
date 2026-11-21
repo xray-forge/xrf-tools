@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsFile, GrayImage};
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::TraceHit;
+use xrf_job::parallel::prelude::*;
 use xrf_math::Vector2d;
 use xrf_thm::{ThmFile, ThmTextureParamChunk};
 use xrf_utils::format_path;

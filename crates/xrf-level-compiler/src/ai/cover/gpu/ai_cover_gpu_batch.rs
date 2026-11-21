@@ -1,5 +1,5 @@
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_math::Vector3d;
 
 use crate::ai::ai_vertex::AiVertex;

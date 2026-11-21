@@ -4,8 +4,8 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
 use image::RgbaImage;
-use rayon::prelude::*;
 use xrf_app_core::TauriResult;
+use xrf_job::parallel::prelude::*;
 use xrf_renderer::{BurstEvent, BurstJob, BurstMarks, RenderBurst, RenderCapture};
 
 use crate::viewer::burst::{BurstFiles, BurstOutcome, BurstSound, BurstVideo};

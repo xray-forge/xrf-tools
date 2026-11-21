@@ -1,7 +1,7 @@
-use rayon::prelude::*;
 use serde::Serialize;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
+use xrf_job::parallel::prelude::*;
 use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayRoots, XraySearch};
 

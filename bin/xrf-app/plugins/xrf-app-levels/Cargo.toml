@@ -14,7 +14,6 @@ glam = { workspace = true }
 image = { workspace = true, features = ["png", "tga"] }
 log = { workspace = true }
 profiling = { workspace = true }
-rayon = { workspace = true }
 # Rasterises a level map's annotations, which it draws as an SVG.
 resvg = { workspace = true, features = ["text", "system-fonts"] }
 serde = { workspace = true }
@@ -40,7 +39,7 @@ xrf-extension = { workspace = true }
 xrf-gamemtl = { workspace = true }
 xrf-geometry = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-level = { workspace = true }
 # The details step's GPU backend, traced on D3D12 through the DXC the app bundles for the renderer.
 xrf-level-compiler = { workspace = true, features = ["gpu"] }
@@ -80,6 +79,7 @@ tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
 # Writes a scene's text parts as the editor saves them, groups and broken saves among them.
 xrf-ini = { workspace = true }
+xrf-job = { workspace = true, features = ["testing"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-shaders = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }

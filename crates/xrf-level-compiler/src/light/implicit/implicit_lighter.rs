@@ -1,8 +1,8 @@
 use std::ops::Range;
 
 use glam::Vec3;
-use rayon::prelude::*;
 use xrf_error::XrfResult;
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
 use xrf_math::{Vector2d, Vector3d};
 

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use rayon::ThreadPool;
 use xrf_error::XrfResult;
+use xrf_job::parallel::ThreadPool;
 use xrf_job::{ExecutionPlan, ExecutionRequest};
 
 use crate::TauriResult;

@@ -6,6 +6,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionParts, SessionSnapshot};
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_engine_target::XrayEngineResolution;
+use xrf_job::parallel;
 use xrf_level::LevelGeomSource;
 use xrf_ltx::{Ltx, LtxDialect, LtxResolution};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
@@ -96,9 +97,9 @@ impl OpenedLevel {
     // Two parallel lines of reads: the level and its geometry, then its surfaces and textures; and the spawn, then its
     // start places, beside the game's configs. The configs are the longest read, so they start at once rather than
     // after the spawn; the renderer's first texture needs them, so they are read with the level, not after it.
-    let ((dressed, geometry), (spawn, open, sections)) = rayon::join(
+    let ((dressed, geometry), (spawn, open, sections)) = parallel::join(
       || {
-        let (bundle, geometry) = rayon::join(
+        let (bundle, geometry) = parallel::join(
           || {
             profiling::scope!("level bundle");
 
@@ -133,7 +134,7 @@ impl OpenedLevel {
         (dressed, geometry)
       },
       || {
-        let (spawned, (resolved, read_in)) = rayon::join(
+        let (spawned, (resolved, read_in)) = parallel::join(
           || -> (TauriResult<Arc<LevelSpawn>>, Vec<bool>) {
             let spawn: TauriResult<Arc<LevelSpawn>> = {
               profiling::scope!("level spawn");

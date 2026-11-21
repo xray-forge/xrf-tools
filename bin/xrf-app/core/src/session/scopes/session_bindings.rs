@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use rayon::ThreadPool;
+use xrf_job::parallel::ThreadPool;
 
 use crate::session::{SessionId, SessionScope};
 

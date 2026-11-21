@@ -29,7 +29,7 @@ xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-gamemtl = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-level = { workspace = true }
 xrf-light-anim = { workspace = true }
 xrf-math = { workspace = true }

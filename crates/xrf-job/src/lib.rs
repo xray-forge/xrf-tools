@@ -2,13 +2,14 @@
 
 mod execution;
 mod job;
+pub mod parallel;
 mod progress;
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "rayon")]
-pub use crate::execution::PoolOnceLock;
-pub use crate::execution::{ExecutionOrigin, ExecutionPlan, ExecutionRequest};
+pub use crate::execution::{ExecutionOrigin, ExecutionPlan, ExecutionRequest, PoolOnceLock};
 pub use crate::job::{JobHandle, JobOutcome, JobScope};
 pub use crate::progress::{JobProgress, NoopSink, ProgressLevel, ProgressSink, ProgressUnit, RecordingSink};

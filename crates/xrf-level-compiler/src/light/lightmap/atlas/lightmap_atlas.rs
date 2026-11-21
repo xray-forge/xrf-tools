@@ -1,7 +1,7 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
 
-use rayon::prelude::*;
+use xrf_job::parallel::prelude::*;
 use xrf_math::Vector2d;
 
 use crate::light::lightmap::atlas::lightmap_faces::LightmapFaces;

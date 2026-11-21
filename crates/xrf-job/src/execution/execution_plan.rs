@@ -1,9 +1,7 @@
 use std::num::NonZeroUsize;
 
-#[cfg(feature = "rayon")]
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use serde::Serialize;
-#[cfg(feature = "rayon")]
 use xrf_error::{XrfError, XrfResult};
 
 use crate::execution::ExecutionOrigin;
@@ -38,10 +36,7 @@ impl ExecutionPlan {
   pub fn get_origin(&self) -> ExecutionOrigin {
     self.origin
   }
-}
 
-#[cfg(feature = "rayon")]
-impl ExecutionPlan {
   /// Builds the pool this plan describes.
   ///
   /// For a caller that keeps one pool across several operations — a desktop application running concurrent jobs, where

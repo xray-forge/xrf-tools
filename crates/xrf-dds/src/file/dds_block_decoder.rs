@@ -3,7 +3,7 @@
 use ddsfile::Dds;
 use image::RgbaImage;
 use image_dds::{ImageFormat, Surface, mip_dimension};
-use rayon::prelude::*;
+use xrf_job::parallel::prelude::*;
 
 /// The decoder [`crate::DdsFile::decode_rgba`] tries first, for block-compressed layouts.
 pub(crate) struct DdsBlockDecoder;

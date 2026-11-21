@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec3};
-use rayon::prelude::*;
 use wgpu::util::DeviceExt;
+use xrf_job::parallel::prelude::*;
 use xrf_material::{XraySurfaceDraw, XraySurfaceSampler};
 use xrf_particles::{
   ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,

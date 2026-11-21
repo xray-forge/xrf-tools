@@ -148,7 +148,6 @@ fn reports_a_plan_in_the_shape_a_report_carries() {
   );
 }
 
-#[cfg(feature = "rayon")]
 mod bounds {
   use rayon::prelude::*;
 

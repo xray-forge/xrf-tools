@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 
 use crate::project::gamedata_check_schedule::GamedataCheckSchedule;
 use crate::{

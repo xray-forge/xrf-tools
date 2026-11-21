@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use rayon::ThreadPoolBuilder;
+use xrf_job::testing::create_test_pool;
 
 use crate::GamedataProjectVerifyOptions;
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
@@ -13,7 +13,7 @@ fn a_sweep_starts_no_item_after_cancellation() {
   let visited: AtomicUsize = AtomicUsize::new(0);
 
   // A single worker makes the stop boundary deterministic.
-  let pool = ThreadPoolBuilder::new().num_threads(1).build().expect("test pool");
+  let pool = create_test_pool(1);
 
   pool
     .install(|| {

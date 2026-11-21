@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::f32::consts::{PI, TAU};
 
 use glam::Vec3;
-use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_geometry::{PointWelder, TraceHit, Triangle, XrlcTracer};
+use xrf_job::parallel::prelude::*;
 use xrf_level::{BuildCformRaycastFace, BuildPrjFile, BuildPrjMuModel, LevelLightRole};
 use xrf_math::{Matrix4x4, Vector3d};
 

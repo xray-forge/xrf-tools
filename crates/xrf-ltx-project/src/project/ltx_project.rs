@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_ltx::{
   LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, Ltx, LtxDialect, LtxDocument, LtxDocumentSource, LtxResolution,
   LtxResolveRequest, LtxSchemeParser, LtxSectionSchemes, LtxStandardDialect, SYSTEM_LTX_FILENAME,

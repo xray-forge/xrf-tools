@@ -2,8 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_ltx::{Ltx, LtxResolution, Section};
 
 use crate::project::animations::hud::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;

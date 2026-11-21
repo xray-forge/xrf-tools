@@ -3,7 +3,8 @@ use std::sync::{Arc, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use rayon::{ThreadPool, ThreadPoolBuilder};
+use xrf_job::parallel::ThreadPool;
+use xrf_job::testing::create_test_pool;
 
 use crate::session::{SessionId, SessionScope, SessionScopes, SessionSnapshot, Sessions};
 
@@ -188,7 +189,7 @@ fn restores_a_description_under_the_snapshot_identity() {
 
 #[test]
 fn a_closed_document_is_dropped_on_the_scopes_pool() {
-  let pool: Arc<ThreadPool> = Arc::new(ThreadPoolBuilder::new().num_threads(1).build().unwrap());
+  let pool: Arc<ThreadPool> = Arc::new(create_test_pool(1));
   let scopes: SessionScopes = SessionScopes::new(Arc::clone(&pool));
   let sessions: Sessions<Vec<u8>> = Sessions::new("test", &scopes);
   let id: SessionId = SessionId::generate();

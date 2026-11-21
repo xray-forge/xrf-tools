@@ -3,27 +3,21 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
 
-use rayon::{ThreadPool, ThreadPoolBuilder};
+use rayon::ThreadPool;
 
 use crate::execution::PoolOnceLock;
+use crate::testing::create_test_pool;
 
 /// Long enough for any step here on a loaded machine; reached only where the lock deadlocked.
 const WAIT: Duration = Duration::from_secs(10);
 /// How long the build's first half gives the second to be taken by another worker, which a pool of one never has.
 const TAKEN_WAIT: Duration = Duration::from_millis(200);
 
-fn create_pool(workers: usize) -> ThreadPool {
-  ThreadPoolBuilder::new()
-    .num_threads(workers)
-    .build()
-    .expect("a test pool starts")
-}
-
 // The order a plain `OnceLock` never returns from: the build's second half is taken by the pool's other worker, so the
 // worker building waits for it and takes the job queued meanwhile, which waits on the lock that worker is filling.
 #[test]
 fn builds_while_a_worker_of_the_callers_pool_waits_on_it() {
-  let pool: ThreadPool = create_pool(2);
+  let pool: ThreadPool = create_test_pool(2);
   let lock: Arc<PoolOnceLock<u32>> = Arc::new(PoolOnceLock::new());
   let (answer, answers): (Sender<u32>, Receiver<u32>) = mpsc::channel();
   let (second_started, on_second_started): (Sender<()>, Receiver<()>) = mpsc::channel();
@@ -83,7 +77,7 @@ fn builds_while_a_worker_of_the_callers_pool_waits_on_it() {
 
 #[test]
 fn builds_once_however_many_ask_at_once() {
-  let pool: ThreadPool = create_pool(4);
+  let pool: ThreadPool = create_test_pool(4);
   let lock: PoolOnceLock<u32> = PoolOnceLock::new();
   let builds: AtomicU32 = AtomicU32::new(0);
 

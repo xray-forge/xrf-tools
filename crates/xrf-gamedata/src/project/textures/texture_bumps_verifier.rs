@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use rayon::prelude::*;
 use xrf_error::XrfResult;
+use xrf_job::parallel::prelude::*;
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_thm::{ThmFile, ThmTrailingBytes};
 use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayResolution, XraySearch};

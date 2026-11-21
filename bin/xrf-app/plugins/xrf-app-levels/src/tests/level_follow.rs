@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use rayon::ThreadPool;
 use xrf_app_core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use xrf_app_core::session::{
   SessionChange, SessionDerived, SessionId, SessionPart, SessionRootChange, SessionScopes, SessionSnapshot,
@@ -15,6 +14,8 @@ use xrf_app_core::session::{
 use xrf_app_render::WorldState;
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineResolution};
+use xrf_job::parallel::ThreadPool;
+use xrf_job::testing::create_test_pool;
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
 use xrf_renderer::{LevelPart, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::GeneratedResources;
@@ -150,12 +151,7 @@ fn write(assets: &AssetMountState, search: &XraySearch, path: &str, bytes: impl 
 }
 
 fn test_pool() -> Arc<ThreadPool> {
-  Arc::new(
-    rayon::ThreadPoolBuilder::new()
-      .num_threads(2)
-      .build()
-      .expect("a test pool"),
-  )
+  Arc::new(create_test_pool(2))
 }
 
 /// Waits for `is_done`, a few seconds at most.

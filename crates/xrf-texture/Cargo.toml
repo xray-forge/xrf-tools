@@ -10,7 +10,6 @@ rust-version.workspace = true
 # reads nothing these tools are handed.
 image = { workspace = true, features = ["rayon", "bmp", "dds", "jpeg", "png", "tga"] }
 log = { workspace = true }
-rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-dds = { workspace = true }

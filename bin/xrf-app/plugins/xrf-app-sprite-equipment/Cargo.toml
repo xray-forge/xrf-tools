@@ -22,7 +22,7 @@ xrf-dds = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-project = { workspace = true }
 xrf-sprite = { workspace = true }

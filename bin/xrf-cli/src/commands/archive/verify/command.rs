@@ -2,9 +2,9 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::{ArgMatches, Command};
-use rayon::prelude::*;
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};

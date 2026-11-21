@@ -1,5 +1,5 @@
 use image::{Rgba, RgbaImage};
-use rayon::prelude::*;
+use xrf_job::parallel::prelude::*;
 use xrf_math::Vector3d;
 
 use crate::bump::bump_vector::BumpVector;

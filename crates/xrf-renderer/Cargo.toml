@@ -18,7 +18,6 @@ notify = { workspace = true }
 pollster = { workspace = true }
 profiling = { workspace = true }
 raw-window-handle = "0.6.2"
-rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 wgpu = { workspace = true }
@@ -28,6 +27,7 @@ xrf-engine-target = { workspace = true }
 xrf-env-flags = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
+xrf-job = { workspace = true }
 xrf-material = { workspace = true }
 xrf-math = { workspace = true, features = ["glam"] }
 xrf-particles = { workspace = true }
@@ -49,6 +49,7 @@ naga = { workspace = true }
 # Rasterises the helper icons' pictures into their atlas, which the generator test writes.
 resvg = { workspace = true }
 serde_json = { workspace = true }
+xrf-job = { workspace = true, features = ["testing"] }
 # The engine's own light animation arithmetic, which the renderer's is held to.
 xrf-light-anim = { workspace = true }
 xrf-test-utils = { workspace = true }

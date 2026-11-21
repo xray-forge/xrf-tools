@@ -3,6 +3,7 @@ use std::num::NonZeroUsize;
 use std::sync::Mutex;
 use std::thread;
 
+use xrf_job::parallel;
 use xrf_job::{ExecutionOrigin, ExecutionRequest};
 
 use crate::execution::execution_state::ExecutionState;
@@ -39,11 +40,11 @@ fn bounds_every_concurrent_job_to_one_shared_budget() {
           widths
             .lock()
             .expect("widths are not poisoned")
-            .push(rayon::current_num_threads());
+            .push(parallel::current_num_threads());
 
           // Named on every worker the pool actually used for this job, so the set below is the real thread population
           // rather than whichever one happened to answer first.
-          rayon::broadcast(|_| {
+          execution.get_pool().broadcast(|_| {
             workers
               .lock()
               .expect("workers are not poisoned")

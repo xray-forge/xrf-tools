@@ -12,7 +12,6 @@ path = "src/lib.rs"
 [dependencies]
 indexmap = { workspace = true }
 profiling = { workspace = true }
-rayon = { workspace = true }
 rustc-hash = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }

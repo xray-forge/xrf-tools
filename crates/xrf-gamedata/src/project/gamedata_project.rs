@@ -3,12 +3,12 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use rayon::prelude::*;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_job::JobHandle;
+use xrf_job::parallel::prelude::*;
 use xrf_ltx::Ltx;
 use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;

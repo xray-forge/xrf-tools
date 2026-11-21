@@ -1,5 +1,5 @@
-use rayon::prelude::*;
 use xrf_error::XrfResult;
+use xrf_job::parallel::prelude::*;
 use xrf_utils::narrow_format_size;
 
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;

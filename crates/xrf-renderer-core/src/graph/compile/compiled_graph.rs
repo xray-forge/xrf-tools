@@ -1,8 +1,8 @@
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 
 use crate::graph::compile::compiled_pass::CompiledPass;
 use crate::graph::compile::encode_group::EncodeGroup;

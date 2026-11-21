@@ -1,7 +1,9 @@
 use std::sync::mpsc;
 use std::time::Duration;
 
-use crate::tests::support::test_workers::{TEST_WORKER_NAME, create_workers};
+use xrf_job::testing::TEST_WORKER_NAME;
+
+use crate::tests::support::test_workers::create_workers;
 use crate::thread::frame_task::FrameTask;
 use crate::thread::queue::render_workers::RenderWorkers;
 

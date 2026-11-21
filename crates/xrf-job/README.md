@@ -116,16 +116,23 @@ assert_eq!(plan.get_origin(), ExecutionOrigin::Requested);
 
 The plan's worker count is a ceiling for the whole operation.
 
-- With the `rayon` feature, a binary runs one operation in `plan.install(..)`, or keeps one pool from
-  `plan.build_pool()` and installs every operation into it. Nested Rayon work, including a dependency's, inherits that
-  pool.
+- A binary runs one operation in `plan.install(..)`, or keeps one pool from `plan.build_pool()` and installs every
+  operation into it. Nested Rayon work, including a dependency's, inherits that pool.
 - Library crates call `par_iter` on whatever pool their caller installed and build none of their own.
 - An operation may use fewer workers than planned only under `ExecutionOrigin::Auto`, and only when a measurement
   justifies it. A `Requested` count was chosen by a person.
 
+## Run in parallel
+
+Rayon is this crate's dependency alone. Other crates fan out through `xrf_job::parallel`: its `prelude` (`par_iter`
+and the other parallel iterators), `join`, `spawn`, `current_num_threads`, `current_thread_index` and the
+`ThreadPool` type, all running on the pool installed around the caller. Pool building is not re-exported: binaries
+build theirs from an `ExecutionPlan`, and tests from `xrf_job::testing::create_test_pool(workers)` (feature
+`testing`), whose threads are named `TEST_WORKER_NAME`.
+
 ### `PoolOnceLock`
 
-`PoolOnceLock` (feature `rayon`) is a value built once that pool workers may wait on while its build fans out over
+`PoolOnceLock` is a value built once that pool workers may wait on while its build fans out over
 Rayon.
 
 A plain `OnceLock` deadlocks there: the worker building it takes other jobs while waiting in its own `join`, and one of
@@ -136,14 +143,14 @@ Use a plain `OnceLock` for a value whose build never reaches Rayon, since each `
 
 ## Features
 
-- `rayon`: `ExecutionPlan::install`, `build_pool`, and `PoolOnceLock`.
+- `testing`: `xrf_job::testing`, the pools tests build. Enable it from a dev-dependency.
 - `typescript-bindings`: Specta types for the snapshot, outcome and plan types. `JobProgress` sends `duration` as whole
   milliseconds.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-job --features rayon` from the repository root.
+Run `cargo test --locked -p xrf-job` from the repository root.
 
 Sources: the [handle](src/job/job_handle.rs), [scope](src/job/job_scope.rs) and
 [execution plan](src/execution/execution_plan.rs). They are grouped into `job/`, `progress/` and `execution/`; every
-type is exported from the crate root.
+type is exported from the crate root, and the `parallel` and `testing` modules carry the Rayon surface.

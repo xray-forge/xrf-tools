@@ -18,7 +18,7 @@ tauri-specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-app-core = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-output = { workspace = true }
 xrf-translation = { workspace = true }
 xrf-utils = { workspace = true }

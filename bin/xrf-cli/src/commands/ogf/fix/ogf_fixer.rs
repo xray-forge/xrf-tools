@@ -3,9 +3,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
+use xrf_job::parallel::prelude::*;
 use xrf_ogf::OgfNormalization;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_spawn::XRayByteOrder;

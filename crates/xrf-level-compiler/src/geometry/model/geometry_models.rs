@@ -1,6 +1,6 @@
-use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_level::{
   BuildPrjFile, BuildPrjLod, BuildPrjMuModel, LevelGeomPacker, LevelGeomSlideWindow, LevelGeomSlideWindowItem,
   LevelVertexDeclaration, LevelVertexLayout, LevelVertexQuantizer, LevelVertexStored,

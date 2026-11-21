@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 
 use ddsfile::{Caps2, D3DFormat, Dds, NewD3dParams};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::testing::TEST_WORKER_NAME;
 
 use crate::context::gpu_context::GpuContext;
 use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
@@ -15,7 +16,7 @@ use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::scene::texture::texture_upload_pace::TextureUploadPace;
 use crate::tests::support::test_context::create_test_context;
-use crate::tests::support::test_workers::{TEST_WORKER_NAME, create_workers};
+use crate::tests::support::test_workers::create_workers;
 
 /// Longer than any of these loads should take, even with several suites sharing the machine, so a hung load fails
 /// rather than hangs; a load that lands ends its wait at once.

@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use lzokay::compress::Dict;
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_utils::format_path;
 

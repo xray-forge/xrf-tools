@@ -2,9 +2,9 @@ use std::ffi::OsStr;
 use std::iter;
 use std::path::{Path, PathBuf};
 
-use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
 use xrf_ltx::LtxDialect;
 use xrf_report::Report;

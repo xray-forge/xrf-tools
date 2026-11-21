@@ -11,6 +11,7 @@ use std::time::Duration;
 use tauri::ipc::Channel;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::testing::create_test_pool;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
   RenderAssetSource, RenderBundle, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
@@ -120,12 +121,7 @@ struct Units {
 }
 
 fn create_units() -> Units {
-  let pool = Arc::new(
-    rayon::ThreadPoolBuilder::new()
-      .num_threads(2)
-      .build()
-      .expect("a test pool"),
-  );
+  let pool = Arc::new(create_test_pool(2));
   let workers: RenderWorkers = RenderWorkers::new(pool);
   let world: WorldState = WorldState::new(workers.clone());
   let renderer: Renderer = Renderer::new(RenderQueue::new(

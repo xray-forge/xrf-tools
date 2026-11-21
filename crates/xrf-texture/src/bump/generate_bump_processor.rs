@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use image::{Rgba, RgbaImage};
-use rayon::prelude::*;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobOutcome, JobScope};
 use xrf_math::EPS_S;
 

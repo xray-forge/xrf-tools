@@ -39,7 +39,7 @@ xrf-app-visuals = { workspace = true }
 xrf-build-info = { workspace = true }
 xrf-env-flags = { workspace = true }
 xrf-ipc-typescript = { workspace = true, optional = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-profiler = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-utils = { workspace = true }

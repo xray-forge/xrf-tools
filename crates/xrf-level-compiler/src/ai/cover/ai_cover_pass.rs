@@ -1,7 +1,7 @@
 use glam::Vec3;
-use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{Ray, Tracer};
+use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
 use xrf_math::{Aabb, Vector3d};
 

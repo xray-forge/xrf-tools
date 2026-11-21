@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rayon::prelude::*;
 use xrf_dds::DdsFile;
 use xrf_error::XrfResult;
+use xrf_job::parallel::prelude::*;
 use xrf_level::{LevelFile, LevelShaderEntry, LevelShaderReference};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XrayTextureScope};
 use xrf_texture::TextureAlbedo;

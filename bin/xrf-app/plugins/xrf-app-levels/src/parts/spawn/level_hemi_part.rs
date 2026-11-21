@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use rayon::prelude::*;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_geometry::BvhTracer;
+use xrf_job::parallel::prelude::*;
 use xrf_level::{LevelLight, LevelLightsChunk, LevelLightsFile};
 use xrf_math::{Sphere, Vector3d};
 use xrf_vfs::XraySearch;

@@ -7,7 +7,6 @@ rust-version.workspace = true
 
 [dependencies]
 profiling = { workspace = true }
-rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
@@ -44,6 +43,7 @@ xrf-ppe = { workspace = true }
 [dev-dependencies]
 criterion = { workspace = true }
 serde_json = { workspace = true }
+xrf-job = { workspace = true, features = ["testing"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-math = { workspace = true }
 xrf-test-utils = { workspace = true }

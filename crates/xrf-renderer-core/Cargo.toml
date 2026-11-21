@@ -14,13 +14,13 @@ naga = { workspace = true }
 offset-allocator = "0.2.0"
 pollster = { workspace = true }
 profiling = { workspace = true }
-rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 # The GPU zones' context; xrf-profiler pins the version and starts the client.
 tracy-client = { workspace = true, optional = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
+xrf-job = { workspace = true }
 xrf-profiler = { workspace = true, optional = true }
 xrf-renderer-derive = { workspace = true }
 

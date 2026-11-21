@@ -21,7 +21,7 @@ xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-gamedata = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-report = { workspace = true }
 xrf-utils = { workspace = true }
 

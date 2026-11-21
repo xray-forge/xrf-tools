@@ -1,6 +1,6 @@
 use glam::Vec3;
-use rayon::prelude::*;
 use xrf_geometry::XrlcTracer;
+use xrf_job::parallel::prelude::*;
 use xrf_level::LevelLightRole;
 use xrf_math::Vector3d;
 

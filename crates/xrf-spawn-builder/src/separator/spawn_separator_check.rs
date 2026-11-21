@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use rayon::prelude::*;
+use xrf_job::parallel::prelude::*;
 use xrf_level::LevelAiParts;
 use xrf_math::Aabb;
 use xrf_spawn::AlifeObject;

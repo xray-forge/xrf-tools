@@ -7,7 +7,6 @@ rust-version.workspace = true
 
 [dependencies]
 image = { workspace = true }
-rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-dds = { workspace = true }

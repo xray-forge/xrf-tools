@@ -1,8 +1,8 @@
 use ddsfile::{Caps, Caps2, D3DFormat, Dds, NewD3dParams};
 use image::RgbaImage;
 use image_dds::{ImageFormat, Mipmaps, Quality, Surface, SurfaceRgba8};
-use rayon::prelude::*;
 use xrf_error::{MapXrfErr, XrfError, XrfResult};
+use xrf_job::parallel::prelude::*;
 
 use crate::encode::dds_bc1_cut_out::DdsBc1CutOut;
 use crate::encode::dds_surface_levels::DdsSurfaceLevels;

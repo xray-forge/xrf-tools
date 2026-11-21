@@ -22,7 +22,6 @@ log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 profiling = { workspace = true }
-rayon = { workspace = true }
 walkdir = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-ltx-project = { workspace = true }
@@ -46,7 +45,7 @@ xrf-dltx = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
-xrf-job = { workspace = true, features = ["rayon"] }
+xrf-job = { workspace = true }
 xrf-export = { workspace = true }
 xrf-sprite = { workspace = true }
 xrf-texture = { workspace = true }

@@ -5,7 +5,7 @@ skip_core_tasks = true
 [env]
 # Cargo features that every Cargo check task enables, so they share one build. CI runs the same tasks, so it uses the
 # same list.
-CHECK_FEATURES = "xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon"
+CHECK_FEATURES = "xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/testing"
 # Tauri CLI version pinned by the `bin/xrf-app/ui` lockfile. Desktop tasks run it with Node from `bin/xrf-app/app`,
 # which holds `tauri.conf.json`.
 NODE_TAURI = "../ui/node_modules/@tauri-apps/cli/tauri.js"
