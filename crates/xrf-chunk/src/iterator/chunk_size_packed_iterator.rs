@@ -10,9 +10,9 @@ use crate::source::chunk_data_source::ChunkDataSource;
 
 /// Walks a payload stored as `[size][content]` records, where each size counts its own four bytes.
 ///
-/// Hands each record over as a reader whose id is its ordinal and whose window holds the content alone. Advances the
-/// parent reader's cursor past every record it hands over, and stops at the first malformed size, handing over its
-/// error once.
+/// Hands each record over as a reader whose id is its ordinal and whose window, `size` and `position` describe the
+/// content alone, as [`ChunkReader`]'s fields do for a framed chunk's payload. Advances the parent reader's cursor past
+/// every record it hands over, and stops at the first malformed size, handing over its error once.
 pub struct ChunkSizePackedIterator<'a, T: ChunkDataSource = FileSlice> {
   pub index: u32,
   pub reader: &'a mut ChunkReader<T>,
@@ -106,11 +106,13 @@ impl<T: ChunkDataSource> Iterator for ChunkSizePackedIterator<'_, T> {
       return self.fail(error.into());
     }
 
+    let content_position: u64 = position + CHUNK_SIZE_FIELD_SIZE;
+
     Some(Ok(ChunkReader {
       id,
-      size,
-      position,
-      data: self.reader.data.slice(position + CHUNK_SIZE_FIELD_SIZE..end_position),
+      size: end_position - content_position,
+      position: content_position,
+      data: self.reader.data.slice(content_position..end_position),
     }))
   }
 }
@@ -157,10 +159,13 @@ mod tests {
       vec.push(it?);
     }
 
+    // Size and position describe the content, past the four-byte size field, as a framed chunk's do its payload.
     assert_eq!(vec.len(), 1, "Expected count to be 1");
     assert_eq!(vec[0].id, 0, "Expected id to be 0");
-    assert_eq!(vec[0].size, 5, "Expected size to be 5");
-    assert_eq!(vec[0].position, 0, "Expected position to be 0");
+    assert_eq!(vec[0].size, 1, "Expected size to be 1");
+    assert_eq!(vec[0].position, 4, "Expected position to be 4");
+    assert_eq!(vec[0].read_bytes_remain(), vec[0].size, "Expected size to match the window");
+    assert_eq!(vec[0].read_remaining()?, [255]);
 
     Ok(())
   }
@@ -180,11 +185,12 @@ mod tests {
 
     assert_eq!(vec.len(), 2, "Expected count to be 2");
     assert_eq!(vec[0].id, 0, "Expected [0] id to be 0");
-    assert_eq!(vec[0].size, 8, "Expected [0] size to be 8");
-    assert_eq!(vec[0].position, 0, "Expected [0] position to be 0");
+    assert_eq!(vec[0].size, 4, "Expected [0] size to be 4");
+    assert_eq!(vec[0].position, 4, "Expected [0] position to be 4");
     assert_eq!(vec[1].id, 1, "Expected [1] id to be 1");
-    assert_eq!(vec[1].size, 12, "Expected [1] size to be 12");
-    assert_eq!(vec[1].position, 8, "Expected [1] position to be 8");
+    assert_eq!(vec[1].size, 8, "Expected [1] size to be 8");
+    assert_eq!(vec[1].position, 12, "Expected [1] position to be 12");
+    assert!(vec.iter().all(|it| it.read_bytes_remain() == it.size));
 
     Ok(())
   }
@@ -207,8 +213,8 @@ mod tests {
     // Ids count from where the walk starts.
     assert_eq!(vec.len(), 1, "Expected count to be 1");
     assert_eq!(vec[0].id, 0, "Expected [0] id to be 0");
-    assert_eq!(vec[0].size, 12, "Expected [0] size to be 12");
-    assert_eq!(vec[0].position, 8, "Expected [0] position to be 8");
+    assert_eq!(vec[0].size, 8, "Expected [0] size to be 8");
+    assert_eq!(vec[0].position, 12, "Expected [0] position to be 12");
 
     Ok(())
   }
