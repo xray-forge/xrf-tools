@@ -18,6 +18,7 @@ use xrf_spawn::{
 use crate::level::build::level_build_breakable_export::LevelBuildBreakableExport;
 use crate::level::build::level_build_breakable_part::LevelBuildBreakablePart;
 use crate::level::build::level_build_part_box::LevelBuildPartBox;
+use crate::level::build::level_build_part_groups::LevelBuildPartGroups;
 use crate::level::build::level_build_parts::LevelBuildParts;
 use crate::level::parts::level_breakable_conversion::LevelBreakableConversion;
 use crate::object::compile::bounds::bone_boxes::BoneBoxes;
@@ -104,10 +105,12 @@ impl LevelBuildBreakables {
       refused: Vec::new(),
     };
 
-    for (index, part) in self.parts.get_parts().iter().enumerate() {
+    let groups: LevelBuildPartGroups = self.parts.group();
+
+    for (index, part) in groups.parts.iter().enumerate() {
       let (name, path) = LevelBreakableConversion::get_part_names(index);
 
-      match self.prepare(part) {
+      match self.prepare(&groups, part) {
         Ok(prepared) => {
           export.parts.push(self.build_part(path, part, &prepared)?);
           export.entities.push(Self::get_entity(&name, &prepared.frame));
@@ -123,8 +126,8 @@ impl LevelBuildBreakables {
   ///
   /// As in the editor, every face left over goes to the first fragment, and an offset sums every face of its fragment
   /// but divides by the faces it grew.
-  fn prepare(&mut self, part: &[usize]) -> Result<PreparedPart, String> {
-    let neighbours: Vec<Vec<usize>> = self.part_neighbours(part);
+  fn prepare(&mut self, groups: &LevelBuildPartGroups, part: &[usize]) -> Result<PreparedPart, String> {
+    let neighbours: Vec<Vec<usize>> = groups.get_edge_neighbours(&self.parts.faces, part);
 
     if neighbours.iter().any(Vec::is_empty) {
       return Err(String::from(
@@ -168,21 +171,6 @@ impl LevelBuildBreakables {
       bone_of_face,
       fragments,
     })
-  }
-
-  /// Each face of `part`'s neighbours across an edge, as positions in `part`.
-  fn part_neighbours(&self, part: &[usize]) -> Vec<Vec<usize>> {
-    self
-      .parts
-      .get_edge_neighbours(part)
-      .into_iter()
-      .map(|faces| {
-        faces
-          .into_iter()
-          .filter_map(|face| part.iter().position(|it| *it == face))
-          .collect()
-      })
-      .collect()
   }
 
   /// The part's fragments, and each face's fragment.

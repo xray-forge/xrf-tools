@@ -90,7 +90,8 @@ impl LevelInstanceCutouts {
   /// Each part's box; a part whose corners hold none makes no entity.
   fn get_boxes(parts: &LevelBuildParts) -> Vec<LevelBuildPartBox> {
     parts
-      .get_parts()
+      .group()
+      .parts
       .iter()
       .filter_map(|part| parts.fit_box(part))
       .collect()

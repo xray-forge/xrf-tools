@@ -1,5 +1,5 @@
 use xrf_editable_level::{EditableSceneObject, EditableWallmarkTool};
-use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableSurface, EditableVMapKind};
+use xrf_editable_object::{EditableMesh, EditableObjectFile, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_geometry::FaceArea;
@@ -7,6 +7,7 @@ use xrf_level::BuildPrjFace;
 use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_sectors::LevelBuildSectors;
+use crate::level::build::level_build_surfaces::LevelBuildSurfaces;
 use crate::level::build::level_build_tables::LevelBuildTables;
 use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 use crate::object::compile::geometry::source::mesh_corners::MeshCorners;
@@ -105,7 +106,7 @@ impl LevelBuildGeometry {
     tables: &mut LevelBuildTables,
     game_materials: &GameMtlFile,
   ) -> XrfResult {
-    let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
+    let surfaces: LevelBuildSurfaces<'_> = LevelBuildSurfaces::of(placed, object);
 
     for mesh in object.meshes.iter().flatten() {
       let sector: u16 = sector_of(mesh);
@@ -129,16 +130,8 @@ impl LevelBuildGeometry {
         .vertices
         .extend(mesh.points.iter().map(|point| matrix.transform_point(point)));
 
-      for surface_faces in &mesh.surface_faces {
-        let surface: &EditableSurface = surfaces
-          .iter()
-          .find(|surface| surface.name == surface_faces.surface)
-          .ok_or_else(|| {
-            XrfError::new_invalid_error(format!(
-              "Object '{}' mesh '{}' names surface '{}' it does not hold",
-              placed.reference, mesh.name, surface_faces.surface
-            ))
-          })?;
+      for group in surfaces.iter_groups(mesh) {
+        let (surface, surface_faces) = group?;
 
         // Its faces go to `level.hom` instead.
         if surface.game_material == LevelOccluderConversion::OCCLUDER_GAME_MATERIAL {

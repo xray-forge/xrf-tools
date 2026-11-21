@@ -1,10 +1,11 @@
 use xrf_editable_level::EditableSceneObject;
-use xrf_editable_object::{EditableObjectFile, EditableSurface};
+use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelHomFile, LevelHomPolygon, LevelSomFile, LevelSomPolygon};
 use xrf_math::{Matrix4x4, Vector3d};
 
+use crate::level::build::level_build_surfaces::LevelBuildSurfaces;
 use crate::level::parts::level_occluder_conversion::LevelOccluderConversion;
 
 /// The occluders a build writes beside `build.prj`, from every placed object of any kind.
@@ -34,19 +35,11 @@ impl LevelBuildOccluders {
     let is_hom: bool = object.flags & EditableObjectFile::HOM_FLAG != 0;
     let is_som: bool = object.flags & EditableObjectFile::SOUND_OCCLUDER_FLAG != 0;
     let matrix: Matrix4x4 = placed.object.transform.to_matrix();
-    let surfaces: &[EditableSurface] = object.surfaces.as_deref().unwrap_or_default();
+    let surfaces: LevelBuildSurfaces<'_> = LevelBuildSurfaces::of(placed, object);
 
     for mesh in object.meshes.iter().flatten() {
-      for surface_faces in &mesh.surface_faces {
-        let surface: &EditableSurface = surfaces
-          .iter()
-          .find(|surface| surface.name == surface_faces.surface)
-          .ok_or_else(|| {
-            XrfError::new_invalid_error(format!(
-              "Object '{}' mesh '{}' names surface '{}' it does not hold",
-              placed.reference, mesh.name, surface_faces.surface
-            ))
-          })?;
+      for group in surfaces.iter_groups(mesh) {
+        let (surface, surface_faces) = group?;
         let is_occluder: bool = is_hom || surface.game_material == LevelOccluderConversion::OCCLUDER_GAME_MATERIAL;
         let occlusion: Option<f32> = if is_som {
           Some(

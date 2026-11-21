@@ -27,8 +27,13 @@ pub struct LevelCollisionIndex {
   geometry: LevelCformGeometry,
   /// The faces on each set of three exact points.
   exact: HashMap<[[u32; 3]; 3], Vec<u32>>,
+  /// Each sector's faces, in form order.
+  sector_faces: Vec<Vec<u32>>,
   tracer: BvhTracer,
   covers: Vec<LevelCollisionCover>,
+  /// The material each static render triangle found since the last [`Self::cover_under_static`] lies on, by its
+  /// points in order, so that pass need not locate them again.
+  static_materials: HashMap<[[u32; 3]; 3], u16>,
 }
 
 impl LevelCollisionIndex {
@@ -37,12 +42,21 @@ impl LevelCollisionIndex {
 
   pub fn new(geometry: LevelCformGeometry) -> Self {
     let mut exact: HashMap<[[u32; 3]; 3], Vec<u32>> = HashMap::with_capacity(geometry.get_faces().len());
+    let mut sector_faces: Vec<Vec<u32>> = Vec::new();
 
     for (face, index) in geometry.get_faces().iter().zip(0u32..) {
       exact
         .entry(Self::get_key(&geometry.get_triangle(face)))
         .or_default()
         .push(index);
+
+      let sector: usize = usize::from(face.sector);
+
+      if sector_faces.len() <= sector {
+        sector_faces.resize_with(sector + 1, Vec::new);
+      }
+
+      sector_faces[sector].push(index);
     }
 
     Self {
@@ -50,12 +64,21 @@ impl LevelCollisionIndex {
       covers: vec![LevelCollisionCover::None; geometry.get_faces().len()],
       geometry,
       exact,
+      sector_faces,
+      static_materials: HashMap::new(),
     }
   }
 
   /// Where a static render triangle of `points` lies, marking the collision face it lies on as covered.
   pub fn find_static(&mut self, points: &[Vector3d; 3]) -> LevelCollisionLookup {
-    self.find(points, LevelCollisionCover::Static)
+    let lookup: LevelCollisionLookup = self.find(points, LevelCollisionCover::Static);
+
+    self.static_materials.insert(
+      Self::get_ordered_key(points),
+      lookup.get_material().unwrap_or(Self::NO_MATERIAL),
+    );
+
+    lookup
   }
 
   /// Marks the collision face a tree's triangle of `points`, placed in the level, lies on, where no static triangle
@@ -76,14 +99,21 @@ impl LevelCollisionIndex {
   /// This catches faces xrLC kept whole while splitting the render faces over them, whose centres then miss it. A face
   /// of another material stays uncovered: it is collision of its own, such as a collision-only prop on a floor.
   ///
+  /// The materials [`Self::find_static`] found are taken for the triangles it found, and dropped after.
+  ///
   /// # Errors
   ///
   /// Returns an error when the triangles are too many to index, past `u32` corners.
   pub fn cover_under_static(&mut self, sector: u16, triangles: &[[Vector3d; 3]]) -> XrfResult {
-    let uncovered: Vec<usize> = (0..self.covers.len())
-      .filter(|index| {
-        self.covers[*index] == LevelCollisionCover::None && self.geometry.get_faces()[*index].sector == sector
-      })
+    let found: HashMap<[[u32; 3]; 3], u16> = std::mem::take(&mut self.static_materials);
+    let uncovered: Vec<usize> = self
+      .sector_faces
+      .get(usize::from(sector))
+      .map(Vec::as_slice)
+      .unwrap_or_default()
+      .iter()
+      .map(|index| *index as usize)
+      .filter(|index| self.covers[*index] == LevelCollisionCover::None)
       .collect();
 
     if uncovered.is_empty() || triangles.is_empty() {
@@ -96,7 +126,10 @@ impl LevelCollisionIndex {
     // The material each render triangle lies on, `NO_MATERIAL` where it lies on none.
     let materials: Vec<u16> = triangles
       .iter()
-      .map(|points| self.locate(points).1.get_material().unwrap_or(Self::NO_MATERIAL))
+      .map(|points| match found.get(&Self::get_ordered_key(points)) {
+        Some(material) => *material,
+        None => self.locate(points).1.get_material().unwrap_or(Self::NO_MATERIAL),
+      })
       .collect();
     let render: BvhTracer = BvhTracer::of_triangles(
       triangles
@@ -218,9 +251,14 @@ impl LevelCollisionIndex {
 
   /// A triangle by its three points' bits, in a fixed order, so a face matches whatever corner it starts from.
   fn get_key(points: &[Vector3d; 3]) -> [[u32; 3]; 3] {
-    let mut key: [[u32; 3]; 3] = points.map(|point| [point.x.to_bits(), point.y.to_bits(), point.z.to_bits()]);
+    let mut key: [[u32; 3]; 3] = Self::get_ordered_key(points);
 
     key.sort_unstable();
     key
+  }
+
+  /// A triangle by its three points' bits in its own order, as [`Self::locate`] traces along its winding's normal.
+  fn get_ordered_key(points: &[Vector3d; 3]) -> [[u32; 3]; 3] {
+    points.map(|point| [point.x.to_bits(), point.y.to_bits(), point.z.to_bits()])
   }
 }

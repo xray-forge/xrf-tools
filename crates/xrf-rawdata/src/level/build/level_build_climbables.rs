@@ -11,6 +11,7 @@ use xrf_spawn::{
 
 use crate::level::build::level_build_climbable_export::LevelBuildClimbableExport;
 use crate::level::build::level_build_part_box::LevelBuildPartBox;
+use crate::level::build::level_build_part_groups::LevelBuildPartGroups;
 use crate::level::build::level_build_parts::LevelBuildParts;
 
 /// The ladders a build cuts out of the geometry, `ESceneObjectTool::ExportClimableObjects`.
@@ -56,10 +57,12 @@ impl LevelBuildClimbables {
       refused: Vec::new(),
     };
 
-    for (index, part) in self.parts.get_parts().iter().enumerate() {
+    let groups: LevelBuildPartGroups = self.parts.group();
+
+    for (index, part) in groups.parts.iter().enumerate() {
       let name: String = format!("{}{index}", Self::NAME_PREFIX);
 
-      match self.get_entity(&name, part) {
+      match self.get_entity(&groups, &name, part) {
         Ok(entity) => export.entities.push(entity),
         Err(reason) => export.refused.push((name, reason)),
       }
@@ -69,8 +72,12 @@ impl LevelBuildClimbables {
   }
 
   /// The ladder `part` makes, or why it makes none.
-  fn get_entity(&self, name: &str, part: &[usize]) -> Result<AlifeObject, String> {
-    if self.parts.get_edge_neighbours(part).iter().any(Vec::is_empty) {
+  fn get_entity(&self, groups: &LevelBuildPartGroups, name: &str, part: &[usize]) -> Result<AlifeObject, String> {
+    if groups
+      .get_edge_neighbours(&self.parts.faces, part)
+      .iter()
+      .any(Vec::is_empty)
+    {
       return Err(String::from(
         "a face of it shares no edge with another (\"Error face found\")",
       ));

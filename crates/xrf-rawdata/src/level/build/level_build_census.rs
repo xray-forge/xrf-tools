@@ -5,9 +5,11 @@ use serde::Serialize;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelBuildCensus {
-  /// Static objects whose meshes went into the geometry.
+  /// Static objects whose meshes went into the geometry, multi-use objects aside: their placements are
+  /// [`Self::multi_use_references`].
   pub static_objects: usize,
-  /// Objects of no static geometry: dynamic ones, and occluders, which `level.hom` and `level.som` take.
+  /// Objects of no static geometry: dynamic ones, and occluders, which `level.hom` and `level.som` take. Multi-use
+  /// objects are counted in [`Self::multi_use_references`], not here.
   pub other_objects: usize,
   pub faces: usize,
   /// Faces of occluder, breakable and climbable surfaces, which other exports take.
@@ -21,7 +23,7 @@ pub struct LevelBuildCensus {
   pub portals: usize,
   pub occluder_polygons: usize,
   pub sound_occluder_polygons: usize,
-  /// Multi-use models and the placements referencing them.
+  /// Multi-use models and the placements referencing them; with the static and other objects, every object placed.
   pub multi_use_models: usize,
   pub multi_use_references: usize,
   /// Multi-use models drawn from afar as impostors.

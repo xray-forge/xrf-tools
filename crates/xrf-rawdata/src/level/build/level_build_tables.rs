@@ -1,24 +1,40 @@
+use std::collections::HashMap;
+
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{BuildPrjMaterial, BuildPrjName, BuildPrjShader, BuildPrjTexture};
 
+use crate::level::build::level_build_names::LevelBuildNames;
 use crate::level::build::level_build_table_records::LevelBuildTableRecords;
 
 /// The material, shader and texture tables of a build, filled as faces and glows name them
 /// (`SceneBuilder::BuildMaterial`, `BuildShader`, `BuildShaderXRLC`, `BuildTexture`).
 ///
 /// Each name is kept once in the order first named, shaders compared exactly and textures without case; a material
-/// once per texture, shaders and sector.
-#[derive(Default)]
+/// once per texture, shaders and sector. Every table is indexed by hash, as a large level names thousands.
 pub(crate) struct LevelBuildTables {
   materials: Vec<BuildPrjMaterial>,
-  render_shaders: Vec<String>,
-  compiler_shaders: Vec<String>,
-  textures: Vec<String>,
+  /// Each material's index by its texture, shader, compiler shader and sector.
+  material_indexes: HashMap<[u16; 4], u16>,
+  render_shaders: LevelBuildNames,
+  compiler_shaders: LevelBuildNames,
+  textures: LevelBuildNames,
+}
+
+impl Default for LevelBuildTables {
+  fn default() -> Self {
+    Self {
+      materials: Vec::new(),
+      material_indexes: HashMap::new(),
+      render_shaders: LevelBuildNames::exact(),
+      compiler_shaders: LevelBuildNames::exact(),
+      textures: LevelBuildNames::case_blind(),
+    }
+  }
 }
 
 impl LevelBuildTables {
   /// The compiler shader index of a glow's material, which has none: `u16(-1)`.
-  pub(crate) const NO_COMPILER_SHADER: u16 = u16::MAX;
+  pub(crate) const NO_COMPILER_SHADER: u16 = LevelBuildNames::NO_INDEX;
 
   /// The index of the material of `texture`, `shader`, `compiler_shader` (none for a glow) and `sector`.
   ///
@@ -37,10 +53,10 @@ impl LevelBuildTables {
     }
 
     let material: BuildPrjMaterial = BuildPrjMaterial {
-      texture: Self::intern(&mut self.textures, texture, str::eq_ignore_ascii_case)?,
-      shader: Self::intern(&mut self.render_shaders, shader, str::eq)?,
+      texture: self.textures.intern(texture)?,
+      shader: self.render_shaders.intern(shader)?,
       compiler_shader: match compiler_shader {
-        Some(name) => Self::intern(&mut self.compiler_shaders, name, str::eq)?,
+        Some(name) => self.compiler_shaders.intern(name)?,
         None => Self::NO_COMPILER_SHADER,
       },
       sector,
@@ -48,19 +64,23 @@ impl LevelBuildTables {
       area_padding: 0,
       internal_max_area: 0,
     };
+    let key: [u16; 4] = [
+      material.texture,
+      material.shader,
+      material.compiler_shader,
+      material.sector,
+    ];
 
-    match self.materials.iter().position(|held| {
-      held.texture == material.texture
-        && held.shader == material.shader
-        && held.compiler_shader == material.compiler_shader
-        && held.sector == material.sector
-    }) {
-      Some(index) => Self::get_index(index),
-      None => {
-        self.materials.push(material);
-        Self::get_index(self.materials.len() - 1)
-      }
+    if let Some(index) = self.material_indexes.get(&key) {
+      return Ok(*index);
     }
+
+    let index: u16 = LevelBuildNames::get_index(self.materials.len())?;
+
+    self.materials.push(material);
+    self.material_indexes.insert(key, index);
+
+    Ok(index)
   }
 
   /// The tables as records, each name in a fresh `string128`, each texture's size, alpha and surface left zero for the
@@ -78,10 +98,21 @@ impl LevelBuildTables {
 
     Ok(LevelBuildTableRecords {
       materials: self.materials,
-      render_shaders: self.render_shaders.iter().map(shader).collect::<XrfResult<_>>()?,
-      compiler_shaders: self.compiler_shaders.iter().map(shader).collect::<XrfResult<_>>()?,
+      render_shaders: self
+        .render_shaders
+        .get_names()
+        .iter()
+        .map(shader)
+        .collect::<XrfResult<_>>()?,
+      compiler_shaders: self
+        .compiler_shaders
+        .get_names()
+        .iter()
+        .map(shader)
+        .collect::<XrfResult<_>>()?,
       textures: self
         .textures
+        .get_names()
         .iter()
         .map(|name| {
           Ok(BuildPrjTexture {
@@ -94,23 +125,5 @@ impl LevelBuildTables {
         })
         .collect::<XrfResult<_>>()?,
     })
-  }
-
-  /// The index of `name` in `names`, appended where `same` matches none.
-  fn intern(names: &mut Vec<String>, name: &str, same: fn(&str, &str) -> bool) -> XrfResult<u16> {
-    match names.iter().position(|held| same(held, name)) {
-      Some(index) => Self::get_index(index),
-      None => {
-        names.push(name.to_owned());
-        Self::get_index(names.len() - 1)
-      }
-    }
-  }
-
-  fn get_index(index: usize) -> XrfResult<u16> {
-    u16::try_from(index)
-      .ok()
-      .filter(|index| *index != Self::NO_COMPILER_SHADER)
-      .ok_or_else(|| XrfError::new_invalid_error("A build's table holds more entries than its u16 indices number"))
   }
 }

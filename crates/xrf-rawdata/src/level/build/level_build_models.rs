@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::{XrfError, XrfResult};
@@ -15,6 +17,8 @@ use crate::level::build::level_build_textures::LevelBuildTextures;
 #[derive(Default)]
 pub(crate) struct LevelBuildModels {
   pub(crate) models: Vec<BuildPrjMuModel>,
+  /// Each model's index by the object it was built of, as a level places one object many times.
+  model_indexes: HashMap<String, usize>,
   pub(crate) references: Vec<BuildPrjMuReference>,
   pub(crate) impostors: LevelBuildImpostors,
 }
@@ -37,8 +41,8 @@ impl LevelBuildModels {
     textures: &LevelBuildTextures<'_>,
   ) -> XrfResult {
     let sector: u16 = LevelBuildGeometry::get_model_sector(placed, object, sectors);
-    let model: usize = match self.models.iter().position(|model| model.name == placed.reference) {
-      Some(model) => model,
+    let model: usize = match self.model_indexes.get(&placed.reference) {
+      Some(model) => *model,
       None => {
         let lod: u16 = if object.flags & EditableObjectFile::USING_LOD_FLAG == 0 {
           u16::MAX
@@ -65,6 +69,9 @@ impl LevelBuildModels {
           lod,
           smoothing_groups: Some(geometry.smoothing_groups),
         });
+        self
+          .model_indexes
+          .insert(placed.reference.clone(), self.models.len() - 1);
         self.models.len() - 1
       }
     };

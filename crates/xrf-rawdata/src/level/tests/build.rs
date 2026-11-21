@@ -89,6 +89,24 @@ fn keeps_each_material_once_per_texture_shaders_and_sector() -> XrfResult {
 }
 
 #[test]
+fn keeps_a_textures_first_spelling_and_tells_shaders_apart_by_case() -> XrfResult {
+  let mut tables: LevelBuildTables = LevelBuildTables::default();
+
+  tables.get_material("models\\model", Some("default"), "Brick\\Wall", 0)?;
+  tables.get_material("models\\model", Some("default"), "brick\\wall", 0)?;
+  tables.get_material("models\\MODEL", Some("default"), "brick\\wall", 0)?;
+
+  let records = tables.into_records()?;
+
+  assert_eq!(records.textures.len(), 1);
+  assert_eq!(records.textures[0].name.value, "Brick\\Wall");
+  assert_eq!(records.render_shaders.len(), 2);
+  assert_eq!(records.materials.len(), 2);
+
+  Ok(())
+}
+
+#[test]
 fn generates_the_sun_as_the_shipped_editor_does() -> XrfResult {
   let mut lights: LevelBuildLights = LevelBuildLights::default();
   let direction: Vector2d = Vector2d::new(-0.5, 1.7);
