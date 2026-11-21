@@ -112,14 +112,10 @@ impl EfdFile {
 
     for _ in 0..count {
       let cardinality: u32 = reader.read_u32()?;
-      let mut indices: Vec<u32> =
-        reader.new_bounded_vec(cardinality.into(), size_of::<u32>() as u64, "efd pattern variables")?;
 
-      for _ in 0..cardinality {
-        indices.push(reader.read_u32()?);
-      }
-
-      patterns.push(EfdPattern { variables: indices });
+      patterns.push(EfdPattern {
+        variables: reader.read_records(cardinality.into(), "efd pattern variables")?,
+      });
     }
 
     let expected: u64 = Self::count_parameters(&patterns, &variables)?;
@@ -178,10 +174,7 @@ impl EfdFile {
 
     for pattern in &self.patterns {
       writer.write_u32(narrow_format_size(pattern.variables.len(), "efd pattern variables")?)?;
-
-      for index in &pattern.variables {
-        writer.write_u32(*index)?;
-      }
+      writer.write_records(&pattern.variables)?;
     }
 
     for parameter in &self.parameters {

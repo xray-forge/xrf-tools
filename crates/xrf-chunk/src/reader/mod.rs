@@ -3,5 +3,6 @@ pub(crate) mod chunk_reader;
 pub(crate) mod chunk_reader_extension;
 pub(crate) mod chunk_reader_fields;
 pub(crate) mod chunk_reader_find;
+pub(crate) mod chunk_reader_records;
 pub(crate) mod chunk_reader_strings;
 pub(crate) mod chunk_trailing;

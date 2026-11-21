@@ -12,23 +12,16 @@ pub struct OgfCollisionVerticesChunk {
 impl OgfCollisionVerticesChunk {
   /// `OGF_COLLISION_VERTICES` (`xray-16/src/xrCore/FMesh.hpp`).
   pub const CHUNK_ID: u32 = 25;
-
-  /// Bytes one vertex occupies.
-  pub const VERTEX_SIZE: u64 = 12;
 }
 
 impl ChunkReadWrite for OgfCollisionVerticesChunk {
   fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
-      vertices: reader.read_xr_records(Self::VERTEX_SIZE, "ogf collision vertices chunk")?,
+      vertices: reader.read_remaining_records("ogf collision vertices chunk")?,
     })
   }
 
   fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
-    for vertex in &self.vertices {
-      writer.write_xr(vertex)?;
-    }
-
-    Ok(())
+    writer.write_records(&self.vertices)
   }
 }

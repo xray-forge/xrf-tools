@@ -57,6 +57,10 @@ Then:
 - To decode a run of bytes without keeping them, use `read_remaining_with`, `read_with`, or a source's `read_at_with`:
   an in-memory source lends the bytes where they lie, any other reads them into a buffer first. OGF vertices and level
   render geometry decode this way. A `read_at_with` range ending past `u64` is an `InvalidInput` error.
+- An array of fixed-size records reads with `read_records` (a count) or `read_remaining_records` (the rest of the
+  chunk) and writes with `write_records`, each in one pass over the bytes. The record type implements
+  `ChunkRecord<SIZE>`, whose `decode` and `encode` state its layout once; `u16`, `u32`, `f32` and `xrf-math`'s
+  `Vector3d<f32>` already do. Reading such an array one field at a time is about nine times slower.
 - Build a payload with `ChunkWriter`, then use `flush_chunk_into` or `flush_chunk_into_buffer` for a framed chunk, or
   `flush_raw_into` for raw bytes.
 - Implement `ChunkReadWrite` for a format's typed payload; `ChunkReadWriteList` and `ChunkReadWriteOptional` cover

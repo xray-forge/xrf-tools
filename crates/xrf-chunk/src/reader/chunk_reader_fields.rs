@@ -70,4 +70,10 @@ impl<D: ChunkDataSource> ChunkFieldReader for ChunkReader<D> {
   fn new_bounded_vec<V>(&self, count: u64, min_record_size: u64, what: &str) -> XrfResult<Vec<V>> {
     Self::new_bounded_vec(self, count, min_record_size, what)
   }
+
+  /// The count bounded by the bytes left, then the values in one pass.
+  #[inline]
+  fn read_u16_vector(&mut self) -> XrfResult<Vec<u16>> {
+    Self::read_u16_vector(self)
+  }
 }

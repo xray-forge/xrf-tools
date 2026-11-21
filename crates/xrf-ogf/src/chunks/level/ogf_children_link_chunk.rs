@@ -10,19 +10,12 @@ pub struct OgfChildrenLinkChunk {
 impl OgfChildrenLinkChunk {
   /// `OGF_CHILDREN_L` (`xray-16/src/xrCore/FMesh.hpp`).
   pub const CHUNK_ID: u32 = 10;
-
-  /// Bytes one child id occupies.
-  pub const CHILD_SIZE: u64 = 4;
 }
 
 impl ChunkReadWrite for OgfChildrenLinkChunk {
   fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let count: u32 = reader.read_u32()?;
-    let mut children: Vec<u32> = reader.new_bounded_vec(u64::from(count), Self::CHILD_SIZE, "ogf linked children")?;
-
-    for _ in 0..count {
-      children.push(reader.read_u32()?);
-    }
+    let children: Vec<u32> = reader.read_records(count.into(), "ogf linked children")?;
 
     reader.assert_read("Expect all data to be read from ogf linked children chunk")?;
 
@@ -38,12 +31,7 @@ impl ChunkReadWrite for OgfChildrenLinkChunk {
     })?;
 
     writer.write_u32(count)?;
-
-    for child in &self.children {
-      writer.write_u32(*child)?;
-    }
-
-    Ok(())
+    writer.write_records(&self.children)
   }
 }
 

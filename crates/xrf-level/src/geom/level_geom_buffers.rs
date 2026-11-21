@@ -86,6 +86,10 @@ impl LevelGeomBuffers {
 
     let mut vertices: ChunkWriter = ChunkWriter::new();
 
+    // Reserved once: a level's vertex bytes run to tens of megabytes, which growing by doubling copies again.
+    vertices
+      .buffer
+      .reserve(self.vertex_buffers.iter().map(|buffer| buffer.bytes.len()).sum());
     vertices.write_u32(narrow_format_size(
       self.vertex_buffers.len(),
       "level geometry vertex buffers",
@@ -111,10 +115,7 @@ impl LevelGeomBuffers {
 
     for buffer in &self.index_buffers {
       indices.write_u32(narrow_format_size(buffer.len(), "level geometry indices")?)?;
-
-      for index in buffer {
-        indices.write_u16(*index)?;
-      }
+      indices.write_records(buffer)?;
     }
 
     indices.flush_chunk_into(&mut writer.buffer, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?;

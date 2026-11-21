@@ -4,7 +4,6 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::narrow_format_size;
 
-use crate::build_prj::build_prj_file::BuildPrjFile;
 use crate::build_prj::geometry::build_prj_face::BuildPrjFace;
 
 /// One multi-use model, `b_mu_model` (`communicate.h`): geometry the compiler lights once and every placement shares.
@@ -30,16 +29,7 @@ impl BuildPrjMuModel {
   pub fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>, has_smoothing_groups: bool) -> XrfResult<Self> {
     let name: String = reader.read_w1251_string()?;
     let vertex_count: u32 = reader.read_u32()?;
-    let mut vertices: Vec<Vector3d<f32>> = reader.new_bounded_vec(
-      u64::from(vertex_count),
-      BuildPrjFile::VERTEX_SIZE,
-      "multi-use model vertices",
-    )?;
-
-    for _ in 0..vertex_count {
-      vertices.push(reader.read_xr()?);
-    }
-
+    let vertices: Vec<Vector3d<f32>> = reader.read_records(vertex_count.into(), "multi-use model vertices")?;
     let face_count: u32 = reader.read_u32()?;
     let mut faces: Vec<BuildPrjFace> = reader.new_bounded_vec(
       u64::from(face_count),
@@ -53,14 +43,7 @@ impl BuildPrjMuModel {
 
     let lod: u16 = reader.read_u16()?;
     let smoothing_groups: Option<Vec<u32>> = if has_smoothing_groups {
-      let mut groups: Vec<u32> =
-        reader.new_bounded_vec(u64::from(face_count), 4, "multi-use model smoothing groups")?;
-
-      for _ in 0..face_count {
-        groups.push(reader.read_u32()?);
-      }
-
-      Some(groups)
+      Some(reader.read_records(face_count.into(), "multi-use model smoothing groups")?)
     } else {
       None
     };
@@ -95,10 +78,7 @@ impl BuildPrjMuModel {
     writer.write_w1251_string(&self.name)?;
     writer.write_u32(narrow_format_size(self.vertices.len(), "multi-use model vertices")?)?;
 
-    for vertex in &self.vertices {
-      writer.write_xr(vertex)?;
-    }
-
+    writer.write_records(&self.vertices)?;
     writer.write_u32(narrow_format_size(self.faces.len(), "multi-use model faces")?)?;
 
     for face in &self.faces {
@@ -107,8 +87,8 @@ impl BuildPrjMuModel {
 
     writer.write_u16(self.lod)?;
 
-    for group in self.smoothing_groups.iter().flatten() {
-      writer.write_u32(*group)?;
+    if let Some(groups) = &self.smoothing_groups {
+      writer.write_records(groups)?;
     }
 
     Ok(())

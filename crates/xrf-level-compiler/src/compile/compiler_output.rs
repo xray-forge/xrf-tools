@@ -28,6 +28,6 @@ impl CompilerOutput {
 
     fill(&mut writer)?;
 
-    Self::write(path, &writer.flush_raw_into_buffer()?)
+    Self::write(path, &writer.buffer)
   }
 }

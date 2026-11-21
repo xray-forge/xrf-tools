@@ -7,7 +7,7 @@ use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_m
 use fileslice::FileSlice;
 use xrf_chunk::{
   ChunkDataSource, ChunkField, ChunkFieldKind, ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldRecorder,
-  ChunkFieldReplay, ChunkFieldSource, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkWriter,
+  ChunkFieldReplay, ChunkFieldSource, ChunkFieldWriter, ChunkReadWrite, ChunkReader, ChunkRecord, ChunkWriter,
   InMemoryChunkDataSource, XRayBytes, XRayRead, XRayWrite,
 };
 use xrf_error::{XrfError, XrfResult};
@@ -51,9 +51,10 @@ impl Vertex {
       bone: (index % 64) as u32,
     }
   }
+}
 
-  /// Decodes a vertex from bytes already in hand, as an in-place decoder does.
-  fn from_bytes(bytes: &[u8; VERTEX_SIZE]) -> Self {
+impl ChunkRecord<VERTEX_SIZE> for Vertex {
+  fn decode(bytes: &[u8; VERTEX_SIZE]) -> Self {
     let float = |at: usize| XRayBytes::read_f32(&bytes[at..]);
 
     Self {
@@ -62,6 +63,18 @@ impl Vertex {
       uv: [float(24), float(28)],
       bone: XRayBytes::read_u32(&bytes[32..]),
     }
+  }
+
+  fn encode(&self) -> [u8; VERTEX_SIZE] {
+    let mut bytes: [u8; VERTEX_SIZE] = [0; VERTEX_SIZE];
+
+    for (index, value) in self.position.iter().chain(&self.normal).chain(&self.uv).enumerate() {
+      XRayBytes::write_f32(&mut bytes[index * 4..], *value);
+    }
+
+    XRayBytes::write_u32(&mut bytes[32..], self.bone);
+
+    bytes
   }
 }
 
@@ -214,14 +227,7 @@ fn read_vertices_by_field<D: ChunkDataSource>(reader: &mut ChunkReader<D>, count
 fn read_vertices_in_place(reader: &mut ChunkReader<InMemoryChunkDataSource>, count: usize) -> Vec<Vertex> {
   reader.reset_pos().expect("a seekable source");
   reader
-    .read_with(count * VERTEX_SIZE, |bytes| {
-      bytes
-        .as_chunks::<VERTEX_SIZE>()
-        .0
-        .iter()
-        .map(Vertex::from_bytes)
-        .collect()
-    })
+    .read_records(count as u64, "vertices")
     .expect("the whole vertex payload")
 }
 
@@ -234,6 +240,15 @@ fn bench_numbers(criterion: &mut Criterion) {
 
   assert_eq!(read_vertices_by_field(&mut reader, VERTEX_COUNT), expected);
   assert_eq!(read_vertices_in_place(&mut reader, VERTEX_COUNT), expected);
+
+  let mut records: ChunkWriter = ChunkWriter::new();
+
+  records.write_records(&expected).expect("the vertices");
+  assert_eq!(
+    records.buffer,
+    vertex_bytes(&expected),
+    "records to write the bytes fields do"
+  );
 
   group.throughput(Throughput::Elements(VERTEX_COUNT as u64));
   group.bench_function("read_by_field", |bencher| {
@@ -257,6 +272,14 @@ fn bench_numbers(criterion: &mut Criterion) {
       let mut writer: ChunkWriter = ChunkWriter::new();
 
       write_vertices(&mut writer, black_box(&expected));
+      black_box(writer.buffer)
+    });
+  });
+  group.bench_function("write_in_place", |bencher| {
+    bencher.iter(|| {
+      let mut writer: ChunkWriter = ChunkWriter::new();
+
+      writer.write_records(black_box(&expected)).expect("the vertices");
       black_box(writer.buffer)
     });
   });

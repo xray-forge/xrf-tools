@@ -20,11 +20,7 @@ impl ChunkReadWrite for EditableSurfaceFaces {
   fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let surface: String = reader.read_w1251_string()?;
     let count: u32 = reader.read_u32()?;
-    let mut faces: Vec<u32> = reader.new_bounded_vec(count.into(), 4, "surface faces")?;
-
-    for _ in 0..count {
-      faces.push(reader.read_u32()?);
-    }
+    let faces: Vec<u32> = reader.read_records(count.into(), "surface faces")?;
 
     Ok(Self { surface, faces })
   }
@@ -32,11 +28,6 @@ impl ChunkReadWrite for EditableSurfaceFaces {
   fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.surface)?;
     writer.write_u32(narrow_format_size(self.faces.len(), "Surface faces")?)?;
-
-    for face in &self.faces {
-      writer.write_u32(*face)?;
-    }
-
-    Ok(())
+    writer.write_records(&self.faces)
   }
 }

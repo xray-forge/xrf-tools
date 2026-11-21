@@ -27,7 +27,13 @@ xrf-utils = { workspace = true }
 typescript-bindings = ["specta", "xrf-math/typescript-bindings"]
 
 [dev-dependencies]
+criterion = { workspace = true }
 xrf-test-utils = { workspace = true }
+
+# The collision form is the largest array a level open decodes; `XRF_BENCH_CORPUS` adds real `level.cform` files.
+[[bench]]
+name = "cform_reading"
+harness = false
 
 [lints]
 workspace = true

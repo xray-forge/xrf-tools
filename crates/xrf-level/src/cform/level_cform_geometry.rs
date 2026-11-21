@@ -27,25 +27,8 @@ impl LevelCformGeometry {
     reader: &mut ChunkReader<D>,
     header: &LevelCformHeader,
   ) -> XrfResult<Self> {
-    let mut vertices: Vec<Vector3d<f32>> = reader.new_bounded_vec(
-      u64::from(header.vertex_count),
-      Self::VERTEX_SIZE as u64,
-      "collision form vertices",
-    )?;
-
-    for _ in 0..header.vertex_count {
-      vertices.push(reader.read_xr()?);
-    }
-
-    let mut faces: Vec<LevelCformFace> = reader.new_bounded_vec(
-      u64::from(header.face_count),
-      LevelCformFace::SERIALIZED_SIZE as u64,
-      "collision form faces",
-    )?;
-
-    for _ in 0..header.face_count {
-      faces.push(reader.read_xr()?);
-    }
+    let vertices: Vec<Vector3d<f32>> = reader.read_records(header.vertex_count.into(), "collision form vertices")?;
+    let faces: Vec<LevelCformFace> = reader.read_records(header.face_count.into(), "collision form faces")?;
 
     Self::new(vertices, faces)
   }
@@ -76,15 +59,8 @@ impl LevelCformGeometry {
   ///
   /// Returns an error when the writer fails.
   pub fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
-    for vertex in &self.vertices {
-      writer.write_xr(vertex)?;
-    }
-
-    for face in &self.faces {
-      writer.write_xr(face)?;
-    }
-
-    Ok(())
+    writer.write_records(&self.vertices)?;
+    writer.write_records(&self.faces)
   }
 
   /// Every vertex, in the engine's own space.

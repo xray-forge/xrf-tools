@@ -228,7 +228,8 @@ impl EditableMesh {
     }
 
     sequence.push(Self::POINTS_CHUNK_ID, |writer| {
-      EditableChunks::write_counted(writer, &self.points, "Mesh points")?;
+      writer.write_u32(narrow_format_size(self.points.len(), "Mesh points")?)?;
+      writer.write_records(&self.points)?;
 
       if self.has_point_faces {
         MeshPoints::write_faces(writer, &self.get_point_faces()?)?;
@@ -241,13 +242,7 @@ impl EditableMesh {
     })?;
 
     if let Some(groups) = &self.smoothing_groups {
-      sequence.push(Self::SMOOTHING_GROUPS_CHUNK_ID, |writer| {
-        for group in groups {
-          writer.write_u32(*group)?;
-        }
-
-        Ok(())
-      })?;
+      sequence.push(Self::SMOOTHING_GROUPS_CHUNK_ID, |writer| writer.write_records(groups))?;
     }
 
     if let Some(normals) = &self.corner_normals {
@@ -383,13 +378,7 @@ impl EditableMesh {
       )));
     }
 
-    let mut groups: Vec<u32> = chunk.new_bounded_vec(size / 4, 4, "smoothing groups")?;
-
-    for _ in 0..size / 4 {
-      groups.push(chunk.read_u32()?);
-    }
-
-    Ok(groups)
+    chunk.read_records(size / 4, "smoothing groups")
   }
 }
 
@@ -400,12 +389,9 @@ struct MeshPoints {
 }
 
 impl MeshPoints {
-  /// A point's three floats.
-  const POINT_SIZE: u64 = 12;
-
   fn read<D: ChunkDataSource>(chunk: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let points: Vec<Vector3d> =
-      EditableChunks::read_counted::<D, _>(chunk, Self::POINT_SIZE, "mesh points", |chunk| chunk.read_xr())?;
+    let count: u32 = chunk.read_u32()?;
+    let points: Vec<Vector3d> = chunk.read_records(count.into(), "mesh points")?;
 
     if !chunk.has_data() {
       return Ok(Self {
@@ -419,13 +405,8 @@ impl MeshPoints {
 
     for _ in 0..points.len() {
       let count: u8 = chunk.read_u8()?;
-      let mut faces: Vec<u32> = chunk.new_bounded_vec(count.into(), 4, "point faces")?;
 
-      for _ in 0..count {
-        faces.push(chunk.read_u32()?);
-      }
-
-      point_faces.push(faces);
+      point_faces.push(chunk.read_records(count.into(), "point faces")?);
     }
 
     Ok(Self {
@@ -438,10 +419,7 @@ impl MeshPoints {
   fn write_faces(writer: &mut ChunkWriter, point_faces: &[Vec<u32>]) -> XrfResult {
     for faces in point_faces {
       writer.write_u8(narrow_format_size(faces.len(), "Point faces")?)?;
-
-      for face in faces {
-        writer.write_u32(*face)?;
-      }
+      writer.write_records(faces)?;
     }
 
     Ok(())

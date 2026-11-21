@@ -3,7 +3,7 @@ use std::fs::File;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayRead, XRayWrite};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
@@ -77,9 +77,6 @@ impl BuildPrjFile {
   pub const MU_MODELS_CHUNK_ID: u32 = 14;
   pub const MU_REFERENCES_CHUNK_ID: u32 = 15;
   pub const SMOOTHING_GROUPS_CHUNK_ID: u32 = 16;
-
-  /// Bytes one vertex occupies.
-  pub const VERTEX_SIZE: u64 = 12;
 
   /// Reads a build project from a path.
   ///
@@ -179,56 +176,57 @@ impl BuildPrjFile {
     Ok(Self {
       version,
       params,
-      vertices: Self::read_records::<D, _>(&chunks, Self::VERTICES_CHUNK_ID, Self::VERTEX_SIZE, "vertices")?,
-      faces: Self::read_records::<D, _>(&chunks, Self::FACES_CHUNK_ID, BuildPrjFace::SERIALIZED_SIZE, "faces")?,
+      vertices: ChunkReader::find_required_by_id(&chunks, Self::VERTICES_CHUNK_ID)?
+        .read_remaining_records("build project vertices chunk")?,
+      faces: Self::read_record_chunk::<D, _>(&chunks, Self::FACES_CHUNK_ID, BuildPrjFace::SERIALIZED_SIZE, "faces")?,
       smoothing_groups,
-      materials: Self::read_records::<D, _>(
+      materials: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::MATERIALS_CHUNK_ID,
         BuildPrjMaterial::SERIALIZED_SIZE,
         "materials",
       )?,
-      render_shaders: Self::read_records::<D, _>(
+      render_shaders: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::RENDER_SHADERS_CHUNK_ID,
         BuildPrjShader::SERIALIZED_SIZE,
         "render shaders",
       )?,
-      compiler_shaders: Self::read_records::<D, _>(
+      compiler_shaders: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::COMPILER_SHADERS_CHUNK_ID,
         BuildPrjShader::SERIALIZED_SIZE,
         "compiler shaders",
       )?,
-      textures: Self::read_records::<D, _>(
+      textures: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::TEXTURES_CHUNK_ID,
         BuildPrjTexture::SERIALIZED_SIZE,
         "textures",
       )?,
-      glows: Self::read_records::<D, _>(&chunks, Self::GLOWS_CHUNK_ID, BuildPrjGlow::SERIALIZED_SIZE, "glows")?,
-      portals: Self::read_records::<D, _>(
+      glows: Self::read_record_chunk::<D, _>(&chunks, Self::GLOWS_CHUNK_ID, BuildPrjGlow::SERIALIZED_SIZE, "glows")?,
+      portals: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::PORTALS_CHUNK_ID,
         BuildPrjPortal::SERIALIZED_SIZE,
         "portals",
       )?,
       light_controls,
-      static_lights: Self::read_records::<D, _>(
+      static_lights: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::STATIC_LIGHTS_CHUNK_ID,
         LevelDynamicLight::SERIALIZED_SIZE,
         "static lights",
       )?,
-      dynamic_lights: Self::read_records::<D, _>(
+      dynamic_lights: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::DYNAMIC_LIGHTS_CHUNK_ID,
         BuildPrjDynamicLight::SERIALIZED_SIZE,
         "dynamic lights",
       )?,
-      lods: Self::read_records::<D, _>(&chunks, Self::LODS_CHUNK_ID, BuildPrjLod::SERIALIZED_SIZE, "impostors")?,
+      lods: Self::read_record_chunk::<D, _>(&chunks, Self::LODS_CHUNK_ID, BuildPrjLod::SERIALIZED_SIZE, "impostors")?,
       mu_models,
-      mu_references: Self::read_records::<D, _>(
+      mu_references: Self::read_record_chunk::<D, _>(
         &chunks,
         Self::MU_REFERENCES_CHUNK_ID,
         BuildPrjMuReference::SERIALIZED_SIZE,
@@ -271,30 +269,31 @@ impl BuildPrjFile {
     version.write_u32(self.version)?;
     version.flush_chunk_into(&mut writer.buffer, Self::VERSION_CHUNK_ID)?;
 
-    Self::write_records(writer, Self::PARAMS_CHUNK_ID, std::slice::from_ref(&self.params))?;
-    Self::write_records(writer, Self::VERTICES_CHUNK_ID, &self.vertices)?;
-    Self::write_records(writer, Self::FACES_CHUNK_ID, &self.faces)?;
+    Self::write_record_chunk(writer, Self::PARAMS_CHUNK_ID, std::slice::from_ref(&self.params))?;
+    let mut vertices: ChunkWriter = ChunkWriter::new();
+
+    vertices.write_records(&self.vertices)?;
+    vertices.flush_chunk_into(&mut writer.buffer, Self::VERTICES_CHUNK_ID)?;
+
+    Self::write_record_chunk(writer, Self::FACES_CHUNK_ID, &self.faces)?;
 
     if let Some(groups) = &self.smoothing_groups {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
-      for group in groups {
-        chunk.write_u32(*group)?;
-      }
-
+      chunk.write_records(groups)?;
       chunk.flush_chunk_into(&mut writer.buffer, Self::SMOOTHING_GROUPS_CHUNK_ID)?;
     }
 
-    Self::write_records(writer, Self::MATERIALS_CHUNK_ID, &self.materials)?;
-    Self::write_records(writer, Self::RENDER_SHADERS_CHUNK_ID, &self.render_shaders)?;
-    Self::write_records(writer, Self::COMPILER_SHADERS_CHUNK_ID, &self.compiler_shaders)?;
-    Self::write_records(writer, Self::TEXTURES_CHUNK_ID, &self.textures)?;
-    Self::write_records(writer, Self::GLOWS_CHUNK_ID, &self.glows)?;
-    Self::write_records(writer, Self::PORTALS_CHUNK_ID, &self.portals)?;
-    Self::write_records(writer, Self::LIGHT_CONTROLS_CHUNK_ID, &self.light_controls)?;
-    Self::write_records(writer, Self::STATIC_LIGHTS_CHUNK_ID, &self.static_lights)?;
-    Self::write_records(writer, Self::DYNAMIC_LIGHTS_CHUNK_ID, &self.dynamic_lights)?;
-    Self::write_records(writer, Self::LODS_CHUNK_ID, &self.lods)?;
+    Self::write_record_chunk(writer, Self::MATERIALS_CHUNK_ID, &self.materials)?;
+    Self::write_record_chunk(writer, Self::RENDER_SHADERS_CHUNK_ID, &self.render_shaders)?;
+    Self::write_record_chunk(writer, Self::COMPILER_SHADERS_CHUNK_ID, &self.compiler_shaders)?;
+    Self::write_record_chunk(writer, Self::TEXTURES_CHUNK_ID, &self.textures)?;
+    Self::write_record_chunk(writer, Self::GLOWS_CHUNK_ID, &self.glows)?;
+    Self::write_record_chunk(writer, Self::PORTALS_CHUNK_ID, &self.portals)?;
+    Self::write_record_chunk(writer, Self::LIGHT_CONTROLS_CHUNK_ID, &self.light_controls)?;
+    Self::write_record_chunk(writer, Self::STATIC_LIGHTS_CHUNK_ID, &self.static_lights)?;
+    Self::write_record_chunk(writer, Self::DYNAMIC_LIGHTS_CHUNK_ID, &self.dynamic_lights)?;
+    Self::write_record_chunk(writer, Self::LODS_CHUNK_ID, &self.lods)?;
 
     let mut mu_models: ChunkWriter = ChunkWriter::new();
 
@@ -304,7 +303,7 @@ impl BuildPrjFile {
 
     mu_models.flush_chunk_into(&mut writer.buffer, Self::MU_MODELS_CHUNK_ID)?;
 
-    Self::write_records(writer, Self::MU_REFERENCES_CHUNK_ID, &self.mu_references)?;
+    Self::write_record_chunk(writer, Self::MU_REFERENCES_CHUNK_ID, &self.mu_references)?;
 
     Ok(())
   }
@@ -315,7 +314,7 @@ impl BuildPrjFile {
   }
 
   /// Reads the packed run of records chunk `id` holds.
-  fn read_records<D: ChunkDataSource, R: ChunkReadWrite>(
+  fn read_record_chunk<D: ChunkDataSource, R: ChunkReadWrite>(
     chunks: &[ChunkReader<D>],
     id: u32,
     record_size: u64,
@@ -335,17 +334,11 @@ impl BuildPrjFile {
       )));
     }
 
-    let mut words: Vec<u32> = chunk.new_bounded_vec(size / 4, 4, "build project smoothing groups")?;
-
-    for _ in 0..size / 4 {
-      words.push(chunk.read_u32()?);
-    }
-
-    Ok(words)
+    chunk.read_records(size / 4, "build project smoothing groups")
   }
 
   /// Writes `records` as one chunk under `id`.
-  fn write_records<R: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, records: &[R]) -> XrfResult {
+  fn write_record_chunk<R: ChunkReadWrite>(writer: &mut ChunkWriter, id: u32, records: &[R]) -> XrfResult {
     let mut chunk: ChunkWriter = ChunkWriter::new();
 
     for record in records {

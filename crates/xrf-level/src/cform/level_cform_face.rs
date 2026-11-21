@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayBytes, XRayRead, XRayWrite};
-use xrf_error::XrfResult;
+use xrf_chunk::{ChunkRecord, XRayBytes};
 
 /// One triangle of the collision form, `CDB::TRI` (`xrCDB/xrCDB.h`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,34 +39,41 @@ impl LevelCformFace {
   }
 }
 
-impl ChunkReadWrite for LevelCformFace {
-  /// Reads one face: its three corners, then the word packing its material, flags and sector.
-  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let vertices: [u32; 3] = [reader.read_u32()?, reader.read_u32()?, reader.read_u32()?];
-    let packed: u32 = reader.read_u32()?;
+/// Three corners, then the word packing its material, flags and sector.
+impl ChunkRecord<{ Self::SERIALIZED_SIZE }> for LevelCformFace {
+  #[inline]
+  fn decode(bytes: &[u8; Self::SERIALIZED_SIZE]) -> Self {
+    let packed: u32 = XRayBytes::read_u32(&bytes[Self::PACKED_OFFSET..]);
 
-    Ok(Self {
-      vertices,
+    Self {
+      vertices: [
+        XRayBytes::read_u32(&bytes[0..4]),
+        XRayBytes::read_u32(&bytes[4..8]),
+        XRayBytes::read_u32(&bytes[8..12]),
+      ],
       material: Self::material_of(packed),
       is_shadow_suppressed: packed & (1 << 14) != 0,
       is_wallmark_suppressed: packed & (1 << 15) != 0,
       sector: (packed >> 16) as u16,
-    })
+    }
   }
 
-  /// Writes one face in the layout [`Self::read`] reads.
-  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
-    for vertex in self.vertices {
-      writer.write_u32(vertex)?;
+  #[inline]
+  fn encode(&self) -> [u8; Self::SERIALIZED_SIZE] {
+    let mut bytes: [u8; Self::SERIALIZED_SIZE] = [0; Self::SERIALIZED_SIZE];
+
+    for (corner, vertex) in self.vertices.iter().enumerate() {
+      XRayBytes::write_u32(&mut bytes[corner * 4..], *vertex);
     }
 
-    writer.write_u32(
+    XRayBytes::write_u32(
+      &mut bytes[Self::PACKED_OFFSET..],
       (u32::from(self.material) & Self::MATERIAL_MASK)
         | (u32::from(self.is_shadow_suppressed) << 14)
         | (u32::from(self.is_wallmark_suppressed) << 15)
         | (u32::from(self.sector) << 16),
-    )?;
+    );
 
-    Ok(())
+    bytes
   }
 }

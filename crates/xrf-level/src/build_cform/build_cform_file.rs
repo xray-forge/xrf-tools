@@ -39,9 +39,6 @@ impl BuildCformFile {
 
   pub const RAYCAST_FACES_CHUNK_ID: u32 = 1;
 
-  /// Bytes one vertex occupies.
-  pub const VERTEX_SIZE: u64 = 12;
-
   /// Reads a compiler collision form from a path.
   ///
   /// # Errors
@@ -104,16 +101,8 @@ impl BuildCformFile {
       )));
     }
 
-    let mut vertices: Vec<Vector3d<f32>> = geometry.new_bounded_vec(
-      u64::from(header.vertex_count),
-      Self::VERTEX_SIZE,
-      "build collision form vertices",
-    )?;
-
-    for _ in 0..header.vertex_count {
-      vertices.push(geometry.read_xr()?);
-    }
-
+    let vertices: Vec<Vector3d<f32>> =
+      geometry.read_records(header.vertex_count.into(), "build collision form vertices")?;
     let mut faces: Vec<BuildCformFace> = geometry.new_bounded_vec(
       u64::from(header.face_count),
       BuildCformFace::SERIALIZED_SIZE,
@@ -161,9 +150,7 @@ impl BuildCformFile {
     }
     .write(&mut geometry)?;
 
-    for vertex in &self.vertices {
-      geometry.write_xr(vertex)?;
-    }
+    geometry.write_records(&self.vertices)?;
 
     for face in &self.faces {
       geometry.write_xr(face)?;

@@ -1,7 +1,4 @@
-use std::io::{Read, Write};
-
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayBytes};
-use xrf_error::XrfResult;
+use xrf_chunk::{ChunkRecord, XRayBytes};
 
 /// One AI node's place in the game graph, `CGameLevelCrossTable::CCell`: its game vertex and its distance from it, in
 /// metres along links. A node no graph point reaches keeps the level's first vertex and a distance whose bits are
@@ -15,19 +12,22 @@ pub struct GraphCrossTableCell {
 
 impl GraphCrossTableCell {
   /// The bytes of one cell, packed to two (`#pragma pack(push,2)`).
-  pub const SIZE: u64 = 2 + 4;
+  pub const SIZE: usize = 2 + 4;
+}
 
-  /// Decodes a cell from its bytes, the one statement of its layout.
-  pub fn decode(bytes: &[u8; Self::SIZE as usize]) -> Self {
+/// The one statement of a cell's layout: its game vertex, then its distance.
+impl ChunkRecord<{ Self::SIZE }> for GraphCrossTableCell {
+  #[inline]
+  fn decode(bytes: &[u8; Self::SIZE]) -> Self {
     Self {
       game_vertex_id: XRayBytes::read_u16(&bytes[..2]),
       distance: XRayBytes::read_f32(&bytes[2..]),
     }
   }
 
-  /// Encode this cell into its bytes, the layout [`Self::decode`] reads.
-  pub fn encode(&self) -> [u8; Self::SIZE as usize] {
-    let mut bytes: [u8; Self::SIZE as usize] = [0; Self::SIZE as usize];
+  #[inline]
+  fn encode(&self) -> [u8; Self::SIZE] {
+    let mut bytes: [u8; Self::SIZE] = [0; Self::SIZE];
 
     XRayBytes::write_u16(&mut bytes[..2], self.game_vertex_id);
     XRayBytes::write_f32(&mut bytes[2..], self.distance);
@@ -36,24 +36,10 @@ impl GraphCrossTableCell {
   }
 }
 
-impl ChunkReadWrite for GraphCrossTableCell {
-  fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let mut bytes: [u8; Self::SIZE as usize] = [0; Self::SIZE as usize];
-
-    reader.read_exact(&mut bytes)?;
-
-    Ok(Self::decode(&bytes))
-  }
-
-  fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_all(&self.encode())?;
-
-    Ok(())
-  }
-}
-
 #[cfg(test)]
 mod tests {
+  use xrf_chunk::ChunkRecord;
+
   use crate::data::graph::graph_cross_table_cell::GraphCrossTableCell;
 
   #[test]

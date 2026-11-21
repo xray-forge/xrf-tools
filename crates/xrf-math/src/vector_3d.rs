@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter};
+use xrf_chunk::{ChunkFieldReadWrite, ChunkFieldReader, ChunkFieldWriter, ChunkRecord, XRayBytes};
 use xrf_error::{XrfError, XrfResult};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -265,6 +265,29 @@ impl ChunkFieldReadWrite for Vector3d<f32> {
   }
 }
 
+/// An `Fvector` in an array of them, such as a collision form's vertices.
+impl ChunkRecord<12> for Vector3d<f32> {
+  #[inline]
+  fn decode(bytes: &[u8; 12]) -> Self {
+    Self::new(
+      XRayBytes::read_f32(&bytes[0..4]),
+      XRayBytes::read_f32(&bytes[4..8]),
+      XRayBytes::read_f32(&bytes[8..12]),
+    )
+  }
+
+  #[inline]
+  fn encode(&self) -> [u8; 12] {
+    let mut bytes: [u8; 12] = [0; 12];
+
+    XRayBytes::write_f32(&mut bytes[0..4], self.x);
+    XRayBytes::write_f32(&mut bytes[4..8], self.y);
+    XRayBytes::write_f32(&mut bytes[8..12], self.z);
+
+    bytes
+  }
+}
+
 impl From<(f32, f32, f32)> for Vector3d<f32> {
   fn from(value: (f32, f32, f32)) -> Self {
     Self::new(value.0, value.1, value.2)
@@ -317,7 +340,7 @@ mod tests {
   use std::str::FromStr;
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkRecord, ChunkWriter};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -350,6 +373,19 @@ mod tests {
       .expect("0 index chunk to exist");
 
     assert_eq!(Vector3d::read(&mut reader)?, original);
+
+    Ok(())
+  }
+
+  #[test]
+  fn encodes_as_a_record_the_bytes_it_writes_as_fields() -> XrfResult {
+    let original: Vector3d = Vector3d::new(1.5, -2.7, 3.2);
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write(&mut writer)?;
+
+    assert_eq!(writer.buffer, original.encode());
+    assert_eq!(Vector3d::decode(&original.encode()), original);
 
     Ok(())
   }

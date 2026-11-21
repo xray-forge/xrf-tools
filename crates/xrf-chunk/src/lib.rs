@@ -34,6 +34,7 @@ pub use crate::read_write::chunk_field_read_write_optional::ChunkFieldReadWriteO
 pub use crate::read_write::chunk_read_write::ChunkReadWrite;
 pub use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
 pub use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;
+pub use crate::read_write::chunk_record::ChunkRecord;
 pub use crate::reader::chunk_line::ChunkLine;
 pub use crate::reader::chunk_reader::ChunkReader;
 pub use crate::reader::chunk_trailing::ChunkTrailing;

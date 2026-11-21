@@ -37,9 +37,6 @@ impl LevelSndEnvFile {
 
   pub const GEOMETRY_CHUNK_ID: u32 = 1;
 
-  /// Bytes one vertex occupies.
-  pub const VERTEX_SIZE: u64 = 12;
-
   /// Reads a sound environment mesh from a path.
   ///
   /// # Errors
@@ -89,16 +86,8 @@ impl LevelSndEnvFile {
 
     let mut geometry: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?;
     let header: LevelCformHeader = geometry.read_xr()?;
-    let mut vertices: Vec<Vector3d<f32>> = geometry.new_bounded_vec(
-      u64::from(header.vertex_count),
-      Self::VERTEX_SIZE,
-      "sound environment vertices",
-    )?;
-
-    for _ in 0..header.vertex_count {
-      vertices.push(geometry.read_xr()?);
-    }
-
+    let vertices: Vec<Vector3d<f32>> =
+      geometry.read_records(header.vertex_count.into(), "sound environment vertices")?;
     let mut faces: Vec<LevelSndEnvFace> = geometry.new_bounded_vec(
       u64::from(header.face_count),
       LevelSndEnvFace::SERIALIZED_SIZE,
@@ -151,9 +140,7 @@ impl LevelSndEnvFile {
     }
     .write(&mut geometry)?;
 
-    for vertex in &self.vertices {
-      geometry.write_xr(vertex)?;
-    }
+    geometry.write_records(&self.vertices)?;
 
     for face in &self.faces {
       geometry.write_xr(face)?;

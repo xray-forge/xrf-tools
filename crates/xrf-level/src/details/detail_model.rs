@@ -123,12 +123,7 @@ impl ChunkReadWrite for DetailModel {
       vertices.push(reader.read_xr()?);
     }
 
-    let mut indices: Vec<u16> =
-      reader.new_bounded_vec(indices_count.into(), size_of::<u16>() as u64, "detail indices")?;
-
-    for _ in 0..indices_count {
-      indices.push(reader.read_u16()?);
-    }
+    let indices: Vec<u16> = reader.read_records(indices_count.into(), "detail indices")?;
 
     Ok(Self {
       shader,
@@ -167,10 +162,6 @@ impl ChunkReadWrite for DetailModel {
       writer.write_xr(vertex)?;
     }
 
-    for index in &self.indices {
-      writer.write_u16(*index)?;
-    }
-
-    Ok(())
+    writer.write_records(&self.indices)
   }
 }

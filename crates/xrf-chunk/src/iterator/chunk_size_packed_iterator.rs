@@ -164,7 +164,11 @@ mod tests {
     assert_eq!(vec[0].id, 0, "Expected id to be 0");
     assert_eq!(vec[0].size, 1, "Expected size to be 1");
     assert_eq!(vec[0].position, 4, "Expected position to be 4");
-    assert_eq!(vec[0].read_bytes_remain(), vec[0].size, "Expected size to match the window");
+    assert_eq!(
+      vec[0].read_bytes_remain(),
+      vec[0].size,
+      "Expected size to match the window"
+    );
     assert_eq!(vec[0].read_remaining()?, [255]);
 
     Ok(())

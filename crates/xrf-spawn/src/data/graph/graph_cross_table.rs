@@ -114,22 +114,13 @@ impl ChunkReadWrite for GraphCrossTable {
     let game_guid: Uuid = Uuid::from_u128(reader.read_u128()?);
     let remaining: u64 = reader.read_bytes_remain();
 
-    if remaining != u64::from(nodes_count) * GraphCrossTableCell::SIZE {
+    if remaining != u64::from(nodes_count) * GraphCrossTableCell::SIZE as u64 {
       return Err(XrfError::new_parsing_error(format!(
         "Cross table of level {level_guid} declares {nodes_count} nodes but holds {remaining} bytes of cells"
       )));
     }
 
-    // Millions of cells on a level, decoded in one pass over their bytes rather than one read per field; the check
-    // above leaves no partial cell.
-    let cells: Vec<GraphCrossTableCell> = reader.read_remaining_with(|bytes| {
-      bytes
-        .as_chunks::<{ GraphCrossTableCell::SIZE as usize }>()
-        .0
-        .iter()
-        .map(GraphCrossTableCell::decode)
-        .collect()
-    })?;
+    let cells: Vec<GraphCrossTableCell> = reader.read_records(nodes_count.into(), "graph cross table cells")?;
 
     Ok(Self {
       version,
@@ -154,16 +145,7 @@ impl ChunkReadWrite for GraphCrossTable {
     writer.write_u32(self.vertices_count)?;
     writer.write_u128(self.level_guid.as_u128())?;
     writer.write_u128(self.game_guid.as_u128())?;
-
-    let mut cells: Vec<u8> = Vec::with_capacity(self.cells.len() * GraphCrossTableCell::SIZE as usize);
-
-    for cell in &self.cells {
-      cells.extend_from_slice(&cell.encode());
-    }
-
-    writer.write_all(&cells)?;
-
-    Ok(())
+    writer.write_records(&self.cells)
   }
 }
 
@@ -175,7 +157,7 @@ mod tests {
 
   use serde_json::to_string_pretty;
   use uuid::{Uuid, uuid};
-  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
+  use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkRecord, ChunkWriter, InMemoryChunkDataSource};
   use xrf_error::{MapXrfErr, XrfResult};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
@@ -332,33 +314,32 @@ mod tests {
     original.cells[4].distance = -0.0;
 
     let mut table_writer: ChunkWriter = ChunkWriter::new();
-    let mut cells_writer: ChunkWriter = ChunkWriter::new();
 
     original.write(&mut table_writer)?;
 
-    for cell in &original.cells {
-      cells_writer.write_xr(cell)?;
-    }
+    let cells: Vec<u8> = original.cells.iter().flat_map(ChunkRecord::encode).collect();
 
     assert_eq!(
       &table_writer.buffer[GraphCrossTable::HEADER_SIZE as usize..],
-      cells_writer.buffer.as_slice()
+      cells.as_slice()
     );
 
     let read: GraphCrossTable = GraphCrossTable::read(&mut ChunkReader::from_bytes(&table_writer.buffer)?)?;
-    let mut cells_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&cells_writer.buffer)?;
     let bits = |cell: &GraphCrossTableCell| (cell.game_vertex_id, cell.distance.to_bits());
 
     assert_eq!(read.cells.len(), original.cells.len());
 
-    for (cell, expected) in read.cells.iter().zip(&original.cells) {
-      let one: GraphCrossTableCell = cells_reader.read_xr()?;
-
-      assert_eq!(bits(cell), bits(&one));
+    for ((cell, expected), bytes) in read
+      .cells
+      .iter()
+      .zip(&original.cells)
+      .zip(cells.as_chunks::<{ GraphCrossTableCell::SIZE }>().0)
+    {
+      assert_eq!(bits(cell), bits(&GraphCrossTableCell::decode(bytes)));
       assert_eq!(bits(cell), bits(expected));
     }
 
-    cells_reader.assert_read("Expect every cell to be read")
+    Ok(())
   }
 
   #[test]

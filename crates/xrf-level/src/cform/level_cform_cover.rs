@@ -1,10 +1,9 @@
-use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkRecord};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_file::LevelCformHeader;
-use crate::cform::level_cform_geometry::LevelCformGeometry;
 
 /// What of the collision form stands over a set of points, read one face at a time rather than keeping the form.
 pub(crate) struct LevelCformCover;
@@ -16,38 +15,45 @@ impl LevelCformCover {
     header: &LevelCformHeader,
     points: &[Vector3d<f32>],
   ) -> XrfResult<Vec<bool>> {
-    let mut vertices: Vec<Vector3d<f32>> = reader.new_bounded_vec(
-      u64::from(header.vertex_count),
-      LevelCformGeometry::VERTEX_SIZE as u64,
-      "collision form vertices",
-    )?;
-
-    for _ in 0..header.vertex_count {
-      vertices.push(reader.read_xr()?);
-    }
-
+    let vertices: Vec<Vector3d<f32>> = reader.read_records(header.vertex_count.into(), "collision form vertices")?;
     let mut open: Vec<bool> = vec![true; points.len()];
 
-    for _ in 0..header.face_count {
-      let face: LevelCformFace = reader.read_xr()?;
-      let [a, b, c]: [&Vector3d<f32>; 3] = match face.vertices.map(|index| vertices.get(index as usize)) {
-        [Some(a), Some(b), Some(c)] => [a, b, c],
-        _ => {
-          return Err(XrfError::new_invalid_error(format!(
-            "A collision form face names vertex {:?} of {}",
-            face.vertices, header.vertex_count
-          )));
-        }
-      };
+    reader.read_with(header.face_count as usize * LevelCformFace::SERIALIZED_SIZE, |faces| {
+      for face in faces.as_chunks::<{ LevelCformFace::SERIALIZED_SIZE }>().0 {
+        Self::cover(&LevelCformFace::decode(face), &vertices, points, &mut open)?;
+      }
 
-      for (point, is_open) in points.iter().zip(open.iter_mut()) {
-        if *is_open && Self::is_triangle_above(a, b, c, point) {
-          *is_open = false;
-        }
+      Ok::<(), XrfError>(())
+    })??;
+
+    Ok(open)
+  }
+
+  /// Marks every point still open that the face lies straight above.
+  fn cover(
+    face: &LevelCformFace,
+    vertices: &[Vector3d<f32>],
+    points: &[Vector3d<f32>],
+    open: &mut [bool],
+  ) -> XrfResult {
+    let [a, b, c]: [&Vector3d<f32>; 3] = match face.vertices.map(|index| vertices.get(index as usize)) {
+      [Some(a), Some(b), Some(c)] => [a, b, c],
+      _ => {
+        return Err(XrfError::new_invalid_error(format!(
+          "A collision form face names vertex {:?} of {}",
+          face.vertices,
+          vertices.len()
+        )));
+      }
+    };
+
+    for (point, is_open) in points.iter().zip(open.iter_mut()) {
+      if *is_open && Self::is_triangle_above(a, b, c, point) {
+        *is_open = false;
       }
     }
 
-    Ok(open)
+    Ok(())
   }
 
   /// Whether a vertical line through a point crosses a triangle above it: a face seen edge-on from above covers nothing.

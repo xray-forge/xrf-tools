@@ -77,4 +77,12 @@ impl ChunkFieldWriter for ChunkWriter {
 
     Ok(())
   }
+
+  /// The count, then the values in one pass.
+  #[inline]
+  fn write_u16_vector(&mut self, values: &[u16]) -> XrfResult {
+    Self::write_u16_vector(self, values)?;
+
+    Ok(())
+  }
 }

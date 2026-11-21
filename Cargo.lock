@@ -8683,6 +8683,7 @@ dependencies = [
 name = "xrf-level"
 version = "0.1.0"
 dependencies = [
+ "criterion 0.8.2",
  "glam",
  "serde",
  "specta",

@@ -7,6 +7,7 @@ use crate::bytes::xray_write::XRayWrite;
 use crate::read_write::chunk_read_write::ChunkReadWrite;
 use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
 use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;
+use crate::read_write::chunk_record::ChunkRecord;
 use crate::reader::chunk_line::ChunkLine;
 use crate::writer::chunk_writer::ChunkWriter;
 
@@ -85,12 +86,33 @@ impl ChunkWriter {
     let count: u32 = narrow_format_size(data.len(), "u16 vector length")?;
 
     self.write_u32(count)?;
-
-    for it in data {
-      self.write_u16(*it)?;
-    }
+    self.write_records(data)?;
 
     Ok(size_of::<u32>() + size_of_val(data))
+  }
+
+  /// Write records back to back in one pass, as [`crate::ChunkReader::read_records`] reads them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the records' bytes are over the platform limit.
+  pub fn write_records<R: ChunkRecord<SIZE>, const SIZE: usize>(&mut self, records: &[R]) -> XrfResult {
+    let size: usize = records
+      .len()
+      .checked_mul(SIZE)
+      .ok_or_else(|| XrfError::new_invalid_error("Records' bytes are over the platform limit"))?;
+
+    // Room made once and filled in place: appending each record's bytes checks capacity per record and keeps small
+    // records from vectorising, ten times slower for `u16`s.
+    let start: usize = self.buffer.len();
+
+    self.buffer.resize(start + size, 0);
+
+    for (slot, record) in self.buffer[start..].as_chunks_mut::<SIZE>().0.iter_mut().zip(records) {
+      *slot = record.encode();
+    }
+
+    Ok(())
   }
 }
 

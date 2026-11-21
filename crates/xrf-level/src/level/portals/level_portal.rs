@@ -38,11 +38,7 @@ impl ChunkReadWrite for LevelPortal {
   fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let sector_front: u16 = reader.read_u16()?;
     let sector_back: u16 = reader.read_u16()?;
-    let mut vertices: Vec<Vector3d> = Vec::with_capacity(Self::MAXIMUM_VERTICES);
-
-    for _ in 0..Self::MAXIMUM_VERTICES {
-      vertices.push(reader.read_xr()?);
-    }
+    let vertices: Vec<Vector3d> = reader.read_records(Self::MAXIMUM_VERTICES as u64, "level portal vertices")?;
 
     Ok(Self {
       sector_back,
@@ -63,11 +59,7 @@ impl ChunkReadWrite for LevelPortal {
 
     writer.write_u16(self.sector_front)?;
     writer.write_u16(self.sector_back)?;
-
-    for vertex in &self.vertices {
-      vertex.write(writer)?;
-    }
-
+    writer.write_records(&self.vertices)?;
     writer.write_u32(self.vertex_count)?;
 
     Ok(())

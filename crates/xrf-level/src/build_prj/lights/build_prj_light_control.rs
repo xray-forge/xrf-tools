@@ -26,11 +26,7 @@ impl ChunkReadWrite for BuildPrjLightControl {
   fn read<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let name: BuildPrjName = BuildPrjName::read(reader, BuildPrjName::SHORT_SIZE)?;
     let count: u32 = reader.read_u32()?;
-    let mut data: Vec<u32> = reader.new_bounded_vec(u64::from(count), 4, "build project light control data")?;
-
-    for _ in 0..count {
-      data.push(reader.read_u32()?);
-    }
+    let data: Vec<u32> = reader.read_records(count.into(), "build project light control data")?;
 
     Ok(Self { name, data })
   }
@@ -39,11 +35,6 @@ impl ChunkReadWrite for BuildPrjLightControl {
     self.name.write(writer, BuildPrjName::SHORT_SIZE)?;
 
     writer.write_u32(narrow_format_size(self.data.len(), "build project light control data")?)?;
-
-    for value in &self.data {
-      writer.write_u32(*value)?;
-    }
-
-    Ok(())
+    writer.write_records(&self.data)
   }
 }

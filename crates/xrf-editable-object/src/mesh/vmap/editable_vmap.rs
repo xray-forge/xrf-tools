@@ -88,15 +88,10 @@ impl ChunkReadWrite for EditableVMap {
       "vertex map entries",
     )?;
 
-    let mut values: Vec<f32> = reader.new_bounded_vec(value_count, 4, "vertex map values")?;
-
-    for _ in 0..value_count {
-      values.push(reader.read_f32()?);
-    }
-
-    let vertex_indices: Vec<u32> = Self::read_indices::<D>(reader, count)?;
+    let values: Vec<f32> = reader.read_records(value_count, "vertex map values")?;
+    let vertex_indices: Vec<u32> = reader.read_records(count.into(), "vertex map indices")?;
     let polygon_indices: Option<Vec<u32>> = if is_polymap {
-      Some(Self::read_indices::<D>(reader, count)?)
+      Some(reader.read_records(count.into(), "vertex map indices")?)
     } else {
       None
     };
@@ -120,27 +115,13 @@ impl ChunkReadWrite for EditableVMap {
     writer.write_u8(u8::from(self.kind))?;
     writer.write_u32(narrow_format_size(self.get_count(), "Vertex map entries")?)?;
 
-    for value in &self.values {
-      writer.write_f32(*value)?;
-    }
+    writer.write_records(&self.values)?;
+    writer.write_records(&self.vertex_indices)?;
 
-    for index in self.vertex_indices.iter().chain(self.polygon_indices.iter().flatten()) {
-      writer.write_u32(*index)?;
+    if let Some(polygon_indices) = &self.polygon_indices {
+      writer.write_records(polygon_indices)?;
     }
 
     Ok(())
-  }
-}
-
-impl EditableVMap {
-  /// Reads `count` indices into points or faces.
-  fn read_indices<D: ChunkDataSource>(reader: &mut ChunkReader<D>, count: u32) -> XrfResult<Vec<u32>> {
-    let mut indices: Vec<u32> = reader.new_bounded_vec(count.into(), 4, "vertex map indices")?;
-
-    for _ in 0..count {
-      indices.push(reader.read_u32()?);
-    }
-
-    Ok(indices)
   }
 }

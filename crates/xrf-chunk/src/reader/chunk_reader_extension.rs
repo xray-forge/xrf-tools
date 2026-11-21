@@ -2,7 +2,6 @@ use std::io::{Read, SeekFrom};
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::bytes::xray_bytes::XRayBytes;
 use crate::bytes::xray_read::XRayRead;
 use crate::read_write::chunk_read_write::ChunkReadWrite;
 use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
@@ -73,6 +72,9 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   /// Read the rest of the chunk as a packed run of fixed-size records, which is how the engine reads a chunk it casts
   /// onto an array: no count is stored, the size alone says how many there are.
   ///
+  /// For records that read themselves field by field through [`ChunkReadWrite`]; a record whose every byte pattern is
+  /// a value is a [`crate::ChunkRecord`] and reads with [`Self::read_remaining_records`] instead, in one pass.
+  ///
   /// `what` names the chunk in the errors.
   ///
   /// # Errors
@@ -104,22 +106,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   pub fn read_u16_vector(&mut self) -> XrfResult<Vec<u16>> {
     let count: u32 = self.read_u32()?;
 
-    // Bounded before anything is read, so a corrupt count is refused rather than reserved.
-    xrf_utils::assert_count_fits(
-      count.into(),
-      self.read_bytes_remain(),
-      size_of::<u16>() as u64,
-      "u16 vector",
-    )?;
-
-    Ok(self.data.read_with(count as usize * size_of::<u16>(), |bytes| {
-      bytes
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|it| XRayBytes::read_u16(it))
-        .collect()
-    })?)
+    self.read_records(count.into(), "u16 vector")
   }
 
   /// Read a float the format stored as a `u16` spread across a range, `IReader::r_float_q16`.
@@ -474,6 +461,22 @@ mod tests {
       "Unexpected error: {error}"
     );
     assert!(error.contains("only 2 remain"), "Unexpected error: {error}");
+
+    Ok(())
+  }
+
+  /// Generic packet code reaches a reader through the field trait, which must bound the count as the reader does.
+  #[test]
+  fn rejects_u16_vector_count_larger_than_remaining_payload_through_the_field_trait() -> XrfResult {
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[2, 0, 0, 0, 1, 0])?;
+    let error: String = crate::field::chunk_field_reader::ChunkFieldReader::read_u16_vector(&mut chunk)
+      .expect_err("expect the declared count to exceed the payload")
+      .to_string();
+
+    assert!(
+      error.contains("u16 vector declares 2 entries"),
+      "Unexpected error: {error}"
+    );
 
     Ok(())
   }
