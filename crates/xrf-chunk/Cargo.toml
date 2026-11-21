@@ -19,5 +19,15 @@ xrf-test-utils = { workspace = true }
 name = "chunk_reading"
 harness = false
 
+# Framing on the way out, which every format writer and repack goes through.
+[[bench]]
+name = "chunk_writing"
+harness = false
+
+# Numbers, strings and typed records read and written through a chunk, as bytes and as fields.
+[[bench]]
+name = "chunk_fields"
+harness = false
+
 [lints]
 workspace = true
