@@ -120,7 +120,7 @@ impl LtxProject {
       // from the document the project already holds, so this pass parses nothing.
       let contents: Vec<u8> = self.read_counted_bytes(logical_path)?;
       let formatted: bool =
-        decode_w1251_bytes_to_string(&contents)? == self.read_document(logical_path)?.to_formatted();
+        decode_w1251_bytes_to_string(&contents)? == self.read_document(logical_path)?.to_formatted()?;
 
       result.record_checked(self.path_of(logical_path), formatted);
       checking.advance();

@@ -6,6 +6,7 @@ use xrf_extension::XrayExtension;
 use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 use crate::syntax::{
   LTX_SYMBOL_COMMENT, LTX_SYMBOL_INCLUDE, LTX_SYMBOL_INHERIT, LTX_SYMBOL_SECTION_CLOSE, LTX_SYMBOL_SECTION_OPEN,
+  strip_engine_comment,
 };
 
 /// A section header as its line spells it: the name, the parents it declares, and any trailing comment.
@@ -364,7 +365,7 @@ impl LtxParser<'_> {
       Ok((section, None, None))
     } else if let Some(remainder) = remainder.strip_prefix(LTX_SYMBOL_INHERIT) {
       // Cut as a field's value is, at `;` or `//`, so a comment never reads as a parent's name.
-      let inherited: &str = Self::strip_engine_comment(remainder);
+      let inherited: &str = strip_engine_comment(remainder);
       let comment: Option<&str> = Self::strip_comment_marker(&remainder[inherited.len()..]);
 
       let inherited: Vec<&str> = inherited
@@ -431,7 +432,7 @@ impl LtxParser<'_> {
     Ok((name, comment.filter(|it| !it.is_empty())))
   }
 
-  /// The key, value and comment of a field line starting at `span`, cut as [`Self::strip_engine_comment`] cuts it.
+  /// The key, value and comment of a field line starting at `span`, cut as [`strip_engine_comment`] cuts it.
   ///
   /// A value in a section with an odd number of quotes is refused: the engine reads the next lines into it, or warns
   /// and drops the quote at a `[...]` line, and this parser reads one line per statement.
@@ -440,7 +441,7 @@ impl LtxParser<'_> {
       return self.error("Failed to parse empty value statement");
     }
 
-    let kept: &str = Self::strip_engine_comment(line);
+    let kept: &str = strip_engine_comment(line);
     let comment: Option<&str> = Self::strip_comment_marker(&line[kept.len()..]);
     let data: &str = kept.trim();
 
@@ -449,6 +450,7 @@ impl LtxParser<'_> {
       Some((key, value)) => (key.trim(), Some(value.trim())),
     };
 
+    // The line is cut already, so its value's quotes are what the engine keeps.
     if self.is_in_section && value.is_some_and(|value| value.bytes().filter(|&byte| byte == b'"').count() % 2 == 1) {
       return Err(XrfError::new_ltx_parse_error(
         span.get_line(),
@@ -461,23 +463,6 @@ impl LtxParser<'_> {
     }
 
     Ok((key, value, comment.filter(|it| !it.is_empty())))
-  }
-
-  /// What `CInifile::Load` keeps of `line` before reading a field: everything before the first `;`, or the first `/`
-  /// when a second follows it, unless that cut falls between the line's first two quotes.
-  ///
-  /// Only the first `/` counts, so `a/b // c` keeps its `// c`, as in the engine.
-  fn strip_engine_comment(line: &str) -> &str {
-    let semicolon: Option<usize> = line.find(LTX_SYMBOL_COMMENT);
-    let slashes: Option<usize> = line.find('/').filter(|&slash| line[slash + 1..].starts_with('/'));
-    let Some(start) = semicolon.into_iter().chain(slashes).min() else {
-      return line;
-    };
-    let is_quoted: bool = line[..start]
-      .find('"')
-      .is_some_and(|open| line[open + 1..].find('"').is_some_and(|close| open + 1 + close > start));
-
-    if is_quoted { line } else { &line[..start] }
   }
 }
 

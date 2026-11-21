@@ -104,7 +104,7 @@ impl Ltx {
 impl Ltx {
   /// Load formatted LTX as string from string.
   pub fn format_from_str(buf: &str) -> XrfResult<String> {
-    Ok(Self::read_document_from_str(buf)?.to_formatted())
+    Self::read_document_from_str(buf)?.to_formatted()
   }
 
   /// Load formatted LTX as string from file.

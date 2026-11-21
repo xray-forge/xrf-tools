@@ -40,6 +40,9 @@ impl Patrol {
   /// Sections one imported link occupies in the links file.
   pub const MIN_LINK_SECTIONS: u64 = 1;
 
+  /// Sections one imported point occupies in the points file.
+  pub const MIN_POINT_SECTIONS: u64 = 1;
+
   /// Refuse a link from or to a point the patrol does not hold: `CGraphAbstract::add_edge` looks both ends up and
   /// dereferences what it finds.
   fn assert_links_in_range(&self) -> XrfResult {
@@ -173,12 +176,16 @@ impl Patrol {
     })?;
 
     let name: String = section.read_field("name")?;
-    let points_list: String = section.read_field("points")?;
+    let points_count: usize = section.read_field("points_count")?;
     let links_count: usize = section.read_field("links_count")?;
 
-    let mut points: Vec<PatrolPoint> = Vec::new();
-
-    // Every link is imported from its own section, so the links file cannot hold more links than it has sections.
+    // Every point and link is imported from its own section, so neither file can hold more than it has sections.
+    let mut points: Vec<PatrolPoint> = new_bounded_vec(
+      points_count as u64,
+      patrol_points_ltx.len() as u64,
+      Self::MIN_POINT_SECTIONS,
+      "patrol points",
+    )?;
     let mut links: Vec<PatrolLink> = new_bounded_vec(
       links_count as u64,
       patrol_links_ltx.len() as u64,
@@ -186,41 +193,8 @@ impl Patrol {
       "patrol links",
     )?;
 
-    for (index, listed) in points_list.split(',').map(str::trim).enumerate() {
-      let prefix: String = format!("{name}.{index}.");
-      let exact: String = format!("{prefix}{listed}");
-
-      // Ltx trims values, so a point name padded with whitespace survives only in the section name. The listed name is
-      // what the trimmed name looks like; the section it belongs to carries the real one.
-      let section_name: String = if patrol_points_ltx.has_section(&exact) {
-        exact
-      } else {
-        let padded: String = patrol_points_ltx
-          .sections()
-          .find(|section| {
-            section
-              .strip_prefix(prefix.as_str())
-              .is_some_and(|point| point.trim() == listed)
-          })
-          .map(String::from)
-          .ok_or_else(|| {
-            XrfError::new_parsing_error(format!(
-              "Patrol point section '{}' should be defined in ltx file ({})",
-              exact,
-              file!()
-            ))
-          })?;
-
-        log::warn!("Patrol point '{listed}' of patrol '{name}' recovered from padded section '{padded}'");
-
-        padded
-      };
-
-      points.push(PatrolPoint::import_named(
-        &section_name,
-        String::from(&section_name[prefix.len()..]),
-        patrol_points_ltx,
-      )?);
+    for index in 0..points_count {
+      points.push(PatrolPoint::import(&format!("{name}.{index}"), patrol_points_ltx)?);
     }
 
     for index in 0..links_count {
@@ -233,7 +207,8 @@ impl Patrol {
   }
 
   /// Export patrol data into ltx config files.
-  /// Creates separate files for patrols, points and links.
+  /// Creates separate files for patrols, points and links: each point and link in a section keyed by its index, as no
+  /// name is safe in a section header, the point's name among its fields.
   pub fn export(
     &self,
     section_name: &str,
@@ -244,19 +219,11 @@ impl Patrol {
     patrols_ltx
       .with_section(section_name)
       .set("name", &self.name)
-      .set(
-        "points",
-        self
-          .points
-          .iter()
-          .map(|it| it.name.clone())
-          .collect::<Vec<String>>()
-          .join(","),
-      )
+      .set("points_count", self.points.len())
       .set("links_count", self.links.len());
 
     for (index, point) in self.points.iter().enumerate() {
-      point.export(&format!("{}.{}.{}", self.name, index, point.name), patrol_points_ltx)?;
+      point.export(&format!("{}.{}", self.name, index), patrol_points_ltx)?;
     }
 
     for (index, link) in self.links.iter().enumerate() {
@@ -472,6 +439,62 @@ mod tests {
 
     assert_eq!(imported.points.first().unwrap().name, "wp00 ");
     assert_eq!(imported, original);
+
+    Ok(())
+  }
+
+  // Clear Sky's `gar_smart_terrain_3_7_unique_searcher_3_look` names a point with flags and a condition in braces.
+  #[test]
+  fn keys_each_point_by_its_index_whatever_its_name_holds() -> XrfResult {
+    let names: [&str; 5] = [
+      "wp00|a={+gar_conc_camp_arbaiten_3}probe_way",
+      "a;b",
+      "c,d",
+      "\"open",
+      "wp00 ",
+    ];
+    let original: Patrol = Patrol {
+      name: String::from("look"),
+      points: names
+        .iter()
+        .zip(0u32..)
+        .map(|(name, index)| PatrolPoint {
+          name: String::from(*name),
+          position: Vector3d::new(index as f32, 0.0, 0.0),
+          flags: index,
+          level_vertex_id: index,
+          game_vertex_id: 1,
+        })
+        .collect(),
+      links: vec![],
+    };
+    let mut patrols_ltx: Ltx = Ltx::new();
+    let mut points_ltx: Ltx = Ltx::new();
+    let mut links_ltx: Ltx = Ltx::new();
+
+    original.export(&original.name, &mut patrols_ltx, &mut points_ltx, &mut links_ltx)?;
+
+    let reread = |ltx: &Ltx| -> XrfResult<Ltx> {
+      Ltx::read_from_str(&String::from_utf8(ltx.write_to_bytes()?).expect("ASCII text"))
+    };
+    let points_ltx: Ltx = reread(&points_ltx)?;
+
+    assert_eq!(
+      points_ltx.sections().collect::<Vec<&str>>(),
+      ["look.0", "look.1", "look.2", "look.3", "look.4"]
+    );
+    assert_eq!(points_ltx.get_from("look.0", "name"), Some(names[0]));
+    assert_eq!(points_ltx.get_from("look.2", "name"), Some(names[2]));
+    assert!(
+      ["look.1", "look.3", "look.4"]
+        .iter()
+        .all(|section| points_ltx.get_from(section, "name_bytes").is_some()),
+      "a comment, an open quote and padding no value carries"
+    );
+    assert_eq!(
+      Patrol::import(&original.name, &reread(&patrols_ltx)?, &points_ltx, &links_ltx)?,
+      original
+    );
 
     Ok(())
   }

@@ -7,7 +7,10 @@ use xrf_utils::{StagedFile, encode_string_into_w1251_bytes, read_as_string_from_
 
 use crate::binding::LtxWrite;
 use crate::ltx::{Ltx, SectionSetter};
-use crate::syntax::{DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
+use crate::syntax::{
+  DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION, leaves_quote_open,
+  new_open_quote_error,
+};
 
 impl LtxWrite for Ltx {
   type SectionWriter<'a> = SectionSetter<'a>;
@@ -61,7 +64,22 @@ impl Ltx {
   /// The file's bytes, in the Windows-1251 encoding the read path decodes.
   ///
   /// ASCII text, as an exported spawn or particle library is, hands its buffer back as the bytes without a copy.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the section and key of a value that leaves a quote open, which the read path refuses, or
+  /// when a value has no Windows-1251 encoding.
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
+    for (section, props) in self
+      .sections
+      .iter()
+      .filter(|(section, _)| section.as_str() != ROOT_SECTION)
+    {
+      if let Some((key, _)) = props.into_iter().find(|(_, value)| leaves_quote_open(value)) {
+        return Err(new_open_quote_error(section, key));
+      }
+    }
+
     Ok(encode_string_into_w1251_bytes(self.render())?)
   }
 
@@ -287,6 +305,25 @@ a3 = n3
 
     assert_eq!(output, encode_string_to_w1251_bytes(&input).unwrap());
     assert_eq!(decode_w1251_bytes_to_string(&output).unwrap(), input);
+  }
+
+  #[test]
+  fn refuses_a_value_leaving_a_quote_open_naming_its_section_and_key() {
+    let mut ltx: Ltx = Ltx::new();
+
+    ltx.with_root_section().set("root", "\"open");
+    ltx.with_section("box").set("closed", "\"a\" ; \"b").set("x", "\"a");
+
+    assert_eq!(
+      ltx.write_to_bytes().expect_err("an open quote").to_string(),
+      "Convert error: Value of 'x' in section 'box' leaves a quote open, which no reader takes back"
+    );
+
+    ltx.with_section("box").set("x", "\"a\"");
+
+    let written: Vec<u8> = ltx.write_to_bytes().expect("a root field and closed quotes read back");
+
+    assert!(Ltx::read_from_str(&String::from_utf8(written).expect("ASCII text")).is_ok());
   }
 
   #[test]

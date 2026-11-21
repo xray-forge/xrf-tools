@@ -26,6 +26,6 @@ pub use crate::scheme::{
 pub use crate::source::{LtxDocumentSource, LtxIncludeMask};
 pub use crate::syntax::{
   LTX_SCHEME_EXTENSION, LTX_SCHEME_FIELD, LTX_SCHEME_LTX_FILENAME, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD,
-  LTX_SYMBOL_SCHEME, SYSTEM_LTX_FILENAME, fold_section_name, read_engine_bool, read_engine_float, read_engine_floats,
-  scan_engine_float,
+  LTX_SYMBOL_SCHEME, SYSTEM_LTX_FILENAME, fold_section_name, is_value_kept, leaves_quote_open, read_engine_bool,
+  read_engine_float, read_engine_floats, scan_engine_float,
 };

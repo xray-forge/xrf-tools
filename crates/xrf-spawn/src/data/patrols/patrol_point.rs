@@ -3,9 +3,9 @@ use xrf_chunk::{
   ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayRead, XRayWrite,
 };
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite};
+use xrf_ltx::{LtxImportExport, LtxRead, LtxSectionRead, LtxSectionWrite, LtxWrite, is_value_kept};
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, narrow_format_size};
+use xrf_utils::{assert_equal, decode_w1251_bytes_to_string, encode_string_to_w1251_bytes, narrow_format_size};
 
 /// `CPatrolPoint::load_raw`, `CPatrolPoint::load` in xray codebase.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -88,15 +88,6 @@ impl ChunkReadWrite for PatrolPoint {
 
     reader.assert_read("Chunk data should be read for patrol point")?;
 
-    if point.name.trim() != point.name {
-      // Anomaly ships five of these. The padding is part of the name and is preserved, but it survives an ltx round
-      // trip only through the section name, so say so rather than letting it pass unremarked.
-      log::warn!(
-        "Patrol point name '{}' is padded with whitespace, which ltx cannot carry in a value",
-        point.name
-      );
-    }
-
     Ok(point)
   }
 
@@ -113,11 +104,40 @@ impl ChunkReadWrite for PatrolPoint {
 }
 
 impl PatrolPoint {
-  /// Import patrol point data from ltx config under a name the caller already resolved.
-  ///
-  /// Ltx trims values, so a name padded with whitespace cannot be recovered from the `name` key. The owning patrol
-  /// takes it from the section name, which keeps the padding.
-  pub fn import_named<L: LtxRead>(section_name: &str, name: String, ltx: &L) -> XrfResult<Self> {
+  /// The name as `name_bytes` carries it where no value can: its Windows-1251 bytes in hex.
+  fn get_name_bytes(&self) -> XrfResult<String> {
+    Ok(
+      encode_string_to_w1251_bytes(&self.name)?
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect(),
+    )
+  }
+
+  /// The name `name_bytes` spells.
+  fn read_name_bytes(section_name: &str, hex: &str) -> XrfResult<String> {
+    let invalid = || {
+      XrfError::new_parsing_error(format!(
+        "Patrol point '{section_name}' has name bytes '{hex}' no hex spells"
+      ))
+    };
+
+    if !hex.len().is_multiple_of(2) || !hex.is_ascii() {
+      return Err(invalid());
+    }
+
+    let bytes: Vec<u8> = (0..hex.len())
+      .step_by(2)
+      .map(|at| u8::from_str_radix(&hex[at..at + 2], 16).map_err(|_| invalid()))
+      .collect::<XrfResult<_>>()?;
+
+    Ok(decode_w1251_bytes_to_string(&bytes)?)
+  }
+}
+
+impl LtxImportExport for PatrolPoint {
+  /// Import patrol point data from ltx config: its name from `name`, or from `name_bytes` where no value could carry it.
+  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
     let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
       XrfError::new_parsing_error(format!(
         "Patrol point section '{}' should be defined in ltx file ({})",
@@ -125,6 +145,10 @@ impl PatrolPoint {
         file!()
       ))
     })?;
+    let name: String = match section.read_optional_field::<String>("name_bytes")? {
+      Some(hex) => Self::read_name_bytes(section_name, &hex)?,
+      None => section.read_field("name")?,
+    };
 
     Ok(Self {
       name,
@@ -134,27 +158,19 @@ impl PatrolPoint {
       game_vertex_id: section.read_field("game_vertex_id")?,
     })
   }
-}
 
-impl LtxImportExport for PatrolPoint {
-  /// Import patrol point data from ltx config.
-  fn import<L: LtxRead>(section_name: &str, ltx: &L) -> XrfResult<Self> {
-    let section: &L::Section = ltx.section(section_name).ok_or_else(|| {
-      XrfError::new_parsing_error(format!(
-        "Patrol point section '{}' should be defined in ltx file ({})",
-        section_name,
-        file!()
-      ))
-    })?;
-
-    Self::import_named(section_name, section.read_field("name")?, ltx)
-  }
-
-  /// Export patrol point data into ltx.
+  /// Export patrol point data into ltx: the name as `name` where a value reads back as it, else as `name_bytes`, as a
+  /// name padded with whitespace, or holding a comment or an open quote, cannot be a value.
   fn export(&self, section_name: &str, ltx: &mut impl LtxWrite) -> XrfResult {
-    ltx
-      .with_section(section_name)
-      .set("name", &self.name)
+    let mut section = ltx.with_section(section_name);
+
+    if is_value_kept(&self.name) {
+      section.set("name", &self.name);
+    } else {
+      section.set("name_bytes", self.get_name_bytes()?);
+    }
+
+    section
       .set("flags", self.flags)
       .set("position", self.position)
       .set("level_vertex_id", self.level_vertex_id)

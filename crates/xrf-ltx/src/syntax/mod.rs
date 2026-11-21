@@ -14,4 +14,7 @@ pub use crate::syntax::ltx_syntax::{
   LTX_SCHEME_EXTENSION, LTX_SCHEME_FIELD, LTX_SCHEME_LTX_FILENAME, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD,
   LTX_SYMBOL_SCHEME, SYSTEM_LTX_FILENAME,
 };
-pub use crate::syntax::ltx_value::{read_engine_bool, read_engine_float, read_engine_floats, scan_engine_float};
+pub use crate::syntax::ltx_value::{
+  is_value_kept, leaves_quote_open, read_engine_bool, read_engine_float, read_engine_floats, scan_engine_float,
+};
+pub(crate) use crate::syntax::ltx_value::{new_open_quote_error, strip_engine_comment};

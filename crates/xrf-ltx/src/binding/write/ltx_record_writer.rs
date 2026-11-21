@@ -8,7 +8,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, encode_string_into_w1251_bytes};
 
 use crate::binding::{LtxFieldIndex, LtxRecordSection, LtxWrite};
-use crate::syntax::{DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
+use crate::syntax::{
+  DEFAULT_KV_SEPARATOR, EMPTY_VALUE_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION, leaves_quote_open,
+  new_open_quote_error,
+};
 
 /// Writes a file of exported records as its text while they are exported, without building a config of them.
 #[derive(Default)]
@@ -26,6 +29,8 @@ pub struct LtxRecordWriter {
   reopened: Option<String>,
   /// Whether the root section was opened after another, where its headerless fields would read back as that one's.
   is_root_late: bool,
+  /// The first section and key given a value that leaves a quote open, which no reader takes back.
+  open_quote: Option<(String, String)>,
 }
 
 /// A run of the writer's text.
@@ -46,6 +51,11 @@ struct FieldLine {
 impl TextSpan {
   fn of(self, text: &str) -> &str {
     &text[self.start..self.end]
+  }
+
+  /// Whether this is the root section's name, which takes no text as the root has no header.
+  fn is_root(self) -> bool {
+    self.start == self.end
   }
 }
 
@@ -70,9 +80,15 @@ impl LtxRecordWriter {
   ///
   /// # Errors
   ///
-  /// Returns an error when a section, the root included, was written to after another started, or a value has no
-  /// Windows-1251 encoding.
-  pub fn into_bytes(self) -> XrfResult<Vec<u8>> {
+  /// Returns an error when a section, the root included, was written to after another started, a value in a section
+  /// leaves a quote open, or a value has no Windows-1251 encoding.
+  pub fn into_bytes(mut self) -> XrfResult<Vec<u8>> {
+    self.finish_section();
+
+    if let Some((section, key)) = self.open_quote {
+      return Err(new_open_quote_error(&section, &key));
+    }
+
     if let Some(section) = self.reopened {
       return Err(XrfError::new_convert_error(format!(
         "Section '{section}' is written to again after another section started, which a record file cannot hold"
@@ -157,6 +173,18 @@ impl LtxRecordWriter {
       return;
     };
     let text: &str = &self.text;
+
+    // Each field's value as it was last set; the root section's stand before every header, where a reader takes an
+    // open quote as one line.
+    if self.open_quote.is_none()
+      && !open.is_root()
+      && let Some(field) = self
+        .fields
+        .iter()
+        .find(|field| leaves_quote_open(&text[field.key.end..field.end]))
+    {
+      self.open_quote = Some((String::from(open.of(text)), String::from(field.key.of(text))));
+    }
 
     self
       .finished
@@ -390,6 +418,29 @@ mod test {
     writer.with_section(ROOT_SECTION).set("c", 3);
 
     assert!(writer.into_bytes().is_err());
+  }
+
+  #[test]
+  fn refuses_a_value_leaving_a_quote_open_naming_its_section_and_key() {
+    let mut writer: LtxRecordWriter = LtxRecordWriter::new();
+
+    writer.with_section(ROOT_SECTION).set("root", "\"open");
+    writer.with_section("box").set("closed", "\"a\"").set("x", "\"a");
+    writer.with_section("later").set("y", "\"b");
+
+    assert_eq!(
+      writer.into_bytes().expect_err("an open quote").to_string(),
+      "Convert error: Value of 'x' in section 'box' leaves a quote open, which no reader takes back"
+    );
+
+    let mut replaced: LtxRecordWriter = LtxRecordWriter::new();
+
+    replaced.with_section("box").set("x", "\"a").set("x", "\"a\"");
+
+    assert!(
+      replaced.into_bytes().is_ok(),
+      "a value is judged as it was last set, as a config judges it"
+    );
   }
 
   #[test]

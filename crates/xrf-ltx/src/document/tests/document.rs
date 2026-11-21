@@ -151,13 +151,13 @@ fn one_parse_answers_resolution_formatting_and_the_include_list() -> XrfResult {
 
   assert_eq!(document.list_included(), vec!["a.ltx", "b.ltx"]);
   assert_eq!(
-    document.to_formatted(),
+    document.to_formatted()?,
     "; note\r\n#include \"a.ltx\"\r\n#include \"b.ltx\"\r\n\r\n[section]\r\nkey = value\r\n"
   );
   assert_eq!(lower(&document)?.get_from("section", "key"), Some("value"));
 
   // Each of the three is a read of the same document, so the answers cannot disagree.
-  assert_eq!(document.to_formatted(), Ltx::format_from_str(contents)?);
+  assert_eq!(document.to_formatted()?, Ltx::format_from_str(contents)?);
 
   Ok(())
 }
@@ -174,12 +174,30 @@ fn formatting_keeps_a_quoted_semicolon_in_the_value() -> XrfResult {
 }
 
 #[test]
+fn formatting_refuses_a_value_leaving_a_quote_open_naming_its_section_and_key() -> XrfResult {
+  let mut document: LtxDocument = Ltx::read_document_from_str("[s]\nx = a\n")?;
+
+  for item in &mut document.items {
+    if let LtxItemKind::Key { value, .. } = &mut item.kind {
+      *value = Some(Box::from("\"a"));
+    }
+  }
+
+  assert_eq!(
+    document.to_formatted().expect_err("an open quote").to_string(),
+    "Convert error: Value of 'x' in section 's' leaves a quote open, which no reader takes back"
+  );
+
+  Ok(())
+}
+
+#[test]
 fn formatting_a_patch_file_keeps_its_prefixes_outside_the_brackets() -> XrfResult {
   let document: LtxDocument = Ltx::read_document_from_str("![wpn_ak74]:base\n!cost\n>ammo_class=a,b\n")?;
 
   // The formatter needs no dialect: an operation is another statement to render, and `![x]` must not become `[!x]`.
   assert_eq!(
-    document.to_formatted(),
+    document.to_formatted()?,
     "![wpn_ak74]:base\r\n!cost\r\n>ammo_class = a,b\r\n"
   );
 
