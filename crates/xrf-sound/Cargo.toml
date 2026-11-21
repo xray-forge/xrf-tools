@@ -7,7 +7,7 @@ rust-version.workspace = true
 
 [dependencies]
 ogg = "0.9.2"
-symphonia = { workspace = true }
+symphonia = { version = "0.6.1", default-features = false, features = ["pcm", "vorbis", "wav"] }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 serde = { workspace = true }

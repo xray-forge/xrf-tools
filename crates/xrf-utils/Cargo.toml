@@ -10,6 +10,7 @@ base64 = "0.23.1"
 encoding_rs = "0.8.41"
 log = { workspace = true }
 serde = { workspace = true }
+sha2 = { workspace = true }
 xrf-error = { workspace = true }
 
 [dev-dependencies]

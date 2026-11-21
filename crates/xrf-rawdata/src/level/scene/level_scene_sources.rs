@@ -2,12 +2,11 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use sha2::{Digest, Sha256};
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_editable_level::EditableLevelGuid;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::LevelFile;
-use xrf_utils::format_path;
+use xrf_utils::{ContentGuid, format_path};
 
 use crate::level::scene::level_bundle::LevelBundle;
 use crate::level::scene::level_scene_listing::LevelSceneListing;
@@ -117,23 +116,23 @@ impl LevelSceneSources {
       .collect()
   }
 
-  /// The scene's GUID: the first 16 bytes of the SHA-256 of each source's name, a zero, its length and
-  /// its bytes, in the order of their names, then `extra`, the hash of a source read beside the directory, where given.
+  /// The scene's GUID: the content GUID of each source's name, a zero, its length and its bytes, in the order of their
+  /// names, then `extra`, the hash of a source read beside the directory, where given.
   pub(crate) fn get_guid(&self, extra: Option<&str>) -> EditableLevelGuid {
-    let mut hash = Sha256::new();
+    let mut guid: ContentGuid = ContentGuid::new();
 
     for (name, bytes) in &self.files {
-      hash.update(name.as_bytes());
-      hash.update([0]);
-      hash.update((bytes.len() as u64).to_le_bytes());
-      hash.update(bytes);
+      guid.update(name.as_bytes());
+      guid.update(&[0]);
+      guid.update(&(bytes.len() as u64).to_le_bytes());
+      guid.update(bytes);
     }
 
     if let Some(extra) = extra {
-      hash.update(extra.as_bytes());
+      guid.update(extra.as_bytes());
     }
 
-    let digest = hash.finalize();
+    let digest: [u8; 16] = guid.finish();
     let half = |offset: usize| {
       let mut bytes: [u8; 8] = [0; 8];
 

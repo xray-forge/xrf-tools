@@ -2,10 +2,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_sound::SoundSource;
 
 use crate::decode::sound_channels::SoundChannels;
 use crate::decode::sound_format::SoundFormat;
-use crate::decode::source::sound_source::SoundSource;
 
 /// A sound's audio decoded packet by packet from its bytes: Ogg/Vorbis as the game ships, or WAV as the SDK keeps
 /// sources.
@@ -30,14 +30,14 @@ impl SoundDecoder {
   /// carry a sound without a sample rate, a length, or one or two channels.
   pub fn open(bytes: Arc<[u8]>) -> XrfResult<Self> {
     let source: SoundSource = SoundSource::open(bytes)?;
-    let channels_count: usize = source.get_channels_count();
+    let channels_count: usize = usize::from(source.get_channels());
     let channels: SoundChannels = SoundChannels::from_count(channels_count)
       .ok_or_else(|| XrfError::new_read_error(format!("Sound has {channels_count} channels, not one or two")))?;
 
     Ok(Self {
       sample_rate: source.get_sample_rate(),
       channels,
-      frames_count: source.get_frames_count(),
+      frames_count: source.get_samples_count(),
       source,
       next_frame: 0,
       is_at_end: false,

@@ -1,4 +1,3 @@
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
@@ -7,7 +6,7 @@ use xrf_spawn::{
   GraphCrossTable, GraphCrossTableCell, GraphEdge, GraphHeader, GraphLevel, GraphLevelPoint, GraphVertex,
   SpawnGraphsChunk,
 };
-use xrf_utils::narrow_format_size;
+use xrf_utils::{ContentGuid, narrow_format_size};
 
 use crate::merge::spawn_game_graph_merge::SpawnGameGraphMerge;
 use crate::merge::spawn_merge_level::SpawnMergeLevel;
@@ -288,19 +287,14 @@ impl SpawnGameGraphMerger {
     Ok(skipped)
   }
 
-  /// Sets the graph GUID on the graph and every cross table: the first 16 bytes of the SHA-256 of the graph chunk
-  /// written with a nil GUID.
+  /// Sets the graph GUID on the graph and every cross table: the content GUID of the graph chunk written with a nil
+  /// GUID.
   fn assign_guid(graph: &mut SpawnGraphsChunk) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     graph.write(&mut writer)?;
 
-    let digest = Sha256::digest(&writer.buffer);
-    let mut bytes: [u8; 16] = [0; 16];
-
-    bytes.copy_from_slice(&digest[..16]);
-
-    let guid: Uuid = Uuid::from_bytes(bytes);
+    let guid: Uuid = Uuid::from_bytes(ContentGuid::of(&writer.buffer));
 
     graph.header.guid = guid;
 

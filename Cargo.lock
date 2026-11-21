@@ -8270,7 +8270,6 @@ dependencies = [
  "rtrb",
  "serde",
  "specta",
- "symphonia",
  "xrf-audio-scene",
  "xrf-error",
  "xrf-sound",
@@ -8708,7 +8707,6 @@ dependencies = [
  "log",
  "pollster",
  "serde",
- "sha2",
  "specta",
  "uuid",
  "xrf-chunk",
@@ -9117,7 +9115,6 @@ version = "0.1.0"
 dependencies = [
  "glam",
  "serde",
- "sha2",
  "specta",
  "uuid",
  "xrf-chunk",
@@ -9239,6 +9236,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "sha2",
  "xrf-error",
  "xrf-test-utils",
 ]

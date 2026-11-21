@@ -107,10 +107,11 @@ the first two; a mono device gets the two averaged.
 
 ## Sounds
 
-`SoundDecoder` reads two formats:
+`SoundDecoder` reads two formats through [xrf-sound](../xrf-sound/README.md)'s `SoundSource`, which decodes every sound
+file this crate plays:
 
-- Ogg/Vorbis, as the game ships sounds, through [xrf-sound](../xrf-sound/README.md)'s `VorbisDecoder`.
-- PCM WAV (16-bit, 24-bit or float), as the SDK keeps sources, through symphonia.
+- Ogg/Vorbis, as the game ships sounds (`VorbisDecoder`).
+- PCM WAV (16-bit, 24-bit or float), as the SDK keeps sources (`WaveDecoder`).
 
 Only one or two channels are accepted, as the engines play nothing else. A sound's length is the engine's count
 (`ov_pcm_total`) for Ogg/Vorbis and the track's stated length for WAV, but decoding gives every frame the container

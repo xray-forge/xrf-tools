@@ -12,7 +12,6 @@ log = { workspace = true }
 rtrb = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-symphonia = { workspace = true, features = ["pcm", "wav"] }
 xrf-audio-scene = { workspace = true }
 xrf-error = { workspace = true }
 xrf-sound = { workspace = true }

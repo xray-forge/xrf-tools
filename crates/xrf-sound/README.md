@@ -6,10 +6,12 @@ The sound files the engine plays, and the environment presets it mixes them in.
 | ---------------------- | --------------------------------------------------------------------------------------- |
 | `SoundFile`            | Reads an Ogg/Vorbis sound's headers, length and X-Ray parameters; writes new parameters |
 | `VorbisDecoder`        | Decodes a sound's audio, seeking to the frame                                           |
+| `WaveDecoder`          | Decodes an SDK source's PCM WAV the same way                                            |
+| `SoundSource`          | Opens either by its container, for a player                                             |
 | `SoundEnvironmentFile` | Reads, edits and writes `senvironment.xr`, the reverb preset library                    |
 
-The sound verifier, `xrf-audio` and the desktop app's archive previews read through it. It does not play or encode
-sounds.
+The sound verifier, `xrf-audio` and the desktop app's archive previews read through it. It is the one crate that
+decodes sound files, through symphonia; it does not play or encode them.
 
 ## Read sound metadata
 
@@ -142,6 +144,10 @@ fn main() -> xrf_error::XrfResult {
 - `seek` bisects the bytes by granule position and lands on the last page that places a frame at or before the target
   and from which a reader receives a packet. Packets up to that page's end are decoded and dropped.
 - A packet the codec refuses as corrupt is skipped; the packets after it wait for the next page's granule position.
+
+`WaveDecoder` decodes the PCM WAV (16-bit, 24-bit or float) the SDK keeps sources in, with the same `open`, `seek` and
+`decode_next`; its length is the track's stated one. `SoundSource` opens a sound as Ogg/Vorbis where `is_ogg` says so
+and as WAV otherwise, and answers through whichever decoder it opened.
 
 The `fixtures` feature exports `VorbisNoiseFixture`, an Ogg/Vorbis noise sound written without an encoder, with short
 and long blocks, a packet over three pages and a trimmed last page. This crate's decoder tests and `xrf-audio`'s seek

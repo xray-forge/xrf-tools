@@ -12,24 +12,24 @@ use symphonia::core::units::Timestamp;
 use xrf_error::{XrfError, XrfResult};
 
 /// A WAV sound, as the SDK keeps sources, read and decoded by symphonia: its audio track's packets, each with the frame
-/// it starts on.
-pub(crate) struct WaveSource {
+/// it starts on, as [`crate::VorbisDecoder`] hands the game's sounds.
+pub struct WaveDecoder {
   reader: Box<dyn FormatReader>,
   decoder: Box<dyn AudioDecoder>,
   track_id: u32,
   sample_rate: u32,
-  channels_count: usize,
-  frames_count: u64,
+  channels: u16,
+  samples_count: u64,
 }
 
-impl WaveSource {
+impl WaveDecoder {
   /// Opens the sound in `bytes` at its first frame.
   ///
   /// # Errors
   ///
   /// Returns an error when the bytes are not a container symphonia reads, or carry no audio track, or one without a
   /// sample rate or a length.
-  pub(crate) fn open(bytes: Arc<[u8]>) -> XrfResult<Self> {
+  pub fn open(bytes: Arc<[u8]>) -> XrfResult<Self> {
     let stream: MediaSourceStream<'static> =
       MediaSourceStream::new(Box::new(Cursor::new(bytes)), MediaSourceStreamOptions::default());
     let reader: Box<dyn FormatReader> = symphonia::default::get_probe()
@@ -52,8 +52,12 @@ impl WaveSource {
       .sample_rate
       .filter(|rate| *rate > 0)
       .ok_or_else(|| XrfError::new_read_error("Sound has no sample rate"))?;
-    let channels_count: usize = parameters.channels.as_ref().map_or(0, |channels| channels.count());
-    let frames_count: u64 = track
+    let channels: u16 = parameters
+      .channels
+      .as_ref()
+      .map_or(Ok(0), |channels| u16::try_from(channels.count()))
+      .map_err(|_| XrfError::new_read_error("Sound has more channels than a sound can"))?;
+    let samples_count: u64 = track
       .num_frames
       .ok_or_else(|| XrfError::new_read_error("Sound does not state its length"))?;
     let track_id: u32 = track.id;
@@ -66,21 +70,22 @@ impl WaveSource {
       decoder,
       track_id,
       sample_rate,
-      channels_count,
-      frames_count,
+      channels,
+      samples_count,
     })
   }
 
-  pub(crate) fn get_sample_rate(&self) -> u32 {
+  pub fn get_sample_rate(&self) -> u32 {
     self.sample_rate
   }
 
-  pub(crate) fn get_channels_count(&self) -> usize {
-    self.channels_count
+  pub fn get_channels(&self) -> u16 {
+    self.channels
   }
 
-  pub(crate) fn get_frames_count(&self) -> u64 {
-    self.frames_count
+  /// Samples each channel plays: the track's stated length.
+  pub fn get_samples_count(&self) -> u64 {
+    self.samples_count
   }
 
   /// Moves to the packet holding `frame`, which may start before it.
@@ -88,7 +93,7 @@ impl WaveSource {
   /// # Errors
   ///
   /// Returns an error when the container cannot seek to it.
-  pub(crate) fn seek(&mut self, frame: u64) -> XrfResult<()> {
+  pub fn seek(&mut self, frame: u64) -> XrfResult<()> {
     self
       .reader
       .seek(
@@ -111,7 +116,7 @@ impl WaveSource {
   ///
   /// Returns an error when the container cannot be read further, the codec fails for good, or a packet decodes to
   /// another count of channels than the track's.
-  pub(crate) fn decode_next(&mut self, samples: &mut Vec<f32>) -> XrfResult<Option<u64>> {
+  pub fn decode_next(&mut self, samples: &mut Vec<f32>) -> XrfResult<Option<u64>> {
     loop {
       let packet = match self.reader.next_packet() {
         Ok(Some(packet)) => packet,
@@ -130,11 +135,11 @@ impl WaveSource {
         Err(error) => return Err(Self::new_error("Could not decode sound", &error)),
       };
 
-      if buffer.num_planes() != self.channels_count {
+      if buffer.num_planes() != usize::from(self.channels) {
         return Err(XrfError::new_read_error(format!(
           "Sound packet decoded {} channels, not the track's {}",
           buffer.num_planes(),
-          self.channels_count
+          self.channels
         )));
       }
 

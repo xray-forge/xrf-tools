@@ -1,9 +1,9 @@
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use xrf_chunk::ChunkWriter;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelAiFile, LevelAiGrid, LevelAiHeader, LevelAiNode, LevelAiNodes, LevelAiVersion};
 use xrf_math::{Aabb, AiNodePosition, EPS_L};
+use xrf_utils::ContentGuid;
 
 use crate::ai::ai_map::AiMap;
 use crate::ai::ai_map_compilation::AiMapCompilation;
@@ -134,8 +134,7 @@ impl AiMapCompiler {
       .all(|(ours, their)| cell(header, ours) == cell(theirs, &their) && links(header, ours) == links(theirs, &their))
   }
 
-  /// The first 16 bytes of the SHA-256 of the map's bytes with a nil identity, so the same nodes always take the same
-  /// identity.
+  /// The content GUID of the map's bytes with a nil identity, so the same nodes always take the same identity.
   fn derive_guid(header: &LevelAiHeader, nodes: &LevelAiNodes) -> XrfResult<Uuid> {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -147,11 +146,6 @@ impl AiMapCompiler {
     }
     .write(nodes, &mut writer)?;
 
-    let digest = Sha256::digest(&writer.buffer);
-    let mut bytes: [u8; 16] = [0; 16];
-
-    bytes.copy_from_slice(&digest[..16]);
-
-    Ok(Uuid::from_bytes(bytes))
+    Ok(Uuid::from_bytes(ContentGuid::of(&writer.buffer)))
   }
 }

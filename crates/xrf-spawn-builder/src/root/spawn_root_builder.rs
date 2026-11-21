@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use xrf_error::{XrfError, XrfResult};
 use xrf_report::Report;
@@ -9,7 +8,7 @@ use xrf_spawn::{
   AlifeBuiltFields, AlifeObject, ArtefactSpawnPoint, Patrol, SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk,
   SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPatrolsChunk,
 };
-use xrf_utils::narrow_format_size;
+use xrf_utils::{ContentGuid, narrow_format_size};
 
 use crate::entity::spawn_level_changer_links::SpawnLevelChangerLinks;
 use crate::entity::spawn_level_entities::SpawnLevelEntities;
@@ -278,18 +277,12 @@ impl SpawnRootBuilder {
     }
   }
 
-  /// The spawn's GUID: the first 16 bytes of the SHA-256 of the file written with a nil GUID, so the same levels give
-  /// the same spawn.
+  /// The spawn's GUID: the content GUID of the file written with a nil GUID, so the same levels give the same spawn.
   fn derive_guid(spawn: &SpawnFile) -> XrfResult<Uuid> {
-    let mut hasher: Sha256 = Sha256::new();
+    let mut guid: ContentGuid = ContentGuid::new();
 
-    spawn.write_to(&mut hasher)?;
+    spawn.write_to(&mut guid)?;
 
-    let digest = hasher.finalize();
-    let mut guid: [u8; 16] = [0; 16];
-
-    guid.copy_from_slice(&digest[..16]);
-
-    Ok(Uuid::from_bytes(guid))
+    Ok(Uuid::from_bytes(guid.finish()))
   }
 }

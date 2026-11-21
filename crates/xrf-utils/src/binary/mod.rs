@@ -2,10 +2,12 @@
 
 mod assertions;
 mod capacity;
+mod content_guid;
 mod format_width;
 mod positional_read;
 
 pub use assertions::{assert, assert_equal, assert_length, assert_not_equal};
 pub use capacity::{assert_count_fits, narrow_format_size, new_bounded_vec, new_declared_vec};
+pub use content_guid::ContentGuid;
 pub use format_width::FormatWidth;
 pub use positional_read::read_exact_at;
