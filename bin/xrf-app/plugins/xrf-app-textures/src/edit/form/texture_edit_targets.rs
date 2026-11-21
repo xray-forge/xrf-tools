@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use xrf_app_core::TauriResult;
 use xrf_vfs::XrayAsset;
 
@@ -9,7 +9,7 @@ use crate::edit::TextureSaveTarget;
 
 /// Where an edit of one texture would write, and what was there when the editor read it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TextureEditTargets {
   /// The `.thm` to write, whether or not one is there yet.

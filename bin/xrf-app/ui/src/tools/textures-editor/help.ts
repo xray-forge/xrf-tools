@@ -13,6 +13,7 @@ export const TEXTURES_EDITOR_HELP: IToolHelp = {
     "In `Formats`, use `Weigh formats` to compare candidates, then choose an encoding to preview it beside the original.",
     "Use `Bump` to generate a bump pair from a height map and optional normal and gloss inputs.",
     "`Save` writes the descriptor and any chosen encoding. `Discard` resets the draft and clears the encoding choice.",
+    "`Save as…` saves your changes to a copy under a new texture name and opens the copy. The original is not changed.",
   ],
   nuances: [
     "A texture with no `.thm` is the normal case, not an error: most textures have none. Saving one authors it, " +
@@ -32,6 +33,11 @@ export const TEXTURES_EDITOR_HELP: IToolHelp = {
     "Comparing formats and choosing a preview do not replace the texture. A chosen encoding is held until Save.",
     "Bump generation writes the `_bump` and `_bump#` files beside the texture, then updates the descriptor draft. " +
       "Save the draft to persist that reference; Discard does not undo the generated files.",
+    "Save as writes the texture, its descriptor, and by default its `_bump` map files, and points the copy at its own " +
+      "bump map, so the copy stands alone. Either every file is written or none is.",
+    "To have the copy use the original's bump map instead, open `Advanced` in the Save as dialog and choose " +
+      "`Share the original's`; no bump map files are copied then.",
+    "Save as asks before replacing files that already have the new name.",
   ],
   limitations: [
     "A texture served out of an archive can be read here but not written; its rows say so. Extract it first.",

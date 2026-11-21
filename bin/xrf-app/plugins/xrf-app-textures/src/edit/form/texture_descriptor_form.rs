@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
+use xrf_app_core::TauriResult;
+use xrf_chunk::XRayByteOrder;
 use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmFormat, ThmMaterial, ThmMaterialChunk, ThmMipFilter,
   ThmTextureEdit, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk, ThmTextureType,
 };
+use xrf_utils::error_to_string;
 
 /// The descriptor fields the editor owns, read off a `.thm` and written back onto one.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -119,6 +122,25 @@ impl TextureDescriptorForm {
     self.apply_to(&mut descriptor);
 
     descriptor
+  }
+
+  /// The descriptor's bytes, built on `file` as [`Self::to_descriptor`] does, with `format` set when the texture
+  /// written beside it has one the descriptor can name.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the descriptor cannot be serialized.
+  pub(crate) fn to_bytes(&self, file: Option<ThmFile>, format: Option<ThmFormat>) -> TauriResult<Vec<u8>> {
+    let mut form: Self = self.clone();
+
+    if let Some(format) = format {
+      form.format = format.into();
+    }
+
+    form
+      .to_descriptor(file)
+      .write_to_bytes::<XRayByteOrder>()
+      .map_err(error_to_string)
   }
 
   /// `value` where it differs from `current`, which is the only case an edit names it.

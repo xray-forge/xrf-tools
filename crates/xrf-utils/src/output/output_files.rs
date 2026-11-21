@@ -101,24 +101,32 @@ impl OutputFiles {
       return Ok(());
     }
 
-    let mut named: Vec<String> = found
-      .iter()
-      .take(Self::NAMED_IN_REFUSAL)
-      .map(|path| format_path(path.strip_prefix(&self.directory).unwrap_or(path)).to_string())
-      .collect();
+    Err(Self::new_replace_refusal(
+      &format_path(&self.directory).to_string(),
+      &found
+        .iter()
+        .map(|path| format_path(path.strip_prefix(&self.directory).unwrap_or(path)).to_string())
+        .collect::<Vec<String>>(),
+    ))
+  }
+
+  /// The refusal for an unforced run when `holder` already has the files named in `found`, for a run whose outputs do
+  /// not sit in one directory. Callers detect this wording to ask before replacing.
+  pub fn new_replace_refusal(holder: &str, found: &[String]) -> XrfError {
+    let mut named: Vec<&str> = found.iter().take(Self::NAMED_IN_REFUSAL).map(String::as_str).collect();
+    let more: String = format!("{} more", found.len().saturating_sub(Self::NAMED_IN_REFUSAL));
 
     if found.len() > Self::NAMED_IN_REFUSAL {
-      named.push(format!("{} more", found.len() - Self::NAMED_IN_REFUSAL));
+      named.push(&more);
     }
 
-    Err(XrfError::new_io_error(
+    XrfError::new_io_error(
       format!(
-        "{} already holds what this run writes ({}); force it to replace them",
-        format_path(&self.directory),
+        "{holder} already holds what this run writes ({}); force it to replace them",
         named.join(", ")
       ),
       ErrorKind::AlreadyExists,
-    ))
+    )
   }
 
   /// Each file the run names ([`Self::with_file`]), in that order: the path the file system holds it under where it is

@@ -14,8 +14,10 @@ macro_rules! for_each_textures_domain {
         get_vocabulary => crate::describe::commands::get_vocabulary::textures_get_vocabulary,
         make_bump => crate::edit::commands::make_bump::textures_make_bump,
         open_browse => crate::browse::commands::open_browse::textures_open_browse,
+        plan_save_as => crate::edit::commands::plan_save_as::textures_plan_save_as,
         restore_browse => crate::browse::commands::restore_browse::textures_restore_browse,
         save => crate::edit::commands::save::textures_save,
+        save_as => crate::edit::commands::save_as::textures_save_as,
         show_texture => crate::surface::commands::show_texture::textures_show_texture,
       }
       // Pictures the page shows that only textures makes: a save candidate as png, and texels; a texture as png is
@@ -33,6 +35,8 @@ macro_rules! for_each_textures_domain {
         TEXTURES_JOB_MAKE_BUMP => "make-bump",
         /// Saving a node's descriptor, and its texture with it.
         TEXTURES_JOB_SAVE => "save",
+        /// Saving a texture under a new name.
+        TEXTURES_JOB_SAVE_AS => "save-as",
       }
     }
   };

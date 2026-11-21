@@ -13,11 +13,15 @@ import {
   TextureEncodingComparison,
   TextureMakeBumpOutcome,
   TextureMaterialSummary,
+  TextureSaveAsOutcome,
+  TextureSaveAsPlan,
   TextureSaveOutcome,
   TexturesBuildRequest,
   TexturesCompareRequest,
   TexturesMakeBumpRequest,
   TextureSource,
+  TexturesPlanSaveAsRequest,
+  TexturesSaveAsRequest,
   TexturesSaveRequest,
   TexturesShowRequest,
   TextureVocabulary,
@@ -37,8 +41,10 @@ export enum ETexturesCommand {
   GET_VOCABULARY = "plugin:textures|get_vocabulary",
   MAKE_BUMP = "plugin:textures|make_bump",
   OPEN_BROWSE = "plugin:textures|open_browse",
+  PLAN_SAVE_AS = "plugin:textures|plan_save_as",
   RESTORE_BROWSE = "plugin:textures|restore_browse",
   SAVE = "plugin:textures|save",
+  SAVE_AS = "plugin:textures|save_as",
   SHOW_TEXTURE = "plugin:textures|show_texture",
 }
 
@@ -69,6 +75,9 @@ export const texturesCommands = {
   /** Open a root set and list every texture it holds, read fresh as an open a person makes is. */
   openBrowse: (sessionId: SessionId, roots: XrayRoots, mode: ETextureCatalogMode) =>
     __TAURI_INVOKE<SessionSnapshot<TextureCatalog>>(ETexturesCommand.OPEN_BROWSE, { sessionId, roots, mode }),
+  /** Say what a Save as under a given name would write, without writing; the dialog shows this plan. */
+  planSaveAs: (request: TexturesPlanSaveAsRequest) =>
+    __TAURI_INVOKE<TextureSaveAsPlan>(ETexturesCommand.PLAN_SAVE_AS, { request }),
   /** The listing `tool` browses in the asking window, the newest it opened, or null when it holds none. */
   restoreBrowse: (tool: string) =>
     __TAURI_INVOKE<SessionRestore<TextureCatalog>>(ETexturesCommand.RESTORE_BROWSE, { tool }),
@@ -78,6 +87,12 @@ export const texturesCommands = {
    */
   save: (request: TexturesSaveRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureSaveOutcome>(ETexturesCommand.SAVE, { request, jobId, progress }),
+  /**
+   * Save a texture, as edited, under a new name: its texture, descriptor and bump pair, with a chosen re-encode as the
+   * copy's pixels. The original is not changed.
+   */
+  saveAs: (request: TexturesSaveAsRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<TextureSaveAsOutcome>(ETexturesCommand.SAVE_AS, { request, jobId, progress }),
   /**
    * Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
    * scene drawn, which the viewport's load reports name, or none.
@@ -109,7 +124,9 @@ export interface ITexturesCommandSignatures {
     typeof texturesCommands.openBrowse,
     ["sessionId", "roots", "mode"]
   >;
+  [ETexturesCommand.PLAN_SAVE_AS]: IIpcCommandSignature<typeof texturesCommands.planSaveAs, ["request"]>;
   [ETexturesCommand.RESTORE_BROWSE]: IIpcCommandSignature<typeof texturesCommands.restoreBrowse, ["tool"]>;
   [ETexturesCommand.SAVE]: IIpcCommandSignature<typeof texturesCommands.save, ["request", "jobId", "progress"]>;
+  [ETexturesCommand.SAVE_AS]: IIpcCommandSignature<typeof texturesCommands.saveAs, ["request", "jobId", "progress"]>;
   [ETexturesCommand.SHOW_TEXTURE]: IIpcCommandSignature<typeof texturesCommands.showTexture, ["viewport", "request"]>;
 }

@@ -13,6 +13,7 @@ import { TEXTURES_EDITOR_PANELS } from "@/tools/textures-editor/components/panel
 import { TextureBumpService } from "@/tools/textures-editor/services/texture-bump";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
 import { TextureEncodingService } from "@/tools/textures-editor/services/texture-encoding";
+import { TextureSaveAsService } from "@/tools/textures-editor/services/texture-save-as";
 
 import { describeEditedTextureStatus } from "./TexturesEditorWorkspace.utils";
 
@@ -28,13 +29,17 @@ export function TexturesEditorWorkspace({
   const editorService: TextureEditorService = useInjection(TextureEditorService);
   const encodingService: TextureEncodingService = useInjection(TextureEncodingService);
   const bumpService: TextureBumpService = useInjection(TextureBumpService);
+  const saveAsService: TextureSaveAsService = useInjection(TextureSaveAsService);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
 
   // A generated pair is written to disk the moment its job finishes, and a comparison is a job the backend keeps
-  // running, so both hold the editor open as a save does.
+  // running, so both hold the editor open as a save or a copy does.
   const isBusy: boolean =
-    editorService.save.isRunning || encodingService.compare.isRunning || bumpService.generate.isRunning;
+    editorService.save.isRunning ||
+    saveAsService.saveAs.isRunning ||
+    encodingService.compare.isRunning ||
+    bumpService.generate.isRunning;
 
   const panels: Array<IShellPanel> = useMemo(() => TEXTURES_EDITOR_PANELS, []);
 

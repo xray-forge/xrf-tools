@@ -7,6 +7,7 @@ import { ContainerDefinition } from "@/lib/container/container-definition";
 import { TextureBumpService } from "@/tools/textures-editor/services/texture-bump";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
 import { TextureEncodingService } from "@/tools/textures-editor/services/texture-encoding";
+import { TextureSaveAsService } from "@/tools/textures-editor/services/texture-save-as";
 
 export const container: ContainerDefinition = {
   // No catalog service: this tool opens one file and never lists a root. `AssetService` owns the object URL the
@@ -20,6 +21,7 @@ export const container: ContainerDefinition = {
     TextureEncodingService,
     TextureEditorService,
     TextureBumpService,
+    TextureSaveAsService,
   ],
 };
 

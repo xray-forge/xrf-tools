@@ -8,7 +8,7 @@ use xrf_thm::{ThmFile, ThmFormat};
 use xrf_utils::{StagedFile, error_to_string, format_path};
 use xrf_vfs::{XraySearch, XrayTransaction};
 
-use crate::edit::{TextureDescriptorForm, TextureDescriptorSave, TextureSaveOutcome, TextureWrite};
+use crate::edit::{TextureDescriptorSave, TextureSaveOutcome, TextureWrite};
 
 /// One file the save has built and not yet published.
 struct PreparedFile {
@@ -79,16 +79,8 @@ impl TextureSaver {
       Some(_) => Some(ThmFile::read_from_path::<XRayByteOrder, _>(&path).map_err(error_to_string)?),
       None => None,
     };
-    let mut form: TextureDescriptorForm = save.form.clone();
 
-    if let Some(format) = synced_format {
-      form.format = format.into();
-    }
-
-    form
-      .to_descriptor(existing)
-      .write_to_bytes::<XRayByteOrder>()
-      .map_err(error_to_string)
+    save.form.to_bytes(existing, synced_format)
   }
 
   /// Moves every prepared file into place, answering what landed: the files a mount holds as one commit, so the cache,

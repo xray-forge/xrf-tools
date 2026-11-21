@@ -12,6 +12,7 @@ import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
 import { TextureEncodingService } from "@/tools/textures-editor/services/texture-encoding";
+import { TextureSaveAsService } from "@/tools/textures-editor/services/texture-save-as";
 
 import { TextureDescriptorPanel } from "./TextureDescriptorPanel";
 
@@ -32,6 +33,7 @@ async function renderPanel(
     TextureSelectionService,
     TextureEncodingService,
     TextureEditorService,
+    TextureSaveAsService,
   ]);
   const service: TextureEditorService = container.get(TextureEditorService);
 
@@ -204,6 +206,7 @@ describe("TextureDescriptorPanel", () => {
       TextureSelectionService,
       TextureEncodingService,
       TextureEditorService,
+      TextureSaveAsService,
     ]);
     const render: RenderResult = renderWithProviders(<TextureDescriptorPanel />, { container });
 

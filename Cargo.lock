@@ -8176,6 +8176,7 @@ dependencies = [
  "xrf-ipc",
  "xrf-job",
  "xrf-material",
+ "xrf-pack",
  "xrf-renderer",
  "xrf-test-utils",
  "xrf-texture",

@@ -18,6 +18,9 @@ export const TEXTURES_JOB_MAKE_BUMP = "textures.make-bump" as const;
 /** Saving a node's descriptor, and its texture with it. */
 export const TEXTURES_JOB_SAVE = "textures.save" as const;
 
+/** Saving a texture under a new name. */
+export const TEXTURES_JOB_SAVE_AS = "textures.save-as" as const;
+
 /** What a tree shows on a texture before anyone opens it, read from its descriptor alone. */
 export type TextureBadges = {
   /** Both halves of the declared pair resolved to the files the declaration names. */
@@ -311,6 +314,26 @@ export type TextureMaterialSummary = {
   badges: TextureBadges;
 };
 
+/** A descriptor field that names another texture. */
+export enum ETextureReferenceField {
+  /** `bump_name`, the bump pair the engine binds. */
+  BUMP = "bump",
+  /** `detail_name`, the texture tiled over this one up close. */
+  DETAIL = "detail",
+}
+
+/** Every `ETextureReferenceField` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureReferenceField = `${ETextureReferenceField}`;
+
+/** A copy's descriptor field that names one of the original's files, and the copy's name for the same file. */
+export type TextureReferenceRename = {
+  field: TextureReferenceField;
+  /** The field's value, naming the original's file. */
+  from: string;
+  /** The value naming the copy's file instead. */
+  to: string;
+};
+
 /** One renderer's answer about a format. */
 export type TextureRendererSupport = {
   renderer: string;
@@ -329,6 +352,82 @@ export enum ETextureRole {
 
 /** Every `ETextureRole` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type TextureRole = `${ETextureRole}`;
+
+/** What a Save as does with the original's bump map. */
+export enum ETextureSaveAsBump {
+  /** Copy the bump map files under the new name and point the copy's descriptor at them, so the copy stands alone. */
+  OWN = "own",
+  /** Copy no bump map files; the copy keeps using the original's. */
+  SHARED = "shared",
+}
+
+/** Every `ETextureSaveAsBump` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureSaveAsBump = `${ETextureSaveAsBump}`;
+
+/** One file a copy writes, and the original's file it is made from. */
+export type TextureSaveAsFile = {
+  role: TextureSaveAsRole;
+  /** The original's file, by logical path; `None` for a descriptor the original lacks, which the copy gets new. */
+  from: string | null;
+  /** The copy's file, by logical path. */
+  to: string;
+  /** Whether a file with this name already exists; it is replaced only when the save is forced. */
+  isReplacing: boolean;
+};
+
+/** What a Save as wrote. */
+export type TextureSaveAsOutcome = {
+  /** Whether the copy was written, or stopped on request with nothing written. */
+  outcome: JobOutcome;
+  /** The copy's texture name, which the editor opens next. */
+  reference: string;
+  /** The files written, by path on disk, in write order. */
+  written: Array<string>;
+};
+
+/**
+ * What a Save as writes: the texture's files under the copy's name, and the copy's descriptor fields that change to
+ * name the copy's files.
+ *
+ * Both the dialog and the save are built from this, so the person agrees to exactly what is written.
+ */
+export type TextureSaveAsPlan = {
+  /** The copy's texture name, normalized. */
+  destination: string;
+  /** Whether the original has bump map files of its own, which is when the bump choice matters. */
+  hasBumpPair: boolean;
+  /** Every file written, in write order: the descriptor always, the bump map files only when they are copied. */
+  files: Array<TextureSaveAsFile>;
+  /** The copy's fields that change from the original's file names to the copy's; none when the bump map is shared. */
+  renames: Array<TextureReferenceRename>;
+};
+
+/** Which of a texture's files one write of a copy is. */
+export enum ETextureSaveAsRole {
+  /** The `.dds` holding the pixels. */
+  TEXTURE = "texture",
+  /** The `.thm` descriptor, written as edited. */
+  DESCRIPTOR = "descriptor",
+  /** The `_bump.dds` the bump generator wrote. */
+  BUMP = "bump",
+  /** The `_bump#.dds` beside the bump. */
+  COMPANION = "companion",
+  /** The bump's own `.thm`, which an SDK rebuild of the pair reads. */
+  BUMP_DESCRIPTOR = "bumpDescriptor",
+}
+
+/** Every `ETextureSaveAsRole` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureSaveAsRole = `${ETextureSaveAsRole}`;
+
+/** The texture a Save as copies, and the name the copy takes. */
+export type TextureSaveAsTarget = {
+  /** The roots the texture was opened from; the copy is written into them. */
+  roots: XrayRoots;
+  /** The original's texture name, such as `ston\ston_beton05`. */
+  reference: string;
+  /** The copy's texture name, in the same form. Never a path on disk. */
+  destination: string;
+};
 
 /** What a save left on disk. */
 export type TextureSaveOutcome = {
@@ -486,6 +585,28 @@ export type TexturesMakeBumpRequest = {
   /** What both halves are written in, which the error plane is measured against. */
   format: GenerateBumpFormat;
   quality: TextureEncodingQuality;
+};
+
+/** Asks what a Save as would write, without writing. */
+export type TexturesPlanSaveAsRequest = {
+  target: TextureSaveAsTarget;
+  /** The descriptor as edited, whose bump and detail fields the plan checks. */
+  form: TextureDescriptorForm;
+  bump: TextureSaveAsBump;
+};
+
+/** Saves a texture, as edited, under a new name, leaving the original unchanged. */
+export type TexturesSaveAsRequest = {
+  target: TextureSaveAsTarget;
+  /** The descriptor as edited, written as the copy's descriptor. */
+  form: TextureDescriptorForm;
+  /** The original's files as the editor read them; the copy is refused when either has changed since. */
+  sources: TextureEditTargets;
+  /** A chosen re-encode to write as the copy's pixels, or `None` to copy the original's. */
+  texture: TextureEncodingSave | null;
+  bump: TextureSaveAsBump;
+  /** Whether to replace files that already have the copy's names. */
+  isForced: boolean;
 };
 
 /**

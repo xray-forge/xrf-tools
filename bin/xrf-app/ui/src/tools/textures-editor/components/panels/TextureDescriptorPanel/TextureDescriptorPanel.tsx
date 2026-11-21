@@ -17,13 +17,15 @@ import {
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
 import { Stack } from "@xrf/ui/layout/stack";
-import { ReactElement, useCallback } from "react";
+import { ReactElement, useCallback, useState } from "react";
 
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { TextureSaveAsDialog } from "@/tools/textures-editor/components/TextureSaveAsDialog";
 import { hasTextureFlag, withTextureFlag } from "@/tools/textures-editor/lib/texture-descriptor-flags";
 import { withTextureType } from "@/tools/textures-editor/lib/texture-type-change";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
+import { TextureSaveAsService } from "@/tools/textures-editor/services/texture-save-as";
 
 import { TextureSelectField } from "./TextureSelectField";
 
@@ -45,11 +47,19 @@ export function TextureDescriptorPanel({
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const editorService: TextureEditorService = useInjection(TextureEditorService);
 
+  const saveAsService: TextureSaveAsService = useInjection(TextureSaveAsService);
+
+  const [isSaveAsOpen, setIsSaveAsOpen] = useState<boolean>(false);
+
   const description: Nullable<TextureDescription> = selectionService.selected.value;
   const vocabulary: Nullable<TextureVocabulary> = editorService.vocabulary.value;
   const draft: Nullable<TextureDescriptorForm> = editorService.draft;
 
   const onEdit = useCallback((patch: Partial<TextureDescriptorForm>) => editorService.edit(patch), [editorService]);
+
+  const onOpenSaveAs = useCallback(() => setIsSaveAsOpen(true), []);
+
+  const onCloseSaveAs = useCallback(() => setIsSaveAsOpen(false), []);
 
   const onFlag = useCallback(
     (bit: number, isSet: boolean) =>
@@ -243,6 +253,16 @@ export function TextureDescriptorPanel({
           </Button>
 
           <Button
+            data-testid={"texture-descriptor-save-as"}
+            size={"small"}
+            variant={"outlined"}
+            disabled={!saveAsService.canSaveAs || editorService.save.isRunning}
+            onClick={onOpenSaveAs}
+          >
+            Save as…
+          </Button>
+
+          <Button
             data-testid={"texture-descriptor-discard"}
             size={"small"}
             variant={"outlined"}
@@ -259,6 +279,8 @@ export function TextureDescriptorPanel({
           </Alert>
         ) : null}
       </EditorPanelSection>
+
+      <TextureSaveAsDialog isOpen={isSaveAsOpen} onClose={onCloseSaveAs} />
     </EditorPanel>
   );
 }

@@ -39,6 +39,8 @@ xrf-world = { workspace = true }
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
+# Packs a volume set, so a texture served out of an archive is one the tests can mount.
+xrf-pack = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]
