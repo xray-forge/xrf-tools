@@ -22,7 +22,7 @@ struct FoliageSetup {
 // worked out twice a frame, where it stands and where it stood, and the two must agree to the bit wherever the fields
 // have not moved: the usual `fract(sin(x) × 43758.5)` hash does not, since a last-place difference between the two
 // compiled reads of a large `sin` turns a cell's gradient anywhere, which wrote steady false motion over whole bushes
-// and grained the plants under every temporal resolve (`plans/20261028043855-foliage-temporal-stability.md`).
+// and grained the plants under every temporal resolve.
 fn foliage_gradient(cell: vec2<f32>) -> vec2<f32> {
   let key: vec2<u32> = bitcast<vec2<u32>>(vec2<i32>(cell));
   var hash: u32 = key.x * 1664525u + key.y * 1013904223u + 374761393u;

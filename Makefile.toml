@@ -243,7 +243,7 @@ args = [
   # Ignored so a plain test run only checks the atlas; rewriting it is intentional.
   "--ignored",
   "--exact",
-  "tests::helper_icons::generate_helper_icon_atlas",
+  "tests::scene::level::helper_icons::generate_helper_icon_atlas",
 ]
 
 # Maintenance.
