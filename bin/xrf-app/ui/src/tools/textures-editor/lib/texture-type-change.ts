@@ -1,7 +1,7 @@
 import { TextureDescriptorForm, TextureTypeChange } from "@xrf/ipc/types/xrf-app-textures";
 
 /** The fields a change of texture type writes. */
-export type TextureTypePatch = Pick<TextureDescriptorForm, "textureType" | "flags" | "format" | "mipFilter">;
+export type ITextureTypePatch = Pick<TextureDescriptorForm, "textureType" | "flags" | "format" | "mipFilter">;
 
 /**
  * The fields to write when a descriptor is given a texture type, as the SDK's editor writes them.
@@ -16,10 +16,10 @@ export type TextureTypePatch = Pick<TextureDescriptorForm, "textureType" | "flag
  * @returns The patch to apply, which always carries the type.
  */
 export function withTextureType(
-  form: TextureTypePatch,
+  form: ITextureTypePatch,
   textureType: number,
   changes: ReadonlyArray<TextureTypeChange>
-): TextureTypePatch {
+): ITextureTypePatch {
   const change: TextureTypeChange | undefined = changes.find(
     (candidate: TextureTypeChange) => candidate.textureType === textureType
   );

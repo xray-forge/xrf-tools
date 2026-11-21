@@ -4,7 +4,7 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { ContainerDefinition } from "@/lib/container/container-definition";
+import { IContainerDefinition } from "@/lib/container/container-definition";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
 import { LevelViewerListService } from "@/tools/level-viewer/services/level-viewer-list";
@@ -15,7 +15,7 @@ import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-
 
 export { LevelViewerTool as Component } from "./LevelViewerTool";
 
-export const container: ContainerDefinition = {
+export const container: IContainerDefinition = {
   bindings: [
     LevelViewerListService,
     LevelLoadService,

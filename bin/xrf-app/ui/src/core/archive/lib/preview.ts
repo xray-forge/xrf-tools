@@ -5,7 +5,7 @@ import { getFoldedFileExtension } from "@xrf/path";
 import { IArchiveEntry } from "./entry";
 
 /** A preview representation, or the policy reason an entry cannot be previewed. */
-export type ArchivePreviewSupport =
+export type TArchivePreviewSupport =
   | { kind: "supported" }
   | { kind: "texture" }
   | { kind: "image" }
@@ -24,7 +24,7 @@ export type ArchivePreviewSupport =
 export function getArchivePreviewSupport(
   descriptor: IArchiveEntry,
   policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY
-): ArchivePreviewSupport {
+): TArchivePreviewSupport {
   // Policy extensions are lower case; normalize the entry's spelling once for every preview kind.
   const extension: string = getFoldedFileExtension(descriptor.name);
 

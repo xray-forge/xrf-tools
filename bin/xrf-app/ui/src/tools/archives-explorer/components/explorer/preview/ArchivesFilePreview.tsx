@@ -12,7 +12,7 @@ import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 
 import { IArchiveEntry } from "@/core/archive/lib/entry";
-import { ArchivePreviewSupport, getArchivePreviewSupport } from "@/core/archive/lib/preview";
+import { getArchivePreviewSupport, TArchivePreviewSupport } from "@/core/archive/lib/preview";
 import { TArchiveContent, TArchiveSelection } from "@/core/archive/lib/selection";
 import { inline } from "@/lib/callbacks/inline";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
@@ -28,7 +28,7 @@ import { ArchiveTexturePreview } from "./ArchiveTexturePreview";
 
 // Everything that renders its own preview leaves this union; what is left is a reason to explain.
 type TUnsupported = Exclude<
-  ArchivePreviewSupport,
+  TArchivePreviewSupport,
   | { kind: "supported" }
   | { kind: "texture" }
   | { kind: "image" }
@@ -79,7 +79,7 @@ export function ArchivesFilePreview({
     );
   }
 
-  const support: ArchivePreviewSupport = getArchivePreviewSupport(entry);
+  const support: TArchivePreviewSupport = getArchivePreviewSupport(entry);
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { TextureTypeChange } from "@xrf/ipc/types/xrf-app-textures";
 
-import { TextureTypePatch, withTextureType } from "./texture-type-change";
+import { ITextureTypePatch, withTextureType } from "./texture-type-change";
 
 const TERRAIN: TextureTypeChange = {
   clearedFlags: 0b11,
@@ -12,7 +12,7 @@ const TERRAIN: TextureTypeChange = {
 };
 const NORMAL_MAP: TextureTypeChange = { clearedFlags: 0, format: 6, mipFilter: 14, setFlags: 1, textureType: 3 };
 
-const FORM: TextureTypePatch = { flags: 0b111, format: 4, mipFilter: 1, textureType: 0 };
+const FORM: ITextureTypePatch = { flags: 0b111, format: 4, mipFilter: 1, textureType: 0 };
 
 describe("withTextureType", () => {
   it("should clear and set the type's flags and take its format", () => {

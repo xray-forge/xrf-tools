@@ -6,13 +6,13 @@ import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 import { VisualRenderService } from "@/core/visuals/services/visual-render";
 import { VisualViewService } from "@/core/visuals/services/visual-view";
-import { ContainerDefinition } from "@/lib/container/container-definition";
+import { IContainerDefinition } from "@/lib/container/container-definition";
 import { VisualsService } from "@/tools/visuals-explorer/services/visuals";
 import { VisualsBrowseService } from "@/tools/visuals-explorer/services/visuals-browse";
 
 export { VisualsExplorerTool as Component } from "./VisualsExplorerTool";
 
-export const container: ContainerDefinition = {
+export const container: IContainerDefinition = {
   bindings: [
     VisualLoadService,
     VisualMotionService,

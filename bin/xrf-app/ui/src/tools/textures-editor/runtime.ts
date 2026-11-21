@@ -3,13 +3,13 @@ import { TextureRenderService } from "@/core/textures/services/texture-render";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { TextureSurfaceService } from "@/core/textures/services/texture-surface";
 import { TextureViewService } from "@/core/textures/services/texture-view";
-import { ContainerDefinition } from "@/lib/container/container-definition";
+import { IContainerDefinition } from "@/lib/container/container-definition";
 import { TextureBumpService } from "@/tools/textures-editor/services/texture-bump";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
 import { TextureEncodingService } from "@/tools/textures-editor/services/texture-encoding";
 import { TextureSaveAsService } from "@/tools/textures-editor/services/texture-save-as";
 
-export const container: ContainerDefinition = {
+export const container: IContainerDefinition = {
   // No catalog service: this tool opens one file and never lists a root. `AssetService` owns the object URL the
   // decoded texture is shown through, so the preview cannot resolve without it.
   bindings: [

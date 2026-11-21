@@ -4,7 +4,7 @@ import { IKeybindCommand } from "@/core/commands/lib/command-descriptor";
 import { IMenu } from "@/core/routing/menu-descriptor";
 // Type-only: an extension names its owner by `EToolId`, so a value import would close a load cycle.
 import type { IMenuExtension } from "@/core/routing/menu-extension";
-import { ContainerDefinition } from "@/lib/container/container-definition";
+import { IContainerDefinition } from "@/lib/container/container-definition";
 
 /** Canonical tool identity shared by its directory, route, descriptor, and component stem. */
 export enum EToolId {
@@ -129,7 +129,7 @@ export interface IToolHelp {
 export interface IToolRuntime {
   Component: ComponentType;
   /** Omit the container to use root services only. */
-  container?: ContainerDefinition;
+  container?: IContainerDefinition;
 }
 
 /** Identity and presentation available before a tool's runtime loads. */

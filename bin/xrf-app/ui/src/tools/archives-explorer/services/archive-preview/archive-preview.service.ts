@@ -14,7 +14,7 @@ import { Nullable, Optional } from "@xrf/types";
 
 import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { getArchiveVolumeOf } from "@/core/archive/lib/files";
-import { ArchivePreviewSupport, getArchivePreviewSupport } from "@/core/archive/lib/preview";
+import { getArchivePreviewSupport, TArchivePreviewSupport } from "@/core/archive/lib/preview";
 import { TArchiveContent, TArchiveSelection } from "@/core/archive/lib/selection";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
@@ -247,7 +247,7 @@ export class ArchivePreviewService {
    */
   private *readSelected(entry: IArchiveEntry): TFlow {
     const sessionId: Nullable<SessionId> = this.held.sessionId;
-    const support: ArchivePreviewSupport = getArchivePreviewSupport(entry);
+    const support: TArchivePreviewSupport = getArchivePreviewSupport(entry);
 
     this.read.reset();
 
