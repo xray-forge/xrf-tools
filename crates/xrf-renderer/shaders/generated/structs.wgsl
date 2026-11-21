@@ -508,6 +508,7 @@ struct EnhancedWater {
   rings_strength: f32,
   fully_traced: u32,
   plant_reach: f32,
+  rings_aim: vec2<f32>,
   heights: vec4<f32>,
   wave_layers: array<vec4<f32>, 2>,
   map_offsets: array<vec4<f32>, 2>,
@@ -559,6 +560,7 @@ struct Wet {
   relief: vec4<f32>,
   drying: vec4<f32>,
   rings: vec4<f32>,
+  rings_aim: vec4<f32>,
 }
 
 struct Glass {

@@ -118,6 +118,7 @@ impl WetFeature {
       relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
       drying: Vec4::new(drying.get_peak(), drying.get_left(), 0.0, 0.0),
       rings: Vec4::ZERO,
+      rings_aim: Vec4::ZERO,
     };
     self.views = Some([
       weather_textures
@@ -132,6 +133,7 @@ impl WetFeature {
   /// Follows the enhanced drops' rings this frame.
   pub(crate) fn follow_rings(&mut self, rings: DropRings) {
     self.uniform.rings = Vec4::new(rings.tile, rings.reach, rings.strength, 0.0);
+    self.uniform.rings_aim = rings.aim.extend(0.0).extend(0.0);
   }
 
   /// Follows the overhead maps to where they stand once they have moved, as the wet surfaces read them.

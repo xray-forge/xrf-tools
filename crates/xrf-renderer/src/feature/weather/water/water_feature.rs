@@ -208,6 +208,7 @@ impl WaterFeature {
     self.enhanced.rings_tile = rings.tile;
     self.enhanced.rings_reach = rings.reach;
     self.enhanced.rings_strength = rings.strength;
+    self.enhanced.rings_aim = rings.aim;
   }
 
   /// Follows the grass's cards, readied after the water: while every pixel traces, the screen leaves plants within

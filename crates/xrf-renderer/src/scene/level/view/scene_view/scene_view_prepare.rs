@@ -107,6 +107,7 @@ impl SceneView {
       tile: self.features.rain.get_rings(),
       reach: options.features.rain.ring_distance.max(0.0),
       strength: options.features.rain.ring_strength.max(0.0),
+      aim: self.features.rain.get_aim(),
     };
 
     self.features.water.follow_rings(rings);

@@ -51,6 +51,9 @@ pub(crate) struct WetUniform {
   /// by in place of their maps' rings, none for the engine's streaks or without rain; then the metres from the eye they
   /// reach and their strength, of their designed one; the rest unused.
   pub rings: Vec4,
+  /// Where the drops' square stands from the eye, in renderer `x` and `z`, within which a ring is a landing seen; the
+  /// rest unused.
+  pub rings_aim: Vec4,
 }
 
 impl WetUniform {

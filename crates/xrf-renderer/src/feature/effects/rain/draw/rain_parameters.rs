@@ -4,7 +4,8 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBindi
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 
 /// What the rain's streaks and splashes read: the rain, its cover's depth, the level water's, the level surface's
-/// lowest heights, the streak's and the splash's textures, and the splash's model.
+/// lowest heights, the frame's puddles, which a landing rings in, the streak's and the splash's textures, and the
+/// splash's model.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub(crate) struct RainParameters<'a> {
@@ -16,6 +17,8 @@ pub(crate) struct RainParameters<'a> {
   pub surface_water: GraphTexture,
   #[texture(d2, unfilterable)]
   pub surface_lowest: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub puddles: GraphTexture,
   #[texture(d2, float)]
   pub streak_texture: GraphTexture,
   #[texture(d2, float)]

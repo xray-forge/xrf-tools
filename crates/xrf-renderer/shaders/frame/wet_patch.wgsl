@@ -680,10 +680,12 @@ struct PuddleRipples {
 }
 
 // A puddle's ripples at a `place`: the calm waves, two scrolls of the normal map at the place's own `phase` of them,
-// and the rain's rings, both stronger in a gust at the `ground` place: the enhanced drops' own where they fall, the
-// maps' otherwise.
+// and the rain's rings, both stronger in a gust at the `ground` place: the enhanced drops' own where they are drawn,
+// and the maps' where they are not, or in the drops' square over what of the water is none of a site's puddle
+// (`sited`, how much of one the point is): there the drops ring only where they land in a site's puddle or the
+// level's water, so the water filling a relief's hollows would lie still under the rain.
 fn puddle_ripples(place: vec2<f32>, gradients: PlaceGradients, phase: f32, ground: vec2<f32>, distance: f32,
-  puddle: f32) -> PuddleRipples {
+  puddle: f32, sited: f32) -> PuddleRipples {
   let pace: f32 = wet.drift.z;
   let uv: vec2<f32> = place / PUDDLE_RIPPLE_TILE;
   let waves: vec2<f32> = uv + (phase - 0.5) * WAVE_PHASE;
@@ -703,11 +705,12 @@ fn puddle_ripples(place: vec2<f32>, gradients: PlaceGradients, phase: f32, groun
     mix(GUST_RINGS.x, GUST_RINGS.y, gust);
   let drops: vec3<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3), vec3<f32>(RIPPLE_PACE, 1.0, 10.0),
     distance);
-  let rings: RainRings = read_rain_rings(rain_rings, wet_sampler, wet.rings.xy, camera.position.xz, ground,
-    gradients.across, gradients.down);
+  let rings: RainRings = read_rain_rings(rain_rings, wet_sampler,
+    RainRingsSetup(wet.rings.x, wet.rings.y, wet.rings_aim.xy), camera.position.xz, ground, gradients.across,
+    gradients.down);
   let ring_scale: f32 = RINGS_STRENGTH * wet.rings.z * wet.puddles.w * PUDDLE_RIPPLE_SHARE * 0.15 *
     mix(GUST_RINGS.x, GUST_RINGS.y, gust) * rings.share;
-  let map_scale: f32 = select(drop_scale, 0.0, wet.rings.x > 0.0);
+  let map_scale: f32 = drop_scale * select(1.0, (1.0 - sited) * rings.seen, wet.rings.x > 0.0);
   let tilt: vec2<f32> = 0.5 * (first.xy + second.xy) * calm_scale + drops.xy * map_scale +
     rings.tilt * vec2<f32>(1.0, -1.0) * ring_scale;
   // Bent no further than the most; the variance is the whole tilt's, since what the clamp takes off is roughness too.
@@ -849,7 +852,8 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     glossing = max(glossing, PUDDLE_HALO_WET * found.halo * fade * (1.0 - found.inside));
 
     if (puddle > 0.0) {
-      let ripples: PuddleRipples = puddle_ripples(place.xz, gradients, variation.z, world.xz, distance, puddle);
+      let ripples: PuddleRipples = puddle_ripples(place.xz, gradients, variation.z, world.xz, distance, puddle,
+        found.inside);
 
       // A site puddle's water lies along its plane, one for the whole puddle; relief water lies level, as water does,
       // blended into a site puddle's plane by how far into it the point stands. Laid along the ground's slope read at

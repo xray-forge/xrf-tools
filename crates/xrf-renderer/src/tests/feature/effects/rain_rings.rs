@@ -67,6 +67,7 @@ fn the_rings_draw_into_their_first_level_and_reduce_into_the_rest() {
       cover: bindings.import_view(&mut graph, "rain rings test cover", &depth),
       surface_water: bindings.import_view(&mut graph, "rain rings test water", &depth),
       surface_lowest: bindings.import_view(&mut graph, "rain rings test lowest", &heights),
+      puddles: bindings.import_view(&mut graph, "rain rings test puddles", &heights),
       streak_texture: bindings.import_view(&mut graph, "rain rings test streak", &picture),
       splash_texture: bindings.import_view(&mut graph, "rain rings test splash", &picture),
       rain_sampler: passes.effects.rain.get_sampler(),

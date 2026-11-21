@@ -158,6 +158,11 @@ impl FallingRainFeature {
     }
   }
 
+  /// Where the drops' square stands from the eye this frame, in renderer `x` and `z`.
+  pub(crate) fn get_aim(&self) -> Vec2 {
+    Vec2::new(self.uniform.aim.x, self.uniform.aim.y)
+  }
+
   /// Whether the rain falls this frame.
   pub(crate) fn is_raining(&self) -> bool {
     self.draw.is_some()
@@ -333,6 +338,7 @@ impl FallingRainFeature {
       cover,
       surface_water,
       surface_lowest,
+      puddles,
     }: RainCovers,
     over: Option<(u32, u32)>,
   ) -> Option<(RainCounts, RainParameters<'a>)> {
@@ -351,6 +357,7 @@ impl FallingRainFeature {
         cover,
         surface_water,
         surface_lowest,
+        puddles,
         streak_texture: bindings.import_view(&mut *graph, "rain streak", streak),
         splash_texture: bindings.import_view(&mut *graph, "rain splash", splash),
         rain_sampler: passes.effects.rain.get_sampler(),

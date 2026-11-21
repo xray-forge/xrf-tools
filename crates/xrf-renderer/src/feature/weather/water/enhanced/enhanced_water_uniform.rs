@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
@@ -54,7 +54,8 @@ pub(crate) struct EnhancedWaterUniform {
   /// Metres from the eye within which the screen leaves plants to the trace's grass cards too
   /// (`WaterFeature::follow_grass_cards`).
   pub plant_reach: f32,
-  pub _pad: [u32; 2],
+  /// Where the drops' square stands from the eye, in renderer `x` and `z`, within which a ring is a landing seen.
+  pub rings_aim: Vec2,
   /// Where each of its maps' reads has scrolled to, field for field `EnhancedWaterScroll`'s.
   pub heights: Vec4,
   pub wave_layers: [Vec4; 2],

@@ -18,6 +18,7 @@
 #import "generated/frame/rain"
 #import "common/math"
 #import "common/luminance"
+#import "common/puddle_site"
 
 // `particles_time`: seconds a splash lasts.
 const SPLASH_TIME: f32 = 0.3;
@@ -56,6 +57,10 @@ const RING_START: f32 = 0.01;
 const RING_SPEED: f32 = 0.35;
 const RING_WAVE: f32 = 0.07;
 const RING_TRAIN: f32 = 2.0;
+
+// Metres past the band a puddle's site holds water over a landing may stand and still be in its puddle: the rain's
+// cover is read coarser than the sites are placed.
+const RING_SLACK: f32 = 0.15;
 
 // When a fall that ends before it reaches the cover lands: never, however many falls back it is read.
 const NEVER_LANDS: f32 = 1e9;
@@ -117,12 +122,13 @@ struct RainVarying {
 };
 
 // A ring on the rain's rings: where it stands from its drop's landing, metres in renderer `x` and `z`, seconds since,
-// and how strongly it rises.
+// how strongly it rises, and one where its drop landed in water.
 struct RingVarying {
   @builtin(position) clip: vec4<f32>,
   @location(0) offset: vec2<f32>,
   @location(1) since: f32,
   @location(2) strength: f32,
+  @location(3) in_water: f32,
 };
 
 // What the enhanced rain draws before the resolve: its colour over the scene, and the distortion under it, by their
@@ -365,10 +371,26 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   return out;
 }
 
+// Whether a fall lands in water, which alone rings where the drops are seen landing: on the level's water, or within a
+// puddle's site short of its soft rim, where the ground is only damp (`PUDDLE_BARE`, as far in as no grass stands). A
+// ring from the ground beside a puddle would cross it with nothing in the water to have made it. The water filling a
+// relief's hollows is known only where a pixel draws it, so its landings count as none here.
+fn lands_in_water(fall: Fall) -> bool {
+  if (fall.is_on_water) {
+    return true;
+  }
+
+  return rain.surface.z > 0.0 &&
+    site_reach(puddles, rain.surface, rain.water_shape.z, fall.landed, RING_SLACK) < PUDDLE_BARE;
+}
+
 // Each near drop's ring where it lands, its fall's and its last fall's, so a ring spreads on as its streak falls again:
 // a quad as wide as its front has spread on the rain's rings, the level's tile `rain.near` metres a side seen from
 // overhead, wrapping. Four copies of each, moved a tile across, along and both towards its nearest edges, so a ring
 // crossing one goes on at the other; the copies a ring does not reach clip away. Collapsed while it does not spread.
+// Every landing is drawn, marked by whether it is in water (`lands_in_water`): the tile repeats past the drops' square,
+// where a ring stands for rain no drop is seen making, and one left out for the ground it fell on by the camera would
+// be missing from the water it repeats over far off.
 @vertex
 fn vs_ring(@builtin(vertex_index) vertex_index: u32) -> RingVarying {
   let copy: u32 = (vertex_index / 6u) % 4u;
@@ -391,12 +413,18 @@ fn vs_ring(@builtin(vertex_index) vertex_index: u32) -> RingVarying {
   out.offset = offset;
   out.since = since;
   out.strength = mix(0.5, 1.0, random(fall.key, fall.cycle, 13u));
+  out.in_water = 0.0;
+
+  if (is_spreading && lands_in_water(fall)) {
+    out.in_water = 1.0;
+  }
 
   return out;
 }
 
-// A ring's tilt and its square, added over the others: a train of waves behind its front, rising and falling over
-// it, fading as it spreads.
+// A ring's tilt, its square, and its square again where its drop landed in water, added over the others: a train of
+// waves behind its front, rising and falling over it, fading as it spreads. The last over the one before is the share
+// of the tilt there that landings in water made (`read_rain_rings`).
 @fragment
 fn fs_ring(in: RingVarying) -> @location(0) vec4<f32> {
   let distance: f32 = length(in.offset) / rain.fall.w;
@@ -411,7 +439,7 @@ fn fs_ring(in: RingVarying) -> @location(0) vec4<f32> {
   let slope: f32 = cos(TAU * behind / RING_WAVE) * sin(PI * train) * fade * fade * in.strength;
   let tilt: vec2<f32> = normalize(in.offset + vec2<f32>(1e-6, 0.0)) * slope;
 
-  return vec4<f32>(tilt, dot(tilt, tilt), 0.0);
+  return vec4<f32>(tilt, dot(tilt, tilt), dot(tilt, tilt) * in.in_water);
 }
 
 // `effects\rain` over `stub_default`: the texture times the rain's colour, by its alpha, unlit and past the tonemap, a

@@ -50,3 +50,48 @@ fn site_jitter(cell: vec2<f32>) -> vec2<f32> {
 fn site_origin(corner: vec2<f32>, cell: f32) -> vec2<f32> {
   return floor(corner / cell + 0.5);
 }
+
+// How far out a point with no puddle about it stands: past any radius.
+const SITE_NONE: f32 = 1e9;
+
+// How far out from a puddle's site a point `world` stands, in renderer space as the sites are, a share of that
+// puddle's radius: the least over the puddles of its cell and those about it, each the stretched, turned blob the
+// wetting draws about its site (`site_puddle` in `frame/wet_patch.wgsl`, without the noise that moves its border),
+// among those the point stands level with, within the band a site holds water over and `slack` metres more;
+// `SITE_NONE` where none does. `sites` is the frame's puddles, a site a cell `cell` metres across, over the level
+// surface's window `surface`.
+fn site_reach(sites: texture_2d<f32>, surface: vec4<f32>, cell: f32, world: vec3<f32>, slack: f32) -> f32 {
+  let cells: f32 = floor(surface.z * 2.0 / cell);
+  let origin: vec2<f32> = site_origin(surface.xy - surface.z, cell);
+  let at: vec2<f32> = floor(world.xz / cell) - origin;
+  var reach: f32 = SITE_NONE;
+
+  for (var y: i32 = -1; y <= 1; y++) {
+    for (var x: i32 = -1; x <= 1; x++) {
+      let near: vec2<f32> = at + vec2<f32>(f32(x), f32(y));
+
+      if (any(near < vec2<f32>(0.0)) || any(near >= vec2<f32>(cells))) {
+        continue;
+      }
+
+      let site: vec4<f32> = textureLoad(sites, vec2<i32>(near), 0);
+
+      if (site.w <= 0.0 || length(world.xz - site.xy) > site.w * 2.0) {
+        continue;
+      }
+
+      let hash: vec3<f32> = site_hash(origin + near);
+      let turn: f32 = hash.y * 6.2831853;
+      let across: vec2<f32> = vec2<f32>(cos(turn), sin(turn));
+      let offset: vec2<f32> = world.xz - site.xy;
+      let stretched: vec2<f32> = vec2<f32>(dot(offset, across), dot(offset, vec2<f32>(-across.y, across.x))) /
+        vec2<f32>(1.0, mix(1.0, 1.0 / PUDDLE_STRETCH, hash.z));
+
+      if (abs(world.y - site.z) < SITE_LEVEL.x + SITE_LEVEL.y * site.w + slack) {
+        reach = min(reach, length(stretched) / site.w);
+      }
+    }
+  }
+
+  return reach;
+}

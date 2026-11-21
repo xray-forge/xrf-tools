@@ -231,8 +231,8 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
     if (enhanced.rings_tile > 0.0) {
       let to_world: vec2<f32> = vec2<f32>(1.0, -1.0) / (WAVE_WORLD_SCALE * ENHANCED_TILING);
       let rings: RainRings = read_rain_rings(rain_rings, texture_sampler,
-        vec2<f32>(enhanced.rings_tile, enhanced.rings_reach), camera.position.xz, in.world.xz, dx * to_world,
-        dy * to_world);
+        RainRingsSetup(enhanced.rings_tile, enhanced.rings_reach, enhanced.rings_aim), camera.position.xz,
+        in.world.xz, dx * to_world, dy * to_world);
 
       let ring_scale: f32 = enhanced.ripples * RINGS_STRENGTH * enhanced.rings_strength * rings.share;
 

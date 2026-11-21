@@ -361,16 +361,17 @@ impl RainPass {
     let engine_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(blended(ViewTargets::SCENE))];
     let splash_targets: [Option<wgpu::ColorTargetState>; 2] = [Some(blended(ViewTargets::SCENE)), Some(distorting)];
     let over_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(blended(Self::LAYER))];
-    // Each ring added over the others.
+    // Each ring added over the others, all four of its values.
+    let added: wgpu::BlendComponent = wgpu::BlendComponent {
+      src_factor: wgpu::BlendFactor::One,
+      dst_factor: wgpu::BlendFactor::One,
+      operation: wgpu::BlendOperation::Add,
+    };
     let ring_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
       format: RainRings::FORMAT,
       blend: Some(wgpu::BlendState {
-        color: wgpu::BlendComponent {
-          src_factor: wgpu::BlendFactor::One,
-          dst_factor: wgpu::BlendFactor::One,
-          operation: wgpu::BlendOperation::Add,
-        },
-        alpha: wgpu::BlendComponent::REPLACE,
+        color: added,
+        alpha: added,
       }),
       write_mask: wgpu::ColorWrites::ALL,
     })];
