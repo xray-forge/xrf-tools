@@ -195,10 +195,7 @@ impl RainPass {
   ) {
     graph
       .add_raster_pass("rain rings")
-      .color(GraphColorAttachment::new(
-        levels[0],
-        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-      ))
+      .color(GraphColorAttachment::new(levels[0], wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)).with_mip_level(0))
       .parameters(&parameters)
       .record(move |context| {
         context.bind(&parameters);
