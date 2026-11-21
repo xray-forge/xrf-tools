@@ -11,15 +11,21 @@ const MAX_NOISE_FREQUENCY: f32 = 0.03;
 /// What the noise's tables are filled from on every level open.
 const NOISE_SEED: u64 = 0x0057_1AD5;
 
+/// What Monolith's `RainPerlin` is filled from, a noise of its own beside the wind's, and the frequency
+/// `CEffect_Rain::Prepare` reads it at.
+const RAIN_NOISE_SEED: u64 = 0x0057_2A19;
+const RAIN_NOISE_FREQUENCY: f32 = 0.3;
+
 /// `EPS`: how near the blast's two directions may come before their turn is taken in a straight line.
 const NEAR_TURN: f32 = 0.00001;
 
 /// The wind as `CEnvironment::OnFrame` and `CGamePersistent::WeathersUpdate` drive it between them: the strength the
 /// noise gives at the playing effect's gust factor, then, over that, the blast rising from what the strength was to the
 /// effect's own while its direction turns, falling back to nothing once its life is up, and nothing after the fall,
-/// until the next effect starts.
+/// until the next effect starts. Beside it, the gust of Monolith's rain, which no effect drives.
 pub(crate) struct AmbientWind {
   noise: WindNoise,
+  rain_noise: WindNoise,
   gust: AmbientGust,
   /// `wind_gust_factor`.
   gust_factor: f32,
@@ -41,6 +47,7 @@ impl Default for AmbientWind {
   fn default() -> Self {
     Self {
       noise: WindNoise::new(NOISE_SEED),
+      rain_noise: WindNoise::new(RAIN_NOISE_SEED),
       gust: AmbientGust::default(),
       gust_factor: 0.0,
       start: Duration::ZERO,
@@ -59,11 +66,13 @@ impl AmbientWind {
     self.gust
   }
 
-  /// `CEnvironment::OnFrame`: the strength the noise gives at the gust factor of the moment.
+  /// `CEnvironment::OnFrame`: the strength the noise gives at the gust factor of the moment; and the rain's gust, its
+  /// own noise doubled (`CEffect_Rain::Prepare`).
   pub(crate) fn blow(&mut self, time: Duration) {
     let noise: f32 = self.noise.read(time, self.gust_factor * MAX_NOISE_FREQUENCY);
 
     self.gust.strength = (noise + 0.5).clamp(0.0, 1.0);
+    self.gust.rain = self.rain_noise.read(time, RAIN_NOISE_FREQUENCY) * 2.0;
   }
 
   /// An effect starts: its gusts, and its blast rising from the strength of the moment and turning from the blast's

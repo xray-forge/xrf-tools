@@ -53,8 +53,27 @@ fn still_air_stands_at_half_strength() {
 
   for time in [0.1, 5.0, 60.0, 600.0] {
     wind.blow(Duration::from_secs_f32(time));
-    assert_eq!(wind.get_gust(), AmbientGust::default());
+
+    let gust: AmbientGust = wind.get_gust();
+
+    assert_eq!(gust.strength, AmbientGust::default().strength);
+    assert_eq!(gust.direction, AmbientGust::default().direction);
   }
+}
+
+// Monolith's rain gusts by a noise of its own, whatever the ambient effects do: within twice the noise's two thirds.
+#[test]
+fn the_rain_gusts_in_still_air() {
+  let mut wind: AmbientWind = AmbientWind::default();
+  let gusts: Vec<f32> = (1..2000)
+    .map(|frame| {
+      wind.blow(Duration::from_millis(frame * 50));
+      wind.get_gust().rain
+    })
+    .collect();
+
+  assert!(gusts.iter().all(|gust| gust.abs() <= 0.66666 * 2.0));
+  assert!(gusts.iter().any(|gust| (gust - gusts[0]).abs() > 1e-2));
 }
 
 #[test]
@@ -114,6 +133,7 @@ fn a_campfire_is_blown_along_the_blast_by_the_strength() {
   let gust: AmbientGust = AmbientGust {
     strength: 0.25,
     direction: Vec3::Z,
+    ..Default::default()
   };
 
   assert_eq!(gust.get_velocity(), Vec3::new(0.0, 0.0, 0.25));

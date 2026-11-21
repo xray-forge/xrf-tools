@@ -7,10 +7,10 @@
 // splash a copy of its model, each placed by its streak's fall, which is `Born` and `RenewItem` made stateless. Each
 // streak falls again and again at its own speed from a column of the level a square about the camera wraps as it
 // moves, and stops where the cover under that column stands, which is where its splash is. The fall's shape is the
-// uniform's: the engine's, or Monolith's as Screen Space Shaders' rain shapes it (`ssfx_rain_1`, `drops_setup`). The
-// enhanced streaks draw after the temporal resolve, over a copy of the image it shows, so no history carries them;
-// where they land, each leaves a ring on the water, drawn into the rain's rings from overhead, a tile of the level its
-// columns repeat over.
+// uniform's: Monolith's for both drops, the enhanced ones as Screen Space Shaders' rain shapes it (`ssfx_rain_1`,
+// `drops_setup`). The enhanced streaks draw after the temporal resolve, over a copy of the image it shows, so no
+// history carries them; where they land, each leaves a ring on the water, drawn into the rain's rings from overhead, a
+// tile of the level its columns repeat over.
 
 // The rain, its cover, the streak's and the splash's textures, and the splash's model in renderer space (its position,
 // then its coordinate, a vertex); for the enhanced rain, the shown image blurred small, their maps and their sampler,
@@ -145,27 +145,18 @@ fn random(streak: u32, cycle: u32, draw: u32) -> f32 {
   return f32(hash(streak * 0x9e3779b1u + cycle * 0x85ebca6bu + draw)) / 4294967295.0;
 }
 
-// The way a fall goes, about the rain's way. The engine's `random_dir(axis, drop_angle)` reads as a cone of the
-// stray's half angle; Monolith's `random_dir(axis, randF(-drop_angle, drop_angle) * (1.5 - velocity))` adds a random
-// direction scaled by up to that angle's tangent, so most drops stray far less than the widest.
+// The way a fall goes, about the rain's way: Monolith's
+// `random_dir(axis, randF(-drop_angle, drop_angle) * (1.5 - velocity))` adds a random direction scaled by up to that
+// angle's tangent, so most drops stray far less than the widest.
 fn direction_of(streak: u32, cycle: u32) -> vec3<f32> {
   let axis: vec3<f32> = rain.axis.xyz;
   let turn: f32 = random(streak, cycle, 5u) * TAU;
+  let rise: f32 = random(streak, cycle, 9u) * 2.0 - 1.0;
+  let flat: f32 = sqrt(1.0 - rise * rise);
+  let scatter: vec3<f32> = vec3<f32>(flat * cos(turn), rise, flat * sin(turn));
+  let angle: f32 = (random(streak, cycle, 4u) * 2.0 - 1.0) * rain.axis.w;
 
-  if (rain.is_enhanced != 0u) {
-    let rise: f32 = random(streak, cycle, 9u) * 2.0 - 1.0;
-    let flat: f32 = sqrt(1.0 - rise * rise);
-    let scatter: vec3<f32> = vec3<f32>(flat * cos(turn), rise, flat * sin(turn));
-    let angle: f32 = (random(streak, cycle, 4u) * 2.0 - 1.0) * rain.axis.w;
-
-    return normalize(axis + scatter * random(streak, cycle, 10u) * tan(angle));
-  }
-
-  let across: vec3<f32> = normalize(cross(axis, vec3<f32>(1.0, 0.0, 0.0)));
-  let along: vec3<f32> = cross(axis, across);
-  let lean: f32 = mix(1.0, cos(rain.axis.w), random(streak, cycle, 4u));
-
-  return normalize(axis * lean + (across * cos(turn) + along * sin(turn)) * sqrt(1.0 - lean * lean));
+  return normalize(axis + scatter * random(streak, cycle, 10u) * tan(angle));
 }
 
 fn fall_of(streak: u32) -> Fall {
@@ -229,12 +220,12 @@ fn surface_lowest_at(place: vec2<f32>) -> f32 {
 // A streak's fall `back` falls before this one, aged from its own start; never falling before the rain's first.
 fn fall_back(streak: u32, back: u32) -> Fall {
   let eye: vec3<f32> = camera.position.xyz;
-  // Monolith's `Born` aims ahead of where the camera looks (`aim`, none for the engine's).
+  // Monolith's `Born` aims ahead of where the camera looks (`aim`).
   let centre: vec2<f32> = eye.xz + rain.aim.xy;
   let is_enhanced: bool = rain.is_enhanced != 0u;
   // The near square's side, every drop in it falling, and the cell a far drop falls in, its draws seeded by the cell
   // and its place in it, so it stays the same drop where it falls however the camera moves.
-  let tile: f32 = select(rain.fall.z, rain.near, is_enhanced);
+  let tile: f32 = rain.near;
   let is_far: bool = is_enhanced && streak >= rain.near_count;
   let far: FarDrop = far_drop(streak - min(streak, rain.near_count));
   let cell: vec2<i32> = vec2<i32>(floor(centre / tile)) + far.cell;

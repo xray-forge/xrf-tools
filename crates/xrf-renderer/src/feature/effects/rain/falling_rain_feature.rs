@@ -10,6 +10,7 @@ use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::effects::rain::draw::rain_counts::RainCounts;
 use crate::feature::effects::rain::draw::rain_parameters::RainParameters;
 use crate::feature::effects::rain::enhanced::rain_look_parameters::RainLookParameters;
+use crate::feature::effects::rain::rain_fall::RainFall;
 use crate::feature::effects::rain::rain_frame::RainFrame;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::rain_rings::RainRings;
@@ -42,7 +43,7 @@ pub(crate) struct FallingRainFeature {
   views: Option<[wgpu::TextureView; 2]>,
   /// How much of the rain is drawn; none while it does not rain.
   draw: Option<RainCounts>,
-  /// Where the enhanced drops' square stood from the eye last frame, eased towards the camera's way.
+  /// Where the drops' square stood from the eye last frame, eased towards the camera's way.
   aim: Option<Vec2>,
   /// The rain's clock in seconds, run on at its pace each frame, in `f64` so a frame's step still adds to a day's.
   clock: f64,
@@ -82,7 +83,7 @@ impl FallingRainFeature {
 
     // Held within a tenth of a second and never back, so a pause or a jump does not swing the drops' square.
     let step: f32 = time.get_step().map_or(0.0, |step| step.clamp(0.0, 0.1) as f32);
-    let aim: Vec2 = RainUniform::ease_aim(self.aim, look, step);
+    let aim: Vec2 = RainFall::ease_aim(self.aim, look, step);
 
     self.aim = Some(aim);
 
@@ -97,7 +98,7 @@ impl FallingRainFeature {
       rain: &rainfall,
       drops: settings.drops,
       wind: lighting.wind,
-      strength: gust.strength,
+      gust,
       window: cover,
       cover_shape: Vec4::new(texels, reach, 0.0, 0.0),
       aim,
@@ -108,7 +109,7 @@ impl FallingRainFeature {
     let (pace, axis): (f32, Vec3) = self
       .eased
       .map_or((target.pace, target.axis.truncate()), |(pace, axis)| {
-        let following: f32 = RainUniform::get_following(step);
+        let following: f32 = RainFall::get_following(step);
 
         (
           pace + (target.pace - pace) * following,
