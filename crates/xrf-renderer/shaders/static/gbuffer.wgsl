@@ -611,11 +611,18 @@ const TERRAIN_BLEND_BAND: f32 = 0.25;
 // foot where it is drawn, rather than all of it sunk under the top and the wall seen standing over it.
 const TERRAIN_PLANE: f32 = 0.5;
 
-// One terrain layer's detail and bump as read: its colour, and its bump's tangent normal about its middle with its
-// gloss.
+// One terrain layer's detail and bump as read in one place: its colour, and its bump's tangent normal about its middle
+// with its gloss.
 struct TerrainSample {
   detail: vec3<f32>,
   bump: vec4<f32>,
+};
+
+// A terrain layer as the surface shows it: its picture, and how much of each hex copy it shows, the first alone where
+// it is read as the engines read it.
+struct TerrainRead {
+  picture: TerrainSample,
+  shares: vec3<f32>,
 };
 
 // A layer's detail and bump read where it stands, `uv` in the copy the march ran in: as the engines read it, or across
@@ -630,12 +637,15 @@ fn terrain_sample(
   base: vec2<f32>,
   dx: vec2<f32>,
   dy: vec2<f32>,
-) -> TerrainSample {
+) -> TerrainRead {
   if (!is_varied) {
     // `.wzyx`: the normal in the last three channels, the gloss in the first.
     let bump: vec4<f32> = sample_slot(bump_slot, uv, dx, dy).wzyx;
 
-    return TerrainSample(sample_slot(detail_slot, uv, dx, dy).rgb, vec4<f32>(bump.xyz - 0.5, bump.w));
+    return TerrainRead(
+      TerrainSample(sample_slot(detail_slot, uv, dx, dy).rgb, vec4<f32>(bump.xyz - 0.5, bump.w)),
+      vec3<f32>(1.0, 0.0, 0.0),
+    );
   }
 
   let first: TerrainSample = terrain_copy(detail_slot, bump_slot, tiles.first, base, dx, dy);
@@ -644,10 +654,23 @@ fn terrain_sample(
   let weights: vec3<f32> = hex_weights(tiles,
     vec3<f32>(luminance(first.detail), luminance(second.detail), luminance(third.detail)), camera.terrain.z);
 
-  return TerrainSample(
-    first.detail * weights.x + second.detail * weights.y + third.detail * weights.z,
-    first.bump * weights.x + second.bump * weights.y + third.bump * weights.z,
+  return TerrainRead(
+    TerrainSample(
+      first.detail * weights.x + second.detail * weights.y + third.detail * weights.z,
+      first.bump * weights.x + second.bump * weights.y + third.bump * weights.z,
+    ),
+    weights,
   );
+}
+
+// A layer's height where its picture is read, `base` as the surface has it: the three hex copies' heights by the
+// shares the picture shows them in, so what reads the height across a seam between copies (the water filling the
+// relief, the hollows' shade) follows the picture drawn there rather than end at the hexagon's edge, as the nearest
+// copy's height alone does.
+fn terrain_height(slot: u32, tiles: HexTiles, shares: vec3<f32>, base: vec2<f32>, lod: f32) -> f32 {
+  return textureSampleLevel(textures[slot], texture_sampler, hex_at(tiles.first, base), lod).r * shares.x +
+    textureSampleLevel(textures[slot], texture_sampler, hex_at(tiles.second, base), lod).r * shares.y +
+    textureSampleLevel(textures[slot], texture_sampler, hex_at(tiles.third, base), lod).r * shares.z;
 }
 
 // One hex copy of a layer's detail and bump, its texture read along the copy's turn and its normal turned back.
@@ -837,6 +860,7 @@ fn terrain_texel(
   // by a layer known only per pixel.
   var coords: array<vec2<f32>, 4> = array<vec2<f32>, 4>(start, start, start, start);
   var heights: vec4<f32> = vec4<f32>(0.5);
+  var lods: vec4<f32> = vec4<f32>(0.0);
   var dominant: u32 = 0u;
   var dominant_coord: vec2<f32> = start;
   var dominant_depth: f32 = 0.0;
@@ -860,6 +884,7 @@ fn terrain_texel(
 
       coords[layer] = hit.xy;
       heights[layer] = textureSampleLevel(textures[slot], texture_sampler, hit.xy, lod).r;
+      lods[layer] = lod;
 
       if (layer == dominant) {
         dominant_coord = hit.xy;
@@ -891,14 +916,19 @@ fn terrain_texel(
 
     // How far the march moved the layer, as the surface has it.
     let moved: vec2<f32> = hex_back(nearest, coords[layer] - start);
-    let read: TerrainSample = terrain_sample(surface.terrain.details[layer], surface.terrain.bumps[layer], tiles,
+    let read: TerrainRead = terrain_sample(surface.terrain.details[layer], surface.terrain.bumps[layer], tiles,
       is_varied, coords[layer], uv + moved, dx, dy);
+    var height: f32 = heights[layer];
 
-    out.detail += read.detail * weight;
-    out.bump += read.bump.xyz * weight;
-    out.gloss += read.bump.w * weight;
-    out.cavity += (1.0 - heights[layer] * heights[layer]) * weight;
-    out.sink += (1.0 - heights[layer]) * weight;
+    if (is_marched && is_varied) {
+      height = terrain_height(surface.terrain.heights[layer], tiles, read.shares, uv + moved, lods[layer]);
+    }
+
+    out.detail += read.picture.detail * weight;
+    out.bump += read.picture.bump.xyz * weight;
+    out.gloss += read.picture.bump.w * weight;
+    out.cavity += (1.0 - height * height) * weight;
+    out.sink += (1.0 - height) * weight;
     terrain_moved += moved * weight;
   }
 
