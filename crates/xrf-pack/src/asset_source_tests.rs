@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{
   XrayArchiveSource, XrayAsset, XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope,
@@ -350,7 +350,11 @@ fn a_recorded_checksum_is_answered_without_reading_the_payload() {
     .get_recorded_crc("configs\\system.ltx")
     .expect("an archived entry records its checksum");
 
-  assert_eq!(recorded, crc32fast::hash(CONFIG), "it is the checksum of the payload");
+  assert_eq!(
+    recorded,
+    ArchiveFileDescriptor::crc_of(CONFIG),
+    "it is the checksum of the payload"
+  );
   assert!(
     source.get_recorded_crc("configs\\absent.ltx").is_none(),
     "an entry the set does not hold records nothing"

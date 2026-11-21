@@ -7,8 +7,7 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crc32fast::hash;
-use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
+use xrf_archive::{ArchiveCompressor, ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfResult;
 use xrf_job::ExecutionRequest;
 use xrf_test_utils::GeneratedResources;
@@ -53,7 +52,9 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
     // A compressed entry stores fewer bytes than it yields, which is exactly the case the reader used
     // to get wrong by copying `size_real` bytes straight out of the archive.
     let stored: Vec<u8> = if entry.is_compressed {
-      lzokay::compress::compress(entry.contents).expect("lzo compression")
+      ArchiveCompressor::new()
+        .compress(entry.contents, entry.name)
+        .expect("lzo compression")
     } else {
       entry.contents.to_vec()
     };
@@ -61,7 +62,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
     payload.extend_from_slice(&stored);
 
     let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(
-      hash(entry.contents),
+      ArchiveFileDescriptor::crc_of(entry.contents),
       entry.name.into(),
       offset,
       stored.len() as u32,

@@ -427,13 +427,10 @@ fn plays_the_sounds_read_again_on_a_reload() {
   let reloaded: Duration = Duration::from_secs_f64(reached);
 
   heard.sound.reload(&source, &heard.workers);
-  heard.play_until(reached, |frame| named(frame) == ["ambient\\wind"]);
 
-  let after: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
-
-  assert!(
-    after.sound.emitters.iter().all(|emitter| emitter.start >= reloaded),
-    "{:?}",
-    Played::from(&after)
-  );
+  // The wind alone, and started at the reload or after: the wind from before the reload names the same sound, and stays
+  // the only one heard until the reloaded sounds come back from the workers, so naming it proves nothing on its own.
+  heard.play_until(reached, |frame| {
+    named(frame) == ["ambient\\wind"] && frame.sound.emitters.iter().all(|emitter| emitter.start >= reloaded)
+  });
 }

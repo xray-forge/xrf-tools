@@ -10,7 +10,7 @@ mod volume;
 pub use archive_project::ArchiveProject;
 pub use archive_read_policy::{ARCHIVE_READ_POLICY, ArchiveReadPolicy};
 pub use archive_read_result::ArchiveReadResult;
-pub use payload::{ArchiveOpenVolumes, ArchiveSharedPayload};
+pub use payload::{ArchiveCompressor, ArchiveOpenVolumes, ArchiveSharedPayload};
 pub use volume::{
   ArchiveDescriptor, ArchiveFileDescriptor, ArchiveHeaderItem, ArchiveMetadata, CHUNK_ID_DATA,
   CHUNK_ID_FILE_DESCRIPTORS, CHUNK_ID_METADATA, DESCRIPTOR_ROW_FIELDS_SIZE, DESCRIPTOR_ROW_SIZE_FIELD_SIZE,

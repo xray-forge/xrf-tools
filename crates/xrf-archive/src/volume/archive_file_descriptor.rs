@@ -71,11 +71,22 @@ impl ArchiveFileDescriptor {
   pub fn is_compressed(&self) -> bool {
     self.size_compressed != self.size_real
   }
+
+  /// The checksum a descriptor records for an unpacked payload, [`Self::crc`]: CRC32, as xrCompress writes it.
+  pub fn crc_of(contents: &[u8]) -> u32 {
+    crc32fast::hash(contents)
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use super::ArchiveFileDescriptor;
+
+  #[test]
+  fn records_the_payload_crc32_as_xr_compress_does() {
+    // The CRC-32 check value, as every implementation of the IEEE polynomial gives it.
+    assert_eq!(ArchiveFileDescriptor::crc_of(b"123456789"), 0xCBF4_3926);
+  }
 
   #[test]
   fn an_entry_belongs_to_the_volume_it_is_attributed_to() {

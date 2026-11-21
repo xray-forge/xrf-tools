@@ -167,6 +167,10 @@ Stored entries are copied through a bounded buffer; compressed entries are decom
 method copies a payload out of an archive. Archive creation and extraction-path handling belong to `xrf-pack`. A failed
 copy can leave a partially written target.
 
+The volume format's codec lives here for both directions, so no other crate depends on LZO or computes the checksum
+itself: `ArchiveCompressor` compresses a payload as a volume stores it, keeping its working dictionary between entries
+(one per packing worker), and `ArchiveFileDescriptor::crc_of` gives the CRC32 a descriptor records.
+
 ## Validation and errors
 
 - Header reads check chunk bounds, descriptor row sizes, and that each entry name fits the engine's 520-byte buffer

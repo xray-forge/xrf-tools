@@ -109,7 +109,7 @@ impl ArchiveLocatedEntry<'_> {
       )));
     }
 
-    let crc: u32 = crc32fast::hash(&decompressed);
+    let crc: u32 = ArchiveFileDescriptor::crc_of(&decompressed);
 
     if crc != descriptor.crc {
       return Err(XrfError::new_read_error(format!(

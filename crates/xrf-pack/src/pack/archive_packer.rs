@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use lzokay::compress::Dict;
+use xrf_archive::ArchiveCompressor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobOutcome, JobScope};
@@ -177,7 +177,7 @@ impl ArchivePacker {
   /// stored as read, which are read as they are placed.
   ///
   /// Only text is prepared ahead: compressing is a pack's cost, while reading a window of textures ahead would hold
-  /// them all at once for nothing. A worker builds its coder, a large zeroed table, on its first text.
+  /// them all at once for nothing. A worker builds its compressor, a large zeroed table, on its first text.
   fn prepare_text(
     config: &ArchivePackConfig,
     payloads: &ArchivePackPayloads<'_>,
@@ -194,9 +194,15 @@ impl ArchivePacker {
       .par_iter()
       .map_init(
         || None,
-        |dict: &mut Option<Box<Dict>>, entry| {
-          ArchivePreparedEntry::is_compressed_kind(config, entry)
-            .then(|| ArchivePreparedEntry::read_coded(config, payloads, entry, dict.get_or_insert_with(Dict::new)))
+        |compressor: &mut Option<ArchiveCompressor>, entry| {
+          ArchivePreparedEntry::is_compressed_kind(config, entry).then(|| {
+            ArchivePreparedEntry::read_coded(
+              config,
+              payloads,
+              entry,
+              compressor.get_or_insert_with(ArchiveCompressor::new),
+            )
+          })
         },
       )
       .collect()

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use xrf_archive::ArchiveFileDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayMountMode, XraySearch, XraySearchPlan};
@@ -97,7 +98,9 @@ impl ArchivePatchWorld {
   pub(crate) fn read_checksum(&self, name: &str) -> XrfResult<ArchivePatchChecksum> {
     match self.search.read_recorded_crc(name) {
       Some(crc) => Ok(ArchivePatchChecksum::Recorded(crc)),
-      None => Ok(ArchivePatchChecksum::Hashed(crc32fast::hash(&self.read_bytes(name)?))),
+      None => Ok(ArchivePatchChecksum::Hashed(ArchiveFileDescriptor::crc_of(
+        &self.read_bytes(name)?,
+      ))),
     }
   }
 

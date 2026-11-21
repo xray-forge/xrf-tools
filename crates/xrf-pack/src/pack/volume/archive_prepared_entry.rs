@@ -1,4 +1,4 @@
-use lzokay::compress::Dict;
+use xrf_archive::{ArchiveCompressor, ArchiveFileDescriptor};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
@@ -55,7 +55,7 @@ impl ArchivePreparedEntry {
     })?;
 
     Ok(Self {
-      crc: crc32fast::hash(&contents),
+      crc: ArchiveFileDescriptor::crc_of(&contents),
       contents,
       size_real,
       coded: None,
@@ -72,11 +72,11 @@ impl ArchivePreparedEntry {
     config: &ArchivePackConfig,
     payloads: &ArchivePackPayloads<'_>,
     entry: &ArchivePackEntry,
-    dict: &mut Dict,
+    compressor: &mut ArchiveCompressor,
   ) -> XrfResult<Self> {
     let mut prepared: Self = Self::read(payloads, entry)?;
 
-    (prepared.coded, prepared.outcome) = Self::code(config, entry, &prepared.contents, dict)?;
+    (prepared.coded, prepared.outcome) = Self::code(config, entry, &prepared.contents, compressor)?;
 
     Ok(prepared)
   }
@@ -94,7 +94,7 @@ impl ArchivePreparedEntry {
     config: &ArchivePackConfig,
     entry: &ArchivePackEntry,
     contents: &[u8],
-    dict: &mut Dict,
+    compressor: &mut ArchiveCompressor,
   ) -> XrfResult<(Option<Vec<u8>>, ArchivePackEntryOutcome<'static>)> {
     if !Self::is_compressed_kind(config, entry) {
       return Ok((None, ArchivePackEntryOutcome::Stored));
@@ -104,8 +104,7 @@ impl ArchivePreparedEntry {
       return Ok((None, ArchivePackEntryOutcome::Empty));
     }
 
-    let compressed: Vec<u8> = lzokay::compress::compress_with_dict(contents, dict)
-      .map_err(|error| XrfError::new_unexpected_error(format!("Failed to compress '{}': {error}", entry.name)))?;
+    let compressed: Vec<u8> = compressor.compress(contents, &entry.name)?;
 
     // A payload that barely shrinks costs more to decompress than it saves, so it reverts to stored.
     // The reader tells the two apart by the sizes alone, so this must stay a real size difference.
