@@ -88,7 +88,7 @@ impl DialogSquadSpawns {
     let mut named: Vec<String> = Vec::new();
 
     for (_, section) in ltx {
-      for (key, value) in section.iter() {
+      for (key, value) in section {
         if key == Self::SPAWN_SQUADS_KEY {
           named.extend(
             value
