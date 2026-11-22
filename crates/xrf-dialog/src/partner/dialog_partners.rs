@@ -5,9 +5,8 @@ use indexmap::map::Entry;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
-use xrf_xml::{XmlElementSpan, XmlIncludes, XmlSourceDocument};
+use xrf_xml::{XmlElementSpan, XmlEngineSource, XmlSourceDocument};
 
-use crate::dialog_source::DialogSource;
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
 use crate::partner::dialog_partner_text::DialogPartnerText;
@@ -44,9 +43,6 @@ impl DialogPartners {
   const INFO_PORTION_ID_ATTRIBUTE: &'static str = "id";
   const INFO_PORTION_DIALOG_ELEMENT: &'static str = "dialog";
 
-  /// The prefix the engine opens XML includes under, `$game_config$`.
-  const INCLUDES_PREFIX: &'static str = "configs";
-
   /// Read every character description, profile list and info portion file a search reaches under a prefix.
   ///
   /// # Errors
@@ -72,15 +68,12 @@ impl DialogPartners {
       })
       .collect();
 
-    // A file another one includes is part of that file. The engine never loads it on its own, and Anomaly writes such
-    // parts without a root, so reading one by itself would only report it unreadable. Named from the text, so a part
-    // still counts when the file including it fails on an earlier include.
-    let included: HashSet<String> = sources
-      .iter()
-      .filter_map(|(_, _, source)| source.as_ref().ok())
-      .flat_map(|source| XmlIncludes::list(source))
-      .filter_map(|name| XrayLogicalPath::normalize(&Self::resolve_include_path(&name)).ok())
-      .collect();
+    // A part another file includes is read through that file; Anomaly writes such parts without a root.
+    let included: HashSet<String> =
+      XmlEngineSource::list_included(sources.iter().filter_map(|(_, _, source)| source.as_deref().ok()))
+        .into_iter()
+        .filter_map(|path| XrayLogicalPath::normalize(&path).ok())
+        .collect();
 
     let mut partners: Self = Self::default();
 
@@ -89,10 +82,8 @@ impl DialogPartners {
         continue;
       }
 
-      let document: XrfResult<XmlSourceDocument> = source
-        .and_then(|source| XmlIncludes::expand(&source, &mut |name| search.read(&Self::resolve_include_path(name))))
-        .and_then(|expanded| DialogSource::decode(&expanded))
-        .and_then(|decoded| XmlSourceDocument::parse(decoded.text));
+      let document: XrfResult<XmlSourceDocument> =
+        source.and_then(|source| XmlEngineSource::parse(&source, &mut |path| search.read(path)));
 
       match document {
         Ok(document) => reader(&mut partners, document.root(), logical_path),
@@ -198,11 +189,6 @@ impl DialogPartners {
     } else {
       None
     }
-  }
-
-  /// The logical path of an included file, which the engine opens under `$game_config$`.
-  fn resolve_include_path(name: &str) -> String {
-    format!("{}\\{name}", Self::INCLUDES_PREFIX)
   }
 
   fn read_characters(&mut self, root: &XmlElementSpan, logical_path: &str) {

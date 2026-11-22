@@ -119,6 +119,24 @@ impl XmlElementSpan {
     self.children.iter().filter(move |child| child.name == name)
   }
 
+  /// Iterates over descendants in document order, excluding this element.
+  pub fn descendants(&self) -> impl Iterator<Item = &Self> {
+    let mut stack: Vec<&Self> = self.children.iter().rev().collect();
+
+    std::iter::from_fn(move || {
+      let element: &Self = stack.pop()?;
+
+      stack.extend(element.children.iter().rev());
+
+      Some(element)
+    })
+  }
+
+  /// Iterates over descendants with the exact tag name, excluding this element.
+  pub fn descendants_named<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Self> + 'a {
+    self.descendants().filter(move |element| element.name == name)
+  }
+
   /// The source of a node whose bytes the repair changed, which the parser's own values would misread.
   ///
   /// `None` for every node of a document that parsed as written, and for every node of a repaired one the repair left

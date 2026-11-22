@@ -7,7 +7,7 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_job::parallel::prelude::*;
 use xrf_ltx::Ltx;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath};
-use xrf_xml::{XmlDocument, XmlParseOptions};
+use xrf_xml::{XmlEngineSource, XmlSourceDocument};
 
 use crate::project::gamedata_finding_factory::GamedataFindingFactory;
 use crate::project::gamedata_project::GamedataProject;
@@ -87,8 +87,8 @@ impl<'a> SoundReferencesVerifier<'a> {
     }
   }
 
-  /// Every config XML's `<sound>` references, each document read and parsed on its own worker and taken in the tree's
-  /// order.
+  /// Every config XML's `<sound>` references, read as the engine reads each document, on its own worker, and taken in
+  /// the tree's order. A part another document includes is checked through that document.
   fn verify_references_in_xml(
     &self,
     sound_names: &HashSet<String>,
@@ -96,7 +96,7 @@ impl<'a> SoundReferencesVerifier<'a> {
     result: &mut GamedataSoundReferencesVerificationResult,
   ) {
     // Enumerated and read through the VFS, so an installation's archived UI XML is inspected too.
-    let documents: Vec<XrayAsset> = self
+    let assets: Vec<XrayAsset> = self
       .project
       .entries()
       .into_iter()
@@ -110,9 +110,20 @@ impl<'a> SoundReferencesVerifier<'a> {
       })
       .collect();
 
-    let found: Vec<GamedataSoundReferencesVerificationResult> = documents
+    let sources: Vec<(&XrayAsset, XrfResult<Vec<u8>>)> = assets
       .par_iter()
-      .map(|location| self.verify_references_in_xml_document(sound_names, sound_roots, location))
+      .map(|location| (location, self.project.read_bytes(location.get_logical_path().as_str())))
+      .collect();
+    let included: HashSet<String> =
+      XmlEngineSource::list_included(sources.iter().filter_map(|(_, source)| source.as_deref().ok()))
+        .into_iter()
+        .filter_map(|path| XrayLogicalPath::normalize(&path).ok())
+        .collect();
+
+    let found: Vec<GamedataSoundReferencesVerificationResult> = sources
+      .into_par_iter()
+      .filter(|(location, _)| !included.contains(location.get_logical_path().as_str()))
+      .map(|(location, source)| self.verify_references_in_xml_document(sound_names, sound_roots, location, source))
       .collect();
 
     for found in found {
@@ -126,6 +137,7 @@ impl<'a> SoundReferencesVerifier<'a> {
     sound_names: &HashSet<String>,
     sound_roots: &HashSet<String>,
     location: &XrayAsset,
+    source: XrfResult<Vec<u8>>,
   ) -> GamedataSoundReferencesVerificationResult {
     let mut found: GamedataSoundReferencesVerificationResult = Default::default();
 
@@ -138,10 +150,8 @@ impl<'a> SoundReferencesVerifier<'a> {
       .to_physical_path()
       .unwrap_or_else(|| PathBuf::from(logical_path.as_str()));
 
-    let document: XmlDocument = match self
-      .project
-      .read_bytes(logical_path.as_str())
-      .and_then(|contents| XmlDocument::parse_bytes(&contents, XmlParseOptions { allow_dtd: true }))
+    let document: XmlSourceDocument = match source
+      .and_then(|source| XmlEngineSource::parse(&source, &mut |include| self.project.read_bytes(include)))
     {
       Ok(document) => document,
       Err(error) => {

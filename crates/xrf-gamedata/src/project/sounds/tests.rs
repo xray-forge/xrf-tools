@@ -19,13 +19,16 @@ use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOption
 use crate::project::tests::fixtures::{engine_game_materials, game_materials_bytes};
 
 fn open_project(name: &str, config: &str) -> (PathBuf, GamedataProject) {
-  open_project_with_materials(name, config, None)
+  open_project_with_materials(name, config, None, &[])
 }
 
+/// A project of one weapon config and one sound, with the game materials and the further files, each by its path under
+/// the root, given.
 fn open_project_with_materials(
   name: &str,
   config: &str,
   game_materials: Option<&GameMtlFile>,
+  files: &[(&str, &str)],
 ) -> (PathBuf, GamedataProject) {
   let root: PathBuf = GeneratedResources::create_dir(&format!("sounds/{name}")).unwrap();
   let configs: PathBuf = root.join("configs");
@@ -38,6 +41,13 @@ fn open_project_with_materials(
 
   if let Some(game_materials) = game_materials {
     fs::write(root.join(GameMtlFile::FILE_NAME), game_materials_bytes(game_materials)).unwrap();
+  }
+
+  for (path, content) in files {
+    let path: PathBuf = root.join(path);
+
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, content).unwrap();
   }
 
   let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
@@ -75,7 +85,7 @@ fn resolves_each_sound_material_pairs_list_once() {
   library.pairs[0].step_sounds = String::from("weapons\\ak74_shot, weapons\\missing");
   library.pairs.push(library.pairs[0].clone());
 
-  let (root, project) = open_project_with_materials("pairs", "", Some(&library));
+  let (root, project) = open_project_with_materials("pairs", "", Some(&library), &[]);
   let result: GamedataSoundsVerificationResult = verify(&project);
   let message: String = result.get_summary();
 
@@ -84,6 +94,42 @@ fn resolves_each_sound_material_pairs_list_once() {
     result.get_findings()[0].message(),
     "Unknown sound reference: step sounds of 2 pairs = weapons\\missing"
   );
+
+  fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn reads_xml_references_as_the_engine_does_through_an_include_and_a_comment_banner() {
+  // The part has no root, and the banner's `--` is what a strict reader refuses: both read as the engine reads them.
+  let (root, project) = open_project_with_materials(
+    "xml",
+    "",
+    None,
+    &[
+      (
+        "configs/gameplay/character_desc.xml",
+        "<?xml version=\"1.0\" encoding=\"windows-1251\"?>\r\n<!-- -- characters -- -->\r\n<characters>\r\n\
+         #include \"gameplay\\character_sounds.xml\"\r\n</characters>\r\n",
+      ),
+      (
+        "configs/gameplay/character_sounds.xml",
+        "<sound>weapons\\ak74_shot</sound>\r\n<sound>weapons\\missing</sound>\r\n",
+      ),
+    ],
+  );
+
+  let result: GamedataSoundsVerificationResult = verify(&project);
+  let message: String = result.get_summary();
+
+  let references: Vec<&str> = result
+    .get_findings()
+    .iter()
+    .map(|finding| finding.message())
+    .filter(|message| message.contains("sound reference"))
+    .collect();
+
+  assert!(message.contains("1/2 sound references valid"), "{message}");
+  assert_eq!(references, ["Unknown sound reference: <sound> = weapons\\missing"]);
 
   fs::remove_dir_all(root).unwrap();
 }

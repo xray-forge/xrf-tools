@@ -8,7 +8,7 @@ use crate::dialog_source::DialogSource;
 fn falls_back_to_windows_1251_when_nothing_is_declared() -> XrfResult {
   // What the engine assumes for gameplay configs.
   assert_eq!(
-    DialogSource::resolve_encoding(b"<game_dialogs/>")?.name(),
+    DialogSource::decode(b"<game_dialogs/>")?.encoding.name(),
     "windows-1251"
   );
 
@@ -18,7 +18,9 @@ fn falls_back_to_windows_1251_when_nothing_is_declared() -> XrfResult {
 #[test]
 fn honours_a_declared_encoding() -> XrfResult {
   assert_eq!(
-    DialogSource::resolve_encoding(br#"<?xml version="1.0" encoding="utf-8" ?><game_dialogs/>"#)?.name(),
+    DialogSource::decode(br#"<?xml version="1.0" encoding="utf-8" ?><game_dialogs/>"#)?
+      .encoding
+      .name(),
     "UTF-8"
   );
 

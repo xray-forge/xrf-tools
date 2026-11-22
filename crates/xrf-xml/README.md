@@ -9,7 +9,7 @@ writes belong to the crates that use it. The public API is exported from `xrf_xm
 
 | Type                | Holds                                            | Use when                                                                               |
 | ------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `XmlDocument`       | A tree of `XmlElement`s, detached from the input | Reading elements, attributes and text (texture descriptions, sound references)         |
+| `XmlDocument`       | A tree of `XmlElement`s, detached from the input | Reading elements, attributes and text (texture descriptions)                           |
 | `XmlSourceDocument` | Decoded source text plus `XmlElementSpan` ranges | An editor needs the original spelling, comments and whitespace (translations, dialogs) |
 
 Both:
@@ -45,8 +45,8 @@ fn main() -> xrf_error::XrfResult {
 Navigation:
 
 - `elements_named` includes the root and walks descendants in document order.
-- On an element, `children_named` visits direct children; `descendants` and `descendants_named` exclude the element
-  itself.
+- On an element of either tree, `children_named` visits direct children; `descendants` and `descendants_named` exclude
+  the element itself.
 
 DTDs are disabled by default; `XmlParseOptions::allow_dtd` enables them. The nesting limit does not apply inside an
 entity a DTD declares: its elements nest as the parser expands them.
@@ -61,7 +61,8 @@ entity a DTD declares: its elements nest as the parser expands them.
 - Supported labels: UTF-8 and Windows-1250, 1251 and 1252, including the `cp1250`, `cp1251` and `cp1252` aliases.
   `XmlEncoding::from_label` resolves a label already in hand.
 - The decoder handles and strips a BOM. This API does not keep the original encoding or BOM for writing; the
-  translation and dialog readers supply their own fallback and keep that metadata for edits.
+  translation reader supplies its own fallback and keeps that metadata for edits; the dialog reader takes
+  `XmlEngineSource`'s.
 
 ## Retain source ranges
 
@@ -141,6 +142,18 @@ fn main() -> xrf_error::XrfResult {
 - These are errors, as each is fatal to the engine's loaders: a malformed directive (an unquoted name, or one outside 1
   to 1024 bytes), a name the document's encoding cannot decode, a missing include, or nesting past 128 levels.
 - `XmlIncludes::list` skips malformed directives instead.
+
+## Read a game tree's XML
+
+`XmlEngineSource` reads a document the way the engine's loader does, for a reader of a whole tree:
+
+- `parse` expands includes through a reader keyed by logical path (`configs\<name>`, `resolve_include`), decodes, and
+  parses with `XmlSourceDocument::parse`'s repair, so comment banners and bare ampersands read as the engine reads them.
+- `find_encoding` and `decode` take a UTF-8 byte order mark first, then the declaration, then windows-1251, the
+  engine's assumption for gameplay configs; UTF-16 is refused. `split_byte_order_mark` keeps a mark for a rewrite.
+- `list_included` names every file a tree's documents include. Leave those out and read them through the documents
+  including them: the engine never loads a part alone, and many have no root.
+- `XmlSourceDocument::elements_named` walks the root and its descendants as `XmlDocument::elements_named` does.
 
 ## Write XML
 

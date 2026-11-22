@@ -48,6 +48,13 @@ impl XmlSourceDocument {
     &self.root
   }
 
+  /// Iterates over the root and all descendants whose tag name equals `name`, case-sensitive and in document order.
+  pub fn elements_named<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a XmlElementSpan> + 'a {
+    std::iter::once(&self.root)
+      .chain(self.root.descendants())
+      .filter(move |element| element.name() == name)
+  }
+
   /// Take the source back, for a caller that is about to splice it.
   pub fn into_source(self) -> String {
     self.source
