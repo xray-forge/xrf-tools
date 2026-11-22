@@ -26,8 +26,8 @@ pub(crate) struct SceneHelpers {
 
 impl SceneHelpers {
   /// Builds every helped tool's helpers from the parts the open kept, objects in editor load order with group members
-  /// first, a spawn point among `models` helped beside its model. A tool whose objects do not read draws none; the
-  /// scene's objects report that.
+  /// first, a spawn point drawn as one of `models` helped beside its model. A tool whose group members do not read
+  /// draws none, and one whose own part does not read draws its members alone; the scene's objects report either.
   pub(crate) fn read(scene: &SelectedScene, models: &SceneSpawnModels) -> Self {
     xrf_profiler::scope!("scene helpers");
 
@@ -159,7 +159,8 @@ impl SceneHelperRead<'_> {
   /// drawn only as its model.
   fn read_tool<O: SceneHelpedObject>(&self, objects: &mut Vec<RenderHelperObject>) -> u32 {
     let Self { scene, entry, models } = self;
-    let Ok(read) = EditableToolObjects::<O>::read(&scene.scene, scene.guid) else {
+    // The scene's objects report a part that does not read; its groups' members are helped still.
+    let Ok((read, _)) = EditableToolObjects::<O>::read_keeping_members(&scene.scene, scene.guid) else {
       return 0;
     };
     let mut count: u32 = 0;
@@ -171,7 +172,8 @@ impl SceneHelperRead<'_> {
       }) else {
         continue;
       };
-      let is_modelled: bool = entry.tool == SceneToolKind::Spawn && models.find(index).is_some();
+      let is_modelled: bool =
+        entry.tool == SceneToolKind::Spawn && models.find(index).is_some_and(|model| model.is_drawn);
       let look: Option<SceneHelperLook> = if is_modelled {
         object.get_modelled_look()
       } else {

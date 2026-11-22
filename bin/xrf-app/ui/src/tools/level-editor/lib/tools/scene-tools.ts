@@ -5,7 +5,7 @@ import {
   SceneBinaryToolDescription,
   SceneToolKind,
 } from "@xrf/ipc/types/xrf-app-levels";
-import { assertExhaustive, Nullable } from "@xrf/types";
+import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
 /** What the editor's panels call each tool the SDK's Level Editor saves a part for. */
 export const SCENE_TOOL_LABELS: Readonly<Record<ESceneToolKind, string>> = {
@@ -28,10 +28,13 @@ export const SCENE_TOOL_LABELS: Readonly<Record<ESceneToolKind, string>> = {
 };
 
 /**
- * A tool's panel label, or its part-file name for a tool the editor does not save.
+ * A tool's panel label, its kind found by its part-file name where none is given, since each kind crosses IPC as that
+ * name; the name itself for a tool the editor does not save.
  */
 export function getSceneToolLabel(kind: Nullable<SceneToolKind>, name: string): string {
-  return kind === null ? name : SCENE_TOOL_LABELS[kind];
+  const known: Maybe<SceneToolKind> = kind ?? Object.values(ESceneToolKind).find((it: ESceneToolKind) => it === name);
+
+  return known === undefined ? name : SCENE_TOOL_LABELS[known];
 }
 
 /**

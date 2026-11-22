@@ -7,11 +7,12 @@ import { ReactElement, useCallback, useState } from "react";
 import { createRoots } from "@/core/assets/lib/roots";
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
+import { ELevelEditorField } from "@/core/level/lib/editor/level-editor-field";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { LEVEL_SCENE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { PickerForm } from "@/core/shell/chrome/PickerForm";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField, useRememberedPaths } from "@/core/ui/form";
 import { LevelEditorSceneService } from "@/tools/level-editor/services/level-editor-scene";
 
 /** The paths of a list row, trimmed, empty ones left out. */
@@ -35,15 +36,19 @@ export function LevelEditorOpenForm({
 }: ILevelEditorOpenFormProps): ReactElement {
   const sceneService: LevelEditorSceneService = useInjection(LevelEditorSceneService);
 
-  const [objectsRoots, setObjectsRoots] = useState<Array<string>>([]);
-  const [gameRoots, setGameRoots] = useState<Array<string>>([]);
+  // Remembered, so a scene handed over from the decompiler arrives with the roots its objects lie in.
+  const [objectsRoots, setObjectsRoots] = useRememberedPaths({
+    tool: EToolId.LEVEL_EDITOR,
+    id: ELevelEditorField.OBJECTS,
+  });
+  const [gameRoots, setGameRoots] = useRememberedPaths({ tool: EToolId.LEVEL_EDITOR, id: ELevelEditorField.GAME });
   const [isDltx, setDltx] = useState<boolean>(false);
 
   const isLoading: boolean = sceneService.scene.isLoading;
 
   const scene: IPathField = usePathField({
     tool: EToolId.LEVEL_EDITOR,
-    id: "scene",
+    id: ELevelEditorField.SCENE,
     title: "Select scene file",
     filters: LEVEL_SCENE_FILE_FILTERS,
     isDisabled: isLoading,

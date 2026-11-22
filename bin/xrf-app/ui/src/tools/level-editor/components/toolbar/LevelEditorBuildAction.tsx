@@ -9,7 +9,6 @@ import { BuildIcon } from "@xrf/ui/icons/build";
 import { ReactElement, useCallback } from "react";
 
 import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
-import { LEVEL_COMPILER_OBJECTS_CODEC } from "@/core/level/lib/compiler/level-compiler-objects";
 import { isPathPresent } from "@/core/path/presence";
 import { EToolId } from "@/core/routing/tool";
 import { THandOverPaths, useHandOverPaths } from "@/core/ui/form/use-hand-over-paths";
@@ -63,7 +62,7 @@ export function LevelEditorBuildAction({
       [ELevelCompilerField.DESTINATION]: paths.destination,
       [ELevelCompilerField.TEXTURES]: isCut ? paths.textures : null,
       // Empty roots make the build read the objects beside the scene.
-      [ELevelCompilerField.OBJECTS]: LEVEL_COMPILER_OBJECTS_CODEC.write(paths.objects),
+      [ELevelCompilerField.OBJECTS]: paths.objects,
       ...(paths.gamedata ? { [ELevelCompilerField.GAMEDATA]: paths.gamedata } : {}),
       ...(paths.gameMaterials ? { [ELevelCompilerField.GAME_MATERIALS]: paths.gameMaterials } : {}),
     });

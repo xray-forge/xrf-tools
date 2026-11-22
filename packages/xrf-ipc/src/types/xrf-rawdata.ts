@@ -2,9 +2,15 @@
 
 /** What a build took from the scene and left out. */
 export type LevelBuildCensus = {
-  /** Static objects whose meshes went into the geometry. */
+  /**
+   * Static objects whose meshes went into the geometry, multi-use objects aside: their placements are
+   * [`Self::multi_use_references`].
+   */
   staticObjects: number;
-  /** Objects of no static geometry: dynamic ones, and occluders, which `level.hom` and `level.som` take. */
+  /**
+   * Objects of no static geometry: dynamic ones, and occluders, which `level.hom` and `level.som` take. Multi-use
+   * objects are counted in [`Self::multi_use_references`], not here.
+   */
   otherObjects: number;
   faces: number;
   /** Faces of occluder, breakable and climbable surfaces, which other exports take. */
@@ -20,7 +26,7 @@ export type LevelBuildCensus = {
   portals: number;
   occluderPolygons: number;
   soundOccluderPolygons: number;
-  /** Multi-use models and the placements referencing them. */
+  /** Multi-use models and the placements referencing them; with the static and other objects, every object placed. */
   multiUseModels: number;
   multiUseReferences: number;
   /** Multi-use models drawn from afar as impostors. */

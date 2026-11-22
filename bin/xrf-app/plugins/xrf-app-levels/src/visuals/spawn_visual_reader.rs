@@ -67,12 +67,28 @@ impl SpawnVisualReader {
     self.find_asset(name).is_ok()
   }
 
+  /// Whether the file found for `name` reads and holds geometry [`Self::get`] packs, decided from the parsed file, which
+  /// the read shares, without packing it. A visual of static vertices alone packs to nothing.
+  pub(crate) fn is_drawable(&self, name: &str) -> bool {
+    self
+      .read_file(name)
+      .is_ok_and(|file| VisualPacker::holds_skinned_vertices(&file))
+  }
+
   fn read(&self, name: &str) -> TauriResult<SpawnVisual> {
     let search: &XraySearch = &self.search;
     let file: Arc<OgfFile> = self
       .read_file(name)
       .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
     let package: VisualPackage = VisualPacker::pack(&file);
+
+    // Drawn as nothing, it would stand where its spawn point's icon is: a load failure says why instead.
+    if package.description.computed_bounds.is_none() {
+      return Err(format!(
+        "Visual '{name}' packs no geometry: {}",
+        Self::describe_skips(&package)
+      ));
+    }
     let rest: Option<Arc<VisualRestPose>> =
       Self::find_rest_pose(search, name, &file, &package.description).map(Arc::new);
     let resolver: &XraySurfaceResolver = self
@@ -118,6 +134,22 @@ impl SpawnVisualReader {
         .resolve(XrayAssetType::Ogf, name)?
         .into_asset()
         .ok_or_else(|| XrfError::new_asset_error(format!("'{name}' resolves to no model in the mounted roots"))),
+    }
+  }
+
+  /// Why the pieces of a visual that packed nothing were skipped, each reason once.
+  fn describe_skips(package: &VisualPackage) -> String {
+    let reasons: BTreeSet<&str> = package
+      .description
+      .submeshes
+      .iter()
+      .filter_map(|submesh| submesh.skipped().map(|(_, reason)| reason))
+      .collect();
+
+    if reasons.is_empty() {
+      String::from("it holds no piece")
+    } else {
+      reasons.into_iter().collect::<Vec<&str>>().join("; ")
     }
   }
 

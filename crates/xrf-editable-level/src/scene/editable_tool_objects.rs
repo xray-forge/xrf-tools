@@ -1,4 +1,4 @@
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::level::editable_level_guid::EditableLevelGuid;
 use crate::object::editable_tool_object::EditableToolObject;
@@ -26,15 +26,51 @@ impl<O: EditableToolObject> EditableToolObjects<O> {
   /// does.
   pub fn read(scene: &EditableLevelScene, guid: EditableLevelGuid) -> XrfResult<Self> {
     Ok(Self {
-      members: match scene.get_tool(EditableGroupTool::TOOL_NAME) {
-        Some(groups) => EditableGroupTool::read_grouped_members::<O>(groups)?,
-        None => Vec::new(),
-      },
-      part: match scene.get_tool(O::TOOL_NAME) {
-        Some(tool) => EditableObjectPart::read_from_scene_tool(tool)?,
-        None => EditableObjectPart::new(guid, Vec::new()),
-      },
+      members: Self::read_members(scene)?,
+      part: Self::read_part(scene, guid)?,
     })
+  }
+
+  /// The objects of tool `O` the scene holds, the groups' members kept where the tool's own part does not read: the
+  /// part then stands empty under `guid` and its error is returned beside it. The editor loads the group tool before
+  /// the others, so it holds those members when it fails the tool's own part; the members' indexes come first, so
+  /// keeping them moves no other object's.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error as [`EditableGroupTool::read_grouped_members`] does.
+  pub fn read_keeping_members(
+    scene: &EditableLevelScene,
+    guid: EditableLevelGuid,
+  ) -> XrfResult<(Self, Option<XrfError>)> {
+    let members: Vec<EditableGroupMember<O>> = Self::read_members(scene)?;
+
+    Ok(match Self::read_part(scene, guid) {
+      Ok(part) => (Self { members, part }, None),
+      Err(error) => (
+        Self {
+          members,
+          part: EditableObjectPart::new(guid, Vec::new()),
+        },
+        Some(error),
+      ),
+    })
+  }
+
+  /// The groups' members of the tool's class, none where the scene has no group tool.
+  fn read_members(scene: &EditableLevelScene) -> XrfResult<Vec<EditableGroupMember<O>>> {
+    match scene.get_tool(EditableGroupTool::TOOL_NAME) {
+      Some(groups) => EditableGroupTool::read_grouped_members::<O>(groups),
+      None => Ok(Vec::new()),
+    }
+  }
+
+  /// The tool's own part, an empty one under `guid` where the scene has no such tool.
+  fn read_part(scene: &EditableLevelScene, guid: EditableLevelGuid) -> XrfResult<EditableObjectPart<O>> {
+    match scene.get_tool(O::TOOL_NAME) {
+      Some(tool) => EditableObjectPart::read_from_scene_tool(tool),
+      None => Ok(EditableObjectPart::new(guid, Vec::new())),
+    }
   }
 
   /// Every object in the editor's loaded order, members first, each with its index in that order, which a scene's

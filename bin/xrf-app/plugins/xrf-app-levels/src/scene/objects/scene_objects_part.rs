@@ -7,7 +7,7 @@ use xrf_editable_level::{
   EditablePortalObject, EditableSceneObject, EditableSectorObject, EditableShapeObject, EditableSoundEnvironmentObject,
   EditableSoundSourceObject, EditableSpawnPointObject, EditableToolObjects, EditableWayObject,
 };
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XraySearch;
 
 use crate::scene::{
@@ -38,8 +38,9 @@ impl SceneObjectsPart {
       .get_or_record::<Self>(objects, |objects| Arc::new(Self::read(current, objects)))
   }
 
-  /// Every object tool's objects, in the editor's tool order. A tool whose objects, group members included, do not read
-  /// becomes a problem, as the editor fails that tool and loads the rest.
+  /// Every object tool's objects, in the editor's tool order. A tool whose group members do not read becomes a
+  /// problem, as the editor fails that tool and loads the rest; one whose own part does not read keeps the members
+  /// that did, with the part's problem.
   pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> SceneObjectsDescription {
     xrf_profiler::scope!("scene objects");
 
@@ -49,7 +50,7 @@ impl SceneObjectsPart {
     };
 
     for kind in SceneToolKind::ALL {
-      let read: XrfResult<Option<SceneObjectToolDescription>> = match kind {
+      let read: XrfResult<SceneToolRead> = match kind {
         SceneToolKind::SceneObject => Self::read_tool::<EditableSceneObject>(kind, scene, objects),
         SceneToolKind::Sector => Self::read_tool::<EditableSectorObject>(kind, scene, objects),
         SceneToolKind::Portal => Self::read_tool::<EditablePortalObject>(kind, scene, objects),
@@ -71,7 +72,7 @@ impl SceneObjectsPart {
       Self::keep(&mut description, kind, read);
     }
 
-    let groups: XrfResult<Option<SceneObjectToolDescription>> = Self::read_groups(scene, &description.tools);
+    let groups: XrfResult<SceneToolRead> = Self::read_groups(scene, &description.tools).map(|tool| (tool, None));
 
     Self::keep(&mut description, SceneToolKind::Group, groups);
     description.tools.sort_by_key(|tool| tool.tool);
@@ -79,17 +80,19 @@ impl SceneObjectsPart {
     description
   }
 
-  /// One tool's objects in editor load order, group members first and named with their group; none where the scene has
-  /// neither a part of the tool `kind` nor a group member of its class.
+  /// One tool's objects in editor load order, group members first and named with their group, beside why its own part
+  /// does not read where it does not; none where the scene has no group member of its class and no part of the tool
+  /// `kind` that reads.
   fn read_tool<O: SceneToolObject>(
     kind: SceneToolKind,
     scene: &SelectedScene,
     objects: &XraySearch,
-  ) -> XrfResult<Option<SceneObjectToolDescription>> {
-    let read: EditableToolObjects<O> = EditableToolObjects::read(&scene.scene, scene.guid)?;
+  ) -> XrfResult<SceneToolRead> {
+    let (read, part_error): (EditableToolObjects<O>, Option<XrfError>) =
+      EditableToolObjects::read_keeping_members(&scene.scene, scene.guid)?;
 
-    if read.members.is_empty() && scene.scene.get_tool(O::TOOL_NAME).is_none() {
-      return Ok(None);
+    if read.members.is_empty() && (part_error.is_some() || scene.scene.get_tool(O::TOOL_NAME).is_none()) {
+      return Ok((None, part_error));
     }
 
     let mut described: Vec<SceneObjectDescription> = read
@@ -101,10 +104,13 @@ impl SceneObjectsPart {
       description.group = Some(member.group);
     }
 
-    Ok(Some(SceneObjectToolDescription {
-      tool: kind,
-      objects: described,
-    }))
+    Ok((
+      Some(SceneObjectToolDescription {
+        tool: kind,
+        objects: described,
+      }),
+      part_error,
+    ))
   }
 
   /// The group tool's groups, each counting the objects of `tools` naming it; none where the scene has no group tool.
@@ -146,21 +152,29 @@ impl SceneObjectsPart {
     }))
   }
 
-  /// Adds the tool `kind`'s `read` objects to `description`, or the reason they did not read.
-  fn keep(
-    description: &mut SceneObjectsDescription,
-    kind: SceneToolKind,
-    read: XrfResult<Option<SceneObjectToolDescription>>,
-  ) {
-    match read {
-      Ok(Some(tool)) => description.tools.push(tool),
-      Ok(None) => {}
-      Err(error) => description.problems.push(SceneProblem {
-        kind: SceneProblemKind::Unreadable,
-        tool: kind.get_name().to_owned(),
-        file: None,
-        message: format!("Objects do not read: {error}"),
-      }),
-    }
+  /// Adds the tool `kind`'s `read` objects to `description`, and the reason its objects, or its own part alone, did not
+  /// read.
+  fn keep(description: &mut SceneObjectsDescription, kind: SceneToolKind, read: XrfResult<SceneToolRead>) {
+    let message: String = match read {
+      Ok((tool, part_error)) => {
+        description.tools.extend(tool);
+
+        match part_error {
+          Some(error) => format!("Its own part's objects do not read: {error}"),
+          None => return,
+        }
+      }
+      Err(error) => format!("Objects do not read: {error}"),
+    };
+
+    description.problems.push(SceneProblem {
+      kind: SceneProblemKind::Unreadable,
+      tool: kind.get_name().to_owned(),
+      file: None,
+      message,
+    });
   }
 }
+
+/// One tool's objects as read, none where the scene holds none of them, beside why its own part did not read.
+type SceneToolRead = (Option<SceneObjectToolDescription>, Option<XrfError>);

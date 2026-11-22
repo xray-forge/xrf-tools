@@ -6,7 +6,14 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
-import { FRAME_LEVEL_SELECTION_KEYBIND_COMMAND, ISOLATE_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
+import {
+  CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND,
+  FRAME_LEVEL_SELECTION_KEYBIND_COMMAND,
+  HIDE_LEVEL_SELECTION_KEYBIND_COMMAND,
+  ISOLATE_LEVEL_SELECTION_KEYBIND_COMMAND,
+  REVEAL_LEVEL_OBJECTS_KEYBIND_COMMAND,
+  TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND,
+} from "@/core/level/commands";
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { getLevelObjectKind, getLevelSpawnIndex } from "@/core/level/lib/objects/level-object-kinds";
 import {
@@ -22,7 +29,8 @@ import { CommandOperation } from "@/core/operations/lib/command-operation";
 
 /**
  * What the viewer does with the level objects chosen: what the backend says of a spawned one beyond what the listing
- * holds, framing them with the camera, and hiding the rest.
+ * holds, framing them with the camera, and hiding the rest. It holds the viewer's keys over the selection and the
+ * helpers, which core's `LevelViewportService` and `LevelViewService` leave to the tool.
  */
 @Injectable()
 export class LevelViewerObjectsService {
@@ -114,5 +122,36 @@ export class LevelViewerObjectsService {
   })
   public isolateSelection(): void {
     this.viewportService.isolateSelected(this.loadService.objects?.objects ?? []);
+  }
+
+  /** Drops what is selected, as `Escape` over the scene does; a panel's field or a popover keeps its own `Escape`. */
+  @KeybindCommand(CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewerObjectsService) =>
+      service.viewportService.isSceneFocused && service.viewportService.picked !== null,
+  })
+  public clearSelection(): void {
+    this.viewportService.clearPicked();
+  }
+
+  /** Hides the selected objects, which stay selected. */
+  @KeybindCommand(HIDE_LEVEL_SELECTION_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewerObjectsService) => service.viewportService.selected.length > 0,
+  })
+  public hideSelection(): void {
+    this.viewportService.hideSelected();
+  }
+
+  /** Shows every hidden object again. */
+  @KeybindCommand(REVEAL_LEVEL_OBJECTS_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewerObjectsService) => service.viewportService.hidden.length > 0,
+  })
+  public revealObjects(): void {
+    this.viewportService.revealAll();
+  }
+
+  /** Draws the objects' helpers or leaves them all out, as `G` does, each kind keeping its choice. */
+  @KeybindCommand(TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND)
+  public toggleHelpers(): void {
+    this.viewService.toggleHelpers();
   }
 }

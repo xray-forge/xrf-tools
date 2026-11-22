@@ -16,10 +16,11 @@ pub(crate) struct SceneDrawnObjects {
 
 impl SceneDrawnObjects {
   /// Looks up each object of the scene object tool, as the editor loads them with group members first and indexed as
-  /// the scene's objects are, through `objects`. Empty where the tool's objects do not read; the scene's objects report
-  /// that.
+  /// the scene's objects are, through `objects`. Empty where the groups' members do not read, the members alone where
+  /// the tool's own part does not; the scene's objects report either.
   pub(crate) fn read(scene: &SelectedScene, objects: &XraySearch) -> Self {
-    let Ok(read) = EditableToolObjects::<EditableSceneObject>::read(&scene.scene, scene.guid) else {
+    let Ok((read, _)) = EditableToolObjects::<EditableSceneObject>::read_keeping_members(&scene.scene, scene.guid)
+    else {
       return Self::default();
     };
     let mut drawn: Self = Self::default();

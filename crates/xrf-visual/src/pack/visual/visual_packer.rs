@@ -170,6 +170,17 @@ impl VisualPacker {
     })
   }
 
+  /// Whether a piece of `file` holds the skinned vertices [`Self::pack`] packs, the only ones it does: a visual of static
+  /// vertices alone, a level's or a rigid object's, packs to no geometry. Read from the parsed file, without packing.
+  pub fn holds_skinned_vertices(file: &OgfFile) -> bool {
+    Self::submesh_sources(file).into_iter().any(|source| {
+      matches!(
+        source.geometry.as_ref().and_then(|geometry| geometry.vertices.as_ref()),
+        Some(OgfVertexData::Skinned(_))
+      )
+    })
+  }
+
   /// Drawable pieces of a visual, in the order the file stores them.
   fn submesh_sources(file: &OgfFile) -> Vec<&OgfFile> {
     match file.children.as_ref().map(|it| it.nested.as_slice()) {

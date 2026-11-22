@@ -6,7 +6,7 @@ use xrf_visual::VisualBounds;
 
 use crate::scene::{SceneObjectId, SceneRenderSpace};
 
-/// One spawn point the scene draws as its entity's model: the visual its packet names, found in the scene's game data,
+/// One spawn point the scene stands as its entity's model: the visual its packet names, found in the scene's game data,
 /// and the spawn point's transform.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct SceneSpawnModel {
@@ -14,6 +14,9 @@ pub(crate) struct SceneSpawnModel {
   /// The visual its entity's packet names, a path below the game data's meshes.
   pub visual: String,
   pub transform: EditableObjectTransform,
+  /// Whether the visual reads and holds geometry to draw. One that does not still stands, so its load reports why, and
+  /// the spawn point keeps its icon.
+  pub is_drawn: bool,
 }
 
 impl SceneSpawnModel {

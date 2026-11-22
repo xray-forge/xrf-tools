@@ -10,14 +10,21 @@ import { LevelRefusalFindings } from "@/core/level/components/refusals/LevelRefu
 import { EToolId } from "@/core/routing/tool";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 
+import { LevelDecompileEditorAction } from "./LevelDecompileEditorAction";
+
 interface ILevelDecompileResultViewProps extends BaseComponentProps {
   result: LevelDecompileResult;
-  /** Where the run was told to write the scene, to reveal it; the report's paths are display text. */
+  /** Where the run was told to write the scene, to reveal and open it; the report's paths are display text. */
   outputPath: Nullable<string>;
+  /** The objects root the run was told to write the level's objects into; null for `objects` beside the scene. */
+  objects: Nullable<string>;
+  /** The libraries the run placed objects from. */
+  libraries: ReadonlyArray<string>;
 }
 
 /**
- * What a decompile wrote: the scene's tools, the static geometry counted, and every piece the scene could not hold.
+ * What a decompile wrote: the scene's tools, the static geometry counted, and every piece the scene could not hold;
+ * the scene opened in the level editor from here.
  */
 export function LevelDecompileResultView({
   "data-testid": dataTestId = "level-decompile-result",
@@ -25,6 +32,8 @@ export function LevelDecompileResultView({
   className,
   result,
   outputPath,
+  objects,
+  libraries,
 }: ILevelDecompileResultViewProps): ReactElement {
   const report: Nullable<LevelDecompileReport> = result.report;
 
@@ -71,7 +80,12 @@ export function LevelDecompileResultView({
       headline={`Decompiled ${report.source} into ${report.destination}`}
       tone={report.refused.length > 0 ? "warning" : "success"}
       stats={stats}
-      actions={<RevealPathButton tool={EToolId.LEVEL_DECOMPILER} path={outputPath} label={"Show scene"} />}
+      actions={
+        <>
+          <RevealPathButton tool={EToolId.LEVEL_DECOMPILER} path={outputPath} label={"Show scene"} />
+          <LevelDecompileEditorAction scene={outputPath} objects={objects} libraries={libraries} />
+        </>
+      }
     >
       <LevelRefusalFindings refused={report.refused} emptyLabel={"The scene holds everything the level did."} />
     </CommandResult>

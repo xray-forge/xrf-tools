@@ -4,13 +4,6 @@ import { LevelObject } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
-import { KeybindCommand } from "@/core/commands";
-import {
-  CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND,
-  GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND,
-  HIDE_LEVEL_SELECTION_KEYBIND_COMMAND,
-  REVEAL_LEVEL_OBJECTS_KEYBIND_COMMAND,
-} from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { toLevelObjectKey } from "@/core/level/lib/objects/level-object-kinds";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
@@ -24,7 +17,9 @@ export enum ELevelSelectionMode {
 }
 
 /**
- * What the viewport reports about itself while it draws, what is selected in it, and what is hidden of it.
+ * What the viewport reports about itself while it draws, what is selected in it, and what is hidden of it. It answers
+ * no key: a tool binds the keys over it in its own services, as the level viewer's objects service does, so another
+ * tool providing it, as the level editor does, takes none of them.
  */
 @Injectable()
 export class LevelViewportService {
@@ -180,18 +175,12 @@ export class LevelViewportService {
   }
 
   /** Drops what is selected, as `Escape` over the scene does. */
-  @KeybindCommand(CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND, {
-    isEnabled: (service: LevelViewportService) => service.isSceneFocused && service.picked !== null,
-  })
   @BoundAction()
   public clearPicked(): void {
     this.notePicked(null);
   }
 
   /** Hides the selected objects, which stay selected. */
-  @KeybindCommand(HIDE_LEVEL_SELECTION_KEYBIND_COMMAND, {
-    isEnabled: (service: LevelViewportService) => service.selected.length > 0,
-  })
   @BoundAction()
   public hideSelected(): void {
     const hidden: ReadonlySet<string> = this.hiddenKeys;
@@ -229,18 +218,12 @@ export class LevelViewportService {
   }
 
   /** Shows every hidden object again. */
-  @KeybindCommand(REVEAL_LEVEL_OBJECTS_KEYBIND_COMMAND, {
-    isEnabled: (service: LevelViewportService) => service.hidden.length > 0,
-  })
   @BoundAction()
   public revealAll(): void {
     this.hidden = [];
   }
 
-  /** Opens the field to go to coordinates in, once the viewport has said where its camera stands. */
-  @KeybindCommand(GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND, {
-    isEnabled: (service: LevelViewportService) => service.camera !== null,
-  })
+  /** Opens the field to go to coordinates in. */
   @BoundAction()
   public openGoTo(): void {
     this.isGoingTo = true;

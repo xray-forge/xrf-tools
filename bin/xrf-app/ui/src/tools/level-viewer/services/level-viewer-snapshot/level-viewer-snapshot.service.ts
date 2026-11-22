@@ -11,6 +11,7 @@ import { getPathName } from "@xrf/path";
 import { isRecord, Maybe, Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
+import { GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import {
   formatLevelGoTo,
@@ -56,7 +57,7 @@ import {
 
 /**
  * Level view snapshots: what the viewer draws, from where and under what weather, behind File › Export view (into the
- * tool's views folder by default) and Import view, and the camera's coordinates on the clipboard.
+ * tool's views folder by default) and Import view, and the camera's coordinates on the clipboard and back.
  *
  * A snapshot is taken whole and applied in part, a value at a time, into the view's own settings alone.
  */
@@ -112,6 +113,14 @@ export class LevelViewerSnapshotService {
   @Computed()
   public get isCameraPlaced(): boolean {
     return this.viewportService.camera !== null;
+  }
+
+  /** Opens the field to go to coordinates in, which the copied coordinates paste into. */
+  @KeybindCommand(GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewerSnapshotService) => service.isCameraPlaced,
+  })
+  public openGoTo(): void {
+    this.viewportService.openGoTo();
   }
 
   /** Copies the camera's position as its readout states it, which Go to coordinates reads back. */

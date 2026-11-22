@@ -1,7 +1,7 @@
 //! Holds what a packed visual promises: the right triangles, in the right space, with a reason for
 //! every piece that produced none.
 
-use xrf_ogf::{OgfFile, OgfGeometry, OgfVertex, OgfVertexLink, OgfVertexLinks};
+use xrf_ogf::{OgfFile, OgfGeometry, OgfVertex, OgfVertexData, OgfVertexLink, OgfVertexLinks};
 
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
@@ -37,6 +37,39 @@ fn skipped_reason(child: OgfFile) -> String {
       .skipped_reason()
       .expect("expect the child to have been skipped"),
   )
+}
+
+#[test]
+fn tells_a_visual_holding_skinned_vertices_from_one_of_static_vertices_alone() {
+  let static_vertices = || OgfFile {
+    geometry: Some(OgfGeometry {
+      vertex_count: Some(0),
+      indices: Some(Vec::new()),
+      skin_bone_indices: Vec::new(),
+      vertex_format: Some(0x112),
+      vertices: Some(OgfVertexData::Static(Vec::new())),
+    }),
+    ..visual(MODEL_TYPE_GEOMDEF_ST)
+  };
+
+  assert!(VisualPacker::holds_skinned_vertices(&skeleton(vec![
+    static_triangle_child()
+  ])));
+  assert!(VisualPacker::holds_skinned_vertices(&skeleton(vec![
+    static_vertices(),
+    static_triangle_child()
+  ])));
+  assert!(
+    !VisualPacker::holds_skinned_vertices(&static_vertices()),
+    "a visual that is its own piece"
+  );
+  assert!(!VisualPacker::holds_skinned_vertices(&skeleton(
+    vec![static_vertices()]
+  )));
+  assert!(
+    !VisualPacker::holds_skinned_vertices(&skeleton(vec![visual(MODEL_TYPE_GEOMDEF_ST)])),
+    "no geometry"
+  );
 }
 
 #[test]

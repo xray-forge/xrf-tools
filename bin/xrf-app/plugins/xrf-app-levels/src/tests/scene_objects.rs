@@ -6,7 +6,7 @@ use xrf_editable_level::{
   EditableFogVolumeKind, EditableFogVolumeObject, EditableGlowObject, EditableGroupTool, EditableLightObject,
   EditableParticleObject, EditablePortalObject, EditableSceneObject, EditableShape, EditableShapeObject,
   EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointKind, EditableSpawnPointObject,
-  EditableToolObject, EditableWayLink, EditableWayObject, EditableWayPoint,
+  EditableTextPart, EditableToolObject, EditableWayLink, EditableWayObject, EditableWayPoint,
 };
 use xrf_ini::{IniFile, IniFormat, IniSection};
 use xrf_math::{Vector2d, Vector3d};
@@ -395,5 +395,47 @@ fn describes_a_groups_members_under_their_own_tools_with_the_groups_name() {
   assert!(matches!(
     groups.objects[0].properties,
     SceneObjectProperties::Group { members: 2 }
+  ));
+}
+
+// The editor loads the group tool first, so it holds the members of a tool whose own part it then fails.
+#[test]
+fn keeps_a_groups_members_of_a_tool_whose_own_part_does_not_read() {
+  let source: SceneSource = write_scene("scene_objects/unread_own_part");
+  let mut own: EditableTextPart = EditableTextPart::read_from_bytes(&scene_part(vec![way()])).expect("the part reads");
+
+  // Its version and class are the tool's, so the open keeps it; its points are counted but not there.
+  own.ini.section_mut("object_0").set("wp_count", "3");
+  write_scene_part(&source, "way.part", own.write_to_bytes().expect("the part writes"));
+  write_scene_part(
+    &source,
+    "group.part",
+    group_part("lab_group", |ini| write_member(ini, 0, &way())),
+  );
+
+  let described: Arc<SceneObjectsDescription> = describe(&source);
+
+  assert_eq!(
+    find_tool(&described, SceneToolKind::Way)
+      .objects
+      .iter()
+      .map(|object| (object.id.index, object.name.as_str(), object.group.as_deref()))
+      .collect::<Vec<_>>(),
+    [(0, "lx8_patrol_walk", Some("lab_group"))],
+    "the member indexed as when the part reads"
+  );
+  assert_eq!(
+    described
+      .problems
+      .iter()
+      .map(|problem| (problem.tool.as_str(), problem.file.as_deref()))
+      .collect::<Vec<_>>(),
+    [("way", None)],
+    "{:?}",
+    described.problems
+  );
+  assert!(matches!(
+    find_tool(&described, SceneToolKind::Group).objects[0].properties,
+    SceneObjectProperties::Group { members: 1 }
   ));
 }

@@ -3,8 +3,6 @@ import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
 import { LevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 
-import { KeybindCommand } from "@/core/commands";
-import { TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
@@ -29,7 +27,8 @@ import {
 } from "@/core/storage";
 
 /**
- * How a level is drawn: what the viewer has switched on, rather than what the level is.
+ * How a level is drawn: what the viewer has switched on, rather than what the level is. It answers no key: a tool binds
+ * the keys over it in its own services, so another tool providing it, as the level editor does, takes none of them.
  */
 @Injectable()
 export class LevelViewService {
@@ -86,8 +85,7 @@ export class LevelViewService {
     this.storedHelpers.set(helpers);
   }
 
-  /** Draws the helpers or leaves them all out, as `G` does, each kind keeping its choice. */
-  @KeybindCommand(TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND)
+  /** Draws the helpers or leaves them all out, each kind keeping its choice. */
   @BoundAction()
   public toggleHelpers(): void {
     this.storedHelpers.set({ ...this.helpers, isShown: !this.helpers.isShown });

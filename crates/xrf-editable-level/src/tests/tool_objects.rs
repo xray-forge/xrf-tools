@@ -91,6 +91,35 @@ fn reads_the_groups_members_apart_from_the_tools_own_objects_and_merges_them_fir
 }
 
 #[test]
+fn keeps_the_groups_members_where_the_tools_own_part_does_not_read() -> XrfResult {
+  // A part holding no `main` section, which no tool's part reads without.
+  let unreadable: EditableSceneTool = EditableSceneTool {
+    name: String::from(EditableSceneObject::TOOL_NAME),
+    parts: vec![EditableLevelPart::Text(EditableTextPart {
+      ini: IniFile::default(),
+    })],
+  };
+  let scene: EditableLevelScene = scene(vec![group_tool("lab_group", &[scene_object("grouped")]), unreadable]);
+
+  assert!(EditableToolObjects::<EditableSceneObject>::read(&scene, GUID).is_err());
+
+  let (read, error) = EditableToolObjects::<EditableSceneObject>::read_keeping_members(&scene, GUID)?;
+
+  assert!(error.is_some(), "the own part's error kept beside the members");
+  assert_eq!(read.part, EditableObjectPart::new(GUID, Vec::new()));
+  assert_eq!(
+    read
+      .iter_indexed()
+      .map(|(index, object)| (index, object.object.name.as_str()))
+      .collect::<Vec<_>>(),
+    [(0, "grouped")],
+    "the members indexed as when the part reads"
+  );
+
+  Ok(())
+}
+
+#[test]
 fn a_tool_the_scene_lacks_is_an_empty_part_holding_its_members() -> XrfResult {
   let read: EditableToolObjects<EditableSceneObject> =
     EditableToolObjects::read(&scene(vec![group_tool("lab_group", &[scene_object("grouped")])]), GUID)?;

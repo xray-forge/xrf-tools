@@ -4,8 +4,8 @@ use xrf_rawdata::LevelSpawnDataFields;
 use crate::scene::{SceneObjectId, SceneSpawnModel, SceneToolKind, SelectedScene};
 use crate::visuals::SpawnVisualReader;
 
-/// The spawn points a scene draws as their entities' models, as the SDK's editor does: each whose packet reads and
-/// names a visual the scene's game data holds. The rest keep their icon.
+/// The spawn points a scene stands as their entities' models, as the SDK's editor does: each whose packet reads and
+/// names a visual the scene's game data holds. The rest keep their icon, as does one whose visual draws nothing.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SceneSpawnModels {
   /// Every spawn point drawn as a model, in spawn point order.
@@ -22,7 +22,8 @@ impl SceneSpawnModels {
       return Self::default();
     }
 
-    let Ok(read) = EditableToolObjects::<EditableSpawnPointObject>::read(&scene.scene, scene.guid) else {
+    let Ok((read, _)) = EditableToolObjects::<EditableSpawnPointObject>::read_keeping_members(&scene.scene, scene.guid)
+    else {
       return Self::default();
     };
     let mut models: Self = Self::default();
@@ -42,6 +43,7 @@ impl SceneSpawnModels {
             tool: SceneToolKind::Spawn,
             index,
           },
+          is_drawn: reader.is_drawable(&visual),
           visual,
           transform: point.object.transform,
         });

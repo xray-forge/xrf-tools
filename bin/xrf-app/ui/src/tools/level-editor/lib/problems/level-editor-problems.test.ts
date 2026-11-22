@@ -93,6 +93,23 @@ describe("listLevelEditorProblems", () => {
     ]);
   });
 
+  // Groups hold members of a class the scene keeps no part file of, so the scene lists no such tool.
+  it("labels a problem on a tool the scene has no part file of as any other", () => {
+    expect(
+      listLevelEditorProblems({
+        ...NO_PROBLEMS,
+        objects: [
+          {
+            file: null,
+            kind: ESceneProblemKind.UNREADABLE,
+            message: "Objects do not read",
+            tool: ESceneToolKind.LIGHT,
+          },
+        ],
+      })
+    ).toEqual([{ message: "Objects do not read", rule: "Unreadable", subject: "Lights" }]);
+  });
+
   it("lists the scene objects the picture leaves out after the parts, by name and library object", () => {
     expect(
       listLevelEditorProblems({
@@ -117,7 +134,7 @@ describe("listLevelEditorProblems", () => {
         ],
       })
     ).toEqual([
-      { message: "Objects do not read", rule: "Unreadable", subject: "way" },
+      { message: "Objects do not read", rule: "Unreadable", subject: "Ways" },
       {
         message: "No library object 'props\\crate' in the objects roots",
         rule: "Library object missing",

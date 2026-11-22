@@ -75,6 +75,28 @@ export function toggleCompileStep(
   return next;
 }
 
+/**
+ * The steps chosen that the scene can be compiled with: the details step only where it may hold details, so a box
+ * ticked for another scene is not sent for this one.
+ *
+ * @param steps - The steps ticked.
+ * @param hasDetails - Whether the scene holds details; null while unknown, which keeps the step.
+ */
+export function getOfferedSteps(
+  steps: ReadonlySet<LevelCompileStep>,
+  hasDetails: Nullable<boolean>
+): ReadonlySet<LevelCompileStep> {
+  if (hasDetails !== false || !steps.has(ELevelCompileStep.DETAILS)) {
+    return steps;
+  }
+
+  const offered: Set<LevelCompileStep> = new Set(steps);
+
+  offered.delete(ELevelCompileStep.DETAILS);
+
+  return offered;
+}
+
 /** Why the compile the form names cannot run, and the field that answers it. */
 export interface ICompileProblem {
   /** The path field to fill; null for the steps chosen. */

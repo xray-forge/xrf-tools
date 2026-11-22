@@ -32,7 +32,7 @@ export const LEVEL_EDITOR_SPAWN_MODEL_PROBLEM_RULE: string = "Spawn point model 
  * What a scene's problems are listed from: the open, each part's read, and the renderer once resident.
  */
 export interface ILevelEditorProblemSources {
-  /** Every tool the scene holds part files of, naming the tool a problem is on. */
+  /** Every tool the scene holds part files of, naming the tool a problem is on; any other is named by its own name. */
   tools: ReadonlyArray<SceneToolDescription>;
   /** What the open found of the scene's part files. */
   scene: ReadonlyArray<SceneProblem>;

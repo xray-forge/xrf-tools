@@ -1563,8 +1563,8 @@ export type SceneProblem = {
   /** The tool it belongs to, by the name its part files carry: `scene_object`, `spawn`, `ai_map` and the rest. */
   tool: string;
   /**
-   * The part file it was found in, `<tool>.part` or a numbered one; none where the tool's objects as a whole, group
-   * members included, do not read.
+   * The part file it was found in, `<tool>.part` or a numbered one; none where the tool's objects do not read, its
+   * group members or its own part as a whole.
    */
   file: string | null;
   message: string;

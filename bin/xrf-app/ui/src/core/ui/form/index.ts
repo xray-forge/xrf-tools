@@ -5,5 +5,7 @@
 
 export * from "./PathFormRow";
 export * from "./PathPanelRow";
+export * from "./path-list-codec";
 export * from "./use-path-field";
+export * from "./use-remembered-paths";
 export * from "./use-remembered-value";

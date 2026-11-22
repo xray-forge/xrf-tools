@@ -30,4 +30,10 @@ describe("scene tools", () => {
     expect(getSceneToolLabel(ESceneToolKind.SOUND_SOURCE, "sound_src")).toBe("Sound sources");
     expect(getSceneToolLabel(null, "custom_tool")).toBe("custom_tool");
   });
+
+  // A group member's tool the scene has no part file of is named by the problem alone.
+  it("labels a tool given by its part-file name alone", () => {
+    expect(getSceneToolLabel(null, "light")).toBe("Lights");
+    expect(getSceneToolLabel(null, "sound_src")).toBe("Sound sources");
+  });
 });

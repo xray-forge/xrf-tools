@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EToolId } from "@/core/routing/tool";
 import { clearLocalStorage, getFieldValueStorageKey, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { handOverPathFields } from "@/core/ui/form/hand-over-path-fields";
+import { PATH_LIST_CODEC } from "@/core/ui/form/path-list-codec";
 
 describe("handOverPathFields", () => {
   beforeEach(() => {
@@ -29,5 +30,16 @@ describe("handOverPathFields", () => {
     handOverPathFields(EToolId.LEVEL_COMPILER, { textures: null });
 
     expect(getLocalStorageValue(getFieldValueStorageKey(EToolId.LEVEL_COMPILER, "textures"))).toBeNull();
+  });
+
+  // Kept as the list field reads it back, so neither side spells the list's form.
+  it("remembers a list field's paths as `useRememberedPaths` reads them, and empties it for none", () => {
+    const key: string = getFieldValueStorageKey(EToolId.LEVEL_EDITOR, "objects");
+
+    handOverPathFields(EToolId.LEVEL_EDITOR, { objects: ["C:\\rawdata\\objects", "D:\\sdk\\objects"] });
+    expect(PATH_LIST_CODEC.read(getLocalStorageValue(key))).toEqual(["C:\\rawdata\\objects", "D:\\sdk\\objects"]);
+
+    handOverPathFields(EToolId.LEVEL_EDITOR, { objects: [] });
+    expect(getLocalStorageValue(key)).toBeNull();
   });
 });

@@ -4,10 +4,12 @@ use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
-use xrf_chunk::ChunkFieldRecorder;
+use xrf_chunk::{ChunkFieldRecorder, ChunkReadWrite, ChunkWriter};
 use xrf_editable_level::{EditableShape, EditableShapeObject, EditableSpawnPointKind, EditableSpawnPointObject};
+use xrf_error::XrfResult;
 use xrf_ini::IniSection;
 use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_ogf::{OgfGeometry, OgfHeaderChunk, OgfTextureChunk, OgfVertex, OgfVertexLink, OgfVertexLinks};
 use xrf_rawdata::{LevelSpawnDataFields, ObjectCompileOptions, ObjectCompileSource, ObjectCompiler};
 use xrf_renderer::{
   RenderHelperIcon, RenderHelperObject, RenderHelperShape, RenderLevelHelpers, RenderLevelSpawn, RenderSpawnCategory,
@@ -89,6 +91,59 @@ fn write_model(source: &SceneSource, visual: &str, bytes: &[u8]) {
   fs::write(path, bytes).expect("the model is written");
 }
 
+/// The unit square as a skinned visual, one piece of one link a vertex, as a dynamic object's export lays it out.
+fn skinned_square_model() -> Vec<u8> {
+  let corner = |x: f32, z: f32| OgfVertex {
+    position: Vector3d::new(x, 0.0, z),
+    normal: Vector3d::new(0.0, 1.0, 0.0),
+    tangent: Vector3d::new(1.0, 0.0, 0.0),
+    binormal: Vector3d::new(0.0, 0.0, 1.0),
+    texture_u: x,
+    texture_v: z,
+    links: OgfVertexLinks::from([OgfVertexLink { bone: 0, weight: 1.0 }]),
+  };
+  let bounding_box: Aabb = Aabb {
+    min: Vector3d::new(0.0, 0.0, 0.0),
+    max: Vector3d::new(1.0, 0.0, 1.0),
+  };
+  let mut file: ChunkWriter = ChunkWriter::new();
+  let mut write_chunk = |id: u32, chunk: &dyn Fn(&mut ChunkWriter) -> XrfResult| {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    chunk(&mut writer).expect("the chunk writes");
+    writer.flush_chunk_into(&mut file, id).expect("the chunk is framed");
+  };
+
+  write_chunk(OgfHeaderChunk::CHUNK_ID, &|writer| {
+    OgfHeaderChunk {
+      version: 4,
+      // `MT_SKELETON_GEOMDEF_ST`, a skinned piece standing alone.
+      model_type: 5,
+      shader_id: 0,
+      bounding_sphere: bounding_box.get_bounding_sphere(),
+      bounding_box,
+    }
+    .write(writer)
+  });
+  write_chunk(OgfTextureChunk::CHUNK_ID, &|writer| {
+    OgfTextureChunk {
+      texture_name: String::from("wood\\wood_planks"),
+      shader_name: String::from("models\\model"),
+      trailing: Vec::new(),
+    }
+    .write(writer)
+  });
+  OgfGeometry::write_skinned(
+    &mut file,
+    &[corner(0.0, 0.0), corner(1.0, 0.0), corner(1.0, 1.0), corner(0.0, 1.0)],
+    &[0, 2, 1, 0, 3, 2],
+  )
+  .expect("the geometry writes");
+
+  file.into_bytes()
+}
+
+/// The unit square compiled as a rigid object is, of static vertices, which pack to no geometry.
 fn square_model() -> Vec<u8> {
   let [a, b, c, d] = [
     Vector3d::new(0.0, 0.0, 0.0),
@@ -174,7 +229,10 @@ fn list_spawn_helpers(helpers: &RenderLevelHelpers) -> Vec<(u32, &RenderHelperOb
 
 #[test]
 fn stands_each_spawn_point_whose_visual_is_found_as_its_model_in_a_group_of_its_own() {
-  let (_, _, drawn) = show(&write_spawn_scene("scene_spawn_models/spawn", Some(&square_model())));
+  let (_, _, drawn) = show(&write_spawn_scene(
+    "scene_spawn_models/spawn",
+    Some(&skinned_square_model()),
+  ));
   let spawn: RenderLevelSpawn = drawn.read_spawn().expect("the spawn reads");
 
   assert_eq!(spawn.visuals, [BOX_MODEL], "a visual is one model, named by its file");
@@ -201,7 +259,10 @@ fn stands_each_spawn_point_whose_visual_is_found_as_its_model_in_a_group_of_its_
 
 #[test]
 fn a_spawn_point_drawn_as_its_model_keeps_its_volume_and_loses_its_icon() {
-  let (assets, opened, _) = show(&write_spawn_scene("scene_spawn_models/helpers", Some(&square_model())));
+  let (assets, opened, _) = show(&write_spawn_scene(
+    "scene_spawn_models/helpers",
+    Some(&skinned_square_model()),
+  ));
   let helpers: Arc<SceneHelpers> = SceneHelpersPart::get(&opened, &assets.search(&opened.game.roots).unwrap());
   let spawns: Vec<(u32, &RenderHelperObject)> = list_spawn_helpers(&helpers.helpers);
 
@@ -272,7 +333,10 @@ fn every_spawn_point_keeps_its_icon_where_the_scene_has_no_game_data() {
 
 #[test]
 fn reads_a_spawn_points_model_once_and_lights_each_standing_as_it_by_the_open_sky() {
-  let (_, _, drawn) = show(&write_spawn_scene("scene_spawn_models/models", Some(&square_model())));
+  let (_, _, drawn) = show(&write_spawn_scene(
+    "scene_spawn_models/models",
+    Some(&skinned_square_model()),
+  ));
   let spawn: RenderLevelSpawn = drawn.read_spawn().expect("the spawn reads");
   let models: RenderSpawnModels = drawn.read_spawn_models(&spawn.visuals).expect("the models read");
 
@@ -328,16 +392,70 @@ fn a_model_found_that_does_not_read_is_a_load_failure_named_by_its_file() {
     "{}",
     models.failures[0].reason
   );
+  // At `0, 2, 3`, `z` mirrored.
   assert_eq!(
     SceneObjectSphere::locate(&opened, &assets, &spawn_point_id(0)).expect("the scene is searched"),
-    None,
-    "a model that does not read locates by its helper, and the first box has none"
+    Some(Sphere {
+      center: Vector3d::new(0.0, 2.0, -3.0),
+      radius: 0.0,
+    }),
+    "a model that does not read leaves the spawn point its icon, which it locates by"
+  );
+}
+
+// A rigid object's visual is read and found, but its pieces pack to nothing: standing as it, the spawn point would
+// show nothing at all.
+#[test]
+fn a_model_of_static_vertices_is_a_load_failure_and_leaves_the_spawn_point_its_icon() {
+  let (assets, opened, drawn) = show(&write_spawn_scene("scene_spawn_models/static", Some(&square_model())));
+  let spawn: RenderLevelSpawn = drawn.read_spawn().expect("the spawn reads");
+  let models: RenderSpawnModels = drawn.read_spawn_models(&spawn.visuals).expect("the models read");
+  let helpers: Arc<SceneHelpers> = SceneHelpersPart::get(&opened, &assets.search(&opened.game.roots).unwrap());
+
+  assert_eq!(
+    spawn
+      .objects
+      .iter()
+      .map(|object: &RenderSpawnObject| object.index)
+      .collect::<Vec<_>>(),
+    [drawn_id(0), drawn_id(1)],
+    "stood, so its load reports why it draws nothing"
+  );
+  assert!(models.models.is_empty());
+  assert_eq!(
+    models
+      .failures
+      .iter()
+      .map(|failure| failure.name.as_str())
+      .collect::<Vec<_>>(),
+    [BOX_MODEL]
+  );
+  assert!(
+    models.failures[0].reason.contains("packs no geometry"),
+    "{}",
+    models.failures[0].reason
+  );
+  assert_eq!(
+    list_spawn_helpers(&helpers.helpers)
+      .iter()
+      .map(|(index, _)| *index)
+      .collect::<Vec<_>>(),
+    [0, 1, 2, 3],
+    "every spawn point keeps its icon"
+  );
+  assert_eq!(
+    helpers.description.spawn_models.len(),
+    2,
+    "listed as standing as the model, so the failure names them"
   );
 }
 
 #[test]
 fn locates_a_spawn_point_drawn_as_its_model_by_its_models_placed_bounds() {
-  let (assets, opened, _) = show(&write_spawn_scene("scene_spawn_models/locate", Some(&square_model())));
+  let (assets, opened, _) = show(&write_spawn_scene(
+    "scene_spawn_models/locate",
+    Some(&skinned_square_model()),
+  ));
   let locate =
     |index: u32| SceneObjectSphere::locate(&opened, &assets, &spawn_point_id(index)).expect("the scene is searched");
 

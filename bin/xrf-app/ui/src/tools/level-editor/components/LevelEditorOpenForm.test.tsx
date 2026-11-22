@@ -111,6 +111,27 @@ describe("LevelEditorOpenForm", () => {
     expect(listMockInvokeCalls(EAssetsCommand.DETECT_ENGINE).at(-1)?.roots).toEqual(createRoots(["C:\\cop\\gamedata"]));
   });
 
+  // An SDK's object library and a game root are the same for every scene, so they are not typed again.
+  it("remembers the objects and game roots for the next open", async () => {
+    const first: RenderResult = renderForm();
+
+    await userEvent.click(first.getByRole("button", { name: "Add objects root" }));
+    await userEvent.type(first.getByRole("textbox", { name: "Add objects root 1" }), "C:\\sdk\\objects");
+    await userEvent.click(first.getByRole("button", { name: "Add game root" }));
+    await userEvent.type(first.getByRole("textbox", { name: "Add game root 1" }), "C:\\cop");
+    first.unmount();
+
+    const form: RenderResult = renderForm();
+
+    setScene(form, SCENE);
+    await userEvent.click(form.getByRole("button", { name: "Open" }));
+
+    expect(listMockInvokeCalls(ELevelsCommand.OPEN_SCENE)[0]?.request).toMatchObject({
+      gameRoots: createRoots(["C:\\cop"]),
+      objectsRoots: ["C:\\sdk\\objects"],
+    });
+  });
+
   it("says why a scene could not be opened", async () => {
     mockIpcCommands({
       [ELevelsCommand.OPEN_SCENE]: mockSessionResponse(() => {

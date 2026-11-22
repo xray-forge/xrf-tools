@@ -9,7 +9,13 @@ import {
 
 import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
 
-import { getCompileProblem, ICompileChoice, toCompileRequest, toggleCompileStep } from "./compile-request";
+import {
+  getCompileProblem,
+  getOfferedSteps,
+  ICompileChoice,
+  toCompileRequest,
+  toggleCompileStep,
+} from "./compile-request";
 
 function choice(steps: Array<LevelCompileStep>, patch: Partial<ICompileChoice> = {}): ICompileChoice {
   return {
@@ -94,5 +100,19 @@ describe("toggleCompileStep", () => {
 
   it("never holds the light without the geometry", () => {
     expect([...toggleCompileStep(new Set(), ELevelCompileStep.LIGHT, true)]).toEqual([]);
+  });
+});
+
+describe("getOfferedSteps", () => {
+  const ticked: ReadonlySet<LevelCompileStep> = new Set([ELevelCompileStep.DETAILS, ELevelCompileStep.AI]);
+
+  // The build writes no build.details for a scene without details, so the step would be refused.
+  it("leaves the details out for a scene without them", () => {
+    expect([...getOfferedSteps(ticked, false)]).toEqual([ELevelCompileStep.AI]);
+  });
+
+  it("keeps the details while the scene holds them or is not yet known", () => {
+    expect(getOfferedSteps(ticked, true)).toBe(ticked);
+    expect(getOfferedSteps(ticked, null)).toBe(ticked);
   });
 });

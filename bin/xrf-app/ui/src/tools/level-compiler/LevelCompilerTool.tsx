@@ -21,13 +21,11 @@ import { StringListFormRow } from "@xrf/ui/form/string-list-row";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { ELevelCompilerField } from "@/core/level/lib/compiler/level-compiler-field";
-import { LEVEL_COMPILER_OBJECTS_CODEC } from "@/core/level/lib/compiler/level-compiler-objects";
 import { LEVEL_SCENE_FILE_FILTERS, XR_LIBRARY_FILE_FILTERS } from "@/core/path/file-filters";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
-import { getFieldValueStorageKey, useStoredValue } from "@/core/storage";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField, useRememberedPaths } from "@/core/ui/form";
 import {
   AI_COVERS_OPTIONS,
   LIGHT_QUALITY_OPTIONS,
@@ -35,10 +33,12 @@ import {
 } from "@/tools/level-compiler/lib/compile-options";
 import {
   getCompileProblem,
+  getOfferedSteps,
   ICompileChoice,
   ICompileProblem,
   toCompileRequest,
 } from "@/tools/level-compiler/lib/compile-request";
+import { useSceneDetails } from "@/tools/level-compiler/lib/use-scene-details";
 import { LevelCompilerService } from "@/tools/level-compiler/services/level-compiler.service";
 
 import { LevelBuildResultView } from "./components/LevelBuildResultView";
@@ -60,13 +60,10 @@ export function LevelCompilerTool(): ReactElement {
   const isRunning: boolean = compilerService.operation.isRunning;
 
   // Remembered, so a scene handed over from the editor arrives with the roots it was opened with.
-  const [objects, setObjects] = useStoredValue(
-    getFieldValueStorageKey(EToolId.LEVEL_COMPILER, ELevelCompilerField.OBJECTS),
-    LEVEL_COMPILER_OBJECTS_CODEC
-  );
+  const [objects, setObjects] = useRememberedPaths({ tool: EToolId.LEVEL_COMPILER, id: ELevelCompilerField.OBJECTS });
   const [isSdkImpostorAtlas, setIsSdkImpostorAtlas] = useState<boolean>(false);
   const [isForced, setIsForced] = useState<boolean>(false);
-  const [steps, setSteps] = useState<ReadonlySet<LevelCompileStep>>(new Set());
+  const [ticked, setTicked] = useState<ReadonlySet<LevelCompileStep>>(new Set());
   const [rayBackend, setRayBackend] = useState<RayBackend>(ERayBackend.AUTO);
   const [aiCovers, setAiCovers] = useState<AiMapCovers>(EAiMapCovers.FULL);
   const [lightQuality, setLightQuality] = useState<LightQuality>(ELightQuality.SCENE);
@@ -117,6 +114,8 @@ export function LevelCompilerTool(): ReactElement {
 
   const scenePath: Nullable<string> = source.value;
   const levelPath: Nullable<string> = destination.value;
+  const hasDetails: Nullable<boolean> = useSceneDetails(scenePath);
+  const steps: ReadonlySet<LevelCompileStep> = useMemo(() => getOfferedSteps(ticked, hasDetails), [hasDetails, ticked]);
   // The rays trace on the GPU the renderer's settings choose, the automatic one where they choose none.
   const rayGpu: Nullable<RenderGpu> = renderSettingsService.renderGpu;
   const isTracing: boolean =
@@ -261,7 +260,7 @@ export function LevelCompilerTool(): ReactElement {
         onChange={setIsForced}
       />
 
-      <LevelCompileStepRows steps={steps} isDisabled={isRunning} onChange={setSteps} />
+      <LevelCompileStepRows steps={steps} hasDetails={hasDetails} isDisabled={isRunning} onChange={setTicked} />
 
       <ChoiceFormRow
         label={"Light quality"}

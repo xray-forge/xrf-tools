@@ -11,7 +11,7 @@ import { ReactElement, useCallback, useMemo, useState } from "react";
 import { LEVEL_SCENE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
 import { JobPickerForm } from "@/core/shell/chrome/JobPickerForm";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField, useRememberedPaths, useRememberedValue } from "@/core/ui/form";
 import { LevelDecompilerService } from "@/tools/level-decompiler/services/level-decompiler.service";
 
 import { LevelDecompileResultView } from "./components/LevelDecompileResultView";
@@ -21,6 +21,10 @@ const SURFACE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<LevelSurfaces>> = [
   { value: ELevelSurfaces.DEFAULTS, label: "Editor defaults" },
 ];
 
+const SURFACES: ReadonlyArray<LevelSurfaces> = SURFACE_OPTIONS.map(
+  (option: IChoiceFormRowOption<LevelSurfaces>) => option.value
+);
+
 export function LevelDecompilerTool(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
@@ -28,8 +32,14 @@ export function LevelDecompilerTool(): ReactElement {
 
   const isRunning: boolean = decompilerService.operation.isRunning;
 
-  const [surfaces, setSurfaces] = useState<LevelSurfaces>(ELevelSurfaces.INFER);
-  const [libraries, setLibraries] = useState<Array<string>>([]);
+  // Remembered, as an SDK's object library is the same for every level decompiled.
+  const [surfaces, setSurfaces] = useRememberedValue<LevelSurfaces>({
+    tool: EToolId.LEVEL_DECOMPILER,
+    id: "surfaces",
+    fallback: ELevelSurfaces.INFER,
+    allowed: SURFACES,
+  });
+  const [libraries, setLibraries] = useRememberedPaths({ tool: EToolId.LEVEL_DECOMPILER, id: "libraries" });
   const [isForced, setIsForced] = useState<boolean>(false);
 
   const source: IPathField = usePathField({
@@ -106,7 +116,14 @@ export function LevelDecompilerTool(): ReactElement {
       title={"Decompile a level"}
       description={"Writes a compiled level back as an SDK Level Editor scene, its objects and a provenance sidecar."}
       submitLabel={"Decompile"}
-      renderResult={(result) => <LevelDecompileResultView result={result} outputPath={scenePath} />}
+      renderResult={(result) => (
+        <LevelDecompileResultView
+          result={result}
+          outputPath={scenePath}
+          objects={objects.value}
+          libraries={libraries}
+        />
+      )}
       onSubmit={onDecompile}
     >
       <PathFormRow
