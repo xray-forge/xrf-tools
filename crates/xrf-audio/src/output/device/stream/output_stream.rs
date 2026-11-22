@@ -32,13 +32,13 @@ impl OutputStream {
       Ok(config) => config.config(),
       Err(error) => {
         return Err(Box::new(OpenFailure {
-          mixer: Some(mixer),
+          mixer: Ok(mixer),
           message: format!("Could not read the device's format: {error}"),
         }));
       }
     };
     let channels: usize = usize::from(config.channels);
-    let (mixer_returned, mut returned) = RingBuffer::new(1);
+    let (mixer_returned, returned) = RingBuffer::new(1);
     let (mut error_sink, errors) = RingBuffer::new(64);
 
     mixer.set_output_rate(config.sample_rate);
@@ -69,9 +69,9 @@ impl OutputStream {
         returned,
         errors,
       }),
-      // A stream that failed to build or start has dropped its callback, which handed the mixer back.
+      // A stream that failed to build or start drops its callback, which hands the mixer back, late on some devices.
       Err(error) => Err(Box::new(OpenFailure {
-        mixer: Self::await_mixer(&mut returned),
+        mixer: Self::await_mixer(returned),
         message: format!("Could not open the device: {error}"),
       })),
     }
@@ -85,24 +85,24 @@ impl OutputStream {
   /// Stops the stream and takes the mixer back from its callback. A device slow to let it go answers with the ring the
   /// callback hands it back through, to look in again later.
   pub(crate) fn close(self) -> Result<AudioMixer, Consumer<AudioMixer>> {
-    let Self {
-      stream, mut returned, ..
-    } = self;
+    let Self { stream, returned, .. } = self;
 
     drop(stream);
-    Self::await_mixer(&mut returned).ok_or(returned)
+    Self::await_mixer(returned)
   }
 
-  fn await_mixer(returned: &mut Consumer<AudioMixer>) -> Option<AudioMixer> {
+  /// The mixer the callback hands back through `returned` within [`Self::RETURN_WAIT`], else the ring itself, to look
+  /// in again later.
+  fn await_mixer(mut returned: Consumer<AudioMixer>) -> Result<AudioMixer, Consumer<AudioMixer>> {
     let deadline: Instant = Instant::now() + Self::RETURN_WAIT;
 
     loop {
       if let Ok(mixer) = returned.pop() {
-        return Some(mixer);
+        return Ok(mixer);
       }
 
       if Instant::now() >= deadline {
-        return None;
+        return Err(returned);
       }
 
       thread::sleep(Duration::from_millis(1));

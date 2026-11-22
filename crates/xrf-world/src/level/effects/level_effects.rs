@@ -34,23 +34,22 @@ use crate::sound::schedule::zone_states::ZoneStates;
 pub(crate) struct LevelEffects {
   pending: LoaderOnce<Option<RenderLevelParticles>>,
   systems: Option<EffectSystems>,
+  /// How lit the camera stands, read with the level and kept whether or not its particles read.
+  hemi: CameraHemi,
   emitters: ProxyAllocator<ParticleEmitterProxy>,
   /// The emitters whose effects finished and that the ambient effects have not yet been told of.
   finished: Vec<ProxyHandle<ParticleEmitterProxy>>,
   ambient: LevelAmbientEffects,
   campfires: LevelCampfires,
   motions: LevelObjectMotions,
-  workers: RenderWorkers,
   /// The engine's clock at the last frame it moved on.
   now: Duration,
 }
 
-/// What the read particles keep: what the ambient effects check their effects against, how lit the camera stands, and
-/// every placement.
+/// What the read particles keep: what the ambient effects check their effects against, and every placement.
 struct EffectSystems {
   library: Arc<ParticleLibrary>,
   engine: XrayEngine,
-  hemi: CameraHemi,
   placed: Vec<PlacedEmitter>,
 }
 
@@ -59,12 +58,12 @@ impl LevelEffects {
     Self {
       pending: Self::read_particles(source, workers),
       systems: None,
+      hemi: CameraHemi::read(source, workers),
       emitters: ProxyAllocator::new(),
       finished: Vec::new(),
       ambient: LevelAmbientEffects::default(),
       campfires: LevelCampfires::new(),
       motions: LevelObjectMotions::new(source, workers),
-      workers: workers.clone(),
       now: Duration::ZERO,
     }
   }
@@ -82,6 +81,11 @@ impl LevelEffects {
         .inspect_err(|error| log::error!("The level's particles cannot be played: {error}"))
         .ok()
     })
+  }
+
+  /// Reads the camera's hemi estimator again from `source`, a next source whose collision form changed.
+  pub(crate) fn reload_hemi(&mut self, source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) {
+    self.hemi = CameraHemi::read(source, workers);
   }
 
   /// Reads the particles again from `source`: every placement's emitter and the ambient effect playing leave the scene
@@ -128,8 +132,8 @@ impl LevelEffects {
 
   /// Where the ambient effects stand as of the last frame, none until the particles are read.
   pub(crate) fn report_ambient(&self) -> Option<WorldAmbientReport> {
-    self.systems.as_ref().map(|systems| WorldAmbientReport {
-      is_indoors: systems.hemi.is_indoors(),
+    self.systems.is_some().then(|| WorldAmbientReport {
+      is_indoors: self.hemi.is_indoors(),
       ..self.ambient.report(self.now)
     })
   }
@@ -164,11 +168,10 @@ impl LevelEffects {
     let is_playing: bool = options.show.is_particled && options.mode.is_lit;
 
     self.take_read(updates);
+    self.hemi.advance(eye, now);
 
     if let Some(systems) = &mut self.systems {
-      systems.hemi.advance(eye, now);
-
-      let is_outdoors: bool = !systems.hemi.is_indoors() && toggles.is_ambient_effect_played && is_playing;
+      let is_outdoors: bool = !self.hemi.is_indoors() && toggles.is_ambient_effect_played && is_playing;
 
       self.ambient.update(
         updates,
@@ -233,8 +236,8 @@ impl LevelEffects {
       gust,
       campfire_shares,
       motions,
-      camera_hemi: self.systems.as_ref().and_then(|systems| systems.hemi.get_smooth()),
-      open_sky: self.systems.as_ref().and_then(|systems| systems.hemi.get_open_sky()),
+      camera_hemi: self.hemi.get_smooth(),
+      open_sky: self.hemi.get_open_sky(),
       started_effect: self.ambient.take_started(),
     }
   }
@@ -250,7 +253,6 @@ impl LevelEffects {
       placements,
       surfaces,
       collider,
-      hemi,
     } = read;
 
     updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Particles(
@@ -290,7 +292,6 @@ impl LevelEffects {
     self.systems = Some(EffectSystems {
       library,
       engine: rules.get_engine(),
-      hemi: CameraHemi::new(hemi, &self.workers),
       placed,
     });
   }

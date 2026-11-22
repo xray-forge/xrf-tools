@@ -218,6 +218,12 @@ impl AudioControl {
 
       true
     });
+
+    // The mixer has one reverb: the room of the scene the host names heard, silent where it names none, so two scenes
+    // heard at once never take turns at it and the last to close leaves nothing ringing.
+    let room: Option<[f32; 3]> = self.scenes.iter().find_map(|scene| scene.get_render().get_heard_room());
+
+    self.engine.set_reverb_times(room.unwrap_or([0.0; 3]));
   }
 
   fn set_gains(&mut self, gains: AudioGains) {

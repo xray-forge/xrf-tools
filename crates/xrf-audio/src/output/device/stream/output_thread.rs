@@ -4,13 +4,13 @@ use std::time::{Duration, Instant};
 
 use cpal::traits::HostTrait;
 use cpal::{Device, ErrorKind, Host};
-use rtrb::Consumer;
 
 use crate::mixer::audio_mixer::AudioMixer;
 use crate::output::device::audio_devices::AudioDevices;
 use crate::output::device::audio_output_choice::AudioOutputChoice;
 use crate::output::device::audio_output_status::AudioOutputStatus;
 use crate::output::device::stream::open_failure::OpenFailure;
+use crate::output::device::stream::output_mixer::OutputMixer;
 use crate::output::device::stream::output_request::OutputRequest;
 use crate::output::device::stream::output_stream::OutputStream;
 
@@ -20,11 +20,9 @@ use crate::output::device::stream::output_stream::OutputStream;
 /// While no device plays, it renders the mixer to nothing at a device's pace, so commands are taken, voices end and
 /// free their slots, and the mixer's clock runs on.
 pub(crate) struct OutputThread {
-  /// The mixer while no stream plays it.
-  mixer: Option<AudioMixer>,
+  /// The mixer while no stream plays it, or the way it comes back from a device that has not let it go yet.
+  mixer: OutputMixer,
   stream: Option<OutputStream>,
-  /// Where a closed stream's callback hands the mixer back, while the device has not let it go yet.
-  held: Option<Consumer<AudioMixer>>,
   choice: AudioOutputChoice,
   requests: Receiver<OutputRequest>,
   status: Arc<Mutex<AudioOutputStatus>>,
@@ -67,9 +65,8 @@ impl OutputThread {
     status: Arc<Mutex<AudioOutputStatus>>,
   ) -> Self {
     Self {
-      mixer: Some(mixer),
+      mixer: OutputMixer::new(mixer),
       stream: None,
-      held: None,
       choice,
       requests,
       status,
@@ -113,7 +110,7 @@ impl OutputThread {
 
   /// Renders the frames a device would have taken since the last silent render, while the thread holds the mixer.
   pub(crate) fn render_silent(&mut self) {
-    let Some(mixer) = &mut self.mixer else {
+    let Some(mixer) = self.mixer.get_mut() else {
       self.silent_since = None;
       return;
     };
@@ -182,8 +179,10 @@ impl OutputThread {
     }
   }
 
+  /// Opens the device the choice names, unless a device still holds the mixer: then the device stays failed until the
+  /// mixer comes back.
   fn open_stream(&mut self) {
-    let Some(mixer) = self.mixer.take() else {
+    let Some(mixer) = self.mixer.lend() else {
       return;
     };
     let host: Host = cpal::default_host();
@@ -193,7 +192,7 @@ impl OutputThread {
     };
     let is_fallback: bool = matches!(self.choice, AudioOutputChoice::Device { .. }) && chosen.is_none();
     let Some(device) = chosen.or_else(|| host.default_output_device()) else {
-      self.mixer = Some(mixer);
+      self.mixer.take_back(Ok(mixer));
       self.fail(String::from("No output device"));
       return;
     };
@@ -219,8 +218,11 @@ impl OutputThread {
       Err(failure) => {
         let OpenFailure { mixer, message } = *failure;
 
-        self.mixer = mixer;
-        self.fail(message);
+        if self.mixer.take_back(mixer) {
+          self.fail(message);
+        } else {
+          self.fail(format!("{message}; the device has not handed the mixer back"));
+        }
       }
     }
   }
@@ -230,27 +232,17 @@ impl OutputThread {
       return;
     };
 
-    match stream.close() {
-      Ok(mixer) => self.mixer = Some(mixer),
-      Err(returned) => {
-        self.held = Some(returned);
-        self.fail(String::from(
-          "The audio device has not handed the mixer back since its stream closed",
-        ));
-      }
+    if !self.mixer.take_back(stream.close()) {
+      self.fail(String::from(
+        "The audio device has not handed the mixer back since its stream closed",
+      ));
     }
   }
 
-  /// Takes the mixer back from a closed stream's callback that let it go late, so audio plays again.
+  /// Takes the mixer back from a stream's callback that let it go late, however late, so audio plays again.
   fn take_back_mixer(&mut self) {
-    let Some(returned) = &mut self.held else {
-      return;
-    };
-
-    if let Ok(mixer) = returned.pop() {
+    if self.mixer.take_up_late() {
       log::info!("The audio device handed the mixer back late");
-      self.mixer = Some(mixer);
-      self.held = None;
       self.retry_at = Instant::now();
     }
   }

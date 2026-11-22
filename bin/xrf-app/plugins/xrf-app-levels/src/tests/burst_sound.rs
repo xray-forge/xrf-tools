@@ -128,6 +128,7 @@ fn record(name: &str, emitters: impl Fn(Duration) -> Vec<AudioSceneEmitter>) -> 
         time,
         rules: AudioSceneRules::Vanilla,
         is_audible: true,
+        is_room_heard: true,
         listener: AudioListener {
           position: [(time - at(0)).as_secs_f32(), 0.0, 0.0],
           ..AudioListener::default()

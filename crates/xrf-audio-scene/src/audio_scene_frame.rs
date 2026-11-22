@@ -16,6 +16,9 @@ pub struct AudioSceneFrame {
   pub rules: AudioSceneRules,
   /// Whether it is heard; a scene not heard fades out and plays on, silent.
   pub is_audible: bool,
+  /// Whether its room is the one heard: the mixer has one reverb, which follows this scene's simulated room. The host
+  /// names at most one such scene at a time; with none, the reverb falls silent.
+  pub is_room_heard: bool,
   pub listener: AudioListener,
   /// Which buses of its sound are heard, by [`AudioBus::get_index`].
   pub heard: [bool; AudioBus::COUNT],

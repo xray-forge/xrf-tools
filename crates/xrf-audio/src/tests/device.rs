@@ -13,6 +13,7 @@ use crate::output::device::audio_output::AudioOutput;
 use crate::output::device::audio_output_choice::AudioOutputChoice;
 use crate::output::device::audio_output_status::AudioOutputStatus;
 use crate::output::device::stream::mixer_holder::MixerHolder;
+use crate::output::device::stream::output_mixer::OutputMixer;
 use crate::output::device::stream::output_thread::OutputThread;
 use crate::output::offline::offline_render::OfflineRender;
 use crate::tests::fixtures::{RATE, engine, looped, once, sine};
@@ -39,6 +40,28 @@ fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {
   render.render(512);
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Playing);
   assert_eq!(engine.get_playback(voice).frame, 1024);
+}
+
+// A stream that fails to open, or a callback slow to let go, hands the mixer back past the wait: it is taken up on a
+// later look, so audio plays again rather than staying silent for the session.
+#[test]
+fn takes_up_a_mixer_a_device_hands_back_past_the_wait() {
+  let AudioEngineParts { mixer, .. } = engine(4);
+  let mut output: OutputMixer = OutputMixer::new(mixer);
+  let lent: AudioMixer = output.lend().expect("the thread holds the mixer");
+  let (mut handing, returning) = RingBuffer::new(1);
+
+  assert!(output.lend().is_none(), "lent once");
+  assert!(!output.take_back(Err(returning)), "the device keeps it past the wait");
+  assert!(!output.take_up_late(), "nothing handed back yet");
+  assert!(output.get_mut().is_none());
+
+  assert!(handing.push(lent).is_ok());
+
+  assert!(output.take_up_late(), "taken up however late it came");
+  assert!(output.get_mut().is_some());
+  assert!(!output.take_up_late(), "taken once");
+  assert!(output.lend().is_some(), "lent to the next stream");
 }
 
 #[test]

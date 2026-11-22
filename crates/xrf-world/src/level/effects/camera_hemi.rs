@@ -6,6 +6,9 @@ use xrf_math::Vector3d;
 use xrf_renderer::{LoaderReceiver, RenderWorkers, take_answer};
 use xrf_visual::{HemiEstimate, HemiEstimator};
 
+use crate::host::world_level_source::WorldLevelSource;
+use crate::level::loading::loader_once::LoaderOnce;
+
 /// `get_luminocity_hemi() < 0.05`: the hemi under which the actor stands indoors (`CGamePersistent::WeathersUpdate`).
 const INDOOR_HEMI: f32 = 0.05;
 
@@ -17,7 +20,12 @@ const SMOOTHING: f32 = 1.0;
 
 /// How lit the camera stands, as `CROS_impl` keeps the actor's hemi: estimated on the workers every so often where the
 /// camera stands, which stands in for the actor's sphere, and smoothed towards each estimate (`update_smooth`).
+///
+/// Its estimator comes with the level ([`WorldLevelSource::read_hemi`]), read on the workers, apart from the particles,
+/// so a level whose particles do not read still knows where the camera stands indoors.
 pub(crate) struct CameraHemi {
+  /// The estimator on its way from the level, none once taken.
+  reading: LoaderOnce<Arc<HemiEstimator>>,
   estimator: Option<Arc<HemiEstimator>>,
   /// The estimate asked for and not taken yet.
   pending: Option<LoaderReceiver<HemiEstimate>>,
@@ -34,9 +42,13 @@ pub(crate) struct CameraHemi {
 }
 
 impl CameraHemi {
-  pub(crate) fn new(estimator: Option<Arc<HemiEstimator>>, workers: &RenderWorkers) -> Self {
+  /// Starts reading the level's estimator from `source` on the workers; until it comes, nothing is estimated.
+  pub(crate) fn read(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+    let reader: Arc<dyn WorldLevelSource> = Arc::clone(source);
+
     Self {
-      estimator,
+      reading: LoaderOnce::spawn(workers, "camera hemi estimator", move || reader.read_hemi()),
+      estimator: None,
       pending: None,
       value: None,
       smooth: 0.5,
@@ -50,6 +62,10 @@ impl CameraHemi {
   /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`, the engine's clock.
   /// `eye` is where the camera stands, in engine space.
   pub(crate) fn advance(&mut self, eye: Vec3, now: Duration) {
+    if let Some(estimator) = self.reading.take() {
+      self.estimator = Some(estimator);
+    }
+
     // A worker that never answered leaves none pending, so the next is asked for.
     if let Some(value) = take_answer(&mut self.pending, "camera hemi") {
       // The first estimate is taken as it is, as the first update takes it.
@@ -102,9 +118,9 @@ impl CameraHemi {
   }
 
   /// Whether the camera stands indoors, which a level without an estimator never does. The engine estimates the
-  /// actor's hemi in its first frame; until the first estimate is back the camera counts as indoors, so nothing starts
-  /// where it is not yet known.
+  /// actor's hemi in its first frame; until the estimator and its first estimate are back the camera counts as indoors,
+  /// so nothing starts where it is not yet known.
   pub(crate) fn is_indoors(&self) -> bool {
-    self.estimator.is_some() && (self.value.is_none() || self.smooth < INDOOR_HEMI)
+    self.reading.is_pending() || (self.estimator.is_some() && (self.value.is_none() || self.smooth < INDOOR_HEMI))
   }
 }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
@@ -5,7 +7,7 @@ use xrf_renderer::{
   RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
   RenderMotion, RenderSpawnModels,
 };
-use xrf_visual::{LightsDescription, SectorPackage};
+use xrf_visual::{HemiEstimator, LightsDescription, SectorPackage};
 
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
 use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
@@ -104,6 +106,15 @@ pub trait WorldLevelSource: RenderLevelSource {
   ///
   /// Returns an error when the game's particle library cannot be read.
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>>;
+
+  /// How the level lights an object standing anywhere, `CROS_impl`'s estimate, which the camera's hemi is read from:
+  /// the fog's indoor share, the ambient effects' indoor test and the rain's loudness. Called from a loader thread as the
+  /// level opens and again with the particles for a next source that reloads them, apart from them, so a level
+  /// whose particles do not read still has it; none where it cannot be built, its failure reported by the application,
+  /// which leaves the camera always outdoors.
+  fn read_hemi(&self) -> Option<Arc<HemiEstimator>> {
+    None
+  }
 
   /// One motion of the skinned model [`WorldLevelSource::read_spawn_models`] gave a skeleton, baked, called from a
   /// loader thread; a level's spawned models are posed already and have none.

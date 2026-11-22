@@ -9298,6 +9298,7 @@ dependencies = [
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",
+ "xrf-geometry",
  "xrf-job",
  "xrf-level",
  "xrf-material",

@@ -1,3 +1,4 @@
+mod camera_hemi;
 pub(crate) mod effects;
 mod engine_clock;
 mod hidden_spawn_groups;

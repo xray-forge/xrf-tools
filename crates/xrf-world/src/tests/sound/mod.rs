@@ -1,4 +1,5 @@
 mod ambient_channels;
+mod heard_room;
 mod level_music;
 mod level_sound;
 mod rain_sound;

@@ -18,7 +18,7 @@ use xrf_renderer::{
   RenderLevelSpawn, RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
 };
 use xrf_vfs::XraySearch;
-use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
+use xrf_visual::{HemiEstimator, LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
 use xrf_world::{WorldLevelSounds, WorldLevelSource, WorldLevelWeather, WorldSoundSink};
 
 use crate::level::SelectedLevel;
@@ -298,7 +298,6 @@ impl WorldLevelSource for LevelRenderSource {
       LevelParticlesPart::pack(level, &search, Self::read_sections(level, &search).as_deref())
         .map_err(XrfError::new_asset_error)?;
     let collision = LevelCollisionPart::get(level, &search);
-    let hemi = LevelHemiPart::get(level, &search);
 
     self.textures.extend(packed.textures.iter().map(ResolvedTexture::from));
 
@@ -311,9 +310,17 @@ impl WorldLevelSource for LevelRenderSource {
         .inspect_err(|error| LevelReport::missing_particle_collision(&level.source, error))
         .ok()
         .map(|tracer| Arc::new(LevelParticleCollider::new(tracer)) as Arc<dyn ParticleCollider>),
-      // Its failure is reported where the estimator is built.
-      hemi: hemi.ok(),
     }))
+  }
+
+  /// The level's hemi estimator, apart from its particles; its failure is reported where the estimator is built.
+  fn read_hemi(&self) -> Option<Arc<HemiEstimator>> {
+    let search: XraySearch = self
+      .search()
+      .inspect_err(|error| log::warn!("The level's hemi estimator cannot be read: {error}"))
+      .ok()?;
+
+    LevelHemiPart::get(&self.level, &search).ok()
   }
 
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {

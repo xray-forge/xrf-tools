@@ -39,6 +39,7 @@ fn frame(time: Duration, emitters: Vec<AudioSceneEmitter>) -> Box<AudioSceneFram
     time,
     rules: AudioSceneRules::Vanilla,
     is_audible: true,
+    is_room_heard: true,
     listener: AudioListener::default(),
     heard: [true; AudioBus::COUNT],
     emitters,

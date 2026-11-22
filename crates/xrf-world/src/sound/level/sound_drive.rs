@@ -17,6 +17,10 @@ pub(crate) struct SoundDrive<'a> {
   pub at: Instant,
   /// Whether the scene is heard.
   pub is_audible: bool,
+  /// Whether its room is the one the mixer's single reverb follows ([`HeardRoom`]).
+  ///
+  /// [`HeardRoom`]: crate::sound::level::heard_room::HeardRoom
+  pub is_room_heard: bool,
   /// The camera, in engine space: where it stands, where it looks, which way is up.
   pub eye: Vec3,
   pub forward: Vec3,

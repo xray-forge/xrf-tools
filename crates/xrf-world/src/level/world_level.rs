@@ -91,8 +91,10 @@ impl WorldLevel {
   /// Plays on from `source`, a next source of the same level, reading again what `reload` names from it: what that
   /// replaces leaves the scene with the next frame's posts, and everything else stays as it is drawn. The clock runs on.
   pub(crate) fn reload(&mut self, source: Arc<dyn WorldLevelSource>, reload: LevelParts, workers: &RenderWorkers) {
+    // The camera's hemi estimator traces the collision form the particles collide with, so it is read again with them.
     if reload.contains(LevelPart::Particles) {
       self.effects.reload(&mut self.queued, &source, workers);
+      self.effects.reload_hemi(&source, workers);
     }
 
     if reload.contains(LevelPart::Weather) {

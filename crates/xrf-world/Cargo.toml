@@ -28,6 +28,7 @@ xrf-utils = { workspace = true }
 xrf-visual = { workspace = true }
 
 [dev-dependencies]
+xrf-geometry = { workspace = true }
 xrf-job = { workspace = true, features = ["testing"] }
 xrf-material = { workspace = true }
 

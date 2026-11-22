@@ -47,6 +47,8 @@ pub(crate) struct SceneRender {
   clock: SceneClock,
   listener: AudioListener,
   is_audible: bool,
+  /// Whether the host named its room the one the mixer's reverb follows.
+  is_room_heard: bool,
   heard: [bool; AudioBus::COUNT],
   /// How much of it is heard, moving toward heard or silent over [`Self::FADE`].
   presence: f32,
@@ -102,6 +104,7 @@ impl SceneRender {
       clock: SceneClock::default(),
       listener: AudioListener::default(),
       is_audible: false,
+      is_room_heard: false,
       heard: [true; AudioBus::COUNT],
       presence: 0.0,
       emitters: HashMap::new(),
@@ -125,6 +128,7 @@ impl SceneRender {
     self.rules = frame.rules;
     self.listener = frame.listener;
     self.is_audible = frame.is_audible;
+    self.is_room_heard = frame.is_room_heard;
     self.heard = frame.heard;
 
     if self.clock.follow(frame.time, mixer_frame, rate) {
@@ -215,11 +219,6 @@ impl SceneRender {
 
     if self.acoustics.is_running() {
       self.acoustics.simulate(&self.listener, &self.simulated, now);
-
-      // The mixer's one reverb is the room heard now, so a scene fading out leaves it to the one fading in.
-      if self.is_audible {
-        tick.engine.set_reverb_times(self.acoustics.get_reverb_times());
-      }
     }
 
     // Taken out for the while, so each emitter is realized against the scene it belongs to.
@@ -288,6 +287,12 @@ impl SceneRender {
 
     self.emitters = emitters;
     self.ranked = ranked;
+  }
+
+  /// The decay times of its room, each band's in seconds, where the host named its room the one heard and its acoustics
+  /// run; none otherwise. The mixer has one reverb, which follows that room alone.
+  pub(crate) fn get_heard_room(&self) -> Option<[f32; 3]> {
+    (self.is_room_heard && self.acoustics.is_running()).then(|| self.acoustics.get_reverb_times())
   }
 
   /// Ends every voice, as a scene closing does.

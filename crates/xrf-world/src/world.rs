@@ -24,6 +24,8 @@ use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::level_drive::LevelDrive;
 use crate::level::world_level::WorldLevel;
+use crate::sound::level::heard_room::HeardRoom;
+use crate::sound::level::heard_room_candidate::HeardRoomCandidate;
 use crate::sound::level::sound_drive::SoundDrive;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_scene::WorldScene;
@@ -407,6 +409,17 @@ impl RenderWorld for World {
   ) -> HashMap<RenderSceneId, RenderSceneFrame> {
     let mut frames: HashMap<RenderSceneId, RenderSceneFrame> = HashMap::with_capacity(self.scenes.len());
     let listener: Option<RenderViewportId> = self.get_listener();
+    let room: Option<RenderSceneId> = HeardRoom::choose(self.scenes.iter().map(|(id, scene)| {
+      HeardRoomCandidate {
+        scene: *id,
+        is_listened: listener.is_some_and(|listener| scene.viewers.contains(&listener)),
+        is_bursting: scene
+          .viewers
+          .iter()
+          .filter_map(|viewer| self.viewports.get(viewer))
+          .any(|viewer| viewer.burst.is_some()),
+      }
+    }));
 
     for (id, scene) in &mut self.scenes {
       // The scene told it once, so it is taken even in a frame no viewport drives the scene.
@@ -437,6 +450,7 @@ impl RenderWorld for World {
         scene: *id,
         at: now,
         is_audible,
+        is_room_heard: room == Some(*id),
         eye: hearing.eye,
         forward: hearing.look,
         up: Vec3::Y,

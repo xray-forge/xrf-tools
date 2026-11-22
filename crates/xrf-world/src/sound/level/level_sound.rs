@@ -381,6 +381,7 @@ impl LevelSound {
         XrayEngine::Extended => AudioSceneRules::Extended,
       };
       sound.is_audible = drive.is_audible;
+      sound.is_room_heard = drive.is_room_heard;
       sound.listener = listener;
       sound.heard = drive.toggles.get_heard_buses();
       emitters.fill(&mut sound.emitters, now);

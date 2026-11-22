@@ -11,7 +11,7 @@ use xrf_renderer::{
   RenderAssetSource, RenderLevelAiMap, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource,
   RenderLevelSpawn, RenderSpawnModels,
 };
-use xrf_visual::{LightsDescription, SectorPackage};
+use xrf_visual::{HemiEstimator, LightsDescription, SectorPackage};
 
 use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
@@ -54,6 +54,8 @@ pub(crate) struct TestLevelSource {
   pub helpers_delay: Duration,
   /// How long reading its AI map takes, likewise.
   pub ai_map_delay: Duration,
+  /// The camera's hemi estimator it answers, none by default.
+  pub hemi: Option<Arc<HemiEstimator>>,
 }
 
 impl Default for TestLevelSource {
@@ -68,6 +70,7 @@ impl Default for TestLevelSource {
       reads: Arc::default(),
       helpers_delay: Duration::ZERO,
       ai_map_delay: Duration::ZERO,
+      hemi: None,
     }
   }
 }
@@ -158,6 +161,10 @@ impl WorldLevelSource for TestLevelSource {
     self.reads.particles.fetch_add(1, Ordering::SeqCst);
 
     Ok(None)
+  }
+
+  fn read_hemi(&self) -> Option<Arc<HemiEstimator>> {
+    self.hemi.clone()
   }
 
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
