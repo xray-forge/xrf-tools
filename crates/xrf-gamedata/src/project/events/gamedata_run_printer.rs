@@ -86,6 +86,7 @@ impl GamedataRunPrinter {
       GamedataVerificationType::Collisions => "path collisions",
       GamedataVerificationType::Coverage => "declared source coverage",
       GamedataVerificationType::Animations => "animations",
+      GamedataVerificationType::Dialogs => "dialogs",
       GamedataVerificationType::Environment => "environment",
       GamedataVerificationType::Levels => "levels",
       GamedataVerificationType::Ltx => "LTX files",

@@ -37,6 +37,40 @@ pub enum GamedataVerificationRule {
   CollisionsUnreachable,
   #[display("coverage.skipped-mount")]
   CoverageSkippedMount,
+  /// A specific character marked both `no_random` and `team_default`, which the engine asserts on loading it.
+  #[display("dialog.character-flags")]
+  DialogCharacterFlags,
+  /// A `wounded` logic section's `help_dialog` naming a dialog no dialog file declares, which leaves the NPC unhealable.
+  #[display("dialog.heal-missing")]
+  DialogHealMissing,
+  /// A `meet` or `wounded` logic section's start dialog naming a dialog no dialog file declares.
+  #[display("dialog.logic-missing")]
+  DialogLogicMissing,
+  /// A character or info portion offering a dialog no dialog file declares.
+  #[display("dialog.offer-missing")]
+  DialogOfferMissing,
+  /// A character, profile or info portion file that does not read, so what it declares goes unjudged.
+  #[display("dialog.partner-unreadable")]
+  DialogPartnerUnreadable,
+  /// A dialog the engine cannot open: no phrase `0` in its phrase list, or no phrase list and no `init_func`.
+  #[display("dialog.phrase-entry")]
+  DialogPhraseEntry,
+  /// A phrase reached from phrase `0` whose `next` names a phrase the dialog does not list.
+  #[display("dialog.phrase-next")]
+  DialogPhraseNext,
+  /// Phrases no path from phrase `0` reaches, which the engine never loads.
+  #[display("dialog.phrase-unreachable")]
+  DialogPhraseUnreachable,
+  /// A profile no NPC can be spawned with, because its pinned character is not declared or its class has no
+  /// `team_default` character, or a `character_profile` naming a profile nothing declares.
+  #[display("dialog.profile-unresolved")]
+  DialogProfileUnresolved,
+  /// A phrase line with no text in a language the game ships, which the engine shows as its key.
+  #[display("dialog.text-missing")]
+  DialogTextMissing,
+  /// A dialog file that does not read, so its dialogs go unjudged.
+  #[display("dialog.unreadable")]
+  DialogUnreadable,
   /// A texture an environment config names that the game does not hold.
   #[display("environment.asset")]
   EnvironmentAsset,

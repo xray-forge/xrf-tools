@@ -7,6 +7,8 @@ export enum EGamedataVerificationType {
   /** Declared sources the run could not open, rather than anything authored inside the ones it did. */
   COVERAGE = "coverage",
   ANIMATIONS = "animations",
+  /** Every dialog as the engine opens it, and the characters, profiles, info portions and logic sections offering one. */
+  DIALOGS = "dialogs",
   /** Everything under `configs\environment` the engine reads, and the textures its keyframes name. */
   ENVIRONMENT = "environment",
   LEVELS = "levels",

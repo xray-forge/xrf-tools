@@ -33,16 +33,19 @@ const DIALOGS: &str = r#"<?xml version="1.0" encoding="windows-1251"?>
 const OVERLAY: &str = r#"<game_dialogs><dialog id="actor_break_dialog"><phrase_list><phrase id="0"><text>overlay_0</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
 const CHARACTERS: &str = r#"<xml>
-  <specific_character id="snag">
+  <specific_character id="snag" team_default="1">
     <class>snag</class>
     <start_dialog>snag_cache_dialog</start_dialog>
     <actor_dialog>snag_share_dialog</actor_dialog>
     <actor_dialog>snag_missing_dialog</actor_dialog>
   </specific_character>
+  <specific_character id="loner">
+    <class>loner</class>
+  </specific_character>
 </xml>
 "#;
 
-const PROFILES: &str = r#"<xml><character id="snag"><class>snag</class></character></xml>"#;
+const PROFILES: &str = r#"<xml><character id="snag"><class>snag</class></character><character id="loner"><class>loner</class></character></xml>"#;
 
 const INFO_PORTIONS: &str = r#"<game_information_portions>
   <info_portion id="global_dialogs"><dialog>actor_break_dialog</dialog></info_portion>

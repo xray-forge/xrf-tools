@@ -36,6 +36,9 @@ pub struct DialogProject {
 }
 
 impl DialogProject {
+  /// The finding a dialog file that could not be read becomes.
+  pub const UNREADABLE_RULE: &'static str = "dialog.unreadable";
+
   /// Open a project over roots, reading every dialog file it exposes under the layout prefix.
   ///
   /// # Errors
@@ -87,7 +90,7 @@ impl DialogProject {
           });
         }
         Err(error) => findings.push(DialogFinding::new(
-          "dialog.unreadable",
+          Self::UNREADABLE_RULE,
           Some(logical_path),
           error.to_string(),
         )),

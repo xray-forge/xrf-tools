@@ -135,6 +135,54 @@ fn resolves_a_profile_to_its_pinned_character_or_to_the_random_characters_of_its
 }
 
 #[test]
+fn resolves_a_class_profile_only_through_a_team_default_character_of_its_class() -> XrfResult {
+  let partners: DialogPartners = read_partners(
+    "team_default",
+    &[
+      (
+        "character_desc_a.xml",
+        r#"<xml>
+  <specific_character id="pinned" no_random="1"><class>story</class></specific_character>
+  <specific_character id="fallback" team_default="1"><class>novice</class></specific_character>
+  <specific_character id="plain"><class>novice</class></specific_character>
+  <specific_character id="lone"><class>loner</class></specific_character>
+</xml>"#,
+      ),
+      (
+        "npc_profile.xml",
+        r#"<xml>
+  <character id="story"><specific_character>pinned</specific_character></character>
+  <character id="lost"><specific_character>nobody</specific_character></character>
+  <character id="novice"><class>novice</class></character>
+  <character id="loner"><class>loner</class></character>
+  <character id="story_class"><class>story</class></character>
+</xml>"#,
+      ),
+    ],
+  )?;
+  let is_resolvable = |id: &str| partners.is_profile_resolvable(profile(&partners, id));
+
+  assert!(partners.get_characters()["fallback"].is_team_default());
+  assert!(!partners.get_characters()["plain"].is_team_default());
+  assert_eq!(
+    partners.get_characters()["plain"].get_logical_path(),
+    r"configs\gameplay\character_desc_a.xml"
+  );
+
+  // A pinned character needs only to be declared, `no_random` or not.
+  assert!(is_resolvable("story"));
+  assert!(!is_resolvable("lost"));
+  assert!(is_resolvable("novice"));
+  // A class with random characters and no team default one is what the engine asserts on.
+  assert_eq!(resolve(&partners, "loner"), ["lone"]);
+  assert!(!is_resolvable("loner"));
+  // A class only a `no_random` character has picks nothing.
+  assert!(!is_resolvable("story_class"));
+
+  Ok(())
+}
+
+#[test]
 fn lists_start_then_actor_then_info_portion_dialogs_with_every_way_each_is_offered() -> XrfResult {
   let partners: DialogPartners = read_shipped("offers")?;
   let offers: IndexMap<String, Vec<DialogOffer>> = partners.list_offers(profile(&partners, "snag"));
@@ -159,7 +207,7 @@ fn lists_start_then_actor_then_info_portion_dialogs_with_every_way_each_is_offer
       }
     ]
   );
-  assert!(partners.get_info_dialogs()["no_dialogs"].is_empty());
+  assert!(partners.get_info_portions()["no_dialogs"].get_dialogs().is_empty());
 
   Ok(())
 }
@@ -312,7 +360,11 @@ fn keeps_the_first_declaration_of_an_info_portion_even_when_it_opens_nothing() -
     ],
   )?;
 
-  assert!(partners.get_info_dialogs()["x"].is_empty());
+  assert!(partners.get_info_portions()["x"].get_dialogs().is_empty());
+  assert_eq!(
+    partners.get_info_portions()["x"].get_logical_path(),
+    r"configs\gameplay\info_a.xml"
+  );
   assert_eq!(partners.get_findings().len(), 1);
   assert!(partners.get_findings()[0].message.starts_with("Info portion 'x'"));
 

@@ -8,6 +8,7 @@ use crate::partner::dialog_partner_text::DialogPartnerText;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DialogProfile {
   id: String,
+  logical_path: String,
   specific_character: Option<String>,
   class: Option<String>,
 }
@@ -19,12 +20,14 @@ impl DialogProfile {
   const SPECIFIC_CHARACTER_ELEMENT: &'static str = "specific_character";
   const CLASS_ELEMENT: &'static str = "class";
 
-  /// Read one profile `character`, or `None` for one with no id or an empty one, which the engine skips.
-  pub(crate) fn read(element: &XmlElementSpan) -> Option<Self> {
+  /// Read one profile `character` of the file at a logical path, or `None` for one with no id or an empty one, which the
+  /// engine skips.
+  pub(crate) fn read(element: &XmlElementSpan, logical_path: &str) -> Option<Self> {
     let id: &str = element.attribute(Self::ID_ATTRIBUTE).filter(|id| !id.is_empty())?;
 
     Some(Self {
       id: id.to_owned(),
+      logical_path: logical_path.to_owned(),
       specific_character: DialogPartnerText::first(element, Self::SPECIFIC_CHARACTER_ELEMENT),
       class: DialogPartnerText::first(element, Self::CLASS_ELEMENT).map(|class| class.to_lowercase()),
     })
@@ -33,6 +36,11 @@ impl DialogProfile {
   /// The id `profile_name()` answers for an NPC spawned with this profile.
   pub fn get_id(&self) -> &str {
     &self.id
+  }
+
+  /// The logical path of the file declaring the profile.
+  pub fn get_logical_path(&self) -> &str {
+    &self.logical_path
   }
 
   /// The character every NPC of this profile is, when the profile pins one.

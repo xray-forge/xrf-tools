@@ -8556,6 +8556,7 @@ name = "xrf-gamedata"
 version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
+ "indexmap 2.14.2",
  "serde",
  "serde_json",
  "specta",
@@ -8564,6 +8565,7 @@ dependencies = [
  "xrf-anm",
  "xrf-chunk",
  "xrf-dds",
+ "xrf-dialog",
  "xrf-engine-target",
  "xrf-enum-derive",
  "xrf-environment",

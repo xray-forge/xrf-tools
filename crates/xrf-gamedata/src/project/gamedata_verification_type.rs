@@ -7,6 +7,7 @@ use xrf_error::XrfError;
 use crate::project::animations::animations_verifier::AnimationsVerifier;
 use crate::project::collisions::collisions_verifier::CollisionsVerifier;
 use crate::project::coverage::coverage_verifier::CoverageVerifier;
+use crate::project::dialogs::dialogs_verifier::DialogsVerifier;
 use crate::project::environment::environment_verifier::EnvironmentVerifier;
 use crate::project::gamedata_check::GamedataCheck;
 use crate::project::gamedata_project::GamedataProject;
@@ -38,6 +39,9 @@ pub enum GamedataVerificationType {
   Coverage,
   #[display("animations")]
   Animations,
+  /// Every dialog as the engine opens it, and the characters, profiles, info portions and logic sections offering one.
+  #[display("dialogs")]
+  Dialogs,
   /// Everything under `configs\environment` the engine reads, and the textures its keyframes name.
   #[display("environment")]
   Environment,
@@ -70,8 +74,9 @@ pub enum GamedataVerificationType {
 
 impl GamedataVerificationType {
   /// Every check a caller can select, which is every kind of authored asset.
-  pub const ALL: [Self; 14] = [
+  pub const ALL: [Self; 15] = [
     Self::Animations,
+    Self::Dialogs,
     Self::Environment,
     Self::Levels,
     Self::Ltx,
@@ -101,6 +106,7 @@ impl GamedataVerificationType {
       Self::Collisions => self.run_check::<CollisionsVerifier<'_>>(project, options),
       Self::Coverage => self.run_check::<CoverageVerifier<'_>>(project, options),
       Self::Animations => self.run_check::<AnimationsVerifier<'_>>(project, options),
+      Self::Dialogs => self.run_check::<DialogsVerifier<'_>>(project, options),
       Self::Environment => self.run_check::<EnvironmentVerifier<'_>>(project, options),
       Self::Levels => self.run_check::<LevelsVerifier<'_>>(project, options),
       Self::Ltx => self.run_check::<LtxVerifier<'_>>(project, options),

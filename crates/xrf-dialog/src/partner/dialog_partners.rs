@@ -8,8 +8,9 @@ use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
 use xrf_xml::{XmlElementSpan, XmlEngineSource, XmlSourceDocument};
 
 use crate::partner::dialog_character::DialogCharacter;
+use crate::partner::dialog_info_portion::DialogInfoPortion;
 use crate::partner::dialog_offer::DialogOffer;
-use crate::partner::dialog_partner_text::DialogPartnerText;
+use crate::partner::dialog_partner_files::DialogPartnerFiles;
 use crate::partner::dialog_profile::DialogProfile;
 use crate::project::dialog_finding::DialogFinding;
 
@@ -24,7 +25,7 @@ type PartnerReader = fn(&mut DialogPartners, &XmlElementSpan, &str);
 pub struct DialogPartners {
   characters: IndexMap<String, DialogCharacter>,
   profiles: IndexMap<String, DialogProfile>,
-  info_dialogs: IndexMap<String, Vec<String>>,
+  info_portions: IndexMap<String, DialogInfoPortion>,
   findings: Vec<DialogFinding>,
 }
 
@@ -34,16 +35,35 @@ impl DialogPartners {
   /// The finding a second declaration of an id becomes.
   pub const DUPLICATE_RULE: &'static str = "dialog.partner-duplicate";
 
-  // todo: Read the files `system.ltx` lists under `[profiles]` and `[info_portions]` instead of matching file names.
+  // todo: Have `dialog list` read the files `system.ltx` lists through `from_listed` instead of matching file names.
   const CHARACTERS_FILE_PREFIX: &'static str = "character_desc";
   const PROFILES_FILE_PREFIX: &'static str = "npc_profile";
   const INFO_PORTIONS_FILE_PREFIX: &'static str = "info_";
 
-  const INFO_PORTION_ELEMENT: &'static str = "info_portion";
-  const INFO_PORTION_ID_ATTRIBUTE: &'static str = "id";
-  const INFO_PORTION_DIALOG_ELEMENT: &'static str = "dialog";
+  /// Read exactly the partner files `system.ltx` lists under a prefix, in list order, as the engine's id index does.
+  ///
+  /// A listed file that is missing or does not read becomes a finding.
+  pub fn from_listed(search: &XraySearch, prefix: &str, files: &DialogPartnerFiles) -> Self {
+    let mut partners: Self = Self::default();
 
-  /// Read every character description, profile list and info portion file a search reaches under a prefix.
+    partners.read_listed(search, prefix, &files.characters, Self::read_characters);
+    partners.read_listed(search, prefix, &files.profiles, Self::read_profiles);
+    partners.read_listed(search, prefix, &files.info_portions, Self::read_info_portions);
+
+    partners
+  }
+
+  /// Read the files of one list, each a name under the prefix without its extension.
+  fn read_listed(&mut self, search: &XraySearch, prefix: &str, names: &[String], reader: PartnerReader) {
+    for name in names {
+      let logical_path: String = format!("{prefix}\\{name}.{}", XrayExtension::Xml);
+
+      self.read_file(search, &logical_path, search.read(&logical_path), reader);
+    }
+  }
+
+  /// Read every character description, profile list and info portion file a search reaches under a prefix, choosing
+  /// them by name, for a tree whose `system.ltx` lists none.
   ///
   /// # Errors
   ///
@@ -82,20 +102,25 @@ impl DialogPartners {
         continue;
       }
 
-      let document: XrfResult<XmlSourceDocument> =
-        source.and_then(|source| XmlEngineSource::parse(&source, &mut |path| search.read(path)));
-
-      match document {
-        Ok(document) => reader(&mut partners, document.root(), logical_path),
-        Err(error) => partners.findings.push(DialogFinding::new(
-          Self::UNREADABLE_RULE,
-          Some(logical_path.to_owned()),
-          error.to_string(),
-        )),
-      }
+      partners.read_file(search, logical_path, source, reader);
     }
 
     Ok(partners)
+  }
+
+  /// Parse one partner file with its includes spliced in and hand its root to a reader, or record why it did not read.
+  fn read_file(&mut self, search: &XraySearch, logical_path: &str, source: XrfResult<Vec<u8>>, reader: PartnerReader) {
+    let document: XrfResult<XmlSourceDocument> =
+      source.and_then(|source| XmlEngineSource::parse(&source, &mut |path| search.read(path)));
+
+    match document {
+      Ok(document) => reader(self, document.root(), logical_path),
+      Err(error) => self.findings.push(DialogFinding::new(
+        Self::UNREADABLE_RULE,
+        Some(logical_path.to_owned()),
+        error.to_string(),
+      )),
+    }
   }
 
   /// Specific characters by id, in the order their files were read.
@@ -109,8 +134,8 @@ impl DialogPartners {
   }
 
   /// Every info portion by id, with the dialogs it opens with every NPC, which for most is none.
-  pub fn get_info_dialogs(&self) -> &IndexMap<String, Vec<String>> {
-    &self.info_dialogs
+  pub fn get_info_portions(&self) -> &IndexMap<String, DialogInfoPortion> {
+    &self.info_portions
   }
 
   pub fn get_findings(&self) -> &[DialogFinding] {
@@ -142,6 +167,22 @@ impl DialogPartners {
       .collect()
   }
 
+  /// Whether an NPC of a profile can be spawned at all, as `CSE_ALifeTraderAbstract::specific_character` decides.
+  ///
+  /// A pinned character has to be declared. A profile picking by class falls back to a `team_default` character of the
+  /// class when rank, reputation and characters already in use rule the others out, and the engine asserts on a class
+  /// without one, so at least one has to be there whether or not the fallback is ever taken.
+  pub fn is_profile_resolvable(&self, profile: &DialogProfile) -> bool {
+    if profile.get_specific_character().is_some() {
+      return !self.resolve_profile(profile).is_empty();
+    }
+
+    self
+      .resolve_profile(profile)
+      .iter()
+      .any(|character| character.is_team_default())
+  }
+
   /// Every dialog that reaches the actor when it talks to an NPC of a profile, with each way it does.
   ///
   /// Start dialogs come first, then the characters' actor dialogs, then the dialogs of info portions, each in
@@ -166,8 +207,8 @@ impl DialogPartners {
       }
     }
 
-    for (info, dialogs) in &self.info_dialogs {
-      for dialog in dialogs {
+    for (info, portion) in &self.info_portions {
+      for dialog in portion.get_dialogs() {
         offers
           .entry(dialog.clone())
           .or_default()
@@ -194,7 +235,7 @@ impl DialogPartners {
   fn read_characters(&mut self, root: &XmlElementSpan, logical_path: &str) {
     for character in root
       .children_named(DialogCharacter::ELEMENT)
-      .filter_map(DialogCharacter::read)
+      .filter_map(|element| DialogCharacter::read(element, logical_path))
     {
       let id: String = character.get_id().to_owned();
 
@@ -212,7 +253,7 @@ impl DialogPartners {
   fn read_profiles(&mut self, root: &XmlElementSpan, logical_path: &str) {
     for profile in root
       .children_named(DialogProfile::ELEMENT)
-      .filter_map(DialogProfile::read)
+      .filter_map(|element| DialogProfile::read(element, logical_path))
     {
       let id: String = profile.get_id().to_owned();
 
@@ -228,20 +269,19 @@ impl DialogPartners {
   }
 
   fn read_info_portions(&mut self, root: &XmlElementSpan, logical_path: &str) {
-    for element in root.children_named(Self::INFO_PORTION_ELEMENT) {
-      let Some(id) = element.attribute(Self::INFO_PORTION_ID_ATTRIBUTE) else {
-        continue;
-      };
-
-      let dialogs: Vec<String> = DialogPartnerText::all(element, Self::INFO_PORTION_DIALOG_ELEMENT);
+    for portion in root
+      .children_named(DialogInfoPortion::ELEMENT)
+      .filter_map(|element| DialogInfoPortion::read(element, logical_path))
+    {
+      let id: String = portion.get_id().to_owned();
 
       // Kept whether it opens anything or not, so a later declaration of the id is a duplicate either way.
       Self::insert(
-        &mut self.info_dialogs,
+        &mut self.info_portions,
         &mut self.findings,
         "Info portion",
-        id.to_owned(),
-        dialogs,
+        id,
+        portion,
         logical_path,
       );
     }

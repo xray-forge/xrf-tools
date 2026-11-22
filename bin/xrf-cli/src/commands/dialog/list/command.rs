@@ -134,6 +134,15 @@ impl ListCommand {
       )));
     }
 
+    if !partners.is_profile_resolvable(profile) {
+      return Err(XrfError::new_not_found_error(format!(
+        "Profile '{}' picks by class '{}', which no team_default character has, so the engine cannot spawn one{}",
+        profile.get_id(),
+        profile.get_class().unwrap_or_default(),
+        Self::describe_unread(&partners)
+      )));
+    }
+
     let offers: IndexMap<String, Vec<DialogOffer>> = partners.list_offers(profile);
     let mut dialogs: Vec<DialogListEntry> = Vec::with_capacity(offers.len());
 

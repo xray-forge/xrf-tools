@@ -82,3 +82,18 @@ fn refuses_a_profile_the_tree_does_not_declare() -> CommandResult {
 
   Ok(())
 }
+
+/// The engine asserts spawning an NPC whose profile picks by a class no `team_default` character has.
+#[test]
+fn refuses_a_class_profile_without_a_team_default_character() -> CommandResult {
+  let root: PathBuf = create_tree("list_no_team_default")?;
+  let error: String = run_for_result(&ListCommand, &root, &["--profile", "loner"])
+    .unwrap_err()
+    .message();
+
+  assert!(error.contains("which no team_default character has"), "{error}");
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
