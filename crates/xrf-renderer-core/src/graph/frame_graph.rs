@@ -59,6 +59,11 @@ impl<'a> FrameGraph<'a> {
     self.push_buffer(descriptor, true)
   }
 
+  /// Tags `texture` for whoever reads the graph's report, which carries each tag beside it; the graph reads none.
+  pub fn tag_texture(&mut self, texture: GraphTexture, tag: &'static str) {
+    self.textures[texture.get_index()].tags.push(tag);
+  }
+
   /// Starts an encode group: the passes declared after it are recorded into an encoder of their own.
   pub fn begin_group(&mut self, name: &'static str) {
     self.groups.push(name);
@@ -121,6 +126,8 @@ impl<'a> FrameGraph<'a> {
       descriptor,
       is_imported,
       usage: wgpu::TextureUsages::empty(),
+      owner: self.owner,
+      tags: Vec::new(),
     });
 
     GraphTexture::new(self.textures.len() - 1)

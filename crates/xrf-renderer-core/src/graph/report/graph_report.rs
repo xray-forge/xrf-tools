@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::graph::report::graph_pass_report::GraphPassReport;
+use crate::graph::report::graph_texture_report::GraphTextureReport;
 use crate::graph::report::graph_transient_report::GraphTransientReport;
 
 /// What a compile made of a frame graph: the passes that run and where, those culled, every texture the graph names,
@@ -12,8 +13,8 @@ pub struct GraphReport {
   pub culled: Vec<String>,
   pub groups: Vec<String>,
   pub render_pass_count: usize,
-  /// The label of each texture the graph names, imported or transient, in the order they were named.
-  pub textures: Vec<String>,
+  /// Each texture the graph names, imported or transient, in the order they were named.
+  pub textures: Vec<GraphTextureReport>,
   pub transients: Vec<GraphTransientReport>,
   /// Bytes the transients would take apart.
   pub transient_bytes: u64,

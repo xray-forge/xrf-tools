@@ -24,8 +24,8 @@ pub use crate::graph::{
   ExecutedGroup, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor,
   GraphColorAttachment, GraphCompileOptions, GraphDeclaration, GraphDepthAttachment, GraphOwner, GraphPassKind,
   GraphPassReport, GraphPassTime, GraphReport, GraphResolvedTexture, GraphRuntime, GraphTaggedTime, GraphTexture,
-  GraphTextureAccess, GraphTextureDescriptor, GraphTimer, GraphTransientReport, PassMarker, RasterContext,
-  RasterPassBuilder, TransientBufferKey, TransientPool, TransientSlot, TransientTextureKey,
+  GraphTextureAccess, GraphTextureDescriptor, GraphTextureReport, GraphTimer, GraphTransientReport, PassMarker,
+  RasterContext, RasterPassBuilder, TransientBufferKey, TransientPool, TransientSlot, TransientTextureKey,
 };
 pub use crate::param::{
   AccelerationStructureBinding, BindGroupCache, PassBinding, PassBindingLayout, PassParameters, PassResources,

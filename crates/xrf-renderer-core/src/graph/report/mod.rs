@@ -3,9 +3,11 @@
 mod graph_pass_kind;
 mod graph_pass_report;
 mod graph_report;
+mod graph_texture_report;
 mod graph_transient_report;
 
 pub use graph_pass_kind::GraphPassKind;
 pub use graph_pass_report::GraphPassReport;
 pub use graph_report::GraphReport;
+pub use graph_texture_report::GraphTextureReport;
 pub use graph_transient_report::GraphTransientReport;

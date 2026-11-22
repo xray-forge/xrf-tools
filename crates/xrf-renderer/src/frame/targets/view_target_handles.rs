@@ -1,5 +1,6 @@
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture, GraphTextureDescriptor};
 
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::targets::view_target_uses::ViewTargetUses;
 use crate::frame::targets::view_targets::ViewTargets;
 
@@ -34,7 +35,8 @@ pub(crate) struct ViewTargetHandles {
 }
 
 impl ViewTargetHandles {
-  /// Imports the targets the view keeps and makes the frame's own by `uses`, `none` standing in for what is not made.
+  /// Imports the targets the view keeps and makes the frame's own by `uses`, `none` standing in for what is not made,
+  /// and tags those the view draws in its screen space as carrying the frame's jitter (`JitterGuard::JITTERED`).
   pub(crate) fn import<'r>(
     graph: &mut FrameGraph<'_>,
     bindings: &mut GraphBindings<'r>,
@@ -59,7 +61,7 @@ impl ViewTargetHandles {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
 
-    Self {
+    let handles: Self = Self {
       size: (width, height),
       albedo,
       normal,
@@ -96,7 +98,28 @@ impl ViewTargetHandles {
       } else {
         [no_bloom; 2]
       },
+    };
+    // What the view draws in its own screen space, at its size or half of it, under the frame's jitter; not the
+    // placeholders, nor the haze and the bloom, made at a fixed size from what was drawn.
+    let drawn: Vec<GraphTexture> = handles
+      .get_gbuffer()
+      .into_iter()
+      .chain([
+        handles.depth,
+        handles.light,
+        handles.scene,
+        handles.distortion,
+        handles.high,
+      ])
+      .chain(handles.specular)
+      .chain(uses.is_occluded.then_some(handles.occlusion).into_iter().flatten())
+      .collect();
+
+    for texture in drawn {
+      graph.tag_texture(texture, JitterGuard::JITTERED);
     }
+
+    handles
   }
 
   /// The G-buffer's colour targets, in the order its draws attach them.

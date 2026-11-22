@@ -31,8 +31,8 @@ Compiling the graph:
 - cuts the frame into encode groups.
 
 The graph is declared, not discovered: passes run in declaration order and are never reordered. What it culled, merged
-and pooled is in its report (`CompiledGraph::describe`), with each pass's reads, writes and tags, so a renderer can check
-the frame it declared. Compiling needs no device:
+and pooled is in its report (`CompiledGraph::describe`), with each pass's reads, writes and tags and each texture's
+owner and tags, so a renderer can check the frame it declared. Compiling needs no device:
 
 ```rust
 use xrf_renderer_core::{
@@ -107,16 +107,16 @@ Walking back from the last pass, a pass survives when it:
 
 ### Tags, bridges and diagnostics
 
-- `tag` attaches a `&'static str` to a pass in the report (`GraphPassReport::tags`) for checks over the declared frame;
-  the graph itself reads none.
+- `tag` attaches a `&'static str` to a pass in the report (`GraphPassReport::tags`), and `FrameGraph::tag_texture` one to
+  a texture (`GraphTextureReport::tags`), for checks over the declared frame; the graph itself reads none.
 - A **bridge** is an encoder pass marked `bridge` that opens its own render and compute passes. Its accesses are
   declared by hand and cannot be checked. It is never culled, and the report names it, so what is left to convert
   stays visible.
 - `GraphCompileOptions` turns culling, pooling, merging and grouping off one at a time, or all at once (`serial()`), to
   bisect a difference in a capture.
 - `CompiledGraph::describe` returns a `GraphReport`: the passes, their render passes and groups, the textures each
-  reads and writes, the culled passes, every texture's label, and the transients with their slots and sizes. It
-  serializes to JSON.
+  reads and writes, the culled passes, every texture's label, tags and the owner it was declared under, and the
+  transients with their slots and sizes. It serializes to JSON.
 
 ## Execute a frame
 

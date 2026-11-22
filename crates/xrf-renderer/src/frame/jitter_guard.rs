@@ -1,23 +1,27 @@
 #[cfg(debug_assertions)]
-use std::collections::{HashMap, HashSet};
+use xrf_renderer_core::{GraphPassReport, GraphReport};
 
 #[cfg(debug_assertions)]
-use xrf_renderer_core::{GraphOwner, GraphPassReport, GraphReport};
-
-/// A pass after a view's temporal resolve that reads a texture the view drew before it, by their labels.
+use crate::frame::jitter_guard::jitter_walk::JitterWalk;
 #[cfg(debug_assertions)]
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct JitteredRead {
-  pub pass: String,
-  pub texture: String,
-}
+use crate::frame::jitter_guard::jittered_read::JitteredRead;
 
-/// Watches each frame's graph for what undoes a temporal resolve: a pass after it reading per pixel what the view drew
-/// before it, at the drawn size and jittered a little differently each frame, which the resolve exists to average away.
-/// Such a read puts the jitter back on screen as shimmer, so whatever reads the frame after the resolve reads what it
-/// resolved. It reads the passes' tags: the resolves carry `RESOLVES`, and a pass whose read of a drawn texture averages
-/// it or only shows it carries that texture's `READS_*` tag, beside the reason it gives. Every build tags its passes;
-/// only a build with debug assertions watches.
+#[cfg(debug_assertions)]
+mod jitter_walk;
+#[cfg(debug_assertions)]
+pub(crate) mod jittered_read;
+
+/// Watches each frame's graph for what undoes a temporal resolve: a pass after it reading per pixel what carries the
+/// view's jitter, drawn in its screen space jittered a little differently each frame, which the resolve exists to
+/// average away. Such a read puts the jitter back on screen as shimmer, so whatever reads the frame after the resolve
+/// reads what it resolved.
+///
+/// The jitter starts in the view's own targets, tagged `JITTERED`, and is followed through the passes in order: before
+/// the view's resolve, a pass reading a jittered texture of the view, or a raster pass drawing into one, makes all it
+/// writes jittered too; the resolve, tagged `RESOLVES`, writes nothing jittered; after it, a read of a jittered texture
+/// is found unless the pass carries that texture's `READS_*` tag, beside the reason it gives, and a pass drawing a
+/// jittered texture anew without reading it leaves it unjittered. Every build tags its textures and passes; only a
+/// build with debug assertions watches.
 #[derive(Default)]
 pub(crate) struct JitterGuard {
   /// What was last warned of, warned again only once it changes.
@@ -26,6 +30,8 @@ pub(crate) struct JitterGuard {
 }
 
 impl JitterGuard {
+  /// The tag of a texture a view draws in its own screen space under the frame's jitter.
+  pub(crate) const JITTERED: &'static str = "jittered";
   /// The tag of a pass resolving a view's frame: TAA, DLSS, its ray reconstruction, or FSR's accumulation, after its
   /// stages preparing what it accumulates.
   pub(crate) const RESOLVES: &'static str = "jitter resolves";
@@ -82,52 +88,18 @@ impl JitterGuard {
     }
   }
 
-  /// The reads after each view's resolve of what the view drew before it, its own passes' and the window's, but those
-  /// a pass's tags allow; sorted, each once. A texture a pass after the resolve draws anew, reading none of it, is no
-  /// longer the jittered one.
+  /// The reads after each view's resolve of what carries its jitter, its own passes' and the window's, but those a
+  /// pass's tags allow; sorted, each once.
   pub(crate) fn list_jittered_reads(report: &GraphReport) -> Vec<JitteredRead> {
-    // What each view drew before its resolve, and whether it has resolved.
-    let mut views: HashMap<GraphOwner, (HashSet<usize>, bool)> = HashMap::new();
+    let mut walk: JitterWalk = JitterWalk::of(report);
     let mut reads: Vec<JitteredRead> = Vec::new();
 
     for pass in &report.passes {
-      let mut jittered: Vec<usize> = Vec::new();
-
-      if pass.owner == GraphOwner::Frame {
-        jittered.extend(
-          views
-            .values()
-            .filter(|(_, is_resolved)| *is_resolved)
-            .flat_map(|(drawn, _)| pass.reads.iter().copied().filter(|texture| drawn.contains(texture))),
-        );
-      } else {
-        let (drawn, is_resolved) = views.entry(pass.owner).or_default();
-
-        if !*is_resolved {
-          if pass.tags.contains(&Self::RESOLVES) {
-            *is_resolved = true;
-
-            for texture in &pass.writes {
-              drawn.remove(texture);
-            }
-          } else {
-            drawn.extend(pass.writes.iter().copied());
-          }
-
-          continue;
-        }
-
-        jittered.extend(pass.reads.iter().copied().filter(|texture| drawn.contains(texture)));
-
-        for texture in pass.writes.iter().filter(|texture| !pass.reads.contains(texture)) {
-          drawn.remove(texture);
-        }
-      }
-
       reads.extend(
-        jittered
+        walk
+          .step(pass)
           .into_iter()
-          .map(|texture| report.textures[texture].as_str())
+          .map(|texture| report.textures[texture].label.as_str())
           .filter(|texture| !Self::is_allowed(pass, texture))
           .map(|texture| JitteredRead {
             pass: pass.name.clone(),

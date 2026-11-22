@@ -15,7 +15,7 @@ use crate::graph::frame_graph::FrameGraph;
 use crate::graph::graph_owner::GraphOwner;
 use crate::graph::pool::{AttachmentViewCache, TransientBufferKey, TransientPool, TransientTextureKey};
 use crate::graph::record::{GraphBufferRecord, GraphPassWork, GraphTextureRecord};
-use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
+use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTextureReport, GraphTransientReport};
 use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
 use crate::graph::timing::{GroupStamps, TimedPass};
 use crate::param::BindGroupCache;
@@ -139,7 +139,11 @@ impl<'a> CompiledGraph<'a> {
       textures: self
         .textures
         .iter()
-        .map(|texture| texture.descriptor.label.to_string())
+        .map(|texture| GraphTextureReport {
+          label: texture.descriptor.label.to_string(),
+          owner: texture.owner,
+          tags: texture.tags.clone(),
+        })
         .collect(),
       transient_bytes: transients.iter().map(|transient| transient.bytes).sum(),
       pooled_count: pooled_textures.len() + pooled_buffers.len(),
