@@ -40,6 +40,15 @@ pub enum GamedataVerificationRule {
   /// A specific character marked both `no_random` and `team_default`, which the engine asserts on loading it.
   #[display("dialog.character-flags")]
   DialogCharacterFlags,
+  /// A second declaration of a dialog, character, profile or info portion id, which the engine's id index skips.
+  #[display("dialog.duplicate")]
+  DialogDuplicate,
+  /// A dialog, character or profile file `system.ltx` lists that the tree does not hold, which the engine asserts on.
+  #[display("dialog.file-missing")]
+  DialogFileMissing,
+  /// A dialog or partner file `system.ltx` does not list, so the engine never loads what it declares.
+  #[display("dialog.file-unlisted")]
+  DialogFileUnlisted,
   /// A `wounded` logic section's `help_dialog` naming a dialog no dialog file declares, which leaves the NPC unhealable.
   #[display("dialog.heal-missing")]
   DialogHealMissing,
@@ -49,7 +58,8 @@ pub enum GamedataVerificationRule {
   /// A character or info portion offering a dialog no dialog file declares.
   #[display("dialog.offer-missing")]
   DialogOfferMissing,
-  /// A character, profile or info portion file that does not read, so what it declares goes unjudged.
+  /// A character, profile or info portion file that does not read, so what it declares goes unjudged, or a listed info
+  /// portion file the tree does not hold, which the engine skips.
   #[display("dialog.partner-unreadable")]
   DialogPartnerUnreadable,
   /// A dialog the engine cannot open: no phrase `0` in its phrase list, or no phrase list and no `init_func`.

@@ -5,10 +5,12 @@ use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
+use crate::dialog_listed_files::DialogListedFiles;
 use crate::project::descriptor::dialog_descriptor::DialogDescriptor;
 use crate::project::descriptor::dialog_project_descriptor::DialogProjectDescriptor;
 use crate::project::descriptor::dialog_reference_descriptor::DialogReferenceDescriptor;
 use crate::project::dialog_project::DialogProject;
+use crate::project::dialog_project_file::DialogProjectFile;
 use crate::project::dialog_project_layout::DialogProjectLayout;
 use crate::project::dialog_project_mode::DialogProjectMode;
 
@@ -240,6 +242,50 @@ fn opens_despite_one_unreadable_file_and_reports_it() -> XrfResult {
   assert_eq!(
     project.get_findings()[0].subject.as_deref(),
     Some(r"configs\gameplay\dialogs_broken.xml")
+  );
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+/// The engine reads only the files `[dialogs] files` lists, in list order, whatever the other files are named.
+#[test]
+fn opens_only_the_listed_dialog_files_in_list_order_and_reports_a_missing_one() -> XrfResult {
+  let root: PathBuf = create_gamedata("listed")?;
+  let gameplay: PathBuf = root.join("configs").join("gameplay");
+
+  fs::write(gameplay.join("dialogs_first.xml"), DIALOG)?;
+  fs::write(gameplay.join("dialogs_unlisted.xml"), DIALOG)?;
+
+  let listed: DialogListedFiles = DialogListedFiles {
+    dialogs: vec![
+      String::from("dialogs_first"),
+      String::from("dialogs"),
+      String::from("dialogs_gone"),
+    ],
+    ..DialogListedFiles::default()
+  };
+  let project: DialogProject = DialogProject::from_listed(
+    roots(&root).to_search_plan()?.open()?,
+    &roots(&root),
+    &DialogProjectLayout::new(DialogProjectMode::Gamedata),
+    &listed,
+  );
+
+  assert_eq!(
+    project
+      .get_files()
+      .iter()
+      .map(DialogProjectFile::get_logical_path)
+      .collect::<Vec<&str>>(),
+    [r"configs\gameplay\dialogs_first.xml", r"configs\gameplay\dialogs.xml"]
+  );
+  assert_eq!(project.get_findings().len(), 1);
+  assert_eq!(project.get_findings()[0].rule, DialogProject::MISSING_RULE);
+  assert_eq!(
+    project.get_findings()[0].subject.as_deref(),
+    Some(r"configs\gameplay\dialogs_gone.xml")
   );
 
   fs::remove_dir_all(root)?;

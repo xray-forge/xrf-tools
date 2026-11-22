@@ -143,8 +143,10 @@ fn main() -> xrf_error::XrfResult {
   spawn, so the offers are a superset.
 - Offers list start dialogs first, then the characters' actor dialogs, then dialogs opened by info portions. A dialog
   reached two ways lists both.
-- Files are chosen by name (`character_desc*`, `npc_profile*`, `info_*`) and read with `#include` lines expanded,
-  relative to `configs` as the engine's `$game_config$`. A file another one includes is read only through it.
+- `from_search` chooses files by name (`character_desc*`, `npc_profile*`, `info_*`); a file another one includes is
+  read only through it. `from_listed` reads exactly the files a `DialogListedFiles` names, as the engine reads the
+  `system.ltx` lists, and `DialogProject::from_listed` does the same for dialog files. Either way `#include` lines are
+  expanded relative to `configs`, the engine's `$game_config$`.
 
 ## Issues, findings and errors
 
@@ -158,18 +160,20 @@ A dialog with no phrases is not malformed: a script may build them at runtime.
 
 A project turns issues and unreadable files into `DialogFinding`s (`dialog.schema`, `dialog.unreadable`, and
 `dialog.text.*` and `dialog.text-unreadable` for its text) and keeps reading. `DialogPartners` reports an unreadable
-file and a repeated id (the engine keeps the first) the same way.
+file and a repeated id (the engine keeps the first) the same way. Read from lists, a listed file the tree does not hold
+is `dialog.missing` or `dialog.partner-missing`.
 
 File, encoding and XML failures of a single document return `Err`.
 
 ## Module map
 
-| Module         | Holds                                                                         |
-| -------------- | ----------------------------------------------------------------------------- |
-| `conversation` | One conversation as written: dialog, phrases, elements, parse issues          |
-| `dialog_file`  | One document and the source its ranges address, decoded by `dialog_source`    |
-| `project`      | A whole tree, its wire `descriptor`s, and the `text` tree lines resolve in    |
-| `partner`      | Characters, profiles and info portions deciding which dialogs reach the actor |
+| Module                | Holds                                                                         |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `conversation`        | One conversation as written: dialog, phrases, elements, parse issues          |
+| `dialog_file`         | One document and the source its ranges address, decoded by `dialog_source`    |
+| `dialog_listed_files` | The dialog and partner files `system.ltx` lists for the engine to load        |
+| `project`             | A whole tree, its wire `descriptor`s, and the `text` tree lines resolve in    |
+| `partner`             | Characters, profiles and info portions deciding which dialogs reach the actor |
 
 ## Checks
 

@@ -20,6 +20,8 @@ use crate::project::gamedata_project::GamedataProject;
 use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
+mod dialogs_verifier_files;
+
 /// The dialogs check: every dialog opens and walks as the engine loads it, and every character, profile, info portion
 /// and logic section offering one names what the tree declares.
 ///
@@ -51,22 +53,24 @@ impl<'a> GamedataCheck<'a> for DialogsVerifier<'a> {
 
     // The roots only describe the project; reading goes through the search every check shares.
     let roots: XrayRoots = XrayRoots::one(self.project.root().to_path_buf(), XrayMountMode::Auto);
-    let project: DialogProject = DialogProject::from_search(
-      search.clone(),
-      &roots,
-      &DialogProjectLayout::new(DialogProjectMode::Gamedata),
-    )?;
+    let layout: DialogProjectLayout = DialogProjectLayout::new(DialogProjectMode::Gamedata);
     let system_ltx: Arc<LtxResolution> = self.project.ltx_project.system_ltx()?;
     let system: DialogSystemConfig = DialogSystemConfig::read(&system_ltx.ltx);
-    let partners: DialogPartners = match &system.partner_files {
-      Some(files) => DialogPartners::from_listed(search, DialogProjectMode::DIALOGS_PREFIX, files),
+    let project: DialogProject = match &system.listed {
+      Some(listed) => DialogProject::from_listed(search.clone(), &roots, &layout, listed),
+      None => DialogProject::from_search(search.clone(), &roots, &layout)?,
+    };
+    let partners: DialogPartners = match &system.listed {
+      Some(listed) => DialogPartners::from_listed(search, DialogProjectMode::DIALOGS_PREFIX, listed),
       None => DialogPartners::from_search(search, DialogProjectMode::DIALOGS_PREFIX)?,
     };
     let declared: HashMap<&str, &Dialog> = Self::index_declared(&project);
 
     result.has_dialogs = true;
 
-    self.report_unread(&project, &partners, &mut result);
+    self.report_dialog_files(&project, system.listed.as_ref(), &mut result)?;
+    self.report_duplicate_dialogs(&project, &declared, &mut result);
+    self.report_partner_files(&partners, system.listed.as_ref(), &mut result)?;
     self.options.job.check_cancelled()?;
     self.verify_dialogs(&project, &declared, &mut result);
     self.options.job.check_cancelled()?;
@@ -100,39 +104,11 @@ impl DialogsVerifier<'_> {
     declared
   }
 
-  /// Files this check could not read, since what they declare goes unjudged. The reader is stricter than the engine's,
-  /// so the engine may well load them.
-  fn report_unread(
-    &self,
-    project: &DialogProject,
-    partners: &DialogPartners,
-    result: &mut GamedataDialogsVerificationResult,
-  ) {
-    for finding in project.get_findings() {
-      if finding.rule == DialogProject::UNREADABLE_RULE {
-        result.tolerate(
-          GamedataVerificationRule::DialogUnreadable,
-          &self.report_path(finding.subject.as_deref().unwrap_or_default()),
-          format!(
-            "Dialog file does not read, so its dialogs are not judged: {}",
-            finding.message
-          ),
-        );
-      }
-    }
-
-    for finding in partners.get_findings() {
-      if finding.rule == DialogPartners::UNREADABLE_RULE {
-        result.tolerate(
-          GamedataVerificationRule::DialogPartnerUnreadable,
-          &self.report_path(finding.subject.as_deref().unwrap_or_default()),
-          format!(
-            "Partner file does not read, so what it declares is not judged: {}",
-            finding.message
-          ),
-        );
-      }
-    }
+  /// Whether a dialog is the first declaration of its id, the one the engine reads.
+  fn is_declaration_read(declared: &HashMap<&str, &Dialog>, dialog: &Dialog) -> bool {
+    declared
+      .get(dialog.get_id())
+      .is_some_and(|first| std::ptr::eq(*first, dialog))
   }
 
   /// Each dialog's phrase graph as the engine builds it, and the lines of the phrases it reaches.
@@ -145,11 +121,7 @@ impl DialogsVerifier<'_> {
     for file in project.get_files() {
       for dialog in file.get_file().get_dialogs() {
         // A later declaration of an id is one the engine never reads.
-        let is_read: bool = declared
-          .get(dialog.get_id())
-          .is_some_and(|first| std::ptr::eq(*first, dialog));
-
-        if !is_read {
+        if !Self::is_declaration_read(declared, dialog) {
           continue;
         }
 

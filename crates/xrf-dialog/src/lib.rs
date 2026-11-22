@@ -2,6 +2,7 @@
 
 pub(crate) mod conversation;
 pub(crate) mod dialog_file;
+pub(crate) mod dialog_listed_files;
 pub(crate) mod dialog_source;
 pub(crate) mod partner;
 pub(crate) mod project;
@@ -13,10 +14,10 @@ pub use crate::conversation::dialog_parse_issue::DialogParseIssue;
 pub use crate::conversation::dialog_parse_issue_kind::DialogParseIssueKind;
 pub use crate::conversation::dialog_phrase::DialogPhrase;
 pub use crate::dialog_file::DialogFile;
+pub use crate::dialog_listed_files::DialogListedFiles;
 pub use crate::partner::dialog_character::DialogCharacter;
 pub use crate::partner::dialog_info_portion::DialogInfoPortion;
 pub use crate::partner::dialog_offer::DialogOffer;
-pub use crate::partner::dialog_partner_files::DialogPartnerFiles;
 pub use crate::partner::dialog_partners::DialogPartners;
 pub use crate::partner::dialog_profile::DialogProfile;
 pub use crate::project::descriptor::dialog_descriptor::DialogDescriptor;

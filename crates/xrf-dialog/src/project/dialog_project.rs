@@ -8,6 +8,7 @@ use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 use crate::conversation::dialog::Dialog;
 use crate::conversation::dialog_element::DialogElement;
 use crate::dialog_file::DialogFile;
+use crate::dialog_listed_files::DialogListedFiles;
 use crate::project::descriptor::dialog_descriptor::DialogDescriptor;
 use crate::project::descriptor::dialog_file_descriptor::DialogFileDescriptor;
 use crate::project::descriptor::dialog_project_descriptor::DialogProjectDescriptor;
@@ -38,6 +39,8 @@ pub struct DialogProject {
 impl DialogProject {
   /// The finding a dialog file that could not be read becomes.
   pub const UNREADABLE_RULE: &'static str = "dialog.unreadable";
+  /// The finding a listed dialog file the roots do not hold becomes.
+  pub const MISSING_RULE: &'static str = "dialog.missing";
 
   /// Open a project over roots, reading every dialog file it exposes under the layout prefix.
   ///
@@ -71,24 +74,36 @@ impl DialogProject {
     let mut findings: Vec<DialogFinding> = Vec::new();
 
     for asset in assets {
-      let logical_path: String = asset.get_logical_path().as_str().to_owned();
+      Self::read_into(&dialogs, &asset, &mut files, &mut findings);
+    }
 
-      match Self::read_asset(&dialogs, &asset) {
-        Ok(file) => {
-          for issue in file.get_issues() {
-            findings.push(DialogFinding::new(
-              "dialog.schema",
-              Some(logical_path.clone()),
-              issue.to_string(),
-            ));
-          }
+    Ok(Self::assemble(search, roots, layout, files, findings))
+  }
 
-          files.push(DialogProjectFile {
-            logical_path,
-            physical_path: asset.to_physical_path(),
-            file,
-          });
-        }
+  /// Open a project over exactly the dialog files `[dialogs] files` in `system.ltx` lists, in list order, as
+  /// `CPhraseDialog`'s id index reads them: each a name under the dialogs prefix without its `.xml`.
+  ///
+  /// A listed file the roots do not hold, or one that does not read, becomes a finding, as it does for
+  /// `DialogPartners::from_listed`, and a dialog file the list leaves out is not read, since the engine never loads it.
+  pub fn from_listed(
+    search: XraySearch,
+    roots: &XrayRoots,
+    layout: &DialogProjectLayout,
+    listed: &DialogListedFiles,
+  ) -> Self {
+    let mut files: Vec<DialogProjectFile> = Vec::new();
+    let mut findings: Vec<DialogFinding> = Vec::new();
+
+    for name in &listed.dialogs {
+      let logical_path: String = DialogListedFiles::resolve_logical_path(layout.get_dialogs_prefix(), name);
+
+      match search.find(&logical_path) {
+        Ok(Some(asset)) => Self::read_into(&search, &asset, &mut files, &mut findings),
+        Ok(None) => findings.push(DialogFinding::new(
+          Self::MISSING_RULE,
+          Some(logical_path),
+          format!("'{name}' is listed in system.ltx, but the tree holds no such file"),
+        )),
         Err(error) => findings.push(DialogFinding::new(
           Self::UNREADABLE_RULE,
           Some(logical_path),
@@ -97,6 +112,51 @@ impl DialogProject {
       }
     }
 
+    Self::assemble(search, roots, layout, files, findings)
+  }
+
+  /// Read one dialog file into the project's files, or record why it did not read.
+  fn read_into(
+    search: &XraySearch,
+    asset: &XrayAsset,
+    files: &mut Vec<DialogProjectFile>,
+    findings: &mut Vec<DialogFinding>,
+  ) {
+    let logical_path: String = asset.get_logical_path().as_str().to_owned();
+
+    match Self::read_asset(search, asset) {
+      Ok(file) => {
+        for issue in file.get_issues() {
+          findings.push(DialogFinding::new(
+            "dialog.schema",
+            Some(logical_path.clone()),
+            issue.to_string(),
+          ));
+        }
+
+        files.push(DialogProjectFile {
+          logical_path,
+          physical_path: asset.to_physical_path(),
+          file,
+        });
+      }
+      Err(error) => findings.push(DialogFinding::new(
+        Self::UNREADABLE_RULE,
+        Some(logical_path),
+        error.to_string(),
+      )),
+    }
+  }
+
+  /// The project over files already read, with the text tree their lines resolve from.
+  fn assemble(
+    search: XraySearch,
+    roots: &XrayRoots,
+    layout: &DialogProjectLayout,
+    files: Vec<DialogProjectFile>,
+    mut findings: Vec<DialogFinding>,
+  ) -> Self {
+    let dialogs_prefix: String = layout.get_dialogs_prefix().to_owned();
     let translations_prefix: String = layout.get_translations_prefix().to_owned();
     let text: DialogTextIndex = if layout.is_text_skipped {
       DialogTextIndex::default()
@@ -104,7 +164,7 @@ impl DialogProject {
       Self::read_text(&search, roots, layout.mode, &translations_prefix, &mut findings)
     };
 
-    Ok(Self {
+    Self {
       roots: roots.clone(),
       mode: layout.mode,
       dialogs_prefix,
@@ -113,7 +173,7 @@ impl DialogProject {
       files,
       text,
       findings,
-    })
+    }
   }
 
   /// Read the text tree the dialogs resolve their lines from, over the roots already mounted.

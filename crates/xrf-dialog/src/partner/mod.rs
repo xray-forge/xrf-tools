@@ -4,7 +4,6 @@
 pub(crate) mod dialog_character;
 pub(crate) mod dialog_info_portion;
 pub(crate) mod dialog_offer;
-pub(crate) mod dialog_partner_files;
 pub(crate) mod dialog_partner_text;
 pub(crate) mod dialog_partners;
 pub(crate) mod dialog_profile;

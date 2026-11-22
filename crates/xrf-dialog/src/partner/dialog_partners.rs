@@ -4,18 +4,24 @@ use indexmap::IndexMap;
 use indexmap::map::Entry;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
-use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
+use xrf_vfs::{XrayLogicalPath, XraySearch};
 use xrf_xml::{XmlElementSpan, XmlEngineSource, XmlSourceDocument};
 
+use crate::dialog_listed_files::DialogListedFiles;
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_info_portion::DialogInfoPortion;
 use crate::partner::dialog_offer::DialogOffer;
-use crate::partner::dialog_partner_files::DialogPartnerFiles;
 use crate::partner::dialog_profile::DialogProfile;
 use crate::project::dialog_finding::DialogFinding;
 
 /// Reads one partner file's root into the partners, given the file's logical path for findings.
 type PartnerReader = fn(&mut DialogPartners, &XmlElementSpan, &str);
+
+/// A file whose name marks it as holding partners, with the reader its name picks.
+struct NamedPartnerFile {
+  logical_path: String,
+  reader: PartnerReader,
+}
 
 /// The talk partners a game tree declares: characters, the profiles naming them, and the info portions opening dialogs.
 ///
@@ -32,6 +38,8 @@ pub struct DialogPartners {
 impl DialogPartners {
   /// The finding a file that could not be read becomes.
   pub const UNREADABLE_RULE: &'static str = "dialog.partner-unreadable";
+  /// The finding a listed file the tree does not hold becomes.
+  pub const MISSING_RULE: &'static str = "dialog.partner-missing";
   /// The finding a second declaration of an id becomes.
   pub const DUPLICATE_RULE: &'static str = "dialog.partner-duplicate";
 
@@ -42,8 +50,8 @@ impl DialogPartners {
 
   /// Read exactly the partner files `system.ltx` lists under a prefix, in list order, as the engine's id index does.
   ///
-  /// A listed file that is missing or does not read becomes a finding.
-  pub fn from_listed(search: &XraySearch, prefix: &str, files: &DialogPartnerFiles) -> Self {
+  /// A listed file the tree does not hold, or one that does not read, becomes a finding.
+  pub fn from_listed(search: &XraySearch, prefix: &str, files: &DialogListedFiles) -> Self {
     let mut partners: Self = Self::default();
 
     partners.read_listed(search, prefix, &files.characters, Self::read_characters);
@@ -56,7 +64,17 @@ impl DialogPartners {
   /// Read the files of one list, each a name under the prefix without its extension.
   fn read_listed(&mut self, search: &XraySearch, prefix: &str, names: &[String], reader: PartnerReader) {
     for name in names {
-      let logical_path: String = format!("{prefix}\\{name}.{}", XrayExtension::Xml);
+      let logical_path: String = DialogListedFiles::resolve_logical_path(prefix, name);
+
+      if matches!(search.find(&logical_path), Ok(None)) {
+        self.findings.push(DialogFinding::new(
+          Self::MISSING_RULE,
+          Some(logical_path),
+          format!("'{name}' is listed in system.ltx, but the tree holds no such file"),
+        ));
+
+        continue;
+      }
 
       self.read_file(search, &logical_path, search.read(&logical_path), reader);
     }
@@ -69,43 +87,65 @@ impl DialogPartners {
   ///
   /// Returns an error when the prefix is not a valid logical path.
   pub fn from_search(search: &XraySearch, prefix: &str) -> XrfResult<Self> {
+    let mut partners: Self = Self::default();
+
+    for file in Self::list_named(search, prefix)? {
+      partners.read_file(search, &file.logical_path, search.read(&file.logical_path), file.reader);
+    }
+
+    Ok(partners)
+  }
+
+  /// Every file under a prefix whose name marks it a character description, profile list or info portion file, in
+  /// engine-identity order, leaving out the parts another such file includes.
+  ///
+  /// These are the files a tree would declare partners in were every one of them listed, so a caller holding the
+  /// `system.ltx` lists can tell which ones the engine never loads.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the prefix is not a valid logical path.
+  pub fn list_named_files(search: &XraySearch, prefix: &str) -> XrfResult<Vec<String>> {
+    Ok(
+      Self::list_named(search, prefix)?
+        .into_iter()
+        .map(|file| file.logical_path)
+        .collect(),
+    )
+  }
+
+  fn list_named(search: &XraySearch, prefix: &str) -> XrfResult<Vec<NamedPartnerFile>> {
     // In engine-identity order rather than mount order, since the first of two declarations is the one kept.
-    let assets: Vec<XrayAsset> = search
+    let named: Vec<NamedPartnerFile> = search
       .clone()
       .with_prefix(prefix)?
       .list_files()
       .into_iter()
       .filter(|asset| asset.get_logical_path().has_extension(XrayExtension::Xml))
-      .collect();
-
-    let sources: Vec<(&str, PartnerReader, XrfResult<Vec<u8>>)> = assets
-      .iter()
       .filter_map(|asset| {
-        let logical_path: &str = asset.get_logical_path().as_str();
-
-        Self::find_reader(asset.get_logical_path().file_name())
-          .map(|reader| (logical_path, reader, search.read(logical_path)))
+        Self::find_reader(asset.get_logical_path().file_name()).map(|reader| NamedPartnerFile {
+          logical_path: asset.get_logical_path().as_str().to_owned(),
+          reader,
+        })
       })
       .collect();
 
     // A part another file includes is read through that file; Anomaly writes such parts without a root.
-    let included: HashSet<String> =
-      XmlEngineSource::list_included(sources.iter().filter_map(|(_, _, source)| source.as_deref().ok()))
+    let sources: Vec<Vec<u8>> = named
+      .iter()
+      .filter_map(|file| search.read(&file.logical_path).ok())
+      .collect();
+    let included: HashSet<String> = XmlEngineSource::list_included(sources.iter().map(Vec::as_slice))
+      .into_iter()
+      .filter_map(|path| XrayLogicalPath::normalize(&path).ok())
+      .collect();
+
+    Ok(
+      named
         .into_iter()
-        .filter_map(|path| XrayLogicalPath::normalize(&path).ok())
-        .collect();
-
-    let mut partners: Self = Self::default();
-
-    for (logical_path, reader, source) in sources {
-      if included.contains(logical_path) {
-        continue;
-      }
-
-      partners.read_file(search, logical_path, source, reader);
-    }
-
-    Ok(partners)
+        .filter(|file| !included.contains(&file.logical_path))
+        .collect(),
+    )
   }
 
   /// Parse one partner file with its includes spliced in and hand its root to a reader, or record why it did not read.

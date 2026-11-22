@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use xrf_report::{CheckId, CheckReport};
 use xrf_test_utils::GeneratedResources;
 
 use super::dialogs_verifier::DialogsVerifier;
@@ -12,7 +13,6 @@ use crate::project::gamedata_project::GamedataProject;
 use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
 use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::gamedata_verification_status::GamedataVerificationStatus;
-use xrf_report::{CheckId, CheckReport};
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 
@@ -47,6 +47,10 @@ const STRINGS: &str = r#"<string_table><string id="hello_0"><text>Hello.</text><
 
 /// A section spawning NPCs with the profile, which makes it one the engine has to resolve.
 const SYSTEM: &str = "[novice_spawn]\ncharacter_profile = novice\n";
+
+/// The `system.ltx` lists of a tree that names every file it holds.
+const LISTS: &str = "[dialogs]\nfiles = dialogs\n\n[profiles]\nfiles = npc_profile\n\
+                     specific_characters_files = character_desc_general\n\n[info_portions]\nfiles = info_portions\n";
 
 const LOGIC: &str =
   "[meet@talk]\nmeet_dialog = {+known} hello_dialog, nil\n\n[wounded@help]\nhelp_dialog = hello_dialog\n";
@@ -250,40 +254,112 @@ fn reports_a_profile_no_npc_can_be_spawned_with_and_fails_conflicting_character_
 #[test]
 fn reads_only_the_partner_files_system_ltx_lists() {
   let result: GamedataDialogsVerificationResult = DialogTree::new()
-    .with(
-      "configs/system.ltx",
-      &format!(
-        "{SYSTEM}\n[profiles]\nfiles = npc_profile\nspecific_characters_files = character_desc_general\n\n\
-         [info_portions]\nfiles = info_portions\n"
-      ),
-    )
+    .with("configs/system.ltx", &format!("{SYSTEM}\n{LISTS}"))
     .with(
       "configs/gameplay/character_desc_unlisted.xml",
       r#"<xml><specific_character id="stray"><actor_dialog>gone_dialog</actor_dialog></specific_character></xml>"#,
     )
     .verify();
 
-  assert_eq!(messages(&result), Vec::<&str>::new());
-  assert_eq!(judge_strictly(&result), GamedataVerificationStatus::Passed);
+  assert_eq!(rules(&result), ["dialog.file-unlisted"]);
+  assert_eq!(
+    messages(&result),
+    ["Partner file is not listed in system.ltx, so the engine never loads what it declares"]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
 }
 
+/// The engine loads only the dialog files `[dialogs] files` lists, so a dialog only an unlisted file declares is one
+/// it never has.
 #[test]
-fn reports_a_listed_partner_file_that_is_missing() {
+fn reads_only_the_dialog_files_system_ltx_lists() {
   let result: GamedataDialogsVerificationResult = DialogTree::new()
     .with(
       "configs/system.ltx",
-      &format!("{SYSTEM}\n[profiles]\nfiles = npc_profile\nspecific_characters_files = character_desc_general, gone\n"),
+      &format!("{SYSTEM}\n{}", LISTS.replace("files = dialogs", "files = dialogs_main")),
+    )
+    .with("configs/gameplay/dialogs_main.xml", DIALOGS)
+    .with(
+      "configs/gameplay/dialogs_stray.xml",
+      r#"<game_dialogs><dialog id="stray_dialog"><phrase_list><phrase id="0"/></phrase_list></dialog></game_dialogs>"#,
+    )
+    .with(
+      "configs/gameplay/info_portions.xml",
+      &INFO_PORTIONS.replace("hello_dialog", "stray_dialog"),
     )
     .verify();
 
-  assert_eq!(rules(&result), ["dialog.partner-unreadable"]);
+  assert_eq!(
+    messages(&result),
+    [
+      // The fixture's own `dialogs.xml` and the stray file, both left out of the list.
+      "Dialog file is not listed in [dialogs] files, so the engine never loads its dialogs",
+      "Dialog file is not listed in [dialogs] files, so the engine never loads its dialogs",
+      "Info portion 'known' opens dialog 'stray_dialog', which no dialog file declares",
+    ]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
+/// The engine asserts on a listed dialog, character or profile file it cannot find, and skips an info portion file.
+#[test]
+fn fails_a_listed_file_that_is_missing_and_reports_a_missing_info_portion_file() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with(
+      "configs/system.ltx",
+      &format!(
+        "{SYSTEM}\n{}",
+        LISTS
+          .replace("files = dialogs", "files = dialogs, dialogs_gone")
+          .replace("character_desc_general", "character_desc_general, character_desc_gone")
+          .replace("files = info_portions", "files = info_portions, info_gone")
+      ),
+    )
+    .verify();
+
+  assert_eq!(
+    rules(&result),
+    [
+      "dialog.file-missing",
+      "dialog.file-missing",
+      "dialog.partner-unreadable"
+    ]
+  );
+  assert_eq!(
+    messages(&result),
+    [
+      "Partner file is listed in system.ltx, but the tree does not hold it, which the engine asserts on",
+      "Dialog file is listed in [dialogs] files, but the tree does not hold it, which the engine asserts on",
+      "Info portion file is listed in system.ltx, but the tree does not hold it, so the engine skips it",
+    ]
+  );
   assert!(
     result.get_findings()[0]
       .subject()
-      .is_some_and(|subject| subject.ends_with("gone.xml")),
+      .is_some_and(|subject| subject.ends_with("character_desc_gone.xml")),
     "{:?}",
     result.get_findings()
   );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
+/// The engine's id index keeps the first declaration of an id and skips the rest with only a log line.
+#[test]
+fn reports_an_id_declared_twice() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with(
+      "configs/gameplay/npc_profile.xml",
+      r#"<xml><character id="novice"><class>novice</class></character>
+<character id="novice"><class>loner</class></character></xml>"#,
+    )
+    .verify();
+
+  assert_eq!(rules(&result), ["dialog.duplicate"]);
+  assert_eq!(
+    messages(&result),
+    ["Profile 'novice' is declared again, and the first declaration is the one the engine reads"]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
 }
 
 #[test]
@@ -326,7 +402,7 @@ fn fails_a_dialog_the_engine_cannot_open_or_walk() {
   assert_eq!(result.checked_dialogs_count, 5);
 }
 
-/// The engine reads the first declaration of an id, so a later one is not judged.
+/// The engine reads the first declaration of an id, so a later one is reported but not judged.
 #[test]
 fn judges_only_the_declaration_the_engine_reads() {
   let result: GamedataDialogsVerificationResult = DialogTree::new()
@@ -336,7 +412,11 @@ fn judges_only_the_declaration_the_engine_reads() {
     )
     .verify();
 
-  assert_eq!(messages(&result), Vec::<&str>::new());
+  assert_eq!(
+    messages(&result),
+    ["Dialog 'hello_dialog' is declared again, and the first declaration is the one the engine reads"]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
   assert_eq!(result.checked_dialogs_count, 2);
 }
 

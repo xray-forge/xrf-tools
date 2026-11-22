@@ -6,6 +6,7 @@ use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
+use crate::dialog_listed_files::DialogListedFiles;
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
 use crate::partner::dialog_partners::DialogPartners;
@@ -52,8 +53,8 @@ const INFO_PORTIONS: &str = r#"<game_information_portions>
 </game_information_portions>
 "#;
 
-/// Lay out a gameplay folder and read its partners.
-fn read_partners(name: &str, files: &[(&str, &str)]) -> XrfResult<DialogPartners> {
+/// Lay out a gameplay folder with the shared character include beside the given files, and return its root.
+fn lay_out(name: &str, files: &[(&str, &str)]) -> XrfResult<PathBuf> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("partner/{name}"))?;
   let gameplay: PathBuf = root.join("configs").join("gameplay");
 
@@ -64,6 +65,12 @@ fn read_partners(name: &str, files: &[(&str, &str)]) -> XrfResult<DialogPartners
     fs::write(gameplay.join(file), content)?;
   }
 
+  Ok(root)
+}
+
+/// Lay out a gameplay folder and read its partners, choosing the files by name.
+fn read_partners(name: &str, files: &[(&str, &str)]) -> XrfResult<DialogPartners> {
+  let root: PathBuf = lay_out(name, files)?;
   let partners: DialogPartners = DialogPartners::from_search(&open(&root)?, DialogProjectMode::DIALOGS_PREFIX)?;
 
   fs::remove_dir_all(root)?;
@@ -288,6 +295,72 @@ fn reports_a_file_it_cannot_read_and_reads_the_rest() -> XrfResult {
   assert_eq!(partners.get_findings().len(), 1);
   assert_eq!(partners.get_findings()[0].rule, "dialog.partner-unreadable");
   assert!(partners.get_findings()[0].message.contains("missing.xml"));
+
+  Ok(())
+}
+
+/// The engine reads only the files `system.ltx` lists, so a file the lists leave out declares nothing.
+#[test]
+fn reads_only_the_listed_files_and_reports_a_missing_one() -> XrfResult {
+  let root: PathBuf = lay_out(
+    "listed",
+    &[
+      ("character_desc_zaton.xml", CHARACTERS),
+      ("npc_profile.xml", PROFILES),
+      (
+        "npc_profile_unlisted.xml",
+        r#"<xml><character id="stray"><class>novice</class></character></xml>"#,
+      ),
+    ],
+  )?;
+  let listed: DialogListedFiles = DialogListedFiles {
+    characters: vec![String::from("character_desc_zaton")],
+    profiles: vec![String::from("npc_profile"), String::from("npc_profile_gone")],
+    ..DialogListedFiles::default()
+  };
+  let partners: DialogPartners = DialogPartners::from_listed(&open(&root)?, DialogProjectMode::DIALOGS_PREFIX, &listed);
+
+  fs::remove_dir_all(root)?;
+
+  assert!(partners.find_profile("snag").is_some());
+  assert!(partners.find_profile("stray").is_none());
+  assert_eq!(partners.get_findings().len(), 1);
+  assert_eq!(partners.get_findings()[0].rule, DialogPartners::MISSING_RULE);
+  assert_eq!(
+    partners.get_findings()[0].subject.as_deref(),
+    Some(r"configs\gameplay\npc_profile_gone.xml")
+  );
+
+  Ok(())
+}
+
+/// The files a caller holding the lists compares them against: every partner file by name, but not a part another
+/// includes, which the engine reads through its includer.
+#[test]
+fn lists_partner_files_by_name_without_the_parts_they_include() -> XrfResult {
+  let root: PathBuf = lay_out(
+    "named",
+    &[
+      (
+        "character_desc_general.xml",
+        "<xml>\n#include \"gameplay\\character_desc_general_part.xml\"\n</xml>",
+      ),
+      ("character_desc_general_part.xml", "<specific_character id=\"a\"/>\n"),
+      ("info_portions.xml", INFO_PORTIONS),
+      ("dialogs.xml", "<game_dialogs/>"),
+    ],
+  )?;
+  let named: Vec<String> = DialogPartners::list_named_files(&open(&root)?, DialogProjectMode::DIALOGS_PREFIX)?;
+
+  fs::remove_dir_all(root)?;
+
+  assert_eq!(
+    named,
+    [
+      r"configs\gameplay\character_desc_general.xml",
+      r"configs\gameplay\info_portions.xml"
+    ]
+  );
 
   Ok(())
 }
