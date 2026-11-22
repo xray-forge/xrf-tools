@@ -6,8 +6,8 @@ use syn::{
   Attribute, Data, DataEnum, DataStruct, DeriveInput, Error, Expr, Field, Fields, LitStr, Token, Type, TypePath,
 };
 
-/// Expands `#[derive(RenderSettingSchema)]`: a struct describes each field it does not skip under its serialized name,
-/// a unit enum is a choice of its variants as they serialize.
+/// Expands `#[derive(RenderSettingSchema)]`: a struct describes each field it does not skip under its serialized name
+/// and holds each to that description, a unit enum is a choice of its variants as they serialize.
 pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
 
@@ -34,30 +34,39 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
           ));
         }
       };
-      let entries: Vec<TokenStream> = fields
+      let (entries, holds): (Vec<TokenStream>, Vec<TokenStream>) = fields
         .named
         .iter()
         .map(|field| describe_field(field, is_camel_case, &schema))
-        .collect::<syn::Result<Vec<Option<TokenStream>>>>()?
+        .collect::<syn::Result<Vec<Option<(TokenStream, TokenStream)>>>>()?
         .into_iter()
         .flatten()
-        .collect();
+        .unzip();
 
       quote! {
-        let mut group: ::std::collections::BTreeMap<::std::string::String, #schema::render_setting_node::RenderSettingNode> =
-          ::std::collections::BTreeMap::new();
+        fn describe() -> #schema::render_setting_node::RenderSettingNode {
+          let mut group: ::std::collections::BTreeMap<::std::string::String, #schema::render_setting_node::RenderSettingNode> =
+            ::std::collections::BTreeMap::new();
 
-        #(#entries)*
-        #schema::render_setting_node::RenderSettingNode::Group(group)
+          #(#entries)*
+          #schema::render_setting_node::RenderSettingNode::Group(group)
+        }
+
+        fn hold_to_bounds(&mut self) {
+          #(#holds)*
+        }
       }
     }
+    // A choice is held by its type: serde reads no other value into it.
     Data::Enum(choices) => {
       let values: Vec<String> = list_choices(input, choices)?;
 
       quote! {
-        #schema::render_setting_node::RenderSettingNode::Field(#schema::render_setting_field::RenderSettingField::Choice {
-          values: ::std::vec![#(::std::string::String::from(#values)),*],
-        })
+        fn describe() -> #schema::render_setting_node::RenderSettingNode {
+          #schema::render_setting_node::RenderSettingNode::Field(#schema::render_setting_field::RenderSettingField::Choice {
+            values: ::std::vec![#(::std::string::String::from(#values)),*],
+          })
+        }
       }
     }
     _ => {
@@ -70,9 +79,7 @@ pub(crate) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
 
   Ok(quote! {
     impl #schema::render_setting_schema::RenderSettingSchema for #name {
-      fn describe() -> #schema::render_setting_node::RenderSettingNode {
-        #body
-      }
+      #body
     }
   })
 }
@@ -105,9 +112,13 @@ struct NumberBounds {
   wasted_above: Option<Expr>,
 }
 
-/// The insertion of one field's description into the struct's group under its serialized name, or none for a field
-/// skipped.
-fn describe_field(field: &Field, is_camel_case: bool, schema: &TokenStream) -> syn::Result<Option<TokenStream>> {
+/// The insertion of one field's description into the struct's group under its serialized name, and the statement
+/// holding the field to it; none for a field skipped.
+fn describe_field(
+  field: &Field,
+  is_camel_case: bool,
+  schema: &TokenStream,
+) -> syn::Result<Option<(TokenStream, TokenStream)>> {
   let ident: &Ident = field.ident.as_ref().expect("named fields");
   let key: String = match read_serde_string(&field.attrs, "rename")? {
     Some(renamed) => renamed.value(),
@@ -115,8 +126,9 @@ fn describe_field(field: &Field, is_camel_case: bool, schema: &TokenStream) -> s
     None => ident.unraw().to_string(),
   };
   let ty: &Type = &field.ty;
+  let holder: TokenStream = quote!(#schema::render_setting_bounds::RenderSettingBounds);
 
-  let node: TokenStream = match read_described(field)? {
+  let (node, hold): (TokenStream, TokenStream) = match read_described(field)? {
     Described::Skipped => return Ok(None),
     Described::Number(bounds) => {
       let NumberBounds {
@@ -126,7 +138,13 @@ fn describe_field(field: &Field, is_camel_case: bool, schema: &TokenStream) -> s
         recommended,
         wasted_above,
       } = *bounds;
-      let is_integer: bool = is_integer || is_integer_type(ty);
+      let is_integer_typed: bool = is_integer_type(ty);
+      let hold: TokenStream = if is_integer_typed {
+        quote!(self.#ident = ::std::cmp::Ord::clamp(self.#ident, (#min) as #ty, (#max) as #ty);)
+      } else {
+        quote!(self.#ident = #holder::hold_number(self.#ident, (#min) as f32, (#max) as f32, #is_integer);)
+      };
+      let is_integer: bool = is_integer || is_integer_typed;
       let recommended: TokenStream = match recommended {
         Some((low, high)) => quote!(::std::option::Option::Some([(#low) as f32, (#high) as f32])),
         None => quote!(::std::option::Option::None),
@@ -136,7 +154,7 @@ fn describe_field(field: &Field, is_camel_case: bool, schema: &TokenStream) -> s
         None => quote!(::std::option::Option::None),
       };
 
-      quote! {
+      let node: TokenStream = quote! {
         #schema::render_setting_node::RenderSettingNode::Field(#schema::render_setting_field::RenderSettingField::Number(#schema::render_setting_field::RenderSettingNumber {
           min: (#min) as f32,
           max: (#max) as f32,
@@ -144,25 +162,36 @@ fn describe_field(field: &Field, is_camel_case: bool, schema: &TokenStream) -> s
           recommended: #recommended,
           wasted_above: #wasted_above,
         }))
-      }
-    }
-    Described::Widths(bounds) => {
-      let WidthsBounds { min, max, most } = *bounds;
+      };
 
-      quote! {
-      #schema::render_setting_node::RenderSettingNode::Field(#schema::render_setting_field::RenderSettingField::Widths {
-        min: (#min) as f32,
-        max: (#max) as f32,
-        most: (#most) as u32,
-      })
-      }
+      (node, hold)
     }
-    Described::ByType => quote!(<#ty as #schema::render_setting_schema::RenderSettingSchema>::describe()),
+    Described::Widths(widths) => {
+      let WidthsBounds { min, max, most } = *widths;
+
+      (
+        quote! {
+          #schema::render_setting_node::RenderSettingNode::Field(#schema::render_setting_field::RenderSettingField::Widths {
+            min: (#min) as f32,
+            max: (#max) as f32,
+            most: (#most) as u32,
+          })
+        },
+        quote!(#holder::hold_widths(&mut self.#ident, (#min) as f32, (#max) as f32, (#most) as usize);),
+      )
+    }
+    Described::ByType => (
+      quote!(<#ty as #schema::render_setting_schema::RenderSettingSchema>::describe()),
+      quote!(#schema::render_setting_schema::RenderSettingSchema::hold_to_bounds(&mut self.#ident);),
+    ),
   };
 
-  Ok(Some(quote! {
-    group.insert(::std::string::String::from(#key), #node);
-  }))
+  Ok(Some((
+    quote! {
+      group.insert(::std::string::String::from(#key), #node);
+    },
+    hold,
+  )))
 }
 
 /// A field's `#[setting(..)]`: `skip`; `min = .., max = ..` with `integer`, `recommended = [.., ..]` and

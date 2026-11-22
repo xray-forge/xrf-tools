@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use specta::datatype::{DataType, Field, Fields, NamedDataType, Variant};
+use specta::datatype::{DataType, Field, Fields, NamedDataType, Struct, Variant};
 
 /// What a type's enum stands for, which is what decides where it is declared and what it may stand in for.
 #[derive(Debug, PartialEq, Eq)]
@@ -55,8 +55,9 @@ impl EnumerationSubject {
   ///
   /// Read off the mapped shape rather than off Serde's container attributes, which `specta-serde` keeps to itself: an
   /// internally tagged variant is rendered as named fields whose tag field is a one-member literal carrying the
-  /// variant's own spelling, and nothing else renders that way. Externally tagged, adjacently tagged and untagged
-  /// unions therefore fall out on their own, which matters because none of them has a discriminant to name.
+  /// variant's own spelling, or, for a newtype variant, as one field intersecting such named fields with its payload;
+  /// nothing else renders that way. Externally tagged, adjacently tagged and untagged unions therefore fall out on
+  /// their own, which matters because none of them has a discriminant to name.
   ///
   /// Every variant must agree on the tag field, since one enum is declared for the whole union.
   fn get_tagged_spellings(named: &NamedDataType) -> Option<(&str, Vec<&str>)> {
@@ -71,10 +72,9 @@ impl EnumerationSubject {
         continue;
       }
 
-      let Fields::Named(fields) = &variant.fields else {
-        return None;
-      };
-      let (field, spelling) = Self::get_tag_field(&fields.fields, name)?;
+      let (field, spelling) = Self::get_tag_fields(&variant.fields)
+        .into_iter()
+        .find_map(|fields| Self::get_tag_field(fields, name))?;
 
       if *tag.get_or_insert(field) != field {
         return None;
@@ -84,6 +84,30 @@ impl EnumerationSubject {
     }
 
     tag.filter(|_| !spellings.is_empty()).map(|tag| (tag, spellings))
+  }
+
+  /// The named fields a variant's tag may stand among: its own, or those of each struct its one field intersects.
+  fn get_tag_fields(fields: &Fields) -> Vec<&[(Cow<'static, str>, Field)]> {
+    match fields {
+      Fields::Named(named) => vec![named.fields.as_slice()],
+      Fields::Unnamed(unnamed) => match unnamed.fields.as_slice() {
+        [only] => match only.ty.as_ref() {
+          Some(DataType::Intersection(parts)) => parts
+            .iter()
+            .filter_map(|part| match part {
+              DataType::Struct(Struct {
+                fields: Fields::Named(named),
+                ..
+              }) => Some(named.fields.as_slice()),
+              _ => None,
+            })
+            .collect(),
+          _ => Vec::new(),
+        },
+        _ => Vec::new(),
+      },
+      Fields::Unit => Vec::new(),
+    }
   }
 
   /// The field of one variant carrying that variant's own spelling as a one-member literal, which is the tag.
@@ -126,10 +150,13 @@ impl EnumerationSubject {
 mod tests {
   use std::borrow::Cow;
 
-  use specta::Types;
+  use serde::Serialize;
   use specta::datatype::{DataType, Enum, Field, NamedDataType, Variant};
+  use specta::{Format, Types};
+  use xrf_error::{XrfError, XrfResult};
 
   use super::EnumerationSubject;
+  use crate::typescript::format::TypeScriptFormat;
 
   /// One enum datatype holding exactly these variants.
   fn enumeration(variants: Vec<(Cow<'static, str>, Variant)>) -> DataType {
@@ -187,6 +214,51 @@ mod tests {
         vec!["thm", "unsupported"]
       ))
     );
+  }
+
+  /// Bounds a newtype variant carries beside its tag.
+  #[derive(Serialize, specta::Type)]
+  struct Bounds {
+    min: f32,
+    max: f32,
+  }
+
+  /// A union of a bare, a newtype and a struct variant, internally tagged.
+  #[derive(Serialize, specta::Type)]
+  #[serde(tag = "kind", rename_all = "camelCase")]
+  #[expect(dead_code, reason = "only its type is mapped")]
+  enum Setting {
+    Flag,
+    Number(Bounds),
+    Choice { values: Vec<String> },
+  }
+
+  #[test]
+  fn an_internally_tagged_union_with_a_newtype_variant_names_its_discriminants() -> XrfResult {
+    let mut collected: Types = Types::default();
+
+    <Setting as specta::Type>::definition(&mut collected);
+
+    let types: Types = TypeScriptFormat::default()
+      .map_types(&collected)
+      .map_err(|error| XrfError::new_serialization_error(error.to_string()))?
+      .into_owned();
+    let named: &NamedDataType = types
+      .into_sorted_iter()
+      .find(|named| named.name == "Setting")
+      .expect("the union is mapped");
+
+    assert_eq!(
+      EnumerationSubject::of(named),
+      Some((
+        EnumerationSubject::Discriminant {
+          tag: String::from("kind")
+        },
+        vec!["flag", "number", "choice"]
+      ))
+    );
+
+    Ok(())
   }
 
   #[test]

@@ -1,10 +1,7 @@
+import { ERenderSettingField } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
-import {
-  ERenderSettingKind,
-  IRenderNumberField,
-  isRenderSettingField,
-} from "@/core/render/lib/settings/schema/render-setting-field";
+import { IRenderNumberField, isRenderSettingField } from "@/core/render/lib/settings/schema/render-setting-field";
 
 /** A setting's place among the feature settings: the keys leading to it, `["reflections", "steps"]`. */
 export type TRenderFeaturePath = ReadonlyArray<string>;
@@ -19,7 +16,7 @@ export function listRenderNumberFieldPaths(
   found: Map<IRenderNumberField, TRenderFeaturePath> = new Map()
 ): Map<IRenderNumberField, TRenderFeaturePath> {
   if (isRenderSettingField(schema)) {
-    if (schema.kind === ERenderSettingKind.NUMBER) {
+    if (schema.kind === ERenderSettingField.NUMBER) {
       found.set(schema, path);
     }
 

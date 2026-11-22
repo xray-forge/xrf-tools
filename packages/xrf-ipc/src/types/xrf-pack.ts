@@ -192,6 +192,16 @@ export type ArchivePatchOrigin =
   /** The archive volume at `path`. */
   | { kind: "archive"; path: string };
 
+/** Every `kind` the `ArchivePatchPublication` union is told apart by, so a switch or a comparison names one. */
+export enum EArchivePatchPublication {
+  /** No write was attempted: a comparison or a run cancelled before publication. */
+  COMPARED = "compared",
+  /** No added or modified entries required publication. Removed entries may still exist. */
+  UNNECESSARY = "unnecessary",
+  /** Publication was attempted; the result records completion, cancellation, and retained volumes. */
+  PUBLISHED = "published",
+}
+
 /** Patch publication outcome, serialized with a `kind` tag. */
 export type ArchivePatchPublication =
   /** No write was attempted: a comparison or a run cancelled before publication. */

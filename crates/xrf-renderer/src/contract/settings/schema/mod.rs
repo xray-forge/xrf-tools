@@ -3,6 +3,7 @@
 
 #[cfg(feature = "typescript-bindings")]
 pub(crate) mod render_feature_schema;
+pub(crate) mod render_setting_bounds;
 pub(crate) mod render_setting_field;
 pub(crate) mod render_setting_node;
 pub(crate) mod render_setting_schema;

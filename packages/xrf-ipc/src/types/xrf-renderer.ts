@@ -2492,6 +2492,18 @@ export type RenderSelectionTarget =
    */
   | { kind: "surface"; sector: number; shaderId: number; mesh: number | null; place: number | null };
 
+/** Every `kind` the `RenderSettingField` union is told apart by, so a switch or a comparison names one. */
+export enum ERenderSettingField {
+  /** On or off. */
+  FLAG = "flag",
+  /** A number between bounds. */
+  NUMBER = "number",
+  /** One of a set of values, as each serializes. */
+  CHOICE = "choice",
+  /** A run of positive widths, each between bounds, as many as the most given, as the sun's cascades are. */
+  WIDTHS = "widths",
+}
+
 /** What one of the settings takes, which the page offers and holds a stored value to. */
 export type RenderSettingField =
   /** On or off. */

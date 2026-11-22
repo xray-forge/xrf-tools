@@ -6,6 +6,7 @@ use std::time::Duration;
 use crate::context::library_versions::describe_libraries;
 use crate::contract::settings::gpu::render_libraries::RenderLibraries;
 use crate::contract::settings::render_settings::RenderSettings;
+use crate::contract::settings::schema::render_setting_schema::RenderSettingSchema;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::world::render_world::RenderWorld;
@@ -56,7 +57,8 @@ impl RenderQueue {
   }
 
   /// Sends a command to the running thread, starting one for an attach or a hold; other commands are dropped while no
-  /// thread runs. Settings are kept for threads started later.
+  /// thread runs. Settings are kept for threads started later. Settings and a view's options are held to the bounds
+  /// their schema describes on the way, whoever sent them.
   pub fn send(&self, command: RenderCommand) {
     self.dispatch(command);
   }
@@ -85,7 +87,13 @@ impl RenderQueue {
   }
 
   /// `send`, answering whether a thread took the command.
-  fn dispatch(&self, command: RenderCommand) -> bool {
+  fn dispatch(&self, mut command: RenderCommand) -> bool {
+    match &mut command {
+      RenderCommand::Settings { settings } => settings.hold_to_bounds(),
+      RenderCommand::Options { options, .. } => options.hold_to_bounds(),
+      _ => {}
+    }
+
     let mut link: MutexGuard<'_, RenderLink> = self.lock();
     let is_starting: bool = matches!(command, RenderCommand::Attach { .. } | RenderCommand::Hold { .. });
 

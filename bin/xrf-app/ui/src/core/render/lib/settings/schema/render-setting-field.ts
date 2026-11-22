@@ -1,16 +1,7 @@
-import { RenderSettingField } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderSettingField, RenderSettingField } from "@xrf/ipc/types/xrf-renderer";
 import { clamp } from "@xrf/math";
 
 import { TSettled } from "@/core/render/lib/settings/schema/render-settled";
-
-/** What kind of value a setting takes, as the renderer's contract names it (`RenderSettingField.kind`). */
-export enum ERenderSettingKind {
-  FLAG = "flag",
-  NUMBER = "number",
-  CHOICE = "choice",
-  /** A run of widths, as the sun's cascades are. */
-  WIDTHS = "widths",
-}
 
 /** Any one setting's field, as the renderer's contract describes it beside the setting. */
 export type TRenderSettingField = TSettled<RenderSettingField>;
@@ -36,7 +27,7 @@ export type IRenderWidthsField = Extract<TRenderSettingField, { kind: "widths" }
 export function isRenderSettingField(node: object): node is TRenderSettingField {
   return (
     "kind" in node &&
-    Object.values(ERenderSettingKind).includes((node as TRenderSettingField).kind as ERenderSettingKind)
+    Object.values(ERenderSettingField).includes((node as TRenderSettingField).kind as ERenderSettingField)
   );
 }
 
@@ -47,16 +38,16 @@ export function isRenderSettingField(node: object): node is TRenderSettingField 
  */
 export function toRenderSettingValue(field: TRenderSettingField, stored: unknown): unknown {
   switch (field.kind) {
-    case ERenderSettingKind.FLAG:
+    case ERenderSettingField.FLAG:
       return typeof stored === "boolean" ? stored : undefined;
 
-    case ERenderSettingKind.NUMBER:
+    case ERenderSettingField.NUMBER:
       return typeof stored === "number" && Number.isFinite(stored) ? toBounded(field, stored) : undefined;
 
-    case ERenderSettingKind.CHOICE:
+    case ERenderSettingField.CHOICE:
       return field.values.find((value: string) => value === stored);
 
-    case ERenderSettingKind.WIDTHS:
+    case ERenderSettingField.WIDTHS:
       return Array.isArray(stored) &&
         stored.length > 0 &&
         stored.length <= field.most &&
@@ -73,7 +64,7 @@ export function toRenderSettingValue(field: TRenderSettingField, stored: unknown
  * @returns Whether the two are the same setting: a run of widths width for width.
  */
 export function isSameRenderSetting(field: TRenderSettingField, a: unknown, b: unknown): boolean {
-  return field.kind === ERenderSettingKind.WIDTHS
+  return field.kind === ERenderSettingField.WIDTHS
     ? (a as ReadonlyArray<number>).join() === (b as ReadonlyArray<number>).join()
     : a === b;
 }

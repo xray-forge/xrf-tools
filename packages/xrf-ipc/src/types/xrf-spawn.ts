@@ -352,6 +352,58 @@ export type AlifeObjectHumanStalker = {
   updateStartDialog: string;
 };
 
+/** Every `type` the `AlifeObjectInherited` union is told apart by, so a switch or a comparison names one. */
+export enum EAlifeObjectInherited {
+  SE_ACTOR = "SeActor",
+  SE_STALKER = "SeStalker",
+  SE_MONSTER = "SeMonster",
+  CSE_ALIFE_OBJECT_BREAKABLE = "CseAlifeObjectBreakable",
+  CSE_ALIFE_OBJECT_CLIMABLE = "CseAlifeObjectClimable",
+  CSE_ALIFE_GRAPH_POINT = "CseAlifeGraphPoint",
+  CSE_ALIFE_SPACE_RESTRICTOR = "CseAlifeSpaceRestrictor",
+  SE_SMART_COVER = "SeSmartCover",
+  CSE_ALIFE_ANOMALOUS_ZONE = "CseAlifeAnomalousZone",
+  CSE_ALIFE_TORRID_ZONE = "CseAlifeTorridZone",
+  SE_SMART_TERRAIN = "SeSmartTerrain",
+  SE_LEVEL_CHANGER = "SeLevelChanger",
+  CSE_ALIFE_TEAM_BASE_ZONE = "CseAlifeTeamBaseZone",
+  CSE_ALIFE_ZONE_VISUAL = "CseAlifeZoneVisual",
+  CSE_ALIFE_CAR = "CseAlifeCar",
+  CSE_ALIFE_TRADER = "CseAlifeTrader",
+  CSE_ALIFE_OBJECT_PHYSIC = "CseAlifeObjectPhysic",
+  CSE_ALIFE_HELICOPTER = "CseAlifeHelicopter",
+  CSE_ALIFE_INVENTORY_BOX = "CseAlifeInventoryBox",
+  CSE_ALIFE_OBJECT_HANGING_LAMP = "CseAlifeObjectHangingLamp",
+  CSE_ALIFE_ITEM = "CseAlifeItem",
+  CSE_ALIFE_ITEM_EXPLOSIVE = "CseAlifeItemExplosive",
+  CSE_ALIFE_ITEM_PDA = "CseAlifeItemPda",
+  CSE_ALIFE_ITEM_AMMO = "CseAlifeItemAmmo",
+  CSE_ALIFE_ITEM_GRENADE = "CseAlifeItemGrenade",
+  CSE_ALIFE_ITEM_ARTEFACT = "CseAlifeItemArtefact",
+  CSE_ALIFE_ITEM_WEAPON = "CseAlifeItemWeapon",
+  CSE_ALIFE_ITEM_DETECTOR = "CseAlifeItemDetector",
+  CSE_ALIFE_ITEM_HELMET = "CseAlifeItemHelmet",
+  CSE_ALIFE_ITEM_CUSTOM_OUTFIT = "CseAlifeItemCustomOutfit",
+  CSE_ALIFE_ITEM_WEAPON_SHOTGUN = "CseAlifeItemWeaponShotgun",
+  CSE_ALIFE_ITEM_WEAPON_MAGAZINED = "CseAlifeItemWeaponMagazined",
+  CSE_ALIFE_ITEM_WEAPON_MAGAZINED_W_GL = "CseAlifeItemWeaponMagazinedWGl",
+  CSE_ALIFE_ITEM_BOLT = "CseAlifeItemBolt",
+  CSE_ALIFE_ITEM_TORCH = "CseAlifeItemTorch",
+  CSE_ALIFE_ITEM_DOCUMENT = "CseAlifeItemDocument",
+  CSE_ALIFE_CREATURE_CROW = "CseAlifeCreatureCrow",
+  CSE_ALIFE_CREATURE_PHANTOM = "CseAlifeCreaturePhantom",
+  CSE_ALIFE_DYNAMIC_OBJECT_VISUAL = "CseAlifeDynamicObjectVisual",
+  CSE_ALIFE_OBJECT_PROJECTOR = "CseAlifeObjectProjector",
+  CSE_ALIFE_PH_SKELETON_OBJECT = "CseAlifePhSkeletonObject",
+  CSE_ALIFE_STATIONARY_M_GUN = "CseAlifeStationaryMGun",
+  SIM_SQUAD_SCRIPTED = "SimSquadScripted",
+  CLEAR_SKY_SE_ACTOR = "ClearSkySeActor",
+  CLEAR_SKY_SE_STALKER = "ClearSkySeStalker",
+  CLEAR_SKY_SE_MONSTER = "ClearSkySeMonster",
+  CLEAR_SKY_SE_SMART_TERRAIN = "ClearSkySeSmartTerrain",
+  CLEAR_SKY_SE_SIM_FACTION = "ClearSkySeSimFaction",
+}
+
 export type AlifeObjectInherited =
   | ({
       type: "SeActor";
@@ -962,6 +1014,12 @@ export type ClearSkyMinigame = {
   state: string;
   game: ClearSkyMinigameGame;
 };
+
+/** Every `type` the `ClearSkyMinigameGame` union is told apart by, so a switch or a comparison names one. */
+export enum EClearSkyMinigameGame {
+  CROW_KILLER = "CrowKiller",
+  SHOOTING = "Shooting",
+}
 
 /**
  * The game a Clear Sky minigame runs, by the profile name the minigames manager saves before its state: the two

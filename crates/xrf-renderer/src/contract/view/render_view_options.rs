@@ -6,6 +6,7 @@ use crate::contract::feature::lighting::model::render_light_falloff::RenderLight
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::feature::lighting::model::render_light_model::RenderLightModel;
 use crate::contract::overlay::render_helper_options::RenderHelperOptions;
+use crate::contract::settings::schema::render_setting_schema::RenderSettingSchema;
 use crate::contract::view::asset::render_asset_preview::RenderAssetPreview;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::contract::view::output::render_view_output::RenderViewOutput;
@@ -29,6 +30,13 @@ pub struct RenderViewOptions {
 }
 
 impl RenderViewOptions {
+  /// Hold the features and the output the settings set to the bounds their schema describes; what the view shows, how
+  /// it shades and its staging are its own.
+  pub(crate) fn hold_to_bounds(&mut self) {
+    self.features.hold_to_bounds();
+    self.output.hold_to_bounds();
+  }
+
   /// Whether the scene holds linear light at its exposure, which the window pass tonemaps: the enhanced tonemap or the
   /// physical light model over a lit, solid view.
   pub fn is_scene_linear(&self) -> bool {

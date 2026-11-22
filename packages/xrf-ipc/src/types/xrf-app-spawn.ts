@@ -25,6 +25,14 @@ export type SpawnBuildResult = {
   spawn: SpawnRootOutcome | null;
 };
 
+/** Every `kind` the `SpawnChunk` union is told apart by, so a switch or a comparison names one. */
+export enum ESpawnChunk {
+  ALIFE_SPAWN = "alifeSpawn",
+  ARTEFACT_SPAWN = "artefactSpawn",
+  PATROLS = "patrols",
+  GRAPHS = "graphs",
+}
+
 /** One large chunk of an opened spawn, tagged by its `kind` as [`crate::SpawnChunkKind`] names it. */
 export type SpawnChunk =
   | ({

@@ -492,6 +492,13 @@ export type CubeCaptureRequest = {
   path: string;
 };
 
+/** Every `kind` the `CubeExportFormat` union is told apart by, so a switch or a comparison names one. */
+export enum ECubeExportFormat {
+  PNG = "png",
+  TGA = "tga",
+  DDS = "dds",
+}
+
 /**
  * A cubemap export format: one cube DDS, six TGAs named `1` to `6` as `CDemoRecord` writes them, or six PNGs named by
  * face.
@@ -1110,6 +1117,14 @@ export enum EMapExportAnnotations {
 
 /** Every `EMapExportAnnotations` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type MapExportAnnotations = `${EMapExportAnnotations}`;
+
+/** Every `kind` the `MapExportFormat` union is told apart by, so a switch or a comparison names one. */
+export enum EMapExportFormat {
+  PNG = "png",
+  TGA = "tga",
+  SVG = "svg",
+  DDS = "dds",
+}
 
 /**
  * A level map export format: a PNG, an uncompressed TGA as `CDemoRecord` writes, a DDS as the game loads maps, or SVG

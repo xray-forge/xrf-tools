@@ -2,10 +2,12 @@ use std::collections::BTreeMap;
 
 use crate::contract::feature::lighting::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RenderShadowSettings};
 use crate::contract::feature::weather::fog::render_fog_mode::RenderFogMode;
+use crate::contract::settings::render_settings::RenderSettings;
 use crate::contract::settings::schema::render_setting_field::{RenderSettingField, RenderSettingNumber};
 use crate::contract::settings::schema::render_setting_node::RenderSettingNode;
 use crate::contract::settings::schema::render_setting_schema::RenderSettingSchema;
 use crate::contract::view::render_view_features::RenderViewFeatures;
+use crate::contract::view::render_view_options::RenderViewOptions;
 
 fn as_group(node: RenderSettingNode) -> BTreeMap<String, RenderSettingNode> {
   match node {
@@ -48,6 +50,40 @@ fn offers_a_choice_of_each_variant_as_it_serializes() {
       values: vec![String::from("engine"), String::from("enhanced")],
     })
   );
+}
+
+#[test]
+fn holds_each_setting_to_its_bounds_and_leaves_what_the_settings_do_not_set() {
+  let mut held: RenderViewFeatures = RenderViewFeatures::default();
+  let hemi_strength: f32 = 1e6;
+
+  held.shadows.cascades = vec![0.0, f32::NAN, 5000.0, 30.0, 60.0];
+  held.shadows.resolution = 1 << 20;
+  held.shadows.filter = 9;
+  held.shadows.bias = -1.0;
+  held.shadows.sway_rate = 22.6;
+  held.hemi_strength = hemi_strength;
+
+  held.hold_to_bounds();
+
+  assert_eq!(held.shadows.cascades, [1.0, 1.0, 2000.0, 30.0]);
+  assert_eq!(held.shadows.resolution, 8192);
+  assert_eq!(held.shadows.filter, 3);
+  assert_eq!(held.shadows.bias, 0.0);
+  assert_eq!(held.shadows.sway_rate, 23.0);
+  assert_eq!(held.hemi_strength, hemi_strength, "the world sets it, not the settings");
+}
+
+#[test]
+fn holds_every_default_where_it_stands() {
+  let mut options: RenderViewOptions = RenderViewOptions::default();
+  let mut settings: RenderSettings = RenderSettings::default();
+
+  options.hold_to_bounds();
+  settings.hold_to_bounds();
+
+  assert_eq!(options, RenderViewOptions::default());
+  assert_eq!(settings, RenderSettings::default());
 }
 
 #[test]
