@@ -419,6 +419,71 @@ fn does_not_judge_a_function_of_a_script_that_does_not_parse() {
   assert_eq!(messages(&result), Vec::<&str>::new());
 }
 
+/// A squad section and the NPC sections it places: a stalker with an unresolvable profile, and a dog, whose class reads
+/// no profile.
+const SQUADS: &str = "[loner_squad]\nnpc = loner_npc, dog_npc\n\n[loner_npc]\nclass = AI_STL_S\ncharacter_profile = \
+                      loner\n\n[dog_npc]\nclass = SM_DOG_S\ncharacter_profile = novice\n";
+
+/// Profiles with one no character resolves.
+const LONER_PROFILES: &str = r#"<xml><character id="novice"><class>novice</class></character><character id="loner"><class>loner</class></character></xml>"#;
+
+/// A squad nothing spawns leaves its profiles to warnings; one a smart terrain respawns fails them as it places them.
+#[test]
+fn fails_a_profile_a_squad_a_smart_terrain_spawns_places_and_no_character_resolves() {
+  let tree: DialogTree = DialogTree::new()
+    .with("configs/system.ltx", &format!("{SYSTEM}\n{SQUADS}"))
+    .with("configs/gameplay/npc_profile.xml", LONER_PROFILES);
+
+  assert_eq!(rules(&tree.verify()), ["dialog.profile-unresolved"]);
+
+  let result: GamedataDialogsVerificationResult = tree
+    .with(
+      "configs/scripts/smart.ltx",
+      "[respawn@base]\nspawn_squads = loner_squad\n",
+    )
+    .verify();
+
+  assert_eq!(
+    messages(&result),
+    [
+      "Squad [loner_squad] places NPC section [loner_npc] with a profile no character resolves: Profile 'loner' picks \
+       by class 'loner', which no team_default character without no_random has"
+    ]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
+/// `sim_board:fill_start_position` creates its squads with a new game, and `create_squad` the one its condlist names.
+#[test]
+fn reads_the_squads_a_new_game_starts_and_a_condlist_creates() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with(
+      "configs/system.ltx",
+      &format!(
+        "{SYSTEM}\n[start_squad]\nnpc = start_npc\n\n[start_npc]\nclass = AI_STL_S\ncharacter_profile = gone_start\n\n\
+         [effect_squad]\nnpc_random = effect_npc\n\n[effect_npc]\nclass = AI_STL_S\n"
+      ),
+    )
+    .with(
+      "configs/misc/simulation.ltx",
+      "[start_position_zaton]\nstart_squad = zat_smart\n",
+    )
+    .with(
+      "configs/scripts/effects.ltx",
+      "[sr_idle@spawn]\non_info = %=create_squad(effect_squad:zat_smart)%\n",
+    )
+    .verify();
+
+  assert_eq!(
+    messages(&result),
+    [
+      // An NPC section naming no profile is spawned with `default`.
+      "Squad [effect_squad] places NPC section [effect_npc] with profile 'default', which no profile file declares",
+      "Squad [start_squad] places NPC section [start_npc] with profile 'gone_start', which no profile file declares",
+    ]
+  );
+}
+
 /// A new game reads every NPC of the root spawn and resolves its character there, so one it cannot resolve stops it.
 #[test]
 fn fails_an_npc_spawned_as_a_character_or_with_a_profile_nothing_declares() {
