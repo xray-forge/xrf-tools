@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use glam::Vec3;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_editable_level::{
@@ -10,6 +9,7 @@ use xrf_editable_level::{
   EditableSpawnPointKind, EditableSpawnPointObject, EditableWayLink, EditableWayObject, EditableWayPoint,
 };
 use xrf_ini::IniSection;
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Sphere, Vector2d, Vector3d};
 use xrf_renderer::{RenderHelperIcon, RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 use xrf_world::WorldLevelSource;
@@ -442,8 +442,7 @@ fn assert_sphere(sphere: Option<Sphere>, center: [f32; 3], radius: f32) {
   let sphere: Sphere = sphere.expect("a sphere");
 
   assert!(
-    (Vec3::new(sphere.center.x, sphere.center.y, sphere.center.z) - Vec3::from_array(center)).length() < 1e-5
-      && (sphere.radius - radius).abs() < 1e-5,
+    (Vec3::from(sphere.center) - Vec3::from_array(center)).length() < 1e-5 && (sphere.radius - radius).abs() < 1e-5,
     "{sphere:?} against {center:?} of {radius}"
   );
 }

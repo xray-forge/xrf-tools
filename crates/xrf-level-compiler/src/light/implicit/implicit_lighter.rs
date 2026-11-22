@@ -1,9 +1,9 @@
 use std::ops::Range;
 
-use glam::Vec3;
 use xrf_error::XrfResult;
 use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
+use xrf_math::glam::Vec3;
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::geometry::surface::geometry_normals::GeometryNormals;
@@ -201,7 +201,7 @@ impl ImplicitLighter<'_> {
     let scale: f32 = (1.0 / (normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)).sqrt();
 
     (
-      Vec3::new(point.x, point.y, point.z),
+      Vec3::from(point),
       Vec3::new(normal.x * scale, normal.y * scale, normal.z * scale),
     )
   }

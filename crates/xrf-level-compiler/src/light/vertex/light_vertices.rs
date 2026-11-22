@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use glam::Vec3;
 use xrf_geometry::{PointWelder, XrlcTracer};
 use xrf_job::parallel::prelude::*;
 use xrf_level::LevelLightRole;
+use xrf_math::glam::Vec3;
 
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 use crate::geometry::surface::geometry_normals::GeometryNormals;
@@ -90,10 +90,7 @@ impl LightVertices {
 
             let position = &normals.positions[split];
             let normal = &normals.normals[split];
-            let point: LightSamplePoint = LightSamplePoint::new(
-              Vec3::new(position.x, position.y, position.z),
-              Vec3::new(normal.x, normal.y, normal.z),
-            );
+            let point: LightSamplePoint = LightSamplePoint::new(Vec3::from(position), Vec3::from(normal));
             let lit: LightColor = light_point
               .evaluate_remembering(
                 &point,

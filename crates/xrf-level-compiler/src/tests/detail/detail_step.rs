@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use glam::Vec3;
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
@@ -8,6 +7,7 @@ use xrf_level::{
   BuildCformFace, BuildCformFile, BuildCformRaycastFace, BuildPrjFile, BuildPrjMaterial, BuildPrjName, BuildPrjParams,
   BuildPrjShader, BuildPrjTexture, LevelDetailsFile, LevelLightsFile,
 };
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 use xrf_test_utils::GeneratedResources;
@@ -100,7 +100,7 @@ impl Fixture {
 
   fn cform() -> BuildCformFile {
     let triangles: Vec<[Vec3; 3]> = triangles();
-    let vertex = |corner: &Vec3| Vector3d::new(corner.x, corner.y, corner.z);
+    let vertex = |corner: &Vec3| Vector3d::from(corner);
 
     BuildCformFile {
       version: BuildCformFile::CURRENT_VERSION,

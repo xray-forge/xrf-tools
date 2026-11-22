@@ -4,7 +4,6 @@ pub(crate) mod affine_3d;
 pub(crate) mod ai_node_position;
 pub(crate) mod color;
 pub(crate) mod display_colour;
-#[cfg(any(test, feature = "glam"))]
 pub(crate) mod glam_conversions;
 pub(crate) mod math_constants;
 pub(crate) mod matrix_4x4;
@@ -12,6 +11,10 @@ pub(crate) mod quaternion;
 pub(crate) mod shape;
 pub(crate) mod vector_2d;
 pub(crate) mod vector_3d;
+
+/// The math every runtime crate computes with: vectors, matrices and quaternions, through this crate alone, which also
+/// converts them to and from the stored types above.
+pub use glam;
 
 pub use crate::affine_3d::Affine3d;
 pub use crate::ai_node_position::AiNodePosition;

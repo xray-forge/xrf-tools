@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::f32::consts::{PI, TAU};
 
-use glam::Vec3;
 use xrf_error::XrfResult;
 use xrf_geometry::{PointWelder, TraceHit, Triangle, XrlcTracer};
 use xrf_job::parallel::prelude::*;
 use xrf_level::{BuildCformRaycastFace, BuildPrjFile, BuildPrjMuModel, LevelLightRole};
+use xrf_math::glam::Vec3;
 use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
@@ -227,7 +227,7 @@ impl LightModels {
     let corner = |index: u32| {
       let vertex: &Vector3d = &model.vertices[index as usize];
 
-      Vec3::new(vertex.x, vertex.y, vertex.z)
+      Vec3::from(vertex)
     };
     let triangles: Vec<Triangle> = model
       .faces
@@ -267,13 +267,13 @@ impl LightModels {
         let place: Vector3d = GeometryPlacement::transform(transform, &model.positions[vertex]);
         let turned: Vector3d = Self::rotate(transform, &model.normals[vertex]);
         let normal: Vector3d = turned.exact_normalize();
-        let axis: Vec3 = Vec3::new(normal.x, normal.y, normal.z);
+        let axis: Vec3 = Vec3::from(normal);
         let mut sum: LightColor = LightColor::default();
 
         for sample in 0..samples {
           let reach: f32 = Self::SAMPLE_REACH * sample as f32 / samples as f32;
           let jittered: Vec3 = Self::jitter(axis, seed | ((vertex as u64) << 8) | u64::from(sample));
-          let point: Vec3 = Vec3::new(place.x, place.y, place.z) + jittered * reach;
+          let point: Vec3 = Vec3::from(place) + jittered * reach;
           let lit: LightColor =
             light_point.evaluate_by(&LightSamplePoint::new(point, jittered), lights, roles, tracer, &opacity);
 

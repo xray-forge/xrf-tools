@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use glam::Vec3;
 use xrf_geometry::TraceHit;
 use xrf_level::LevelLightRole;
+use xrf_math::glam::Vec3;
 use xrf_math::{Vector2d, Vector3d};
 
 use crate::geometry::surface::geometry_normals::GeometryNormals;
@@ -231,7 +231,7 @@ impl LightChartLighter<'_> {
               from.y + along.y * time,
               from.z + along.z * time,
             ),
-            normal: Vec3::new(normal.x, normal.y, normal.z),
+            normal: Vec3::from(normal),
             is_edge: true,
           });
         }
@@ -251,10 +251,7 @@ impl LightChartLighter<'_> {
     let own: &Vector3d = &self.scene.face_normals[face as usize];
     let normal: Vector3d = Vector3d::new(blended.x + own.x, blended.y + own.y, blended.z + own.z).exact_normalize();
 
-    (
-      Vec3::new(point.x, point.y, point.z),
-      Vec3::new(normal.x, normal.y, normal.z),
-    )
+    (Vec3::from(point), Vec3::from(normal))
   }
 
   /// `values` at a face's corners blended by `weights` on them.

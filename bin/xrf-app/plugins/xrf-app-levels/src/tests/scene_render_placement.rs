@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_editable_level::{EditableCustomObject, EditableObjectTransform, EditableSceneObject};
 use xrf_editable_object::EditableObjectFile;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_math::Vector3d;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_rawdata::{LevelBuildExport, LevelBuildExporter, LevelBuildImpostorLimit, LevelBuildSources};
 use xrf_renderer::RenderLevelSpawn;
 use xrf_visual::convert_vector;
@@ -84,11 +84,11 @@ fn a_scene_object_stands_where_the_level_build_places_its_points() {
   for (point, placed) in points.iter().zip(&built.project.vertices) {
     // A model vertex is the point in renderer space.
     let model: Vector3d = convert_vector(point);
-    let drawn: Vec3 = placement.transform_point3(Vec3::new(model.x, model.y, model.z));
+    let drawn: Vec3 = placement.transform_point3(Vec3::from(model));
     let expected: Vector3d = convert_vector(placed);
 
     assert!(
-      Vector3d::new(drawn.x, drawn.y, drawn.z).distance(&expected) <= TOLERANCE,
+      Vector3d::from(drawn).distance(&expected) <= TOLERANCE,
       "point {point:?} is drawn at {drawn:?}, built at {placed:?}"
     );
   }

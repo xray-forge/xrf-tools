@@ -1,6 +1,6 @@
-use glam::{Mat4, Vec3};
 use xrf_editable_level::EditableObjectTransform;
 use xrf_extension::XrayExtension;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_visual::VisualBounds;
 
@@ -46,7 +46,7 @@ impl SceneSpawnModel {
         if corner & 4 == 0 { min.z } else { max.z },
       ));
 
-      Vector3d::new(placed.x, placed.y, placed.z)
+      Vector3d::from(placed)
     };
     let mut placed: Aabb = Aabb::of_point(&place(0));
 

@@ -1,6 +1,6 @@
-use glam::Vec3;
 use xrf_geometry::BvhTracer;
 use xrf_level::{BuildPrjFile, BuildPrjName, BuildPrjShader};
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Vector2d, Vector3d};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
@@ -179,11 +179,7 @@ pub(crate) fn light_by<R>(
   let (project, shaders, textures) = tables();
   let normals: GeometryNormals = GeometryNormals::of(mesh);
   let scene: LightChartScene<'_> = LightChartScene::of(mesh, &normals, &project, &shaders, &textures, 10.0, 1);
-  let corners: Vec<Vec3> = mesh
-    .vertices
-    .iter()
-    .map(|vertex| Vec3::new(vertex.x, vertex.y, vertex.z))
-    .collect();
+  let corners: Vec<Vec3> = mesh.vertices.iter().map(Vec3::from).collect();
   let triangles: Vec<[u32; 3]> = mesh.faces.iter().map(|face| face.vertices).collect();
   let tracer: BvhTracer = BvhTracer::new(&corners, &triangles);
   let ray_faces: Vec<Option<u32>> = (0..mesh.faces.len() as u32).map(Some).collect();
@@ -229,11 +225,7 @@ fn lights_an_implicit_map_over_its_faces_texture_coordinates_and_keeps_the_textu
   let (project, shaders, textures) = tables();
   let normals: GeometryNormals = GeometryNormals::of(&mesh);
   let scene: LightChartScene<'_> = LightChartScene::of(&mesh, &normals, &project, &shaders, &textures, 10.0, 1);
-  let corners: Vec<Vec3> = mesh
-    .vertices
-    .iter()
-    .map(|vertex| Vec3::new(vertex.x, vertex.y, vertex.z))
-    .collect();
+  let corners: Vec<Vec3> = mesh.vertices.iter().map(Vec3::from).collect();
   let triangles: Vec<[u32; 3]> = mesh.faces.iter().map(|face| face.vertices).collect();
   let tracer: BvhTracer = BvhTracer::new(&corners, &triangles);
   let ray_faces: Vec<Option<u32>> = (0..mesh.faces.len() as u32).map(Some).collect();

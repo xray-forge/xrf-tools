@@ -160,9 +160,10 @@ measure, so the measure agrees with what the renderer draws.
 
 - `typescript-bindings` derives Specta types for every type except `Matrix4x4`.
 - `fixtures` exports `Vector3d::new_mock()`, the vector this crate's tests use, for dependants' tests.
-- `glam` converts `Vector3d` and `Vector2d` to and from `glam`'s `Vec3` and `Vec2` with `From`, for runtime crates that
-  compute with `glam` (particles, world, renderer, the levels plugin). The copy is component-wise and changes no space,
-  so any change of space stays visible where it is written.
+- `xrf_math::glam` is the math every runtime crate computes with (`Vec3`, `Mat4`, `Quat` and the rest): this crate is the
+  only one that depends on `glam`, so the version, its features and the conversions have one owner. `Vector3d` and
+  `Vector2d` convert to and from `glam`'s `Vec3` and `Vec2` with `From`; the copy is component-wise and changes no space,
+  so any change of space stays visible where it is written. Convert through it rather than by components.
 
 ## Checks
 

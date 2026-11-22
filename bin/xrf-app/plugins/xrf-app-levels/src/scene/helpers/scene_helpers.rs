@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3};
 use xrf_editable_level::{
   EditableFogVolumeObject, EditableGlowObject, EditableLightObject, EditableParticleObject, EditablePortalObject,
   EditableShapeObject, EditableSoundEnvironmentObject, EditableSoundSourceObject, EditableSpawnPointObject,
   EditableToolObjects, EditableWayObject,
 };
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 use xrf_visual::VisualBounds;
@@ -98,10 +98,7 @@ impl SceneHelpers {
   /// The box holding every placed point the helpers draw through, spheres by their boxes, and the renderer space
   /// `extra` points; none for no helper and no point.
   fn bound(objects: &[RenderHelperObject], extra: &[Vec3]) -> Option<VisualBounds> {
-    let mut points: Vec<Vector3d> = extra
-      .iter()
-      .map(|point| Vector3d::new(point.x, point.y, point.z))
-      .collect();
+    let mut points: Vec<Vector3d> = extra.iter().map(Vector3d::from).collect();
 
     for object in objects {
       let transform: Mat4 = Mat4::from_cols_array(&object.transform);
@@ -124,7 +121,7 @@ impl SceneHelpers {
         points.extend(reached.into_iter().map(|point| {
           let placed: Vec3 = transform.transform_point3(point);
 
-          Vector3d::new(placed.x, placed.y, placed.z)
+          Vector3d::from(placed)
         }));
       }
     }

@@ -1,8 +1,8 @@
-use glam::Vec3;
 use xrf_geometry::XrlcTracer;
 use xrf_job::parallel::prelude::*;
 use xrf_level::LevelLightRole;
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 
 use crate::geometry::mesh::geometry_mesh::GeometryMesh;
 use crate::geometry::surface::geometry_normals::GeometryNormals;
@@ -69,10 +69,7 @@ impl LightHemisphere {
         let normal: Vector3d = sum.exact_normalize();
         let position: Vector3d = mesh.vertices[vertex];
         let lit: LightColor = light_point.evaluate(
-          &LightSamplePoint::new(
-            Vec3::new(position.x, position.y, position.z),
-            Vec3::new(normal.x, normal.y, normal.z),
-          ),
+          &LightSamplePoint::new(Vec3::from(position), Vec3::from(normal)),
           &lights,
           &[LevelLightRole::Hemi],
           tracer,

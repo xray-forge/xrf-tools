@@ -17,9 +17,15 @@ impl From<Vector3d> for Vec3 {
   }
 }
 
+impl From<&Vec3> for Vector3d {
+  fn from(vector: &Vec3) -> Self {
+    Self::new(vector.x, vector.y, vector.z)
+  }
+}
+
 impl From<Vec3> for Vector3d {
   fn from(vector: Vec3) -> Self {
-    Self::new(vector.x, vector.y, vector.z)
+    Self::from(&vector)
   }
 }
 
@@ -48,6 +54,7 @@ mod tests {
 
     assert_eq!(Vec3::from(&stored), Vec3::new(1.5, -2.0, 3.25));
     assert_eq!(Vector3d::from(Vec3::from(stored)), stored);
+    assert_eq!(Vector3d::from(&Vec3::new(1.5, -2.0, 3.25)), stored);
     assert_eq!(
       Vector2d::from(Vec2::from(Vector2d::new(0.25, 4.0))),
       Vector2d::new(0.25, 4.0)

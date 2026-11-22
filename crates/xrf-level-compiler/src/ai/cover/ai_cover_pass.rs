@@ -1,8 +1,8 @@
-use glam::Vec3;
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{Ray, Tracer};
 use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Vector3d};
 
 use crate::ai::ai_vertex::AiVertex;
@@ -109,11 +109,7 @@ impl AiCoverPass {
     let direction: Vector3d = &offset / range;
 
     (
-      Ray::new(
-        Vec3::new(base.x, base.y + height, base.z),
-        Vec3::new(direction.x, direction.y, direction.z),
-        range,
-      ),
+      Ray::new(Vec3::new(base.x, base.y + height, base.z), Vec3::from(direction), range),
       AiCoverSector::of(&direction),
     )
   }
