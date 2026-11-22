@@ -1,16 +1,35 @@
-import { AnyCallable } from "@xrf/types";
+import { AnyCallable, Nullable } from "@xrf/types";
 
 import { PREFIX_TIMESTAMP_TAG } from "#/logger-prefix";
-import { ILogger } from "#/logger.types";
+import { ELogLevel, ILogger, ILogSink } from "#/logger.types";
 
 /**
- * A lightweight wrapper around `console` methods that adds a styled prefix.
- * Logging is automatically disabled in the production environment.
+ * The console's methods as they are when this module loads. A devtools extension replaces them a moment later, and a
+ * method taken after that puts the extension's frame between a logger and the console, so devtools links every line
+ * to the extension.
+ */
+const CONSOLE = {
+  log: console.log,
+  info: console.info,
+  warn: console.warn,
+  error: console.error,
+  debug: console.debug,
+} as const;
+
+/**
+ * Writes lines to the console under a styled prefix, and hands each to the sink the application installed.
+ *
+ * Its methods stand between a caller and `console`, so a bundler has to list this module in its source maps' ignore
+ * list for devtools to link a line to its caller rather than to this file. A line logged while no devtools is attached
+ * keeps this module's frame alone, and links here until the page reloads.
  */
 export class Logger implements ILogger {
   public static IS_GLOBAL_LOGGING_ENABLED: boolean = true;
 
   public static readonly PREFIX_STYLE: string = "color: #bada53; font-weight: 700;";
+
+  /** Where every logger's lines also go; none until the application installs one. */
+  public static sink: Nullable<ILogSink> = null;
 
   protected static global: Logger = new Logger("application");
 
@@ -33,6 +52,21 @@ export class Logger implements ILogger {
     return [`%c %s [${prefix}]`, Logger.PREFIX_STYLE, PREFIX_TIMESTAMP_TAG];
   }
 
+  /**
+   * @param write - The console's method the line goes to.
+   * @param level - The severity the sink is told.
+   * @param prefix - The logger's prefix, which is the line's scope.
+   * @returns A method writing a line to the console under the prefix, then to the sink.
+   */
+  private static createMethod(write: AnyCallable, level: ELogLevel, prefix: string): AnyCallable {
+    const print: AnyCallable = write.bind(console, ...Logger.getLogTagsForPrefix(prefix));
+
+    return (...args: Array<unknown>): void => {
+      print(...args);
+      Logger.sink?.write(level, prefix, args);
+    };
+  }
+
   public readonly prefix: string;
   public readonly isEnabled: boolean;
 
@@ -49,13 +83,11 @@ export class Logger implements ILogger {
     const isActive: boolean = isEnabled && Logger.IS_GLOBAL_LOGGING_ENABLED;
 
     if (isActive) {
-      const tags: Array<unknown> = Logger.getLogTagsForPrefix(prefix);
-
-      this.log = console.log.bind(console, ...tags);
-      this.info = console.info.bind(console, ...tags);
-      this.warn = console.warn.bind(console, ...tags);
-      this.error = console.error.bind(console, ...tags);
-      this.debug = console.debug.bind(console, ...tags);
+      this.log = Logger.createMethod(CONSOLE.log, ELogLevel.INFO, prefix);
+      this.info = Logger.createMethod(CONSOLE.info, ELogLevel.INFO, prefix);
+      this.warn = Logger.createMethod(CONSOLE.warn, ELogLevel.WARN, prefix);
+      this.error = Logger.createMethod(CONSOLE.error, ELogLevel.ERROR, prefix);
+      this.debug = Logger.createMethod(CONSOLE.debug, ELogLevel.DEBUG, prefix);
     } else {
       this.log = () => {};
       this.info = () => {};
@@ -65,7 +97,7 @@ export class Logger implements ILogger {
     }
   }
 
-  /** Logs a general message. */
+  /** Logs a general message, kept as an informational one. */
   public readonly log: AnyCallable;
 
   /** Logs an informational message. */

@@ -107,6 +107,16 @@ function getInitialVendorChunk(id: string): string | null {
   return null;
 }
 
+/**
+ * Whether devtools should skip a source when linking a console line or reading a stack: dependencies, and the logger,
+ * whose methods stand between every caller and `console`.
+ */
+function isIgnoredInDevtools(sourcePath: string): boolean {
+  const normalized: string = normalizePath(sourcePath);
+
+  return normalized.includes("/node_modules/") || normalized.includes("/packages/xrf-logging/src/");
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   root: path.resolve(import.meta.dirname, "./src"),
@@ -157,6 +167,7 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    sourcemapIgnoreList: isIgnoredInDevtools,
     watch: {
       // 3. tell vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
