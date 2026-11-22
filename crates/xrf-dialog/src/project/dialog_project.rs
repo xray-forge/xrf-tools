@@ -34,6 +34,8 @@ pub struct DialogProject {
   files: Vec<DialogProjectFile>,
   text: DialogTextIndex,
   findings: Vec<DialogFinding>,
+  /// The `system.ltx` lists the project was opened over, or `None` for one that read files by their names.
+  listed: Option<DialogListedFiles>,
 }
 
 impl DialogProject {
@@ -112,7 +114,10 @@ impl DialogProject {
       }
     }
 
-    Self::assemble(search, roots, layout, files, findings)
+    Self {
+      listed: Some(listed.clone()),
+      ..Self::assemble(search, roots, layout, files, findings)
+    }
   }
 
   /// Read one dialog file into the project's files, or record why it did not read.
@@ -173,6 +178,7 @@ impl DialogProject {
       files,
       text,
       findings,
+      listed: None,
     }
   }
 
@@ -259,6 +265,11 @@ impl DialogProject {
 
   pub fn get_findings(&self) -> &[DialogFinding] {
     &self.findings
+  }
+
+  /// The `system.ltx` lists the project was opened over, or `None` for one that read its files by their names.
+  pub fn get_listed(&self) -> Option<&DialogListedFiles> {
+    self.listed.as_ref()
   }
 
   /// The file at a logical path.

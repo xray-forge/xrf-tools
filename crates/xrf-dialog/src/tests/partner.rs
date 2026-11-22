@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use xrf_error::XrfResult;
+use xrf_ltx::Ltx;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
@@ -329,6 +330,31 @@ fn reads_only_the_listed_files_and_reports_a_missing_one() -> XrfResult {
   assert_eq!(
     partners.get_findings()[0].subject.as_deref(),
     Some(r"configs\gameplay\npc_profile_gone.xml")
+  );
+
+  Ok(())
+}
+
+/// `system.ltx` lists each kind under its own key, a list it leaves out empty; one listing none names no lists at all.
+#[test]
+fn reads_the_lists_system_ltx_holds() -> XrfResult {
+  let system: Ltx = Ltx::read_from_str(
+    "[dialogs]\nfiles = dialogs, dialogs_zaton,\n\n[profiles]\nfiles = npc_profile\nspecific_characters_files = \
+     character_desc_general\n",
+  )?;
+
+  assert_eq!(
+    DialogListedFiles::from_system_ltx(&system),
+    Some(DialogListedFiles {
+      dialogs: vec![String::from("dialogs"), String::from("dialogs_zaton")],
+      characters: vec![String::from("character_desc_general")],
+      profiles: vec![String::from("npc_profile")],
+      info_portions: Vec::new(),
+    })
+  );
+  assert_eq!(
+    DialogListedFiles::from_system_ltx(&Ltx::read_from_str("[actor]\nclass = O_ACTOR\n")?),
+    None
   );
 
   Ok(())

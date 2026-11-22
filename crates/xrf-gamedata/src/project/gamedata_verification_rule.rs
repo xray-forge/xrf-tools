@@ -82,6 +82,10 @@ pub enum GamedataVerificationRule {
   /// or no character resolves, which the engine asserts on when it creates the NPC.
   #[display("dialog.spawn-unresolved")]
   DialogSpawnUnresolved,
+  /// A squad a config spawns that no section declares, or an NPC section a squad lists that none declares, which
+  /// `alife():create` asserts on.
+  #[display("dialog.squad-missing")]
+  DialogSquadMissing,
   /// A phrase line with no text in a language the game ships, which the engine shows as its key.
   #[display("dialog.text-missing")]
   DialogTextMissing,

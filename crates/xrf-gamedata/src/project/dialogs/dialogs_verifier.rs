@@ -64,10 +64,7 @@ impl<'a> GamedataCheck<'a> for DialogsVerifier<'a> {
       Some(listed) => DialogProject::from_listed(search.clone(), &roots, &layout, listed),
       None => DialogProject::from_search(search.clone(), &roots, &layout)?,
     };
-    let partners: DialogPartners = match &system.listed {
-      Some(listed) => DialogPartners::from_listed(search, DialogProjectMode::DIALOGS_PREFIX, listed),
-      None => DialogPartners::from_search(search, DialogProjectMode::DIALOGS_PREFIX)?,
-    };
+    let partners: DialogPartners = DialogPartners::from_project(&project)?;
     let declared: HashMap<&str, &Dialog> = Self::index_declared(&project);
 
     result.has_dialogs = true;

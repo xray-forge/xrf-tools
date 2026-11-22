@@ -6,8 +6,9 @@ use uuid::Uuid;
 use xrf_math::Vector3d;
 use xrf_report::{CheckId, CheckReport};
 use xrf_spawn::{
-  AlifeObject, AlifeObjectHumanAbstract, AlifeObjectInherited, AlifeStalker, ClsId, GraphHeader, SpawnALifeSpawnsChunk,
-  SpawnArtefactSpawnsChunk, SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPacketHeader, SpawnPatrolsChunk,
+  AlifeObject, AlifeObjectHumanAbstract, AlifeObjectInherited, AlifeStalker, ClsId, GraphCrossTable, GraphHeader,
+  GraphLevel, SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk, SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk,
+  SpawnPacketHeader, SpawnPatrolsChunk,
 };
 use xrf_test_utils::GeneratedResources;
 
@@ -96,14 +97,49 @@ impl DialogTree {
 
   /// The tree with a root spawn placing one stalker per NPC.
   fn with_spawn(self, npcs: &[SpawnedNpc]) -> Self {
+    self.write_spawn(npcs, &[]);
+    self
+  }
+
+  /// The tree with a root spawn placing nothing, whose game graph holds the named levels, ids in their order.
+  fn with_graph_levels(self, levels: &[&str]) -> Self {
+    self.write_spawn(&[], levels);
+    self
+  }
+
+  fn write_spawn(&self, npcs: &[SpawnedNpc], levels: &[&str]) {
     let guid: Uuid = Uuid::nil();
+    let levels: Vec<GraphLevel> = levels
+      .iter()
+      .enumerate()
+      .map(|(id, name)| GraphLevel {
+        name: String::from(*name),
+        offset: Vector3d::new(0.0, 0.0, 0.0),
+        id: u8::try_from(id).unwrap(),
+        section: format!("level{id}"),
+        guid,
+      })
+      .collect();
+    let levels_count: u8 = u8::try_from(levels.len()).unwrap();
+    // The graph carries one cross table per level, empty for a level with no vertices.
+    let cross_tables: Vec<GraphCrossTable> = levels
+      .iter()
+      .map(|_| GraphCrossTable {
+        version: 10,
+        nodes_count: 0,
+        vertices_count: 0,
+        level_guid: guid,
+        game_guid: guid,
+        cells: Vec::new(),
+      })
+      .collect();
     let spawn: SpawnFile = SpawnFile {
       header: SpawnHeaderChunk {
         version: 10,
         guid,
         graph_guid: guid,
         objects_count: u32::try_from(npcs.len()).unwrap(),
-        levels_count: 0,
+        levels_count: u32::from(levels_count),
       },
       alife_spawn: SpawnALifeSpawnsChunk {
         objects: npcs.iter().enumerate().map(|(id, npc)| npc.build(id)).collect(),
@@ -117,21 +153,19 @@ impl DialogTree {
           edges_count: 0,
           points_count: 0,
           guid,
-          levels_count: 0,
+          levels_count,
         },
-        levels: Vec::new(),
+        levels,
         vertices: Vec::new(),
         edges: Vec::new(),
         points: Vec::new(),
-        cross_tables: Vec::new(),
+        cross_tables,
       },
     };
 
     spawn
       .write_to_path(&self.root.join("spawns").join("all.spawn"))
       .unwrap();
-
-    self
   }
 
   fn verify(&self) -> GamedataDialogsVerificationResult {
@@ -454,9 +488,12 @@ fn fails_a_profile_a_squad_a_smart_terrain_spawns_places_and_no_character_resolv
 }
 
 /// `sim_board:fill_start_position` creates its squads with a new game, and `create_squad` the one its condlist names.
+/// The start positions are read for the levels of the game graph in id order, up to the first with none, so neither a
+/// test level the graph does not hold nor a level after `pripyat`, which has none, starts a squad.
 #[test]
 fn reads_the_squads_a_new_game_starts_and_a_condlist_creates() {
   let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with_graph_levels(&["zaton", "pripyat", "jupiter"])
     .with(
       "configs/system.ltx",
       &format!(
@@ -466,7 +503,8 @@ fn reads_the_squads_a_new_game_starts_and_a_condlist_creates() {
     )
     .with(
       "configs/misc/simulation.ltx",
-      "[start_position_zaton]\nstart_squad = zat_smart\n",
+      "[start_position_zaton]\nstart_squad = zat_smart\n\n[start_position_zaton_test]\ngone_test_squad = zat_smart\n\n\
+       [start_position_jupiter]\ngone_jupiter_squad = jup_smart\n",
     )
     .with(
       "configs/scripts/effects.ltx",
@@ -482,6 +520,37 @@ fn reads_the_squads_a_new_game_starts_and_a_condlist_creates() {
       "Squad [start_squad] places NPC section [start_npc] with profile 'gone_start', which no profile file declares",
     ]
   );
+}
+
+/// `alife():create` asserts on a section no config declares: a squad a config spawns fails, as does an NPC section a
+/// spawned squad lists. One only a squad nothing spawns lists is a warning, since a script may still create that squad.
+#[test]
+fn reports_squad_and_npc_sections_no_config_declares() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with(
+      "configs/system.ltx",
+      &format!(
+        "{SYSTEM}\n[squad_base]\nclass = ON_OFF_S\n\n[spawned_squad]:squad_base\nnpc = gone_npc\n\n\
+         [scripted_squad]:squad_base\nnpc_random = gone_scripted_npc, gone_npc\n"
+      ),
+    )
+    .with(
+      "configs/scripts/smart.ltx",
+      "[respawn@base]\nspawn_squads = spawned_squad, gone_squad\n",
+    )
+    .verify();
+
+  assert_eq!(
+    messages(&result),
+    [
+      "Squad [gone_squad] is spawned here, but no section declares it",
+      "Squad [scripted_squad] lists NPC section [gone_scripted_npc], which no section declares; no config spawns the \
+       squad",
+      "Squad [spawned_squad] lists NPC section [gone_npc], which no section declares",
+    ]
+  );
+  assert_eq!(rules(&result), ["dialog.squad-missing"; 3]);
+  assert_eq!(result.count_failures(), 2);
 }
 
 /// A new game reads every NPC of the root spawn and resolves its character there, so one it cannot resolve stops it.

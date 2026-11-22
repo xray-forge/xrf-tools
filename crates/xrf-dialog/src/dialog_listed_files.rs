@@ -1,4 +1,5 @@
 use xrf_extension::XrayExtension;
+use xrf_ltx::Ltx;
 
 /// The dialog and partner files the engine loads, named as `system.ltx` lists them: the `files` of `[dialogs]`,
 /// `[profiles]` and `[info_portions]`, and `specific_characters_files` of `[profiles]`, each a name under the dialogs
@@ -15,6 +16,41 @@ pub struct DialogListedFiles {
 }
 
 impl DialogListedFiles {
+  const DIALOGS_SECTION: &'static str = "dialogs";
+  const PROFILES_SECTION: &'static str = "profiles";
+  const INFO_PORTIONS_SECTION: &'static str = "info_portions";
+  const FILES_KEY: &'static str = "files";
+  const CHARACTERS_FILES_KEY: &'static str = "specific_characters_files";
+
+  /// The lists a resolved `system.ltx` holds, or `None` for one listing none, such as a mod carrying only part of a
+  /// game. A list it leaves out is empty, as the engine reads it.
+  pub fn from_system_ltx(system: &Ltx) -> Option<Self> {
+    let list = |section: &str, key: &str| -> Option<Vec<String>> {
+      system
+        .section(section)
+        .and_then(|section| section.get(key))
+        .map(Self::split_list)
+    };
+
+    let lists: [Option<Vec<String>>; 4] = [
+      list(Self::DIALOGS_SECTION, Self::FILES_KEY),
+      list(Self::PROFILES_SECTION, Self::CHARACTERS_FILES_KEY),
+      list(Self::PROFILES_SECTION, Self::FILES_KEY),
+      list(Self::INFO_PORTIONS_SECTION, Self::FILES_KEY),
+    ];
+
+    lists.iter().any(Option::is_some).then(|| {
+      let [dialogs, characters, profiles, info_portions] = lists.map(Option::unwrap_or_default);
+
+      Self {
+        dialogs,
+        characters,
+        profiles,
+        info_portions,
+      }
+    })
+  }
+
   /// Splits one list value the way the engine reads it: comma separated, each name trimmed, empty names skipped.
   pub fn split_list(value: &str) -> Vec<String> {
     value

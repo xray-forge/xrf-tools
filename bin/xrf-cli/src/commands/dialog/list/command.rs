@@ -39,7 +39,7 @@ impl GenericCommand for ListCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let project: DialogProject = DialogProjectOpening::open(matches)?;
+    let project: DialogProject = DialogProjectOpening::open_listed(matches)?;
     let text: Option<DialogTextLanguage<'_>> = DialogProjectOpening::text_of(matches, &project);
 
     let report: DialogListReport = match matches.get_one::<String>("profile") {
@@ -79,7 +79,7 @@ impl GenericCommand for ListCommand {
 }
 
 impl ListCommand {
-  /// Every dialog the tree holds, file by file.
+  /// Every dialog the project read, file by file: the files `system.ltx` lists, or every dialog file without one.
   fn list_all(project: &DialogProject, text: Option<DialogTextLanguage<'_>>) -> DialogListReport {
     DialogListReport::new(
       text.map(|text| text.get_language().to_owned()),
@@ -110,7 +110,7 @@ impl ListCommand {
     profile: &str,
     text: Option<DialogTextLanguage<'_>>,
   ) -> XrfResult<DialogListReport> {
-    let partners: DialogPartners = DialogPartners::from_search(project.get_search(), project.get_dialogs_prefix())?;
+    let partners: DialogPartners = DialogPartners::from_project(project)?;
     let mut findings: Vec<DialogFinding> = project.get_findings().to_vec();
 
     findings.extend_from_slice(partners.get_findings());

@@ -1,6 +1,8 @@
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_dialog::{DialogProject, DialogProjectLayout, DialogTextLanguage};
+use xrf_dialog::{DialogListedFiles, DialogProject, DialogProjectLayout, DialogTextLanguage};
 use xrf_error::XrfResult;
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
+use xrf_vfs::{XrayRoots, XraySearch};
 
 use crate::core::arguments::XrayRootsArguments;
 use crate::core::command::CommandInput;
@@ -10,6 +12,8 @@ pub(crate) struct DialogProjectOpening;
 
 impl DialogProjectOpening {
   const LANGUAGE: &'static str = "language";
+  /// Where the game keeps its configs, `system.ltx` among them.
+  const CONFIGS_DIRECTORY: &'static str = "configs";
 
   /// The roots every dialog command reads, as its input.
   pub(crate) fn input() -> CommandInput {
@@ -36,6 +40,40 @@ impl DialogProjectOpening {
   /// Returns an error when the roots cannot be mounted or hold no dialog files under the prefix.
   pub(crate) fn open(matches: &ArgMatches) -> XrfResult<DialogProject> {
     DialogProject::open(&XrayRootsArguments::of(matches)?, &Self::parse_layout(matches))
+  }
+
+  /// The project as the engine loads it: the dialog and partner files `configs\system.ltx`, with its includes, lists,
+  /// and every file named as one where the tree holds no `system.ltx` or it lists none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the roots cannot be mounted, `system.ltx` does not resolve, or a tree it lists nothing for
+  /// holds no dialog files under the prefix.
+  pub(crate) fn open_listed(matches: &ArgMatches) -> XrfResult<DialogProject> {
+    let roots: XrayRoots = XrayRootsArguments::of(matches)?;
+    let layout: DialogProjectLayout = Self::parse_layout(matches);
+    let search: XraySearch = roots.to_search_plan()?.open()?;
+
+    match Self::read_listed(&roots, &search)? {
+      Some(listed) => Ok(DialogProject::from_listed(search, &roots, &layout, &listed)),
+      None => DialogProject::from_search(search, &roots, &layout),
+    }
+  }
+
+  /// The lists `configs\system.ltx` holds, or `None` for a tree without one, such as a folder of dialog files alone.
+  fn read_listed(roots: &XrayRoots, search: &XraySearch) -> XrfResult<Option<DialogListedFiles>> {
+    let configs: LtxProject = LtxProject::open_lean_at_search_opt(
+      roots.describe(),
+      search,
+      Some(Self::CONFIGS_DIRECTORY),
+      LtxProjectOptions::default(),
+    )?;
+
+    if search.find(configs.system_ltx_path()?.as_str())?.is_none() {
+      return Ok(None);
+    }
+
+    Ok(DialogListedFiles::from_system_ltx(&configs.system_ltx()?.ltx))
   }
 
   /// The project as [`Self::open`] opens it, without its text tree, for a command reporting keys alone.

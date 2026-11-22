@@ -13,6 +13,7 @@ use crate::partner::dialog_info_portion::DialogInfoPortion;
 use crate::partner::dialog_offer::DialogOffer;
 use crate::partner::dialog_profile::DialogProfile;
 use crate::project::dialog_finding::DialogFinding;
+use crate::project::dialog_project::DialogProject;
 
 /// Reads one partner file's root into the partners, given the file's logical path for findings.
 type PartnerReader = fn(&mut DialogPartners, &XmlElementSpan, &str);
@@ -43,10 +44,26 @@ impl DialogPartners {
   /// The finding a second declaration of an id becomes.
   pub const DUPLICATE_RULE: &'static str = "dialog.partner-duplicate";
 
-  // todo: Have `dialog list` read the files `system.ltx` lists through `from_listed` instead of matching file names.
   const CHARACTERS_FILE_PREFIX: &'static str = "character_desc";
   const PROFILES_FILE_PREFIX: &'static str = "npc_profile";
   const INFO_PORTIONS_FILE_PREFIX: &'static str = "info_";
+
+  /// Read the partners of a project the way it read its dialogs: the files the `system.ltx` lists it was opened over
+  /// name, or else every file whose name marks it a partner file.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the project's dialogs prefix is not a valid logical path.
+  pub fn from_project(project: &DialogProject) -> XrfResult<Self> {
+    match project.get_listed() {
+      Some(listed) => Ok(Self::from_listed(
+        project.get_search(),
+        project.get_dialogs_prefix(),
+        listed,
+      )),
+      None => Self::from_search(project.get_search(), project.get_dialogs_prefix()),
+    }
+  }
 
   /// Read exactly the partner files `system.ltx` lists under a prefix, in list order, as the engine's id index does.
   ///

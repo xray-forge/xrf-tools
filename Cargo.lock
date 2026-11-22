@@ -8387,6 +8387,7 @@ dependencies = [
  "specta",
  "xrf-error",
  "xrf-extension",
+ "xrf-ltx",
  "xrf-test-utils",
  "xrf-translation",
  "xrf-utils",
