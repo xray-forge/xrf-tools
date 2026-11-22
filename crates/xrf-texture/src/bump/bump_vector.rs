@@ -31,7 +31,7 @@ impl BumpVector {
 
   /// The byte triple that decodes closest to `vector`, which is not the one that rounds closest to it.
   pub(crate) fn pack(vector: &Vector3d) -> [u8; 3] {
-    let direction: Vector3d = Self::normalize(vector);
+    let direction: Vector3d = vector.normalize_safe();
     let guess: [u8; 3] = [direction.x, direction.y, direction.z].map(Self::pack_component);
     let mut best: [u8; 3] = guess;
     let mut best_error: f32 = f32::MAX;
@@ -58,15 +58,6 @@ impl BumpVector {
     }
 
     best
-  }
-
-  /// `Fvector::normalize`, which scales by the square root of the reciprocal rather than dividing by the length; a
-  /// vector with no length is kept, where the SDK asserts.
-  fn normalize(vector: &Vector3d) -> Vector3d {
-    match vector.length_squared() {
-      0.0 => *vector,
-      squared => vector * (1.0 / squared).sqrt(),
-    }
   }
 
   /// The bytes the search walks around one component of the first guess.

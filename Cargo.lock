@@ -8273,6 +8273,7 @@ dependencies = [
  "specta",
  "xrf-audio-scene",
  "xrf-error",
+ "xrf-math",
  "xrf-sound",
  "xrf-test-utils",
  "xrf-utils",

@@ -57,6 +57,7 @@ impl Vector3d<f32> {
     (self - other).length_squared()
   }
 
+  /// `Fvector::distance_to`, the differences squared and summed in the engine's order.
   pub fn distance(&self, other: &Self) -> f32 {
     self.distance_squared(other).sqrt()
   }

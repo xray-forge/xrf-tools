@@ -62,7 +62,7 @@ impl<'a> SpawnPathDistance<'a> {
 
       if direct == max {
         if last_direct == 0.0 {
-          cumulative += Self::distance(&self.map.get_node_position(node), &target);
+          cumulative += self.map.get_node_position(node).distance(&target);
           node = path[index];
         } else {
           cumulative += last_direct;
@@ -88,7 +88,7 @@ impl<'a> SpawnPathDistance<'a> {
     if direct == max {
       let last: Vector3d<f32> = self.map.get_node_position(path[path.len() - 1]);
 
-      cumulative + last_direct + Self::distance(finish, &last)
+      cumulative + last_direct + finish.distance(&last)
     } else {
       cumulative + direct
     }
@@ -100,16 +100,9 @@ impl<'a> SpawnPathDistance<'a> {
       .map
       .find_straight_walk(node, Self::flatten(position), Self::flatten(target))
     {
-      Some(_) => Self::distance(position, target),
+      Some(_) => position.distance(target),
       None => SpawnPathSearch::MAX_RANGE,
     }
-  }
-
-  /// `Fvector::distance_to`, summed as the engine sums it.
-  fn distance(from: &Vector3d<f32>, to: &Vector3d<f32>) -> f32 {
-    let (dx, dy, dz) = (to.x - from.x, to.y - from.y, to.z - from.z);
-
-    (dx * dx + dy * dy + dz * dz).sqrt()
   }
 
   fn flatten(position: &Vector3d<f32>) -> (f32, f32) {

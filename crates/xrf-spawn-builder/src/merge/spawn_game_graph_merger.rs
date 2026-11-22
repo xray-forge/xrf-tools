@@ -1,7 +1,6 @@
 use uuid::Uuid;
 use xrf_chunk::{ChunkReadWrite, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
 use xrf_spawn::{
   GraphCrossTable, GraphCrossTableCell, GraphEdge, GraphHeader, GraphLevel, GraphLevelPoint, GraphVertex,
   SpawnGraphsChunk,
@@ -55,7 +54,7 @@ impl SpawnGameGraphMerger {
       for ((point, edges), drawn) in level.points.iter().zip(&level.graph.edges).zip(level_points) {
         vertices.push(GraphVertex {
           level_point: point.position,
-          game_point: Self::add(&point.position, &level.offset),
+          game_point: &point.position + &level.offset,
           level_id: level.id,
           level_vertex_id: point.node,
           vertex_type: (
@@ -279,7 +278,7 @@ impl SpawnGameGraphMerger {
 
         edges[from].push(GraphEdge {
           game_vertex_id: narrow_format_size(to, "A game vertex id")?,
-          distance: Self::distance(&vertices[from].game_point, &vertices[to].game_point),
+          distance: vertices[from].game_point.distance(&vertices[to].game_point),
         });
       }
     }
@@ -303,16 +302,5 @@ impl SpawnGameGraphMerger {
     }
 
     Ok(())
-  }
-
-  fn add(a: &Vector3d<f32>, b: &Vector3d<f32>) -> Vector3d<f32> {
-    Vector3d::new(a.x + b.x, a.y + b.y, a.z + b.z)
-  }
-
-  /// `Fvector::distance_to`.
-  fn distance(a: &Vector3d<f32>, b: &Vector3d<f32>) -> f32 {
-    let (dx, dy, dz) = (a.x - b.x, a.y - b.y, a.z - b.z);
-
-    (dx * dx + dy * dy + dz * dz).sqrt()
   }
 }

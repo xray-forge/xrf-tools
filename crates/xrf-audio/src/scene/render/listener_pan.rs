@@ -1,4 +1,5 @@
 use xrf_audio_scene::AudioListener;
+use xrf_math::glam::Vec3;
 
 /// Where a mono source is heard between the two outputs, by how far to the listener's right it stands: equal power, so
 /// a source ahead plays at a half's power in each, as a stereo device's default panning places it. A stereo source is
@@ -16,12 +17,11 @@ impl ListenerPan {
     let (across, ahead): (f32, f32) = if is_2d {
       (position[0], position[2])
     } else {
-      let offset: [f32; 3] = std::array::from_fn(|axis| position[axis] - listener.position[axis]);
+      let offset: Vec3 = Vec3::from(position) - Vec3::from(listener.position);
+      let forward: Vec3 = Vec3::from(listener.forward);
 
-      (
-        Self::dot(offset, Self::cross(listener.up, listener.forward)),
-        Self::dot(offset, listener.forward),
-      )
+      // In the game's left-handed space, up crossed with ahead points right.
+      (offset.dot(Vec3::from(listener.up).cross(forward)), offset.dot(forward))
     };
 
     Self::place(across, across.hypot(ahead))
@@ -37,18 +37,5 @@ impl ListenerPan {
     let angle: f32 = (side + 1.0) * std::f32::consts::FRAC_PI_4;
 
     [angle.cos(), angle.sin()]
-  }
-
-  /// In the game's left-handed space, up crossed with ahead points right.
-  fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [
-      a[1] * b[2] - a[2] * b[1],
-      a[2] * b[0] - a[0] * b[2],
-      a[0] * b[1] - a[1] * b[0],
-    ]
-  }
-
-  fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
   }
 }
