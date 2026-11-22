@@ -77,6 +77,26 @@ fn records_a_resolved_reference_with_the_source_answering_it() {
 }
 
 #[test]
+fn answers_a_file_as_its_record_would_without_reading_it() {
+  let (vfs, loose_id, archive_id) = loose_over_archive("answered", &["sounds/a.ogg"], &["sounds/b.ogg"]);
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let search: XraySearch = search_of(&vfs, loose_id, archive_id).with_recording(&record);
+
+  assert_eq!(search.answer_file("sounds\\a.ogg"), found(loose_id));
+  assert_eq!(search.answer_file("sounds\\b.ogg"), found(archive_id));
+  assert_eq!(
+    search.answer_file("sounds\\c.ogg"),
+    Some(XrayInputAnswer::default()),
+    "a file no step holds answers no source"
+  );
+  assert_eq!(
+    record.get(&file(&search, "sounds\\a.ogg")),
+    found(loose_id),
+    "recorded as a read would be"
+  );
+}
+
+#[test]
 fn reads_and_records_a_head_from_a_loose_file_and_an_archive() {
   let (vfs, loose_id, archive_id) = loose_over_archive("head", &["textures/a.dds"], &["textures/b.dds"]);
   let record: XrayInputRecord = XrayInputRecord::new();

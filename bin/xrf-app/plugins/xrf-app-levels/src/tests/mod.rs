@@ -15,8 +15,7 @@ mod level_follow;
 mod level_map;
 mod level_objects;
 mod level_placements;
-#[cfg(windows)]
-mod level_recordings;
+mod level_sound_files;
 mod level_source;
 mod level_start;
 mod level_viewer_folder;
@@ -26,6 +25,7 @@ mod new_game;
 mod particles;
 #[cfg(windows)]
 mod record_resampler;
+mod recording_slot;
 mod render_reload;
 mod scene_follow;
 mod scene_helpers;

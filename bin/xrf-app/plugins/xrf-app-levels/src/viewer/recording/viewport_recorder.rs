@@ -14,7 +14,7 @@ use xrf_renderer::{RecordEvent, RecordFrame, RenderViewportId};
 use xrf_utils::format_path;
 
 use crate::viewer::recording::writer::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
-use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
+use crate::viewer::recording::{RecordingOutcome, RecordingProgress, SlotRecording};
 
 /// Records a viewport and what its camera hears into one video on its own thread: presented frames and the pre-master
 /// mix, aligned by the audio clock. Time zero is the first frame's present and the mixer frame the clock anchor places
@@ -127,13 +127,14 @@ impl ViewportRecorder {
       thread: Some(thread),
     })
   }
+}
 
-  pub(crate) fn get_window(&self) -> &str {
+impl SlotRecording for ViewportRecorder {
+  fn get_window(&self) -> &str {
     &self.window
   }
 
-  /// Whether it ended by itself and only awaits collection.
-  pub(crate) fn is_ended(&self) -> bool {
+  fn is_ended(&self) -> bool {
     self.thread.as_ref().is_none_or(JoinHandle::is_finished)
   }
 
@@ -143,7 +144,7 @@ impl ViewportRecorder {
   /// # Errors
   ///
   /// Returns an error when the file could not be finished, or its thread stopped on a panic.
-  pub(crate) fn stop(mut self) -> TauriResult<RecordingOutcome> {
+  fn stop(mut self) -> TauriResult<RecordingOutcome> {
     self.is_stopped.store(true, Ordering::Release);
     self.renderer.stop_record(self.viewport);
 

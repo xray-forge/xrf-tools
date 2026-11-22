@@ -2,6 +2,7 @@
 //! which has no console, still leaves one behind.
 
 mod log_file;
+mod log_run_name;
 mod log_sink;
 mod process_start;
 mod setup_logger;

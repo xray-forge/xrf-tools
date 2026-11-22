@@ -3,10 +3,9 @@ use std::sync::{Arc, Mutex};
 
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
-use xrf_world::WorldSoundInfo;
 
 use crate::level::SelectedLevel;
-use crate::sound::LevelSoundFiles;
+use crate::sound::{LevelSoundFileEntry, LevelSoundFiles};
 
 /// The part name a change event uses when the sound files a level reads go stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -14,11 +13,12 @@ pub(crate) const LEVEL_SOUND_FILES_PART: &str = "soundFiles";
 
 /// The sound files a level names, each read on first ask and kept for the snapshot, shared by helpers, sounds and
 /// weather. Every file read is recorded, so changing, adding or removing one invalidates this part and the renderer
-/// parts read from it.
+/// parts read from it; each kept result carries the file's answer, so one a reader of an older snapshot files late
+/// serves no later snapshot.
 pub(crate) struct LevelSoundFilesPart;
 
 impl SessionPart for LevelSoundFilesPart {
-  type Value = Arc<Mutex<HashMap<String, Option<WorldSoundInfo>>>>;
+  type Value = Arc<Mutex<HashMap<String, LevelSoundFileEntry>>>;
 
   const NAME: &'static str = LEVEL_SOUND_FILES_PART;
 
@@ -33,7 +33,7 @@ impl LevelSoundFilesPart {
     search: &XraySearch,
     read: impl FnOnce(&LevelSoundFiles<'_>) -> T,
   ) -> T {
-    let known: Arc<Mutex<HashMap<String, Option<WorldSoundInfo>>>> = current
+    let known: Arc<Mutex<HashMap<String, LevelSoundFileEntry>>> = current
       .parts
       .get_or_init::<Self>(|| Arc::new(Mutex::new(HashMap::new())));
 

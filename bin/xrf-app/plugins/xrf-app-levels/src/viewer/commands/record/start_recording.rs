@@ -39,7 +39,10 @@ pub(crate) async fn levels_start_recording(
   name: String,
   progress: Channel<RecordingProgress>,
 ) -> TauriResult<PathBuf> {
-  // Refused before the frame is asked for; the start itself checks again under the lock.
+  // Read before anything waits, so a page that goes from here on is seen gone by the start.
+  let released: u64 = recordings.count_releases(window.get_label());
+
+  // Refused before the frame is asked for; the start itself checks again under the slot's lock.
   if recordings.is_recording() {
     return Err(String::from("A recording runs already"));
   }
@@ -63,35 +66,21 @@ pub(crate) async fn levels_start_recording(
     use crate::viewer::recording::ViewportRecorder;
 
     execution
-      .run_blocking("Starting a recording", move || -> TauriResult<PathBuf> {
-        // Held from the check until the recorder is in place, so two concurrent starts never both pass.
-        let mut active = recordings.lock();
+      .run_blocking("Starting a recording", move || {
+        recordings.start(&window, released, &world, viewport, || {
+          let file: PathBuf = LevelViewerFolder::find_free_recording(&LevelViewerFolder::make(folder)?, &name)?;
+          let recorder: ViewportRecorder = ViewportRecorder::start(
+            &renderer,
+            &server,
+            viewport,
+            window.clone(),
+            (frame.width, frame.height),
+            file.clone(),
+            progress,
+          )?;
 
-        if active.as_ref().is_some_and(|recorder| !recorder.is_ended()) {
-          return Err(String::from("A recording runs already"));
-        }
-
-        // Collect a recording that ended by itself (its file already finished) before the next opens its tap.
-        if let Some(ended) = active.take() {
-          let _ = ended.stop();
-        }
-
-        let file: PathBuf = LevelViewerFolder::find_free_recording(&LevelViewerFolder::make(folder)?, &name)?;
-
-        *active = Some(ViewportRecorder::start(
-          &renderer,
-          &server,
-          viewport,
-          window,
-          (frame.width, frame.height),
-          file.clone(),
-          progress,
-        )?);
-        // Pinned under the slot's lock, so a waiting stop unpins after, never before.
-        world.lock().pin_listener(Some(viewport));
-        drop(active);
-
-        Ok(file)
+          Ok((recorder, file))
+        })
       })
       .await?
   }
@@ -99,7 +88,7 @@ pub(crate) async fn levels_start_recording(
   #[cfg(not(windows))]
   {
     let _ = (
-      frame, folder, renderer, recordings, world, execution, server, name, progress, window,
+      frame, folder, renderer, recordings, world, execution, server, name, progress, window, released,
     );
 
     Err(MediaProbe::MEDIA_FOUNDATION.load().err().unwrap_or_default())

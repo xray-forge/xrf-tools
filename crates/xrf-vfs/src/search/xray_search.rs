@@ -6,7 +6,7 @@ use xrf_archive::ArchiveDescriptor;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::asset::{XrayAsset, XrayAssetRules, XrayAssetType};
-use crate::input::{XrayInput, XrayInputKind, XrayInputRecord};
+use crate::input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord};
 use crate::mount::{XrayMountId, XraySkippedMount};
 use crate::path::{XrayLogicalPath, XrayPathCollision};
 use crate::search::{
@@ -423,6 +423,20 @@ impl XraySearch {
     let scope: &XrayLookupScope = self.find_scope_of(logical_path)?;
 
     self.vfs.read_recorded_crc_in(scope, logical_path)
+  }
+
+  /// What this search's snapshot answers for an exact logical path: the source holding the copy it finds and its
+  /// revision there, without reading it. Two answers that differ mean the file changed between, so what was read of it
+  /// can be kept by its answer and shared across snapshots; `None` for a path no logical path spells.
+  pub fn answer_file(&self, logical_path: &str) -> Option<XrayInputAnswer> {
+    self.record_file(logical_path);
+
+    let path: XrayLogicalPath = XrayLogicalPath::new(logical_path).ok()?;
+
+    Some(self.vfs.answer_input(&XrayInput::new(
+      XraySearchKey::of(&self.steps),
+      XrayInputKind::File(path),
+    )))
   }
 
   /// Opens the copy of an exact logical path to be read in pieces.

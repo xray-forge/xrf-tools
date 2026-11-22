@@ -14,32 +14,11 @@ pub(crate) async fn levels_stop_recording(
   execution: State<'_, ExecutionState>,
   recordings: State<'_, LevelRecordings>,
 ) -> TauriResult<RecordingOutcome> {
-  #[cfg(windows)]
-  {
-    let world: WorldState = world.inner().clone();
-    let recordings: LevelRecordings = recordings.inner().clone();
+  let world: WorldState = world.inner().clone();
+  let recordings: LevelRecordings = recordings.inner().clone();
 
-    // Taken on the pool: a start holds the slot while its recorder opens.
-    execution
-      .run_blocking("Finishing a recording", move || {
-        let recorder = {
-          let mut active = recordings.lock();
-
-          world.lock().pin_listener(None);
-          active.take().ok_or("No recording runs")?
-        };
-
-        recorder.stop()
-      })
-      .await?
-  }
-
-  #[cfg(not(windows))]
-  {
-    world.lock().pin_listener(None);
-
-    let _ = (execution, recordings);
-
-    Err(String::from("No recording runs"))
-  }
+  // Taken on the pool: a start holds the slot while its recorder opens.
+  execution
+    .run_blocking("Finishing a recording", move || recordings.stop(&world))
+    .await?
 }
