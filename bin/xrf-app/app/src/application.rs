@@ -9,7 +9,7 @@ use xrf_app_core::cache::AppCache;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
-use xrf_app_core::logging::{ProcessStart, setup_logger};
+use xrf_app_core::logging::{LogSetup, ProcessStart, UiLog};
 use xrf_app_core::session::SessionScopes;
 use xrf_app_core::transport::TransportServer;
 use xrf_app_core::window::{WindowCloseApprovals, WindowHandles, WindowReveals};
@@ -18,6 +18,7 @@ use xrf_build_info::{BuildInfo, build_info};
 use xrf_job::ExecutionRequest;
 
 use crate::application_failure::ApplicationFailure;
+use crate::application_foundation::ApplicationFoundation;
 use crate::ipc::registry::transport_routes;
 use crate::plugins::domain_plugins;
 use crate::window::MainWindow;
@@ -30,7 +31,7 @@ pub(crate) fn run() -> ExitCode {
   // Recorded by this binary's build script, so it describes the binary rather than whichever crate reads it.
   let build: BuildInfo = build_info!();
 
-  setup_logger(&context.config().identifier, build.version);
+  let ui_log: UiLog = LogSetup::install(&context.config().identifier, build.version);
 
   StartupLog::write(&build);
 
@@ -54,7 +55,13 @@ pub(crate) fn run() -> ExitCode {
 
   log::info!("Registering domain plugins");
 
-  let built: Result<App<Wry>, tauri::Error> = assemble(builder, build, execution, directories)
+  let foundation: ApplicationFoundation = ApplicationFoundation {
+    build,
+    execution,
+    directories,
+    ui_log,
+  };
+  let built: Result<App<Wry>, tauri::Error> = assemble(builder, foundation)
     .setup(|application| {
       // Before the window, which asks where the transport listens as its page loads.
       TransportServer::start(application, transport_routes())?;
@@ -80,15 +87,16 @@ pub(crate) fn run() -> ExitCode {
   ExitCode::SUCCESS
 }
 
-/// The domain plugins over the shared state their setups build on: the build, pool, asset state, session scopes,
-/// directories and cache, window registries and jobs, all managed before any plugin, and the store plugin the
-/// preferences open through, registered first. A destroyed window releases every scope its pages held.
-fn assemble<R: Runtime>(
-  builder: Builder<R>,
-  build: BuildInfo,
-  execution: ExecutionState,
-  directories: AppDirectories,
-) -> Builder<R> {
+/// The domain plugins over the shared state their setups build on: the foundation, asset state, session scopes, cache,
+/// window registries and jobs, all managed before any plugin, and the store plugin the preferences open through,
+/// registered first. A destroyed window releases every scope its pages held.
+fn assemble<R: Runtime>(builder: Builder<R>, foundation: ApplicationFoundation) -> Builder<R> {
+  let ApplicationFoundation {
+    build,
+    execution,
+    directories,
+    ui_log,
+  } = foundation;
   let builder: Builder<R> = builder.plugin(tauri_plugin_store::Builder::default().build());
   // Closed documents are dropped on the pool, so neither a command nor the event loop waits for a level to go.
   let scopes: SessionScopes = SessionScopes::new(execution.get_pool());
@@ -103,6 +111,7 @@ fn assemble<R: Runtime>(
     .manage(AssetMountState::new())
     .manage(scopes)
     .manage(directories)
+    .manage(ui_log)
     .manage(WindowHandles::default())
     .manage(WindowCloseApprovals::default())
     .manage(WindowReveals::default())
@@ -133,6 +142,7 @@ mod tests {
   use xrf_app_core::directories::AppDirectories;
   use xrf_app_core::execution::ExecutionState;
   use xrf_app_core::jobs::JobRegistry;
+  use xrf_app_core::logging::UiLog;
   use xrf_app_core::session::SessionScopes;
   use xrf_app_core::window::{WindowCloseApprovals, WindowHandles, WindowReveals};
   use xrf_app_dialogs::DialogProjects;
@@ -149,6 +159,7 @@ mod tests {
   use xrf_job::ExecutionRequest;
 
   use super::assemble;
+  use crate::application_foundation::ApplicationFoundation;
 
   /// A plugin whose setup misses what it builds on fails the build, and a unit no setup manages fails here, so an order
   /// or a unit gone wrong shows before any command asks. The transport and the window, which the running application
@@ -157,7 +168,13 @@ mod tests {
   fn every_plugin_sets_up_over_the_state_managed_before_it() {
     let execution: ExecutionState =
       ExecutionState::new(ExecutionRequest::Workers(NonZeroUsize::new(2).expect("two workers"))).expect("pool starts");
-    let application: App<MockRuntime> = assemble(mock_builder(), build_info!(), execution, AppDirectories::new(None))
+    let foundation: ApplicationFoundation = ApplicationFoundation {
+      build: build_info!(),
+      execution,
+      directories: AppDirectories::new(None),
+      ui_log: UiLog::closed(),
+    };
+    let application: App<MockRuntime> = assemble(mock_builder(), foundation)
       .build(mock_context(noop_assets()))
       .expect("every plugin to set up");
 
@@ -166,6 +183,7 @@ mod tests {
     assert!(application.try_state::<AssetMountState>().is_some());
     assert!(application.try_state::<SessionScopes>().is_some());
     assert!(application.try_state::<AppDirectories>().is_some());
+    assert!(application.try_state::<UiLog>().is_some());
     assert!(application.try_state::<WindowHandles>().is_some());
     assert!(application.try_state::<WindowCloseApprovals>().is_some());
     assert!(application.try_state::<WindowReveals>().is_some());

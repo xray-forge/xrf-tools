@@ -1,12 +1,13 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
-import { Logger } from "@xrf/logging";
+import { ELogLevel, Logger } from "@xrf/logging";
 
 import { APPLICATION_SOURCE, emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
+import { ICapturedFailure } from "@/core/notifications/services/error-capture/error-capture.service.failure";
 
 /**
- * Records the failures nothing else reports.
+ * Records the failures nothing else reports, as a notification and as an error record in the UI log.
  */
 @Injectable()
 export class ErrorCaptureService {
@@ -59,7 +60,12 @@ export class ErrorCaptureService {
 
     const where: string = event.filename ? `${event.filename}:${event.lineno}:${event.colno}` : "unknown location";
 
-    this.record(event.error ? transformError(event.error).message : event.message, where);
+    this.record({
+      what: `Uncaught error at ${where}`,
+      details: where,
+      message: event.error ? transformError(event.error).message : event.message,
+      cause: event.error instanceof Error ? event.error : null,
+    });
   }
 
   /**
@@ -69,16 +75,21 @@ export class ErrorCaptureService {
    */
   @BoundAction()
   public onUnhandledRejection(event: PromiseRejectionEvent): void {
-    this.record(transformError(event.reason).message, "unhandled rejection");
+    this.record({
+      what: "Unhandled rejection",
+      details: "unhandled rejection",
+      message: transformError(event.reason).message,
+      cause: event.reason instanceof Error ? event.reason : null,
+    });
   }
 
   /**
-   * Record one captured failure, guarding against the loop where recording it fails again.
+   * Record one captured failure as an error record in the UI log and a notification, guarding against the loop where
+   * recording it fails again.
    *
-   * @param message - Failure message to record.
-   * @param where - Location or failure context shown in the notification details.
+   * @param failure - The failure a listener caught.
    */
-  private record(message: string, where: string): void {
+  private record(failure: ICapturedFailure): void {
     if (this.isRecording) {
       return;
     }
@@ -86,11 +97,14 @@ export class ErrorCaptureService {
     this.isRecording = true;
 
     try {
+      // The browser has printed the failure to the console already, so it goes to the UI log alone.
+      this.log.record(ELogLevel.ERROR, `${failure.what}:`, failure.cause ?? failure.message);
+
       emitNotification(this.eventBus, {
-        details: where,
+        details: failure.details,
         severity: ENotificationSeverity.DEV,
         source: APPLICATION_SOURCE,
-        title: message,
+        title: failure.message,
       });
     } finally {
       this.isRecording = false;

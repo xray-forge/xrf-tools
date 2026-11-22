@@ -7910,11 +7910,13 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "dirs",
+ "env_filter",
  "env_logger",
  "getrandom 0.4.3",
  "http-body-util",
  "hyper",
  "hyper-util",
+ "jiff",
  "log",
  "serde",
  "serde_json",

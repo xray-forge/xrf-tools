@@ -4,6 +4,7 @@
 
 mod application;
 mod application_failure;
+mod application_foundation;
 mod ipc;
 mod plugins;
 mod window;

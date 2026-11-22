@@ -109,7 +109,8 @@ function getInitialVendorChunk(id: string): string | null {
 
 /**
  * Whether devtools should skip a source when linking a console line or reading a stack: dependencies, and the logger,
- * whose methods stand between every caller and `console`.
+ * whose methods stand between every caller and `console`. Only the dev server takes it: the release build writes no
+ * source maps.
  */
 function isIgnoredInDevtools(sourcePath: string): boolean {
   const normalized: string = normalizePath(sourcePath);

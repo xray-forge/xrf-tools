@@ -1,13 +1,15 @@
-//! The application's log: every record to the console and to this run's log file, panics included, so a release build,
-//! which has no console, still leaves one behind.
+//! The application's logs. Every backend record goes to the console and to this run's log file, panics included, so a
+//! release build, which has no console, still leaves one behind; the webview's records go to the run's UI log file beside
+//! it, and nowhere else.
 
-mod log_file;
-mod log_run_name;
+mod file;
+mod line;
+mod log_filter;
+mod log_setup;
 mod log_sink;
 mod process_start;
-mod setup_logger;
-#[cfg(test)]
-mod tests;
+mod ui;
 
+pub use log_setup::LogSetup;
 pub use process_start::ProcessStart;
-pub use setup_logger::setup_logger;
+pub use ui::{UiLog, UiLogEntry};

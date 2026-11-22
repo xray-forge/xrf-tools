@@ -6,6 +6,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { useEffect } from "react";
 
+import { UI_LOG } from "@/core/logging/lib/ui-log";
 import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
 import { resolveAppWindow } from "@/lib/tauri/app-window";
 
@@ -49,7 +50,8 @@ export function useWindowCloseGuard(): void {
     // Approved first, so a refused approval leaves the window guarded and the next close asks again. Listening still,
     // the page would be asked about its own close once more, so it stops just before closing, and guards it again where
     // the close then fails. The backend finishes an approved close itself, so the close need not wait for the backend to
-    // hear that the page stopped.
+    // hear that the page stopped. The UI log is given a bounded time to write what it holds, so a stuck write cannot
+    // hold the close.
     function exit(): void {
       log.info("Approving window close:", target.label);
 
@@ -58,6 +60,9 @@ export function useWindowCloseGuard(): void {
         .then(() => {
           log.info("Window close approved, closing:", target.label);
 
+          return UI_LOG.flush();
+        })
+        .then(() => {
           unlisten?.();
           unlisten = null;
 

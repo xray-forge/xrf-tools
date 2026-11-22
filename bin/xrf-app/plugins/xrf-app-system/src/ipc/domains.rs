@@ -16,10 +16,12 @@ macro_rules! for_each_system_domain {
         get_host_info => crate::diagnostics::commands::get_host_info::system_get_host_info,
         get_memory_usage => crate::diagnostics::commands::get_memory_usage::system_get_memory_usage,
         get_runtime_snapshot => crate::diagnostics::commands::get_runtime_snapshot::system_get_runtime_snapshot,
+        get_ui_log_level => crate::ui_log::commands::get_ui_log_level::system_get_ui_log_level,
         report_leave_decision => crate::window::commands::report_leave_decision::system_report_leave_decision,
         reveal_path => crate::paths::commands::reveal_path::system_reveal_path,
         reveal_window => crate::window::commands::reveal_window::system_reveal_window,
         tidy_app_cache => crate::paths::commands::tidy_app_cache::system_tidy_app_cache,
+        write_ui_log => crate::ui_log::commands::write_ui_log::system_write_ui_log,
       }
     }
   };

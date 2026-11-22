@@ -11,6 +11,8 @@ import {
   MemoryUsage,
   PathDescription,
   RuntimeSnapshot,
+  UiLogLevel,
+  UiLogRecord,
 } from "#/types/xrf-app-system";
 import { BuildInfo } from "#/types/xrf-build-info";
 import { EnvFlagReading } from "#/types/xrf-env-flags";
@@ -28,10 +30,12 @@ export enum ESystemCommand {
   GET_HOST_INFO = "plugin:system|get_host_info",
   GET_MEMORY_USAGE = "plugin:system|get_memory_usage",
   GET_RUNTIME_SNAPSHOT = "plugin:system|get_runtime_snapshot",
+  GET_UI_LOG_LEVEL = "plugin:system|get_ui_log_level",
   REPORT_LEAVE_DECISION = "plugin:system|report_leave_decision",
   REVEAL_PATH = "plugin:system|reveal_path",
   REVEAL_WINDOW = "plugin:system|reveal_window",
   TIDY_APP_CACHE = "plugin:system|tidy_app_cache",
+  WRITE_UI_LOG = "plugin:system|write_ui_log",
 }
 
 /** Commands */
@@ -64,6 +68,12 @@ export const systemCommands = {
   getMemoryUsage: () => __TAURI_INVOKE<MemoryUsage | null>(ESystemCommand.GET_MEMORY_USAGE),
   /** Report what the application currently costs the machine, and how long it has been running. */
   getRuntimeSnapshot: () => __TAURI_INVOKE<RuntimeSnapshot>(ESystemCommand.GET_RUNTIME_SNAPSHOT),
+  /**
+   * Report the most verbose level at which the backend can write any of the webview's records, whatever its scope, none
+   * where it writes none, so a record below it is dropped before it is sent; the backend filters each record it is sent
+   * again.
+   */
+  getUiLogLevel: () => __TAURI_INVOKE<UiLogLevel | null>(ESystemCommand.GET_UI_LOG_LEVEL),
   /** Write what the page decided about leaving or closing to the log, beside what the backend did about it. */
   reportLeaveDecision: (decision: ELeaveDecision, unsaved: number) =>
     __TAURI_INVOKE<void>(ESystemCommand.REPORT_LEAVE_DECISION, { decision, unsaved }),
@@ -77,6 +87,11 @@ export const systemCommands = {
    */
   tidyAppCache: (policy: AppCachePolicy, isForced: boolean) =>
     __TAURI_INVOKE<AppCacheTidy>(ESystemCommand.TIDY_APP_CACHE, { policy, isForced }),
+  /**
+   * Write a batch of the webview's records to this run's UI log in their order, each filtered again as the backend
+   * filters its own; a batch over 512 records is refused whole.
+   */
+  writeUiLog: (records: Array<UiLogRecord>) => __TAURI_INVOKE<null>(ESystemCommand.WRITE_UI_LOG, { records }),
 };
 
 /** What each command of the `system` plugin takes and resolves to, keyed by its wire name. */
@@ -92,6 +107,7 @@ export interface ISystemCommandSignatures {
   [ESystemCommand.GET_HOST_INFO]: IIpcCommandSignature<typeof systemCommands.getHostInfo, []>;
   [ESystemCommand.GET_MEMORY_USAGE]: IIpcCommandSignature<typeof systemCommands.getMemoryUsage, []>;
   [ESystemCommand.GET_RUNTIME_SNAPSHOT]: IIpcCommandSignature<typeof systemCommands.getRuntimeSnapshot, []>;
+  [ESystemCommand.GET_UI_LOG_LEVEL]: IIpcCommandSignature<typeof systemCommands.getUiLogLevel, []>;
   [ESystemCommand.REPORT_LEAVE_DECISION]: IIpcCommandSignature<
     typeof systemCommands.reportLeaveDecision,
     ["decision", "unsaved"]
@@ -99,4 +115,5 @@ export interface ISystemCommandSignatures {
   [ESystemCommand.REVEAL_PATH]: IIpcCommandSignature<typeof systemCommands.revealPath, ["path"]>;
   [ESystemCommand.REVEAL_WINDOW]: IIpcCommandSignature<typeof systemCommands.revealWindow, []>;
   [ESystemCommand.TIDY_APP_CACHE]: IIpcCommandSignature<typeof systemCommands.tidyAppCache, ["policy", "isForced"]>;
+  [ESystemCommand.WRITE_UI_LOG]: IIpcCommandSignature<typeof systemCommands.writeUiLog, ["records"]>;
 }

@@ -17,7 +17,10 @@ it depends on none of them.
 - `transport`: the loopback HTTP server that bulk bytes cross, so a large answer never blocks the window's thread.
 - `directories`: `AppDirectories`, the application's own data, preferences and caches, and where tools write by
   default.
-- `logging`: the log, written to the console and to the run's log file, panics included.
+- `logging`: `LogSetup`, which installs the log, written to the console and to the run's log file, panics included, in
+  env_logger's default layout stamped to the millisecond; and `UiLog`, the webview's records, filtered by the same
+  `RUST_LOG` and written in that layout to the run's UI log file beside it alone, each stamped with the millisecond the
+  webview logged it. A run is the pair of files, and the last ten runs are kept.
 - `window`: the window a command was invoked from, native window handles, and the windows a close was approved for.
 - `ipc`: the macro every plugin crate expands its command domains through, and core's own domains.
 - `plugins`: core's own plugins, `AssetsPlugin`, `JobsPlugin`, `SessionsPlugin` and `TransportPlugin`.
@@ -29,8 +32,9 @@ declare the inline plugins and their permissions.
 
 ## In the application
 
-The application manages core's state before any plugin sets up: `ExecutionState`, `AssetMountState`, `SessionScopes`,
-`AppDirectories`, `WindowHandles`, `WindowCloseApprovals` and the `JobRegistry`. Core's plugins answer four command
+The application installs the log first (`LogSetup::install`), so nothing before Tauri runs is lost, and manages core's
+state before any plugin sets up: `ExecutionState`, `AssetMountState`, `SessionScopes`, `AppDirectories`, the `UiLog`,
+`WindowHandles`, `WindowCloseApprovals` and the `JobRegistry`. Core's plugins answer four command
 domains: `assets` (probing and listing roots, engine detection, text commits and change subscriptions, with the bulk
 routes `read_asset` and `read_texture`), `jobs` (list, attach and cancel), `sessions` (binding openings to scopes and
 releasing them) and `transport` (the endpoint the bulk routes are served at).

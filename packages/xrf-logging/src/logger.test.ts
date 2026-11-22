@@ -59,10 +59,25 @@ describe("Logger", () => {
     expect(sink.write).toHaveBeenCalledWith(ELogLevel.INFO, "early", ["late line"]);
   });
 
+  it("records a line to the sink alone", () => {
+    Logger.sink = sink;
+
+    const failure: Error = new Error("uncaught");
+
+    jest.mocked(console.error).mockClear();
+    new Logger("scope").record(ELogLevel.ERROR, "Unhandled rejection:", failure);
+
+    expect(sink.write).toHaveBeenCalledWith(ELogLevel.ERROR, "scope", ["Unhandled rejection:", failure]);
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
   it("writes nothing from a disabled logger", () => {
     Logger.sink = sink;
 
-    new Logger("scope", false).error("unseen");
+    const logger: LoggerClass = new Logger("scope", false);
+
+    logger.error("unseen");
+    logger.record(ELogLevel.ERROR, "unseen");
 
     expect(sink.write).not.toHaveBeenCalled();
   });

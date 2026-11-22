@@ -6,14 +6,18 @@ import { createRoot } from "react-dom/client";
 import { ApplicationProvider } from "@/ApplicationProvider";
 import { ApplicationRouter } from "@/ApplicationRouter";
 import { RootCrash } from "@/core/error/components/RootCrash";
+import { UI_LOG } from "@/core/logging/lib/ui-log";
 import { tidyAppCacheOnStart } from "@/core/settings/lib/app-cache";
 import { persistIpcProfiling } from "@/core/settings/lib/ipc-profiling";
 import { suppressNativeContextMenu } from "@/lib/dom/event/context-menu";
 
-Logger.info("Start application");
-
 // Before anything renders and calls the backend, so the first calls already know whether they weigh themselves.
 persistIpcProfiling();
+
+// Before the first line is logged, so the UI log file holds the whole run.
+UI_LOG.install();
+
+Logger.info("Start application");
 
 // Set once for the lifetime of the webview rather than from a component: it is host chrome policy,
 // not application state, and nothing ever restores the default menu.

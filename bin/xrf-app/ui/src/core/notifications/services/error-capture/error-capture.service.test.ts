@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
+import { ELogLevel, ILogSink, Logger } from "@xrf/logging";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { ErrorCaptureService } from "@/core/notifications/services/error-capture/error-capture.service";
@@ -31,8 +32,16 @@ function watchCapture(): IWatchedCapture {
 }
 
 describe("ErrorCaptureService", () => {
+  const sink: jest.Mocked<ILogSink> = { write: jest.fn() };
+
   beforeEach(() => {
     jest.restoreAllMocks();
+    sink.write.mockReset();
+    Logger.sink = sink;
+  });
+
+  afterEach(() => {
+    Logger.sink = null;
   });
 
   it("registers and releases the same handler references", () => {
@@ -91,5 +100,82 @@ describe("ErrorCaptureService", () => {
     service.onWindowError({ error: null, message: "" } as unknown as ErrorEvent);
 
     expect(raised).toHaveLength(0);
+    expect(sink.write).not.toHaveBeenCalled();
+  });
+
+  describe("error records", () => {
+    // The suite turns logging off, and a logger made then records nothing.
+    beforeEach(() => {
+      Logger.IS_GLOBAL_LOGGING_ENABLED = true;
+    });
+
+    afterEach(() => {
+      Logger.IS_GLOBAL_LOGGING_ENABLED = false;
+    });
+
+    it("writes an uncaught exception with its location and stack", () => {
+      const { service }: IWatchedCapture = watchCapture();
+      const error: Error = new Error("exploded");
+
+      service.onWindowError({
+        colno: 7,
+        error,
+        filename: "http://localhost/src/thing.ts",
+        lineno: 42,
+        message: "exploded",
+      } as ErrorEvent);
+
+      expect(sink.write).toHaveBeenCalledTimes(1);
+      expect(sink.write).toHaveBeenCalledWith(ELogLevel.ERROR, service.log.prefix, [
+        "Uncaught error at http://localhost/src/thing.ts:42:7:",
+        error,
+      ]);
+    });
+
+    it("writes the message of an uncaught failure that carries no error", () => {
+      const { service }: IWatchedCapture = watchCapture();
+
+      service.onWindowError({ error: null, message: "Script error." } as unknown as ErrorEvent);
+
+      expect(sink.write).toHaveBeenCalledWith(ELogLevel.ERROR, service.log.prefix, [
+        "Uncaught error at unknown location:",
+        "Script error.",
+      ]);
+    });
+
+    it("writes a dropped rejection with its stack, or its message for a reason that is no error", () => {
+      const { service }: IWatchedCapture = watchCapture();
+      const error: Error = new Error("nobody caught this");
+
+      service.onUnhandledRejection({ reason: error } as PromiseRejectionEvent);
+      service.onUnhandledRejection({ reason: "plain" } as PromiseRejectionEvent);
+
+      expect(sink.write.mock.calls).toEqual([
+        [ELogLevel.ERROR, service.log.prefix, ["Unhandled rejection:", error]],
+        [ELogLevel.ERROR, service.log.prefix, ["Unhandled rejection:", "plain"]],
+      ]);
+    });
+
+    it("does not print the failure to the console again", () => {
+      const { service }: IWatchedCapture = watchCapture();
+      const printed: jest.SpiedFunction<typeof console.error> = jest.spyOn(console, "error");
+
+      service.onUnhandledRejection({ reason: new Error("quiet") } as PromiseRejectionEvent);
+
+      expect(printed).not.toHaveBeenCalled();
+    });
+
+    it("records nothing while a failure is being recorded", () => {
+      const { raised, service }: IWatchedCapture = watchCapture();
+
+      sink.write.mockImplementationOnce(() => {
+        service.onUnhandledRejection({ reason: new Error("again") } as PromiseRejectionEvent);
+      });
+
+      service.onUnhandledRejection({ reason: new Error("first") } as PromiseRejectionEvent);
+
+      expect(sink.write).toHaveBeenCalledTimes(1);
+      expect(raised.map((it: INotificationPayload) => it.title)).toEqual(["first"]);
+    });
   });
 });

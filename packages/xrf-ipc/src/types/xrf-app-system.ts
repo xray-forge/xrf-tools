@@ -209,6 +209,28 @@ export type RuntimeSnapshot = {
   machine: MachineUsage;
 };
 
+/** A level the webview logs at, its most verbose being debug. */
+export enum EUiLogLevel {
+  ERROR = "error",
+  WARN = "warn",
+  INFO = "info",
+  DEBUG = "debug",
+}
+
+/** Every `EUiLogLevel` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type UiLogLevel = `${EUiLogLevel}`;
+
+/** One record the webview logged, as it sends it in a batch. */
+export type UiLogRecord = {
+  level: UiLogLevel;
+  /** The logger's scope, written under the target `xrf_ui::<scope>`; an empty one writes under `xrf_ui` itself. */
+  scope: string;
+  /** Milliseconds since the Unix epoch at which the webview logged it, which its line is stamped with. */
+  time: number;
+  /** The text, a stack's many lines included. */
+  message: string;
+};
+
 /** What a webview process does, as WebView2 names it (`COREWEBVIEW2_PROCESS_KIND`). */
 export enum EWebviewProcessKind {
   /** The browser process, which owns the others. */
