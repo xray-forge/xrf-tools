@@ -75,6 +75,10 @@ pub enum GamedataVerificationRule {
   /// `team_default` character, or a `character_profile` naming a profile nothing declares.
   #[display("dialog.profile-unresolved")]
   DialogProfileUnresolved,
+  /// An NPC a spawn file places as a character no file declares, or with a profile no file declares or no character
+  /// resolves, which the engine asserts on when a new game reads the spawn.
+  #[display("dialog.spawn-unresolved")]
+  DialogSpawnUnresolved,
   /// A phrase line with no text in a language the game ships, which the engine shows as its key.
   #[display("dialog.text-missing")]
   DialogTextMissing,

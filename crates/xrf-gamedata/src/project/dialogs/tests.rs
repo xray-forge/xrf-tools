@@ -2,7 +2,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use uuid::Uuid;
+use xrf_math::Vector3d;
 use xrf_report::{CheckId, CheckReport};
+use xrf_spawn::{
+  AlifeObject, AlifeObjectHumanAbstract, AlifeObjectInherited, AlifeStalker, ClsId, GraphHeader, SpawnALifeSpawnsChunk,
+  SpawnArtefactSpawnsChunk, SpawnFile, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPacketHeader, SpawnPatrolsChunk,
+};
 use xrf_test_utils::GeneratedResources;
 
 use super::dialogs_verifier::DialogsVerifier;
@@ -84,6 +90,46 @@ impl DialogTree {
     self
   }
 
+  /// The tree with a root spawn placing one stalker per NPC.
+  fn with_spawn(self, npcs: &[SpawnedNpc]) -> Self {
+    let guid: Uuid = Uuid::nil();
+    let spawn: SpawnFile = SpawnFile {
+      header: SpawnHeaderChunk {
+        version: 10,
+        guid,
+        graph_guid: guid,
+        objects_count: u32::try_from(npcs.len()).unwrap(),
+        levels_count: 0,
+      },
+      alife_spawn: SpawnALifeSpawnsChunk {
+        objects: npcs.iter().enumerate().map(|(id, npc)| npc.build(id)).collect(),
+      },
+      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
+      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
+      graphs: SpawnGraphsChunk {
+        header: GraphHeader {
+          version: 10,
+          vertices_count: 0,
+          edges_count: 0,
+          points_count: 0,
+          guid,
+          levels_count: 0,
+        },
+        levels: Vec::new(),
+        vertices: Vec::new(),
+        edges: Vec::new(),
+        points: Vec::new(),
+        cross_tables: Vec::new(),
+      },
+    };
+
+    spawn
+      .write_to_path(&self.root.join("spawns").join("all.spawn"))
+      .unwrap();
+
+    self
+  }
+
   fn verify(&self) -> GamedataDialogsVerificationResult {
     let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
       root: self.root.clone(),
@@ -100,6 +146,63 @@ impl DialogTree {
 impl Drop for DialogTree {
   fn drop(&mut self) {
     let _ = fs::remove_dir_all(&self.root);
+  }
+}
+
+/// A stalker a root spawn places: the character or profile it is spawned as, and the logic its custom data carries.
+struct SpawnedNpc {
+  name: &'static str,
+  specific_character: &'static str,
+  profile: &'static str,
+  custom_data: &'static str,
+}
+
+impl SpawnedNpc {
+  /// A stalker spawned with the fixture's resolvable profile and no logic of its own.
+  const NOVICE: Self = Self {
+    name: "esc_novice",
+    specific_character: "",
+    profile: "novice",
+    custom_data: "",
+  };
+
+  fn build(&self, id: usize) -> AlifeObject {
+    let mut stalker: AlifeStalker = AlifeStalker::new_mock(Vector3d::new(1.0, 2.0, 3.0));
+    let human: &mut AlifeObjectHumanAbstract = &mut stalker.base.base;
+
+    human.trader.specific_character = String::from(self.specific_character);
+    human.trader.character_profile = String::from(self.profile);
+
+    let mut inherited: AlifeObjectInherited = AlifeObjectInherited::SeStalker(Box::new(stalker));
+
+    if let Some(base) = inherited.get_abstract_mut() {
+      base.custom_data = String::from(self.custom_data);
+    }
+
+    AlifeObject {
+      header: SpawnPacketHeader {
+        id: u16::try_from(id).unwrap(),
+        net_action: 1,
+        section: String::from("stalker"),
+        name: String::from(self.name),
+        script_game_id: 2,
+        script_rp: 3,
+        position: Vector3d::new(1.0, 2.0, 3.0),
+        direction: Vector3d::new(0.0, 0.0, 0.0),
+        respawn_time: 0,
+        parent_id: u16::MAX,
+        phantom_id: u16::MAX,
+        // The engine reads a packet's version only under its version flag.
+        script_flags: 33,
+        version: 128,
+        game_type: 1,
+        script_version: 10,
+        client_data: Vec::new(),
+        spawn_id: u16::try_from(id).unwrap(),
+      },
+      clsid: ClsId::AiStlS,
+      inherited,
+    }
   }
 }
 
@@ -248,6 +351,81 @@ fn reports_a_profile_no_npc_can_be_spawned_with_and_fails_conflicting_character_
   assert_eq!(result.count_failures(), 1);
   assert_eq!(result.get_findings().len(), 4);
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
+/// A new game reads every NPC of the root spawn and resolves its character there, so one it cannot resolve stops it.
+#[test]
+fn fails_an_npc_spawned_as_a_character_or_with_a_profile_nothing_declares() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with_spawn(&[
+      SpawnedNpc::NOVICE,
+      SpawnedNpc {
+        name: "esc_stranger",
+        specific_character: "nobody",
+        ..SpawnedNpc::NOVICE
+      },
+      SpawnedNpc {
+        name: "esc_ghost",
+        profile: "ghost",
+        ..SpawnedNpc::NOVICE
+      },
+    ])
+    .verify();
+
+  assert_eq!(rules(&result), ["dialog.spawn-unresolved", "dialog.spawn-unresolved"]);
+  assert_eq!(
+    messages(&result),
+    [
+      "NPC 'esc_ghost' of section [stalker] is spawned with profile 'ghost', which no profile file declares",
+      "NPC 'esc_stranger' of section [stalker] is spawned as character 'nobody', which no character file declares",
+    ]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
+/// A profile nothing spawns is only reported; one a spawned NPC uses fails, under that NPC's finding alone.
+#[test]
+fn fails_an_npc_spawned_with_a_profile_no_character_resolves_instead_of_reporting_the_profile() {
+  let tree: DialogTree = DialogTree::new().with(
+    "configs/gameplay/npc_profile.xml",
+    r#"<xml><character id="novice"><class>novice</class></character>
+<character id="loner"><class>loner</class></character></xml>"#,
+  );
+
+  assert_eq!(rules(&tree.verify()), ["dialog.profile-unresolved"]);
+
+  let result: GamedataDialogsVerificationResult = tree
+    .with_spawn(&[SpawnedNpc {
+      name: "esc_loner",
+      profile: "loner",
+      ..SpawnedNpc::NOVICE
+    }])
+    .verify();
+
+  assert_eq!(
+    messages(&result),
+    [
+      "NPC 'esc_loner' of section [stalker] is spawned with a profile no character resolves: Profile 'loner' picks \
+       by class 'loner', which no team_default character without no_random has"
+    ]
+  );
+  assert_eq!(result.unresolved_profiles_count, 1);
+}
+
+#[test]
+fn fails_a_start_dialog_the_logic_of_an_npc_custom_data_names_and_nothing_declares() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with_spawn(&[SpawnedNpc {
+      custom_data: "[logic]\nactive = walker@a\nmeet = meet@a\n\n[meet@a]\nmeet_dialog = absent_dialog\n",
+      ..SpawnedNpc::NOVICE
+    }])
+    .verify();
+
+  assert_eq!(rules(&result), ["dialog.logic-missing"]);
+  assert_eq!(
+    messages(&result),
+    ["NPC 'esc_novice' [meet@a] meet_dialog names dialog 'absent_dialog', which no dialog file declares"]
+  );
 }
 
 /// The engine loads only the partner files `system.ltx` lists, so an unlisted one declares nothing, whatever its name.

@@ -23,8 +23,7 @@ impl DialogLogicReference {
   /// The value the schemes read as no dialog, restoring the character's own start dialog.
   const NONE: &'static str = "nil";
 
-  // todo: Read the logic an NPC's spawn custom data carries too, which configs alone do not hold.
-  /// Every dialog the `meet` and `wounded` sections of a config name, in section order.
+  /// Every dialog the `meet` and `wounded` sections of a config or an object's custom data name, in section order.
   ///
   /// A condlist that does not parse names nothing here; the LTX check reports it.
   pub(crate) fn list_in(ltx: &Ltx) -> Vec<Self> {

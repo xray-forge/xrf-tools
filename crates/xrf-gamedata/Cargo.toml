@@ -48,6 +48,7 @@ serde_json = { workspace = true }
 xrf-job = { workspace = true, features = ["testing"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-math = { workspace = true }
+xrf-spawn = { workspace = true, features = ["mocks"] }
 xrf-test-utils = { workspace = true }
 
 # Measures the pattern rather than the private call site, which is what the decision needs: whether the linear scan is

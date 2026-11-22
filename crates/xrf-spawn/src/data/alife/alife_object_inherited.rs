@@ -44,6 +44,7 @@ use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpa
 use crate::data::alife::inherited::alife_object_stationary_mgun::AlifeObjectStationaryMgun;
 use crate::data::alife::inherited::alife_object_torrid_zone::AlifeObjectTorridZone;
 use crate::data::alife::inherited::alife_object_trader::AlifeObjectTrader;
+use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
 use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
 use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 use crate::data::alife::inherited::alife_squad::AlifeSquad;
@@ -539,6 +540,61 @@ impl AlifeObjectInherited {
     self.get_abstract().map(|it| &it.custom_data)
   }
 
+  /// The trading part `CSE_ALifeTraderAbstract` gives the actor, stalkers and traders, which names the profile and the
+  /// specific character the object is spawned as; `None` for every other class.
+  pub fn get_trader(&self) -> Option<&AlifeObjectTraderAbstract> {
+    match self {
+      Self::SeActor(object) => Some(&object.base.trader),
+      Self::SeStalker(object) => Some(&object.base.base.trader),
+      Self::CseAlifeTrader(object) => Some(&object.trader),
+      Self::ClearSkySeActor(object) => Some(&object.base.trader),
+      Self::ClearSkySeStalker(object) => Some(&object.base.base.trader),
+      Self::SeMonster(_)
+      | Self::CseAlifeObjectBreakable(_)
+      | Self::CseAlifeObjectClimable(_)
+      | Self::CseAlifeGraphPoint(_)
+      | Self::CseAlifeSpaceRestrictor(_)
+      | Self::SeSmartCover(_)
+      | Self::CseAlifeAnomalousZone(_)
+      | Self::CseAlifeTorridZone(_)
+      | Self::SeSmartTerrain(_)
+      | Self::SeLevelChanger(_)
+      | Self::CseAlifeTeamBaseZone(_)
+      | Self::CseAlifeZoneVisual(_)
+      | Self::CseAlifeCar(_)
+      | Self::CseAlifeObjectPhysic(_)
+      | Self::CseAlifeHelicopter(_)
+      | Self::CseAlifeInventoryBox(_)
+      | Self::CseAlifeObjectHangingLamp(_)
+      | Self::CseAlifeItem(_)
+      | Self::CseAlifeItemExplosive(_)
+      | Self::CseAlifeItemPda(_)
+      | Self::CseAlifeItemAmmo(_)
+      | Self::CseAlifeItemGrenade(_)
+      | Self::CseAlifeItemArtefact(_)
+      | Self::CseAlifeItemWeapon(_)
+      | Self::CseAlifeItemDetector(_)
+      | Self::CseAlifeItemHelmet(_)
+      | Self::CseAlifeItemCustomOutfit(_)
+      | Self::CseAlifeItemWeaponShotgun(_)
+      | Self::CseAlifeItemWeaponMagazined(_)
+      | Self::CseAlifeItemWeaponMagazinedWGl(_)
+      | Self::CseAlifeItemBolt(_)
+      | Self::CseAlifeItemTorch(_)
+      | Self::CseAlifeItemDocument(_)
+      | Self::CseAlifeCreatureCrow(_)
+      | Self::CseAlifeCreaturePhantom(_)
+      | Self::CseAlifeDynamicObjectVisual(_)
+      | Self::CseAlifeObjectProjector(_)
+      | Self::CseAlifePhSkeletonObject(_)
+      | Self::CseAlifeStationaryMGun(_)
+      | Self::SimSquadScripted(_)
+      | Self::ClearSkySeMonster(_)
+      | Self::ClearSkySeSmartTerrain(_)
+      | Self::ClearSkySeSimFaction(_) => None,
+    }
+  }
+
   /// Move the object to `position`, facing `direction`, in the update packet: a creature's position and torso, an
   /// item's or a physic object's physics state, and the body an actor saved. A class whose update packet stores no
   /// position keeps none to move.
@@ -938,9 +994,13 @@ impl AlifeObjectInherited {
 mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
 
   use crate::constants::NET_ACTION_UPDATE;
   use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+  use crate::data::alife::inherited::alife_actor::AlifeActor;
+  use crate::data::alife::inherited::alife_monster::AlifeMonster;
+  use crate::data::alife::inherited::alife_stalker::AlifeStalker;
   use crate::data::alife::spawn_layout::SpawnLayout;
   use crate::fixtures::GameWrittenPackets;
 
@@ -979,5 +1039,20 @@ mod tests {
     }
 
     Ok(())
+  }
+
+  // Monsters carry a `character_profile` key in their sections, but no trading part reads it.
+  #[test]
+  fn reaches_the_trading_part_of_the_classes_that_have_one() {
+    let position: Vector3d = Vector3d::new(1.0, 2.0, 3.0);
+    let stalker: AlifeObjectInherited = AlifeObjectInherited::SeStalker(Box::new(AlifeStalker::new_mock(position)));
+    let actor: AlifeObjectInherited = AlifeObjectInherited::SeActor(Box::new(AlifeActor::new_mock(position)));
+    let monster: AlifeObjectInherited = AlifeObjectInherited::SeMonster(Box::new(AlifeMonster::new_mock(position)));
+
+    for object in [&stalker, &actor] {
+      assert!(object.get_trader().is_some(), "{:?}", object.get_class());
+    }
+
+    assert!(monster.get_trader().is_none());
   }
 }

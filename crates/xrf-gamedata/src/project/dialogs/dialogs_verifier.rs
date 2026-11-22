@@ -4,7 +4,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_dialog::{
-  Dialog, DialogPartners, DialogPhrase, DialogProject, DialogProjectLayout, DialogProjectMode, DialogTextIndex,
+  Dialog, DialogPartners, DialogPhrase, DialogProfile, DialogProject, DialogProjectLayout, DialogProjectMode,
+  DialogTextIndex,
 };
 use xrf_error::XrfResult;
 use xrf_ltx::LtxResolution;
@@ -21,6 +22,7 @@ use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOption
 use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 mod dialogs_verifier_files;
+mod dialogs_verifier_spawns;
 
 /// The dialogs check: every dialog opens and walks as the engine loads it, and every character, profile, info portion
 /// and logic section offering one names what the tree declares.
@@ -75,7 +77,10 @@ impl<'a> GamedataCheck<'a> for DialogsVerifier<'a> {
     self.verify_dialogs(&project, &declared, &mut result);
     self.options.job.check_cancelled()?;
     self.verify_offers(&partners, &declared, &mut result);
-    self.verify_profiles(&partners, &system, &mut result);
+    let spawned: HashSet<String> = self.verify_spawns(&partners, &declared, &mut result);
+
+    self.options.job.check_cancelled()?;
+    self.verify_profiles(&partners, &system, &spawned, &mut result);
     self.verify_characters(&partners, &mut result);
     self.options.job.check_cancelled()?;
     self.verify_logic(&declared, &mut result);
@@ -311,16 +316,18 @@ impl DialogsVerifier<'_> {
 
   /// Every profile resolves to a character an NPC can be spawned as, and every profile a section names is declared.
   ///
-  /// Both stop the engine only when an NPC is spawned with the profile, and neither a profile nor a section says whether
-  /// one is: vanilla ships fifty `test_npc_*` profiles and `stalker_promo_*` sections nothing spawns, and monster sections
-  /// whose `character_profile` the engine never reads. So both are reported, failing only under strict.
+  /// A profile a spawn file places an NPC with is judged by that NPC's finding. Any other stops the engine only when a
+  /// script spawns an NPC with it, which the configs do not tell: vanilla ships fifty `test_npc_*` profiles and
+  /// `stalker_promo_*` sections nothing spawns, and monster sections whose `character_profile` the engine never reads.
+  /// So those are reported, failing only under strict.
   fn verify_profiles(
     &self,
     partners: &DialogPartners,
     system: &DialogSystemConfig,
+    spawned: &HashSet<String>,
     result: &mut GamedataDialogsVerificationResult,
   ) {
-    // todo: Fail these where the spawn files place an NPC of the section or profile, which is when the engine asserts.
+    // todo: Fail the profiles of the sections squad descriptions spawn by their `npc` lists, which scripts place.
     for profile in partners.get_profiles().values() {
       result.checked_profiles_count += 1;
 
@@ -329,24 +336,24 @@ impl DialogsVerifier<'_> {
       }
 
       let id: &str = profile.get_id();
-      let problem: String = match (profile.get_specific_character(), profile.get_class()) {
-        (Some(character), _) => {
-          format!("Profile '{id}' pins character '{character}', which no character file declares")
-        }
-        (None, Some(class)) => {
-          format!("Profile '{id}' picks by class '{class}', which no team_default character without no_random has")
-        }
-        (None, None) => format!("Profile '{id}' picks any character, and none without no_random is team_default"),
-      };
-      let path: PathBuf = self.report_path(profile.get_logical_path());
 
+      result.unresolved_profiles_count += 1;
+
+      if spawned.contains(id) {
+        continue;
+      }
+
+      let problem: String = Self::describe_unresolved(profile);
       let message: String = match system.profile_sections.get(id) {
         Some(section) => format!("{problem}, and section [{section}] names it as its character_profile"),
         None => problem,
       };
 
-      result.unresolved_profiles_count += 1;
-      result.tolerate(GamedataVerificationRule::DialogProfileUnresolved, &path, message);
+      result.tolerate(
+        GamedataVerificationRule::DialogProfileUnresolved,
+        &self.report_path(profile.get_logical_path()),
+        message,
+      );
     }
 
     let Ok(system_path) = self.project.ltx_project.system_ltx_report_path() else {
@@ -356,7 +363,7 @@ impl DialogsVerifier<'_> {
     for (profile, section) in &system.profile_sections {
       result.checked_references_count += 1;
 
-      if partners.find_profile(profile).is_none() {
+      if partners.find_profile(profile).is_none() && !spawned.contains(profile) {
         result.missing_references_count += 1;
         result.tolerate(
           GamedataVerificationRule::DialogProfileUnresolved,
@@ -364,6 +371,19 @@ impl DialogsVerifier<'_> {
           format!("Section [{section}] character_profile names profile '{profile}', which no profile file declares"),
         );
       }
+    }
+  }
+
+  /// Why a profile resolves to no character, for its own finding and for an NPC spawned with it.
+  fn describe_unresolved(profile: &DialogProfile) -> String {
+    let id: &str = profile.get_id();
+
+    match (profile.get_specific_character(), profile.get_class()) {
+      (Some(character), _) => format!("Profile '{id}' pins character '{character}', which no character file declares"),
+      (None, Some(class)) => {
+        format!("Profile '{id}' picks by class '{class}', which no team_default character without no_random has")
+      }
+      (None, None) => format!("Profile '{id}' picks any character, and none without no_random is team_default"),
     }
   }
 
@@ -398,30 +418,45 @@ impl DialogsVerifier<'_> {
       };
 
       for reference in references {
-        if !seen.insert(reference.clone()) {
-          continue;
-        }
-
-        result.checked_references_count += 1;
-
-        if declared.contains_key(reference.dialog.as_str()) {
-          continue;
-        }
-
-        result.missing_references_count += 1;
-
-        let message: String = format!(
-          "[{}] {} names dialog '{}', which no dialog file declares",
-          reference.section, reference.field, reference.dialog
-        );
-
-        // Each rule keeps one severity, so a report reader can tell a failing finding by its rule alone.
-        if reference.is_start_dialog {
-          result.fail(GamedataVerificationRule::DialogLogicMissing, &path, message);
-        } else {
-          result.tolerate(GamedataVerificationRule::DialogHealMissing, &path, message);
+        if seen.insert(reference.clone()) {
+          self.verify_logic_reference(declared, &reference, &path, None, result);
         }
       }
+    }
+  }
+
+  /// One dialog a logic section names is declared; `owner` opens the finding with whose logic it is, where the path
+  /// alone does not say.
+  fn verify_logic_reference(
+    &self,
+    declared: &HashMap<&str, &Dialog>,
+    reference: &DialogLogicReference,
+    path: &Path,
+    owner: Option<&str>,
+    result: &mut GamedataDialogsVerificationResult,
+  ) {
+    result.checked_references_count += 1;
+
+    if declared.contains_key(reference.dialog.as_str()) {
+      return;
+    }
+
+    result.missing_references_count += 1;
+
+    let section: String = match owner {
+      Some(owner) => format!("{owner} [{}]", reference.section),
+      None => format!("[{}]", reference.section),
+    };
+    let message: String = format!(
+      "{section} {} names dialog '{}', which no dialog file declares",
+      reference.field, reference.dialog
+    );
+
+    // Each rule keeps one severity, so a report reader can tell a failing finding by its rule alone.
+    if reference.is_start_dialog {
+      result.fail(GamedataVerificationRule::DialogLogicMissing, path, message);
+    } else {
+      result.tolerate(GamedataVerificationRule::DialogHealMissing, path, message);
     }
   }
 

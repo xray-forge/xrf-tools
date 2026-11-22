@@ -21,7 +21,8 @@ pub(crate) struct GamedataDialogsVerificationResult {
   pub(crate) checked_profiles_count: u32,
   /// Profiles no NPC can be spawned with.
   pub(crate) unresolved_profiles_count: u32,
-  /// Dialog ids characters, info portions and logic sections name, and profiles sections name.
+  /// Dialog ids characters, info portions and logic sections name, profiles sections name, and the characters or
+  /// profiles of the NPCs spawn files place.
   pub(crate) checked_references_count: u32,
   /// Named dialogs and profiles nothing declares.
   pub(crate) missing_references_count: u32,
