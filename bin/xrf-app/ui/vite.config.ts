@@ -7,6 +7,7 @@ import { wirestate } from "@wirestate/dev/vite";
 import { defineConfig, normalizePath, type Plugin, runnerImport } from "vite";
 import { default as inlineSource } from "vite-plugin-inline-source";
 
+import { devCspPlugin } from "./cli/build/dev-csp.ts";
 import { replaceModuleName } from "./cli/build/module-name.ts";
 import { applyObserver } from "./cli/build/observer.ts";
 import { default as manifest } from "./package.json" with { type: "json" };
@@ -115,6 +116,7 @@ export default defineConfig({
     __REPOSITORY_URL__: JSON.stringify(manifest.repository.url),
   },
   plugins: [
+    devCspPlugin(),
     moduleNamePlugin(),
     preloadThemePlugin(),
     wirestate(),
