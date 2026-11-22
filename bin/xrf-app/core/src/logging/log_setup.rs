@@ -1,6 +1,5 @@
 use std::fs::File;
-use std::io;
-use std::panic;
+use std::{io, panic};
 
 use env_logger::{Builder, Target};
 

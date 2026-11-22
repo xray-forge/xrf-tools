@@ -1,7 +1,6 @@
-use std::fs;
-use std::io;
 use std::path::Path;
 use std::time::SystemTime;
+use std::{fs, io};
 
 use crate::directories::AppDirectories;
 use crate::logging::file::LogFile;
