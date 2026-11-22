@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::feature::effects::flares::flare_frame::FlareFrame;
 use crate::feature::effects::flares::flare_uniform::FlareUniform;

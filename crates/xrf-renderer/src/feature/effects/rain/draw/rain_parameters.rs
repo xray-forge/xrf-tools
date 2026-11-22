@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
 use crate::feature::effects::rain::rain_uniform::RainUniform;

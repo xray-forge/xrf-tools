@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_visual::LightAnimatorDescription;
 
 use crate::scene::level::level_time::LevelTime;

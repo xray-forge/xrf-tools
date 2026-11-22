@@ -1,6 +1,6 @@
-use glam::DVec2;
 use xrf_geometry::ConvexOutline;
 use xrf_math::Vector3d;
+use xrf_math::glam::DVec2;
 use xrf_visual::VisualTransform;
 
 use crate::objects::LevelObjectShape;

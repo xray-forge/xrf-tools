@@ -1,7 +1,7 @@
 //! Runs an expression of a shader module on the GPU over cases of two vectors each, which is how a test holds a
 //! module's functions to their definitions.
 
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::support::test_context::create_test_context;

@@ -1,7 +1,7 @@
 use std::f32::consts::FRAC_PI_2;
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_math::EPS_S;
+use xrf_math::glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_particles::{Particle, ParticleEffectFlags, ParticleEffectInstance};
 
 use crate::camera::engine_space::EngineSpace;
@@ -164,7 +164,8 @@ impl ParticleSprite {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam;
+  use xrf_math::glam::Vec3;
 
   use super::ParticleSprite;
 

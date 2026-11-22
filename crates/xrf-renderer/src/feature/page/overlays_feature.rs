@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::contract::overlay::render_overlay::RenderOverlay;
 use crate::contract::overlay::render_overlay_segment::RenderOverlaySegment;

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use glam::{DVec2, DVec3};
 use xrf_editable_object::{EditableFaceCorner, EditableMesh, EditableObjectFile, EditableSurface, EditableVMapKind};
+use xrf_math::glam::{DVec2, DVec3};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
 
 use crate::level::instance::level_library_object::LevelLibraryObject;

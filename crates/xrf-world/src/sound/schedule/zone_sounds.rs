@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use glam::Vec3;
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::Vec3;
 use xrf_renderer::ZONE_FAST_DISTANCE;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;

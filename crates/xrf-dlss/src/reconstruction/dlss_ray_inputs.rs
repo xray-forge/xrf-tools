@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 /// What a view's frame gives DLSS ray reconstruction to denoise and upscale: what super resolution takes, and the
 /// guides telling the network what each pixel's surface is.

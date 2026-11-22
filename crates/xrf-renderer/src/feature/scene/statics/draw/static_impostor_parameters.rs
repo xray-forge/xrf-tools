@@ -1,4 +1,4 @@
-use glam::{UVec4, Vec4};
+use xrf_math::glam::{UVec4, Vec4};
 use xrf_renderer_core::{PassParameters, StorageArray};
 
 use crate::scene::static_scene::geometry::static_impostor::StaticImpostor;

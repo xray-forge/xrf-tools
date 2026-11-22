@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// `SMAP_adapt_min`, `SMAP_adapt_optimal` and `SMAP_adapt_max` (`r2_types.h`).
 pub(crate) const LIGHT_SHADOW_MIN_SIZE: u32 = 32;

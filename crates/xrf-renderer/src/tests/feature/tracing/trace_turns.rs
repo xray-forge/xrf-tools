@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
 use crate::shader::shader_library::ShaderLibrary;

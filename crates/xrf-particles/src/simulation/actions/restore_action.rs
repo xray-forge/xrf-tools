@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::data::actions::particle_action_restore::ParticleActionRestore;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -48,7 +48,7 @@ impl From<&ParticleActionRestore> for RestoreAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::RestoreAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

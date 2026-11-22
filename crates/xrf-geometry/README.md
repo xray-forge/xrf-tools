@@ -31,7 +31,7 @@ the object compile and the level compilers use it alike.
 | `ConvexOutline`      | The convex hull of points in a plane, counter-clockwise, no collinear corner (monotone chain)      |
 
 ```rust
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_geometry::{BvhTracer, Ray, Tracer};
 
 let tracer: BvhTracer = BvhTracer::new(

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// The wind the weather's ambient effects stir, as the grass, the rain and the campfires read it:
 /// `wind_strength_factor` and `wind_blast_direction`, in engine space, and the gust of Monolith's rain.

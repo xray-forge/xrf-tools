@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 // The display's transfer, as `common/srgb.wgsl`'s `srgb_decoded` and its inverse apply it, shared with the tools that
 // measure textures as the frame lights them.
 pub(crate) use xrf_math::{SRGB_DISPLAY_POWER, srgb_decoded, srgb_encoded};

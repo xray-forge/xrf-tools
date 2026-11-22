@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3};
 use xrf_math::EPS;
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::data::effect::particle_effect::ParticleEffect;
 use crate::data::effect::particle_effect_collision::ParticleEffectCollision;

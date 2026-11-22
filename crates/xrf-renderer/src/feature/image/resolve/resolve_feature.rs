@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec2, Vec3};
 use xrf_dlss::{Dlss, DlssPreset, DlssQuality, DlssRayPreset};
+use xrf_math::glam::{Mat4, Vec2, Vec3};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;

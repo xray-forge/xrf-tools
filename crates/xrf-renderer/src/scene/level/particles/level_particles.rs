@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
 use xrf_job::parallel::prelude::*;
 use xrf_material::{XraySurfaceDraw, XraySurfaceSampler};
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_particles::{
   ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,
   ParticleUpdateContext,

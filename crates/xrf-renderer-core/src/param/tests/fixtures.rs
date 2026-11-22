@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_derive::{PassParameters, ShaderStruct};
 
 use crate::graph::{GraphBuffer, GraphBufferAccess, GraphTexture, GraphTextureAccess};

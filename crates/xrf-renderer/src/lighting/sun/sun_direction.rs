@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// The direction sunlight travels, in renderer space, from a weather keyframe's two angles in degrees.
 ///

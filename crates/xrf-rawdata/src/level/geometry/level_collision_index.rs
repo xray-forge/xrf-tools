@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use glam::Vec3;
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{BvhTracer, Tracer, Triangle};
 use xrf_level::{LevelCformFace, LevelCformGeometry, LevelSurfaceMaterials};
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 
 use crate::level::geometry::level_collision_lookup::LevelCollisionLookup;
 

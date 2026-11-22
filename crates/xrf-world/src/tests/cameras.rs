@@ -1,7 +1,7 @@
 use std::f32::consts::FRAC_PI_2;
 use std::time::Duration;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::camera::fly_camera_controller::FlyCameraController;
 use crate::camera::orbit_camera_controller::OrbitCameraController;

@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::feature::scene::grass::draw::grass_wind_uniform::GrassWindUniform;
 use crate::lighting::wind::foliage_motion::FoliageMotion;

@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 /// Where one spawned object stands as its model, how the level lights it, and the group whose visibility shows it.
 #[derive(Clone, Copy, Debug)]

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::ShaderStruct;
 
 // Rust packs the second vec3 twelve bytes in; WGSL aligns it to sixteen.

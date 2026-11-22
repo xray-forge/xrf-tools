@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec2};
+use xrf_math::glam::{Mat4, Vec2};
 
 /// What the temporal antialiasing resolves one frame by: this frame's view projection, the last frame's and its view,
 /// the texel's jitter, whether the history holds a frame, and how much brighter the history reads than it was drawn.

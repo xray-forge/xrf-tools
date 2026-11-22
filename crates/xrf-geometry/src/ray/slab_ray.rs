@@ -1,4 +1,4 @@
-use glam::Vec3A;
+use xrf_math::glam::Vec3A;
 
 /// A ray as a box test takes it: its origin and the inverse of its direction.
 #[derive(Clone, Copy, Debug, PartialEq)]

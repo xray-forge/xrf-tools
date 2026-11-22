@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use glam::Vec3;
 use xrf_geometry::{BvhTracer, Ray, TraceHit, Tracer};
+use xrf_math::glam::Vec3;
 use xrf_particles::{ParticleCollider, ParticleContact};
 
 /// The level's collision form as colliding particle effects meet it: `CObjectSpace::RayPick` over the level's static

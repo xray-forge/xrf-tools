@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_vortex::ParticleActionVortex;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -67,7 +67,7 @@ impl From<&ParticleActionVortex> for VortexAction {
 mod tests {
   use std::f32::consts::FRAC_PI_2;
 
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::VortexAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::feature::image::bloom::bloom_filter::BloomFilter;

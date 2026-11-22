@@ -1,4 +1,4 @@
-use glam::{Mat3, Vec3};
+use xrf_math::glam::{Mat3, Vec3};
 use xrf_renderer_core::ShaderStruct;
 
 /// A top-level acceleration structure instance as a traced hit reads it by custom index: its first geometry record,

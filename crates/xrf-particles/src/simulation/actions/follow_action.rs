@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::data::actions::particle_action_follow::ParticleActionFollow;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -41,7 +41,7 @@ impl From<&ParticleActionFollow> for FollowAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::FollowAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec2};
+use xrf_math::glam::{Mat4, Vec2};
 use xrf_renderer_core::ShaderStruct;
 
 /// The view a depth pyramid was reduced through, as `shaders/static/cull.wgsl` declares it.

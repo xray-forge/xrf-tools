@@ -1,9 +1,9 @@
-use glam::Vec3;
 use serde::Serialize;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{BvhTracer, Triangle};
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_file::LevelCformHeader;

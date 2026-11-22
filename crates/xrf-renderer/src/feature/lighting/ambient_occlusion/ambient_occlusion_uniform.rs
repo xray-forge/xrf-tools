@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;

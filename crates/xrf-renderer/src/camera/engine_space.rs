@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// The engine's space against the renderer's: the same but for `z`, which runs the other way.
 pub struct EngineSpace;

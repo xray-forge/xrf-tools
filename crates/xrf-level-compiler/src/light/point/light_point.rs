@@ -1,6 +1,6 @@
-use glam::Vec3;
 use xrf_geometry::{Ray, TraceHit, Tracer};
 use xrf_level::LevelLightRole;
+use xrf_math::glam::Vec3;
 
 use crate::light::point::light_color::LightColor;
 use crate::light::point::light_occluders::LightOccluders;

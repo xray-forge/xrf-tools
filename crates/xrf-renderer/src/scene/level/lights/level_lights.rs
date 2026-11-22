@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use glam::{Vec2, Vec3, Vec4};
+use xrf_math::glam::{Vec2, Vec3, Vec4};
 use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{GraphDeclaration, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightVolumetric, LightsDescription};

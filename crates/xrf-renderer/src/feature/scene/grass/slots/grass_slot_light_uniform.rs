@@ -1,4 +1,4 @@
-use glam::IVec4;
+use xrf_math::glam::IVec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What the slots' light view reads beside the level's grass: the slot grid's size and the world slot its first cell

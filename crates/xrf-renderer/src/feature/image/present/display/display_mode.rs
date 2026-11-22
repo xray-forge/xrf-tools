@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::contract::feature::image::display::render_display_transform::RenderDisplayTransform;
 use crate::contract::feature::image::display::render_grading_settings::RenderGradingSettings;

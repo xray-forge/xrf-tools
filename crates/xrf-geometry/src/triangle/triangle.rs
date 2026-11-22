@@ -1,5 +1,5 @@
-use glam::{Vec3, Vec3A};
 use xrf_math::EPS;
+use xrf_math::glam::{Vec3, Vec3A};
 
 use crate::ray::facing::Facing;
 use crate::ray::ray::Ray;

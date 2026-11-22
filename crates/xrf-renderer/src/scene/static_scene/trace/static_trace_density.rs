@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3};
+use xrf_math::glam::{Vec2, Vec3};
 
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 

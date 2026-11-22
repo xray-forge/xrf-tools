@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::scene::static_scene::surface::build::static_terrain_slots::StaticTerrainSlots;

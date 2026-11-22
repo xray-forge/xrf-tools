@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_particles::ParticleEffectInstance;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, StorageArray, UniformBinding};
 

@@ -10,7 +10,6 @@ path = "src/lib.rs"
 
 [dependencies]
 bytemuck = { workspace = true, optional = true }
-glam = { workspace = true }
 log = { workspace = true }
 pollster = { workspace = true, optional = true }
 serde = { workspace = true }
@@ -22,7 +21,7 @@ xrf-error = { workspace = true }
 xrf-geometry = { workspace = true }
 xrf-job = { workspace = true }
 xrf-level = { workspace = true }
-xrf-math = { workspace = true, features = ["glam"] }
+xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-renderer-core = { workspace = true, optional = true }
 xrf-report = { workspace = true }

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_editable_level::{
@@ -8,6 +7,7 @@ use xrf_editable_level::{
   EditableSpawnPointKind, EditableSpawnPointObject, EditableWayLink, EditableWayObject, EditableWayPoint,
 };
 use xrf_ini::IniSection;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_math::{Affine3d, Matrix4x4, Vector3d};
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 use xrf_visual::convert_vector;

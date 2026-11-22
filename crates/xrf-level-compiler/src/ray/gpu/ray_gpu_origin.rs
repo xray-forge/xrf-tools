@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// A point's rays' origin, the skip code of the face they pass, and the point itself (`Origin`).
 #[repr(C)]

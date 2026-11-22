@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::{PassParameters, StorageArray, UniformBinding};
 
 use crate::feature::scene::grass::draw::grass_wind_uniform::GrassWindUniform;

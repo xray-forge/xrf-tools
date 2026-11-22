@@ -1,4 +1,4 @@
-use glam::{UVec4, Vec4};
+use xrf_math::glam::{UVec4, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 /// What the AI map's view reads beside the map's grid and nodes.

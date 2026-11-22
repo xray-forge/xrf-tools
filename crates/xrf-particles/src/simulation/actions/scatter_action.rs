@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_scatter::ParticleActionScatter;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -52,7 +52,7 @@ impl From<&ParticleActionScatter> for ScatterAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::ScatterAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

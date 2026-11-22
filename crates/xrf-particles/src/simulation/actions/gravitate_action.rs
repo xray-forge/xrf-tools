@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_math::EPS_S;
+use xrf_math::glam::Vec3;
 
 use crate::data::actions::particle_action_gravitate::ParticleActionGravitate;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -47,8 +47,8 @@ impl From<&ParticleActionGravitate> for GravitateAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
   use xrf_math::EPS_S;
+  use xrf_math::glam::Vec3;
 
   use super::GravitateAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

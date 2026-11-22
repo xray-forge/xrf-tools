@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 use crate::data::actions::particle_action_random_displace::ParticleActionRandomDisplace;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -40,7 +40,7 @@ impl From<&ParticleActionRandomDisplace> for RandomDisplaceAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::RandomDisplaceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

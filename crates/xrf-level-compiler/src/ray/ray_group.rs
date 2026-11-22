@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_geometry::Ray;
+use xrf_math::glam::Vec3;
 
 /// Rays of a plan made and traced together, numbered in the plan's order.
 #[derive(Clone, Debug)]

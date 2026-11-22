@@ -1,6 +1,6 @@
 //! The enhanced bloom's stages and its place beside the engine's.
 
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
 use crate::contract::feature::image::bloom::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;

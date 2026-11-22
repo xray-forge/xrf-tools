@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 
 /// `PAPI::Particle`: one live particle of an effect, in the space its effect was placed in.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -56,7 +56,7 @@ impl Particle {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec4;
+  use xrf_math::glam::Vec4;
 
   use super::Particle;
 

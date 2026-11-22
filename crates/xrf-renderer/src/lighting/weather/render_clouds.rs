@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 /// The clouds, as the two keyframes either side of the time name them (`s_clouds0`, `s_clouds1`).
 #[derive(Clone, Debug, PartialEq)]

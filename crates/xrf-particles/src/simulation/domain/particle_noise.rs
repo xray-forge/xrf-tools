@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::simulation::domain::particle_random::ParticleRandom;
 
@@ -161,7 +161,7 @@ impl ParticleNoise {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::ParticleNoise;
 

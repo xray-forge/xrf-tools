@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_particles::{
   ParticleEffect, ParticleEffectSprite, ParticleEngineRules, ParticleInstance, ParticleLibrary, ParticleObject,
   ParticleUpdateContext, ParticlesEffectsChunk, ParticlesFile, ParticlesGroupsChunk, ParticlesHeaderChunk,

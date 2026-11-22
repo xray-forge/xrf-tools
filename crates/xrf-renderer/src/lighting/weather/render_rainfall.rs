@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// How hard it rains, in the terms a weather keyframe uses.
 #[derive(Clone, Copy, Debug, PartialEq)]

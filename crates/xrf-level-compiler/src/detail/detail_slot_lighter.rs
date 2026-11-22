@@ -1,7 +1,7 @@
-use glam::Vec3;
 use xrf_geometry::{Facing, Ray, Tracer, Triangle};
 use xrf_level::{DETAIL_SLOT_METERS, LevelDetailsHeader, LevelDetailsLight, LevelDetailsSlot, LevelLightRole};
 use xrf_math::EPS;
+use xrf_math::glam::Vec3;
 
 use crate::light::point::light_color::LightColor;
 use crate::light::point::light_plan::LightPlan;

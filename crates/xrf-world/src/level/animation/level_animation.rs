@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer::{RenderModelSkeleton, RenderMotion, RenderSceneUpdate, RenderWorkers, StaticObjectProxy};
 use xrf_renderer_core::ProxyHandle;
 

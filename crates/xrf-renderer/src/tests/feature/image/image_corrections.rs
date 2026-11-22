@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::contract::feature::image::display::render_image_corrections::RenderImageCorrections;
 use crate::feature::image::present::present_frame::PresentFrame;

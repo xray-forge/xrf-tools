@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
 use xrf_audio_scene::{AudioBus, AudioSceneFrame};
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{
   RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderViewBurst, RenderViewportId, RenderWorkers, RenderWorld,
 };

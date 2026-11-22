@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_orbit_point::ParticleActionOrbitPoint;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -51,7 +51,7 @@ impl From<&ParticleActionOrbitPoint> for OrbitPointAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::OrbitPointAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

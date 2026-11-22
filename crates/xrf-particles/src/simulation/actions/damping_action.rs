@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::data::actions::particle_action_damping::ParticleActionDamping;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -37,7 +37,7 @@ impl From<&ParticleActionDamping> for DampingAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::DampingAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

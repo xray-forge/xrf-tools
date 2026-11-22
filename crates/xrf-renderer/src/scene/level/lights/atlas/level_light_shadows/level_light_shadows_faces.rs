@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::scene::drawable::drawable_kinds::DrawableKinds;

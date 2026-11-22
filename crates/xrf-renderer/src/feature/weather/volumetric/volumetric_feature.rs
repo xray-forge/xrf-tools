@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::{
   GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, GraphTexture, GraphTextureDescriptor, StorageArray,
   UniformBinding,

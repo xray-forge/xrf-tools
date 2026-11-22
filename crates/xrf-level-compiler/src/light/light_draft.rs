@@ -1,6 +1,6 @@
-use glam::Vec3;
 use xrf_dds::RgbaImage;
 use xrf_math::Vector2d;
+use xrf_math::glam::Vec3;
 
 use crate::light::implicit::implicit_map::ImplicitMap;
 use crate::light::lightmap::atlas::lightmap_image_pair::LightmapImagePair;

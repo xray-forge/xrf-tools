@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::tracer::xrlc::xrlc_child::XrlcChild;
 use crate::tracer::xrlc::xrlc_node::XrlcNode;

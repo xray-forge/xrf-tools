@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::tests::shader::wgsl_probe::run_wgsl_probe;
 

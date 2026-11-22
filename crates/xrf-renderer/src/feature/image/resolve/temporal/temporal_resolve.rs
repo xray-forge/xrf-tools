@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
 use crate::frame::targets::frame_texture::FrameTexture;

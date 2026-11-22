@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use glam::Vec3;
 use xrf_error::XrfResult;
 use xrf_geometry::{BvhTracer, Tracer};
 use xrf_job::JobHandle;
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Vector3d};
 
 use crate::ai::ai_vertex::AiVertex;

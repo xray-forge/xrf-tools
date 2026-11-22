@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{RenderViewOptions, RenderViewportId};
 
 use crate::contract::world_toggles::WorldToggles;

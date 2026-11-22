@@ -1,4 +1,4 @@
-use glam::{DVec2, DVec3};
+use xrf_math::glam::{DVec2, DVec3};
 
 /// One static triangle of the level: its texture in the library's table, corners, and where it is read from.
 #[derive(Clone, Copy, Debug, PartialEq)]

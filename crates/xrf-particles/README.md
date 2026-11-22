@@ -17,7 +17,7 @@ level and ambient effects.
 ## Read a library and play an effect
 
 ```rust,no_run
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::{ParticleEngineRules, ParticleLibrary, ParticleObject, ParticleUpdateContext, ParticlesFile};
 

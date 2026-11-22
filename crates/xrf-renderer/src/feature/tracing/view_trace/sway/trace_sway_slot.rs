@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 use xrf_renderer_core::ShaderStruct;
 
 /// One swaying tree instance the trace's sway pass writes, as `shaders/static/trace_sway.wgsl` reads it: what turns the

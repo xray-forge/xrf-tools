@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::{
   AccelerationStructureBinding, GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageArray, StorageArrayMut,
 };

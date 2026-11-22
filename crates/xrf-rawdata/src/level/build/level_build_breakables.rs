@@ -1,4 +1,3 @@
-use glam::{DVec3, Vec3};
 use xrf_chunk::ChunkLayout;
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::{
@@ -8,6 +7,7 @@ use xrf_editable_object::{
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_geometry::MeshVertexBone;
+use xrf_math::glam::{DVec3, Vec3};
 use xrf_math::{Aabb, Affine3d, Cylinder, Obb, Sphere, Vector3d};
 use xrf_skeleton::{SkeletonBoneShape, SkeletonBoneShapeKind, SkeletonJointKind, SkeletonJointLimit};
 use xrf_spawn::{

@@ -1,6 +1,6 @@
-use glam::{DMat3, DVec3};
 use xrf_editable_level::EditableObjectTransform;
 use xrf_error::XrfResult;
+use xrf_math::glam::{DMat3, DVec3};
 use xrf_math::{Affine3d, Matrix4x4, Vector3d};
 
 /// A transform taking a library object's space into the level's, `rotation * (scale * point) + translation`: a scene

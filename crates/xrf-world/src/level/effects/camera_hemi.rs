@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use glam::Vec3;
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{LoaderReceiver, RenderWorkers, take_answer};
 use xrf_visual::{HemiEstimate, HemiEstimator};
 

@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use glam::{Mat4, Vec4};
+use xrf_math::glam::{Mat4, Vec4};
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;

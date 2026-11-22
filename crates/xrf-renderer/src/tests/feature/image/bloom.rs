@@ -1,6 +1,6 @@
 //! The engine's bloom weights and offsets, as `phase_bloom` sets them.
 
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::feature::image::bloom::bloom_filter::BloomFilter;
 use crate::feature::image::bloom::bloom_uniform::BloomUniform;

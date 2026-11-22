@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::feature::image::bloom::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;

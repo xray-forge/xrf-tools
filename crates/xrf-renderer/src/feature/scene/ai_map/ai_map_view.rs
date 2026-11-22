@@ -1,4 +1,4 @@
-use glam::UVec4;
+use xrf_math::glam::UVec4;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray};
 
 use crate::contract::view::render_view_options::RenderViewOptions;

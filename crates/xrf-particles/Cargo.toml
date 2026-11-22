@@ -10,14 +10,13 @@ path = "src/lib.rs"
 
 [dependencies]
 log = { workspace = true }
-glam = { workspace = true }
 serde = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-enum-derive = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ltx = { workspace = true }
-xrf-math = { workspace = true, features = ["glam"] }
+xrf-math = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use glam::{DVec2, DVec3};
+use xrf_math::glam::{DVec2, DVec3};
 
 use crate::level::geometry::level_visual_geometry::LevelVisualGeometry;
 use crate::level::instance::level_instance_library::LevelInstanceLibrary;

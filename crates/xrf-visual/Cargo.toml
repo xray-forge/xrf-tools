@@ -9,12 +9,11 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-glam = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-geometry = { workspace = true }
-xrf-math = { workspace = true, features = ["glam"] }
+xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-omf = { workspace = true }
 xrf-skeleton = { workspace = true }

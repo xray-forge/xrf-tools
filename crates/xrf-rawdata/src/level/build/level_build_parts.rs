@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use glam::{DVec3, Vec3};
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::{EditableMeshNormals, EditableObjectFile, EditableSurface, EditableVMapKind};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
 use xrf_geometry::{PointWelder, SymmetricEigen};
+use xrf_math::glam::{DVec3, Vec3};
 use xrf_math::{Matrix4x4, Vector2d, Vector3d};
 
 use crate::level::build::level_build_part_box::LevelBuildPartBox;

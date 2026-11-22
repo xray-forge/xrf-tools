@@ -1,4 +1,4 @@
-use glam::Vec2;
+use xrf_math::glam::Vec2;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;

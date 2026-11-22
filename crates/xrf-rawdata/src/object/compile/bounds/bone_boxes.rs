@@ -1,5 +1,5 @@
-use glam::{DVec3, Vec3};
 use xrf_editable_object::EditableBone;
+use xrf_math::glam::{DVec3, Vec3};
 use xrf_math::{Affine3d, Obb, Vector3d};
 
 use crate::object::compile::bounds::flush_box::FlushBox;

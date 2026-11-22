@@ -1,4 +1,5 @@
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use xrf_math::glam;
+use xrf_math::glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::camera::camera_frustum::CameraFrustum;
 

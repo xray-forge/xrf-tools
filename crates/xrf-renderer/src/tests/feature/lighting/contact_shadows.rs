@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec4};
+use xrf_math::glam::{Vec2, Vec4};
 
 use crate::contract::feature::lighting::render_contact_shadow_mode::RenderContactShadowMode;
 use crate::contract::feature::lighting::render_contact_shadow_settings::{

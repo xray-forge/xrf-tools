@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3, Vec4};
+use xrf_math::glam;
+use xrf_math::glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphCompileOptions, GraphDeclaration, GraphRuntime, ProxyAllocator,
 };

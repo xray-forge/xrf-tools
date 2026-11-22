@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec3};
 use wgpu::util::DeviceExt;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer_core::{AccelerationStructureBinding, ProxyHandle};
 
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;

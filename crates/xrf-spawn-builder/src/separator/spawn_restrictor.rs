@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Affine3d};
 use xrf_spawn::{AlifeObject, AlifeObjectInherited, AlifeObjectSpaceRestrictor, Shape};
 

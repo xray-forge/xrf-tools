@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3};
 use xrf_app_core::session::SessionSnapshot;
 use xrf_level::{LevelSndStaticFile, LevelSndStaticSound, LevelSndStaticWindow};
 use xrf_ltx::{Ltx, Section};
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer::{RenderHelperObject, RenderHelperShape};
 use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectMotion, ClsId};
 use xrf_vfs::XraySearch;

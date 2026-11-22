@@ -1,5 +1,5 @@
-use glam::{UVec4, Vec4};
 use wgpu::util::DeviceExt;
+use xrf_math::glam::{UVec4, Vec4};
 
 use crate::feature::scene::ai_map::ai_map_field::AiMapField;
 use crate::feature::scene::ai_map::ai_map_uniform::AiMapUniform;

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec3};
 use xrf_error::XrfError;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime};
 
 use crate::capture::burst::burst_job::BurstJob;

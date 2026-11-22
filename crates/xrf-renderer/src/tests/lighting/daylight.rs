@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::lighting::luminance::luminance;
 use crate::lighting::sun::sun_direction::get_renderer_sun_direction;

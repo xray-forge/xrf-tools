@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::camera::camera_view::CameraView;
 

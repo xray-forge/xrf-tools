@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use glam::{DVec3, Vec3};
 use xrf_editable_level::{EditableCustomObject, EditableSceneObject};
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+use xrf_math::glam::{DVec3, Vec3};
 use xrf_spawn::{AlifeObject, AlifeObjectInherited, Shape};
 
 use crate::level::build::level_build_part_box::LevelBuildPartBox;

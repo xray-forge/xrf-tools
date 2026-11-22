@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action::ParticleAction;
 use crate::simulation::actions::avoid_action::AvoidAction;

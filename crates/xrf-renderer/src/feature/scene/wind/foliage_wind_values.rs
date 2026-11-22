@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 /// What the enhanced foliage motion reads this frame, copied into the trees' `Wind` and the grass's `GrassWind`.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

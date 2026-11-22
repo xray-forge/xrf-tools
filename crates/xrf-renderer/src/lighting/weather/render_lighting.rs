@@ -1,6 +1,6 @@
-use glam::{Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_math::EPS;
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
 use crate::contract::feature::weather::render_sun_shafts::RenderSunShafts;

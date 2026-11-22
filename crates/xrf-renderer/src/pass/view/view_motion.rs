@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 /// The view projections a frame measures motion and reprojects by: this frame's unjittered one and the last frame's,
 /// which every surface's motion is measured between, and the last frame's jittered one, which a read of its targets

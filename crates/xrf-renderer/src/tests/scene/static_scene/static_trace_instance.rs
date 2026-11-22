@@ -1,4 +1,5 @@
-use glam::{Mat4, Quat, Vec3};
+use xrf_math::glam;
+use xrf_math::glam::{Mat4, Quat, Vec3};
 
 use crate::scene::static_scene::trace::static_trace_group::StaticTraceGroup;
 use crate::scene::static_scene::trace::static_trace_instance::StaticTraceInstance;

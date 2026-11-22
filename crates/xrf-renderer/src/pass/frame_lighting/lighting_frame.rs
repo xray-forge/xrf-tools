@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;

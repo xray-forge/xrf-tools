@@ -3,9 +3,9 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use glam::Vec3;
 use xrf_engine_target::XrayEngine;
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 use xrf_visual::ZoneSphere;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;

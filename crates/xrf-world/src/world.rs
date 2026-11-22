@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{
   LevelParts, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewportId,
   RenderWorkers, RenderWorld,

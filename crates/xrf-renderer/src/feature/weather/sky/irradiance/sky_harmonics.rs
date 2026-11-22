@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;

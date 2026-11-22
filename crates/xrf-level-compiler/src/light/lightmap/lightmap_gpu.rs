@@ -1,7 +1,7 @@
-use glam::Vec3;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::parallel::prelude::*;
 use xrf_job::{JobHandle, JobScope};
+use xrf_math::glam::Vec3;
 
 use crate::light::lightmap::chart::light_chart::LightChart;
 use crate::light::lightmap::lit::light_chart_lighter::LightChartLighter;

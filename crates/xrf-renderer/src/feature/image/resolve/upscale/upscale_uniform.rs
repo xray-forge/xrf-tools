@@ -1,4 +1,4 @@
-use glam::Vec2;
+use xrf_math::glam::Vec2;
 use xrf_renderer_core::ShaderStruct;
 
 /// What the upscale passes read, as WGSL's `Upscale`: the frame's size at the viewport, RCAS's sharpness, and one where

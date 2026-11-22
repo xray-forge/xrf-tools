@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::feature::effects::rain::cover::cover_textures::CoverTextures;

@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// One impostor as the cull and its draw read it: a clump of trees seen from eight sides, as `static/records.wgsl`

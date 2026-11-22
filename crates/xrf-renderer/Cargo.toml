@@ -11,7 +11,6 @@ path = "src/lib.rs"
 [dependencies]
 ash = { workspace = true }
 bytemuck = { workspace = true }
-glam = { workspace = true }
 image = { workspace = true, features = ["png"] }
 log = { workspace = true }
 notify = { workspace = true }
@@ -28,7 +27,7 @@ xrf-error = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true }
 xrf-material = { workspace = true }
-xrf-math = { workspace = true, features = ["glam"] }
+xrf-math = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-profiler = { workspace = true }
 xrf-renderer-core = { workspace = true }

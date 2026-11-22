@@ -1,4 +1,4 @@
-use glam::{DVec2, DVec3};
+use xrf_math::glam::{DVec2, DVec3};
 
 /// One rendered triangle of a library object: its mesh, by its place in the object's meshes, its texture, by its place
 /// in the library's texture table, its corners in the object's space, and their texture coordinates where its mesh maps

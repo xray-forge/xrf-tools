@@ -15,8 +15,8 @@ syn = { workspace = true }
 
 [dev-dependencies]
 bytemuck = { workspace = true }
-glam = { workspace = true }
 trybuild = { workspace = true }
+xrf-math = { workspace = true }
 xrf-renderer-core = { workspace = true }
 
 [lints]

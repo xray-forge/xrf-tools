@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use glam::{Mat4, Vec3, Vec4};
+use xrf_math::glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{ProxyHandle, ProxyStore};
 
 use crate::camera::camera_frustum::CameraFrustum;

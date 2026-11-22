@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;

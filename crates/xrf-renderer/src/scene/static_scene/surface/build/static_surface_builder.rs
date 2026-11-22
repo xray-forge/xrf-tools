@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use glam::{UVec4, Vec3};
 use xrf_material::{
   XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler, XraySurfaceTerrain,
 };
+use xrf_math::glam::{UVec4, Vec3};
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;

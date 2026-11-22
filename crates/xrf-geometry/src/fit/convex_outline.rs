@@ -1,4 +1,4 @@
-use glam::DVec2;
+use xrf_math::glam::DVec2;
 
 /// The convex hull of points in a plane by Andrew's monotone chain, as the SDK's fits outline a projection
 /// (`ConvexHull2D::ByIncremental` with `RemoveCollinear`).

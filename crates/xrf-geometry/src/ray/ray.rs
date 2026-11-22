@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec3A};
+use xrf_math::glam::{Vec3, Vec3A};
 
 /// A ray as the engine's collision queries take one: from `origin` along `direction`, out to `range`. Its vectors are
 /// held a SIMD register wide, as [`crate::Triangle`]'s corners are.

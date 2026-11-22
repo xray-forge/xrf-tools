@@ -3,7 +3,7 @@
 //! light to the display's linear colours. `common/display_transform.wgsl` runs them on the GPU;
 //! `DisplayMode::get_anchor_stops` solves its anchors from them, and the transforms' GPU test holds the shader to them.
 
-use glam::{Mat3, Vec3};
+use xrf_math::glam::{Mat3, Vec3};
 
 use crate::lighting::luminance::luminance;
 use crate::lighting::srgb::{srgb_decoded, srgb_encoded};

@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec2, Vec3};
+use xrf_math::glam::{Mat4, Vec2, Vec3};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphCompileOptions, GraphDeclaration, GraphRuntime, GraphTexture, PassParameters,
   PipelineCache,

@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::viewport::page::render_page_backdrop::RenderPageBackdrop;

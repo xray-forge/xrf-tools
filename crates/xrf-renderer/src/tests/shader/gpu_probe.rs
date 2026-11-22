@@ -1,7 +1,7 @@
 //! Runs a shader module's functions on the GPU over cases of two vectors each, for tests holding WGSL to Rust
 //! references or to what it must integrate to.
 
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::support::test_context::create_test_context;

@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{AmbientGust, WindNoise};
 
 use crate::host::world_ambient_effect::WorldAmbientEffect;

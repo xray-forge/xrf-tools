@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 use crate::data::actions::particle_action_random_velocity::ParticleActionRandomVelocity;
 use crate::simulation::domain::particle_volume::ParticleVolume;
@@ -37,7 +37,7 @@ impl From<&ParticleActionRandomVelocity> for RandomVelocityAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::RandomVelocityAction;
   use crate::simulation::domain::particle_volume::ParticleVolume;

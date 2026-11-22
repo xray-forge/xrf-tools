@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What shifting an overhead map reads as its `OverheadShift`: the texels a texel of the map now reads its old self

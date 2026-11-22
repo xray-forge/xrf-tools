@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 use xrf_renderer::{RenderModelSkeleton, RenderSceneUpdate, StaticObjectProxy};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 

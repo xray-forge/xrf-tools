@@ -1,3 +1,4 @@
+use xrf_math::glam;
 use xrf_visual::{SectorGeometry, VisualClusters, VisualSection};
 
 use crate::scene::static_scene::geometry::geometry_clusters::GeometryClusters;

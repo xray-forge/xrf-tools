@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 /// Where the level's surface stands: its centre in `x` and `z`, its half width and the height it is seen from; then its
 /// texels across, the metres it reaches down, and the metres a cell of puddle sites is across.

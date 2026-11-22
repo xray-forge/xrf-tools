@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use glam::Vec3;
 use xrf_audio_scene::{AudioListener, AudioSceneFrame, AudioSceneRules};
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{RenderViewBurst, RenderWorkers};
 
 use crate::contract::sound::report::world_sound_refusal::WorldSoundRefusal;

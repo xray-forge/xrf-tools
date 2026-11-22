@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 
 /// `Fvector` operations whose float steps the simulation and the SDK's compile must repeat as
 /// `xrMiscMath/vector.cpp` takes them.
@@ -34,7 +34,7 @@ impl EngineVector for Vector3d {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::EngineVector;
 

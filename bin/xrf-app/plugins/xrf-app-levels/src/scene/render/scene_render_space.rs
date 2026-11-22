@@ -1,5 +1,5 @@
-use glam::{Mat4, Vec3};
 use xrf_editable_level::EditableObjectTransform;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_math::{Affine3d, Vector3d};
 use xrf_visual::{VisualTransform, convert_vector};
 

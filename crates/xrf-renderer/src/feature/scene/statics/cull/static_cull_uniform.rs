@@ -1,4 +1,4 @@
-use glam::{UVec4, Vec4};
+use xrf_math::glam::{UVec4, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 /// What the cull is told besides the camera: how much there is to test and the level of detail's thresholds.

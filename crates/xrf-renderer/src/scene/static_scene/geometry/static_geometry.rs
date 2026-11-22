@@ -1,5 +1,5 @@
-use glam::Vec4;
 use xrf_error::XrfResult;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::{ProxyHandle, ProxyStore, Span, SpanBuffer, SpanLane, StoreMirror};
 use xrf_visual::VisualClusters;
 

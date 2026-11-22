@@ -1,4 +1,4 @@
-use glam::UVec4;
+use xrf_math::glam::UVec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// The texture slots a terrain surface lays over its base: four details and their bumps, weighed by a mask.

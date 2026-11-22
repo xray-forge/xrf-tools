@@ -1,5 +1,5 @@
-use glam::Vec3;
 use wgpu::util::DeviceExt;
+use xrf_math::glam::Vec3;
 
 use crate::contract::overlay::render_overlay::RenderOverlay;
 use crate::frame::frame_encoder::FrameEncoder;

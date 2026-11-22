@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use glam::{DVec4, Vec4};
+use xrf_math::glam::{DVec4, Vec4};
 
 use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;

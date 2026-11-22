@@ -1,5 +1,5 @@
-use glam::{Vec3, Vec4};
 use xrf_math::EPS;
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_visual::{LightDescription, LightKind};
 
 /// How near parallel to the world's up a spot may point before `compute_xf_spot` takes the world's forward instead.

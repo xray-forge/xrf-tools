@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3, Vec4};
+use xrf_math::glam::{Mat4, Vec3, Vec4};
 
 use crate::data::actions::particle_action_source::ParticleActionSource;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -111,7 +111,7 @@ impl From<&ParticleActionSource> for SourceAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Mat4, Vec3, Vec4};
+  use xrf_math::glam::{Mat4, Vec3, Vec4};
 
   use super::SourceAction;
   use crate::data::actions::particle_action_source::ParticleActionSource;

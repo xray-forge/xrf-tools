@@ -1,7 +1,7 @@
-use glam::{Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherPlayedKeyframe};
 use xrf_math::EPS_L;
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_renderer::{
   EngineSpace, RenderClouds, RenderFog, RenderLighting, RenderRainfall, RenderSky, RenderTreeWind, RenderWind,
   WeatherTextureKind,

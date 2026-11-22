@@ -2,7 +2,7 @@ use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::ops::Range;
 
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_visual::{SectorGeometry, VisualClusters};
 
 use crate::scene::section_bytes::read_pods;

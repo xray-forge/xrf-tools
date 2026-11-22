@@ -1,4 +1,4 @@
-use glam::{Mat4, UVec4, Vec4};
+use xrf_math::glam::{Mat4, UVec4, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 /// Where something stands: its matrix, then what lights it.

@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec3A};
+use xrf_math::glam::{Vec3, Vec3A};
 
 use crate::tracer::xrlc::xrlc_child::XrlcChild;
 

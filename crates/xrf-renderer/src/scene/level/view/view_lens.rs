@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;

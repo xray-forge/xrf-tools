@@ -16,7 +16,7 @@ impl MoveAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::MoveAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

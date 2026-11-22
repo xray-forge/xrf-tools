@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use glam::DVec3;
+use xrf_math::glam::DVec3;
 
 use crate::level::instance::level_library_triangle::LevelLibraryTriangle;
 

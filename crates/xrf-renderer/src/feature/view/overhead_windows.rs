@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::feature::effects::rain::cover::rain_cover_shape::RainCoverShape;
 

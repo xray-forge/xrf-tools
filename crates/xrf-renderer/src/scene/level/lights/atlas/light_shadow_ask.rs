@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::LightDescription;
 

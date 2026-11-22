@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec3};
+use xrf_math::glam::{Vec2, Vec3};
 use xrf_renderer_core::ShaderStruct;
 
 /// One corner of a particle's quad as `shaders/frame/particles.wgsl` reads it, `FVF::LIT` with its surface: the corner

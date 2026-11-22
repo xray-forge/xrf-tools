@@ -1,4 +1,4 @@
-use glam::{Mat4, UVec4, Vec3, Vec4};
+use xrf_math::glam::{Mat4, UVec4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::viewport::render_rect::RenderRect;

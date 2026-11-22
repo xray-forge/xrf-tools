@@ -1,5 +1,5 @@
-use glam::{Vec2, Vec4};
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::{Vec2, Vec4};
 use xrf_renderer_core::{
   GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };

@@ -1,4 +1,5 @@
-use glam::{Mat4, Vec3, Vec4};
+use xrf_math::glam;
+use xrf_math::glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{
   GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphDepthAttachment, GraphTexture, GraphTextureDescriptor,
   StorageArray, StorageArrayMut, UniformBinding,

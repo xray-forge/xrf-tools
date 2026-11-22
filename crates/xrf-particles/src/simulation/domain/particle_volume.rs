@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
-use glam::{Mat4, Vec3, Vec4Swizzles};
+use xrf_math::glam;
+use xrf_math::glam::{Mat4, Vec3, Vec4Swizzles};
 
 use crate::data::domain::particle_domain::ParticleDomain;
 use crate::simulation::domain::engine_vector::EngineVector;
@@ -238,7 +239,7 @@ impl From<&ParticleDomain> for ParticleVolume {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Mat4, Vec3};
+  use xrf_math::glam::{Mat4, Vec3};
 
   use super::ParticleVolume;
   use crate::simulation::domain::particle_random::ParticleRandom;

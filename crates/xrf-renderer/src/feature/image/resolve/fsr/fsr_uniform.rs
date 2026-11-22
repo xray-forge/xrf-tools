@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec4};
+use xrf_math::glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;

@@ -1,4 +1,4 @@
-use glam::Vec2;
+use xrf_math::glam::Vec2;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::view::render_view_options::RenderViewOptions;

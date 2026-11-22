@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What one way of the enhanced water's reflection blur reads as its `WaterBlur`.

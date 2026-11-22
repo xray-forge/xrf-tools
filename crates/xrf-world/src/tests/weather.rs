@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
 use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherMixPoint, WeatherMixer, WeatherSunSource};
 use xrf_material::XraySurfaceDraw;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{
   RenderLighting, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient,
   WeatherTextureKind,

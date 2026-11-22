@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::data::actions::particle_action_target_size::ParticleActionTargetSize;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -31,7 +31,7 @@ impl From<&ParticleActionTargetSize> for TargetSizeAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::TargetSizeAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

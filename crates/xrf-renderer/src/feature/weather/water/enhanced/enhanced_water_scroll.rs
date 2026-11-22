@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
 use crate::scene::level::level_time::LevelTime;

@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::{PassParameters, StorageArray, StorageArrayMut};
 
 use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;

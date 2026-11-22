@@ -1,4 +1,5 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam;
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::camera::camera_view::CameraView;
 use crate::lighting::sun::sun_cascade_basis::SunCascadeBasis;

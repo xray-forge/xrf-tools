@@ -1,11 +1,11 @@
 use std::fs::File;
 use std::path::Path;
 
-use glam::Vec3;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_geometry::{BvhTracer, Triangle};
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Vector3d};
 use xrf_utils::{format_path, narrow_format_size};
 

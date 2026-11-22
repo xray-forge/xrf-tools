@@ -1,5 +1,5 @@
-use glam::Vec3;
 use wgpu::util::DeviceExt;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::{
   FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphTexture,
   GraphTextureDescriptor,

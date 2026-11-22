@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// Where the puddles stand, so the grass's planting puts no tuft in their water (`shaders/grass/puddles.wgsl`).

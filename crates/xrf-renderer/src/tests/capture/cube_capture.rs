@@ -1,6 +1,6 @@
-use glam::{Mat4, Vec3, Vec4};
 use image::RgbaImage;
 use xrf_error::XrfResult;
+use xrf_math::glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_frame::CameraFrame;
 use crate::camera::engine_space::EngineSpace;

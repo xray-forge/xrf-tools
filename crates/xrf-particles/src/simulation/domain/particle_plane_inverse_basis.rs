@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// The rows that read a point's coordinates along a rectangle's or triangle's `u` and `v` edges, the engine's `s1` and
 /// `s2`: a point's offset from the corner dotted with each gives its coordinate along that edge, in edge lengths.

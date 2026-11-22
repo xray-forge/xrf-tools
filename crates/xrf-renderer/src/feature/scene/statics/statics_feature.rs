@@ -1,5 +1,5 @@
-use glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
 use xrf_math::EPS_S;
+use xrf_math::glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
 use xrf_renderer_core::{
   FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration, GraphDepthAttachment,
   GraphTexture,

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::scene::level::lights::asks::light_in_view::LightInView;
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;

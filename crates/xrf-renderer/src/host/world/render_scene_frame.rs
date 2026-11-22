@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::level::render_level_source::RenderLevelSource;

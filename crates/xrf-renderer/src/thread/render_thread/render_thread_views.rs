@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use xrf_math::glam::{Mat4, Vec2, Vec3, Vec4};
 
 use super::RenderThread;
 use crate::camera::camera_view::CameraView;

@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::scene::static_scene::draw::slot::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::draw::static_batch::StaticBatch;

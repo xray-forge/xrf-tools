@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::ray::ray::Ray;
 use crate::tracer::tests::fixtures::{BruteTracer, Sequence, every_hit, faces_in_box, soup, town};

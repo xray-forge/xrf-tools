@@ -1,5 +1,5 @@
-use glam::{Vec3, Vec4};
-use xrf_math::EPS_S;
+use xrf_math::glam::{Vec3, Vec4};
+use xrf_math::{EPS_S, glam};
 use xrf_visual::{LightDescription, LightKind};
 
 use crate::camera::camera_view::CameraView;

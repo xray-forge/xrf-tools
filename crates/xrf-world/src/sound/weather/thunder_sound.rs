@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// A strike that thunders, `play_no_feedback` in `CEffect_Thunderbolt::Bolt`: the bolt's section, where it struck from
 /// in engine space, and its distance from the camera.

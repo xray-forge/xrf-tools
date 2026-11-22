@@ -2,7 +2,7 @@
 //! definitions (`display_curves`): Khronos PBR Neutral's reference, three.js's AgX, and the engine's curve; and
 //! the transforms' anchors solved from them.
 
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::feature::image::present::display::display_curves::{agx, engine_display, get_least_shown, pbr_neutral};

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::lighting::weather::render_lighting::RenderLighting;

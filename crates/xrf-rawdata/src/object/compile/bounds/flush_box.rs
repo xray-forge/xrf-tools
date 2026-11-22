@@ -1,5 +1,5 @@
-use glam::{DVec2, DVec3};
 use xrf_geometry::{ConvexOutline, SymmetricEigen};
+use xrf_math::glam::{DVec2, DVec3};
 use xrf_math::{Obb, Vector3d};
 
 use crate::object::compile::bounds::convex_hull::ConvexHull;

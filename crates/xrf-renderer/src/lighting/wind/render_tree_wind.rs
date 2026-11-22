@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// How the trees sway, in the terms a weather keyframe uses (`CEnvDescriptor::m_fTree*`).
 #[derive(Clone, Copy, Debug, PartialEq)]

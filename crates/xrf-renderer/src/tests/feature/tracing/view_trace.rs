@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::feature::tracing::view_trace::view_trace_feature::ViewTraceFeature;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;

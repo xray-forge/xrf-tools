@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_geometry::{Triangle, XrlcTracer};
+use xrf_math::glam::Vec3;
 use xrf_math::{Aabb, Vector2d, Vector3d};
 
 use crate::geometry::mesh::geometry_face::GeometryFace;

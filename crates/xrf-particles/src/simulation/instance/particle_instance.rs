@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::instance::particle_group_instance::ParticleGroupInstance;

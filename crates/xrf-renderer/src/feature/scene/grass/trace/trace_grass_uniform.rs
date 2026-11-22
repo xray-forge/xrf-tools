@@ -1,4 +1,4 @@
-use glam::IVec4;
+use xrf_math::glam::IVec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What a traced hit reads of the level's grass as the view plants it.

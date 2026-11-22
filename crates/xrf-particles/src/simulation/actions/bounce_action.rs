@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_bounce::ParticleActionBounce;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -157,7 +157,7 @@ impl From<&ParticleActionBounce> for BounceAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::BounceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

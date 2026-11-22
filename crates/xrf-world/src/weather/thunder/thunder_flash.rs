@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{RenderFog, RenderLighting, RenderThunderSettings, RenderThunderboltStrike};
 
 /// What a strike does to a frame: the colour it lights the sky, the sun and the fog with, the way its light travels,

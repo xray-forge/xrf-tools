@@ -1,6 +1,6 @@
-use glam::{Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::{SectorGeometry, SectorPackage, SectorSurface};
 

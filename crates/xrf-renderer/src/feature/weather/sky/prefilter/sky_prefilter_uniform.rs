@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What filling one mip of the prefiltered sky cube reads as its `SkyPrefilter`: the mip, the roughness it stands for,

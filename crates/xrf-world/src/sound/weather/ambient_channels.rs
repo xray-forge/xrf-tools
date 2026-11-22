@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::f32::consts::TAU;
 use std::time::Duration;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::contract::sound::report::world_sound_channel_report::WorldSoundChannelReport;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;

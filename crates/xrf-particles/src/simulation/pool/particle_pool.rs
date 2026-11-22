@@ -129,7 +129,7 @@ impl ParticlePool {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::ParticlePool;
   use crate::simulation::pool::particle::Particle;

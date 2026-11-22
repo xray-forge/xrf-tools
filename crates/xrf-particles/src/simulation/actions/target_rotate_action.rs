@@ -32,7 +32,7 @@ impl From<&ParticleActionTargetRotate> for TargetRotateAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::TargetRotateAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

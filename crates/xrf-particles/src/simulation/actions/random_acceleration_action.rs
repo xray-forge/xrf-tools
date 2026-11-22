@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 use crate::data::actions::particle_action_random_acceleration::ParticleActionRandomAcceleration;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -40,7 +40,7 @@ impl From<&ParticleActionRandomAcceleration> for RandomAccelerationAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::RandomAccelerationAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

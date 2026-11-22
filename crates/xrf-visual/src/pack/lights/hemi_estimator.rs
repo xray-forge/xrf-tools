@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use glam::Vec3;
 use xrf_geometry::{BvhTracer, Ray, Tracer};
 use xrf_level::LevelLight;
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 
 use crate::data::lights::hemi_cube::HemiCube;
 use crate::data::lights::hemi_estimate::HemiEstimate;

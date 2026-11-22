@@ -1,7 +1,8 @@
 //! The camera's lens and film (`common/lens`), run on the GPU, and the physical camera Rust gives the camera effects
 //! (`CameraEffectsUniform`).
 
-use glam::{Mat4, Vec2, Vec4};
+use xrf_math::glam;
+use xrf_math::glam::{Mat4, Vec2, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::image::render_camera_settings::RenderCameraSettings;

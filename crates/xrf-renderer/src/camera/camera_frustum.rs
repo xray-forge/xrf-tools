@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 /// A view's six planes in renderer space, pointing in, each normalized so a sphere tests by its radius: made once to
 /// test many spheres.

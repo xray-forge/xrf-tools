@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
-use glam::Vec3;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::XrfResult;
 use xrf_geometry::{BvhTracer, Tracer};
 use xrf_job::parallel::prelude::*;
+use xrf_math::glam::Vec3;
 use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::cform::level_cform_geometry::LevelCformGeometry;

@@ -1,7 +1,8 @@
 use std::f32::consts::{PI, TAU};
 use std::time::Duration;
 
-use glam::Vec3;
+use xrf_math::glam;
+use xrf_math::glam::Vec3;
 use xrf_renderer::CameraFrame;
 
 use crate::camera::wheel_delta::WheelDelta;

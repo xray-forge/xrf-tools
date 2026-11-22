@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::data::group::particle_group::ParticleGroup;
 use crate::data::group::particle_group_effect_flags::ParticleGroupEffectFlags;

@@ -1,6 +1,6 @@
 //! A placement's emitter: the scene is told to play and stop its effects only as they change.
 
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer::{ParticleEmitterProxy, PlacedEffect, RenderParticleSource, RenderSceneUpdate};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 

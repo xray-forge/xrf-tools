@@ -1,4 +1,4 @@
-use glam::{UVec2, Vec4};
+use xrf_math::glam::{UVec2, Vec4};
 use xrf_renderer_core::{PassParameters, StorageArray, UniformBinding};
 
 use crate::feature::scene::wind::wind_uniform::WindUniform;

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use glam::{Mat4, Vec3};
 use xrf_animation_envelope::AnimationPlayback;
 use xrf_anm::AnmFile;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer::{LevelPart, LevelParts, RenderMotionPose, RenderWorkers};
 use xrf_visual::VisualTransform;
 

@@ -7996,7 +7996,6 @@ dependencies = [
 name = "xrf-app-levels"
 version = "0.1.0"
 dependencies = [
- "glam",
  "image",
  "log",
  "resvg",
@@ -8402,12 +8401,12 @@ dependencies = [
  "ash",
  "bindgen 0.73.2",
  "cc",
- "glam",
  "log",
  "pollster",
  "wgpu",
  "windows-core",
  "xrf-error",
+ "xrf-math",
 ]
 
 [[package]]
@@ -8612,7 +8611,6 @@ dependencies = [
 name = "xrf-geometry"
 version = "0.1.0"
 dependencies = [
- "glam",
  "obvhs",
  "xrf-error",
  "xrf-math",
@@ -8688,7 +8686,6 @@ name = "xrf-level"
 version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
- "glam",
  "serde",
  "specta",
  "uuid",
@@ -8708,7 +8705,6 @@ name = "xrf-level-compiler"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "glam",
  "log",
  "pollster",
  "serde",
@@ -8902,7 +8898,6 @@ dependencies = [
 name = "xrf-particles"
 version = "0.1.0"
 dependencies = [
- "glam",
  "log",
  "serde",
  "serde_json",
@@ -8943,7 +8938,6 @@ version = "0.1.0"
 dependencies = [
  "bevy_mikktspace",
  "crc32fast",
- "glam",
  "serde",
  "serde_json",
  "sha2",
@@ -8978,7 +8972,6 @@ dependencies = [
  "ash",
  "bytemuck",
  "ddsfile",
- "glam",
  "image",
  "log",
  "naga",
@@ -9018,7 +9011,6 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "crc32fast",
- "glam",
  "log",
  "naga",
  "offset-allocator",
@@ -9029,6 +9021,7 @@ dependencies = [
  "wgpu",
  "xrf-error",
  "xrf-job",
+ "xrf-math",
  "xrf-profiler",
  "xrf-renderer-derive",
  "xrf-test-utils",
@@ -9039,11 +9032,11 @@ name = "xrf-renderer-derive"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "glam",
  "proc-macro2",
  "quote",
  "syn 3.0.10",
  "trybuild",
+ "xrf-math",
  "xrf-renderer-core",
 ]
 
@@ -9118,7 +9111,6 @@ dependencies = [
 name = "xrf-spawn-builder"
 version = "0.1.0"
 dependencies = [
- "glam",
  "serde",
  "specta",
  "uuid",
@@ -9268,7 +9260,6 @@ dependencies = [
 name = "xrf-visual"
 version = "0.1.0"
 dependencies = [
- "glam",
  "log",
  "serde",
  "specta",
@@ -9292,7 +9283,6 @@ dependencies = [
 name = "xrf-world"
 version = "0.1.0"
 dependencies = [
- "glam",
  "log",
  "serde",
  "specta",

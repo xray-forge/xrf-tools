@@ -29,7 +29,7 @@ Declares, once in Rust, a struct that a shader and Rust share.
 - A generic or tuple struct is refused.
 
 ```rust
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_renderer_core::{ShaderStruct, ShaderType};
 
 #[repr(C)]
@@ -52,7 +52,7 @@ the derive refuses it. Here Rust puts the second `Vec3` twelve bytes in and WGSL
 written out:
 
 ```rust,compile_fail
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::ShaderStruct;
 
 #[repr(C)]

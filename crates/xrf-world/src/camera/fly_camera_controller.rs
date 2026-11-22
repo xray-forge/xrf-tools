@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4};
 use std::time::Duration;
 
-use glam::{EulerRot, Mat4, Quat, Vec3};
+use xrf_math::glam::{EulerRot, Mat4, Quat, Vec3};
 use xrf_renderer::CameraFrame;
 
 use crate::camera::fly_key::FlyKey;

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec3};
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::AnmFile;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer::{LevelPart, LevelParts, RenderMotionPose};
 
 use crate::host::world_level_source::WorldLevelSource;

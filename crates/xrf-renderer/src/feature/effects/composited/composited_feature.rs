@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 use xrf_renderer_core::{
   FrameGraph, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphDeclaration,
   GraphDepthAttachment, GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue,

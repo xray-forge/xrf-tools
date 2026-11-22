@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 use xrf_renderer::{
   LoaderReceiver, RenderLevelSpawn, RenderLoadFailure, RenderSpawnModels, RenderSpawnObject, RenderWorkers,
   StaticModel, StaticModelPlace, take_answer,

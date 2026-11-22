@@ -1,4 +1,4 @@
-use glam::DVec3;
+use xrf_math::glam::DVec3;
 use xrf_math::{Affine3d, Vector3d};
 
 /// A part's box (`LevelBuildParts::fit_box`): its centre, its axes, orthonormal and right-handed, and its half size

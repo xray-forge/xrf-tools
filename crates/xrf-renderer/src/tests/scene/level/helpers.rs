@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::contract::overlay::render_helper_icon::RenderHelperIcon;
 use crate::contract::overlay::render_helper_options::RenderHelperOptions;

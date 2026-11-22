@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// One shadowed light's shafts as the light volume pass draws them (`accum_volumetric`), in view space: slices across

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::contract::feature::lighting::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RenderShadowSettings};
 use crate::contract::report::applied::render_applied_report::RenderAppliedReport;

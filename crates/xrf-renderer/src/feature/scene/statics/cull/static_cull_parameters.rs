@@ -1,4 +1,4 @@
-use glam::{UVec2, UVec4, Vec4};
+use xrf_math::glam::{UVec2, UVec4, Vec4};
 use xrf_renderer_core::{GraphTexture, PassParameters, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding};
 
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;

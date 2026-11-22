@@ -1,4 +1,4 @@
-use glam::UVec2;
+use xrf_math::glam::UVec2;
 use xrf_renderer_core::ShaderStruct;
 
 /// A reflection ray the screen left unanswered, which the scene pass traces against the level's geometry.

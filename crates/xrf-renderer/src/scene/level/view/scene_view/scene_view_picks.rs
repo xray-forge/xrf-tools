@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_error::XrfResult;
+use xrf_math::glam::Vec3;
 
 use crate::contract::viewport::render_level_hit::RenderLevelHit;
 use crate::scene::level::level_scene::LevelScene;

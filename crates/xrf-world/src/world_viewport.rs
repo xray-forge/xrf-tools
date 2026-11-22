@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{
   EngineSpace, RenderLighting, RenderSceneId, RenderViewBurst, RenderViewFrame, RenderViewInput, RenderViewOptions,
 };

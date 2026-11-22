@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::view::render_view_options::RenderViewOptions;

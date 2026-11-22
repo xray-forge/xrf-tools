@@ -1,4 +1,4 @@
-use glam::DVec2;
+use xrf_math::glam::DVec2;
 
 use crate::fit::convex_outline::ConvexOutline;
 

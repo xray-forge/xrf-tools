@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::lighting::weather::render_thunderbolt_glow::RenderThunderboltGlow;
 

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use glam::{Mat4, Vec2};
 use xrf_dlss::Dlss;
+use xrf_math::glam::{Mat4, Vec2};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::view::render_view_options::RenderViewOptions;

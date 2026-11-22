@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What placing puddle sites on the level surface reads as its `PuddleSites`: the map's centre in `x` and `z`, its half

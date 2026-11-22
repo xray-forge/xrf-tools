@@ -1,4 +1,4 @@
-use glam::Vec2;
+use xrf_math::glam::Vec2;
 
 use crate::camera::camera_view::CameraView;
 

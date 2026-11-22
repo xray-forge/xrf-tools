@@ -4,7 +4,7 @@
 
 use std::f32::consts::PI;
 
-use glam::{Vec2, Vec3, Vec4};
+use xrf_math::glam::{Vec2, Vec3, Vec4};
 
 use crate::feature::lighting::tables::brdf_table::BrdfTable;
 use crate::tests::shader::gpu_probe::run_gpu_probe;

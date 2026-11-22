@@ -35,7 +35,7 @@ impl From<&ParticleActionSpeedLimit> for SpeedLimitAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::SpeedLimitAction;
   use crate::simulation::pool::particle::Particle;

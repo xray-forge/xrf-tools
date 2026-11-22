@@ -1,7 +1,7 @@
 //! The terrain's hex tiling (`common/hex_tiling`), run on the GPU: its copies, their blend, and the engine's copy that
 //! leaves a coordinate where it is.
 
-use glam::{Vec2, Vec4};
+use xrf_math::glam::{Vec2, Vec4};
 
 use crate::tests::shader::wgsl_probe::run_wgsl_probe;
 

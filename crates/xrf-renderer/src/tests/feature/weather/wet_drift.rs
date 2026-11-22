@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec4};
+use xrf_math::glam::{Vec2, Vec4};
 
 use crate::feature::weather::wet::wet_drift::WetDrift;
 use crate::feature::weather::wet::wet_uniform::WetUniform;

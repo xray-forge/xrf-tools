@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;

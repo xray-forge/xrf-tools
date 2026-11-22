@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// A strike's thunder: the bolt's section, where it struck from in engine space, and how far from the view.
 #[derive(Clone, Debug, PartialEq)]

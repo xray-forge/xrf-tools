@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::feature::page::present_marks::PresentMarks;
 use crate::frame::targets::screen_tiles::ScreenTiles;

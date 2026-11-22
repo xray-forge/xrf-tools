@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use glam::Vec3;
 use xrf_chunk::ChunkWriter;
 use xrf_error::XrfResult;
 use xrf_geometry::BvhTracer;
@@ -10,6 +9,7 @@ use xrf_level::{
   LevelLightsChunk, LevelLightsFile,
 };
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 
 use crate::detail::detail_light_request::DetailLightRequest;
 use crate::detail::detail_lighter::DetailLighter;

@@ -10,7 +10,6 @@ rust-version.workspace = true
 build = "../../core/build.rs"
 
 [dependencies]
-glam = { workspace = true }
 image = { workspace = true, features = ["png", "tga"] }
 log = { workspace = true }
 # Rasterises a level map's annotations, which it draws as an SVG.
@@ -46,7 +45,7 @@ xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-project = { workspace = true }
 xrf-material = { workspace = true }
-xrf-math = { workspace = true, features = ["glam"] }
+xrf-math = { workspace = true }
 xrf-object-visual = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-particles = { workspace = true }

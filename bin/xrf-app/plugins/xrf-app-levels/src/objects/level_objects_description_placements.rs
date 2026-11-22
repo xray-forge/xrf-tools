@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_level::{LevelDynamicLight, LevelFogVolume, LevelSndEnvFile};
+use xrf_math::glam::Vec3;
 use xrf_math::{Matrix4x4, Vector3d};
 use xrf_visual::VisualTransform;
 

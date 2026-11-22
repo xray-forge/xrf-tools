@@ -9,7 +9,6 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-glam = { workspace = true }
 serde = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 specta = { workspace = true, optional = true }
@@ -17,7 +16,7 @@ xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-geometry = { workspace = true }
 xrf-job = { workspace = true }
-xrf-math = { workspace = true, features = ["glam"] }
+xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-report = { workspace = true }
 xrf-utils = { workspace = true }

@@ -1,4 +1,4 @@
-use glam::Vec2;
+use xrf_math::glam::Vec2;
 
 /// Places a pixel's sample cycles through while unscaled: `ffxFsr3UpscalerGetJitterPhaseCount`'s base.
 const BASE_PHASES: f32 = 8.0;

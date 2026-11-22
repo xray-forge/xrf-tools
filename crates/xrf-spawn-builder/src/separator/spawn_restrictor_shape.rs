@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_math::{Aabb, Affine3d, Vector3d};
 
 /// One shape of a space restrictor placed in the level, as `CSpaceRestrictorWrapper` tests nodes against it.

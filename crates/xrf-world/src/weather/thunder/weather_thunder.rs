@@ -1,8 +1,8 @@
 use std::f32::consts::{PI, TAU};
 use std::time::Duration;
 
-use glam::Vec3;
 use xrf_environment::{ThunderboltSettingsKey, WeatherMix};
+use xrf_math::glam::Vec3;
 use xrf_math::{EPS_L, EPS_S};
 use xrf_renderer::{
   EngineSpace, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGlow, RenderThunderboltStrike,

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// One frame a lens flare is drawn in: towards the sun in view space and in the world, the sun's colour, how far the
 /// flare has faded in, and the seconds since the last frame its visibility eases over.

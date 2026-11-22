@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// One helped object as a scene keeps it: what names it, how it is drawn, where it stands, its wires and icons among the
 /// scene's, and the spawned model it marks.

@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 
 use crate::host::level::helpers::render_helper_object::RenderHelperObject;
 use crate::host::level::helpers::render_helper_shape::RenderHelperShape;

@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 use xrf_renderer_core::{
   FrameGraph, GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };

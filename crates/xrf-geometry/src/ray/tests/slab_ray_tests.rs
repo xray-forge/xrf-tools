@@ -1,4 +1,4 @@
-use glam::Vec3A;
+use xrf_math::glam::Vec3A;
 
 use crate::ray::slab_ray::SlabRay;
 

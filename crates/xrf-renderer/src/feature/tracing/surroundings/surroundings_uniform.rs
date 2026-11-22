@@ -1,4 +1,5 @@
-use glam::Vec4;
+use xrf_math::glam;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What resolving one face of the surroundings cube reads as its `Surroundings`.

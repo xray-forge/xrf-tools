@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::{Vec2, Vec3, Vec4};
+use xrf_math::glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray, StorageValue};
 
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;

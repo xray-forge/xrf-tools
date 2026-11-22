@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::graph::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime, GraphTexture,

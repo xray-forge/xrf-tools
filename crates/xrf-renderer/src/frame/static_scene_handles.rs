@@ -1,4 +1,4 @@
-use glam::UVec2;
+use xrf_math::glam::UVec2;
 use xrf_renderer_core::{
   GraphBuffer, GraphDeclaration, GraphTexture, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding,
 };

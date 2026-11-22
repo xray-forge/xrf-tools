@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 /// What the froxel volume's passes and the shafts' composite read as their `Froxels`: the grid's froxels across, down

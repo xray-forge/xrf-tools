@@ -1,5 +1,5 @@
-use glam::{Vec3, Vec4};
 use xrf_material::XraySurfaceDescriptor;
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_visual::{SectorSurface, VisualClusters, VisualDrawRange, VisualGeometry, VisualPackage, VisualSkin};
 
 use crate::scene::section_bytes::read_pods;

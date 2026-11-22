@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec4};
+use xrf_math::glam::{Mat4, Vec4};
 
 use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_gtao_settings::RenderAmbientOcclusionGtaoSettings;
 use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;

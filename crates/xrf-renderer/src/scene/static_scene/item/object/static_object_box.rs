@@ -1,4 +1,4 @@
-use glam::{BVec3, Mat4, Vec3};
+use xrf_math::glam::{BVec3, Mat4, Vec3};
 
 /// A spawned object's box as it stands: its model's box in its own space, between `min` and `max`, and where the scene
 /// stands it.

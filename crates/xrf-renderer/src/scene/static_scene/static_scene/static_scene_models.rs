@@ -1,5 +1,5 @@
-use glam::{Mat4, UVec4, Vec4};
 use xrf_error::{XrfError, XrfResult};
+use xrf_math::glam::{Mat4, UVec4, Vec4};
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::SectorImpostors;
 

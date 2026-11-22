@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer::{RenderSceneId, RenderViewBurst};
 
 use crate::contract::sound::world_sound_toggles::WorldSoundToggles;

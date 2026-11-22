@@ -1,6 +1,6 @@
 //! The enhanced fog: its height fog in the lighting, and the scattering's stages.
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use xrf_math::glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::contract::feature::weather::fog::render_fog_mode::RenderFogMode;
 use crate::contract::feature::weather::fog::render_fog_settings::RenderFogSettings;

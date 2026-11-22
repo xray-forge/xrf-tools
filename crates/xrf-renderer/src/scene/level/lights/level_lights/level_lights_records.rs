@@ -1,5 +1,5 @@
-use glam::{Mat4, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::ProxyStore;
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightVolumetric};
 

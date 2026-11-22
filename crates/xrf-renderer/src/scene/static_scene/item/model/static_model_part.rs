@@ -1,5 +1,5 @@
-use glam::Vec4;
 use xrf_material::XraySurfaceDescriptor;
+use xrf_math::glam::Vec4;
 use xrf_visual::SectorSurface;
 
 /// One submesh of a packed model: its run of the model's indices, the clusters it is cut into, and what it wears.

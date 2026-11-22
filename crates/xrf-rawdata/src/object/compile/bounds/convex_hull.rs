@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use glam::DVec3;
+use xrf_math::glam::DVec3;
 
 /// The convex hull of a point set, by quickhull, in double precision: its faces as triangles over the points' indices,
 /// counter-clockwise seen from outside.

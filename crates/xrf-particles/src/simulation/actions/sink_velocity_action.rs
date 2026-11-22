@@ -1,4 +1,4 @@
-use glam::Mat4;
+use xrf_math::glam::Mat4;
 
 use crate::data::actions::particle_action_sink_velocity::ParticleActionSinkVelocity;
 use crate::simulation::domain::particle_volume::ParticleVolume;
@@ -41,7 +41,7 @@ impl From<&ParticleActionSinkVelocity> for SinkVelocityAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::SinkVelocityAction;
   use crate::simulation::domain::particle_volume::ParticleVolume;

@@ -1,7 +1,7 @@
-use glam::{DVec2, DVec3, Vec3};
 use xrf_geometry::{ConvexOutline, SymmetricEigen};
 use xrf_level::BuildPrjPortal;
 use xrf_math::Vector3d;
+use xrf_math::glam::{DVec2, DVec3, Vec3};
 
 /// A portal's polygon simplified as the Build simplifies every portal it updates, `CPortal::Simplify`.
 ///

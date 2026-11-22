@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_particles::{ParticleObject, ParticleUpdateContext};
 
 use crate::host::level::particles::placed_effect::PlacedEffect;

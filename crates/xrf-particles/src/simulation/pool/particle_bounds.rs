@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_math::EPS_L;
+use xrf_math::glam::Vec3;
 
 /// `vis.box` and `vis.sphere`: what an effect's particles cover, grown by their largest size.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -35,7 +35,7 @@ impl ParticleBounds {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::ParticleBounds;
 

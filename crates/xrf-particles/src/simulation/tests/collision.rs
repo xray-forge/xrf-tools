@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::data::effect::particle_effect::ParticleEffect;
 use crate::data::effect::particle_effect_collision::ParticleEffectCollision;

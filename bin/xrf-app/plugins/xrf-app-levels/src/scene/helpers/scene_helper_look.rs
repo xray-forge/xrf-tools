@@ -1,6 +1,6 @@
-use glam::{Mat4, Vec3};
 use xrf_editable_level::{EditableObjectTransform, EditableShapeElement, EditableWayPoint};
 use xrf_math::Vector3d;
+use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer::{RenderHelperIcon, RenderHelperShape};
 
 use crate::helpers::HelperLinkLines;

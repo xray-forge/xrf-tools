@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::host::sound::world_sound_channel::WorldSoundChannel;
 use crate::host::world_ambient::WorldAmbient;

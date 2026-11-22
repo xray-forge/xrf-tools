@@ -1,4 +1,4 @@
-use glam::DVec3;
+use xrf_math::glam::DVec3;
 
 /// The eigen decomposition of a symmetric 3x3 matrix by cyclic Jacobi rotations, in double precision: the solver the
 /// SDK's fits take their axes from (`_matrix33::Meigen`, `Mgc::OrthogonalPlaneFit`, `ComputeOBB_RAPID`).

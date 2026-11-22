@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec4};
+use xrf_math::glam::{Vec2, Vec4};
 use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
 use crate::feature::weather::water::water_uniform::WaterUniform;

@@ -4,6 +4,8 @@
 //! is three packed columns where WGSL pads each to sixteen bytes, so only `Mat3A` maps to `mat3x3<f32>`; `Vec3A`,
 //! sixteen bytes where WGSL's `vec3` is twelve, maps to nothing.
 
+use xrf_math::glam;
+
 use crate::shader::shader_declarations::ShaderDeclarations;
 use crate::shader::shader_layout::round_up;
 use crate::shader::shader_type::ShaderType;

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 use crate::data::actions::particle_action_match_velocity::ParticleActionMatchVelocity;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -45,7 +45,7 @@ impl From<&ParticleActionMatchVelocity> for MatchVelocityAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::MatchVelocityAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

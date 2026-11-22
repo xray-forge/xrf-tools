@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
-use glam::Vec3;
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::{LightDescription, LightKind};
 

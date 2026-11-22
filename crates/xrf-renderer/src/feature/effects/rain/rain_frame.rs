@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec4};
+use xrf_math::glam::{Vec2, Vec4};
 
 use crate::contract::feature::effects::render_rain_drops_mode::RenderRainDropsMode;
 use crate::lighting::weather::render_rainfall::RenderRainfall;

@@ -26,7 +26,7 @@ impl From<&ParticleActionCopyVertex> for CopyVertexAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::Vec3;
+  use xrf_math::glam::Vec3;
 
   use super::CopyVertexAction;
   use crate::simulation::pool::particle::Particle;

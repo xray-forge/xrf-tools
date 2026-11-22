@@ -1,4 +1,4 @@
-use glam::Vec2;
+use xrf_math::glam::Vec2;
 
 /// What FSR upscales one frame by, as its dispatch describes it: drawn `render` texels across into a viewport `display`
 /// pixels across, its texels sampled `jitter` off their centres (`previous_jitter` the frame before's), its jitter's

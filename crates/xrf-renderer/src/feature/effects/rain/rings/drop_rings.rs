@@ -1,4 +1,4 @@
-use glam::Vec2;
+use xrf_math::glam::Vec2;
 
 /// The rings the enhanced drops leave this frame, which the water and the puddles ripple by: the tile they wrap over
 /// (`RainUniform::get_rings`), none without them, the metres they reach, their strength, and where the drops' square

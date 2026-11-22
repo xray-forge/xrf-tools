@@ -1,10 +1,10 @@
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
 use xrf_environment::{
   WeatherEffectStart, WeatherEffectTimeline, WeatherMix, WeatherMixPoint, WeatherMixer, WeatherPair,
   WeatherPlayedKeyframe, WeatherTime,
 };
+use xrf_math::glam::Vec3;
 use xrf_renderer::RenderLighting;
 
 use crate::contract::weather::world_weather_control::WorldWeatherControl;

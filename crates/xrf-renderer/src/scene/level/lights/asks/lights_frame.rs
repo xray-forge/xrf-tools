@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::Vec3;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;

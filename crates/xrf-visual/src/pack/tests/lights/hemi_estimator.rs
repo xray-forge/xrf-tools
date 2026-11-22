@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use glam::Vec3;
 use xrf_error::XrfResult;
 use xrf_geometry::BvhTracer;
 use xrf_level::LevelLight;
 use xrf_math::Vector3d;
+use xrf_math::glam::Vec3;
 
 use crate::data::lights::hemi_cube::HemiCube;
 use crate::pack::lights::hemi_estimator::HemiEstimator;

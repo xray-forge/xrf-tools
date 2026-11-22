@@ -1,8 +1,8 @@
-use glam::{DVec3, Vec3};
 use xrf_editable_level::EditableSceneObject;
 use xrf_editable_object::EditableObjectFile;
 use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+use xrf_math::glam::{DVec3, Vec3};
 use xrf_math::{Affine3d, Vector3d};
 use xrf_spawn::{
   AlifeObject, AlifeObjectAbstract, AlifeObjectClimable, AlifeObjectInherited, AlifeObjectShape, ClsId, Shape,

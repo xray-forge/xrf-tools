@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use glam::{Vec3, Vec3A};
 use obvhs::BvhBuildParams;
 use obvhs::bvh2::Bvh2;
 use obvhs::bvh2::builder::build_bvh2_from_tris;
 use obvhs::bvh2::node::Bvh2Node;
+use xrf_math::glam::{Vec3, Vec3A};
 
 use crate::ray::facing::Facing;
 use crate::ray::ray::Ray;

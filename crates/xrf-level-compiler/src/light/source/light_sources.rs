@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_level::{LevelLightRole, LevelLightsFile};
+use xrf_math::glam::Vec3;
 
 use crate::light::source::light_roles::LightRoles;
 use crate::light::source::light_source::LightSource;

@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::lighting::lamp::light_specular::get_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light, srgb_decoded};

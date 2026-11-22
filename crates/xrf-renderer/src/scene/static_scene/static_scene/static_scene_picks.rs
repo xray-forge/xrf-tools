@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::contract::overlay::render_selection_target::RenderSelectionTarget;
 use crate::scene::static_scene::draw::slot::static_slot_info::StaticSlotInfo;

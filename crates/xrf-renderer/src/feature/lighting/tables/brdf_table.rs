@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
-use glam::{Vec2, Vec3};
 use wgpu::util::DeviceExt;
+use xrf_math::glam::{Vec2, Vec3};
 
 /// The split-sum table of the one BRDF (`common/brdf`): what share of a uniform environment GGX's lobe, under Smith's
 /// height-correlated visibility, reflects towards the eye, as a scale and a bias of the reflectance head on, integrated

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use glam::{DMat3, DVec2, DVec3};
+use xrf_math::glam::{DMat3, DVec2, DVec3};
 
 use crate::level::instance::level_instance_fit::LevelInstanceFit;
 use crate::level::instance::level_instance_matcher::LevelInstanceMatcher;

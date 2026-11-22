@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use glam::{DQuat, DVec3};
+use xrf_math::glam::{DQuat, DVec3};
 
 use crate::object::compile::bounds::convex_hull::ConvexHull;
 use crate::object::compile::bounds::flush_box::FlushBox;

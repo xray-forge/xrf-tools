@@ -1,4 +1,4 @@
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 
 /// The axes a cascade's square is laid on, as the engine takes them (`render_phase_sun.cpp`): `x` across the light
 /// unless the light runs along it.

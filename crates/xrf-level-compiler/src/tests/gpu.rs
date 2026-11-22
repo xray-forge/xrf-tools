@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use glam::Vec3;
 use xrf_error::XrfResult;
 use xrf_geometry::{BvhTracer, Ray};
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::{RayQueryAsk, RayQueryDevice};
 use xrf_test_utils::TestSkip;
 

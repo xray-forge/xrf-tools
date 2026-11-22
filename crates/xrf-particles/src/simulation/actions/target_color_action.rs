@@ -1,5 +1,5 @@
-use glam::{Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
+use xrf_math::glam::{Vec3, Vec4};
 
 use crate::data::actions::particle_action_target_color::ParticleActionTargetColor;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
@@ -70,8 +70,8 @@ impl From<&ParticleActionTargetColor> for TargetColorAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
   use xrf_engine_target::XrayEngine;
+  use xrf_math::glam::{Vec3, Vec4};
 
   use super::TargetColorAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;

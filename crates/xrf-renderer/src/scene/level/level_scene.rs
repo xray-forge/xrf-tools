@@ -2,8 +2,8 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use glam::{Vec3, Vec4};
 use xrf_error::XrfResult;
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::SectorPackage;
 

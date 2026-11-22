@@ -1,9 +1,9 @@
 use std::f32::consts::{PI, SQRT_2};
 
-use glam::{Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_light_anim::{LightAnimItem, LightAnimKey};
 use xrf_math::Vector3d;
+use xrf_math::glam::{Vec3, Vec4};
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind, LightVolumetric};
 
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;

@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 
 use crate::feature::scene::wind::wind_feature::WindFeature;
 use crate::scene::level::level_time::LevelTime;

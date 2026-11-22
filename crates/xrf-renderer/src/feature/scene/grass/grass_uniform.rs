@@ -1,4 +1,4 @@
-use glam::{IVec2, IVec4, Vec4};
+use xrf_math::glam::{IVec2, IVec4, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 /// Where the camera stands and what the grass's planting is set to, as `shaders/grass/planting.wgsl` reads it:

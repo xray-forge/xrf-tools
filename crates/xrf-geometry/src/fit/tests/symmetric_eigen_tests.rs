@@ -1,4 +1,4 @@
-use glam::{DMat3, DQuat, DVec3};
+use xrf_math::glam::{DMat3, DQuat, DVec3};
 
 use crate::fit::symmetric_eigen::SymmetricEigen;
 

@@ -1,5 +1,5 @@
-use glam::Mat4;
 use xrf_dlss::DlssRayReconstructor;
+use xrf_math::glam::Mat4;
 
 use crate::feature::image::resolve::dlss::ngx_evaluation::NgxEvaluation;
 use crate::frame::targets::frame_texture::FrameTexture;

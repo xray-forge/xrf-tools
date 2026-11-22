@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ProxyHandle;
 
 use crate::scene::static_scene::draw::slot::static_row::StaticRow;

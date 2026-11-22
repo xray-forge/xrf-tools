@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::Vec3;
+use xrf_math::glam::Vec3;
 use xrf_renderer_core::{
   GraphBuffer, GraphColorAttachment, GraphDeclaration, GraphTexture, StorageValue, StorageValueMut, UniformBinding,
 };

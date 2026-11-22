@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec4};
+use xrf_math::glam::{Mat4, Vec4};
 use xrf_renderer_core::{ProxyHandle, Span};
 
 use crate::scene::static_scene::draw::slot::static_row::StaticRow;

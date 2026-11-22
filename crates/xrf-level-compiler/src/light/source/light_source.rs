@@ -1,5 +1,5 @@
-use glam::Vec3;
 use xrf_level::LevelLight;
+use xrf_math::glam::Vec3;
 
 /// One light of `build.lights` as the compilers light with it (`R_Light`, `xrLC_Light/R_light.h`).
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;

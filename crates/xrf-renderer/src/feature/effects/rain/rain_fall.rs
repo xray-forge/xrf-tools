@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use glam::{Vec2, Vec3};
+use xrf_math::glam::{Vec2, Vec3};
 
 use crate::feature::effects::rain::rain_frame::RainFrame;
 

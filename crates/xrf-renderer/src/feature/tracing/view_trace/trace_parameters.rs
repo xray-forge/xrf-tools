@@ -1,4 +1,4 @@
-use glam::Vec4;
+use xrf_math::glam::Vec4;
 use xrf_renderer_core::{AccelerationStructureBinding, GraphTexture, PassParameters, StorageArray, UniformBinding};
 
 use crate::feature::lighting::lights::lights_uniform::LightsUniform;
