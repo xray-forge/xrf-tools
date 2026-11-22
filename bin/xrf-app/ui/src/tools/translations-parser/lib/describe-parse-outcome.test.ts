@@ -34,10 +34,15 @@ describe("describeTranslationParseOutcome", () => {
       report: {
         checks: [
           mockTranslationParseCheck("read", [
-            { ruleId: "translations.malformed", subject: "st_items.xml", message: "Unclosed tag" },
+            { ruleId: "translations.malformed", severity: "warning", subject: "st_items.xml", message: "Unclosed tag" },
           ]),
           mockTranslationParseCheck("merge", [
-            { ruleId: "translations.conflict", subject: "st_dialogs.xml", message: "'st_a' differs" },
+            {
+              ruleId: "translations.conflict",
+              severity: "warning",
+              subject: "st_dialogs.xml",
+              message: "'st_a' differs",
+            },
           ]),
         ],
         status: "failed",
@@ -71,7 +76,7 @@ describe("describeTranslationParseOutcome", () => {
       report: {
         checks: [
           mockTranslationParseCheck("read", [
-            { ruleId: "translations.malformed", subject: "st_items.xml", message: "Unclosed tag" },
+            { ruleId: "translations.malformed", severity: "warning", subject: "st_items.xml", message: "Unclosed tag" },
           ]),
         ],
         status: "failed",

@@ -102,15 +102,20 @@ impl GenericCommand for ParseCommand {
     };
 
     let is_strict: bool = matches.get_flag("strict");
-    let result: TranslationParseResult = TranslationParser::parse(&options)?;
+    let mut result: TranslationParseResult = TranslationParser::parse(&options)?;
+
+    // Every import finding is a warning, so only a strict run fails on one.
+    if is_strict {
+      result.report = result.report.into_strict();
+    }
 
     Self::print_census(&output, &result);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports the findings.
     context.set_result(|| &result)?;
 
-    if is_strict && result.get_status() == Status::Failed {
-      return Err(CommandError::new_check_failed(result.get_findings().len().max(1)));
+    if result.report.status() == Status::Failed {
+      return Err(CommandError::new_check_failed(result.report.count_findings().max(1)));
     }
 
     Ok(())

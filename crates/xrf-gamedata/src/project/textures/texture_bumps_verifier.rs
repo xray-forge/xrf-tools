@@ -28,10 +28,10 @@ use crate::project::textures::texture_bumps_verification_result::GamedataTexture
 /// file, and `textures.bump-declaration` wants the descriptor changed, since the engine never reads what it declares.
 /// A missing companion is counted apart from a missing bump because it costs less: the engine binds
 /// `ed\ed_dummy_bump#`, whose flat alpha removes parallax relief and whose constant error term leaves the DXT normal
-/// uncorrected, while the surface still reads as bumped. Vanilla ships one such pair, so it fails only under strict.
+/// uncorrected, while the surface still reads as bumped. Vanilla ships one such pair, so it is a warning.
 ///
 /// A descriptor holding bytes past a chunk's fields is `textures.chunk-residue`: the engine reads each chunk's fields
-/// and nothing after them, so it renders right, and only strict fails on it.
+/// and nothing after them, so it renders right, and it is a warning too.
 pub(crate) struct TextureBumpsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
   project: &'a GamedataProject,
@@ -68,10 +68,7 @@ impl<'a> TextureBumpsVerifier<'a> {
       })
       .collect();
 
-    let mut result: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
-      is_strict: self.options.is_strict,
-      ..Default::default()
-    };
+    let mut result: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult::default();
 
     for verification in verifications {
       if self.options.job.is_cancelled() {
@@ -121,7 +118,7 @@ impl<'a> TextureBumpsVerifier<'a> {
         label,
         declared_bump: Some(bump_name),
         ..
-      } => TextureBumpVerification::invalid().with_finding(GamedataFindingFactory::for_asset(
+      } => TextureBumpVerification::invalid().with_finding(GamedataFindingFactory::warning_for_asset(
         GamedataVerificationRule::TexturesBumpDeclaration,
         path,
         format!(
@@ -130,7 +127,7 @@ impl<'a> TextureBumpsVerifier<'a> {
       )),
       XrayMaterialDeclaration::TypeDisqualified { .. } => TextureBumpVerification::undeclared(),
       XrayMaterialDeclaration::EmptyName { mode } => {
-        TextureBumpVerification::invalid().with_finding(GamedataFindingFactory::for_asset(
+        TextureBumpVerification::invalid().with_finding(GamedataFindingFactory::warning_for_asset(
           GamedataVerificationRule::TexturesBumpDeclaration,
           path,
           format!("Texture descriptor asks for a bump in mode '{mode:?}' with an empty name"),
@@ -157,7 +154,7 @@ impl<'a> TextureBumpsVerifier<'a> {
         }
 
         if let Some(bound) = Self::describe_substitution(&bump.companion) {
-          verification = verification.with_finding(GamedataFindingFactory::for_asset(
+          verification = verification.with_finding(GamedataFindingFactory::warning_for_asset(
             GamedataVerificationRule::TexturesBumpCompanion,
             path,
             format!(
@@ -182,7 +179,7 @@ impl<'a> TextureBumpsVerifier<'a> {
       .join(", ");
     let bytes: &str = if ignored == 1 { "byte" } else { "bytes" };
 
-    GamedataFindingFactory::for_asset(
+    GamedataFindingFactory::warning_for_asset(
       GamedataVerificationRule::TexturesChunkResidue,
       path,
       format!(

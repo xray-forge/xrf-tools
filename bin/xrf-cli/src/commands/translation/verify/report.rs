@@ -20,13 +20,14 @@ pub(crate) struct TranslationVerifyReport {
 }
 
 impl TranslationVerifyReport {
-  pub(crate) fn new(result: &TranslationVerifyResult) -> Self {
+  /// The run's counts beside the report it concluded on, lenient or strict.
+  pub(crate) fn new(result: &TranslationVerifyResult, report: &Report) -> Self {
     Self {
       checked_translations: result.checked_translations_count,
       languages: result.languages.clone(),
       missing_translations: result.missing_translations_count,
       engine_problems: result.problems.len() as u32,
-      report: result.to_report(),
+      report: report.clone(),
     }
   }
 
@@ -41,7 +42,7 @@ impl TranslationVerifyReport {
         CheckId::of_static(TranslationVerifyResult::COMPLETENESS_CHECK),
         Status::Failed,
         None,
-        vec![Finding::new(
+        vec![Finding::failure(
           RuleId::of_static("translations.source"),
           None,
           error.to_string(),
@@ -80,7 +81,8 @@ mod tests {
     fs::write(&translation_path, r#"{"st_dialog_hello":{"ukr":null}}"#).unwrap();
 
     let result = TranslationVerifier::verify_file(&translation_path, &options(TranslationLanguage::Ukrainian)).unwrap();
-    let json: serde_json::Value = serde_json::to_value(TranslationVerifyReport::new(&result)).unwrap();
+    let json: serde_json::Value =
+      serde_json::to_value(TranslationVerifyReport::new(&result, &result.to_report().into_strict())).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -92,6 +94,7 @@ mod tests {
     assert_eq!(json["checks"][0]["id"], "translations");
     assert_eq!(json["checks"][0]["status"], "failed");
     assert_eq!(json["checks"][0]["findings"][0]["ruleId"], "translations.missing");
+    assert_eq!(json["checks"][0]["findings"][0]["severity"], "warning");
     assert_eq!(
       json["checks"][0]["findings"][0]["subject"],
       xrf_utils::format_portable_path(&translation_path)
@@ -108,13 +111,16 @@ mod tests {
     fs::write(&translation_path, r#"{"st_dialog_hello":{"eng":"José"}}"#).unwrap();
 
     let result = TranslationVerifier::verify_file(&translation_path, &options(TranslationLanguage::English)).unwrap();
-    let json: serde_json::Value = serde_json::to_value(TranslationVerifyReport::new(&result)).unwrap();
+    let json: serde_json::Value =
+      serde_json::to_value(TranslationVerifyReport::new(&result, &result.to_report())).unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
     assert_eq!(json["missingTranslations"], 0);
     assert_eq!(json["engineProblems"], 1);
+    assert_eq!(json["status"], "failed");
     assert_eq!(json["checks"][1]["status"], "failed");
+    assert_eq!(json["checks"][1]["findings"][0]["severity"], "failure");
     assert_eq!(json["checks"][1]["findings"][0]["ruleId"], "translations.unencodable");
   }
 

@@ -8,9 +8,24 @@ import {
 
 import { listTranslationParseFindings } from "./parse-findings";
 
-const MALFORMED: Finding = { ruleId: "translations.malformed", subject: "st_items.xml", message: "Unclosed tag" };
-const DUPLICATE: Finding = { ruleId: "translations.duplicate", subject: "st_dialogs.xml", message: "'st_a' twice" };
-const CONFLICT: Finding = { ruleId: "translations.conflict", subject: null, message: "'st_b' differs" };
+const MALFORMED: Finding = {
+  ruleId: "translations.malformed",
+  severity: "warning",
+  subject: "st_items.xml",
+  message: "Unclosed tag",
+};
+const DUPLICATE: Finding = {
+  ruleId: "translations.duplicate",
+  severity: "warning",
+  subject: "st_dialogs.xml",
+  message: "'st_a' twice",
+};
+const CONFLICT: Finding = {
+  ruleId: "translations.conflict",
+  severity: "warning",
+  subject: null,
+  message: "'st_b' differs",
+};
 
 describe("listTranslationParseFindings", () => {
   it("has nothing to list for a report whose checks found nothing", () => {

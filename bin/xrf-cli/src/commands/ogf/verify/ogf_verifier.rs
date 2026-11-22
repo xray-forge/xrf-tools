@@ -58,7 +58,7 @@ impl<'a> OgfVerifier<'a> {
         Err(error) => {
           census.unreadable_files += 1;
           io_failures += 1;
-          read_findings.push(Finding::new(RuleId::of_static("ogf.read"), None, error.to_string()));
+          read_findings.push(Finding::failure(RuleId::of_static("ogf.read"), None, error.to_string()));
 
           continue;
         }
@@ -77,7 +77,7 @@ impl<'a> OgfVerifier<'a> {
             io_failures += 1;
           }
 
-          read_findings.push(Finding::new(
+          read_findings.push(Finding::failure(
             RuleId::of_static("ogf.read"),
             Some(self.subject(&path)),
             error.to_string(),
@@ -278,7 +278,7 @@ impl<'a> OgfVerifier<'a> {
       match textures.resolve(path, reference) {
         TextureResolution::NoRoot => {
           census.visuals_without_root += 1;
-          findings.push(Finding::new(
+          findings.push(Finding::failure(
             RuleId::of_static("ogf.textures.root_missing"),
             Some(subject),
             format!("No directory above the visual holds both meshes and textures, so '{reference}' cannot resolve"),
@@ -286,7 +286,7 @@ impl<'a> OgfVerifier<'a> {
         }
         TextureResolution::Missing { sources } => {
           census.missing_texture_references += 1;
-          findings.push(Finding::new(
+          findings.push(Finding::failure(
             RuleId::of_static("ogf.textures.missing"),
             Some(subject),
             format!("'{reference}' does not resolve under {}", sources.join(", ")),
@@ -301,7 +301,7 @@ impl<'a> OgfVerifier<'a> {
         // Counted as missing, which leaves the check incomplete: what the root holds was never looked at.
         TextureResolution::RootUnreadable { root, reason } => {
           census.missing_texture_references += 1;
-          findings.push(Finding::new(
+          findings.push(Finding::failure(
             RuleId::of_static("ogf.textures.root_unreadable"),
             Some(subject),
             format!(
@@ -312,7 +312,7 @@ impl<'a> OgfVerifier<'a> {
         }
         TextureResolution::Rejected { reason } => {
           census.missing_texture_references += 1;
-          findings.push(Finding::new(
+          findings.push(Finding::failure(
             RuleId::of_static("ogf.textures.rejected"),
             Some(subject),
             format!("'{reference}' names no path the engine resolves: {reason}"),
@@ -320,7 +320,7 @@ impl<'a> OgfVerifier<'a> {
         }
         TextureResolution::Unreadable { path: texture, reason } => {
           census.unreadable_textures += 1;
-          findings.push(Finding::new(
+          findings.push(Finding::failure(
             RuleId::of_static("ogf.textures.unreadable"),
             Some(subject),
             format!("'{}' would not parse: {reason}", format_path(&texture)),
@@ -358,7 +358,7 @@ impl<'a> OgfVerifier<'a> {
           VisualSkipCause::Malformed => "ogf.geometry.malformed",
         };
 
-        Some(Finding::new(
+        Some(Finding::failure(
           RuleId::of_static(rule),
           Some(format!("{}#{}", self.subject(path), submesh.index)),
           reason,
@@ -392,7 +392,7 @@ impl<'a> OgfVerifier<'a> {
       return None;
     }
 
-    Some(Finding::new(
+    Some(Finding::failure(
       RuleId::of_static("ogf.bounds.outside"),
       Some(self.subject(path)),
       format!(

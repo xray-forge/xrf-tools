@@ -33,6 +33,9 @@ impl<'a> DialogSweep<'a> {
   /// A file that cannot be read is recorded and the sweep continues: the point of sweeping several
   /// reference trees is the tally, and stopping at the first unreadable file would never produce one.
   ///
+  /// Every finding is a warning: the sweep's reader is stricter than the engine's, so a file it cannot read or a
+  /// schema it does not describe is something to look at, and only a strict run judges it.
+  ///
   /// # Errors
   ///
   /// Returns an error when the path cannot be mounted, or when the prefix is not a logical path.
@@ -65,7 +68,7 @@ impl<'a> DialogSweep<'a> {
         }
         Err(error) => {
           census.unreadable_files += 1;
-          read_findings.push(Finding::new(
+          read_findings.push(Finding::warning(
             Self::rule("unreadable"),
             Some(logical_path.to_owned()),
             error.to_string(),
@@ -78,11 +81,11 @@ impl<'a> DialogSweep<'a> {
 
     // Nothing swept is not a pass. A mistyped path mounts an empty roots and produces no findings, and
     // reporting that as success is how a sweep gets wired into CI and silently checks nothing.
-    let status = |is_valid: bool| -> Status {
+    let status = |findings: &[Finding]| -> Status {
       if census.files == 0 {
         Status::Skipped
       } else {
-        Status::from_is_valid(is_valid)
+        Status::from_findings(findings)
       }
     };
 
@@ -90,13 +93,13 @@ impl<'a> DialogSweep<'a> {
       report: Report::new(vec![
         CheckReport::new(
           Self::check("read"),
-          status(read_findings.is_empty()),
+          status(&read_findings),
           Some(duration),
           read_findings,
         ),
         CheckReport::new(
           Self::check("schema"),
-          status(schema_findings.is_empty()),
+          status(&schema_findings),
           Some(duration),
           schema_findings,
         ),
@@ -169,7 +172,7 @@ impl<'a> DialogSweep<'a> {
       DialogParseIssueKind::InvalidPriority => "invalid-priority",
     };
 
-    Finding::new(
+    Finding::warning(
       Self::rule(rule),
       Some(asset.get_logical_path().as_str().to_owned()),
       issue.to_string(),

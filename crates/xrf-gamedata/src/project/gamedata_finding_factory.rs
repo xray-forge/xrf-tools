@@ -10,19 +10,29 @@ use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 pub(crate) struct GamedataFindingFactory;
 
 impl GamedataFindingFactory {
+  /// A failure about one asset: what the engine cannot work with.
   pub(crate) fn for_asset<P, M>(rule: GamedataVerificationRule, asset_path: P, message: M) -> Finding
   where
     P: AsRef<Path>,
     M: Into<String>,
   {
-    Self::create(rule, Some(format_portable_path(asset_path)), message)
+    Finding::failure(Self::rule_id(rule), Some(format_portable_path(asset_path)), message)
+  }
+
+  /// A warning about one asset: what the engine tolerates, which fails the check only when the run is strict.
+  pub(crate) fn warning_for_asset<P, M>(rule: GamedataVerificationRule, asset_path: P, message: M) -> Finding
+  where
+    P: AsRef<Path>,
+    M: Into<String>,
+  {
+    Finding::warning(Self::rule_id(rule), Some(format_portable_path(asset_path)), message)
   }
 
   pub(crate) fn without_asset<M>(rule: GamedataVerificationRule, message: M) -> Finding
   where
     M: Into<String>,
   {
-    Self::create(rule, None, message)
+    Finding::failure(Self::rule_id(rule), None, message)
   }
 
   /// Orders findings by asset path, then message.
@@ -42,15 +52,8 @@ impl GamedataFindingFactory {
       .then_with(|| left.message().cmp(right.message()))
   }
 
-  fn create<M>(rule: GamedataVerificationRule, subject: Option<String>, message: M) -> Finding
-  where
-    M: Into<String>,
-  {
-    Finding::new(
-      RuleId::new(rule.to_string()).expect("Gamedata verification rules have non-empty stable identifiers"),
-      subject,
-      message,
-    )
+  fn rule_id(rule: GamedataVerificationRule) -> RuleId {
+    RuleId::new(rule.to_string()).expect("Gamedata verification rules have non-empty stable identifiers")
   }
 }
 

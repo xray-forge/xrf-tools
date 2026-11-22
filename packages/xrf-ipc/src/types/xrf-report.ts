@@ -15,10 +15,11 @@ export type CheckReport = {
   status: Status;
 };
 
-/** A single rule violation or checker error. */
+/** A single rule violation or checker error, and whether it fails its check. */
 export type Finding = {
   message: string;
   ruleId: RuleId;
+  severity: Severity;
   subject: string | null;
 };
 
@@ -29,6 +30,22 @@ export type Report = {
 };
 
 export type RuleId = string;
+
+/**
+ * Whether a finding fails its check, or is reported and fails it only when the run is strict.
+ *
+ * The producer that knows what the defect costs decides, once, at the finding: a reader of a report never has to know
+ * a check's rules to tell what failed it.
+ */
+export enum ESeverity {
+  /** What the consumer cannot work with: the engine asserts on it or refuses it, or the file does not read. */
+  FAILURE = "failure",
+  /** What the consumer tolerates: it works around it, shows something less, or never reaches it. */
+  WARNING = "warning",
+}
+
+/** Every `ESeverity` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type Severity = `${ESeverity}`;
 
 /** The outcome of a completed check. */
 export enum EStatus {

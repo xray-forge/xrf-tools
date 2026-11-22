@@ -41,10 +41,7 @@ impl<'a> GamedataCheck<'a> for DialogsVerifier<'a> {
 
     let started_at: Instant = Instant::now();
     let search: &XraySearch = self.project.search();
-    let mut result: GamedataDialogsVerificationResult = GamedataDialogsVerificationResult {
-      is_strict: self.options.is_strict,
-      ..Default::default()
-    };
+    let mut result: GamedataDialogsVerificationResult = GamedataDialogsVerificationResult::default();
 
     if DialogProject::list_dialog_assets(&search.clone().with_prefix(DialogProjectMode::DIALOGS_PREFIX)?).is_empty() {
       result.duration = started_at.elapsed();
@@ -157,12 +154,12 @@ impl DialogsVerifier<'_> {
         }
 
         let path: PathBuf = self.report_path(file.get_logical_path());
-        let failing_before: u32 = result.failing_count;
+        let failures_before: usize = result.count_failures();
 
         result.checked_dialogs_count += 1;
         Self::verify_graph(dialog, project.get_text(), &path, result);
 
-        if result.failing_count > failing_before {
+        if result.count_failures() > failures_before {
           result.invalid_dialogs_count += 1;
         }
       }

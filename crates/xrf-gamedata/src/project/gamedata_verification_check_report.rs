@@ -87,6 +87,14 @@ impl GamedataVerificationCheckReport {
     }
   }
 
+  /// The check as a strict run judges it: one that passed with warnings fails.
+  pub(crate) fn into_strict(self) -> Self {
+    Self {
+      report: self.report.into_strict(),
+      ..self
+    }
+  }
+
   fn check_id(verification_type: GamedataVerificationType) -> CheckId {
     CheckId::new(verification_type.to_string()).expect("Gamedata verification types have non-empty stable identifiers")
   }

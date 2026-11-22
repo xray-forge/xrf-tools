@@ -555,6 +555,6 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   }
 
   fn finding(&self, rule: &'static str, file: &str, message: String) -> Finding {
-    Finding::new(RuleId::of_static(rule), Some(self.source.describe(file)), message)
+    Finding::failure(RuleId::of_static(rule), Some(self.source.describe(file)), message)
   }
 }

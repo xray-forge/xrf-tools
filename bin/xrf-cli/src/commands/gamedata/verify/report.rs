@@ -119,12 +119,12 @@ mod tests {
       Ok(TestCheckResult {
         duration: Duration::from_millis(7),
         findings: vec![
-          Finding::new(
+          Finding::failure(
             RuleId::of_static("textures.dds"),
             Some(root.join("textures").join("z.dds").display().to_string()),
             "Second finding",
           ),
-          Finding::new(
+          Finding::failure(
             RuleId::of_static("textures.dds"),
             Some(root.join("textures").join("a.dds").display().to_string()),
             "First finding",
@@ -146,8 +146,8 @@ mod tests {
       serde_json::json!({
         "duration": 7,
         "findings": [
-          { "message": "First finding", "ruleId": "textures.dds", "subject": "textures/a.dds" },
-          { "message": "Second finding", "ruleId": "textures.dds", "subject": "textures/z.dds" },
+          { "message": "First finding", "ruleId": "textures.dds", "severity": "failure", "subject": "textures/a.dds" },
+          { "message": "Second finding", "ruleId": "textures.dds", "severity": "failure", "subject": "textures/z.dds" },
         ],
         "id": "textures",
         "status": "failed",

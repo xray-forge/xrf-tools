@@ -24,6 +24,11 @@ impl Report {
     &self.checks
   }
 
+  /// The report as a strict run judges it, every check that passed with warnings failing.
+  pub fn into_strict(self) -> Self {
+    Self::new(self.checks.into_iter().map(CheckReport::into_strict).collect())
+  }
+
   /// How many findings every check made together.
   pub fn count_findings(&self) -> usize {
     self.checks.iter().map(|check| check.findings().len()).sum()
@@ -50,17 +55,17 @@ mod tests {
       Status::Failed,
       Some(Duration::ZERO),
       vec![
-        Finding::new(
+        Finding::failure(
           RuleId::new("textures.read").unwrap(),
           Some(String::from("z.dds")),
           "same",
         ),
-        Finding::new(
+        Finding::failure(
           RuleId::new("textures.format").unwrap(),
           Some(String::from("a.dds")),
           "same",
         ),
-        Finding::new(
+        Finding::failure(
           RuleId::new("textures.read").unwrap(),
           Some(String::from("a.dds")),
           "same",

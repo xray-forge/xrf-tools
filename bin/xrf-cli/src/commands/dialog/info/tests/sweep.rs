@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_report::Status;
+use xrf_report::{Severity, Status};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
@@ -104,8 +104,10 @@ fn reports_an_off_schema_element_as_a_schema_finding() -> XrfResult {
 
   let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
+  // A sweep reports what it found as warnings and passes; only a strict run fails on them.
   assert_eq!(result.report.count_findings(), 1);
-  assert_eq!(result.report.status(), Status::Failed);
+  assert_eq!(result.report.status(), Status::Passed);
+  assert_eq!(result.report.clone().into_strict().status(), Status::Failed);
 
   let schema = result
     .report
@@ -114,8 +116,8 @@ fn reports_an_off_schema_element_as_a_schema_finding() -> XrfResult {
     .find(|check| check.id().as_str() == "dialog.schema")
     .expect("the schema check should be reported");
 
-  assert_eq!(schema.status(), Status::Failed);
   assert_eq!(schema.findings()[0].rule_id().as_str(), "dialog.unknown-element");
+  assert_eq!(schema.findings()[0].severity(), Severity::Warning);
 
   fs::remove_dir_all(root)?;
 
@@ -146,7 +148,8 @@ fn reports_an_unparsable_file_without_stopping_the_sweep() -> XrfResult {
     .find(|check| check.id().as_str() == "dialog.read")
     .expect("the read check should be reported");
 
-  assert_eq!(read.status(), Status::Failed);
+  assert_eq!(read.status(), Status::Passed);
+  assert_eq!(read.clone().into_strict().status(), Status::Failed);
   assert_eq!(read.findings()[0].rule_id().as_str(), "dialog.unreadable");
 
   fs::remove_dir_all(root)?;

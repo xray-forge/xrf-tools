@@ -2,6 +2,8 @@ use std::fmt::{Display, Formatter};
 
 use serde::Serialize;
 
+use crate::finding::Finding;
+
 /// The outcome of a completed check.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
@@ -26,6 +28,11 @@ impl Status {
 
   pub const fn from_is_valid(is_valid: bool) -> Self {
     if is_valid { Self::Passed } else { Self::Failed }
+  }
+
+  /// The verdict of a check that judges by its findings alone: failed on any failure, passed with warnings only.
+  pub fn from_findings(findings: &[Finding]) -> Self {
+    Self::from_is_valid(!findings.iter().any(Finding::is_failure))
   }
 
   const fn severity(self) -> u8 {

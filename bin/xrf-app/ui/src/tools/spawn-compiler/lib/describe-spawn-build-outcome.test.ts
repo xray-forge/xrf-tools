@@ -36,6 +36,7 @@ describe("describeSpawnBuildOutcome", () => {
   it("warns where the build reported findings", () => {
     const finding: Finding = {
       ruleId: "spawn.connection.skipped",
+      severity: "warning",
       subject: "zaton",
       message: "Graph point zat_to_jup connects to level jupiter, which is not built; the connection is left out",
     };

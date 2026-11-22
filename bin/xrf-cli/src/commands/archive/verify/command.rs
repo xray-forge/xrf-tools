@@ -30,7 +30,7 @@ impl VerifyCommand {
 
   /// What reading one entry found.
   fn finding(rule: &'static str, name: &str, error: &XrfError) -> Finding {
-    Finding::new(RuleId::of_static(rule), Some(String::from(name)), error.to_string())
+    Finding::failure(RuleId::of_static(rule), Some(String::from(name)), error.to_string())
   }
 
   /// Reads every entry back, judging the outcomes in the set's order.
@@ -50,7 +50,7 @@ impl VerifyCommand {
       Err(error) => {
         return (
           Status::Error,
-          vec![Finding::new(
+          vec![Finding::failure(
             RuleId::of_static(Self::RULE_READ),
             None,
             error.to_string(),

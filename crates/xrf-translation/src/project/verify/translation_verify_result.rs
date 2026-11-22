@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use indexmap::IndexMap;
 use serde::Serialize;
-use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
+use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId};
 use xrf_utils::format_portable_path;
 
 use crate::project::describe::translation_finding::TranslationFinding;
@@ -56,24 +56,11 @@ impl TranslationVerifyResult {
     &self.findings
   }
 
-  /// The verdict of both checks: complete, and nothing the game would refuse or mangle.
-  pub fn status(&self) -> Status {
-    Status::from_is_valid(self.missing_translations_count == 0 && self.problems.is_empty())
-  }
-
-  /// The verdict of the engine check alone, which a run judges whether or not it judges completeness.
-  pub fn get_engine_status(&self) -> Status {
-    Status::from_is_valid(self.problems.is_empty())
-  }
-
-  /// Both checks, as a run that judges completeness concludes on.
+  /// Both checks: completeness, whose missing translations are warnings the game shows as their ids, and what the game
+  /// would refuse or mangle, which fails the run. A strict run judges completeness through [`Report::into_strict`],
+  /// which sees only the findings built, so it describes them (`is_detailed`).
   pub fn to_report(&self) -> Report {
     Report::new(vec![self.to_completeness_check(), self.to_engine_check()])
-  }
-
-  /// The engine check alone, as a run that leaves completeness unjudged concludes on.
-  pub fn to_engine_report(&self) -> Report {
-    Report::new(vec![self.to_engine_check()])
   }
 
   pub(crate) fn merge(&mut self, other: Self) {
@@ -121,7 +108,7 @@ impl TranslationVerifyResult {
       return;
     }
 
-    self.findings.push(Finding::new(
+    self.findings.push(Finding::warning(
       RuleId::of_static("translations.missing"),
       Some(format_portable_path(path)),
       format!("Missing translation for key '{key}' in language '{language}'"),
@@ -129,24 +116,22 @@ impl TranslationVerifyResult {
   }
 
   fn to_completeness_check(&self) -> CheckReport {
-    CheckReport::new(
+    CheckReport::judge(
       CheckId::of_static(Self::COMPLETENESS_CHECK),
-      Status::from_is_valid(self.missing_translations_count == 0),
       Some(self.duration),
       self.findings.clone(),
     )
   }
 
   fn to_engine_check(&self) -> CheckReport {
-    CheckReport::new(
+    CheckReport::judge(
       CheckId::of_static(Self::ENGINE_CHECK),
-      self.get_engine_status(),
       Some(self.duration),
       self
         .problems
         .iter()
         .map(|problem| {
-          Finding::new(
+          Finding::failure(
             RuleId::new(problem.rule.clone()).expect("a translation problem names its rule by a non-empty literal"),
             problem.subject.clone(),
             problem.message.clone(),

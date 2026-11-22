@@ -23,15 +23,13 @@ impl GamedataVerifyCheckReport {
       .findings()
       .iter()
       .map(|finding| {
-        Finding::new(
-          finding.rule_id().clone(),
-          finding.subject().map(|subject| {
-            let path: &Path = Path::new(subject);
+        let subject: Option<String> = finding.subject().map(|subject| {
+          let path: &Path = Path::new(subject);
 
-            format_portable_path(path.strip_prefix(root).unwrap_or(path))
-          }),
-          finding.message(),
-        )
+          format_portable_path(path.strip_prefix(root).unwrap_or(path))
+        });
+
+        finding.clone().with_subject(subject)
       })
       .collect();
 

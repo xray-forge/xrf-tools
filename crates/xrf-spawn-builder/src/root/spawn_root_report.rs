@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use xrf_error::XrfError;
-use xrf_report::{CheckId, CheckReport, Finding, RuleId, Status};
+use xrf_report::{CheckId, CheckReport, Finding, RuleId};
 use xrf_spawn::SpawnSectionClasses;
 
 use crate::merge::spawn_skipped_connection::SpawnSkippedConnection;
@@ -42,7 +42,7 @@ impl SpawnRootReport {
       None,
       unread
         .map(|error| {
-          Finding::new(
+          Finding::warning(
             RuleId::of_static("spawn.configs.unread"),
             Some(String::from(SpawnSectionClasses::SYSTEM_LTX_PATH)),
             format!("{error}; each section's class comes from the built-in table of the games' sections"),
@@ -96,12 +96,12 @@ impl SpawnRootReport {
     )
   }
 
-  /// A check that passes whatever it finds, so its findings are warnings.
+  /// A check whose findings are all warnings, so it passes whatever it finds unless the run is strict.
   fn new_check(id: &'static str, took: Option<Duration>, findings: Vec<Finding>) -> CheckReport {
-    CheckReport::new(CheckId::of_static(id), Status::Passed, took, findings)
+    CheckReport::judge(CheckId::of_static(id), took, findings)
   }
 
   fn new_finding(rule: &'static str, level: &str, message: String) -> Finding {
-    Finding::new(RuleId::of_static(rule), Some(level.to_owned()), message)
+    Finding::warning(RuleId::of_static(rule), Some(level.to_owned()), message)
   }
 }

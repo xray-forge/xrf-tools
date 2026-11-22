@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use xrf_report::Status;
+use xrf_report::{Severity, Status};
 
 use crate::project::verify::translation_verify_language_summary::TranslationVerifyLanguageSummary;
 use crate::project::verify::translation_verify_result::TranslationVerifyResult;
@@ -13,8 +13,10 @@ fn reports_missing_translations_as_findings() {
 
   let report = result.to_report();
 
-  assert_eq!(result.status(), Status::Failed);
-  assert_eq!(report.status(), Status::Failed);
+  // The game shows a missing translation as its id, so it is a warning and only a strict run fails on it.
+  assert_eq!(report.status(), Status::Passed);
+  assert_eq!(report.clone().into_strict().status(), Status::Failed);
+  assert_eq!(report.checks()[0].findings()[0].severity(), Severity::Warning);
   assert_eq!(report.checks()[0].id().as_str(), "translations");
   assert_eq!(
     report.checks()[0].findings()[0].rule_id().as_str(),
@@ -30,7 +32,7 @@ fn reports_missing_translations_as_findings() {
 fn a_project_with_nothing_missing_passes() {
   let result: TranslationVerifyResult = TranslationVerifyResult::new();
 
-  assert_eq!(result.status(), Status::Passed);
+  assert_eq!(result.to_report().into_strict().status(), Status::Passed);
   assert!(result.findings().is_empty());
 }
 
@@ -62,7 +64,6 @@ fn counting_without_detail_leaves_the_findings_out() {
 
   assert_eq!(result.missing_translations_count, 1);
   assert!(result.findings().is_empty());
-  assert_eq!(result.status(), Status::Failed);
 }
 
 #[test]
@@ -80,7 +81,7 @@ fn a_language_summary_is_kept_for_a_complete_language_too() {
 
   assert_eq!(result.languages.len(), 1);
   assert_eq!(result.languages[0].missing, 0);
-  assert_eq!(result.status(), Status::Passed);
+  assert_eq!(result.to_report().into_strict().status(), Status::Passed);
 }
 
 #[test]

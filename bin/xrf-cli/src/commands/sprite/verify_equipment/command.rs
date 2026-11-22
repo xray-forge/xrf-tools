@@ -27,7 +27,7 @@ impl VerifyEquipmentCommand {
 
   /// What two overlapping rects are found as: the pair is the subject, the cells they share the message.
   fn describe_finding(overlap: &EquipmentGridOverlap) -> Finding {
-    Finding::new(
+    Finding::failure(
       RuleId::of_static(Self::RULE_OVERLAP),
       Some(format!("{} / {}", overlap.first, overlap.second)),
       format!(
@@ -71,7 +71,7 @@ impl GenericCommand for VerifyEquipmentCommand {
         .map(Self::describe_finding)
         .collect(),
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
-      Err(error) => vec![Finding::new(
+      Err(error) => vec![Finding::failure(
         RuleId::of_static(Self::RULE_LTX),
         Some(format_portable_path(path)),
         error.to_string(),

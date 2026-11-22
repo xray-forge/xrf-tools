@@ -25,21 +25,15 @@ pub(crate) struct GamedataDialogsVerificationResult {
   pub(crate) checked_references_count: u32,
   /// Named dialogs and profiles nothing declares.
   pub(crate) missing_references_count: u32,
-  /// Findings for what the engine asserts on.
-  pub(crate) failing_count: u32,
-  /// Findings for what the engine tolerates, or asserts on only once something nobody can tell from configs spawns it:
-  /// a line shown as its key, a phrase never reached, a heal dialog that never matches, a profile no NPC can be spawned
-  /// with, a file this check could not read. Reported always, gating only under strict.
-  pub(crate) tolerated_count: u32,
-  /// Whether the run was asked to judge what the engine tolerates, which promotes those findings to failing.
-  pub(crate) is_strict: bool,
+  /// A failure for what the engine asserts on, and a warning for what it tolerates or asserts on only once something
+  /// the configs do not tell spawns it: a line shown as its key, a phrase never reached, a heal dialog that never
+  /// matches, a profile no NPC can be spawned with, a file this check could not read.
   pub(crate) findings: Vec<Finding>,
 }
 
 impl GamedataDialogsVerificationResult {
   /// Records a defect the engine asserts on.
   pub(crate) fn fail(&mut self, rule: GamedataVerificationRule, path: &Path, message: String) {
-    self.failing_count += 1;
     self
       .findings
       .push(GamedataFindingFactory::for_asset(rule, path, message));
@@ -47,10 +41,14 @@ impl GamedataDialogsVerificationResult {
 
   /// Records a defect the engine tolerates.
   pub(crate) fn tolerate(&mut self, rule: GamedataVerificationRule, path: &Path, message: String) {
-    self.tolerated_count += 1;
     self
       .findings
-      .push(GamedataFindingFactory::for_asset(rule, path, message));
+      .push(GamedataFindingFactory::warning_for_asset(rule, path, message));
+  }
+
+  /// How many findings so far are failures.
+  pub(crate) fn count_failures(&self) -> usize {
+    self.findings.iter().filter(|finding| finding.is_failure()).count()
   }
 }
 
@@ -64,7 +62,7 @@ impl GamedataCheckResult for GamedataDialogsVerificationResult {
       return GamedataVerificationStatus::Skipped;
     }
 
-    GamedataVerificationStatus::from_is_valid(self.failing_count == 0 && (!self.is_strict || self.tolerated_count == 0))
+    GamedataVerificationStatus::from_findings(&self.findings)
   }
 
   fn get_summary(&self) -> String {
@@ -82,9 +80,11 @@ impl GamedataCheckResult for GamedataDialogsVerificationResult {
       self.checked_references_count,
     );
 
+    let warnings: usize = self.findings.len() - self.count_failures();
+
     // Only when there is something to say: a clean tree reads as the counts alone.
-    if self.tolerated_count > 0 {
-      message.push_str(&format!(", {} defects the engine tolerates", self.tolerated_count));
+    if warnings > 0 {
+      message.push_str(&format!(", {warnings} warnings"));
     }
 
     message

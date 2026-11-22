@@ -69,28 +69,30 @@ impl TranslationParseResult {
     &self.findings
   }
 
-  /// Whether anything was worth objecting to.
-  ///
-  /// A conflict is not a failure: keeping existing text is the documented behaviour, not a problem
-  /// with the input. Only a file that could not be read or understood is.
+  /// The run's verdict, which passes with warnings: an import reports what it skipped or kept and only a strict run
+  /// judges it.
   pub fn get_status(&self) -> Status {
-    Status::from_is_valid(self.findings.is_empty())
+    Status::from_findings(&self.findings)
   }
 
   pub fn to_report(&self) -> Report {
-    Report::new(vec![CheckReport::new(
+    Report::new(vec![CheckReport::judge(
       CheckId::of_static("translations"),
-      self.get_status(),
       Some(self.duration),
       self.findings.clone(),
     )])
   }
 
   /// Record something about a file that was read through the VFS, named by its logical path.
+  ///
+  /// Every import finding is a warning: the import goes on past each one, writing what it could and keeping what it
+  /// would not overwrite, so the run is complete either way.
   pub(crate) fn record_finding(&mut self, rule: &'static str, subject: &str, message: impl Into<String>) {
-    self
-      .findings
-      .push(Finding::new(RuleId::of_static(rule), Some(subject.to_owned()), message));
+    self.findings.push(Finding::warning(
+      RuleId::of_static(rule),
+      Some(subject.to_owned()),
+      message,
+    ));
   }
 
   /// Record something about a file on the host, whose path is formatted for showing.

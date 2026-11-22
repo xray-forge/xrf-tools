@@ -111,9 +111,17 @@ impl GenericCommand for VerifyCommand {
       }
     };
 
+    // Missing translations are warnings, as a project mid-translation always has some and the game shows each one as
+    // its id, so `--strict` is the mode that judges them. What the game would refuse or mangle fails either way.
+    let report: Report = if options.is_strict {
+      result.to_report().into_strict()
+    } else {
+      result.to_report()
+    };
+
     // Deposited before the verdict becomes an outcome, so a failing check still reports the findings
     // that explain it.
-    context.set_result(|| TranslationVerifyReport::new(&result))?;
+    context.set_result(|| TranslationVerifyReport::new(&result, &report))?;
 
     xrf_output::info!(
       output,
@@ -123,15 +131,6 @@ impl GenericCommand for VerifyCommand {
       result.missing_translations_count,
       result.problems.len()
     );
-
-    // Missing translations are reported and answered as success by default, as a project mid-translation always has
-    // some and the game shows each one as its id; `--strict` is the mode that judges them. What the game would refuse
-    // or mangle is judged either way.
-    let report: Report = if options.is_strict {
-      result.to_report()
-    } else {
-      result.to_engine_report()
-    };
 
     ReportVerdict::print_findings(&output, &report);
 

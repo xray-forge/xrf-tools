@@ -134,7 +134,7 @@ impl RepackCommand {
 
   /// What one file's round trip found.
   fn finding(rule: &'static str, path: &Path, message: String) -> Finding {
-    Finding::new(RuleId::of_static(rule), Some(format_portable_path(path)), message)
+    Finding::failure(RuleId::of_static(rule), Some(format_portable_path(path)), message)
   }
 
   /// Reads `path` and writes it repacked to `destination`.

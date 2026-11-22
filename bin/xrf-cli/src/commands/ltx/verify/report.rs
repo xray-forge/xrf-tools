@@ -67,7 +67,7 @@ impl LtxVerifyReport {
   fn describe_finding(project: &LtxProject, finding: &LtxFinding) -> Finding {
     let reported: LtxFinding = project.with_reported_paths(finding);
 
-    Finding::new(
+    Finding::failure(
       RuleId::of_static(Self::get_rule(finding.kind)),
       Some(reported.file.unwrap_or(reported.entry)),
       finding.get_located_message(),

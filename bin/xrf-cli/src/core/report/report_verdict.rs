@@ -16,7 +16,8 @@ impl ReportVerdict {
   /// more than a terminal is useful for, and the report is the artifact meant for reading them.
   ///
   /// The channel follows the check's verdict: a failed check on the failure channel, one that broke on the error
-  /// channel, and one whose findings do not fail it (passed with warnings, incomplete, skipped) as a warning.
+  /// channel, and one whose findings do not fail it (passed with warnings, incomplete, skipped) as a warning. Each
+  /// finding line leads with its severity, so a strict run's failure still shows which findings were warnings.
   pub(crate) fn print_findings(output: &OutputOptions, report: &Report) {
     for check in report.checks() {
       if check.findings().is_empty() {
@@ -39,7 +40,8 @@ impl ReportVerdict {
       for finding in check.findings() {
         xrf_output::verbose!(
           output,
-          "  [{}] {}: {}",
+          "  {} [{}] {}: {}",
+          finding.severity(),
           finding.rule_id(),
           finding.subject().unwrap_or("-"),
           finding.message()

@@ -12,6 +12,7 @@ use crate::project::gamedata_project::GamedataProject;
 use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
 use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::gamedata_verification_status::GamedataVerificationStatus;
+use xrf_report::{CheckId, CheckReport};
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
 
@@ -79,22 +80,16 @@ impl DialogTree {
     self
   }
 
-  fn verify(&self, is_strict: bool) -> GamedataDialogsVerificationResult {
+  fn verify(&self) -> GamedataDialogsVerificationResult {
     let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
       root: self.root.clone(),
       ..Default::default()
     })
     .unwrap();
 
-    DialogsVerifier::new(
-      &project,
-      &GamedataProjectVerifyOptions {
-        is_strict,
-        ..Default::default()
-      },
-    )
-    .verify()
-    .unwrap()
+    DialogsVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+      .verify()
+      .unwrap()
   }
 }
 
@@ -116,12 +111,24 @@ fn messages(result: &GamedataDialogsVerificationResult) -> Vec<&str> {
   result.get_findings().iter().map(|finding| finding.message()).collect()
 }
 
+/// The check's verdict in a strict run, which fails it on a warning too.
+fn judge_strictly(result: &GamedataDialogsVerificationResult) -> GamedataVerificationStatus {
+  CheckReport::new(
+    CheckId::of_static("dialogs"),
+    result.get_status(),
+    None,
+    result.get_findings().to_vec(),
+  )
+  .into_strict()
+  .status()
+}
+
 #[test]
 fn passes_a_tree_whose_dialogs_and_partners_hold_together() {
-  let result: GamedataDialogsVerificationResult = DialogTree::new().verify(true);
+  let result: GamedataDialogsVerificationResult = DialogTree::new().verify();
 
   assert_eq!(messages(&result), Vec::<&str>::new());
-  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
+  assert_eq!(judge_strictly(&result), GamedataVerificationStatus::Passed);
   // A start and an actor dialog, an info portion's, the meet condlist's one dialog past `nil`, the heal dialog, and the
   // profile a section spawns with.
   assert_eq!(
@@ -136,7 +143,7 @@ fn skips_a_tree_without_dialog_files() {
 
   fs::remove_file(tree.root.join("configs/gameplay/dialogs.xml")).unwrap();
 
-  let result: GamedataDialogsVerificationResult = tree.verify(false);
+  let result: GamedataDialogsVerificationResult = tree.verify();
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Skipped);
   assert_eq!(result.get_summary(), "No dialog files found");
@@ -157,7 +164,7 @@ fn fails_an_offer_or_start_dialog_no_file_declares() {
       "configs/scripts/novice.ltx",
       "[meet]\nmeet_dialog = absent_dialog\n\n[wounded]\nhelp_start_dialog = absent_dialog\n",
     )
-    .verify(false);
+    .verify();
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
   assert_eq!(
@@ -187,16 +194,16 @@ fn reports_a_heal_dialog_no_file_declares_and_fails_it_only_under_strict() {
   let tree: DialogTree =
     DialogTree::new().with("configs/scripts/novice.ltx", "[wounded]\nhelp_dialog = absent_dialog\n");
 
-  let lenient: GamedataDialogsVerificationResult = tree.verify(false);
+  let lenient: GamedataDialogsVerificationResult = tree.verify();
 
   assert_eq!(rules(&lenient), ["dialog.heal-missing"]);
   assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
   assert!(
-    lenient.get_summary().ends_with(", 1 defects the engine tolerates"),
+    lenient.get_summary().ends_with(", 1 warnings"),
     "{}",
     lenient.get_summary()
   );
-  assert_eq!(tree.verify(true).get_status(), GamedataVerificationStatus::Failed);
+  assert_eq!(judge_strictly(&lenient), GamedataVerificationStatus::Failed);
 }
 
 /// A profile stops the engine only once an NPC is spawned with it, which configs do not tell, so it is reported; the
@@ -220,7 +227,7 @@ fn reports_a_profile_no_npc_can_be_spawned_with_and_fails_conflicting_character_
       r#"<xml><specific_character id="lone"><class>loner</class></specific_character>
 <specific_character id="both" no_random="1" team_default="1"><class>loner</class></specific_character></xml>"#,
     )
-    .verify(false);
+    .verify();
 
   assert_eq!(
     messages(&result),
@@ -234,8 +241,8 @@ fn reports_a_profile_no_npc_can_be_spawned_with_and_fails_conflicting_character_
   );
   assert_eq!(rules(&result)[0], "dialog.character-flags");
   assert_eq!(result.unresolved_profiles_count, 2);
-  assert_eq!(result.failing_count, 1);
-  assert_eq!(result.tolerated_count, 3);
+  assert_eq!(result.count_failures(), 1);
+  assert_eq!(result.get_findings().len(), 4);
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
 }
 
@@ -254,10 +261,10 @@ fn reads_only_the_partner_files_system_ltx_lists() {
       "configs/gameplay/character_desc_unlisted.xml",
       r#"<xml><specific_character id="stray"><actor_dialog>gone_dialog</actor_dialog></specific_character></xml>"#,
     )
-    .verify(true);
+    .verify();
 
   assert_eq!(messages(&result), Vec::<&str>::new());
-  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
+  assert_eq!(judge_strictly(&result), GamedataVerificationStatus::Passed);
 }
 
 #[test]
@@ -267,7 +274,7 @@ fn reports_a_listed_partner_file_that_is_missing() {
       "configs/system.ltx",
       &format!("{SYSTEM}\n[profiles]\nfiles = npc_profile\nspecific_characters_files = character_desc_general, gone\n"),
     )
-    .verify(false);
+    .verify();
 
   assert_eq!(rules(&result), ["dialog.partner-unreadable"]);
   assert!(
@@ -294,7 +301,7 @@ fn fails_a_dialog_the_engine_cannot_open_or_walk() {
   </phrase_list></dialog>
 </game_dialogs>"#,
     )
-    .verify(false);
+    .verify();
 
   assert_eq!(
     messages(&result),
@@ -327,7 +334,7 @@ fn judges_only_the_declaration_the_engine_reads() {
       "configs/gameplay/dialogs_overlay.xml",
       r#"<game_dialogs><dialog id="hello_dialog"><phrase_list><phrase id="1"/></phrase_list></dialog></game_dialogs>"#,
     )
-    .verify(true);
+    .verify();
 
   assert_eq!(messages(&result), Vec::<&str>::new());
   assert_eq!(result.checked_dialogs_count, 2);
@@ -340,7 +347,7 @@ fn reports_a_line_the_text_does_not_define_and_fails_it_only_under_strict() {
     r#"<string_table><string id="hello_0"><text>Privet.</text></string></string_table>"#,
   );
 
-  let lenient: GamedataDialogsVerificationResult = tree.verify(false);
+  let lenient: GamedataDialogsVerificationResult = tree.verify();
 
   assert_eq!(
     messages(&lenient),
@@ -348,5 +355,5 @@ fn reports_a_line_the_text_does_not_define_and_fails_it_only_under_strict() {
   );
   assert_eq!(rules(&lenient), ["dialog.text-missing"]);
   assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
-  assert_eq!(tree.verify(true).get_status(), GamedataVerificationStatus::Failed);
+  assert_eq!(judge_strictly(&lenient), GamedataVerificationStatus::Failed);
 }

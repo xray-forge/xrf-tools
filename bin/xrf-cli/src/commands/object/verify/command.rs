@@ -96,7 +96,7 @@ impl VerifyCommand {
         Some(duration),
         differences
           .iter()
-          .map(|difference| Finding::new(RuleId::of_static(id), None, difference.clone()))
+          .map(|difference| Finding::failure(RuleId::of_static(id), None, difference.clone()))
           .collect(),
       )
     };

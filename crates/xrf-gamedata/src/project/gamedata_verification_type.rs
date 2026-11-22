@@ -133,7 +133,15 @@ impl GamedataVerificationType {
   {
     xrf_profiler::scope!("gamedata check", &self.to_string());
 
-    GamedataVerificationCheckReport::from_check_result(self, C::new(project, options).verify())
+    let report: GamedataVerificationCheckReport =
+      GamedataVerificationCheckReport::from_check_result(self, C::new(project, options).verify());
+
+    // Checks judge leniently and mark what the engine tolerates as warnings; strictness is applied here, once.
+    if options.is_strict {
+      report.into_strict()
+    } else {
+      report
+    }
   }
 }
 

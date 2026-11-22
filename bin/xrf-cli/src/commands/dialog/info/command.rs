@@ -1,6 +1,5 @@
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_output::OutputOptions;
-use xrf_report::Status;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
@@ -49,22 +48,19 @@ impl GenericCommand for InfoCommand {
 
     // A roots that cannot be mounted is an execution failure, which the mount itself answers with, so
     // no separate existence check is needed here.
-    let result: DialogSweepResult = DialogSweep::new(&roots, XrayRootsArguments::prefix_of(matches)).run()?;
+    let mut result: DialogSweepResult = DialogSweep::new(&roots, XrayRootsArguments::prefix_of(matches)).run()?;
+
+    // Every finding is a warning, so a tally passes by default and can be run casually; `--strict` is the mode that
+    // judges, and it is what a CI step uses. A sweep that reached no verdict fails either way.
+    if is_strict {
+      result.report = result.report.into_strict();
+    }
 
     Self::print_census(&output, &result);
     ReportVerdict::print_findings(&output, &result.report);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports the findings that explain it.
     context.set_result(|| DialogInfoReport::new(&result.census, &result.report))?;
-
-    // Findings are reported and answered as success by default: a tally that also fails the build cannot be run
-    // casually. `--strict` is the mode that judges, and it is what a CI step uses. A sweep that reached no verdict
-    // fails either way.
-    if !is_strict && result.report.status() == Status::Failed {
-      xrf_output::success!(output, "Read {} files, status: {}", result.census.files, Status::Failed);
-
-      return Ok(());
-    }
 
     ReportVerdict::conclude(
       &output,

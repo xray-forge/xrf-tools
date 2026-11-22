@@ -32,7 +32,7 @@ fn a_complete_source_the_game_loads_passes_both_checks() -> XrfResult {
   let result = TranslationVerifier::verify_roots(&roots(root), None, &options(TranslationLanguage::English))?;
 
   assert!(result.problems.is_empty());
-  assert_eq!(result.status(), Status::Passed);
+  assert_eq!(result.to_report().into_strict().status(), Status::Passed);
 
   Ok(())
 }
@@ -55,8 +55,8 @@ fn reports_a_character_the_language_cannot_hold_and_a_line_the_game_refuses() ->
   );
   // Nothing is missing, and the run fails anyway: these are tables the game shows wrong or will not load.
   assert_eq!(result.missing_translations_count, 0);
-  assert_eq!(result.get_engine_status(), Status::Failed);
-  assert_eq!(result.to_engine_report().status(), Status::Failed);
+  assert_eq!(result.to_report().status(), Status::Failed);
+  assert_eq!(result.to_report().checks()[1].status(), Status::Failed);
 
   Ok(())
 }
@@ -85,10 +85,10 @@ fn a_missing_translation_fails_only_the_completeness_check() -> XrfResult {
   GeneratedResources::write(&format!("{root}/st_a.json"), r#"{"st_a":{"eng":"A","ukr":null}}"#)?;
 
   let result = TranslationVerifier::verify_roots(&roots(root), None, &options(TranslationLanguage::Ukrainian))?;
-  let report = result.to_report();
+  let report = result.to_report().into_strict();
 
   assert_eq!(result.missing_translations_count, 1);
-  assert_eq!(result.get_engine_status(), Status::Passed);
+  assert_eq!(result.to_report().status(), Status::Passed);
   assert_eq!(
     report
       .checks()

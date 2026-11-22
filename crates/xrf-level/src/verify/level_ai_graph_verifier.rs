@@ -136,7 +136,7 @@ impl LevelAiGraphVerifier {
     }
 
     if census.one_way_nodes > 0 {
-      graph_findings.push(Self::new_finding(
+      graph_findings.push(Self::new_warning(
         "level.ai.one-way",
         subject,
         format!(
@@ -149,7 +149,7 @@ impl LevelAiGraphVerifier {
     }
 
     if let Some(largest) = largest.filter(|_| census.components > 1) {
-      graph_findings.push(Self::new_finding(
+      graph_findings.push(Self::new_warning(
         "level.ai.disconnected",
         subject,
         format!(
@@ -167,16 +167,18 @@ impl LevelAiGraphVerifier {
       [
         GraphCheck::of(Vec::new()),
         GraphCheck::of(link_findings),
-        GraphCheck {
-          status: Status::Passed,
-          findings: graph_findings,
-        },
+        GraphCheck::of(graph_findings),
       ],
     )
   }
 
   fn new_finding(rule: &'static str, subject: &str, message: String) -> Finding {
-    Finding::new(RuleId::of_static(rule), Some(subject.to_owned()), message)
+    Finding::failure(RuleId::of_static(rule), Some(subject.to_owned()), message)
+  }
+
+  /// What xrAI reports and builds anyway, as GSC's shipped maps show.
+  fn new_warning(rule: &'static str, subject: &str, message: String) -> Finding {
+    Finding::warning(RuleId::of_static(rule), Some(subject.to_owned()), message)
   }
 
   /// The result of the three checks, `level.ai.read`, `level.ai.links` and `level.ai.graph`, in that order.
@@ -211,10 +213,10 @@ impl GraphCheck {
     findings: Vec::new(),
   };
 
-  /// A check failing on any finding.
+  /// A check judged by its findings: failing on a failure, passing with warnings.
   fn of(findings: Vec<Finding>) -> Self {
     Self {
-      status: Status::from_is_valid(findings.is_empty()),
+      status: Status::from_findings(&findings),
       findings,
     }
   }

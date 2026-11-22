@@ -62,7 +62,7 @@ impl<F: PackedFileFormat> GenericCommand for VerifyCommand<F> {
       // An unreadable file is an execution failure, which judged nothing and so deposits nothing; only judged content
       // is a check failure.
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
-      Err(error) => vec![Finding::new(
+      Err(error) => vec![Finding::failure(
         RuleId::of_static(F::READ_CHECK),
         Some(format_portable_path(path)),
         error.to_string(),

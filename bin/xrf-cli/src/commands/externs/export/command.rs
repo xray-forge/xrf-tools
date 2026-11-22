@@ -152,7 +152,7 @@ impl ExportCommand {
 
   /// What judging the declarations or the artifact at `subject` found.
   fn finding(rule: &'static str, subject: &Path, error: &XrfError) -> Finding {
-    Finding::new(
+    Finding::failure(
       RuleId::of_static(rule),
       Some(xrf_utils::format_portable_path(subject)),
       error.to_string(),

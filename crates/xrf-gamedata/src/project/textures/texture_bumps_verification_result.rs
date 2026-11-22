@@ -6,6 +6,8 @@ use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 /// Aggregated outcome of resolving every `.thm` bump declaration the way the renderer would.
 #[derive(Default)]
 pub(crate) struct GamedataTextureBumpsVerificationResult {
+  /// A failure for a bump the engine binds a substitute for or a descriptor that does not read, and a warning for
+  /// what it tolerates: a missing companion, a declaration it never reads, bytes past a chunk's fields.
   pub(crate) findings: Vec<Finding>,
   /// Texture descriptors whose declaration makes the renderer bind a bump pair.
   pub(crate) checked_bumps_count: u32,
@@ -14,31 +16,20 @@ pub(crate) struct GamedataTextureBumpsVerificationResult {
   pub(crate) unresolved_bumps_count: u32,
   /// Declared bumps that resolved but whose `#` companion is not the file the declaration names. The engine binds
   /// `ed\ed_dummy_bump#`: parallax relief is lost and the DXT normal goes uncorrected, but the surface still reads as
-  /// bumped, and vanilla ships one such pair. A pair missing both halves counts once, above. Reported always, gating
-  /// only under strict.
+  /// bumped, and vanilla ships one such pair. A pair missing both halves counts once, above.
   pub(crate) missing_companions_count: u32,
   /// Descriptors that ask for a bump the engine never binds: a texture type `LoadTHM` skips, or a used mode with no
-  /// name. Authoring that does nothing, harmless at runtime; vanilla ships two. Reported always, gating only under strict.
+  /// name. Authoring that does nothing, harmless at runtime; vanilla ships two.
   pub(crate) invalid_bump_declarations_count: u32,
   /// Descriptors holding bytes past a chunk's fields, which no engine reads and some texture packs write. Harmless at
-  /// runtime; reported always, gating only under strict.
+  /// runtime.
   pub(crate) trailing_descriptors_count: u32,
-  /// Whether the run was asked to judge what the engine tolerates silently, which is what promotes a missing companion
-  /// and an unread declaration from counted to failing.
-  pub(crate) is_strict: bool,
 }
 
 impl GamedataCheckResult for GamedataTextureBumpsVerificationResult {
   fn get_status(&self) -> GamedataVerificationStatus {
-    // Default mode fails on what the engine reads and renders wrong: a bump it binds a substitute for. Strict also
-    // judges what the engine tolerates silently: a companion it substitutes, and a declaration it never reads.
-    GamedataVerificationStatus::from_is_valid(
-      self.unresolved_bumps_count == 0
-        && (!self.is_strict
-          || (self.missing_companions_count == 0
-            && self.invalid_bump_declarations_count == 0
-            && self.trailing_descriptors_count == 0)),
-    )
+    // What the engine reads and renders wrong fails; what it tolerates is a warning, which only a strict run fails on.
+    GamedataVerificationStatus::from_findings(&self.findings)
   }
 
   fn get_summary(&self) -> String {
@@ -80,16 +71,29 @@ impl GamedataCheckResult for GamedataTextureBumpsVerificationResult {
 
 #[cfg(test)]
 mod tests {
+  use xrf_report::Finding;
+
   use super::GamedataTextureBumpsVerificationResult;
   use crate::project::gamedata_check_result::GamedataCheckResult;
+  use crate::project::gamedata_finding_factory::GamedataFindingFactory;
+  use crate::project::gamedata_verification_rule::GamedataVerificationRule;
   use crate::project::gamedata_verification_status::GamedataVerificationStatus;
 
+  fn finding(rule: GamedataVerificationRule) -> Finding {
+    GamedataFindingFactory::for_asset(rule, "textures/a.thm", "message")
+  }
+
+  fn warning(rule: GamedataVerificationRule) -> Finding {
+    GamedataFindingFactory::warning_for_asset(rule, "textures/a.thm", "message")
+  }
+
   #[test]
-  fn a_missing_bump_fails_in_every_mode() {
+  fn a_missing_bump_fails() {
     // The engine binds a substitute for a texture it does read: the surface is flat while paying for the bump shader.
     let result: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
       checked_bumps_count: 2,
       unresolved_bumps_count: 1,
+      findings: vec![finding(GamedataVerificationRule::TexturesBump)],
       ..Default::default()
     };
 
@@ -105,73 +109,27 @@ mod tests {
     assert_eq!(clean.get_summary(), "1/1 declared bumps resolved");
   }
 
+  /// The engine works around each of these, and vanilla ships some, so a default run passes with them as warnings.
   #[test]
-  fn an_unread_declaration_is_named_always_and_fails_only_under_strict() {
-    // The engine never reads it, so nothing renders wrong; vanilla ships two, so a default run stays green.
-    let lenient: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
-      checked_bumps_count: 1,
-      invalid_bump_declarations_count: 1,
-      ..Default::default()
-    };
-
-    assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
-    assert_eq!(
-      lenient.get_summary(),
-      "1/1 declared bumps resolved, 1 bump declarations the engine never reads"
-    );
-
-    let strict: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
-      is_strict: true,
-      ..lenient
-    };
-
-    assert_eq!(strict.get_status(), GamedataVerificationStatus::Failed);
-  }
-
-  #[test]
-  fn bytes_past_a_descriptor_chunk_are_named_always_and_fail_only_under_strict() {
-    // No engine reads them, so nothing renders wrong; a texture pack writes them into hundreds of descriptors.
-    let lenient: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
-      checked_bumps_count: 1,
-      trailing_descriptors_count: 2,
-      ..Default::default()
-    };
-
-    assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
-    assert_eq!(
-      lenient.get_summary(),
-      "1/1 declared bumps resolved, 2 descriptors with bytes past their fields"
-    );
-
-    let strict: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
-      is_strict: true,
-      ..lenient
-    };
-
-    assert_eq!(strict.get_status(), GamedataVerificationStatus::Failed);
-  }
-
-  #[test]
-  fn a_missing_companion_is_named_always_and_fails_only_under_strict() {
-    // The engine binds a flat dummy companion and keeps drawing a bumped surface; vanilla ships one such pair, so a
-    // default run reports it without failing and a strict run judges it.
-    let lenient: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
+  fn passes_with_what_the_engine_tolerates_and_names_it() {
+    let result: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
       checked_bumps_count: 1,
       missing_companions_count: 1,
+      invalid_bump_declarations_count: 1,
+      trailing_descriptors_count: 2,
+      findings: vec![
+        warning(GamedataVerificationRule::TexturesBumpCompanion),
+        warning(GamedataVerificationRule::TexturesBumpDeclaration),
+        warning(GamedataVerificationRule::TexturesChunkResidue),
+      ],
       ..Default::default()
     };
 
-    assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
+    assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
     assert_eq!(
-      lenient.get_summary(),
-      "1/1 declared bumps resolved, 1 bumps without a companion"
+      result.get_summary(),
+      "1/1 declared bumps resolved, 1 bumps without a companion, 1 bump declarations the engine never reads, 2 \
+       descriptors with bytes past their fields"
     );
-
-    let strict: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
-      is_strict: true,
-      ..lenient
-    };
-
-    assert_eq!(strict.get_status(), GamedataVerificationStatus::Failed);
   }
 }

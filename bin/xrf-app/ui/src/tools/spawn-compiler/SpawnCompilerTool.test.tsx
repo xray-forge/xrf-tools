@@ -46,6 +46,7 @@ describe("SpawnCompilerTool", () => {
         return mockSpawnBuildResult([
           {
             ruleId: "spawn.connection.skipped",
+            severity: "warning",
             subject: "zaton",
             message: "Graph point zat_to_jup connects to level jupiter, which is not built; the connection is left out",
           },
