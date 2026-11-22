@@ -58,6 +58,9 @@ const SYSTEM: &str = "[novice_spawn]\ncharacter_profile = novice\n";
 const LISTS: &str = "[dialogs]\nfiles = dialogs\n\n[profiles]\nfiles = npc_profile\n\
                      specific_characters_files = character_desc_general\n\n[info_portions]\nfiles = info_portions\n";
 
+/// The script the scripted dialog's `init_func` names a function of.
+const SCRIPT: &str = "function build(dialog) end\n";
+
 const LOGIC: &str =
   "[meet@talk]\nmeet_dialog = {+known} hello_dialog, nil\n\n[wounded@help]\nhelp_dialog = hello_dialog\n";
 
@@ -79,6 +82,7 @@ impl DialogTree {
       .with("configs/gameplay/info_portions.xml", INFO_PORTIONS)
       .with("configs/text/eng/st_dialogs.xml", STRINGS)
       .with("configs/scripts/novice.ltx", LOGIC)
+      .with("scripts/dialogs.script", SCRIPT)
   }
 
   fn with(self, relative: &str, contents: &str) -> Self {
@@ -236,11 +240,11 @@ fn passes_a_tree_whose_dialogs_and_partners_hold_together() {
 
   assert_eq!(messages(&result), Vec::<&str>::new());
   assert_eq!(judge_strictly(&result), GamedataVerificationStatus::Passed);
-  // A start and an actor dialog, an info portion's, the meet condlist's one dialog past `nil`, the heal dialog, and the
-  // profile a section spawns with.
+  // A start and an actor dialog, an info portion's, the meet condlist's one dialog past `nil`, the heal dialog, the
+  // profile a section spawns with, and the scripted dialog's `init_func`.
   assert_eq!(
     result.get_summary(),
-    "2/2 dialogs valid; 1/1 profiles resolve; 6/6 references declared"
+    "2/2 dialogs valid; 1/1 profiles resolve; 7/7 references declared"
   );
 }
 
@@ -351,6 +355,68 @@ fn reports_a_profile_no_npc_can_be_spawned_with_and_fails_conflicting_character_
   assert_eq!(result.count_failures(), 1);
   assert_eq!(result.get_findings().len(), 4);
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
+/// The engine looks a function up in the namespace its script file fills, or in a table xrf-engine fills through
+/// `extern`, and throws on one it cannot find.
+#[test]
+fn fails_a_script_function_a_dialog_names_and_no_script_defines() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with(
+      "configs/gameplay/dialogs_scripted.xml",
+      r#"<game_dialogs><dialog id="scripted"><precondition>dialogs.gone</precondition><phrase_list>
+  <phrase id="0"><text>hello_0</text><precondition>dialogs_zaton.ignored</precondition><next>1</next></phrase>
+  <phrase id="1"><text>hello_1</text><action>dialogs_zaton.registered</action><action>dialogs.build</action>
+    <script_text>dialogs_zaton.absent</script_text></phrase>
+  <phrase id="2"><text>hello_1</text><action>dialogs.unreached</action></phrase>
+</phrase_list><init_func>dialogs.not_read</init_func></dialog></game_dialogs>"#,
+    )
+    .with(
+      "declarations/dialogs/zaton.script",
+      "extern(\"dialogs_zaton.registered\", function() end)\n",
+    )
+    .verify();
+
+  assert_eq!(rules(&result)[0], "dialog.functor-missing");
+  assert_eq!(
+    messages(&result),
+    [
+      "Dialog 'scripted' phrase '1' script_text names script function 'dialogs_zaton.absent', which no script defines",
+      "Dialog 'scripted' precondition names script function 'dialogs.gone', which no script defines",
+      // Phrase `2` is never reached, phrase `0`'s precondition never read, and `init_func` read only without phrases.
+      "Dialog 'scripted' phrases '2' are not reached from phrase '0', so the engine never loads them",
+    ]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
+/// A tree holding no scripts, such as a mod relying on the game's, tells nothing of what the scripts define.
+#[test]
+fn does_not_judge_functions_in_a_tree_holding_no_scripts() {
+  let tree: DialogTree = DialogTree::new();
+
+  fs::remove_file(tree.root.join("scripts/dialogs.script")).unwrap();
+
+  let result: GamedataDialogsVerificationResult = tree
+    .with(
+      "configs/gameplay/dialogs_scripted.xml",
+      r#"<game_dialogs><dialog id="d"><precondition>dialogs.gone</precondition><phrase_list>
+  <phrase id="0"><text>hello_0</text></phrase></phrase_list></dialog></game_dialogs>"#,
+    )
+    .verify();
+
+  assert_eq!(messages(&result), Vec::<&str>::new());
+}
+
+/// A script that does not parse hides what it defines, and the scripts check reports it, so its namespace is not
+/// judged here.
+#[test]
+fn does_not_judge_a_function_of_a_script_that_does_not_parse() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with("scripts/dialogs.script", "function build(dialog)\n")
+    .verify();
+
+  assert_eq!(messages(&result), Vec::<&str>::new());
 }
 
 /// A new game reads every NPC of the root spawn and resolves its character there, so one it cannot resolve stops it.

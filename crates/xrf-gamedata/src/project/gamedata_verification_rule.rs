@@ -49,6 +49,9 @@ pub enum GamedataVerificationRule {
   /// A dialog or partner file `system.ltx` does not list, so the engine never loads what it declares.
   #[display("dialog.file-unlisted")]
   DialogFileUnlisted,
+  /// A precondition, action, script text or scripted dialog's `init_func` naming a function no script defines.
+  #[display("dialog.functor-missing")]
+  DialogFunctorMissing,
   /// A `wounded` logic section's `help_dialog` naming a dialog no dialog file declares, which leaves the NPC unhealable.
   #[display("dialog.heal-missing")]
   DialogHealMissing,

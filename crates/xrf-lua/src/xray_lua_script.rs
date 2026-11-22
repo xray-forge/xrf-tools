@@ -5,13 +5,17 @@ use full_moon::{LuaVersion, parse_fallible};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
+use crate::lua_definition_collector::LuaDefinitionCollector;
 use crate::lua_method_call_collector::LuaMethodCallCollector;
 use crate::xray_lua_method_call::XRayLuaMethodCall;
 
-/// A parsed LuaJIT script with normalized method calls, each argument read in the scope it is written in.
+/// A parsed LuaJIT script with normalized method calls, each argument read in the scope it is written in, and the
+/// functions it defines for others to call by name.
 #[derive(Clone, Debug, PartialEq)]
 pub struct XRayLuaScript {
   method_calls: Vec<XRayLuaMethodCall>,
+  global_functions: Vec<String>,
+  registered_names: Vec<String>,
   path: PathBuf,
 }
 
@@ -27,11 +31,27 @@ impl XRayLuaScript {
   {
     let path: &Path = path.as_ref();
     let ast: Ast = Self::parse_ast(path, source)?;
+    let definitions: LuaDefinitionCollector = LuaDefinitionCollector::collect(&ast);
 
     Ok(Self {
       method_calls: LuaMethodCallCollector::collect(&ast),
+      global_functions: definitions.global_functions,
+      registered_names: definitions.registered_names,
       path: path.to_path_buf(),
     })
+  }
+
+  /// The non-local functions the script declares or assigns to a plain name, at any depth, which X-Ray reaches as
+  /// `<file>.<function>` once it loads the script into the namespace its file names. A name an earlier `local`
+  /// declares is listed too, so the list may hold more than the namespace does, never less.
+  pub fn get_global_functions(&self) -> &[String] {
+    &self.global_functions
+  }
+
+  /// The literal names the script registers through xrf-engine's `extern(name, value)`, each a dotted path under the
+  /// global table such as `dialogs.break_dialog`.
+  pub fn get_registered_names(&self) -> &[String] {
+    &self.registered_names
   }
 
   /// Whether LuaJIT source parses, for a caller that only needs to know the script is valid.
@@ -532,6 +552,48 @@ shader:begin("top", "level")
     assert_eq!(
       numbers,
       vec![Some(32.0), Some(128.0), Some(255.0), Some(150.0), Some(0.5), None]
+    );
+
+    Ok(())
+  }
+
+  // A script's top level is what X-Ray runs when it loads the script into its namespace.
+  #[test]
+  fn lists_the_functions_the_top_level_defines_and_the_names_it_registers() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("dialogs.script"),
+      r#"
+function break_dialog(first_speaker, second_speaker) end
+is_wounded = function(actor, npc) end
+local function helper() end
+local cached = function() end
+function object:method() end
+function module.member() end
+count = 3
+
+function register()
+  late = function() end
+  extern("dialogs_zaton.zat_b30_owl_has_stash", function() end)
+  extern(name_of_something, function() end)
+end
+
+extern("travel_callbacks", { can_travel = function() end, ["get_cost"] = function() end, 3 })
+"#,
+    )?;
+
+    // A function a body defines lands in the namespace too, once the body runs.
+    assert_eq!(
+      script.get_global_functions(),
+      ["break_dialog", "is_wounded", "register", "late"]
+    );
+    assert_eq!(
+      script.get_registered_names(),
+      [
+        "dialogs_zaton.zat_b30_owl_has_stash",
+        "travel_callbacks.can_travel",
+        "travel_callbacks.get_cost",
+        "travel_callbacks"
+      ]
     );
 
     Ok(())

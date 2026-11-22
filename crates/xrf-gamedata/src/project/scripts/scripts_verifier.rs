@@ -34,13 +34,7 @@ impl<'a> GamedataCheck<'a> for ScriptsVerifier<'a> {
     self.options.job.check_cancelled()?;
 
     let started_at: Instant = Instant::now();
-    let script_paths: Vec<String> = self
-      .project
-      .entries_of_type(XrayAssetType::Script)
-      .into_iter()
-      .map(|location| location.get_logical_path().to_string())
-      .filter(|path| Self::is_runtime_script(path))
-      .collect();
+    let script_paths: Vec<String> = Self::list_runtime_scripts(self.project);
 
     let outcome: GamedataAssetSweepOutcome = GamedataAssetSweep::new(self.options)
       .run(&script_paths, |path| self.verify_script(path).into_iter().collect())?;
@@ -63,19 +57,32 @@ impl ScriptsVerifier<'_> {
   /// LuaJIT syntax, so it is not a runtime script and is not parsed as one.
   const LUA_HELP_SCRIPT_PATH: &'static str = r"scripts\lua_help.script";
 
+  /// Every script asset holding executable Lua the game runtime loads, by its logical path.
+  pub(crate) fn list_runtime_scripts(project: &GamedataProject) -> Vec<String> {
+    project
+      .entries_of_type(XrayAssetType::Script)
+      .into_iter()
+      .map(|location| location.get_logical_path().to_string())
+      .filter(|path| Self::is_runtime_script(path))
+      .collect()
+  }
+
+  /// A script's code as the game reads it: through the VFS, so an archived script is read too, and decoded from
+  /// windows-1251.
+  pub(crate) fn read_code(project: &GamedataProject, path: &str) -> XrfResult<String> {
+    project
+      .read_bytes(path)
+      .and_then(|bytes| Ok(read_as_string_from_w1251_encoded(&mut Cursor::new(bytes))?))
+  }
+
   /// Whether a script asset holds executable Lua the game runtime loads.
   fn is_runtime_script(path: &str) -> bool {
     !path.eq_ignore_ascii_case(Self::LUA_HELP_SCRIPT_PATH)
   }
 
-  /// The finding one script raises: it does not read, or LuaJIT rejects it. Read through the VFS, so an archived script
-  /// is parsed rather than reported missing.
+  /// The finding one script raises: it does not read, or LuaJIT rejects it.
   fn verify_script(&self, path: &str) -> Option<Finding> {
-    let code: String = match self
-      .project
-      .read_bytes(path)
-      .and_then(|bytes| Ok(read_as_string_from_w1251_encoded(&mut Cursor::new(bytes))?))
-    {
+    let code: String = match Self::read_code(self.project, path) {
       Ok(code) => code,
       Err(error) => {
         return Some(GamedataFindingFactory::for_asset(

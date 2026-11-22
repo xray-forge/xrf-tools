@@ -22,6 +22,7 @@ use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOption
 use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 
 mod dialogs_verifier_files;
+mod dialogs_verifier_functors;
 mod dialogs_verifier_spawns;
 
 /// The dialogs check: every dialog opens and walks as the engine loads it, and every character, profile, info portion
@@ -75,6 +76,8 @@ impl<'a> GamedataCheck<'a> for DialogsVerifier<'a> {
     self.report_partner_files(&partners, system.listed.as_ref(), &mut result)?;
     self.options.job.check_cancelled()?;
     self.verify_dialogs(&project, &declared, &mut result);
+    self.options.job.check_cancelled()?;
+    self.verify_functors(&project, &declared, &mut result);
     self.options.job.check_cancelled()?;
     self.verify_offers(&partners, &declared, &mut result);
     let spawned: HashSet<String> = self.verify_spawns(&partners, &declared, &mut result);
