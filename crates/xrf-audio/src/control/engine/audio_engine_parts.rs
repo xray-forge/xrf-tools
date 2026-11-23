@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rtrb::RingBuffer;
+use xrf_collections::rtrb::RingBuffer;
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::control::engine::audio_engine::AudioEngine;

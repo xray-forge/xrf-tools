@@ -1,4 +1,4 @@
-use indexmap::map::Entry;
+use xrf_collections::indexmap::map::Entry;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
 

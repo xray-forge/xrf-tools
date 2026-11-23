@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rtrb::Producer;
+use xrf_collections::rtrb::Producer;
 
 use crate::mixer::audio_mixer::AudioMixer;
 

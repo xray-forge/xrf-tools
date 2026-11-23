@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use indexmap::IndexMap;
-use indexmap::map::Entry;
+use xrf_collections::OrderedMap;
+use xrf_collections::indexmap::map::Entry;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_vfs::{XrayLogicalPath, XraySearch};
@@ -30,9 +30,9 @@ struct NamedPartnerFile {
 /// them. A file that cannot be read becomes a finding, as it does for `DialogProject`.
 #[derive(Debug, Default)]
 pub struct DialogPartners {
-  characters: IndexMap<String, DialogCharacter>,
-  profiles: IndexMap<String, DialogProfile>,
-  info_portions: IndexMap<String, DialogInfoPortion>,
+  characters: OrderedMap<String, DialogCharacter>,
+  profiles: OrderedMap<String, DialogProfile>,
+  info_portions: OrderedMap<String, DialogInfoPortion>,
   findings: Vec<DialogFinding>,
 }
 
@@ -181,17 +181,17 @@ impl DialogPartners {
   }
 
   /// Specific characters by id, in the order their files were read.
-  pub fn get_characters(&self) -> &IndexMap<String, DialogCharacter> {
+  pub fn get_characters(&self) -> &OrderedMap<String, DialogCharacter> {
     &self.characters
   }
 
   /// Profiles by id, in the order their files were read.
-  pub fn get_profiles(&self) -> &IndexMap<String, DialogProfile> {
+  pub fn get_profiles(&self) -> &OrderedMap<String, DialogProfile> {
     &self.profiles
   }
 
   /// Every info portion by id, with the dialogs it opens with every NPC, which for most is none.
-  pub fn get_info_portions(&self) -> &IndexMap<String, DialogInfoPortion> {
+  pub fn get_info_portions(&self) -> &OrderedMap<String, DialogInfoPortion> {
     &self.info_portions
   }
 
@@ -244,9 +244,9 @@ impl DialogPartners {
   ///
   /// Start dialogs come first, then the characters' actor dialogs, then the dialogs of info portions, each in
   /// declaration order. A dialog reached two ways lists both, since either one offers it.
-  pub fn list_offers(&self, profile: &DialogProfile) -> IndexMap<String, Vec<DialogOffer>> {
+  pub fn list_offers(&self, profile: &DialogProfile) -> OrderedMap<String, Vec<DialogOffer>> {
     let characters: Vec<&DialogCharacter> = self.resolve_profile(profile);
-    let mut offers: IndexMap<String, Vec<DialogOffer>> = IndexMap::new();
+    let mut offers: OrderedMap<String, Vec<DialogOffer>> = OrderedMap::default();
 
     for character in &characters {
       if let Some(dialog) = character.get_start_dialog() {
@@ -346,7 +346,7 @@ impl DialogPartners {
 
   /// Keep the first declaration of an id, as the engine's id index does, and report the others.
   fn insert<T>(
-    map: &mut IndexMap<String, T>,
+    map: &mut OrderedMap<String, T>,
     findings: &mut Vec<DialogFinding>,
     kind: &str,
     id: String,

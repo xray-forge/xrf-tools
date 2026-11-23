@@ -1,13 +1,12 @@
-use indexmap::IndexMap;
-use rustc_hash::FxBuildHasher;
+use xrf_collections::OrderedMap;
 
 use crate::scheme::LtxFieldScheme;
 
 /// The field schemes one section scheme declares, keyed by field name in declared order.
-pub type LtxSectionFieldSchemes = IndexMap<String, LtxFieldScheme, FxBuildHasher>;
+pub type LtxSectionFieldSchemes = OrderedMap<String, LtxFieldScheme>;
 
 /// Every section scheme a project declares, keyed by scheme name in declared order.
-pub type LtxSectionSchemes = IndexMap<String, LtxSectionScheme, FxBuildHasher>;
+pub type LtxSectionSchemes = OrderedMap<String, LtxSectionScheme>;
 
 /// Scheme definition for section in LTX file.
 #[derive(Clone, Debug, Default)]

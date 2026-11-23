@@ -1,4 +1,4 @@
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_translation::{TranslationGamedataReader, TranslationSourceReader};
@@ -367,7 +367,7 @@ impl DialogProject {
 
   /// The project as it crosses the wire: the index, not the phrases.
   pub fn describe(&self) -> DialogProjectDescriptor {
-    let mut files: IndexMap<String, DialogFileDescriptor> = IndexMap::new();
+    let mut files: OrderedMap<String, DialogFileDescriptor> = OrderedMap::default();
 
     for entry in &self.files {
       files.insert(

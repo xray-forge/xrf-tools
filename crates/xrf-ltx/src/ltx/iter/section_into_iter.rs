@@ -1,4 +1,4 @@
-use indexmap::map::IntoIter;
+use xrf_collections::indexmap::map::IntoIter;
 
 use crate::ltx::Section;
 

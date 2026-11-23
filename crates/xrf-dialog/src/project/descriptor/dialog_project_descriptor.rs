@@ -1,5 +1,5 @@
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use xrf_collections::OrderedMap;
 use xrf_vfs::XrayRoots;
 
 use crate::project::descriptor::dialog_file_descriptor::DialogFileDescriptor;
@@ -28,6 +28,7 @@ pub struct DialogProjectDescriptor {
   /// Distinct translation keys the text tree defines.
   pub text_keys: usize,
   /// Files keyed by their logical path, in logical-path order.
-  pub files: IndexMap<String, DialogFileDescriptor>,
+  #[cfg_attr(feature = "typescript-bindings", specta(type = std::collections::HashMap<String, DialogFileDescriptor>))]
+  pub files: OrderedMap<String, DialogFileDescriptor>,
   pub findings: Vec<DialogFinding>,
 }

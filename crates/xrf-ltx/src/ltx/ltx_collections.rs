@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use indexmap::IndexMap;
-use rustc_hash::FxBuildHasher;
+use xrf_collections::OrderedMap;
 
 use crate::ltx::Section;
 
@@ -11,7 +10,7 @@ use crate::ltx::Section;
 /// so the growth capacity a `String` carries is dead weight; and inheritance copies a parent's fields into every child
 /// that inherits it, so the same text is stored over and over - 293,441 resolved fields on a vanilla tree carry 10,583
 /// distinct key names, a 28x repetition. Sharing turns each of those copies into a refcount bump.
-pub(crate) type SectionData = IndexMap<Arc<str>, Arc<str>, FxBuildHasher>;
+pub(crate) type SectionData = OrderedMap<Arc<str>, Arc<str>>;
 
 /// A resolved config's sections, in the order they were declared.
-pub(crate) type LtxSections = IndexMap<String, Section, FxBuildHasher>;
+pub(crate) type LtxSections = OrderedMap<String, Section>;

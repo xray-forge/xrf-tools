@@ -6,11 +6,11 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-indexmap = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 xrf-chunk = { workspace = true }
+xrf-collections = { workspace = true }
 xrf-enum-derive = { workspace = true }
 xrf-ltx-project = { workspace = true }
 xrf-ogf = { workspace = true }

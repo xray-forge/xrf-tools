@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 use xrf_job::JobHandle;
 use xrf_ltx::{Condlist, CondlistCondition, Ltx, Section};
 use xrf_spawn::{ClsId, GraphLevel, SpawnFile};
@@ -23,9 +23,9 @@ use crate::project::gamedata_project::GamedataProject;
 /// NPC sections of the ones the configs do not spawn are read as well, and kept apart.
 pub(crate) struct DialogSquadSpawns {
   /// Each profile a spawned squad places an NPC with, by the first squad and NPC section placing it.
-  pub(crate) profiles: IndexMap<String, DialogSquadMember>,
+  pub(crate) profiles: OrderedMap<String, DialogSquadMember>,
   /// Each squad a config spawns that no section declares, by the reported path of the first config naming it.
-  pub(crate) missing_squads: IndexMap<String, PathBuf>,
+  pub(crate) missing_squads: OrderedMap<String, PathBuf>,
   /// Each NPC section a spawned squad lists that no section declares, with the first squad listing it.
   pub(crate) missing_members: Vec<DialogSquadMember>,
   /// Each NPC section that only squads the configs do not spawn list and no section declares, with the first squad
@@ -47,7 +47,7 @@ impl DialogSquadSpawns {
   /// The squads the tree's configs spawn and the ones `system` declares, their sections looked up in `system`, which
   /// every squad section is part of.
   pub(crate) fn read(project: &GamedataProject, system: &Ltx, job: &JobHandle) -> Self {
-    let mut spawned: IndexMap<String, PathBuf> = Self::list_started(project);
+    let mut spawned: OrderedMap<String, PathBuf> = Self::list_started(project);
 
     // A config that does not resolve is reported by the LTX check, not this one.
     for (path, outcome) in project.visit_configs(job, |ltx, _| Self::list_named(ltx)) {
@@ -57,8 +57,8 @@ impl DialogSquadSpawns {
     }
 
     let mut spawns: Self = Self {
-      profiles: IndexMap::new(),
-      missing_squads: IndexMap::new(),
+      profiles: OrderedMap::default(),
+      missing_squads: OrderedMap::default(),
       missing_members: Vec::new(),
       unspawned_missing_members: Vec::new(),
     };
@@ -108,15 +108,15 @@ impl DialogSquadSpawns {
   /// `[start_position_<level>]`, returning at the first level with no such section; sections of levels the graph does
   /// not hold, which vanilla keeps for its test levels, are never read. A tree whose spawn files carry no game graph
   /// starts no game, so none of its start positions are read.
-  fn list_started(project: &GamedataProject) -> IndexMap<String, PathBuf> {
+  fn list_started(project: &GamedataProject) -> OrderedMap<String, PathBuf> {
     let Ok(path) = XrayLogicalPath::new(Self::SIMULATION_PATH) else {
-      return IndexMap::new();
+      return OrderedMap::default();
     };
     let Ok(simulation) = project.ltx_project.read_resolution(&path) else {
-      return IndexMap::new();
+      return OrderedMap::default();
     };
     let reported: PathBuf = project.ltx_project.path_of(&path);
-    let mut started: IndexMap<String, PathBuf> = IndexMap::new();
+    let mut started: OrderedMap<String, PathBuf> = OrderedMap::default();
 
     for level in Self::list_graph_levels(project) {
       let Some(section) = simulation

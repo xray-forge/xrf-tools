@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
-use rtrb::RingBuffer;
 use xrf_audio_scene::AudioBus;
+use xrf_collections::rtrb::RingBuffer;
 
 use crate::control::audio_play::AudioPlay;
 use crate::control::engine::audio_engine_parts::AudioEngineParts;

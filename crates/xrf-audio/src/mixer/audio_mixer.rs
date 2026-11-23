@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use rtrb::{Consumer, Producer};
 use xrf_audio_scene::AudioBus;
+use xrf_collections::rtrb::{Consumer, Producer};
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::effects::ear_blocks::EarBlocks;
@@ -312,7 +312,7 @@ impl AudioMixer {
     // The control side never has more taps out than the ring holds (`AudioEngine::TAPS_MOST`), so it is never full; were
     // it, a debug build stops on the sizing fault and a release one loses the tap rather than freeing it on this thread.
     if let Some(tap) = tap
-      && let Err(rtrb::PushError::Full(tap)) = retired.push(tap)
+      && let Err(xrf_collections::rtrb::PushError::Full(tap)) = retired.push(tap)
     {
       debug_assert!(false, "the retired taps' ring is full");
       std::mem::forget(tap);
@@ -365,7 +365,7 @@ impl AudioMixer {
     // The ring holds one entry a slot and a slot is reused only after its voice came back through it, so it is never
     // full here; were it full, a debug build stops on the sizing fault and a release one loses the voice rather than
     // freeing it on this thread.
-    if let Err(rtrb::PushError::Full(voice)) = retired.push(voice) {
+    if let Err(xrf_collections::rtrb::PushError::Full(voice)) = retired.push(voice) {
       debug_assert!(false, "the retired voices' ring is full");
       std::mem::forget(voice);
     }

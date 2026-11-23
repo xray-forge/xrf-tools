@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 use xrf_error::XrfResult;
 use xrf_utils::format_portable_path;
 
@@ -13,7 +13,7 @@ fn descriptor(encodings: &[(&str, &str)]) -> TranslationProjectDescriptor {
     encodings: encodings
       .iter()
       .map(|(language, encoding)| (String::from(*language), String::from(*encoding)))
-      .collect::<IndexMap<String, String>>(),
+      .collect::<OrderedMap<String, String>>(),
     ..Default::default()
   }
 }

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 
-use rustc_hash::FxBuildHasher;
+use xrf_collections::FastSet;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, read_as_string_from_w1251_encoded};
 
@@ -32,7 +32,7 @@ struct LtxRecordReading<'t, V> {
   /// Whether a header opened the open section, rather than fields before any header.
   is_declared: bool,
   /// Every section handed over so far, lowercased, to refuse a repeat in any case.
-  read: HashSet<Cow<'t, str>, FxBuildHasher>,
+  read: FastSet<Cow<'t, str>>,
   includes: Vec<&'t str>,
   visit: V,
   /// The visit's first error, after which it is not asked again.

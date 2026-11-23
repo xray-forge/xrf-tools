@@ -2,8 +2,8 @@ use std::fmt::{Display, Write};
 use std::hash::BuildHasher;
 use std::path::Path;
 
-use hashbrown::HashTable;
-use rustc_hash::FxBuildHasher;
+use xrf_collections::FastBuildHasher;
+use xrf_collections::hashbrown::HashTable;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, encode_string_into_w1251_bytes};
 
@@ -261,7 +261,7 @@ impl LtxRecordWriter {
   }
 
   fn hash(text: &str) -> u64 {
-    FxBuildHasher.hash_one(text)
+    FastBuildHasher.hash_one(text)
   }
 }
 

@@ -13,6 +13,7 @@ members = [
   "crates/xrf-audio-scene",
   "crates/xrf-build-info",
   "crates/xrf-chunk",
+  "crates/xrf-collections",
   "crates/xrf-dds",
   "crates/xrf-dialog",
   "crates/xrf-dlss",
@@ -91,7 +92,6 @@ bytes = "1.12.1"
 env_logger = { version = "0.11.11", default-features = false, features = ["auto-color", "humantime"] }
 fileslice = { version = "0.8.0", default-features = false }
 image = { version = "0.25.10", default-features = false }
-indexmap = { version = "2.14.2", features = ["serde"] }
 log = "0.4.34"
 notify = "8.2.0"
 naga = { version = "30.0.0", features = ["wgsl-in"] }
@@ -99,8 +99,6 @@ pollster = "1.0.1"
 proc-macro2 = "1.0.107"
 quote = "1.0.47"
 resvg = { version = "0.49.0", default-features = false }
-rtrb = "0.4.1"
-rustc-hash = "2.1.3"
 serde ={ version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.151"
 sha2 = "0.10.9"
@@ -138,6 +136,7 @@ xrf-audio = { path = "crates/xrf-audio" }
 xrf-audio-scene = { path = "crates/xrf-audio-scene" }
 xrf-build-info = { path = "crates/xrf-build-info" }
 xrf-chunk = { path = "crates/xrf-chunk" }
+xrf-collections = { path = "crates/xrf-collections" }
 xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
 xrf-dlss = { path = "crates/xrf-dlss" }

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostFileName, HostRelativePath, format_path};
@@ -22,7 +22,7 @@ use crate::xml::translation_identity::TranslationIdentity;
 use crate::xml::translation_xml_reader::TranslationXmlReader;
 
 /// One file's entries while duplicates are being resolved, in the order the table declared them.
-type StringTableEntries = IndexMap<String, String>;
+type StringTableEntries = OrderedMap<String, String>;
 
 /// Imports raw X-Ray XML string tables into multi-language JSON sources.
 pub struct TranslationParser;

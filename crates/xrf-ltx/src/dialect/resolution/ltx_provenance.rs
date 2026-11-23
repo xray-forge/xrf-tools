@@ -1,7 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use rustc_hash::FxBuildHasher;
+use xrf_collections::FastMap;
 
 use crate::dialect::LtxFieldOrigin;
 
@@ -19,7 +18,7 @@ use crate::dialect::LtxFieldOrigin;
 /// the first file merged. Every named section is exact, because `Ltx::merge_sections_from` refuses a duplicate of one.
 #[derive(Debug, Default)]
 pub struct LtxProvenance {
-  sections: HashMap<Arc<str>, HashMap<Arc<str>, LtxFieldOrigin, FxBuildHasher>, FxBuildHasher>,
+  sections: FastMap<Arc<str>, FastMap<Arc<str>, LtxFieldOrigin>>,
 }
 
 impl LtxProvenance {
@@ -59,7 +58,7 @@ impl LtxProvenance {
   }
 
   /// Records a whole section's fields at once, which is how a dialect fills this in.
-  pub(crate) fn insert_section(&mut self, section: Arc<str>, fields: HashMap<Arc<str>, LtxFieldOrigin, FxBuildHasher>) {
+  pub(crate) fn insert_section(&mut self, section: Arc<str>, fields: FastMap<Arc<str>, LtxFieldOrigin>) {
     self.sections.insert(section, fields);
   }
 

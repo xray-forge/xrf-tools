@@ -6,9 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rtrb = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
+xrf-collections = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.

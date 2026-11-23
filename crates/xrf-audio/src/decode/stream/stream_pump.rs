@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rtrb::Producer;
+use xrf_collections::rtrb::Producer;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::decode::sound_decoder::SoundDecoder;

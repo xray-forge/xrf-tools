@@ -10,9 +10,7 @@ license = "MIT"
 path = "src/lib.rs"
 
 [dependencies]
-hashbrown = { version = "0.17.1", default-features = false }
-indexmap = { workspace = true }
-rustc-hash = { workspace = true }
+xrf-collections = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-utils = { workspace = true }

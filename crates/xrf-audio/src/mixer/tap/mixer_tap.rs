@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rtrb::Producer;
+use xrf_collections::rtrb::Producer;
 
 use crate::mixer::tap::audio_tap_block::AudioTapBlock;
 use crate::mixer::tap::tap_shared::TapShared;

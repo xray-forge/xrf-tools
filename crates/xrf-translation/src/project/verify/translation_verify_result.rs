@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::time::Duration;
 
-use indexmap::IndexMap;
 use serde::Serialize;
+use xrf_collections::OrderedMap;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId};
 use xrf_utils::format_portable_path;
 
@@ -37,7 +37,7 @@ pub struct TranslationVerifyResult {
   /// Keyed by file and language so repeated calls for one file accumulate into one row.
   #[serde(skip_serializing)]
   #[cfg_attr(feature = "typescript-bindings", specta(skip))]
-  summary_index: IndexMap<(String, String), usize>,
+  summary_index: OrderedMap<(String, String), usize>,
 }
 
 impl TranslationVerifyResult {

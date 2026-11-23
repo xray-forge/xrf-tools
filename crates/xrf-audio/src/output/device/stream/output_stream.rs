@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::{Device, ErrorKind, OutputCallbackInfo, OutputStreamTimestamp, Stream, StreamConfig};
-use rtrb::{Consumer, RingBuffer};
+use xrf_collections::rtrb::{Consumer, RingBuffer};
 
 use crate::mixer::audio_mixer::AudioMixer;
 use crate::output::device::stream::mixer_holder::MixerHolder;

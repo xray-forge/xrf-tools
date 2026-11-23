@@ -1,4 +1,4 @@
-use rtrb::{Consumer, Producer, RingBuffer};
+use xrf_collections::rtrb::{Consumer, Producer, RingBuffer};
 
 use crate::audio_scene_frame::AudioSceneFrame;
 use crate::inbox::audio_scene_mailbox::AudioSceneMailbox;
@@ -37,7 +37,10 @@ impl AudioSceneInbox {
   ///
   /// Returns the frame, to fill again next time, when the control thread has not taken the ones before.
   pub fn send(&mut self, frame: Box<AudioSceneFrame>) -> Result<(), Box<AudioSceneFrame>> {
-    self.frames.push(frame).map_err(|rtrb::PushError::Full(frame)| frame)
+    self
+      .frames
+      .push(frame)
+      .map_err(|xrf_collections::rtrb::PushError::Full(frame)| frame)
   }
 
   /// A frame the control thread is done with.

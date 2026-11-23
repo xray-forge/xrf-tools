@@ -6,9 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-indexmap = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true, features = ["indexmap"] }
+xrf-collections = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-ltx = { workspace = true }

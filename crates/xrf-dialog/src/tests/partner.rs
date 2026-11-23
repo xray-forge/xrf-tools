@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
 use xrf_test_utils::GeneratedResources;
@@ -193,7 +193,7 @@ fn resolves_a_class_profile_only_through_a_team_default_character_of_its_class()
 #[test]
 fn lists_start_then_actor_then_info_portion_dialogs_with_every_way_each_is_offered() -> XrfResult {
   let partners: DialogPartners = read_shipped("offers")?;
-  let offers: IndexMap<String, Vec<DialogOffer>> = partners.list_offers(profile(&partners, "snag"));
+  let offers: OrderedMap<String, Vec<DialogOffer>> = partners.list_offers(profile(&partners, "snag"));
   let snag = || String::from("snag");
 
   assert_eq!(

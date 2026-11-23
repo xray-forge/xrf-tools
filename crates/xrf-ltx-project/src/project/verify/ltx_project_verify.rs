@@ -1,8 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use indexmap::IndexSet;
-use rustc_hash::FxBuildHasher;
+use xrf_collections::OrderedSet;
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
 use xrf_ltx::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, Ltx, LtxResolution};
@@ -136,7 +135,7 @@ impl LtxProject {
 
       // Check if definition or required schema exists:
       if let Some(scheme_definition) = self.ltx_scheme_declarations.get(scheme_name) {
-        let mut validated: IndexSet<String, FxBuildHasher> = Default::default();
+        let mut validated: OrderedSet<String> = Default::default();
 
         // Check all fields in section data.
         for (field_name, value) in section {

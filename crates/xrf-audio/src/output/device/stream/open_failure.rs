@@ -1,4 +1,4 @@
-use rtrb::Consumer;
+use xrf_collections::rtrb::Consumer;
 
 use crate::mixer::audio_mixer::AudioMixer;
 

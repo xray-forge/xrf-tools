@@ -1,5 +1,5 @@
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use xrf_collections::OrderedMap;
 use xrf_error::XrfResult;
 use xrf_utils::XRayEncoding;
 use xrf_vfs::XrayRoots;
@@ -27,7 +27,8 @@ pub struct TranslationProjectDescriptor {
   /// The code page each language is written in, which is what limits the characters it can hold.
   ///
   /// The one the game draws a language XRF builds with; for one it does not, what that language's own files declare.
-  pub encodings: IndexMap<String, String>,
+  #[cfg_attr(feature = "typescript-bindings", specta(type = std::collections::HashMap<String, String>))]
+  pub encodings: OrderedMap<String, String>,
   /// Whether every file this project holds is loose, so an editing session could save all of it.
   ///
   /// One flag rather than a tree of them, so a surface can say up front that a project opened over an
@@ -35,7 +36,8 @@ pub struct TranslationProjectDescriptor {
   /// physical path.
   pub is_editable: bool,
   /// Files keyed by the logical name the layout groups them under.
-  pub files: IndexMap<String, TranslationFile>,
+  #[cfg_attr(feature = "typescript-bindings", specta(type = std::collections::HashMap<String, TranslationFile>))]
+  pub files: OrderedMap<String, TranslationFile>,
   pub findings: Vec<TranslationFinding>,
 }
 

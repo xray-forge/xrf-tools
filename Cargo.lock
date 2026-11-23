@@ -8268,10 +8268,10 @@ dependencies = [
  "audionimbus",
  "cpal",
  "log",
- "rtrb",
  "serde",
  "specta",
  "xrf-audio-scene",
+ "xrf-collections",
  "xrf-error",
  "xrf-math",
  "xrf-sound",
@@ -8283,9 +8283,9 @@ dependencies = [
 name = "xrf-audio-scene"
 version = "0.1.0"
 dependencies = [
- "rtrb",
  "serde",
  "specta",
+ "xrf-collections",
 ]
 
 [[package]]
@@ -8316,7 +8316,6 @@ dependencies = [
  "colored",
  "embed-resource",
  "env_logger",
- "indexmap 2.14.2",
  "log",
  "serde",
  "serde_json",
@@ -8325,6 +8324,7 @@ dependencies = [
  "xrf-archive",
  "xrf-build-info",
  "xrf-chunk",
+ "xrf-collections",
  "xrf-dds",
  "xrf-dialog",
  "xrf-dltx",
@@ -8366,6 +8366,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-collections"
+version = "0.1.0"
+dependencies = [
+ "hashbrown 0.17.1",
+ "indexmap 2.14.2",
+ "rtrb",
+ "rustc-hash 2.1.3",
+]
+
+[[package]]
 name = "xrf-dds"
 version = "0.1.0"
 dependencies = [
@@ -8382,10 +8392,10 @@ dependencies = [
 name = "xrf-dialog"
 version = "0.1.0"
 dependencies = [
- "indexmap 2.14.2",
  "serde",
  "serde_json",
  "specta",
+ "xrf-collections",
  "xrf-error",
  "xrf-extension",
  "xrf-ltx",
@@ -8559,7 +8569,6 @@ name = "xrf-gamedata"
 version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
- "indexmap 2.14.2",
  "serde",
  "serde_json",
  "specta",
@@ -8567,6 +8576,7 @@ dependencies = [
  "xrf-animation-envelope",
  "xrf-anm",
  "xrf-chunk",
+ "xrf-collections",
  "xrf-dds",
  "xrf-dialog",
  "xrf-engine-target",
@@ -8744,9 +8754,7 @@ name = "xrf-ltx"
 version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
- "hashbrown 0.17.1",
- "indexmap 2.14.2",
- "rustc-hash 2.1.3",
+ "xrf-collections",
  "xrf-error",
  "xrf-extension",
  "xrf-test-utils",
@@ -8769,10 +8777,9 @@ dependencies = [
 name = "xrf-ltx-project"
 version = "0.1.0"
 dependencies = [
- "indexmap 2.14.2",
- "rustc-hash 2.1.3",
  "serde",
  "specta",
+ "xrf-collections",
  "xrf-error",
  "xrf-job",
  "xrf-ltx",
@@ -9192,12 +9199,12 @@ dependencies = [
 name = "xrf-translation"
 version = "0.1.0"
 dependencies = [
- "indexmap 2.14.2",
  "log",
  "serde",
  "serde_json",
  "specta",
  "walkdir",
+ "xrf-collections",
  "xrf-enum-derive",
  "xrf-error",
  "xrf-extension",

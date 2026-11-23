@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use indexmap::map::IntoIter;
+use xrf_collections::indexmap::map::IntoIter;
 
 pub struct PropertiesIntoIter {
   pub(super) inner: IntoIter<Arc<str>, Arc<str>>,

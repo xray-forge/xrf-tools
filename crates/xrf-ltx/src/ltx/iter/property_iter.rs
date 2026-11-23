@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use indexmap::map::Iter;
+use xrf_collections::indexmap::map::Iter;
 
 pub struct PropertyIter<'a> {
   pub(crate) inner: Iter<'a, Arc<str>, Arc<str>>,

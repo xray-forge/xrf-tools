@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use rtrb::RingBuffer;
+use xrf_collections::rtrb::RingBuffer;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::decode::sound_format::SoundFormat;

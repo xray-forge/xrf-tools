@@ -1,7 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use rustc_hash::FxBuildHasher;
+use xrf_collections::FastMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
 
@@ -11,7 +10,7 @@ use crate::ltx::{Ltx, LtxSections, Section};
 use crate::syntax::VIRTUAL_LTX_PATH;
 
 /// Which section writes each field of one resolved section, keyed by the field's own shared handle.
-type SectionAttribution = HashMap<Arc<str>, Arc<str>, FxBuildHasher>;
+type SectionAttribution = FastMap<Arc<str>, Arc<str>>;
 
 /// Converter object to process and inject all inherit section statements.
 #[derive(Default)]
@@ -20,7 +19,7 @@ pub(crate) struct LtxInheritConvertor {
   ///
   /// Built alongside the fields rather than reconstructed afterwards, because after inheritance a copied field is
   /// indistinguishable from a written one - that is the whole point of the copy.
-  attributions: Option<HashMap<String, SectionAttribution, FxBuildHasher>>,
+  attributions: Option<FastMap<String, SectionAttribution>>,
 }
 
 impl LtxInheritConvertor {
@@ -104,7 +103,7 @@ impl LtxInheritConvertor {
 
     for (section_name, section) in &ltx.sections {
       let name: Arc<str> = Arc::from(section_name.as_str());
-      let mut fields: HashMap<Arc<str>, LtxFieldOrigin, FxBuildHasher> = Default::default();
+      let mut fields: FastMap<Arc<str>, LtxFieldOrigin> = Default::default();
 
       for (key, _) in section.iter_shared() {
         fields.insert(
@@ -122,12 +121,12 @@ impl LtxInheritConvertor {
   }
 
   /// Turns "which section writes this field" into "and which file that section was declared in".
-  fn fold_attributions(ltx: &Ltx, attributions: HashMap<String, SectionAttribution, FxBuildHasher>) -> LtxProvenance {
+  fn fold_attributions(ltx: &Ltx, attributions: FastMap<String, SectionAttribution>) -> LtxProvenance {
     let mut provenance: LtxProvenance = LtxProvenance::default();
 
     for (section_name, attributed) in attributions {
       let name: Arc<str> = Arc::from(section_name.as_str());
-      let mut fields: HashMap<Arc<str>, LtxFieldOrigin, FxBuildHasher> = Default::default();
+      let mut fields: FastMap<Arc<str>, LtxFieldOrigin> = Default::default();
 
       for (key, writer) in attributed {
         let origin: LtxFieldOrigin = if *writer == *name {

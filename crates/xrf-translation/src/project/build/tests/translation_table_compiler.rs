@@ -1,4 +1,4 @@
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 
 use crate::language::translation_language::TranslationLanguage;
 use crate::project::build::compiled::translation_table_compiler::TranslationTableCompiler;
@@ -11,9 +11,9 @@ use crate::xml::translation_line_limit::TranslationLineLimit;
 const SUBJECT: &str = "translations/example.json";
 
 fn source(id: &str, language: &str, text: &str) -> TranslationJson {
-  IndexMap::from([(
+  OrderedMap::from_iter([(
     String::from(id),
-    IndexMap::from([(
+    OrderedMap::from_iter([(
       String::from(language),
       Some(TranslationVariant::String(String::from(text))),
     )]),
@@ -86,17 +86,17 @@ fn refuses_an_entry_whose_line_the_game_would_not_load() {
 
 #[test]
 fn preserves_source_order_unless_sorting_is_requested() {
-  let translations = TranslationJson::from([
+  let translations = TranslationJson::from_iter([
     (
       String::from("st_10"),
-      TranslationEntry::from([(
+      TranslationEntry::from_iter([(
         String::from("eng"),
         Some(TranslationVariant::String(String::from("ten"))),
       )]),
     ),
     (
       String::from("st_2"),
-      TranslationEntry::from([(
+      TranslationEntry::from_iter([(
         String::from("eng"),
         Some(TranslationVariant::String(String::from("two"))),
       )]),
@@ -128,9 +128,9 @@ fn a_missing_translation_compiles_to_its_own_id() {
 
 #[test]
 fn a_multi_line_entry_joins_on_the_engine_line_break() {
-  let translations = TranslationJson::from([(
+  let translations = TranslationJson::from_iter([(
     String::from("st_lines"),
-    TranslationEntry::from([(
+    TranslationEntry::from_iter([(
       String::from("eng"),
       Some(TranslationVariant::MultiString(vec![
         String::from("first"),
@@ -178,7 +178,7 @@ fn renders_the_table_layout_and_escapes_only_what_xml_requires() {
 #[test]
 fn renders_an_empty_table_as_one_element() {
   assert_eq!(
-    TranslationTableCompiler::render(&TranslationJson::new(), TranslationLanguage::English, false),
+    TranslationTableCompiler::render(&TranslationJson::default(), TranslationLanguage::English, false),
     "<?xml version=\"1.0\" encoding=\"windows-1251\" ?>\n\n<string_table></string_table>"
   );
 }

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use indexmap::IndexMap;
 use serde::Serialize;
+use xrf_collections::OrderedMap;
 
 use crate::project::build::translation_build_language_summary::TranslationBuildLanguageSummary;
 
@@ -26,7 +26,7 @@ pub struct TranslationBuildResult {
   pub languages: Vec<TranslationBuildLanguageSummary>,
   #[serde(skip_serializing)]
   #[cfg_attr(feature = "typescript-bindings", specta(skip))]
-  language_index: IndexMap<String, usize>,
+  language_index: OrderedMap<String, usize>,
 }
 
 impl TranslationBuildResult {

@@ -6,12 +6,12 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-indexmap = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 specta = { workspace = true, optional = true, features = ["indexmap"] }
 walkdir = { workspace = true }
+xrf-collections = { workspace = true }
 xrf-enum-derive = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }

@@ -1,5 +1,5 @@
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use xrf_collections::OrderedMap;
 
 use crate::project::describe::translation_source::TranslationSource;
 use crate::text::translation_entry::TranslationEntry;
@@ -14,8 +14,16 @@ pub struct TranslationFile {
   ///
   /// Editability is per language rather than per file: an installation layered under a loose tree can
   /// serve one language from a `.db` volume and the next from disk.
-  pub sources: IndexMap<String, TranslationSource>,
-  pub entries: IndexMap<String, TranslationEntry>,
+  #[cfg_attr(
+    feature = "typescript-bindings",
+    specta(type = std::collections::HashMap<String, TranslationSource>)
+  )]
+  pub sources: OrderedMap<String, TranslationSource>,
+  #[cfg_attr(
+    feature = "typescript-bindings",
+    specta(type = std::collections::HashMap<String, std::collections::HashMap<String, Option<crate::text::translation_variant::TranslationVariant>>>)
+  )]
+  pub entries: OrderedMap<String, TranslationEntry>,
 }
 
 impl TranslationFile {

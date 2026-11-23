@@ -1,7 +1,6 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 
-use rustc_hash::FxBuildHasher;
+use xrf_collections::FastSet;
 
 /// One allocation per distinct piece of text, for the span of resolving one root.
 ///
@@ -11,7 +10,7 @@ use rustc_hash::FxBuildHasher;
 /// resolved fields carrying 10,583 distinct key names.
 #[derive(Debug, Default)]
 pub struct LtxTextInterner {
-  held: HashSet<Arc<str>, FxBuildHasher>,
+  held: FastSet<Arc<str>>,
 }
 
 impl LtxTextInterner {

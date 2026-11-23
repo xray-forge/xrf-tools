@@ -1,4 +1,4 @@
-use indexmap::map::Entry;
+use xrf_collections::indexmap::map::Entry;
 
 use crate::ltx::section::{Section, SectionOccupiedEntry, SectionVacantEntry};
 

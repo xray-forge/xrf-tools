@@ -1,4 +1,4 @@
-use rtrb::{Consumer, Producer};
+use xrf_collections::rtrb::{Consumer, Producer};
 
 use crate::audio_scene_frame::AudioSceneFrame;
 

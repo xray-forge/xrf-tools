@@ -1,7 +1,7 @@
 use std::hash::BuildHasher;
 
-use hashbrown::HashTable;
-use rustc_hash::FxBuildHasher;
+use xrf_collections::FastBuildHasher;
+use xrf_collections::hashbrown::HashTable;
 
 /// Finds a section's field by key among fields its owner keeps in written order and names by position.
 ///
@@ -62,7 +62,7 @@ impl LtxFieldIndex {
   }
 
   fn hash(text: &str) -> u64 {
-    FxBuildHasher.hash_one(text)
+    FastBuildHasher.hash_one(text)
   }
 }
 

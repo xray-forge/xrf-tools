@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use rtrb::{Consumer, Producer};
 use xrf_audio_scene::AudioBus;
+use xrf_collections::rtrb::{Consumer, Producer};
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::control::audio_play::AudioPlay;

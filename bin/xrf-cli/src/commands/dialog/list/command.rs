@@ -1,5 +1,5 @@
 use clap::{Arg, ArgMatches, Command, value_parser};
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 use xrf_dialog::{
   Dialog, DialogCharacter, DialogFinding, DialogOffer, DialogPartners, DialogProject, DialogProjectFile,
   DialogTextLanguage,
@@ -143,7 +143,7 @@ impl ListCommand {
       )));
     }
 
-    let offers: IndexMap<String, Vec<DialogOffer>> = partners.list_offers(profile);
+    let offers: OrderedMap<String, Vec<DialogOffer>> = partners.list_offers(profile);
     let mut dialogs: Vec<DialogListEntry> = Vec::with_capacity(offers.len());
 
     for (id, offers) in offers {

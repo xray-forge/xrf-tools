@@ -1,4 +1,4 @@
-use indexmap::IndexMap;
+use xrf_collections::OrderedMap;
 use xrf_dialog::DialogListedFiles;
 use xrf_ltx::Ltx;
 
@@ -9,7 +9,7 @@ pub(crate) struct DialogSystemConfig {
   /// of a game. A list it leaves out is empty, as the engine reads it.
   pub(crate) listed: Option<DialogListedFiles>,
   /// Each profile a section names as its `character_profile`, by the first section naming it.
-  pub(crate) profile_sections: IndexMap<String, String>,
+  pub(crate) profile_sections: OrderedMap<String, String>,
 }
 
 impl DialogSystemConfig {
@@ -17,7 +17,7 @@ impl DialogSystemConfig {
   const CHARACTER_PROFILE_KEY: &'static str = "character_profile";
 
   pub(crate) fn read(ltx: &Ltx) -> Self {
-    let mut profile_sections: IndexMap<String, String> = IndexMap::new();
+    let mut profile_sections: OrderedMap<String, String> = OrderedMap::default();
 
     for (name, section) in ltx {
       if let Some(profile) = section

@@ -1,4 +1,4 @@
-use indexmap::map::IterMut;
+use xrf_collections::indexmap::map::IterMut;
 
 use crate::ltx::Section;
 

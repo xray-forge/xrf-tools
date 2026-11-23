@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rtrb::Consumer;
+use xrf_collections::rtrb::Consumer;
 
 use crate::decode::sound_channels::SoundChannels;
 use crate::decode::stream::stream_control::StreamControl;

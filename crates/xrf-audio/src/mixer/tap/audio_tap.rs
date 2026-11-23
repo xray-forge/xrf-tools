@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use rtrb::{Consumer, RingBuffer};
+use xrf_collections::rtrb::{Consumer, RingBuffer};
 
 use crate::mixer::tap::audio_tap_block::AudioTapBlock;
 use crate::mixer::tap::audio_tap_end::AudioTapEnd;
