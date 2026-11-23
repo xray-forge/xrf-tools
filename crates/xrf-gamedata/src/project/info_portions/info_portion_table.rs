@@ -47,6 +47,10 @@ impl InfoPortionTable {
   const NAME_PREFIX_PARTS: usize = 2;
   /// What ends a prefix opening a family of names, before the part a script appends.
   const NAME_SEPARATOR: char = '_';
+  /// The debug scenes vanilla's developer menu jumps into, each starting with an info portion it gives.
+  const SCENES_PATH: &'static str = "configs\\scripts\\scenes.ltx";
+  /// What separates a debug scene's fields: its info portion, walk and look paths, and items.
+  const SCENE_FIELD_SEPARATOR: char = '|';
 
   /// Read every use a tree writes: its info portion and dialog files as `system.ltx` lists them, its configs, its spawn
   /// files with their objects' custom data, and its scripts.
@@ -63,6 +67,7 @@ impl InfoPortionTable {
 
     table.add_dialogs(project, listed.as_ref())?;
     table.add_configs(project, job);
+    table.add_debug_scenes(project);
     table.add_spawns(project, job);
     table.add_scripts(project, job);
     table.mark_passed();
@@ -211,6 +216,42 @@ impl InfoPortionTable {
     }
   }
 
+  /// The info portions the debug scenes of `scripts\scenes.ltx` start with: each level's section maps a scene to
+  /// `info | walk | look | items`, and vanilla's developer menu (`ui_scenes.script`) gives the first field to jump into
+  /// a quest, so a quest reading it is the author's entry point, not a misspelling.
+  fn add_debug_scenes(&mut self, project: &GamedataProject) {
+    let Ok(path) = XrayLogicalPath::new(Self::SCENES_PATH) else {
+      return;
+    };
+    // A tree without the file has no scenes; one that does not resolve is reported by the LTX check.
+    let Ok(scenes) = project.ltx_project.read_resolution(&path) else {
+      return;
+    };
+    let reported: PathBuf = project.ltx_project.path_of(&path);
+
+    for (level, section) in &scenes.ltx {
+      for (scene, value) in section {
+        let Some(info_portion) = value
+          .split(Self::SCENE_FIELD_SEPARATOR)
+          .next()
+          .map(str::trim)
+          .filter(|info_portion| !info_portion.is_empty())
+        else {
+          continue;
+        };
+
+        self.record_use(
+          info_portion,
+          InfoPortionRole::GivenByDebugScene,
+          InfoPortionPlace {
+            path: reported.clone(),
+            context: format!("debug scene '{scene}' of [{level}] in scripts\\scenes.ltx"),
+          },
+        );
+      }
+    }
+  }
+
   /// The info portions the spawn files' documents give, and those the condlists of their objects' custom data read,
   /// give, take and pass. A spawn file that does not read is reported by the spawns check.
   fn add_spawns(&mut self, project: &GamedataProject, job: &JobHandle) {
@@ -354,6 +395,7 @@ impl InfoPortionTable {
       InfoPortionRole::Declared => Some(&mut uses.declared),
       InfoPortionRole::Given => Some(&mut uses.given),
       InfoPortionRole::GivenUnlisted => Some(&mut uses.given_unlisted),
+      InfoPortionRole::GivenByDebugScene => Some(&mut uses.given_by_debug_scene),
       InfoPortionRole::Taken => Some(&mut uses.taken),
       InfoPortionRole::Read => Some(&mut uses.read),
       InfoPortionRole::Passed => None,

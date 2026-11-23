@@ -7,6 +7,8 @@ pub(crate) enum InfoPortionRole {
   Given,
   /// A dialog file `system.ltx` does not list would give it, but the engine never loads that file.
   GivenUnlisted,
+  /// A debug scene of `scripts\scenes.ltx` starts with it, which a developer menu gives to jump into its quest.
+  GivenByDebugScene,
   /// A condlist effect `%-name%` or a dialog's `disable_info` takes it away.
   Taken,
   /// A condlist condition `{+name}` or `{-name}`, or a dialog's `has_info` or `dont_has_info`, reads it.

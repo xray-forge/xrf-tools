@@ -63,7 +63,16 @@ const READER: &str = "[sr_idle@wait]\non_info = {+given_info +dialog_info +built
                       on_info2 = {-scripted_info -bone_info -passed_info} sr_idle@next\n\
                       on_actor_in_zone = zone | {+gone_info} sr_idle@next\n\
                       on_info3 = {+table_info -taken_info} sr_idle@next\n\
-                      on_info4 = {+layer_info +given_inf0 +unlisted_info} sr_idle@next\n";
+                      on_info4 = {+layer_info +given_inf0 +unlisted_info} sr_idle@next\n\
+                      on_info5 = {+searched_info +default_searched_info +scene_info} sr_idle@next\n";
+
+/// An NPC's logic naming its known info section, and another's relying on the default one: the actor takes both on
+/// searching the body.
+const KNOWN_INFO: &str = "[logic]\nknown_info = known_info@body\n\n[known_info@body]\nsearched_info\n";
+const DEFAULT_KNOWN_INFO: &str = "[logic]\nactive = walker@idle\n\n[known_info]\ndefault_searched_info\n";
+
+/// The debug scenes a developer menu jumps into, the first starting with the portion its quest reads.
+const SCENES: &str = "[zaton]\nscene_one = scene_info | walk_path | look_path | wpn_ak74\n";
 
 /// Logic giving portions: in a plain effect, in the second condlist of a field holding two, and by passing one to a
 /// condlist function.
@@ -91,9 +100,9 @@ fn messages(result: &GamedataInfoPortionsVerificationResult) -> Vec<&str> {
 }
 
 /// A portion is given by a condlist effect in any condlist of a field, a condlist function receiving it, a dialog's
-/// `give_info` in a listed file, or a script passing its name to a call, keeping it in a table as data or building it
-/// onto a prefix; one only a table of constants mirrors, one only taken away, or one only an unlisted dialog file
-/// gives, is still never given.
+/// `give_info` in a listed file, an NPC's known info section, a debug scene starting with it, or a script passing its
+/// name to a call, keeping it in a table as data or building it onto a prefix; one only a table of constants mirrors,
+/// one only taken away, or one only an unlisted dialog file gives, is still never given.
 #[test]
 fn reports_a_portion_read_that_nothing_gives() {
   let result: GamedataInfoPortionsVerificationResult = InfoPortionTree::new()
@@ -102,6 +111,9 @@ fn reports_a_portion_read_that_nothing_gives() {
     .with("configs/scripts/giver.ltx", GIVER)
     .with("configs/gameplay/dialogs.xml", GIVING_DIALOGS)
     .with("configs/gameplay/dialogs_unlisted.xml", UNLISTED_DIALOGS)
+    .with("configs/scripts/body.ltx", KNOWN_INFO)
+    .with("configs/scripts/default_body.ltx", DEFAULT_KNOWN_INFO)
+    .with("configs/scripts/scenes.ltx", SCENES)
     .with("scripts/quest.script", QUEST_SCRIPT)
     .verify();
 
@@ -148,6 +160,6 @@ fn skips_a_tree_holding_no_scripts() {
   assert_eq!(result.get_status(), GamedataVerificationStatus::Skipped);
   assert_eq!(
     result.get_summary(),
-    "13 info portions named, but no scripts, so which are never given is unknown"
+    "16 info portions named, but no scripts, so which are never given is unknown"
   );
 }

@@ -10,6 +10,8 @@ pub(crate) struct InfoPortionUses {
   pub(crate) given: Option<InfoPortionPlace>,
   /// The first `give_info` of a dialog file `system.ltx` does not list, which the engine never loads.
   pub(crate) given_unlisted: Option<InfoPortionPlace>,
+  /// The first debug scene starting with it, which a developer menu gives to jump into its quest.
+  pub(crate) given_by_debug_scene: Option<InfoPortionPlace>,
   /// The first condlist effect or dialog `disable_info` taking it away.
   pub(crate) taken: Option<InfoPortionPlace>,
   /// The first condlist condition or dialog `has_info` or `dont_has_info` the engine reads it in.
@@ -23,11 +25,12 @@ pub(crate) struct InfoPortionUses {
 
 impl InfoPortionUses {
   /// Where something first reads the portion, when nothing gives it: no condlist, dialog the engine loads or spawned
-  /// document, no script naming it, and no condlist function receiving it.
+  /// document, no script naming it, no condlist function receiving it, and no debug scene starting with it, which is
+  /// the author's own entry into the quest.
   pub(crate) fn find_read_only(&self) -> Option<&InfoPortionPlace> {
     self
       .read
       .as_ref()
-      .filter(|_| self.given.is_none() && !self.is_scripted && !self.is_passed)
+      .filter(|_| self.given.is_none() && self.given_by_debug_scene.is_none() && !self.is_scripted && !self.is_passed)
   }
 }
