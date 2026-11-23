@@ -1,0 +1,24 @@
+accepted = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unicode-3.0",
+  "BSL-1.0",
+  "0BSD",
+  "MIT-0",
+  "CC0-1.0",
+  "Unlicense",
+  # File-level copyleft: these crates ship unmodified, and their source stays on crates.io.
+  "MPL-2.0",
+]
+# Neither is in the binary.
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+
+# Workspace members are first-party and unpublished; their own third-party credits ship from the crate's directory.
+[private]
+ignore = true

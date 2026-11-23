@@ -53,12 +53,12 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-make@0.37.24
+          tool: cargo-make@0.37.24,cargo-about@0.9.3
 
       # No CARGO_PROFILE_RELEASE_* overrides anywhere in this workflow: the committed profile is the
       # maximal build, so producing it means leaving it alone.
-      - name: Build CLI
-        run: cargo make build-cli-release
+      - name: Build and package the CLI
+        run: cargo make package-cli
 
       - name: Build and package the application
         run: cargo make package-app
@@ -68,7 +68,8 @@ jobs:
         with:
           if-no-files-found: error
           name: optimized-windows
-          path: target/release/xrf-cli.exe
+          path: target/package/xrf-cli-windows-x64.zip
+          compression-level: 0
           retention-days: 1
 
       - name: Upload the optimized application archive
@@ -96,12 +97,20 @@ jobs:
       - name: Build CLI
         run: cargo build -p xrf-cli --release --locked
 
-      - name: Upload the optimized Linux binary
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about@0.9.3
+
+      - name: Package the CLI
+        run: node cli/package/cli.mjs
+
+      - name: Upload the optimized Linux CLI
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: optimized-linux
-          path: target/release/xrf-cli
+          path: target/package/xrf-cli-linux-x64.tar.gz
+          compression-level: 0
           retention-days: 1
 
   publish-nightly:
@@ -130,4 +139,4 @@ jobs:
       - name: Publish the optimized binaries to the nightly release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload --clobber nightly xrf-cli.exe xrf-app-windows-x64.zip xrf-cli
+        run: gh release upload --clobber nightly xrf-cli-windows-x64.zip xrf-app-windows-x64.zip xrf-cli-linux-x64.tar.gz

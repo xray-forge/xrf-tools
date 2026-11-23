@@ -86,20 +86,21 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-make@0.37.24
+          tool: cargo-make@0.37.24,cargo-about@0.9.3
 
       - name: Build CLI
         run: cargo make build-cli-release
 
-      - name: Mark the CLI binary as a development build
-        run: Move-Item target/release/xrf-cli.exe target/release/xrf-cli-dev.exe
+      - name: Package the CLI as a development build
+        run: node cli/package/cli.mjs --name xrf-cli-dev-windows-x64
 
-      - name: Upload the CLI binary
+      - name: Upload the CLI archive
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: xrf-cli-windows
-          path: target/release/xrf-cli-dev.exe
+          path: target/package/xrf-cli-dev-windows-x64.zip
+          compression-level: 0
           retention-days: 1
 
   check-typescript:
@@ -211,7 +212,7 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-make@0.37.24
+          tool: cargo-make@0.37.24,cargo-about@0.9.3
 
       - name: Record the build timestamp
         shell: bash
@@ -284,15 +285,20 @@ jobs:
       - name: Build CLI
         run: cargo build -p xrf-cli --release --locked
 
-      - name: Mark the CLI binary as a development build
-        run: mv target/release/xrf-cli target/release/xrf-cli-dev
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about@0.9.3
 
-      - name: Upload the CLI binary
+      - name: Package the CLI as a development build
+        run: node cli/package/cli.mjs --name xrf-cli-dev-linux-x64
+
+      - name: Upload the CLI archive
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: xrf-cli-linux
-          path: target/release/xrf-cli-dev
+          path: target/package/xrf-cli-dev-linux-x64.tar.gz
+          compression-level: 0
           retention-days: 1
 
   publish-nightly:
@@ -317,11 +323,11 @@ jobs:
         with:
           name: xrf-cli-linux
 
-      - name: Publish the nightly CLI binaries
+      - name: Publish the nightly CLI archives
         if: ${{ steps.update-nightly-tag.outcome == 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload --clobber nightly xrf-cli-dev.exe xrf-cli-dev
+        run: gh release upload --clobber nightly xrf-cli-dev-windows-x64.zip xrf-cli-dev-linux-x64.tar.gz
 
       - uses: actions/download-artifact@v8
         with:

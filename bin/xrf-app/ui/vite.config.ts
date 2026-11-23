@@ -8,6 +8,7 @@ import { defineConfig, normalizePath, type Plugin, runnerImport } from "vite";
 import { default as inlineSource } from "vite-plugin-inline-source";
 
 import { devCspPlugin } from "./cli/build/dev-csp.ts";
+import { npmLicensesPlugin } from "./cli/build/licenses.ts";
 import { replaceModuleName } from "./cli/build/module-name.ts";
 import { applyObserver } from "./cli/build/observer.ts";
 import { default as manifest } from "./package.json" with { type: "json" };
@@ -135,6 +136,7 @@ export default defineConfig({
     inlineSource({ optimizeJs: true }),
     react(),
     reactObserverPlugin(),
+    npmLicensesPlugin(path.resolve(import.meta.dirname, "./target/licenses/npm-packages.json")),
   ],
   build: {
     // Beside, not over, the tool caches in `target/`: Tauri embeds this whole directory and this build empties it.

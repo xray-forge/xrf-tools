@@ -96,6 +96,13 @@ category = "Build"
 command = "cargo"
 args = ["build", "-p", "xrf-cli", "--release", "--locked"]
 
+[tasks.package-cli]
+description = "Build the release CLI and pack it with its licence notices into target/package/xrf-cli-<os>-x64 (.zip on Windows, .tar.gz on Linux)."
+category = "Build"
+dependencies = ["build-cli-release"]
+command = "node"
+args = ["cli/package/cli.mjs"]
+
 [tasks.build-app]
 description = "Build the desktop application in debug mode, without DLSS."
 category = "Build"

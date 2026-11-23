@@ -9,6 +9,7 @@ import { SettingsAboutService } from "@/core/settings-dialog/services/settings-a
 import { SettingsBuildSection } from "./SettingsBuildSection";
 import { SettingsEnvironmentSection } from "./SettingsEnvironmentSection";
 import { SettingsGraphicsSection } from "./SettingsGraphicsSection";
+import { SettingsLicensesSection } from "./SettingsLicensesSection";
 import { SettingsRuntimeSection } from "./SettingsRuntimeSection";
 import { SettingsVariablesSection } from "./SettingsVariablesSection";
 import { SettingsWebviewSection } from "./SettingsWebviewSection";
@@ -35,6 +36,7 @@ export function SettingsAboutSection({
       <SettingsEnvironmentSection />
       <SettingsVariablesSection />
       <SettingsGraphicsSection />
+      <SettingsLicensesSection />
     </div>
   );
 }
