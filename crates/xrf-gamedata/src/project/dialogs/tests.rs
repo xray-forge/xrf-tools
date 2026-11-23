@@ -721,6 +721,37 @@ fn fails_a_listed_file_that_is_missing_and_reports_a_missing_info_portion_file()
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
 }
 
+/// `XMLDocument::ParseFile` asserts on a listed dialog or character file that does not parse or includes a file the
+/// tree lacks, and Call of Pripyat skips an info portion file that does not read.
+#[test]
+fn fails_a_listed_file_that_does_not_read_and_reports_an_unreadable_info_portion_file() {
+  let result: GamedataDialogsVerificationResult = DialogTree::new()
+    .with("configs/system.ltx", &format!("{SYSTEM}\n{LISTS}"))
+    .with(
+      "configs/gameplay/character_desc_general.xml",
+      "<xml>\n#include \"gameplay\\character_gone.xml\"\n</xml>\n",
+    )
+    .with("configs/gameplay/dialogs.xml", "<game_dialogs><dialog id=\"d\">")
+    .with(
+      "configs/gameplay/info_portions.xml",
+      "<game_information_portions><info_portion id=\"a\"\"/>",
+    )
+    .verify();
+
+  assert_eq!(
+    rules(&result)
+      .into_iter()
+      .filter(|rule| rule.contains("invalid") || rule.contains("unreadable"))
+      .collect::<Vec<&str>>(),
+    [
+      "dialog.file-invalid",
+      "dialog.file-invalid",
+      "dialog.partner-unreadable"
+    ]
+  );
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
+}
+
 /// The engine's id index keeps the first declaration of an id and skips the rest with only a log line.
 #[test]
 fn reports_an_id_declared_twice() {

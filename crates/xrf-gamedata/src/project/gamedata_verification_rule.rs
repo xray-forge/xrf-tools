@@ -49,6 +49,10 @@ pub enum GamedataVerificationRule {
   /// A dialog or partner file `system.ltx` does not list, so the engine never loads what it declares.
   #[display("dialog.file-unlisted")]
   DialogFileUnlisted,
+  /// A dialog, character or profile file `system.ltx` lists that does not read as the engine reads configs, a parse
+  /// error or an `#include` the tree does not hold, which `XMLDocument::ParseFile` asserts on.
+  #[display("dialog.file-invalid")]
+  DialogFileInvalid,
   /// A precondition, action, script text or scripted dialog's `init_func` naming a function no script defines.
   #[display("dialog.functor-missing")]
   DialogFunctorMissing,
@@ -61,8 +65,9 @@ pub enum GamedataVerificationRule {
   /// A character or info portion offering a dialog no dialog file declares.
   #[display("dialog.offer-missing")]
   DialogOfferMissing,
-  /// A character, profile or info portion file that does not read, so what it declares goes unjudged, or a listed info
-  /// portion file the tree does not hold, which the engine skips.
+  /// A partner file that does not read where the engine does not assert on it: an info portion file, which Call of
+  /// Pripyat loads without `crashOnFail`, or any file of a tree whose `system.ltx` lists none; or a listed info portion
+  /// file the tree does not hold, which the engine skips.
   #[display("dialog.partner-unreadable")]
   DialogPartnerUnreadable,
   /// A dialog the engine cannot open: no phrase `0` in its phrase list, or no phrase list and no `init_func`.
@@ -89,7 +94,9 @@ pub enum GamedataVerificationRule {
   /// A phrase line with no text in a language the game ships, which the engine shows as its key.
   #[display("dialog.text-missing")]
   DialogTextMissing,
-  /// A dialog file that does not read, so its dialogs go unjudged.
+  /// A dialog file whose dialogs go unjudged though the engine does not assert on it: one only this reader cannot
+  /// model, such as one an `#include` splices dialogs into, or an unreadable one in a tree whose `system.ltx` lists no
+  /// dialog files.
   #[display("dialog.unreadable")]
   DialogUnreadable,
   /// A texture an environment config names that the game does not hold.

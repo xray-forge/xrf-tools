@@ -4,6 +4,7 @@ use xrf_extension::XrayExtension;
 use xrf_translation::{TranslationGamedataReader, TranslationSourceReader};
 use xrf_utils::format_portable_path;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
+use xrf_xml::XmlEngineSource;
 
 use crate::conversation::dialog::Dialog;
 use crate::conversation::dialog_element::DialogElement;
@@ -39,8 +40,14 @@ pub struct DialogProject {
 }
 
 impl DialogProject {
-  /// The finding a dialog file that could not be read becomes.
+  /// The finding a dialog file that does not read becomes, as the engine reads configs too: a parse error, or an
+  /// `#include` the tree does not hold, either of which `XMLDocument::ParseFile` asserts on.
   pub const UNREADABLE_RULE: &'static str = "dialog.unreadable";
+  /// The finding a dialog file the engine reads but this reader's editable model does not becomes, such as one whose
+  /// dialogs an `#include` splices in.
+  pub const UNMODELLED_RULE: &'static str = "dialog.unmodelled";
+  /// How the engine's config reader splices one file into another.
+  const INCLUDE_DIRECTIVE: &'static [u8] = b"#include";
   /// The finding a listed dialog file the roots do not hold becomes.
   pub const MISSING_RULE: &'static str = "dialog.missing";
 
@@ -121,6 +128,10 @@ impl DialogProject {
   }
 
   /// Read one dialog file into the project's files, or record why it did not read.
+  ///
+  /// The editable model reads a file as written, so one it refuses, and one holding an `#include` it does not follow,
+  /// is judged again as the engine reads configs, the include spliced in: what the engine refuses too does not read,
+  /// and what it reads is only not modelled.
   fn read_into(
     search: &XraySearch,
     asset: &XrayAsset,
@@ -128,9 +139,45 @@ impl DialogProject {
     findings: &mut Vec<DialogFinding>,
   ) {
     let logical_path: String = asset.get_logical_path().as_str().to_owned();
+    let bytes: Vec<u8> = match search.read_asset(asset) {
+      Ok(bytes) => bytes,
+      Err(error) => {
+        findings.push(DialogFinding::new(
+          Self::UNREADABLE_RULE,
+          Some(logical_path),
+          error.to_string(),
+        ));
 
-    match Self::read_asset(search, asset) {
+        return;
+      }
+    };
+    let file: XrfResult<DialogFile> = DialogFile::read_from_bytes(&bytes);
+    let is_including: bool = bytes
+      .windows(Self::INCLUDE_DIRECTIVE.len())
+      .any(|window| window == Self::INCLUDE_DIRECTIVE);
+
+    if (file.is_err() || is_including)
+      && let Err(error) = XmlEngineSource::parse(&bytes, &mut |path| search.read(path))
+    {
+      findings.push(DialogFinding::new(
+        Self::UNREADABLE_RULE,
+        Some(logical_path),
+        error.to_string(),
+      ));
+
+      return;
+    }
+
+    match file {
       Ok(file) => {
+        if is_including {
+          findings.push(DialogFinding::new(
+            Self::UNMODELLED_RULE,
+            Some(logical_path.clone()),
+            String::from("The file splices in another with #include, whose dialogs are not read here"),
+          ));
+        }
+
         for issue in file.get_issues() {
           findings.push(DialogFinding::new(
             "dialog.schema",
@@ -146,7 +193,7 @@ impl DialogProject {
         });
       }
       Err(error) => findings.push(DialogFinding::new(
-        Self::UNREADABLE_RULE,
+        Self::UNMODELLED_RULE,
         Some(logical_path),
         error.to_string(),
       )),
@@ -397,9 +444,5 @@ impl DialogProject {
       files,
       findings: self.findings.clone(),
     }
-  }
-
-  fn read_asset(search: &XraySearch, asset: &XrayAsset) -> XrfResult<DialogFile> {
-    DialogFile::read_from_bytes(&search.read_asset(asset)?)
   }
 }

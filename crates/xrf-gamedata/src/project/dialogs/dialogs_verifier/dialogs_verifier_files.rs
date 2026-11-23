@@ -14,9 +14,10 @@ use crate::project::gamedata_verification_rule::GamedataVerificationRule;
 impl DialogsVerifier<'_> {
   /// Dialog files the engine cannot load or never loads.
   ///
-  /// A listed file the tree lacks stops `CPhraseDialog`'s id index, which loads its list with `crashOnFail`. A file
-  /// that does not read is only reported: the engine asserts on one its parser refuses, but this reader may refuse
-  /// more than it does.
+  /// `CPhraseDialog`'s id index loads its list with `crashOnFail`, so a listed file the tree lacks stops it, and so
+  /// does one that does not read as the engine reads configs (`XMLDocument::ParseFile` asserts on a parse error and on
+  /// a missing `#include`). A file the engine reads but this reader cannot model is only reported, as is any file of a
+  /// tree whose `system.ltx` lists none, which may not be one the engine loads.
   pub(super) fn report_dialog_files(
     &self,
     project: &DialogProject,
@@ -28,12 +29,21 @@ impl DialogsVerifier<'_> {
     for finding in project.get_findings() {
       let path: PathBuf = self.report_path(finding.subject.as_deref().unwrap_or_default());
 
-      if finding.rule == DialogProject::UNREADABLE_RULE {
+      if finding.rule == DialogProject::UNREADABLE_RULE && listed.is_some() {
+        result.fail(
+          GamedataVerificationRule::DialogFileInvalid,
+          &path,
+          format!(
+            "Dialog file does not read as the engine reads it, which the engine asserts on: {}",
+            finding.message
+          ),
+        );
+      } else if finding.rule == DialogProject::UNREADABLE_RULE || finding.rule == DialogProject::UNMODELLED_RULE {
         result.tolerate(
           GamedataVerificationRule::DialogUnreadable,
           &path,
           format!(
-            "Dialog file does not read, so its dialogs are not judged: {}",
+            "Dialog file does not read here, so its dialogs are not judged: {}",
             finding.message
           ),
         );
@@ -94,9 +104,11 @@ impl DialogsVerifier<'_> {
 
   /// Partner files the engine cannot load or never loads, and partner ids declared twice.
   ///
-  /// A listed character or profile file the tree lacks stops the engine's id index, which loads those lists with
-  /// `crashOnFail`; the info portion list is loaded without it, so a missing info portion file is skipped. A file that
-  /// does not read is only reported, as a dialog file is.
+  /// The engine's id index loads the character and profile lists with `crashOnFail`, so a listed file of theirs the
+  /// tree lacks, or one that does not read as the engine reads configs, stops it. Call of Pripyat loads the info
+  /// portion list without it, so a missing or unreadable info portion file is skipped, and is reported; so is any file
+  /// of a tree whose `system.ltx` lists none, which may not be one the engine loads. Partner files are read as the
+  /// engine reads them, `#include` spliced in, so what does not read here does not read there.
   pub(super) fn report_partner_files(
     &self,
     partners: &DialogPartners,
@@ -108,8 +120,18 @@ impl DialogsVerifier<'_> {
     for finding in partners.get_findings() {
       let subject: &str = finding.subject.as_deref().unwrap_or_default();
       let path: PathBuf = self.report_path(subject);
+      let is_asserted: bool = listed.is_some_and(|listed| !listed.is_info_portion_file(prefix, subject));
 
-      if finding.rule == DialogPartners::UNREADABLE_RULE {
+      if finding.rule == DialogPartners::UNREADABLE_RULE && is_asserted {
+        result.fail(
+          GamedataVerificationRule::DialogFileInvalid,
+          &path,
+          format!(
+            "Partner file does not read as the engine reads it, which the engine asserts on: {}",
+            finding.message
+          ),
+        );
+      } else if finding.rule == DialogPartners::UNREADABLE_RULE {
         result.tolerate(
           GamedataVerificationRule::DialogPartnerUnreadable,
           &path,

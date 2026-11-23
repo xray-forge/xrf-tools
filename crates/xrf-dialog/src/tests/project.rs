@@ -225,6 +225,45 @@ fn refuses_roots_exposing_no_dialog_files() -> XrfResult {
   Ok(())
 }
 
+/// A dialog file is judged as the engine reads configs: one splicing in a part through `#include` reads there but is
+/// not modelled here, and one including a file the tree lacks does not read at all.
+#[test]
+fn tells_a_file_only_this_reader_cannot_model_from_one_the_engine_refuses() -> XrfResult {
+  let root: PathBuf = create_gamedata("including")?;
+  let gameplay: PathBuf = root.join("configs").join("gameplay");
+
+  fs::write(
+    gameplay.join("dialogs_including.xml"),
+    "<game_dialogs>\n#include \"gameplay\\dialogs_part.xml\"\n</game_dialogs>\n",
+  )?;
+  fs::write(gameplay.join("dialogs_part.xml"), "<dialog id=\"spliced\"></dialog>\n")?;
+  fs::write(
+    gameplay.join("dialogs_gone_part.xml"),
+    "<game_dialogs>\n#include \"gameplay\\gone.xml\"\n</game_dialogs>\n",
+  )?;
+
+  let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
+  let rule = |name: &str| -> Option<&str> {
+    project
+      .get_findings()
+      .iter()
+      .find(|finding| {
+        finding
+          .subject
+          .as_deref()
+          .is_some_and(|subject| subject.ends_with(name))
+      })
+      .map(|finding| finding.rule.as_str())
+  };
+
+  fs::remove_dir_all(root)?;
+
+  assert_eq!(rule("dialogs_including.xml"), Some(DialogProject::UNMODELLED_RULE));
+  assert_eq!(rule("dialogs_gone_part.xml"), Some(DialogProject::UNREADABLE_RULE));
+
+  Ok(())
+}
+
 #[test]
 fn opens_despite_one_unreadable_file_and_reports_it() -> XrfResult {
   let root: PathBuf = create_gamedata("partial")?;
