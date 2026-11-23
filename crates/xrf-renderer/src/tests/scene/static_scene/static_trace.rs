@@ -3,10 +3,7 @@ use std::sync::Arc;
 use xrf_math::glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{PassParameters, ProxyAllocator, ProxyHandle};
 use xrf_test_utils::TestSkip;
-use xrf_visual::{
-  SectorDescription, SectorGeometry, SectorPackage, SectorSection, SectorSurface, VisualClusters, VisualDrawRange,
-  VisualSection,
-};
+use xrf_visual::SectorSurface;
 
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::can_trace;
@@ -29,6 +26,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::trace::static_trace::StaticTrace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::tests::scene::static_scene::sector_fixture::create_sector;
 use crate::tests::support::test_context::create_test_context;
 use crate::tests::support::test_source::EmptySource;
 use crate::tests::support::test_workers::create_workers;
@@ -105,79 +103,6 @@ fn cs_probe(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 ";
 
-/// A sector of two sections: a ground quad two metres across at the origin, and a triangle five metres up ten along.
-fn create_sector() -> SectorPackage {
-  let positions: [[f32; 3]; 7] = [
-    [-1.0, 0.0, -1.0],
-    [1.0, 0.0, -1.0],
-    [1.0, 0.0, 1.0],
-    [-1.0, 0.0, 1.0],
-    [9.0, 5.0, -1.0],
-    [11.0, 5.0, -1.0],
-    [10.0, 5.0, 1.0],
-  ];
-  let indices: [u32; 9] = [0, 1, 2, 0, 2, 3, 4, 5, 6];
-  let mut buffer: Vec<u8> = bytemuck::cast_slice(&positions).to_vec();
-  let index_offset: u32 = buffer.len() as u32;
-
-  buffer.extend_from_slice(bytemuck::cast_slice(&indices));
-
-  let end: u32 = buffer.len() as u32;
-  let section = |start: u32, count: u32| SectorSection {
-    surface: SectorSurface {
-      shader_id: 0,
-      shader_name: Some(String::from("default")),
-      texture_name: Some(String::from("test")),
-      hemi: None,
-    },
-    drawables: Vec::new(),
-    draw: VisualDrawRange { start, count },
-    bounds: None,
-  };
-
-  SectorPackage {
-    description: SectorDescription {
-      sector: 0,
-      geometry: SectorGeometry {
-        vertex_count: positions.len() as u32,
-        index_count: indices.len() as u32,
-        positions: VisualSection {
-          byte_offset: 0,
-          byte_length: index_offset,
-        },
-        normals: None,
-        tangents: None,
-        binormals: None,
-        uvs: None,
-        uv_components: 0,
-        lightmap_uvs: None,
-        colors: None,
-        indices: VisualSection {
-          byte_offset: index_offset,
-          byte_length: end - index_offset,
-        },
-        clusters: VisualClusters {
-          ranges: VisualSection {
-            byte_offset: end,
-            byte_length: 0,
-          },
-          spheres: VisualSection {
-            byte_offset: end,
-            byte_length: 0,
-          },
-        },
-      },
-      sections: vec![section(0, 6), section(6, 3)],
-      instances: Vec::new(),
-      impostors: None,
-      skipped: Vec::new(),
-      bounds: None,
-      buffer_length: end,
-    },
-    buffer,
-  }
-}
-
 /// A model of one triangle two metres across, flat at its origin, in the model layout: its position in its first three
 /// words as floats.
 fn create_model() -> StaticModel {
@@ -250,7 +175,7 @@ fn traces_a_sector_through_its_records() {
       },
       &[],
       handle,
-      &create_sector(),
+      &create_sector(0),
     )
     .unwrap();
   scene.prepare_draws(device, queue, &mut encoder);
@@ -551,7 +476,7 @@ fn traces_spawned_objects_where_they_stand() {
       },
       &[],
       sectors.allocate(),
-      &create_sector(),
+      &create_sector(0),
     )
     .unwrap();
   scene
