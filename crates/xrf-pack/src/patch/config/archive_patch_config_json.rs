@@ -8,7 +8,7 @@ use xrf_utils::{StagedFile, format_path};
 
 use crate::archive_config_format::ArchiveConfigFormat;
 use crate::archive_config_ltx::ArchiveConfigLtx;
-use crate::pack::config::ArchivePackHeaderEntry;
+use crate::pack::config::ArchivePackHeader;
 use crate::patch::config::ArchivePatchConfig;
 
 /// A patching configuration as a file carries it: the file-owned fields, and nothing else.
@@ -33,7 +33,7 @@ pub struct ArchivePatchConfigJson {
   pub exclude_extensions: Option<Vec<String>>,
   /// `[header]` entries written into the published volumes.
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub header: Option<Vec<ArchivePackHeaderEntry>>,
+  pub header: Option<ArchivePackHeader>,
 }
 
 impl ArchivePatchConfigJson {
@@ -80,7 +80,7 @@ impl From<&ArchivePatchConfig> for ArchivePatchConfigJson {
       include: Self::some_if_populated(&config.include),
       ignore: Self::some_if_populated(&config.ignore),
       exclude_extensions: Self::some_if_populated(&config.exclude_extensions),
-      header: config.header.as_deref().map(ArchivePackHeaderEntry::split),
+      header: config.header.clone(),
     }
   }
 }
@@ -101,8 +101,8 @@ impl ArchivePatchConfig {
       self.exclude_extensions = extensions.clone();
     }
 
-    if let Some(entries) = &json.header {
-      self.header = Some(ArchivePackHeaderEntry::join(entries));
+    if let Some(header) = &json.header {
+      self.header = Some(header.clone());
     }
 
     self

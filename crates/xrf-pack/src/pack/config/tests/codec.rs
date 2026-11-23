@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfError;
 use xrf_test_utils::GeneratedResources;
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory};
+use crate::pack::config::{
+  ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory, ArchivePackHeader, ArchivePackHeaderEntry,
+};
 
 /// An empty directory of one case's own, since several assertions here scan one.
 fn test_directory(name: &str) -> PathBuf {
@@ -31,9 +33,9 @@ fn populated() -> ArchivePackConfig {
   config.include_files = vec![String::from("gamemtl.xr"), String::from("shaders.xr")];
   config.include_directories = vec![directory("configs", true), directory("spawns", false)];
   config.exclude_directories = vec![directory("levels\\build", true)];
-  config.header = Some(String::from(
-    "[header]\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\\r\n",
-  ));
+  // Not the default a blank configuration already holds, so a round trip that dropped it would show.
+  config.header =
+    Some(ArchivePackHeader::default().with_overrides(&[ArchivePackHeaderEntry::new("creator", "Modder")]));
 
   config
 }
@@ -84,7 +86,11 @@ fn equivalent_ltx_and_json_produce_the_same_file_owned_fields() {
   let from_ltx: ArchivePackConfig = blank().with_config_file(&ltx_path).expect("ltx applies");
   let from_json: ArchivePackConfig = blank().with_config_file(&json_path).expect("json applies");
 
-  // The header is compared as text because the archive stores exactly these bytes as chunk 666.
+  // The header is compared as text too, because the archive stores exactly those bytes as chunk 666.
+  assert_eq!(
+    from_ltx.header.as_ref().map(ArchivePackHeader::to_text),
+    from_json.header.as_ref().map(ArchivePackHeader::to_text)
+  );
   assert_eq!(from_ltx.exclude_extensions, from_json.exclude_extensions);
   assert_eq!(from_ltx.include_files, from_json.include_files);
   assert_eq!(from_ltx.include_directories, from_json.include_directories);

@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;
-use xrf_pack::{
-  ArchivePackConfig, ArchivePackHeaderEntry, ArchivePackMode, ArchivePatchConfig, ArchiveVolumeExtension,
-};
+use xrf_pack::{ArchivePackConfig, ArchivePackHeader, ArchivePackMode, ArchivePatchConfig, ArchiveVolumeExtension};
 
 /// The volumes a pack or a patch was asked to write: where, under what name and header, how stored, how large, and
 /// whether a set already there may be replaced.
@@ -11,7 +9,7 @@ pub(crate) struct ArchiveVolumeRequest {
   pub dest: PathBuf,
   pub name: String,
   /// The header entries named, merged over the default header, or none where none was named.
-  pub header: Option<Vec<ArchivePackHeaderEntry>>,
+  pub header: Option<ArchivePackHeader>,
   pub is_stored: bool,
   pub is_xdb: bool,
   /// The volume cap in bytes, where one was named.
@@ -28,7 +26,7 @@ impl ArchiveVolumeRequest {
   /// Returns an error for a volume size the configuration refuses.
   pub(crate) fn apply_to_pack(&self, mut config: ArchivePackConfig) -> XrfResult<ArchivePackConfig> {
     if let Some(header) = &self.header {
-      config = config.with_header_entries(header);
+      config.header = Some(header.clone());
     }
 
     if self.is_stored {
@@ -55,7 +53,7 @@ impl ArchiveVolumeRequest {
   /// Returns an error for a volume size the configuration refuses.
   pub(crate) fn apply_to_patch(&self, mut config: ArchivePatchConfig) -> XrfResult<ArchivePatchConfig> {
     if let Some(header) = &self.header {
-      config.header = Some(ArchivePackHeaderEntry::join(header));
+      config.header = Some(header.clone());
     }
 
     if self.is_stored {

@@ -1,3 +1,4 @@
+import { ArchivePackHeader, ArchivePackHeaderEntry } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
@@ -9,12 +10,12 @@ import { Stack } from "@xrf/ui/layout/stack";
 import { Typography } from "@xrf/ui/typography";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
-import { isReservedHeaderKey, isSameHeaderKey, readHeaderEntries, writeHeaderValue } from "@/core/archive/lib/header";
+import { isReservedHeaderKey, isSameHeaderKey, removeHeaderEntry, writeHeaderValue } from "@/core/archive/lib/header";
 
 interface IArchiveHeaderEntriesProps extends BaseComponentProps {
-  header: Nullable<string>;
+  header: Nullable<ArchivePackHeader>;
   isDisabled?: boolean;
-  onChange: (header: Nullable<string>) => void;
+  onChange: (header: Nullable<ArchivePackHeader>) => void;
 }
 
 /**
@@ -31,14 +32,16 @@ export function ArchiveHeaderEntries({
   const [newKey, setNewKey] = useState<string>("");
   const [newValue, setNewValue] = useState<string>("");
 
-  const entries: Array<[string, string]> = readHeaderEntries(header);
-  const customEntries: Array<[string, string]> = entries.filter(([key]) => !isReservedHeaderKey(key));
+  const entries: ArchivePackHeader = header ?? [];
+  const customEntries: ArchivePackHeader = entries.filter((entry) => !isReservedHeaderKey(entry.key));
 
   const trimmedKey: string = newKey.trim();
-  const isDuplicateKey: boolean = Boolean(trimmedKey && entries.some(([key]) => isSameHeaderKey(key, trimmedKey)));
+  const isDuplicateKey: boolean = Boolean(
+    trimmedKey && entries.some((entry) => isSameHeaderKey(entry.key, trimmedKey))
+  );
   const keyError: Nullable<string> = isDuplicateKey ? "That key is already in the header" : null;
-  // Why the draft cannot be added yet, which both disables the action and says so. A blank value is how a header entry
-  // is removed, so adding one would write nothing and still clear the draft.
+  // Why the draft cannot be added yet, which both disables the action and says so. A value is what a custom entry is
+  // for, so a key alone is not yet one.
   const addBlocker: Nullable<string> = isDisabled
     ? "Wait for the current operation to finish before editing"
     : (keyError ?? (!trimmedKey ? "Enter a header key" : null) ?? (!newValue.trim() ? "Enter a header value" : null));
@@ -48,7 +51,7 @@ export function ArchiveHeaderEntries({
       return;
     }
 
-    onChange(writeHeaderValue(header, trimmedKey, newValue));
+    onChange(writeHeaderValue(header, trimmedKey, newValue.trim()));
 
     setNewKey("");
     setNewValue("");
@@ -65,12 +68,12 @@ export function ArchiveHeaderEntries({
     >
       <Stack spacing={1}>
         {customEntries.length ? (
-          customEntries.map(([key, value]) => (
+          customEntries.map(({ key, value }: ArchivePackHeaderEntry) => (
             <EditableListItem
               key={key}
               removeLabel={`Remove ${key}`}
               isDisabled={isDisabled}
-              onRemove={() => onChange(writeHeaderValue(header, key, ""))}
+              onRemove={() => onChange(removeHeaderEntry(header, key))}
             >
               <Typography className={"monospace min-w-50 shrink-0"} variant={"body2"}>
                 {key}

@@ -19,7 +19,10 @@ const CONFIG: ArchivePatchConfig = {
   include: [],
   ignore: [],
   excludeExtensions: [],
-  header: "[header]\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\\r\n",
+  header: [
+    { key: "auto_load", value: "true" },
+    { key: "entry_point", value: "$fs_root$\\gamedata\\" },
+  ],
   mode: "Compress",
   maxVolumeSize: 1900 * BYTES_PER_MEGABYTE,
   isWithOversizedVolumes: false,

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
-use xrf_pack::{ArchivePackConfig, ArchivePackHeaderEntry};
+use xrf_pack::{ArchivePackConfig, ArchivePackHeader, ArchivePackHeaderEntry};
 
 use crate::commands::archive::ArchiveVolumeRequest;
 
@@ -116,7 +116,7 @@ impl ArchiveVolumeArguments {
         .transpose()?
         // Merged over the defaults: naming one key on a command line is adding it, and the two the engine reads
         // unconditionally are the ones nobody retypes.
-        .map(|entries| ArchivePackHeaderEntry::over_default(&entries)),
+        .map(|entries| ArchivePackHeader::default().with_overrides(&entries)),
       is_stored: matches.get_flag(Self::STORE),
       is_xdb: matches.get_flag(Self::XDB),
       max_volume_size: Self::parse_volume_size(matches, is_oversized_allowed)?,

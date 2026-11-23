@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::pack::config::ArchivePackHeaderEntry;
+use crate::pack::config::ArchivePackHeader;
 use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigJson};
 
 /// A configuration with every file-owned field populated and every per-run field distinctive.
@@ -38,10 +38,7 @@ fn a_round_trip_returns_the_scope_and_the_header() {
   assert_eq!(read.include, ["configs"]);
   assert_eq!(read.ignore, ["configs\\text"]);
   assert_eq!(read.exclude_extensions, ["*.txt"]);
-  assert_eq!(
-    ArchivePackHeaderEntry::split(read.header.as_deref().expect("a header")),
-    ArchivePackHeaderEntry::split(&crate::pack::config::ArchivePackHeader::default_text())
-  );
+  assert_eq!(read.header, Some(ArchivePackHeader::default()));
 }
 
 #[test]

@@ -2,7 +2,7 @@
 
 use xrf_ltx::Ltx;
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackHeader, ArchivePackHeaderEntry};
 
 fn directory(path: &str, is_recursive: bool) -> ArchivePackDirectory {
   ArchivePackDirectory {
@@ -35,9 +35,8 @@ fn populated() -> ArchivePackConfig {
   config.include_files = vec![String::from("gamemtl.xr"), String::from("shaders.xr")];
   config.include_directories = vec![directory("configs", true), directory("spawns", false)];
   config.exclude_directories = vec![directory("levels\\build", true)];
-  config.header = Some(String::from(
-    "[header]\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\\r\n",
-  ));
+  config.header =
+    Some(ArchivePackHeader::default().with_overrides(&[ArchivePackHeaderEntry::new("creator", "Modder")]));
 
   config
 }
@@ -58,11 +57,8 @@ fn selection_rules_survive_a_round_trip() {
 
 #[test]
 fn the_header_survives_a_round_trip() {
-  let header: String = round_trip(&populated()).header.expect("header is carried");
-
   // The engine reads the mount point out of this, so losing it in an export would break the archive.
-  assert!(header.contains("entry_point = $fs_root$\\gamedata\\"));
-  assert!(header.contains("auto_load = true"));
+  assert_eq!(round_trip(&populated()).header, populated().header);
 }
 
 #[test]
@@ -91,11 +87,8 @@ fn an_empty_config_writes_nothing_to_mislead_a_reader() {
 #[test]
 fn a_fresh_config_mounts_where_gamedata_belongs() {
   let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs");
-  let header: &str = config.header.as_deref().expect("a header by default");
-
   // Defaulting to none would hand the engine an archive it reads as an encrypted ShoC one.
-  assert!(header.contains("entry_point = $fs_root$\\gamedata\\"));
-  assert!(header.contains("auto_load = true"));
+  assert_eq!(config.header, Some(ArchivePackHeader::default()));
   assert!(write_config(&config).contains("entry_point"));
 }
 
@@ -103,10 +96,14 @@ fn a_fresh_config_mounts_where_gamedata_belongs() {
 fn a_configured_header_replaces_the_default() {
   let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
     .with_ltx(&Ltx::read_from_str("[header]\nentry_point = $fs_root$\\levels\\\n").expect("ltx parses"));
-  let header: &str = config.header.as_deref().expect("header is carried");
-
-  assert!(header.contains("entry_point = $fs_root$\\levels\\"));
-  assert!(!header.contains("gamedata"), "the default is replaced, not merged");
+  assert_eq!(
+    config.header,
+    Some(ArchivePackHeader::new(vec![ArchivePackHeaderEntry::new(
+      "entry_point",
+      "$fs_root$\\levels\\"
+    )])),
+    "the default is replaced, not merged"
+  );
 }
 
 #[test]

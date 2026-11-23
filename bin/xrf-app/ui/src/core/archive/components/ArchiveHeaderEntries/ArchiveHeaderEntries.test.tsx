@@ -1,23 +1,37 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ArchivePackHeader } from "@xrf/ipc/types/xrf-pack";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveHeaderEntries } from "./ArchiveHeaderEntries";
 
-const HEADER: string = "[header]\r\nauto_load = true\r\nentry_point = gamedata\r\nauthor = Original\r\n";
+const HEADER: ArchivePackHeader = [
+  { key: "auto_load", value: "true" },
+  { key: "entry_point", value: "gamedata" },
+  { key: "author", value: "Original" },
+];
 
 describe("ArchiveHeaderEntries", () => {
   it("keeps an edited value in its row rather than moving it to the end", () => {
     const onChange = jest.fn();
     const { getByRole } = renderWithProviders(
-      <ArchiveHeaderEntries header={"[header]\r\nauthor = A\r\nlevel_name = zaton\r\n"} onChange={onChange} />
+      <ArchiveHeaderEntries
+        header={[
+          { key: "author", value: "A" },
+          { key: "level_name", value: "zaton" },
+        ]}
+        onChange={onChange}
+      />
     );
 
     fireEvent.change(getByRole("textbox", { name: "Value of author" }), { target: { value: "B" } });
 
-    expect(onChange).toHaveBeenLastCalledWith("[header]\r\nauthor = B\r\nlevel_name = zaton\r\n");
+    expect(onChange).toHaveBeenLastCalledWith([
+      { key: "author", value: "B" },
+      { key: "level_name", value: "zaton" },
+    ]);
   });
 
   it("edits and removes custom values while preserving the dedicated header settings", async () => {
@@ -31,13 +45,20 @@ describe("ArchiveHeaderEntries", () => {
 
     fireEvent.change(getByRole("textbox", { name: "Value of author" }), { target: { value: "Updated" } });
 
-    expect(onChange).toHaveBeenLastCalledWith(
-      "[header]\r\nauto_load = true\r\nentry_point = gamedata\r\nauthor = Updated\r\n"
-    );
+    expect(onChange).toHaveBeenLastCalledWith([HEADER[0], HEADER[1], { key: "author", value: "Updated" }]);
 
     await userEvent.click(getByRole("button", { name: "Remove author" }));
 
-    expect(onChange).toHaveBeenLastCalledWith("[header]\r\nauto_load = true\r\nentry_point = gamedata\r\n");
+    expect(onChange).toHaveBeenLastCalledWith([HEADER[0], HEADER[1]]);
+  });
+
+  it("keeps a row whose value is cleared to be retyped", () => {
+    const onChange = jest.fn();
+    const { getByRole } = renderWithProviders(<ArchiveHeaderEntries header={HEADER} onChange={onChange} />);
+
+    fireEvent.change(getByRole("textbox", { name: "Value of author" }), { target: { value: "" } });
+
+    expect(onChange).toHaveBeenLastCalledWith([HEADER[0], HEADER[1], { key: "author", value: "" }]);
   });
 
   it.each(["author", "auto_load"])("rejects the existing key %s even with surrounding whitespace", async (key) => {
@@ -58,7 +79,7 @@ describe("ArchiveHeaderEntries", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("requires a key and clears the draft after adding a new value", async () => {
+  it("requires a key and a value, and clears the draft after adding them", async () => {
     const onChange = jest.fn();
     const { getByRole } = renderWithProviders(<ArchiveHeaderEntries header={null} onChange={onChange} />);
     const button: HTMLElement = getByRole("button", { name: "Add header value" });
@@ -68,26 +89,25 @@ describe("ArchiveHeaderEntries", () => {
 
     fireEvent.change(getByRole("textbox", { name: "New header key" }), { target: { value: " author " } });
 
-    // A blank value removes an entry rather than writing one, so a key alone has nothing to add.
     expect(button).toBeDisabled();
     expect(button).toHaveAccessibleDescription("Enter a header value");
 
-    fireEvent.change(getByRole("textbox", { name: "New header value" }), { target: { value: " XRF " } });
+    fireEvent.change(getByRole("textbox", { name: "New header value" }), { target: { value: '"X R F"' } });
     await userEvent.click(button);
 
-    expect(onChange).toHaveBeenCalledWith("[header]\r\nauthor = XRF\r\n");
+    expect(onChange).toHaveBeenCalledWith([{ key: "author", value: '"X R F"' }]);
     expect(getByRole("textbox", { name: "New header key" })).toHaveValue("");
     expect(getByRole("textbox", { name: "New header value" })).toHaveValue("");
     expect(button).toBeDisabled();
   });
 
-  it("removes the header when the last value is cleared", () => {
+  it("removes the header when its last entry is removed", async () => {
     const onChange = jest.fn();
     const { getByRole } = renderWithProviders(
-      <ArchiveHeaderEntries header={"[header]\r\nauthor = XRF\r\n"} onChange={onChange} />
+      <ArchiveHeaderEntries header={[{ key: "author", value: "XRF" }]} onChange={onChange} />
     );
 
-    fireEvent.change(getByRole("textbox", { name: "Value of author" }), { target: { value: "" } });
+    await userEvent.click(getByRole("button", { name: "Remove author" }));
 
     expect(onChange).toHaveBeenCalledWith(null);
   });

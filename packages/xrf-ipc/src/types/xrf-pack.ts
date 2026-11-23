@@ -33,8 +33,8 @@ export type ArchivePackConfig = {
   excludeExtensions: Array<string>;
   /** Apply the skip rules xrCompress hard-codes for editor and source leftovers. */
   isWithSkipList: boolean;
-  /** Verbatim `[header]` text written as chunk 666. */
-  header: string | null;
+  /** `[header]` written into every volume as chunk 666, or none for volumes without one. */
+  header: ArchivePackHeader | null;
   mode: ArchivePackMode;
   /**
    * Hard maximum for a produced volume file, counting every byte it holds: chunk headers, header text, payloads as
@@ -51,6 +51,20 @@ export type ArchivePackConfig = {
 export type ArchivePackDirectory = {
   path: string;
   isRecursive: boolean;
+};
+
+/**
+ * The `[header]` chunk 666 carries into every volume, held as the entries it is written from.
+ *
+ * Every surface chooses a header as entries and the text exists only where a volume is laid out ([`Self::to_text`]),
+ * so the format has one writer and [`Self::require_loadable`] judges exactly what the engine will be handed.
+ */
+export type ArchivePackHeader = Array<ArchivePackHeaderEntry>;
+
+/** One `[header]` key and its value, in the engine's own spelling. */
+export type ArchivePackHeaderEntry = {
+  key: string;
+  value: string;
 };
 
 /** How file payloads are stored in the archive. */
@@ -163,8 +177,8 @@ export type ArchivePatchConfig = {
   ignore: Array<string>;
   /** Extension patterns that keep a file out of the comparison, such as `*.txt`, matched with the dot. */
   excludeExtensions: Array<string>;
-  /** Verbatim `[header]` text written as chunk 666, defaulting to the mountable gamedata header. */
-  header: string | null;
+  /** `[header]` written into every published volume as chunk 666, defaulting to the mountable gamedata header. */
+  header: ArchivePackHeader | null;
   mode: ArchivePackMode;
   maxVolumeSize: number;
   isWithOversizedVolumes: boolean;

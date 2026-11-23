@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use xrf_archive::ArchiveProject;
 use xrf_test_utils::GeneratedResources;
 
+use crate::pack::config::{ArchivePackHeader, ArchivePackHeaderEntry};
 use crate::pack::tests::fixtures::{empty_destination, open, pack_volume, read, read_mounted};
 use crate::unpack::{ArchiveUnpackResult, ArchiveUnpacker};
 
@@ -16,9 +17,8 @@ const SCRIPTS: &[u8] = b"[scripts]\n";
 /// Pack one file into a volume of its own under `entry_point`, beside the set's other volumes.
 fn pack_at(scope: &str, name: &str, entry_point: &str, file: (&str, &[u8])) {
   pack_volume(&format!("entry_points/{scope}"), name, &[file], |config| {
-    config.header = Some(format!(
-      "[header]\r\nauto_load = true\r\nentry_point = {entry_point}\r\n"
-    ));
+    config.header =
+      Some(ArchivePackHeader::default().with_overrides(&[ArchivePackHeaderEntry::new("entry_point", entry_point)]));
   });
 }
 

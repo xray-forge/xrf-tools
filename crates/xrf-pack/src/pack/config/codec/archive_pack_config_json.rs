@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_error::{MapXrfErr, XrfResult};
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackHeaderEntry};
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackHeader};
 
 /// A packing configuration as JSON carries it: the file-owned fields, and nothing else.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -17,7 +17,7 @@ pub struct ArchivePackConfigJson {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub exclude_directories: Option<Vec<ArchivePackDirectory>>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub header: Option<Vec<ArchivePackHeaderEntry>>,
+  pub header: Option<ArchivePackHeader>,
 }
 
 impl ArchivePackConfigJson {
@@ -56,7 +56,7 @@ impl From<&ArchivePackConfig> for ArchivePackConfigJson {
       include_files: Self::some_if_populated(&config.include_files),
       include_directories: Self::some_if_populated(&config.include_directories),
       exclude_directories: Self::some_if_populated(&config.exclude_directories),
-      header: config.header.as_deref().map(ArchivePackHeaderEntry::split),
+      header: config.header.clone(),
     }
   }
 }
@@ -83,8 +83,8 @@ impl ArchivePackConfig {
       self.exclude_directories = directories.clone();
     }
 
-    if let Some(entries) = &json.header {
-      self.header = Some(ArchivePackHeaderEntry::join(entries));
+    if let Some(header) = &json.header {
+      self.header = Some(header.clone());
     }
 
     self

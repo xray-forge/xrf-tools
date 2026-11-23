@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use xrf_archive::ArchiveProject;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
+use crate::pack::config::ArchivePackHeader;
 use crate::pack::tests::fixtures::{BINARY, CONFIG, empty_destination, open, pack, pack_volume, read, read_mounted};
 
 #[test]
@@ -132,31 +133,12 @@ fn carries_the_header_the_engine_mounts_by() {
     "carries_the_header_the_engine_mounts_by",
     &[("configs\\system.ltx", CONFIG)],
     |config| {
-      config.header = Some(String::from(
-        "[header]\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\\r\n",
-      ));
+      config.header = Some(ArchivePackHeader::default());
     },
   );
   let project: ArchiveProject = open(&destination);
 
   // The reader takes the mount root out of that header, so reading it back proves the chunk landed.
   assert_eq!(project.archives[0].output_root_path, Path::new("gamedata\\"));
-}
-
-#[test]
-fn a_commented_header_mounts_where_the_uncommented_one_does() {
-  let (_, destination) = pack(
-    "a_commented_header_mounts_where_the_uncommented_one_does",
-    &[("configs\\system.ltx", CONFIG)],
-    |config| {
-      config.header = Some(String::from(
-        "[header] ; archive metadata\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\ ; installed content\r\n",
-      ));
-    },
-  );
-  let project: ArchiveProject = open(&destination);
-
-  assert_eq!(project.archives[0].output_root_path, Path::new("gamedata\\"));
   assert_eq!(project.archives[0].mount_root, "gamedata");
-  assert_eq!(read(&project, "configs\\system.ltx"), CONFIG);
 }

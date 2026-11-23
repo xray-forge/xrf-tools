@@ -23,8 +23,8 @@ pub struct ArchivePackConfig {
   pub exclude_extensions: Vec<String>,
   /// Apply the skip rules xrCompress hard-codes for editor and source leftovers.
   pub is_with_skip_list: bool,
-  /// Verbatim `[header]` text written as chunk 666.
-  pub header: Option<String>,
+  /// `[header]` written into every volume as chunk 666, or none for volumes without one.
+  pub header: Option<ArchivePackHeader>,
   pub mode: ArchivePackMode,
   /// Hard maximum for a produced volume file, counting every byte it holds: chunk headers, header text, payloads as
   /// they are actually stored, and the descriptor table written last. Packing refuses a cap it cannot keep rather
@@ -56,7 +56,7 @@ impl ArchivePackConfig {
       exclude_directories: Vec::new(),
       exclude_extensions: Vec::new(),
       is_with_skip_list: true,
-      header: Some(ArchivePackHeader::default_text()),
+      header: Some(ArchivePackHeader::default()),
       mode: ArchivePackMode::default(),
       max_volume_size: Self::VOLUME_SIZE_MAX,
       is_with_oversized_volumes: false,
@@ -137,8 +137,8 @@ impl ArchivePackConfig {
 
     // A header is optional; one that exists and cannot be loaded is not. Judged here rather than at each surface, so
     // a configuration file reaches the same answer a flag does.
-    if let Some(header) = self.header.as_deref() {
-      ArchivePackHeader::require_loadable(header)?;
+    if let Some(header) = &self.header {
+      header.require_loadable()?;
     }
 
     // The minimum is a guard on what a person types, kept by the setters; a configuration packs at any size the

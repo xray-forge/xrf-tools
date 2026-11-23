@@ -22,5 +22,4 @@ pub use archive_pack_directory::ArchivePackDirectory;
 pub use archive_pack_mode::ArchivePackMode;
 pub use archive_volume_extension::ArchiveVolumeExtension;
 pub use codec::ArchivePackConfigJson;
-pub(crate) use header::ArchivePackHeader;
-pub use header::ArchivePackHeaderEntry;
+pub use header::{ArchivePackHeader, ArchivePackHeaderEntry};

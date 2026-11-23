@@ -254,6 +254,25 @@ fn refuses_a_header_entry_that_names_no_key() -> CommandResult {
 }
 
 #[test]
+fn refuses_a_header_value_the_engine_would_read_differently() -> CommandResult {
+  let (source, destination) = create_roots("header-unquoted")?;
+  let mut arguments: Vec<String> = pack_arguments(&source, &destination, "cfg");
+
+  // `CInifile` drops whitespace outside quotes, so the volume would say `MyMod` where the author wrote `My Mod`.
+  arguments.push(String::from("--header"));
+  arguments.push(String::from("creator=My Mod"));
+
+  let error: String = run_command(&PackCommand, &arguments)
+    .expect_err("an unquoted value with a space is refused")
+    .to_string();
+
+  assert!(error.contains("'creator = MyMod'"), "{error}");
+  assert!(!destination.join("cfg.db").exists(), "nothing is published");
+
+  Ok(())
+}
+
+#[test]
 fn packs_the_whole_tree_when_nothing_is_selected() -> CommandResult {
   let (source, destination) = create_roots("bare")?;
 

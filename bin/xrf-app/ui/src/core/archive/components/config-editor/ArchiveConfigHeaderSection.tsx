@@ -1,3 +1,4 @@
+import { ArchivePackHeader } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/feedback";
@@ -54,7 +55,7 @@ export function ArchiveConfigHeaderSection({
         header={config.header}
         entryPointDescription={entryPointDescription}
         isDisabled={isDisabled}
-        onChange={(header: Nullable<string>) => editor.patchConfig({ header })}
+        onChange={(header: Nullable<ArchivePackHeader>) => editor.patchConfig({ header })}
       />
     </Stack>
   );

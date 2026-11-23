@@ -3,5 +3,5 @@
 mod archive_pack_header;
 mod archive_pack_header_entry;
 
-pub(crate) use archive_pack_header::ArchivePackHeader;
+pub use archive_pack_header::ArchivePackHeader;
 pub use archive_pack_header_entry::ArchivePackHeaderEntry;

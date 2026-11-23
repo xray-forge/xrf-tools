@@ -6,7 +6,7 @@ import {
   EArchiveVolumeExtension,
 } from "@xrf/ipc/types/xrf-pack";
 
-import { DEFAULT_ENTRY_POINT } from "@/core/archive/lib/header";
+import { DEFAULT_ENTRY_POINT, HEADER_AUTO_LOAD, HEADER_ENTRY_POINT } from "@/core/archive/lib/header";
 
 /**
  * What the editor opens on before the packer answers with its own defaults.
@@ -20,7 +20,10 @@ export const FALLBACK_PACK_CONFIG: ArchivePackConfig = {
   excludeDirectories: [],
   excludeExtensions: [],
   isWithSkipList: true,
-  header: `[header]\r\nauto_load = true\r\nentry_point = ${DEFAULT_ENTRY_POINT}\r\n`,
+  header: [
+    { key: HEADER_AUTO_LOAD, value: "true" },
+    { key: HEADER_ENTRY_POINT, value: DEFAULT_ENTRY_POINT },
+  ],
   mode: EArchivePackMode.COMPRESS,
   maxVolumeSize: 1900 * BYTES_PER_MEGABYTE,
   volumeExtension: EArchiveVolumeExtension.DB,

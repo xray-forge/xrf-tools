@@ -93,7 +93,7 @@ impl From<&ArchivePackConfig> for Ltx {
       ArchivePackConfig::SECTION_EXCLUDE_DIRECTORIES,
       &config.exclude_directories,
     );
-    ArchiveConfigLtx::write_header(&mut ltx, config.header.as_deref());
+    ArchiveConfigLtx::write_header(&mut ltx, config.header.as_ref());
 
     ltx
   }
@@ -138,10 +138,11 @@ mod tests {
   fn keeps_the_header_verbatim_for_the_engine_to_parse() {
     let config: ArchivePackConfig =
       config_from_ltx("[header]\nauto_load = true\nentry_point = $fs_root$\\gamedata\\\n");
-    let header: &str = config.header.as_deref().expect("header is carried");
 
-    assert!(header.starts_with("[header]\r\n"), "the section names itself");
-    assert!(header.contains("auto_load = true\r\n"));
-    assert!(header.contains("entry_point = $fs_root$\\gamedata\\\r\n"));
+    assert_eq!(
+      config.header.expect("header is carried").to_text(),
+      "[header]\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\\r\n",
+      "the section names itself, and each pair is written as the engine reads it"
+    );
   }
 }

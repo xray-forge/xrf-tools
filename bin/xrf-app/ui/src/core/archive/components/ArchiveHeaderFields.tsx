@@ -1,3 +1,4 @@
+import { ArchivePackHeader } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FormRow } from "@xrf/ui/form/row";
@@ -18,10 +19,10 @@ import {
 } from "@/core/archive/lib/header";
 
 interface IArchiveHeaderFieldsProps extends BaseComponentProps {
-  header: Nullable<string>;
+  header: Nullable<ArchivePackHeader>;
   entryPointDescription: string;
   isDisabled?: boolean;
-  onChange: (header: Nullable<string>) => void;
+  onChange: (header: Nullable<ArchivePackHeader>) => void;
 }
 
 /** Edits archive mounting and custom header entries without changing unrelated header values. */

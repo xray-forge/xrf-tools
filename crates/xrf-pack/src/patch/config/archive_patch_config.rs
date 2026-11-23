@@ -30,8 +30,8 @@ pub struct ArchivePatchConfig {
   pub ignore: Vec<String>,
   /// Extension patterns that keep a file out of the comparison, such as `*.txt`, matched with the dot.
   pub exclude_extensions: Vec<String>,
-  /// Verbatim `[header]` text written as chunk 666, defaulting to the mountable gamedata header.
-  pub header: Option<String>,
+  /// `[header]` written into every published volume as chunk 666, defaulting to the mountable gamedata header.
+  pub header: Option<ArchivePackHeader>,
   pub mode: ArchivePackMode,
   pub max_volume_size: u64,
   pub is_with_oversized_volumes: bool,
@@ -49,7 +49,7 @@ impl ArchivePatchConfig {
       include: Vec::new(),
       ignore: Vec::new(),
       exclude_extensions: Vec::new(),
-      header: Some(ArchivePackHeader::default_text()),
+      header: Some(ArchivePackHeader::default()),
       mode: ArchivePackMode::default(),
       max_volume_size: ArchivePackConfig::VOLUME_SIZE_MAX,
       is_with_oversized_volumes: false,

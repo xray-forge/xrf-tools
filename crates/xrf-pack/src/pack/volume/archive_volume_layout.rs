@@ -18,9 +18,9 @@ impl ArchiveVolumeLayout {
   pub(crate) fn new(config: &ArchivePackConfig, descriptors: &ArchiveDescriptorTable) -> XrfResult<Self> {
     let header: Option<Vec<u8>> = config
       .header
-      .as_deref()
+      .as_ref()
       .map(|header| {
-        encode_string_to_w1251_bytes(header).map_err(|error| {
+        encode_string_to_w1251_bytes(&header.to_text()).map_err(|error| {
           XrfError::new_encoding_error(format!("Failed to encode archive header as windows-1251: {error}"))
         })
       })
@@ -86,14 +86,14 @@ mod tests {
   use xrf_error::XrfError;
 
   use super::{ArchiveVolumeLayout, CHUNK_HEADER_SIZE};
-  use crate::pack::config::ArchivePackConfig;
+  use crate::pack::config::{ArchivePackConfig, ArchivePackHeader};
   use crate::pack::volume::ArchiveDescriptorTable;
 
-  fn layout_of(max_volume_size: u64, header: Option<&str>) -> Result<ArchiveVolumeLayout, XrfError> {
+  fn layout_of(max_volume_size: u64, header: Option<ArchivePackHeader>) -> Result<ArchiveVolumeLayout, XrfError> {
     let mut config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "packed");
 
     config.max_volume_size = max_volume_size;
-    config.header = header.map(String::from);
+    config.header = header;
 
     ArchiveVolumeLayout::new(
       &config,
@@ -104,12 +104,13 @@ mod tests {
   #[test]
   fn an_opening_is_the_header_chunk_and_the_data_chunk_header() {
     let bare: ArchiveVolumeLayout = layout_of(1024, None).expect("cap holds an entry");
-    let headed: ArchiveVolumeLayout = layout_of(1024, Some("[header]\r\n")).expect("cap holds an entry");
+    let header: ArchivePackHeader = ArchivePackHeader::default();
+    let headed: ArchiveVolumeLayout = layout_of(1024, Some(header.clone())).expect("cap holds an entry");
 
     assert_eq!(bare.get_opening_size(), CHUNK_HEADER_SIZE);
     assert_eq!(
       headed.get_opening_size(),
-      CHUNK_HEADER_SIZE * 2 + "[header]\r\n".len() as u64
+      CHUNK_HEADER_SIZE * 2 + header.to_text().len() as u64
     );
 
     // The size field is the last of those bytes, which is where the payload total is patched back in.

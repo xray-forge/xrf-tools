@@ -50,7 +50,7 @@ impl From<&ArchivePatchConfig> for Ltx {
     ArchiveConfigLtx::write_extensions(&mut ltx, &config.exclude_extensions);
     ArchiveConfigLtx::write_names(&mut ltx, ArchivePatchConfig::SECTION_INCLUDE, &config.include);
     ArchiveConfigLtx::write_names(&mut ltx, ArchivePatchConfig::SECTION_IGNORE, &config.ignore);
-    ArchiveConfigLtx::write_header(&mut ltx, config.header.as_deref());
+    ArchiveConfigLtx::write_header(&mut ltx, config.header.as_ref());
 
     ltx
   }
