@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Console logging under a styled, timestamped prefix, and an elapsed-time reader for log lines.",
+  "description": "Logging to the console under a styled, timestamped prefix and to an installable sink, the LogForwarder sink batching lines to a sender, the plain-text line writer, and an elapsed-time reader for log lines.",
   "exports": {
     ".": "./src/index.ts",
     "./react": "./src/use-logger.ts"
