@@ -270,9 +270,10 @@ impl WorldLevelSource for LevelRenderSource {
   }
 
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
-    let spawn = LevelSpawnPart::get(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
+    let search: XraySearch = self.search()?;
+    let spawn = LevelSpawnPart::get(&self.level, &search).map_err(XrfError::new_asset_error)?;
 
-    Ok(RenderLevelSpawn::from(&*spawn))
+    Ok(spawn.get_render(Self::read_sections(&self.level, &search).as_deref()))
   }
 
   /// The level objects' helpers, the sound emitters' spheres among them.

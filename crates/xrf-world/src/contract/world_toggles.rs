@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_renderer::RenderSpawnCategory;
+use xrf_renderer::{RenderSpawnCategory, RenderSpawnGroup};
 
 use crate::contract::sound::world_sound_toggles::WorldSoundToggles;
 use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
@@ -28,6 +28,9 @@ pub struct WorldToggles {
   pub is_spawned_lamps: bool,
   /// Whether the spawned objects a new game releases are drawn too, each with its group.
   pub is_spawned_released: bool,
+  /// Whether the artefacts that lie hidden until a detector reveals them are drawn and lit too, as if one revealed them
+  /// all, each with its group.
+  pub is_spawned_detector_hidden: bool,
   /// The spawned objects left out whatever their group, by their index among the level's spawned objects, ascending:
   /// those the viewer hides one by one.
   pub hidden_spawn_objects: Vec<u32>,
@@ -48,6 +51,7 @@ impl Default for WorldToggles {
       is_spawned_weapons: true,
       is_spawned_lamps: true,
       is_spawned_released: false,
+      is_spawned_detector_hidden: true,
       hidden_spawn_objects: Vec::new(),
       sound: WorldSoundToggles::default(),
     }
@@ -73,24 +77,20 @@ impl WorldToggles {
     }
   }
 
-  /// The spawn groups left out of the scene: each category not drawn, and the released objects of every one while no
-  /// released objects are drawn.
-  pub(crate) fn get_hidden_spawn_groups(&self) -> HiddenSpawnGroups {
-    RenderSpawnCategory::ALL
-      .into_iter()
-      .fold(HiddenSpawnGroups::default(), |hidden, category| {
-        let is_shown: bool = self.is_spawned(category);
-        let hidden: HiddenSpawnGroups = if is_shown {
-          hidden
-        } else {
-          hidden.with(category.get_group())
-        };
+  /// Whether a group of spawned objects is drawn: its category is, and its released or detector-hidden objects are where
+  /// it holds them.
+  pub(crate) fn is_spawned_group(&self, group: RenderSpawnGroup) -> bool {
+    self.is_spawned(group.category)
+      && (!group.is_released || self.is_spawned_released)
+      && (!group.is_detector_hidden || self.is_spawned_detector_hidden)
+  }
 
-        if is_shown && self.is_spawned_released {
-          hidden
-        } else {
-          hidden.with(category.get_released_group())
-        }
+  /// The spawn groups left out of the scene: each one not drawn.
+  pub(crate) fn get_hidden_spawn_groups(&self) -> HiddenSpawnGroups {
+    RenderSpawnGroup::list_all()
+      .filter(|group| !self.is_spawned_group(*group))
+      .fold(HiddenSpawnGroups::default(), |hidden, group| {
+        hidden.with(group.get_index())
       })
   }
 }

@@ -253,8 +253,7 @@ impl WorldLevelSource for TextureRenderSource {
       visuals: vec![self.reference.clone()],
       objects: vec![RenderSpawnObject {
         index: Self::BODY_OBJECT,
-        category: RenderSpawnCategory::Props,
-        is_released: false,
+        group: RenderSpawnCategory::Props.into(),
         visual: 0,
         transform: self.get_transform(),
       }],

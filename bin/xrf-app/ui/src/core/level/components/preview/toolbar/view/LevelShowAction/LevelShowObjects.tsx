@@ -30,7 +30,7 @@ const COLUMNS: ReadonlyArray<IEditorPopoverCheckboxColumn> = [
 
 /**
  * Which of the level's objects are drawn and helped, a kind table row each, the helpers waiting on their switch; then
- * whether what a new game releases is drawn too.
+ * whether what a new game releases, and the artefacts only a detector reveals, are drawn too.
  */
 export function LevelShowObjects({
   "data-testid": dataTestId = "level-show-objects",
@@ -70,6 +70,13 @@ export function LevelShowObjects({
         description={"Draws what a new game releases before the player arrives, with its group."}
         isChecked={options.isSpawnedReleased}
         onChange={() => viewService.toggleOption("isSpawnedReleased")}
+      />
+
+      <EditorPopoverSwitchRow
+        label={"Undetected artefacts"}
+        description={"Draws and lights the artefacts only a detector reveals, as if one revealed them all."}
+        isChecked={options.isSpawnedDetectorHidden}
+        onChange={() => viewService.toggleOption("isSpawnedDetectorHidden")}
       />
     </EditorPopoverGroupSection>
   );

@@ -17,6 +17,7 @@ mod level_objects;
 mod level_placements;
 mod level_sound_files;
 mod level_source;
+mod level_spawn_render;
 mod level_start;
 mod level_viewer_folder;
 mod map_export;

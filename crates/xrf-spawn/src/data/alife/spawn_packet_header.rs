@@ -43,6 +43,14 @@ impl SpawnPacketHeader {
   /// `M_SPAWN_VERSION`: the packet stores its spawn version after the flags.
   pub const FLAG_SPAWN_VERSION: u16 = 1 << 5;
 
+  /// The `parent_id` of an object nothing holds, `0xffff`.
+  pub const NO_PARENT_ID: u16 = u16::MAX;
+
+  /// Whether another object holds it, in an inventory or a box, rather than it standing on the level.
+  pub const fn has_parent(&self) -> bool {
+    self.parent_id != Self::NO_PARENT_ID
+  }
+
   /// Refuses a spawn version whose layout is not read ([`SpawnLayout::is_supported_version`]), naming Shadow of
   /// Chernobyl's. The game type follows the version only above 120 (`CSE_Abstract::Spawn_Read`), so the read stops
   /// here.

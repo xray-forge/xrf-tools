@@ -64,6 +64,8 @@ export function toLevelEditorWorldToggles(inputs: ILevelEditorWorldTogglesInputs
       isAmbientEffectPlayed: false,
       isCampfireLit: false,
       isRainy: false,
+      // A scene marks no artefact detector-hidden; its spawn point models stand with the items.
+      isSpawnedDetectorHidden: true,
       isSpawnedItems: helpers.isShown && isLevelEditorHelperOn(helpers, ESceneToolKind.SPAWN),
       isSpawnedLamps: isEditorOnlyShown,
       isSpawnedProps: true,

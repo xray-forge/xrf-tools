@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkFieldReader, ChunkFieldWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxRead, LtxWrite};
+use xrf_ltx::{LtxRead, LtxWrite, Section};
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
@@ -14,6 +14,15 @@ use crate::data::alife::spawn_packet_header::SpawnPacketHeader;
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObjectItemArtefact {
   pub base: AlifeObjectItem,
+}
+
+impl AlifeObjectItemArtefact {
+  /// Whether an artefact of `section` lies hidden on the level until a detector reveals it: `can_be_controlled` with an
+  /// `af_rank` other than 0. Visible on spawn, it hides on its first update (`SArtefactDetectorsSupport::UpdateOnFrame`,
+  /// its switch time starting at 0) with its model, particles and light, and a detector shows it again for 5 seconds.
+  pub fn is_detector_hidden(section: &Section) -> bool {
+    section.get_bool("can_be_controlled") == Some(true) && section.get_f32("af_rank").is_some_and(|rank| rank != 0.0)
+  }
 }
 
 impl AlifePacketsReadWrite for AlifeObjectItemArtefact {
@@ -92,6 +101,41 @@ mod tests {
       AlifeObjectItemArtefact::import("data", &ltx, SpawnLayout::CALL_OF_PRIPYAT)?,
       original
     );
+
+    Ok(())
+  }
+
+  // Only a controlled artefact of a rank other than 0 hides; a section saying neither hides nothing.
+  #[test]
+  fn hides_until_detected_only_a_controlled_artefact_of_a_rank() -> XrfResult {
+    let ltx: Ltx = Ltx::read_from_str(
+      r"
+[ranked]
+can_be_controlled = true
+af_rank = 2
+
+[junk]
+can_be_controlled = true
+af_rank = 0
+
+[uncontrolled]
+can_be_controlled = false
+af_rank = 1
+
+[unranked]
+can_be_controlled = true
+",
+    )?;
+    let hides = |name: &str| {
+      ltx
+        .section(name)
+        .is_some_and(AlifeObjectItemArtefact::is_detector_hidden)
+    };
+
+    assert!(hides("ranked"));
+    assert!(!hides("junk"));
+    assert!(!hides("uncontrolled"));
+    assert!(!hides("unranked"));
 
     Ok(())
   }

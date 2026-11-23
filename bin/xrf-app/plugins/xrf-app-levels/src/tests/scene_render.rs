@@ -148,15 +148,15 @@ fn lists_each_scene_object_found_by_its_place_its_reference_and_where_it_stands(
     spawn
       .objects
       .iter()
-      .map(|object| (object.index, object.visual, object.category, object.is_released))
+      .map(|object| (object.index, object.visual, object.group))
       .collect::<Vec<_>>(),
     [
-      (0x0200_0000, 0, RenderSpawnCategory::Props, false),
-      (0x8200_0000, 1, RenderSpawnCategory::Weapons, false),
-      (0x4200_0000, 2, RenderSpawnCategory::Lamps, false),
-      (0x0200_0002, 0, RenderSpawnCategory::Props, false),
-      (0x8200_0002, 1, RenderSpawnCategory::Weapons, false),
-      (0x4200_0002, 2, RenderSpawnCategory::Lamps, false)
+      (0x0200_0000, 0, RenderSpawnCategory::Props.into()),
+      (0x8200_0000, 1, RenderSpawnCategory::Weapons.into()),
+      (0x4200_0000, 2, RenderSpawnCategory::Lamps.into()),
+      (0x0200_0002, 0, RenderSpawnCategory::Props.into()),
+      (0x8200_0002, 1, RenderSpawnCategory::Weapons.into()),
+      (0x4200_0002, 2, RenderSpawnCategory::Lamps.into())
     ],
     "each named by its tool's place above its place among the scene's objects, the one not found left out, its \
      collision surfaces in a group of their own under its id with the top bit set, its editor-only ones with the next"

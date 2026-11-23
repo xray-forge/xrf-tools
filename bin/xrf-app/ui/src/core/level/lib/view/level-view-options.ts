@@ -74,6 +74,11 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isSpawnedLamps: boolean;
   /** Draws the spawned objects a new game releases too, each with its group. */
   isSpawnedReleased: boolean;
+  /**
+   * Draws and lights the artefacts that lie hidden until a detector reveals them, as if one revealed them all;
+   * switched off, the level shows them as the game does at rest.
+   */
+  isSpawnedDetectorHidden: boolean;
   /** Plays the level's sound while its viewport is the one heard; switched off, it is silent and its schedules run on. */
   isSoundHeard: boolean;
   /** Plays the level's music. */
@@ -114,6 +119,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isSkyHazed: true,
   isSkyVisible: true,
   isSoundHeard: true,
+  isSpawnedDetectorHidden: true,
   isSpawnedItems: true,
   isSpawnedLamps: true,
   isSpawnedProps: true,

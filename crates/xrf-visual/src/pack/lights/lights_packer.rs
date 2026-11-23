@@ -3,9 +3,11 @@ use std::sync::Arc;
 
 use xrf_level::LevelDynamicLight;
 use xrf_light_anim::LightAnimFile;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{Ltx, Section, read_engine_floats};
 use xrf_math::Vector3d;
-use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectTorridZone, ClsId};
+use xrf_spawn::{
+  AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectItemArtefact, AlifeObjectTorridZone, ClsId,
+};
 
 use crate::data::lights::light_animator_description::LightAnimatorDescription;
 use crate::data::lights::light_description::LightDescription;
@@ -19,8 +21,8 @@ use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::visual_conversion::convert_vector;
 
-/// Collects a level's lights as the engine would light with them: its hanging lamps, placed on their bones, and the
-/// lights of the level file itself.
+/// Collects a level's lights as the engine would light with them: its hanging lamps, placed on their bones, its zones'
+/// and artefacts' lights, and the lights of the level file itself.
 pub struct LightsPacker<'a> {
   animations: Option<&'a LightAnimFile>,
   /// The game's `system.ltx`, resolved, which a spawned object's section is read from.
@@ -66,14 +68,15 @@ impl<'a> LightsPacker<'a> {
     }
   }
 
-  /// Reads each spawned object's section from the game's configs: a zone's idle light, and a lamp's own `shadow` and
-  /// `ambient_shadow`.
+  /// Reads each spawned object's section from the game's configs: a zone's idle light, an artefact's trail light, and
+  /// a lamp's own `shadow` and `ambient_shadow`.
   pub fn with_sections(mut self, sections: &'a Ltx) -> Self {
     self.sections = Some(sections);
     self
   }
 
-  /// Adds the lights a level's spawned objects carry, each by its class: a hanging lamp's, and a zone's idle light.
+  /// Adds the lights a level's spawned objects carry, each by its class: a hanging lamp's, a zone's idle light, and an
+  /// artefact's trail light.
   ///
   /// # Arguments
   ///
@@ -92,6 +95,7 @@ impl<'a> LightsPacker<'a> {
           self.add_zone(object, None);
         }
         AlifeObjectInherited::CseAlifeTorridZone(zone) => self.add_zone(object, Some(zone)),
+        AlifeObjectInherited::CseAlifeItemArtefact(_) => self.add_artefact(object),
         _ => {}
       }
     }
@@ -119,6 +123,7 @@ impl<'a> LightsPacker<'a> {
         campfire: None,
         motion: None,
         zone_sphere: None,
+        is_detector_hidden: false,
         volumetric: None,
       });
     }
@@ -189,6 +194,7 @@ impl<'a> LightsPacker<'a> {
       campfire: None,
       motion: None,
       zone_sphere: None,
+      is_detector_hidden: false,
       volumetric: Some(LightVolumetric {
         is_asked: lamp.is_volumetric(),
         quality: lamp.volumetric_quality,
@@ -216,6 +222,7 @@ impl<'a> LightsPacker<'a> {
         campfire: None,
         motion: None,
         zone_sphere: None,
+        is_detector_hidden: false,
         // Monolith sets the ambient light's shafts by the section's `ambient_volumetric`, which its forcing overrides;
         // OpenXRay never asks for them. Neither sets its values, which keep the light's own.
         volumetric: Some(LightVolumetric {
@@ -295,7 +302,60 @@ impl<'a> LightsPacker<'a> {
         name: name.to_owned(),
         height,
       }),
+      is_detector_hidden: false,
       volumetric,
+    });
+  }
+
+  /// `CArtefact::Load` and `StartLights`: an artefact whose section sets `lights_enabled` lights a point at its origin,
+  /// `trail_light_color` raw over `trail_light_range`, shadowed only by `idle_light_shadow`, unanimated, and marked
+  /// where it lies hidden until a detector reveals it. It goes out while anything holds it (`OnH_A_Chield`). A colour of fewer than three numbers or a missing range, which the engine would refuse, lights
+  /// nothing.
+  pub(crate) fn add_artefact(&mut self, object: &AlifeObject) {
+    if object.header.has_parent() {
+      return;
+    }
+
+    let Some(section) = self.find_section(&object.header.section) else {
+      return;
+    };
+
+    if section.get_bool("lights_enabled") != Some(true) {
+      return;
+    }
+
+    let Some(range) = section.get_f32("trail_light_range") else {
+      return;
+    };
+    let Some(&[red, green, blue]) = section
+      .get("trail_light_color")
+      .map(|value| read_engine_floats(value, 3))
+      .as_deref()
+    else {
+      return;
+    };
+
+    self.lights.push(LightDescription {
+      kind: LightKind::Point,
+      position: convert_vector(&object.header.position),
+      direction: Vector3d::new(0.0, 0.0, 1.0),
+      right: Vector3d::new(1.0, 0.0, 0.0),
+      color: [red, green, blue],
+      range,
+      range_jitter: 0.0,
+      cone: 0.0,
+      near: 0.0,
+      projector: None,
+      animator: None,
+      animator_scale: 0.0,
+      is_shadowed: section.get_bool("idle_light_shadow").unwrap_or(false),
+      is_level: false,
+      campfire: None,
+      motion: None,
+      zone_sphere: None,
+      is_detector_hidden: AlifeObjectItemArtefact::is_detector_hidden(section),
+      // OpenXRay never sets an artefact's shafts; Monolith reads `idle_light_volumetric`, which no shipped artefact sets.
+      volumetric: None,
     });
   }
 

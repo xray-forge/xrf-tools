@@ -35,6 +35,7 @@ fn light(kind: LightKind, x: f32) -> LightDescription {
     campfire: None,
     motion: None,
     zone_sphere: None,
+    is_detector_hidden: false,
     volumetric: None,
   }
 }

@@ -240,11 +240,11 @@ fn stands_each_spawn_point_whose_visual_is_found_as_its_model_in_a_group_of_its_
     spawn
       .objects
       .iter()
-      .map(|object| (object.index, object.visual, object.category, object.is_released))
+      .map(|object| (object.index, object.visual, object.group))
       .collect::<Vec<_>>(),
     [
-      (drawn_id(0), 0, RenderSpawnCategory::Items, false),
-      (drawn_id(1), 0, RenderSpawnCategory::Items, false),
+      (drawn_id(0), 0, RenderSpawnCategory::Items.into()),
+      (drawn_id(1), 0, RenderSpawnCategory::Items.into()),
     ],
     "named by the spawn tool's place above their index, the visual not found and the unread packet left out"
   );

@@ -189,6 +189,7 @@ pub use crate::host::level::spawn::model::render_spawn_model::RenderSpawnModel;
 pub use crate::host::level::spawn::model::static_model_place::StaticModelPlace;
 pub use crate::host::level::spawn::render_level_spawn::RenderLevelSpawn;
 pub use crate::host::level::spawn::render_spawn_category::RenderSpawnCategory;
+pub use crate::host::level::spawn::render_spawn_group::RenderSpawnGroup;
 pub use crate::host::level::spawn::render_spawn_lighting::RenderSpawnLighting;
 pub use crate::host::level::spawn::render_spawn_models::RenderSpawnModels;
 pub use crate::host::level::spawn::render_spawn_object::RenderSpawnObject;

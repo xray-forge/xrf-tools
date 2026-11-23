@@ -183,7 +183,10 @@ function toObjectsSubmenu(state: ILevelViewerViewMenuState, viewService: LevelVi
 
         return option ? [toOptionToggle(state, viewService, { option, label: entry.label })] : [];
       }),
-      [toOptionToggle(state, viewService, { option: "isSpawnedReleased", label: "Released" })],
+      [
+        toOptionToggle(state, viewService, { option: "isSpawnedReleased", label: "Released" }),
+        toOptionToggle(state, viewService, { option: "isSpawnedDetectorHidden", label: "Undetected artefacts" }),
+      ],
       [
         toOptionToggle(state, viewService, { option: "isParticled", label: "Particles" }),
         toOptionToggle(state, viewService, { option: "isCampfireLit", label: "Campfires lit" }),

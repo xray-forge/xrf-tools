@@ -155,8 +155,7 @@ impl WorldLevelSource for VisualRenderSource {
       visuals: vec![self.visual.description.source.label().to_owned()],
       objects: vec![RenderSpawnObject {
         index: Self::MODEL_OBJECT,
-        category: RenderSpawnCategory::Props,
-        is_released: false,
+        group: RenderSpawnCategory::Props.into(),
         visual: 0,
         transform: Self::IDENTITY,
       }],

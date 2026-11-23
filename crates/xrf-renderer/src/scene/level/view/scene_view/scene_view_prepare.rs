@@ -33,6 +33,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
+use crate::scene::level::lights::asks::light_gates::LightGates;
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
@@ -206,7 +207,13 @@ impl SceneView {
         * lighting_frame.exposure.pre_exposure.current,
       time: time.now,
     };
-    let lights: LightAsks = scene.lights.pick(frame_lights, &scene.campfire_shares);
+    let lights: LightAsks = scene.lights.pick(
+      frame_lights,
+      LightGates {
+        campfire_shares: &scene.campfire_shares,
+        is_detector_hidden_lit: scene.is_detector_hidden_lit,
+      },
+    );
 
     self.shared.camera = *view;
     self.shared.sun_direction = lighting.get_sun_direction();

@@ -41,6 +41,9 @@ pub struct LightDescription {
   /// Its zone's sphere in renderer space, offset from the light: a torrid zone's idle light, which goes out while the
   /// camera stands far from it (`o_switch_2_slow`, `CTorridZone::light_in_slow_mode`). None for one always on.
   pub zone_sphere: Option<ZoneSphere>,
+  /// Whether its artefact lies hidden until a detector reveals it, and its light with it: lit only while a view shows
+  /// those artefacts.
+  pub is_detector_hidden: bool,
   /// What its owner sets of its shafts; None for a light whose owner never does (the level file's own lights, a zone's
   /// idle light that does not ask for them), which even Monolith's forcing leaves without.
   pub volumetric: Option<LightVolumetric>,

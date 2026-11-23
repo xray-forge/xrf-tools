@@ -186,6 +186,7 @@ export function toNativeWorldToggles(
     isAmbientEffectPlayed: switches.isAmbientEffectPlayed,
     isCampfireLit: switches.isCampfireLit,
     isRainy: switches.isRainy,
+    isSpawnedDetectorHidden: switches.isSpawnedDetectorHidden,
     isSpawnedItems: switches.isSpawnedItems,
     isSpawnedLamps: switches.isSpawnedLamps,
     isSpawnedProps: switches.isSpawnedProps,

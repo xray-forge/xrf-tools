@@ -85,6 +85,8 @@ pub(crate) struct LevelScene {
   /// The wind the ambient effects blow, and how much of each campfire's idle light shows.
   pub gust: AmbientGust,
   pub campfire_shares: HashMap<u16, f32>,
+  /// Whether the lights of the artefacts a detector must reveal are lit.
+  pub is_detector_hidden_lit: bool,
   /// The driving camera's smoothed hemi, none where it is not estimated.
   pub camera_hemi: Option<f32>,
   /// How wet the level is and how full its puddles, which every view of it wets its surfaces by.
@@ -135,6 +137,7 @@ impl LevelScene {
       sounding: Vec::new(),
       gust: AmbientGust::default(),
       campfire_shares: HashMap::new(),
+      is_detector_hidden_lit: true,
       camera_hemi: None,
       wetness: LevelWetness::default(),
       engine_time: Duration::ZERO,
@@ -175,6 +178,7 @@ impl LevelScene {
       skeleton_segments,
       gust,
       campfire_shares,
+      is_detector_hidden_lit,
       motions,
       camera_hemi,
       sounding,
@@ -237,6 +241,7 @@ impl LevelScene {
     self.skeleton_segments = skeleton_segments;
     self.gust = gust;
     self.campfire_shares = campfire_shares;
+    self.is_detector_hidden_lit = is_detector_hidden_lit;
     self.camera_hemi = camera_hemi;
     self.sounding = sounding;
     self.lights.begin_frame(&motions);

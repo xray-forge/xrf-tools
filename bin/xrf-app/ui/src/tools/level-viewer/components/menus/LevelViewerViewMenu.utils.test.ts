@@ -111,19 +111,24 @@ describe("LevelViewerViewMenu.utils", () => {
     expect(shownKinds.some((it: TMenuEntry) => it.kind === EMenuEntryKind.TOGGLE && it.isDisabled)).toBe(false);
   });
 
-  it("switches the drawn kinds and what a new game releases", () => {
+  it("switches the drawn kinds, what a new game releases and the artefacts only a detector reveals", () => {
     const view: LevelViewService = mockLevelViewContainer().view;
-    const [kinds, released] = toSubmenu(toLevelViewerObjectEntries(toState(view), view), "Objects").sections;
+    const [kinds, spawned] = toSubmenu(toLevelViewerObjectEntries(toState(view), view), "Objects").sections;
 
     expect(toLabels(kinds)).toEqual(["Props", "Items", "Weapons", "Lamps"]);
-    expect(toLabels(released)).toEqual(["Released"]);
+    expect(toLabels(spawned)).toEqual(["Released", "Undetected artefacts"]);
 
     act(() => {
       if (kinds[1].kind === EMenuEntryKind.TOGGLE) {
         kinds[1].onToggle();
       }
+
+      if (spawned[1].kind === EMenuEntryKind.TOGGLE) {
+        spawned[1].onToggle();
+      }
     });
 
     expect(view.options.isSpawnedItems).toBe(false);
+    expect(view.options.isSpawnedDetectorHidden).toBe(false);
   });
 });

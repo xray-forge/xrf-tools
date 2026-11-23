@@ -185,11 +185,7 @@ impl SpawnLoader {
           object: object.index,
           transform: Mat4::from_cols_array(&object.transform),
           lighting: lighting.get(&object.index).copied(),
-          group: if object.is_released {
-            object.category.get_released_group()
-          } else {
-            object.category.get_group()
-          },
+          group: object.group.get_index(),
         })
         .collect();
       let packed: StaticModel =

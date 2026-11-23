@@ -220,8 +220,7 @@ impl WorldLevelSource for SceneRenderSource {
         for kind in SceneSurfaceKind::ALL {
           objects.push(RenderSpawnObject {
             index: id.get_part(kind).0,
-            category: kind.get_category(),
-            is_released: false,
+            group: kind.get_category().into(),
             visual: stand(kind.format_model_name(&object.reference)),
             transform: object.get_render_transform(),
           });
@@ -233,8 +232,7 @@ impl WorldLevelSource for SceneRenderSource {
       if let Some(id) = SceneRenderId::of(&model.id) {
         objects.push(RenderSpawnObject {
           index: id.0,
-          category: Self::SPAWN_CATEGORY,
-          is_released: false,
+          group: Self::SPAWN_CATEGORY.into(),
           visual: stand(model.get_model_name()),
           transform: model.get_render_transform(),
         });

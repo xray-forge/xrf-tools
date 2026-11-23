@@ -419,6 +419,11 @@ export type WorldToggles = {
   /** Whether the spawned objects a new game releases are drawn too, each with its group. */
   isSpawnedReleased: boolean;
   /**
+   * Whether the artefacts that lie hidden until a detector reveals them are drawn and lit too, as if one revealed them
+   * all, each with its group.
+   */
+  isSpawnedDetectorHidden: boolean;
+  /**
    * The spawned objects left out whatever their group, by their index among the level's spawned objects, ascending:
    * those the viewer hides one by one.
    */

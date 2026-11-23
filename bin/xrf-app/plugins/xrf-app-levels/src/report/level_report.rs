@@ -331,7 +331,7 @@ impl LevelReport {
 
   /// That the configs could not be read, so zones light nothing and lamps keep their spawned flags.
   pub(crate) fn missing_sections(error: &impl Display) {
-    log::warn!("No zone lights and no lamp sections: {error}");
+    log::warn!("No zone or artefact lights, no lamp sections, and no artefact hidden until detected: {error}");
   }
 
   /// That the light animation library could not be read, so no light is animated.
@@ -344,13 +344,14 @@ impl LevelReport {
     log::warn!("No spawned lights for {}: {error}", source.get_label());
   }
 
-  /// What a level's lights came to.
+  /// What a level's lights came to, and how many are artefacts' a detector must reveal.
   pub(crate) fn lights(source: &LevelSource, lights: &LightsDescription, started: Instant) {
     log::info!(
-      "Collected lights of {} in {}: {} lights, {} animators, {} projectors",
+      "Collected lights of {} in {}: {} lights ({} of artefacts a detector reveals), {} animators, {} projectors",
       source.get_label(),
       xrf_utils::format_duration(started.elapsed()),
       lights.lights.len(),
+      lights.lights.iter().filter(|light| light.is_detector_hidden).count(),
       lights.animators.len(),
       lights.projectors.len()
     );

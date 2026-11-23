@@ -8,8 +8,8 @@ use xrf_math::{Color, Sphere, Vector3d};
 use xrf_ogf::OgfFile;
 use xrf_spawn::{
   AlifeObject, AlifeObjectAbstract, AlifeObjectCustomZone, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
-  AlifeObjectInherited, AlifeObjectMotion, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, AlifeObjectTorridZone,
-  ClsId, LastSpawnTime, Shape, SpawnPacketHeader,
+  AlifeObjectInherited, AlifeObjectItem, AlifeObjectItemArtefact, AlifeObjectMotion, AlifeObjectSkeleton,
+  AlifeObjectSpaceRestrictor, AlifeObjectTorridZone, ClsId, LastSpawnTime, Shape, SpawnPacketHeader,
 };
 
 use crate::data::lights::light_description::LightDescription;
@@ -402,9 +402,39 @@ script_binding = bind_signal_light.init
 
 [lights_signal_light]
 script_binding = bind_dynamic_light.init
+
+[af_base]
+can_be_controlled = true
+af_rank = 1
+idle_light_shadow = false
+
+[af_unlit]:af_base
+lights_enabled = false
+
+[af_lit]:af_base
+lights_enabled = true
+trail_light_color = 0.9,0.4,0.2 ; 0.9,0.5,0.5
+trail_light_range = 2.0
+
+[af_junk]:af_base
+af_rank = 0
+lights_enabled = true
+trail_light_color = 0.4,0.4,0.4
+trail_light_range = 1.0
+idle_light_shadow = true
+
+[af_two_fields]:af_base
+lights_enabled = true
+trail_light_color = 0.4,0.4
+trail_light_range = 1.0
+
+[af_rangeless]:af_base
+lights_enabled = true
+trail_light_color = 0.4,0.4,0.4
 ",
   )
-  .expect("the sections to parse")
+  .and_then(Ltx::into_inherited)
+  .expect("the sections to parse and inherit, as the game's resolved configs do")
 }
 
 fn animations() -> LightAnimFile {
@@ -719,4 +749,98 @@ fn sets_a_zones_shafts_only_where_its_section_asks() {
       distance: 1.0,
     })
   );
+}
+
+/// An artefact of `section` standing at `x` along the level, held by `parent_id`.
+fn artefact(section: &str, x: f32, parent_id: u16) -> AlifeObject {
+  let mut object: AlifeObject = object(section, lamp(FLAG_R2, 0));
+
+  object.header.section = String::from(section);
+  object.header.position = vector(x, 2.0, 5.0);
+  object.header.parent_id = parent_id;
+  object.clsid = ClsId::Artefact;
+  object.inherited = AlifeObjectInherited::CseAlifeItemArtefact(Box::new(AlifeObjectItemArtefact {
+    base: AlifeObjectItem {
+      base: lamp(FLAG_R2, 0).base,
+      condition: 1.0,
+      upgrades: Vec::new(),
+      update_state: None,
+    },
+  }));
+
+  object
+}
+
+/// The lights of `objects` packed with the test sections, or without configs.
+fn pack_objects(objects: &[AlifeObject], sections: Option<&Ltx>) -> LightsDescription {
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None);
+
+  if let Some(sections) = sections {
+    packer = packer.with_sections(sections);
+  }
+
+  packer.add_objects(objects, &mut |_| None);
+  packer.pack()
+}
+
+// Every artefact its section lights, a detector-hidden one as much as one always shown: a point at its origin, its
+// colour raw up to a trailing comment, unshadowed unless its section asks, unanimated and without shafts.
+#[test]
+fn lights_each_artefact_its_section_lights_at_its_origin() {
+  let ltx: Ltx = sections();
+  let description: LightsDescription = pack_objects(
+    &[
+      artefact("af_lit", 10.0, SpawnPacketHeader::NO_PARENT_ID),
+      artefact("af_junk", 20.0, SpawnPacketHeader::NO_PARENT_ID),
+      artefact("af_unlit", 30.0, SpawnPacketHeader::NO_PARENT_ID),
+      artefact("af_missing", 40.0, SpawnPacketHeader::NO_PARENT_ID),
+    ],
+    Some(&ltx),
+  );
+  let [lit, junk] = description.lights.as_slice() else {
+    panic!("expected the two lit artefacts, got {:?}", description.lights)
+  };
+
+  assert_eq!(lit.kind, LightKind::Point);
+  assert_close(&lit.position, vector(10.0, 2.0, -5.0));
+  assert_eq!(lit.color, [0.9, 0.4, 0.2]);
+  assert_eq!(lit.range, 2.0);
+  assert_eq!(lit.range_jitter, 0.0);
+  assert_eq!(lit.animator, None);
+  assert!(!lit.is_shadowed);
+  assert!(!lit.is_level);
+  assert_eq!(lit.volumetric, None);
+  assert_close(&junk.position, vector(20.0, 2.0, -5.0));
+  assert_eq!(junk.color, [0.4, 0.4, 0.4]);
+  assert!(junk.is_shadowed);
+  // A controlled artefact of rank 1 lies hidden until a detector reveals it; one of rank 0 never hides.
+  assert!(lit.is_detector_hidden);
+  assert!(!junk.is_detector_hidden);
+}
+
+// The engine would refuse a colour of fewer than three numbers or a missing range; the viewer lights nothing instead.
+#[test]
+fn lights_no_artefact_whose_section_the_engine_would_refuse() {
+  let ltx: Ltx = sections();
+  let description: LightsDescription = pack_objects(
+    &[
+      artefact("af_two_fields", 10.0, SpawnPacketHeader::NO_PARENT_ID),
+      artefact("af_rangeless", 20.0, SpawnPacketHeader::NO_PARENT_ID),
+    ],
+    Some(&ltx),
+  );
+
+  assert!(description.lights.is_empty());
+}
+
+// An artefact anything holds puts its light out (`OnH_A_Chield`), and one read without configs has no section to ask.
+#[test]
+fn lights_no_artefact_held_or_read_without_configs() {
+  let ltx: Ltx = sections();
+  let held: LightsDescription = pack_objects(&[artefact("af_lit", 10.0, 3)], Some(&ltx));
+  let unconfigured: LightsDescription =
+    pack_objects(&[artefact("af_lit", 10.0, SpawnPacketHeader::NO_PARENT_ID)], None);
+
+  assert!(held.lights.is_empty());
+  assert!(unconfigured.lights.is_empty());
 }

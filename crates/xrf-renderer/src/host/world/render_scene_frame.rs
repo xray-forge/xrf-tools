@@ -31,6 +31,8 @@ pub struct RenderSceneFrame {
   pub gust: AmbientGust,
   /// How much of each campfire's idle light shows this frame, by its spawned object's id.
   pub campfire_shares: HashMap<u16, f32>,
+  /// Whether the lights of the artefacts a detector must reveal are lit, as their models are drawn.
+  pub is_detector_hidden_lit: bool,
   /// Each object motion's pose and velocity this frame, by motion name.
   pub motions: HashMap<String, RenderMotionPose>,
   /// The driving camera's smoothed hemi, which says how far outdoors it stands; none where it is not estimated.

@@ -16,6 +16,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::world::render_motion_pose::RenderMotionPose;
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
+use crate::scene::level::lights::asks::light_gates::LightGates;
 use crate::scene::level::lights::asks::light_in_view::{LightFades, LightInView};
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::lights::atlas::level_light_shadows::LevelLightShadows;
@@ -156,12 +157,12 @@ impl LevelLights {
   }
 
   /// Picks the lights a view sees this frame by its camera and settings, nearest first, as many as its records hold, and
-  /// the shadowed ones out of view the eye stands near, kept ready, each faded as far as its campfire's share in
-  /// `campfire_shares` lets it show: what the view asks of them, which the scene settles with every other view's
-  /// (`settle`) before the view writes its lights (`write`).
-  pub(crate) fn pick(&self, frame: LightsFrame, campfire_shares: &HashMap<u16, f32>) -> LightAsks {
+  /// the shadowed ones out of view the eye stands near, kept ready, each as far as `gates` lets it show: what the view
+  /// asks of them, which the scene settles with every other view's (`settle`) before the view writes its lights
+  /// (`write`).
+  pub(crate) fn pick(&self, frame: LightsFrame, gates: LightGates<'_>) -> LightAsks {
     let (mut in_view, mut ready): (Vec<LightInView>, Vec<LightInView>) = if frame.settings.is_enabled {
-      let mut in_view: Vec<LightInView> = self.collect_in_view(&frame, campfire_shares);
+      let mut in_view: Vec<LightInView> = self.collect_in_view(&frame, gates);
 
       in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
       in_view.into_iter().partition(|it| it.is_seen)
@@ -239,8 +240,9 @@ impl LevelLights {
 
   /// The lights a view sees this frame, by its camera and settings: in its frustum, or, out of it, a shadowed one the
   /// eye stands near, its faces kept ready for a turn; each with its fades by the cull's levels of detail and its
-  /// campfire's share; none a campfire or a torrid zone has put out.
-  fn collect_in_view(&self, frame: &LightsFrame, campfire_shares: &HashMap<u16, f32>) -> Vec<LightInView> {
+  /// campfire's share; none a campfire or a torrid zone has put out, nor a detector-hidden artefact's unless `gates`
+  /// lights them.
+  fn collect_in_view(&self, frame: &LightsFrame, gates: LightGates<'_>) -> Vec<LightInView> {
     let LightsFrame {
       camera, settings, lod, ..
     } = *frame;
@@ -252,11 +254,12 @@ impl LevelLights {
       .lights
       .iter()
       .filter(|(_, light)| settings.is_level_lights || !light.is_level)
+      .filter(|(_, light)| gates.is_detector_hidden_lit || !light.is_detector_hidden)
       .filter_map(|(handle, light)| {
         // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
         let share: f32 = light
           .campfire
-          .map_or(1.0, |id| campfire_shares.get(&id).copied().unwrap_or(1.0));
+          .map_or(1.0, |id| gates.campfire_shares.get(&id).copied().unwrap_or(1.0));
 
         if share <= 0.0 {
           return None;

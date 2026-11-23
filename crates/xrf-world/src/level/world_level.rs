@@ -153,6 +153,7 @@ impl WorldLevel {
     let clock: Duration = now.saturating_duration_since(opened);
     let engine: Duration = self.engine_clock.advance(clock);
     let driver: RenderViewportId = drive.viewport;
+    let is_detector_hidden_lit: bool = drive.toggles.is_spawned_detector_hidden;
 
     self
       .streaming
@@ -206,6 +207,7 @@ impl WorldLevel {
       skeleton_segments: self.animation.list_segments(),
       gust: effects.gust,
       campfire_shares: effects.campfire_shares,
+      is_detector_hidden_lit,
       motions: effects.motions,
       camera_hemi: effects.camera_hemi,
       // The level objects whose sounds play at this frame, by the ids their helpers carry, ascending.
