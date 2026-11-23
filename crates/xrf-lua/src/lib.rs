@@ -8,10 +8,12 @@ pub(crate) mod xray_lua_binding;
 pub(crate) mod xray_lua_chained_call;
 pub(crate) mod xray_lua_method_call;
 pub(crate) mod xray_lua_script;
+pub(crate) mod xray_lua_string_call;
 pub(crate) mod xray_lua_value;
 
 pub use crate::xray_lua_binding::XRayLuaBinding;
 pub use crate::xray_lua_chained_call::XRayLuaChainedCall;
 pub use crate::xray_lua_method_call::XRayLuaMethodCall;
 pub use crate::xray_lua_script::XRayLuaScript;
+pub use crate::xray_lua_string_call::XRayLuaStringCall;
 pub use crate::xray_lua_value::XRayLuaValue;

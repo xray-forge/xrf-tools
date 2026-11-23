@@ -1,25 +1,28 @@
 use std::collections::HashSet;
 use std::ptr;
 
-use full_moon::ast::{Ast, BinOp, Call, Expression, Field, FunctionArgs, FunctionCall, Suffix, TableConstructor};
+use full_moon::ast::{
+  Ast, BinOp, Call, Expression, Field, FunctionArgs, FunctionCall, Index, Prefix, Suffix, TableConstructor,
+};
 use full_moon::visitors::Visitor;
 
 use crate::lua_scope::LuaScope;
+use crate::xray_lua_string_call::XRayLuaStringCall;
 use crate::xray_lua_value::XRayLuaValue;
 
 /// Collects the literal strings a script uses as names: those it passes straight to a call, whatever it calls, those it
 /// keeps in a table as data, and those it builds names from by concatenating something onto them.
 ///
 /// `give_info_portion("name")`, `db.actor:has_info("name")`, `hasInfoPortion("name")` and `f "name"` pass a name,
-/// `{ ordered = "name" }` and `{ [1] = "name" }` keep one for a later call, and `"zat_b51_ordered_item_" .. index` builds
-/// one. A field whose key spells its own value, `name = "name"`, only mirrors a name into a table of constants, such as
+/// `{ ordered = "name" }`, `{ [1] = "name" }` and `{ name = {...} }` keep one for later, and
+/// `"zat_b51_ordered_item_" .. index` builds one. A field whose key spells its own value, `name = "name"`, only mirrors a name into a table of constants, such as
 /// the one xrf-engine compiles its info portion names into, and names nothing here.
 #[derive(Default)]
 pub(crate) struct LuaStringUseCollector {
-  /// Strings passed straight to a call, in source order.
-  pub(crate) call_arguments: Vec<String>,
-  /// Strings a table constructor holds as values under another key or none, in source order.
-  pub(crate) table_values: Vec<String>,
+  /// The calls passed literal strings, each with the function it names, in source order.
+  pub(crate) calls: Vec<XRayLuaStringCall>,
+  /// Strings a table constructor holds as keys or values, in source order, a field whose key spells its value left out.
+  pub(crate) table_strings: Vec<String>,
   /// Strings opening a chain of `..`, in source order.
   pub(crate) concatenation_prefixes: Vec<String>,
   /// The right sides of the `..` met so far, which continue a chain rather than open one.
@@ -41,31 +44,40 @@ impl LuaStringUseCollector {
       .map(str::to_owned)
   }
 
-  /// The literal strings among one call's arguments.
-  fn add_arguments(&mut self, arguments: &FunctionArgs) {
-    match arguments {
-      FunctionArgs::Parentheses { arguments, .. } => {
-        self
-          .call_arguments
-          .extend(arguments.iter().filter_map(Self::read_string));
-      }
-      FunctionArgs::String(string) => {
-        self
-          .call_arguments
-          .extend(Self::read_string(&Expression::String(string.clone())));
-      }
-      _ => {}
+  /// Records one call to the function a name gives, when it passes any literal string.
+  fn add_call(&mut self, function: Option<String>, arguments: &FunctionArgs) {
+    let strings: Vec<String> = match arguments {
+      FunctionArgs::Parentheses { arguments, .. } => arguments.iter().filter_map(Self::read_string).collect(),
+      FunctionArgs::String(string) => Self::read_string(&Expression::String(string.clone()))
+        .into_iter()
+        .collect(),
+      _ => Vec::new(),
+    };
+
+    if !strings.is_empty() {
+      self.calls.push(XRayLuaStringCall::from_parts(function, strings));
     }
   }
 }
 
 impl Visitor for LuaStringUseCollector {
+  /// Each call of a chain, named by what its spelling last named before it: the prefix of `f(...)`, the field of
+  /// `a.b(...)`, or the method of `a:b(...)`. A bracketed index or a call's result names nothing.
   fn visit_function_call(&mut self, call: &FunctionCall) {
+    let mut named: Option<String> = match call.prefix() {
+      Prefix::Name(name) => Some(name.token().to_string()),
+      _ => None,
+    };
+
     for suffix in call.suffixes() {
       match suffix {
-        Suffix::Call(Call::AnonymousCall(arguments)) => self.add_arguments(arguments),
-        Suffix::Call(Call::MethodCall(method)) => self.add_arguments(method.args()),
-        _ => {}
+        Suffix::Index(Index::Dot { name, .. }) => named = Some(name.token().to_string()),
+        Suffix::Call(Call::AnonymousCall(arguments)) => self.add_call(named.take(), arguments),
+        Suffix::Call(Call::MethodCall(method)) => {
+          self.add_call(Some(method.name().token().to_string()), method.args());
+          named = None;
+        }
+        _ => named = None,
       }
     }
   }
@@ -83,11 +95,16 @@ impl Visitor for LuaStringUseCollector {
         _ => None,
       };
 
-      if let Some(value) = Self::read_string(value)
-        && key.as_deref() != Some(value.as_str())
-      {
-        self.table_values.push(value);
+      let value: Option<String> = Self::read_string(value);
+
+      // `name = "name"` mirrors a constant; any other field keeps its key and its string as data, as `supplies =
+      // { supply_ammo_1 = {...} }` keys the portions a loop checks.
+      if value.is_some() && key == value {
+        continue;
       }
+
+      self.table_strings.extend(key);
+      self.table_strings.extend(value);
     }
   }
 

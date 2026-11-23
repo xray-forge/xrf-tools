@@ -108,6 +108,10 @@ pub enum GamedataVerificationRule {
   /// misspelling between the two sides leaves behind.
   #[display("info-portion.read-only")]
   InfoPortionReadOnly,
+  /// An info portion something gives that no condlist, dialog or script reads and whose declaration does nothing,
+  /// which is state nothing acts on.
+  #[display("info-portion.unread")]
+  InfoPortionUnread,
   #[display("levels.ai-guid")]
   LevelsAiGuid,
   #[display("levels.ai-node-count")]

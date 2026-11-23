@@ -13,6 +13,8 @@ pub(crate) struct GamedataInfoPortionsVerificationResult {
   pub(crate) checked_info_portions_count: u32,
   /// Info portions something reads and nothing gives.
   pub(crate) read_only_count: u32,
+  /// Info portions something gives and nothing reads.
+  pub(crate) unread_count: u32,
   /// Configs that did not resolve, whose condlists went unread; the LTX check reports them.
   pub(crate) unread_configs_count: u32,
   /// Scripts that did not read or parse, whose names went unread; the scripts check reports them.
@@ -51,8 +53,8 @@ impl GamedataCheckResult for GamedataInfoPortionsVerificationResult {
     }
 
     let mut message: String = format!(
-      "{} info portions named; {} read but never given",
-      self.checked_info_portions_count, self.read_only_count
+      "{} info portions named; {} read but never given, {} given but never read",
+      self.checked_info_portions_count, self.read_only_count, self.unread_count
     );
 
     // Only when there is something to say: what went unread may hide a giver.

@@ -141,6 +141,51 @@ fn reports_a_portion_read_that_nothing_gives() {
   assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
 }
 
+/// A portion given and never read is reported where it is first given, unless a script reads it through a reader call
+/// or names it where what it does is unknown, such as a table keyed by it, or its declaration opens a dialog or takes
+/// another portion away. A script
+/// reading a portion does not give it, so one only a reader call names is still read and never given.
+#[test]
+fn reports_a_portion_given_that_nothing_reads() {
+  let result: GamedataInfoPortionsVerificationResult = InfoPortionTree::new()
+    .with(
+      "configs/scripts/giver.ltx",
+      "[sr_idle@give]\non_info = sr_idle@nil %+dead_state +script_read_state +opening_state +disabling_state \
+       +handed_state +keyed_state%\non_info2 = {+script_only_read} sr_idle@nil\n",
+    )
+    .with(
+      "configs/gameplay/info_portions.xml",
+      r#"<game_information_portions>
+  <info_portion id="opening_state"><dialog>d</dialog></info_portion>
+  <info_portion id="disabling_state"><disable>dead_state_old</disable></info_portion>
+</game_information_portions>"#,
+    )
+    .with(
+      "scripts/quest.script",
+      "function check()\n  return has_alife_info(\"script_read_state\") and has_alife_info(\"script_only_read\")\nend\n\
+       function hand()\n  handlers.store(\"handed_state\")\nend\nlocal supplies = { keyed_state = { ammo = 2 } }\n",
+    )
+    .verify();
+
+  assert_eq!(
+    messages(&result),
+    [
+      "Info portion 'script_only_read' is read by [sr_idle@give] on_info2, but no condlist, dialog or spawned document \
+       gives it and no script names it",
+      "Info portion 'dead_state' is given by [sr_idle@give] on_info, but no condlist, dialog or script reads it and \
+       holding it does nothing",
+    ]
+  );
+  assert_eq!(
+    result
+      .get_findings()
+      .iter()
+      .map(|finding| finding.rule_id().as_str())
+      .collect::<Vec<&str>>(),
+    ["info-portion.read-only", "info-portion.unread"]
+  );
+}
+
 /// A tree naming no info portion, such as a mod touching only meshes, is not judged.
 #[test]
 fn skips_a_tree_naming_no_info_portion() {

@@ -13,7 +13,8 @@ use crate::project::info_portions::info_portion_table::InfoPortionTable;
 use crate::project::info_portions::info_portion_uses::InfoPortionUses;
 use crate::project::info_portions::verify_info_portions_result::GamedataInfoPortionsVerificationResult;
 
-/// The info portions check: every info portion something reads is given somewhere.
+/// The info portions check: every info portion something reads is given somewhere, and every one something gives is
+/// read or does something by being held.
 ///
 /// The engine accepts any spelling and never says a portion it reads is one nothing gives, so a misspelling between
 /// the side giving a portion and the side reading it stalls a quest silently. What this check reports is therefore
@@ -65,6 +66,24 @@ impl<'a> GamedataCheck<'a> for InfoPortionsVerifier<'a> {
           GamedataVerificationRule::InfoPortionReadOnly,
           &read.path,
           message,
+        ));
+      }
+
+      // State nothing acts on: a portion given and never read, whose declaration opens no dialog and takes nothing.
+      for (name, uses) in table.get_uses() {
+        let Some(given) = uses.find_unread() else {
+          continue;
+        };
+
+        result.unread_count += 1;
+        result.findings.push(GamedataFindingFactory::warning_for_asset(
+          GamedataVerificationRule::InfoPortionUnread,
+          &given.path,
+          format!(
+            "Info portion '{name}' is given by {}, but no condlist, dialog or script reads it and holding it does \
+             nothing",
+            given.context
+          ),
         ));
       }
     }

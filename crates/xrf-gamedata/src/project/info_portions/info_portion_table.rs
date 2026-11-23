@@ -10,7 +10,6 @@ use xrf_dialog::{
 use xrf_error::XrfResult;
 use xrf_job::JobHandle;
 use xrf_ltx::{Ltx, LtxResolution};
-use xrf_lua::XRayLuaScript;
 use xrf_spawn::SpawnFile;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots, XraySearch};
 
@@ -18,6 +17,7 @@ use crate::project::gamedata_project::GamedataProject;
 use crate::project::info_portions::info_portion_mention::InfoPortionMention;
 use crate::project::info_portions::info_portion_place::InfoPortionPlace;
 use crate::project::info_portions::info_portion_role::InfoPortionRole;
+use crate::project::info_portions::info_portion_script_names::InfoPortionScriptNames;
 use crate::project::info_portions::info_portion_uses::InfoPortionUses;
 use crate::project::scripts::gamedata_parsed_script::GamedataParsedScript;
 use crate::project::scripts::scripts_verifier::ScriptsVerifier;
@@ -43,10 +43,6 @@ pub(crate) struct InfoPortionTable {
 }
 
 impl InfoPortionTable {
-  /// How many `_`-separated parts a concatenated prefix needs before it names a family of info portions.
-  const NAME_PREFIX_PARTS: usize = 2;
-  /// What ends a prefix opening a family of names, before the part a script appends.
-  const NAME_SEPARATOR: char = '_';
   /// The debug scenes vanilla's developer menu jumps into, each starting with an info portion it gives.
   const SCENES_PATH: &'static str = "configs\\scripts\\scenes.ltx";
   /// What separates a debug scene's fields: its info portion, walk and look paths, and items.
@@ -128,14 +124,33 @@ impl InfoPortionTable {
     };
 
     for info_portion in partners.get_info_portions().values() {
+      let id: &str = info_portion.get_id();
+      let path: PathBuf = Self::resolve_report_path(project, info_portion.get_logical_path());
+
       self.record_use(
-        info_portion.get_id(),
+        id,
         InfoPortionRole::Declared,
         InfoPortionPlace {
-          path: Self::resolve_report_path(project, info_portion.get_logical_path()),
-          context: format!("info_portion '{}'", info_portion.get_id()),
+          path: path.clone(),
+          context: format!("info_portion '{id}'"),
         },
       );
+
+      // Holding it opens its dialogs, and giving it takes its `<disable>` list away (`xray-16` `InfoPortion.cpp`).
+      if !info_portion.get_dialogs().is_empty() || !info_portion.get_disables().is_empty() {
+        self.uses.entry(id.to_owned()).or_default().is_effective = true;
+      }
+
+      for disabled in info_portion.get_disables() {
+        self.record_use(
+          disabled,
+          InfoPortionRole::Taken,
+          InfoPortionPlace {
+            path: path.clone(),
+            context: format!("info_portion '{id}' <disable>"),
+          },
+        );
+      }
     }
 
     if let Some(dialogs) = dialogs {
@@ -292,46 +307,26 @@ impl InfoPortionTable {
     }
   }
 
-  /// The names scripts pass straight to a call or keep in a table as data, and the names they build onto a literal
-  /// prefix, which may be any name the prefix opens. A script that does not read or parse is reported by the scripts
-  /// check and counted here.
+  /// What scripts do with the names other sources name (`InfoPortionScriptNames`). A script that does not read or
+  /// parse is reported by the scripts check and counted here.
   fn add_scripts(&mut self, project: &GamedataProject, job: &JobHandle) {
     let parsed: Vec<GamedataParsedScript> = ScriptsVerifier::parse_runtime_scripts(project, job);
-    let scripts: Vec<&XRayLuaScript> = parsed.iter().filter_map(|parsed| parsed.script.as_ref().ok()).collect();
+    let mut names: InfoPortionScriptNames<'_> = InfoPortionScriptNames::read(project, &parsed);
 
     self.scripts_count = u32::try_from(parsed.len()).unwrap_or(u32::MAX);
-    self.unread_scripts_count = u32::try_from(parsed.len() - scripts.len()).unwrap_or(u32::MAX);
-
-    let named: HashSet<&str> = scripts
-      .iter()
-      .flat_map(|script| {
-        script
-          .get_call_string_arguments()
-          .iter()
-          .chain(script.get_table_string_values())
-      })
-      .map(String::as_str)
-      .collect();
-    let prefixes: HashSet<&str> = scripts
-      .iter()
-      .flat_map(|script| script.get_concatenation_prefixes())
-      .map(String::as_str)
-      .filter(|prefix| Self::is_name_prefix(prefix))
-      .collect();
+    self.unread_scripts_count = u32::try_from(names.unread_count).unwrap_or(u32::MAX);
 
     // A string no other source names is not an info portion this table follows.
     for (name, uses) in &mut self.uses {
-      uses.is_scripted = named.contains(name.as_str())
-        || prefixes
-          .iter()
-          .any(|prefix| name.len() > prefix.len() && name.starts_with(prefix));
+      if let Some(place) = names.given.remove(name.as_str()) {
+        uses.given.get_or_insert(place);
+      }
+
+      uses.is_script_read = names.read.contains(name.as_str());
+      uses.is_scripted = names.is_unknown(name);
     }
 
-    self.script_names = named
-      .into_iter()
-      .filter(|name| Self::is_identifier(name) && name.contains(Self::NAME_SEPARATOR))
-      .map(str::to_owned)
-      .collect();
+    self.script_names = names.list_identifiers().map(str::to_owned).collect();
   }
 
   /// Marks the portions a condlist function receives, once every source has named what it names.
@@ -339,27 +334,6 @@ impl InfoPortionTable {
     for (name, uses) in &mut self.uses {
       uses.is_passed = self.passed.contains(name);
     }
-  }
-
-  /// Whether a prefix a script concatenates onto opens a family of names rather than any text: an identifier of at
-  /// least two parts ending at a separator, such as `zat_b51_ordered_item_` or `jup_b221_`. A separator, a word, a
-  /// level's prefix or a part cut short, such as `_`, `layer_`, `jup_` or `zat_b`, would excuse every name it starts.
-  fn is_name_prefix(prefix: &str) -> bool {
-    Self::is_identifier(prefix)
-      && prefix.ends_with(Self::NAME_SEPARATOR)
-      && prefix
-        .split(Self::NAME_SEPARATOR)
-        .filter(|part| !part.is_empty())
-        .count()
-        >= Self::NAME_PREFIX_PARTS
-  }
-
-  /// Whether a string is written as info portion names are: ASCII letters, digits and underscores.
-  fn is_identifier(name: &str) -> bool {
-    !name.is_empty()
-      && name
-        .chars()
-        .all(|character| character.is_ascii_alphanumeric() || character == Self::NAME_SEPARATOR)
   }
 
   fn add_mention(&mut self, mention: InfoPortionMention, path: &Path) {
@@ -403,7 +377,7 @@ impl InfoPortionTable {
   }
 
   /// The path a finding names: the file on disk where there is one, else the logical path.
-  fn resolve_report_path(project: &GamedataProject, logical_path: &str) -> PathBuf {
+  pub(crate) fn resolve_report_path(project: &GamedataProject, logical_path: &str) -> PathBuf {
     XrayLogicalPath::new(logical_path)
       .map(|path| project.ltx_project.path_of(&path))
       .unwrap_or_else(|_| PathBuf::from(logical_path))

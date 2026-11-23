@@ -4,6 +4,8 @@
 pub(crate) mod info_portion_mention;
 pub(crate) mod info_portion_place;
 pub(crate) mod info_portion_role;
+pub(crate) mod info_portion_script_functions;
+pub(crate) mod info_portion_script_names;
 pub(crate) mod info_portion_spelling;
 pub(crate) mod info_portion_table;
 pub(crate) mod info_portion_uses;
