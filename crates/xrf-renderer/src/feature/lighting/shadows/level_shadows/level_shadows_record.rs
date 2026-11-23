@@ -4,8 +4,9 @@ use xrf_renderer_core::{
 };
 
 use crate::feature::lighting::shadows::cascade_target::CascadeTarget;
+use crate::feature::lighting::shadows::cascades::cascade_draw::CascadeDraw;
 use crate::feature::lighting::shadows::level_shadows::{
-  BAND_PASSES, CascadeDraw, KEPT_PASSES, LevelShadows, STATIC_PASSES, SWAY_PASSES, WHOLE_PASSES,
+  BAND_PASSES, KEPT_PASSES, LevelShadows, STATIC_PASSES, SWAY_PASSES, WHOLE_PASSES,
 };
 use crate::feature::lighting::shadows::shadow_casters::ShadowCasters;
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;

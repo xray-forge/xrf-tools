@@ -3,11 +3,10 @@ use xrf_math::glam::{Vec3, Vec4};
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
 use crate::contract::viewport::render_rect::RenderRect;
+use crate::feature::lighting::shadows::cascades::cascade_draw::CascadeDraw;
 use crate::feature::lighting::shadows::cascades::shadow_cascade_view::ShadowCascadeView;
 use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
-use crate::feature::lighting::shadows::level_shadows::{
-  BANDS, CascadeDraw, LandedCasters, LevelShadows, STATIC_LAYERS,
-};
+use crate::feature::lighting::shadows::level_shadows::{BANDS, LandedCasters, LevelShadows, STATIC_LAYERS};
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;

@@ -3,6 +3,7 @@ use xrf_math::glam::Vec3;
 use crate::contract::feature::lighting::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RenderShadowSettings};
 use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::report::applied::render_applied_shadows::RenderAppliedShadows;
+use crate::feature::lighting::shadows::cascades::cascade_draw::CascadeDraw;
 use crate::feature::lighting::shadows::cascades::shadow_cascade_view::ShadowCascadeView;
 use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
@@ -73,7 +74,7 @@ const NEAR_BLENDED: usize = 2;
 
 /// The first cascade that keeps a second static layer, which its next is drawn into ahead of the turn that would stale
 /// the one shown: the far ones, whose static draws cost the most.
-const BANDED_FROM: usize = 2;
+pub(super) const BANDED_FROM: usize = 2;
 /// Bands a static layer drawn ahead, or a sweep of the trees' sway, is drawn in, one a frame at most: four frames at
 /// 120 Hz keep the sway's 30 Hz. Then the most frames a band drawn ahead waits.
 const BANDS: u32 = 4;
@@ -82,22 +83,6 @@ const BAND_WAIT_MOST: u32 = 2;
 const PREFETCH_HOLD: f32 = 0.5;
 /// Static layers kept: one a cascade, and a second for each drawn ahead.
 const STATIC_LAYERS: u32 = (2 * RENDER_MAX_SHADOW_CASCADES - BANDED_FROM) as u32;
-
-/// How a cascade due this frame is drawn.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum CascadeDraw {
-  /// Every caster into its map: while the trees stand still.
-  Whole,
-  /// What stands still into its static layer, copied into its map, the trees over it.
-  Static,
-  /// Its static layer copied into its map, the trees over it.
-  Swaying,
-  /// Its kept layer copied into its map, what moves every frame over it: the trees as last drawn, waiting their turn.
-  Kept,
-  /// One band of its rows: its static layer's rows restored into its map, the trees over them, so a sway redraw
-  /// spreads over `BANDS` frames.
-  Banded(u32),
-}
 
 /// A cascade's draw offered this frame: which, its ticket, how it would be drawn, the fit it is drawn at, and what the
 /// scene holds.

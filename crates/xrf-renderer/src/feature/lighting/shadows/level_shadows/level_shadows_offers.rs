@@ -3,13 +3,15 @@ use xrf_math::glam::{Mat4, Vec3, Vec4};
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
+use crate::feature::lighting::shadows::cascades::cascade_draw::CascadeDraw;
+use crate::feature::lighting::shadows::cascades::cascade_split_state::CascadeSplitState;
 use crate::feature::lighting::shadows::cascades::shadow_cascade_view::ShadowCascadeView;
 use crate::feature::lighting::shadows::cascades::shadow_prefetch::ShadowPrefetch;
 use crate::feature::lighting::shadows::level_shadows::{
-  BAND_PASSES, BAND_WAIT_MOST, BANDED_FROM, BANDS, CascadeDraw, CascadeOffer, CascadeRequest, CascadeSplit,
-  KEPT_PASSES, KEPT_SEED, LevelShadows, NEAR_BLEND, NEAR_BLENDED, PREFETCH_HOLD, RECEIVED_MOVE_MOST,
-  RECEIVED_TURN_MOST, SEEN_GRID, SEEN_SHARES, STATIC_PASSES, SUN_SHADOW_EDGE, SWAY_PASSES, SWAY_SEEDS, SeenPoint,
-  TREES_WAIT_MOST, WHOLE_PASSES, WHOLE_SEEDS,
+  BAND_PASSES, BAND_WAIT_MOST, BANDED_FROM, BANDS, CascadeOffer, CascadeRequest, CascadeSplit, KEPT_PASSES, KEPT_SEED,
+  LevelShadows, NEAR_BLEND, NEAR_BLENDED, PREFETCH_HOLD, RECEIVED_MOVE_MOST, RECEIVED_TURN_MOST, SEEN_GRID,
+  SEEN_SHARES, STATIC_PASSES, SUN_SHADOW_EDGE, SWAY_PASSES, SWAY_SEEDS, SeenPoint, TREES_WAIT_MOST, WHOLE_PASSES,
+  WHOLE_SEEDS,
 };
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
 use crate::frame::periodic::periodic_job::PeriodicJob;
@@ -177,14 +179,11 @@ impl LevelShadows {
   }
 
   /// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway or anything moves every
-  /// frame: over its static layer, at the fit that layer was drawn at, while the cascade's fit holds by it and nothing
-  /// changed under it (the nearest cascade's only while its fit is the same); else a new static layer at the cascade's
-  /// fit. One what moves every frame lands in (`has_moving`) draws every frame, at once: the grass sways every frame,
-  /// and a shadow drawn at the sway's interval would trail the blades drawn over it wherever the frame rate passes it.
-  /// Its trees still wait their interval: between their draws it copies in its kept layer and draws what moves alone
-  /// over it, and while another kept cascade redraws its trees this frame (`is_trees_taken`) one whose trees are due for
-  /// the sway alone waits a frame, up to `TREES_WAIT_MOST` intervals, so the redraws spread over frames rather than
-  /// piling into one.
+  /// frame, as [`CascadeSplitState::choose`] chooses it: over its static layer, at the fit that layer was drawn at,
+  /// while the cascade's fit holds by it and nothing changed under it (the nearest cascade's only while its fit is the
+  /// same); else a new static layer at the cascade's fit. One what moves every frame lands in (`has_moving`) draws every
+  /// frame, at once: the grass sways every frame, and a shadow drawn at the sway's interval would trail the blades drawn
+  /// over it wherever the frame rate passes it.
   fn offer_split(
     index: usize,
     cascade: &mut ShadowCascadeView,
@@ -214,66 +213,31 @@ impl LevelShadows {
       eye.distance(frame.camera.position) > RECEIVED_MOVE_MOST
         || look.dot(frame.camera.get_look()) < RECEIVED_TURN_MOST.to_radians().cos()
     });
-    let is_stale: bool = cascade.drawn.is_none() || !is_held || cascade.is_swapped || is_left;
     let interval: f32 = frame.settings.get_sway_interval();
-    let is_swayed: bool = frame.settings.is_swaying(index)
-      && frame
-        .sway
-        .is_redrawn_every(frame.sway.reach, current.texel, cascade.drawn_at, interval);
-    let is_kept: bool = has_moving && cascade.is_kept;
-    let can_wait: bool = frame.sway.can_wait(cascade.drawn_at, interval * TREES_WAIT_MOST);
-    let is_trees_due: bool = is_stale || (is_swayed && !(is_kept && *is_trees_taken && can_wait));
-
-    if is_kept && is_trees_due {
-      *is_trees_taken = true;
-    }
-
-    // A sway-only redraw goes band by band, unless what moves every frame lands in the cascade and draws over its kept
-    // layer each frame. A near cascade's bands are drawn when due, so its sweep keeps the sway's rate.
-    if !has_moving && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
-      let band: u32 = cascade.sway_sweep.map_or(0, |(_, band)| band);
-
-      return Some(Self::offer(
-        index,
-        cascade,
-        frame,
-        scheduler,
-        CascadeRequest {
-          draw: CascadeDraw::Banded(band),
-          fit: static_fit,
-          is_urgent: index < BANDED_FROM,
-        },
-      ));
-    }
-
-    if is_kept && !is_trees_due {
-      return Some(Self::offer(
-        index,
-        cascade,
-        frame,
-        scheduler,
-        CascadeRequest {
-          draw: CascadeDraw::Kept,
-          fit: cascade.drawn_fit,
-          is_urgent: true,
-        },
-      ));
-    }
-
-    let is_wanted: bool = is_trees_due || has_moving || cascade.has_drawn_moving;
-
-    if !is_wanted {
+    let state: CascadeSplitState = CascadeSplitState {
+      index,
+      has_moving,
+      has_drawn_moving: cascade.has_drawn_moving,
+      is_kept: cascade.is_kept,
+      is_held,
+      is_stale: cascade.drawn.is_none() || !is_held || cascade.is_swapped || is_left,
+      is_swayed: frame.settings.is_swaying(index)
+        && frame
+          .sway
+          .is_redrawn_every(frame.sway.reach, current.texel, cascade.drawn_at, interval),
+      can_wait: frame.sway.can_wait(cascade.drawn_at, interval * TREES_WAIT_MOST),
+      sweep: cascade.sway_sweep.map(|(_, band)| band),
+    };
+    let Some((draw, is_urgent)) = state.choose(is_trees_taken) else {
       cascade.waited = 0;
 
       return None;
-    }
-
-    let (draw, fit): (CascadeDraw, SunCascade) = if is_held {
-      (CascadeDraw::Swaying, static_fit)
-    } else {
-      (CascadeDraw::Static, current)
     };
-    let is_urgent: bool = has_moving || cascade.has_drawn_moving;
+    let fit: SunCascade = match draw {
+      CascadeDraw::Swaying | CascadeDraw::Banded(_) => static_fit,
+      CascadeDraw::Kept => cascade.drawn_fit,
+      CascadeDraw::Whole | CascadeDraw::Static => current,
+    };
 
     Some(Self::offer(
       index,
