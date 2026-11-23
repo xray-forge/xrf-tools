@@ -14,8 +14,10 @@
 
 // Metres in front of the surface's own plane a read must stand to hide it, so the plane's own pixels never do.
 const CONTACT_PLANE_MARGIN: f32 = 0.02;
-// What the plane's margin grows by each metre from the camera, as the depth spreads.
-const CONTACT_PLANE_GROWTH: f32 = 0.004;
+// What the plane's margin grows by each metre from the camera, as the depth spreads. Kept small: a fitting a few
+// centimetres off a wall, a ship's rub rail or fenders, counts as the wall itself once the margin passes its gap, and its
+// shadow line vanishes a few metres further back.
+const CONTACT_PLANE_GROWTH: f32 = 0.001;
 // What the thickness grows by each metre from the camera, as a pixel spans more of what stands there.
 const CONTACT_THICKNESS_GROWTH: f32 = 0.05;
 // Pixels' widths at the surface that the ray starts off it, along its normal.
