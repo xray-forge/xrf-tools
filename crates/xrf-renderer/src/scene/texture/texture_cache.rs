@@ -3,18 +3,21 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
+use std::time::Instant;
 
 use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
 use crate::contract::report::texture::render_texture_report::RenderTextureReport;
 use crate::contract::report::texture::render_texture_state::RenderTextureState;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::scene::texture::decoded_texture::DecodedTexture;
+use crate::scene::texture::loaded_texture::LoadedTexture;
+use crate::scene::texture::sequence::played_sequence::PlayedSequence;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::queue::loader_receiver::LoaderReceiver;
 use crate::thread::queue::render_workers::RenderWorkers;
 
 mod texture_cache_binding;
 mod texture_cache_loads;
+mod texture_cache_sequences;
 
 /// Texels a side of the checker standing in for a base texture that cannot be had, and of each of its squares.
 const CHECKER_SIZE: u32 = 16;
@@ -38,7 +41,7 @@ const MAX_SLOTS: u32 = 16_384;
 
 /// What a texture load came to, sent from a loader thread: its slot, the slot's generation it was asked under, and the
 /// texture.
-type TextureLoad = (u32, u32, Result<Option<DecodedTexture>, String>, Option<u64>);
+type TextureLoad = (u32, u32, Result<Option<LoadedTexture>, String>, Option<u64>);
 
 /// Every texture the renderer's scenes sample, once each by scope and reference, in one bindless array: a material
 /// names its texture by slot, so draws are never split by texture. A slot no scene samples any more is freed and given
@@ -83,7 +86,11 @@ pub(crate) struct TextureCache {
   /// Behind a lock only so the cache is shared by the passes a frame records; read with `&mut self`, never locked.
   receiver: LoaderReceiver<TextureLoad>,
   /// Loaded, waiting for a frame's upload budget, each beside the generation it was asked under.
-  uploads: VecDeque<(u32, u32, DecodedTexture)>,
+  uploads: VecDeque<(u32, u32, LoadedTexture)>,
+  /// The slots whose texture is a sequence, by slot, each playing into its slot's texture.
+  sequences: HashMap<u32, PlayedSequence>,
+  /// What the sequences' clock counts from, as the engine's continual clock counts from its start.
+  started: Instant,
   /// Frames the first upload waiting has waited.
   waited: u32,
   capacity: u32,
@@ -166,6 +173,8 @@ impl TextureCache {
       sender,
       receiver,
       uploads: VecDeque::new(),
+      sequences: HashMap::new(),
+      started: Instant::now(),
       waited: 0,
       capacity,
       is_dirty: false,
@@ -418,6 +427,7 @@ impl TextureCache {
       }
 
       self.sources[slot] = None;
+      self.sequences.remove(&(slot as u32));
 
       self.views[slot] = self.views[Self::MISSING_SLOT as usize].clone();
       self.states[slot] = RenderTextureState::Missing;

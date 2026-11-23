@@ -76,6 +76,18 @@ impl XrayAssetType {
         &[XrayExtension::Tga, XrayExtension::Bmp, XrayExtension::Ogm],
       ),
       Self::Thm => ("textures", XrayExtension::Thm, &[]),
+      // An animated texture's frame list, looked up by the texture's reference with its image extension stripped as
+      // the engine strips it (`fix_texture_name`); the engine reads `.seq` alone, never the disabled `.seq_`.
+      Self::Seq => (
+        "textures",
+        XrayExtension::Seq,
+        &[
+          XrayExtension::Tga,
+          XrayExtension::Dds,
+          XrayExtension::Bmp,
+          XrayExtension::Ogm,
+        ],
+      ),
       Self::Ogg => ("sounds", XrayExtension::Ogg, &[]),
       Self::Ltx => ("configs", XrayExtension::Ltx, &[]),
       Self::Script => ("scripts", XrayExtension::Script, &[]),
@@ -204,6 +216,20 @@ mod tests {
     assert_eq!(rules(XrayAssetType::Ltx).directory, "configs");
     assert_eq!(rules(XrayAssetType::Script).directory, "scripts");
     assert_eq!(rules(XrayAssetType::Ppe).directory, "anims");
+    assert_eq!(rules(XrayAssetType::Seq).directory, "textures");
+  }
+
+  #[test]
+  fn finds_a_texture_sequence_by_its_texture_reference() {
+    let seq: XrayAssetRules = rules(XrayAssetType::Seq);
+
+    assert_eq!(
+      seq.to_logical_path(r"artifact\artifact_anim_dist"),
+      r"artifact\artifact_anim_dist.seq"
+    );
+    // The engine strips an image extension off a texture's name before it looks for the sequence.
+    assert_eq!(seq.to_logical_path(r"fx\fx_stalker.tga"), r"fx\fx_stalker.seq");
+    assert_eq!(seq.to_logical_path(r"fx\fx_stalker.dds"), r"fx\fx_stalker.seq");
   }
 
   #[test]

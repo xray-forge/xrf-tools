@@ -61,7 +61,7 @@ impl RenderThread {
 
     self.show_asked_scenes();
     self.retain_scenes(&live);
-    self.keep_textures(now);
+    self.keep_textures(now, &mut encoder);
 
     let is_presented: bool = self.draw_windows(now.elapsed(), span, encoder);
 
@@ -298,9 +298,9 @@ impl RenderThread {
     self.reopening.retain(live);
   }
 
-  /// Keeps the textures: every `TEXTURE_SWEEP` those no scene samples let go, then the uploads streamed and the
-  /// weather's textures brought up.
-  fn keep_textures(&mut self, now: Instant) {
+  /// Keeps the textures: every `TEXTURE_SWEEP` those no scene samples let go, then the uploads streamed, the sequences'
+  /// frames due at the frame's time shown, and the weather's textures brought up.
+  fn keep_textures(&mut self, now: Instant, encoder: &mut FrameEncoder) {
     self.sweep_textures(now);
 
     let Some(RunningGpu { gpu, .. }) = &mut self.running else {
@@ -316,6 +316,7 @@ impl RenderThread {
       &mut self.periodic,
       TextureUploadPace::of(is_opening),
     );
+    gpu.textures.play(encoder, self.drawn_at);
     gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
   }
 

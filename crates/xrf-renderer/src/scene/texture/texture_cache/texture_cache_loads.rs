@@ -8,6 +8,10 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::scene::texture::decoded_texture::DecodedTexture;
+use crate::scene::texture::loaded_texture::LoadedTexture;
+use crate::scene::texture::sequence::decoded_sequence::DecodedSequence;
+use crate::scene::texture::sequence::played_sequence::PlayedSequence;
+use crate::scene::texture::sequence::texture_sequence::TextureSequence;
 use crate::scene::texture::texture_cache::{
   TextureCache, TextureLoad, UPLOAD_BYTES, UPLOAD_PASSES, UPLOAD_SEED, UPLOAD_WAIT_MOST, UPLOADS_OFFERED,
 };
@@ -41,6 +45,7 @@ impl TextureCache {
   }
 
   /// Whether a slot reads a file of one of these names: its own, or its bump where it is a terrain's heights.
+  // todo: Reload a sequence's slot when its `.seq` or one of its frame files changes; only its own name is matched.
   fn is_named(&self, slot: usize, names: &[String]) -> bool {
     let reference: &str = &self.references[slot];
     let own: String = get_texture_name(reference);
@@ -111,17 +116,9 @@ impl TextureCache {
   ) -> TextureLoad {
     // Taken before the read, so a write landing during it is read again later rather than missed.
     let stamp: Option<u64> = source.get_texture_stamp(reference);
-    // At full quality the listed textures load whole too, so the list is never read.
-    let dropped: u32 = Self::get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(reference));
-    let read = |reference: &str| -> XrfResult<Option<DecodedTexture>> {
-      source
-        .read_texture(reference)?
-        .map(|bytes| DecodedTexture::from_dds(&bytes).map(|texture| texture.without_levels(dropped)))
-        .transpose()
-    };
-    let load: Result<Option<DecodedTexture>, String> = match role {
+    let load: Result<Option<LoadedTexture>, String> = match role {
       // A detail's height where the installation brings one, else integrated from its bump.
-      TextureRole::TerrainHeight => read(reference)
+      TextureRole::TerrainHeight => Self::read_decoded(source, reference, lod)
         .and_then(|own| match own {
           Some(own) => Ok(Some(own)),
           None => {
@@ -130,6 +127,7 @@ impl TextureCache {
               reference.strip_suffix(TextureRole::HEIGHT_SUFFIX).unwrap_or(reference),
               TextureRole::BUMP_SUFFIX
             );
+            let dropped: u32 = Self::get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(reference));
 
             source
               .read_texture(&bump)?
@@ -137,8 +135,15 @@ impl TextureCache {
               .transpose()
           }
         })
+        .map(|texture| texture.map(LoadedTexture::Still))
         .map_err(|error| error.to_string()),
-      _ => read(reference).map_err(|error| error.to_string()),
+      // A sequence's frame list wins over a texture of the same name, as `CTexture::Load` looks for it first.
+      _ => match source.read_texture_sequence(reference) {
+        Ok(Some(bytes)) => Self::read_sequence(source, reference, &bytes, lod),
+        Ok(None) => Self::read_decoded(source, reference, lod).map(|texture| texture.map(LoadedTexture::Still)),
+        Err(error) => Err(error),
+      }
+      .map_err(|error| error.to_string()),
     };
 
     if let Err(error) = &load {
@@ -146,6 +151,47 @@ impl TextureCache {
     }
 
     (slot, generation, load, stamp)
+  }
+
+  /// A texture read and decoded, its levels cut as the engine cuts them at `texture_lod`; none where its source holds
+  /// nothing for it.
+  fn read_decoded(source: &Arc<dyn RenderAssetSource>, reference: &str, lod: u32) -> XrfResult<Option<DecodedTexture>> {
+    // At full quality the listed textures load whole too, so the list is never read.
+    let dropped: u32 = Self::get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(reference));
+
+    source
+      .read_texture(reference)?
+      .map(|bytes| DecodedTexture::from_dds(&bytes).map(|texture| texture.without_levels(dropped)))
+      .transpose()
+  }
+
+  /// A sequence's frames as `CTexture::Load` reads a `.seq`: each loaded as any texture is by its own name, one that
+  /// cannot be had left out; none where no frame can.
+  fn read_sequence(
+    source: &Arc<dyn RenderAssetSource>,
+    reference: &str,
+    bytes: &[u8],
+    lod: u32,
+  ) -> XrfResult<Option<LoadedTexture>> {
+    let sequence: TextureSequence = TextureSequence::parse(&String::from_utf8_lossy(bytes))?;
+    let frames = sequence
+      .frames
+      .iter()
+      .filter_map(|frame| match Self::read_decoded(source, frame, lod) {
+        Ok(Some(texture)) => Some((frame.clone(), texture)),
+        Ok(None) => {
+          log::warn!("Texture sequence '{reference}' leaves out frame '{frame}', which cannot be found");
+
+          None
+        }
+        Err(error) => {
+          log::warn!("Texture sequence '{reference}' leaves out frame '{frame}': {error}");
+
+          None
+        }
+      });
+
+    Ok(DecodedSequence::stack(reference, frames, sequence.timing).map(LoadedTexture::Sequence))
   }
 
   /// Takes what the loaders finished and uploads it at `pace`, then rebinds the array if a slot changed: up to
@@ -208,8 +254,8 @@ impl TextureCache {
 
       scheduler.grant();
 
-      let offered: Vec<(u32, u32, DecodedTexture)> = self.uploads.drain(..count).collect();
-      let mut kept: Vec<(u32, u32, DecodedTexture)> = Vec::new();
+      let offered: Vec<(u32, u32, LoadedTexture)> = self.uploads.drain(..count).collect();
+      let mut kept: Vec<(u32, u32, LoadedTexture)> = Vec::new();
 
       for ((slot, generation, texture), ticket) in offered.into_iter().zip(tickets) {
         if scheduler.is_granted(ticket) {
@@ -232,8 +278,12 @@ impl TextureCache {
     }
   }
 
-  /// Uploads a loaded texture into its slot.
-  fn upload(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, slot: u32, texture: &DecodedTexture) {
+  /// Uploads a loaded texture into its slot: a sequence's frames played into it from then on.
+  fn upload(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, slot: u32, loaded: &LoadedTexture) {
+    // Whatever it held before, a sequence or not, is replaced.
+    self.sequences.remove(&slot);
+
+    let texture: &DecodedTexture = loaded.get_decoded();
     // One view the device refuses would make the whole bindless group invalid, and every surface with it.
     let limits: wgpu::Limits = device.limits();
 
@@ -248,22 +298,30 @@ impl TextureCache {
       return;
     }
 
-    // The bindless array holds two dimensional textures alone, so a cube or a volume named as a level texture is
-    // refused rather than drawn by its first face.
-    if !texture.is_flat() {
-      let kind: &str = if texture.is_volume { "a volume" } else { "a cube map" };
+    self.views[slot as usize] = match loaded {
+      // The bindless array holds two dimensional textures alone, so a cube or a volume named as a level texture is
+      // refused rather than drawn by its first face. A sequence stacks flat frames alone.
+      LoadedTexture::Still(texture) if !texture.is_flat() => {
+        let kind: &str = if texture.is_volume { "a volume" } else { "a cube map" };
 
-      self.stand_in(
-        slot,
-        RenderTextureState::Failed {
-          reason: format!("It is {kind}, and a level texture is drawn flat"),
-        },
-      );
+        self.stand_in(
+          slot,
+          RenderTextureState::Failed {
+            reason: format!("It is {kind}, and a level texture is drawn flat"),
+          },
+        );
 
-      return;
-    }
+        return;
+      }
+      LoadedTexture::Still(texture) => texture.upload(device, queue, "level texture"),
+      LoadedTexture::Sequence(sequence) => {
+        let (played, view): (PlayedSequence, wgpu::TextureView) = PlayedSequence::upload(device, queue, sequence);
 
-    self.views[slot as usize] = texture.upload(device, queue, "level texture");
+        self.sequences.insert(slot, played);
+
+        view
+      }
+    };
     self.blue_free[slot as usize] = self.roles[slot as usize] == TextureRole::Distortion && !texture.has_blue();
     self.states[slot as usize] = RenderTextureState::Loaded {
       width: texture.width,
@@ -278,6 +336,7 @@ impl TextureCache {
   /// Stands something in for a texture that cannot be had: a checker for a base, so the gap is seen, else neutral.
   fn stand_in(&mut self, slot: u32, state: RenderTextureState) {
     self.blue_free[slot as usize] = false;
+    self.sequences.remove(&slot);
 
     if self.roles[slot as usize] == TextureRole::Base {
       self.views[slot as usize] = self.checker.clone();

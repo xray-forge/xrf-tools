@@ -13,6 +13,17 @@ pub trait RenderAssetSource: Send + Sync + 'static {
   /// Returns an error when the texture exists but cannot be read.
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>>;
 
+  /// The bytes of the frame list (`textures\<reference>.seq`) that makes a texture a sequence, as `CTexture::Load`
+  /// looks for it in the shared tree before the texture itself; `None` for a texture with none, which loads as
+  /// itself.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the list exists but cannot be read.
+  fn read_texture_sequence(&self, _reference: &str) -> XrfResult<Option<Vec<u8>>> {
+    Ok(None)
+  }
+
   /// Whether the game loads a texture a step coarser than the rest at the same texture quality, as its
   /// `reduce_lod_texture_list` names it by part of its reference.
   fn is_texture_reduced(&self, _reference: &str) -> bool {

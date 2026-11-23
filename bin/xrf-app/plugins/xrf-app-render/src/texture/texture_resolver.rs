@@ -5,7 +5,7 @@ use xrf_app_core::assets::{AssetMountState, FileStamp};
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XrayTextureScope;
 use xrf_renderer::get_texture_name;
-use xrf_vfs::{XrayAssetContainer, XrayRoots, XraySearch};
+use xrf_vfs::{XrayAssetContainer, XrayAssetType, XrayRoots, XraySearch};
 
 use crate::texture::ResolvedTexture;
 
@@ -118,6 +118,27 @@ impl TextureResolver {
       Some(logical_path) => search.read(&logical_path).map(Some),
       None => Ok(None),
     }
+  }
+
+  /// The frame list that makes a texture a sequence, `textures\<reference>.seq`, found in the shared tree alone as
+  /// `CTexture::Load` looks for it (`$game_textures$`), never beside the level; none where there is none, or the
+  /// reference is one no path can name.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the roots cannot be mounted or the file cannot be read.
+  pub fn read_sequence(&self, assets: &AssetMountState, reference: &str) -> XrfResult<Option<Vec<u8>>> {
+    let search: XraySearch = assets.search(&self.roots).map_err(XrfError::new_asset_error)?;
+    let logical_path: Option<String> = search
+      .resolve(XrayAssetType::Seq, reference)
+      .ok()
+      .and_then(|resolution| {
+        resolution
+          .get_asset()
+          .map(|asset| asset.get_logical_path().as_str().to_owned())
+      });
+
+    logical_path.map(|path| search.read(&path)).transpose()
   }
 
   /// Its roots and scope as one key: the subject asset, each root's path and how it mounts, in order, then the level's

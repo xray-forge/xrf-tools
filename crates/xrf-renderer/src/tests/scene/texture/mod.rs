@@ -4,3 +4,4 @@ mod hex_tiling;
 mod texture_cache;
 mod texture_lod;
 mod texture_role;
+mod texture_sequence;

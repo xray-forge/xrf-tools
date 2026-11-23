@@ -163,7 +163,7 @@ impl DecodedTexture {
   /// slices as an array, or a two dimensional one.
   pub(crate) fn upload(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str) -> wgpu::TextureView {
     self
-      .upload_layers(device, queue, label, self.layers)
+      .upload_layers(device, queue, label, self.layers, wgpu::TextureUsages::empty())
       .create_view(&wgpu::TextureViewDescriptor {
         dimension: Some(self.get_view_dimension()),
         ..Default::default()
@@ -218,8 +218,16 @@ impl DecodedTexture {
     }
   }
 
-  /// A texture of its first `layers`, each level's read from the start of its bytes.
-  fn upload_layers(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str, layers: u32) -> wgpu::Texture {
+  /// A texture of its first `layers`, each level's read from the start of its bytes, sampled and written to and used
+  /// for `usage` besides.
+  pub(crate) fn upload_layers(
+    &self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    label: &str,
+    layers: u32,
+    usage: wgpu::TextureUsages,
+  ) -> wgpu::Texture {
     let size: wgpu::Extent3d = wgpu::Extent3d {
       width: self.width,
       height: self.height,
@@ -232,7 +240,7 @@ impl DecodedTexture {
       sample_count: 1,
       dimension: wgpu::TextureDimension::D2,
       format: self.format,
-      usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+      usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | usage,
       view_formats: &[],
     });
     let (block_width, block_height) = self.format.block_dimensions();

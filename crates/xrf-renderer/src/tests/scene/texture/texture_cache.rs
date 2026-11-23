@@ -130,6 +130,85 @@ impl RenderAssetSource for DistortionSource {
   }
 }
 
+/// Answers `anim` with a frame list of three frames at ten a second, its middle one missing, and each frame with a DXT1
+/// texture of two levels; any other reference with that texture and no list.
+struct SequenceSource;
+
+impl RenderAssetSource for SequenceSource {
+  fn get_texture_scope(&self) -> &str {
+    "test"
+  }
+
+  fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
+    if reference == r"fx\anim_02" {
+      return Ok(None);
+    }
+
+    let mut flat: Dds = Dds::new_d3d(NewD3dParams {
+      width: 8,
+      height: 8,
+      depth: None,
+      format: D3DFormat::DXT1,
+      mipmap_levels: Some(2),
+      caps2: None,
+    })
+    .expect("a DXT1 texture");
+    let mut bytes: Vec<u8> = Vec::new();
+
+    // Four blocks at the top level, one below.
+    flat.data = vec![0; 5 * 8];
+    flat.write(&mut bytes).expect("a written texture");
+
+    Ok(Some(bytes))
+  }
+
+  fn read_texture_sequence(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
+    Ok((reference == "anim").then(|| b"10\r\nfx\\anim_01\r\nfx\\anim_02\r\nfx\\anim_03.tga\r\n".to_vec()))
+  }
+}
+
+#[test]
+fn plays_a_sequence_into_its_slot_by_the_frames_clock() {
+  let Some(context) = create_test_context("to upload to") else {
+    return;
+  };
+  let source: Arc<dyn RenderAssetSource> = Arc::new(SequenceSource);
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
+  let anim: u32 = cache.request("anim", TextureRole::Base, &source);
+  let still: u32 = cache.request("still", TextureRole::Base, &source);
+
+  for slot in [anim, still] {
+    assert!(matches!(
+      settle(&mut cache, &context, slot),
+      RenderTextureState::Loaded {
+        width: 8,
+        levels: 2,
+        ..
+      }
+    ));
+  }
+
+  assert_eq!(cache.get_sequence_frame(anim), Some(0));
+  assert_eq!(cache.get_sequence_frame(still), None);
+
+  // Two frames are left of three, a tenth of a second each: 250 ms in shows the first again, 150 ms the second.
+  for (elapsed, frame) in [(150, 1), (250, 0), (199, 1)] {
+    let mut encoder: wgpu::CommandEncoder = context.device.create_command_encoder(&Default::default());
+
+    cache.play(
+      &mut encoder,
+      cache.get_sequences_start() + Duration::from_millis(elapsed),
+    );
+    context.queue.submit([encoder.finish()]);
+
+    assert_eq!(cache.get_sequence_frame(anim), Some(frame), "at {elapsed} ms");
+  }
+
+  cache.retain(&HashSet::from([still]));
+
+  assert_eq!(cache.get_sequence_frame(anim), None);
+}
+
 #[test]
 fn tells_a_distortion_map_without_blue_once_it_is_up() {
   let Some(context) = create_test_context("to upload to") else {

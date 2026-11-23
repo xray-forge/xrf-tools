@@ -112,6 +112,10 @@ impl RenderAssetSource for VisualRenderSource {
     self.textures.read(&self.assets, reference)
   }
 
+  fn read_texture_sequence(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
+    self.textures.read_sequence(&self.assets, reference)
+  }
+
   fn forget_textures(&self, names: &[String]) {
     self.textures.forget(names);
   }
