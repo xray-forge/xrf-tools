@@ -1,11 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use xrf_error::XrfResult;
 use xrf_job::JobHandle;
-use xrf_job::parallel::prelude::*;
-use xrf_lua::XRayLuaScript;
 
 use crate::project::gamedata_project::GamedataProject;
+use crate::project::scripts::gamedata_parsed_script::GamedataParsedScript;
 use crate::project::scripts::scripts_verifier::ScriptsVerifier;
 
 /// The functions a tree's scripts define for the engine to call by name, as `CScriptEngine::function_object` finds them.
@@ -26,54 +24,38 @@ pub(crate) struct GamedataScriptFunctions {
   is_registration_hidden: bool,
 }
 
-/// What one script tells the index: the namespace it fills, if it lies directly under `scripts`, and what it defines.
-struct ScriptDefinitions {
-  namespace: Option<String>,
-  script: XrfResult<XRayLuaScript>,
-}
-
 impl GamedataScriptFunctions {
   const SCRIPTS_DIRECTORY: &'static str = "scripts\\";
   const SCRIPT_EXTENSION: &'static str = ".script";
   /// The namespace a name without a dot is looked up in, and the script that fills it, lowercased.
   const GLOBAL_NAMESPACE: &'static str = "_g";
 
-  /// Read and parse every runtime script the project holds, in parallel, or `None` for a tree holding none, such as a
-  /// mod relying on the game's scripts, of which nothing is known.
+  /// Read and parse every runtime script the project holds, or `None` for a tree holding none, such as a mod relying
+  /// on the game's scripts, of which nothing is known.
   pub(crate) fn read(project: &GamedataProject, job: &JobHandle) -> Option<Self> {
-    let paths: Vec<String> = ScriptsVerifier::list_runtime_scripts(project);
-    let definitions: Vec<ScriptDefinitions> = paths
-      .par_iter()
-      .filter_map(|path| {
-        if job.is_cancelled() {
-          return None;
-        }
+    let scripts: Vec<GamedataParsedScript> = ScriptsVerifier::parse_runtime_scripts(project, job);
 
-        Some(ScriptDefinitions {
-          namespace: Self::find_namespace(path),
-          script: ScriptsVerifier::read_code(project, path).and_then(|code| XRayLuaScript::parse(path, &code)),
-        })
-      })
-      .collect();
-
-    if definitions.is_empty() {
+    if scripts.is_empty() {
       return None;
     }
 
     let mut functions: Self = Self::default();
 
-    for definition in definitions {
-      functions.add(definition);
+    for parsed in scripts {
+      functions.add(parsed);
     }
 
     Some(functions)
   }
 
-  /// Take in what one script defines: the names it registers, and the functions of the namespace it fills.
-  fn add(&mut self, definition: ScriptDefinitions) {
-    let Ok(script) = definition.script else {
+  /// Take in what one script defines: the names it registers, and the functions of the namespace it fills, if it lies
+  /// directly under `scripts`.
+  fn add(&mut self, parsed: GamedataParsedScript) {
+    let namespace: Option<String> = Self::find_namespace(&parsed.path);
+
+    let Ok(script) = parsed.script else {
       // The scripts check reports the script; neither what it defines nor what it registers is known.
-      self.unread.extend(definition.namespace);
+      self.unread.extend(namespace);
       self.is_registration_hidden = true;
 
       return;
@@ -81,7 +63,7 @@ impl GamedataScriptFunctions {
 
     self.registered.extend(script.get_registered_names().iter().cloned());
 
-    if let Some(namespace) = definition.namespace {
+    if let Some(namespace) = namespace {
       self
         .namespaces
         .entry(namespace)

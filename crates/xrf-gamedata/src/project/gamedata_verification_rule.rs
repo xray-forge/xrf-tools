@@ -104,6 +104,10 @@ pub enum GamedataVerificationRule {
   /// A section naming another the engine cannot find.
   #[display("environment.reference")]
   EnvironmentReference,
+  /// An info portion a condlist or dialog reads that no condlist, dialog, spawned item or script call gives, which a
+  /// misspelling between the two sides leaves behind.
+  #[display("info-portion.read-only")]
+  InfoPortionReadOnly,
   #[display("levels.ai-guid")]
   LevelsAiGuid,
   #[display("levels.ai-node-count")]

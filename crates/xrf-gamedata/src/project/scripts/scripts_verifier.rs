@@ -3,6 +3,8 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
+use xrf_job::JobHandle;
+use xrf_job::parallel::prelude::*;
 use xrf_lua::XRayLuaScript;
 use xrf_report::Finding;
 use xrf_utils::read_as_string_from_w1251_encoded;
@@ -15,6 +17,7 @@ use crate::project::gamedata_finding_factory::GamedataFindingFactory;
 use crate::project::gamedata_project::GamedataProject;
 use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::gamedata_verification_rule::GamedataVerificationRule;
+use crate::project::scripts::gamedata_parsed_script::GamedataParsedScript;
 use crate::project::scripts::verify_scripts_result::GamedataScriptsVerificationResult;
 
 /// The scripts check: every runtime script the game holds parses as LuaJIT.
@@ -67,9 +70,27 @@ impl ScriptsVerifier<'_> {
       .collect()
   }
 
+  /// Every runtime script read and parsed, in parallel, for a check reading what scripts define or name; one not
+  /// reached before the job is cancelled is left out.
+  pub(crate) fn parse_runtime_scripts(project: &GamedataProject, job: &JobHandle) -> Vec<GamedataParsedScript> {
+    Self::list_runtime_scripts(project)
+      .into_par_iter()
+      .filter_map(|path| {
+        if job.is_cancelled() {
+          return None;
+        }
+
+        let script: XrfResult<XRayLuaScript> =
+          Self::read_code(project, &path).and_then(|code| XRayLuaScript::parse(&path, &code));
+
+        Some(GamedataParsedScript { path, script })
+      })
+      .collect()
+  }
+
   /// A script's code as the game reads it: through the VFS, so an archived script is read too, and decoded from
   /// windows-1251.
-  pub(crate) fn read_code(project: &GamedataProject, path: &str) -> XrfResult<String> {
+  fn read_code(project: &GamedataProject, path: &str) -> XrfResult<String> {
     project
       .read_bytes(path)
       .and_then(|bytes| Ok(read_as_string_from_w1251_encoded(&mut Cursor::new(bytes))?))

@@ -7,6 +7,7 @@ use xrf_utils::format_path;
 
 use crate::lua_definition_collector::LuaDefinitionCollector;
 use crate::lua_method_call_collector::LuaMethodCallCollector;
+use crate::lua_string_use_collector::LuaStringUseCollector;
 use crate::xray_lua_method_call::XRayLuaMethodCall;
 
 /// A parsed LuaJIT script with normalized method calls, each argument read in the scope it is written in, and the
@@ -16,6 +17,9 @@ pub struct XRayLuaScript {
   method_calls: Vec<XRayLuaMethodCall>,
   global_functions: Vec<String>,
   registered_names: Vec<String>,
+  call_string_arguments: Vec<String>,
+  table_string_values: Vec<String>,
+  concatenation_prefixes: Vec<String>,
   path: PathBuf,
 }
 
@@ -32,11 +36,15 @@ impl XRayLuaScript {
     let path: &Path = path.as_ref();
     let ast: Ast = Self::parse_ast(path, source)?;
     let definitions: LuaDefinitionCollector = LuaDefinitionCollector::collect(&ast);
+    let strings: LuaStringUseCollector = LuaStringUseCollector::collect(&ast);
 
     Ok(Self {
       method_calls: LuaMethodCallCollector::collect(&ast),
       global_functions: definitions.global_functions,
       registered_names: definitions.registered_names,
+      call_string_arguments: strings.call_arguments,
+      table_string_values: strings.table_values,
+      concatenation_prefixes: strings.concatenation_prefixes,
       path: path.to_path_buf(),
     })
   }
@@ -52,6 +60,26 @@ impl XRayLuaScript {
   /// global table such as `dialogs.break_dialog`.
   pub fn get_registered_names(&self) -> &[String] {
     &self.registered_names
+  }
+
+  /// The literal strings the script passes straight to a call, in source order, repeats kept: the names it hands to
+  /// functions that act on them, such as the info portions it gives and checks.
+  pub fn get_call_string_arguments(&self) -> &[String] {
+    &self.call_string_arguments
+  }
+
+  /// The literal strings the script keeps in tables as data, in source order, repeats kept: `{ ordered = "name" }`
+  /// keeps a name for a later call. A field whose key spells its value, `name = "name"`, only mirrors a constant and is
+  /// left out.
+  pub fn get_table_string_values(&self) -> &[String] {
+    &self.table_string_values
+  }
+
+  /// The literal strings the script builds names from, opening a chain of `..`, in source order, repeats kept:
+  /// `"zat_b51_ordered_item_" .. index` builds every name the prefix opens, while the literal of `a .. "_b_" .. c`
+  /// starts in the middle of one and is left out.
+  pub fn get_concatenation_prefixes(&self) -> &[String] {
+    &self.concatenation_prefixes
   }
 
   /// Whether LuaJIT source parses, for a caller that only needs to know the script is valid.
@@ -595,6 +623,35 @@ extern("travel_callbacks", { can_travel = function() end, ["get_cost"] = functio
         "travel_callbacks"
       ]
     );
+
+    Ok(())
+  }
+
+  /// Names reach the functions acting on them as call arguments, a method's or a bare call's, as values a table keeps
+  /// for later, or built onto a literal prefix, while a field mirroring its own key is only a constant.
+  #[test]
+  fn collects_the_literal_strings_used_as_names() -> XrfResult {
+    let code: &str = r#"
+local names = { known = "known_table_value", mirrored = "mirrored", [1] = "indexed_value", "listed_value" }
+
+db.actor:give_info_portion("given_by_method")
+if has_alife_info("read_by_call") and hasInfoPortion(names.known) then
+  print "bare_string_call"
+end
+local built = "built_prefix_" .. index .. "_suffix"
+local inner = name .. "middle_part_" .. index
+"#;
+    let script: XRayLuaScript = XRayLuaScript::parse("info.script", code)?;
+
+    assert_eq!(
+      script.get_call_string_arguments(),
+      ["given_by_method", "read_by_call", "bare_string_call"]
+    );
+    assert_eq!(
+      script.get_table_string_values(),
+      ["known_table_value", "indexed_value", "listed_value"]
+    );
+    assert_eq!(script.get_concatenation_prefixes(), ["built_prefix_"]);
 
     Ok(())
   }

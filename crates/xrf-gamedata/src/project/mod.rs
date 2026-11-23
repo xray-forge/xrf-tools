@@ -21,6 +21,7 @@ pub(crate) mod gamedata_verification_rule;
 pub(crate) mod gamedata_verification_status;
 pub(crate) mod gamedata_verification_type;
 pub(crate) mod gamedata_visual_motions;
+pub(crate) mod info_portions;
 pub(crate) mod levels;
 pub(crate) mod ltx;
 pub(crate) mod materials;

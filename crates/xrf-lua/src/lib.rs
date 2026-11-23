@@ -3,6 +3,7 @@
 pub(crate) mod lua_definition_collector;
 pub(crate) mod lua_method_call_collector;
 pub(crate) mod lua_scope;
+pub(crate) mod lua_string_use_collector;
 pub(crate) mod xray_lua_binding;
 pub(crate) mod xray_lua_chained_call;
 pub(crate) mod xray_lua_method_call;

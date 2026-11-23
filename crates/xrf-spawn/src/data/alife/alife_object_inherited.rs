@@ -595,6 +595,63 @@ impl AlifeObjectInherited {
     }
   }
 
+  /// The info portion the object gives whoever takes it: a document's (`CInfoDocument::OnH_A_Chield`); `None` for every
+  /// other class, and for a document that names none. A PDA's spawn packet carries one too, but the game never reads it.
+  pub fn get_info_portion(&self) -> Option<&str> {
+    let info_portion: &str = match self {
+      Self::CseAlifeItemDocument(object) => &object.info_portion,
+      Self::CseAlifeItemPda(_)
+      | Self::SeActor(_)
+      | Self::SeStalker(_)
+      | Self::CseAlifeTrader(_)
+      | Self::ClearSkySeActor(_)
+      | Self::ClearSkySeStalker(_)
+      | Self::SeMonster(_)
+      | Self::CseAlifeObjectBreakable(_)
+      | Self::CseAlifeObjectClimable(_)
+      | Self::CseAlifeGraphPoint(_)
+      | Self::CseAlifeSpaceRestrictor(_)
+      | Self::SeSmartCover(_)
+      | Self::CseAlifeAnomalousZone(_)
+      | Self::CseAlifeTorridZone(_)
+      | Self::SeSmartTerrain(_)
+      | Self::SeLevelChanger(_)
+      | Self::CseAlifeTeamBaseZone(_)
+      | Self::CseAlifeZoneVisual(_)
+      | Self::CseAlifeCar(_)
+      | Self::CseAlifeObjectPhysic(_)
+      | Self::CseAlifeHelicopter(_)
+      | Self::CseAlifeInventoryBox(_)
+      | Self::CseAlifeObjectHangingLamp(_)
+      | Self::CseAlifeItem(_)
+      | Self::CseAlifeItemExplosive(_)
+      | Self::CseAlifeItemAmmo(_)
+      | Self::CseAlifeItemGrenade(_)
+      | Self::CseAlifeItemArtefact(_)
+      | Self::CseAlifeItemWeapon(_)
+      | Self::CseAlifeItemDetector(_)
+      | Self::CseAlifeItemHelmet(_)
+      | Self::CseAlifeItemCustomOutfit(_)
+      | Self::CseAlifeItemWeaponShotgun(_)
+      | Self::CseAlifeItemWeaponMagazined(_)
+      | Self::CseAlifeItemWeaponMagazinedWGl(_)
+      | Self::CseAlifeItemBolt(_)
+      | Self::CseAlifeItemTorch(_)
+      | Self::CseAlifeCreatureCrow(_)
+      | Self::CseAlifeCreaturePhantom(_)
+      | Self::CseAlifeDynamicObjectVisual(_)
+      | Self::CseAlifeObjectProjector(_)
+      | Self::CseAlifePhSkeletonObject(_)
+      | Self::CseAlifeStationaryMGun(_)
+      | Self::SimSquadScripted(_)
+      | Self::ClearSkySeMonster(_)
+      | Self::ClearSkySeSmartTerrain(_)
+      | Self::ClearSkySeSimFaction(_) => return None,
+    };
+
+    (!info_portion.is_empty()).then_some(info_portion)
+  }
+
   /// Move the object to `position`, facing `direction`, in the update packet: a creature's position and torso, an
   /// item's or a physic object's physics state, and the body an actor saved. A class whose update packet stores no
   /// position keeps none to move.

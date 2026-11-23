@@ -91,7 +91,9 @@ and `get_all()` list them; each parses from its CLI name.
 | Check             | Covers                                                                                                                                                     |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `animations`      | HUD and player HUD animations, motion collisions, object motions, post-process effects                                                                     |
+| `dialogs`         | Dialogs as the engine opens them, and the characters, profiles, info portions, logic, spawns and squads offering or placing them                           |
 | `environment`     | Everything under `configs\environment` the engine reads, and the textures its keyframes name                                                               |
+| `info-portions`   | Info portions condlists and dialogs read that no condlist, dialog, spawned document or script gives                                                        |
 | `levels`          | Compiled level bundles, their companion files, the level roster, collision face materials                                                                  |
 | `ltx`             | Config resolution, section schemes, and formatting                                                                                                         |
 | `materials`       | `gamemtl.xr` against the engine's load-time asserts, engine-named materials, wallmark textures, and materials named by configs and climbable spawn objects |

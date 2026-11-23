@@ -88,6 +88,7 @@ impl GamedataRunPrinter {
       GamedataVerificationType::Animations => "animations",
       GamedataVerificationType::Dialogs => "dialogs",
       GamedataVerificationType::Environment => "environment",
+      GamedataVerificationType::InfoPortions => "info portions",
       GamedataVerificationType::Levels => "levels",
       GamedataVerificationType::Ltx => "LTX files",
       GamedataVerificationType::Materials => "materials",

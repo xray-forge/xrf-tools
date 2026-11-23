@@ -13,6 +13,7 @@ use crate::project::gamedata_check::GamedataCheck;
 use crate::project::gamedata_project::GamedataProject;
 use crate::project::gamedata_project_verify_options::GamedataProjectVerifyOptions;
 use crate::project::gamedata_verification_check_report::GamedataVerificationCheckReport;
+use crate::project::info_portions::info_portions_verifier::InfoPortionsVerifier;
 use crate::project::levels::levels_verifier::LevelsVerifier;
 use crate::project::ltx::ltx_verifier::LtxVerifier;
 use crate::project::materials::materials_verifier::MaterialsVerifier;
@@ -45,6 +46,9 @@ pub enum GamedataVerificationType {
   /// Everything under `configs\environment` the engine reads, and the textures its keyframes name.
   #[display("environment")]
   Environment,
+  /// Every info portion the configs, dialogs, spawned objects and scripts name, and whether what reads one is given it.
+  #[display("info-portions")]
+  InfoPortions,
   #[display("levels")]
   Levels,
   #[display("ltx")]
@@ -74,10 +78,11 @@ pub enum GamedataVerificationType {
 
 impl GamedataVerificationType {
   /// Every check a caller can select, which is every kind of authored asset.
-  pub const ALL: [Self; 15] = [
+  pub const ALL: [Self; 16] = [
     Self::Animations,
     Self::Dialogs,
     Self::Environment,
+    Self::InfoPortions,
     Self::Levels,
     Self::Ltx,
     Self::Materials,
@@ -108,6 +113,7 @@ impl GamedataVerificationType {
       Self::Animations => self.run_check::<AnimationsVerifier<'_>>(project, options),
       Self::Dialogs => self.run_check::<DialogsVerifier<'_>>(project, options),
       Self::Environment => self.run_check::<EnvironmentVerifier<'_>>(project, options),
+      Self::InfoPortions => self.run_check::<InfoPortionsVerifier<'_>>(project, options),
       Self::Levels => self.run_check::<LevelsVerifier<'_>>(project, options),
       Self::Ltx => self.run_check::<LtxVerifier<'_>>(project, options),
       Self::Materials => self.run_check::<MaterialsVerifier<'_>>(project, options),

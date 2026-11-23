@@ -11,6 +11,8 @@ export enum EGamedataVerificationType {
   DIALOGS = "dialogs",
   /** Everything under `configs\environment` the engine reads, and the textures its keyframes name. */
   ENVIRONMENT = "environment",
+  /** Every info portion the configs, dialogs, spawned objects and scripts name, and whether what reads one is given it. */
+  INFO_PORTIONS = "info-portions",
   LEVELS = "levels",
   LTX = "ltx",
   /** The game material library, and every name the engine, configs and spawn objects resolve against it. */
