@@ -1,14 +1,14 @@
 use std::io::Cursor;
-use std::path::Path;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_job::parallel::prelude::*;
 use xrf_lua::XRayLuaScript;
 use xrf_report::Finding;
 use xrf_utils::read_as_string_from_w1251_encoded;
-use xrf_vfs::XrayAssetType;
+use xrf_vfs::{XrayAsset, XrayAssetType};
 
 use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
 use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
@@ -37,10 +37,10 @@ impl<'a> GamedataCheck<'a> for ScriptsVerifier<'a> {
     self.options.job.check_cancelled()?;
 
     let started_at: Instant = Instant::now();
-    let script_paths: Vec<String> = Self::list_runtime_scripts(self.project);
+    let scripts: Vec<XrayAsset> = Self::list_runtime_scripts(self.project);
 
-    let outcome: GamedataAssetSweepOutcome = GamedataAssetSweep::new(self.options)
-      .run(&script_paths, |path| self.verify_script(path).into_iter().collect())?;
+    let outcome: GamedataAssetSweepOutcome =
+      GamedataAssetSweep::new(self.options).run(&scripts, |script| self.verify_script(script).into_iter().collect())?;
 
     self.options.job.check_cancelled()?;
 
@@ -60,13 +60,12 @@ impl ScriptsVerifier<'_> {
   /// LuaJIT syntax, so it is not a runtime script and is not parsed as one.
   const LUA_HELP_SCRIPT_PATH: &'static str = r"scripts\lua_help.script";
 
-  /// Every script asset holding executable Lua the game runtime loads, by its logical path.
-  pub(crate) fn list_runtime_scripts(project: &GamedataProject) -> Vec<String> {
+  /// Every script asset holding executable Lua the game runtime loads, in logical-path order.
+  pub(crate) fn list_runtime_scripts(project: &GamedataProject) -> Vec<XrayAsset> {
     project
       .entries_of_type(XrayAssetType::Script)
       .into_iter()
-      .map(|location| location.get_logical_path().to_string())
-      .filter(|path| Self::is_runtime_script(path))
+      .filter(|script| Self::is_runtime_script(script.get_logical_path().as_str()))
       .collect()
   }
 
@@ -75,25 +74,32 @@ impl ScriptsVerifier<'_> {
   pub(crate) fn parse_runtime_scripts(project: &GamedataProject, job: &JobHandle) -> Vec<GamedataParsedScript> {
     Self::list_runtime_scripts(project)
       .into_par_iter()
-      .filter_map(|path| {
+      .filter_map(|script| {
         if job.is_cancelled() {
           return None;
         }
 
-        let script: XrfResult<XRayLuaScript> =
-          Self::read_code(project, &path).and_then(|code| XRayLuaScript::parse(&path, &code));
-
-        Some(GamedataParsedScript { path, script })
+        Some(GamedataParsedScript {
+          path: script.get_logical_path().to_string(),
+          parse: Self::read_parsed(project, &script),
+        })
       })
       .collect()
   }
 
-  /// A script's code as the game reads it: through the VFS, so an archived script is read too, and decoded from
-  /// windows-1251.
-  fn read_code(project: &GamedataProject, path: &str) -> XrfResult<String> {
-    project
-      .read_bytes(path)
-      .and_then(|bytes| Ok(read_as_string_from_w1251_encoded(&mut Cursor::new(bytes))?))
+  /// What parsing a script's code came to, the code read as the game reads it: through the VFS, so an archived script
+  /// is read too, and decoded from windows-1251.
+  ///
+  /// The project's snapshot retains the parse, so every check reading the script meets the same one, and a script
+  /// LuaJIT refuses is refused once. A script that does not read is answered as an error and not retained.
+  fn read_parsed(project: &GamedataProject, script: &XrayAsset) -> XrfResult<Arc<XrfResult<XRayLuaScript>>> {
+    let path: &str = script.get_logical_path().as_str();
+
+    project.read_resolved_parsed(script, |bytes| {
+      let code: String = read_as_string_from_w1251_encoded(&mut Cursor::new(bytes))?;
+
+      Ok(XRayLuaScript::parse(path, &code))
+    })
   }
 
   /// Whether a script asset holds executable Lua the game runtime loads.
@@ -102,9 +108,10 @@ impl ScriptsVerifier<'_> {
   }
 
   /// The finding one script raises: it does not read, or LuaJIT rejects it.
-  fn verify_script(&self, path: &str) -> Option<Finding> {
-    let code: String = match Self::read_code(self.project, path) {
-      Ok(code) => code,
+  fn verify_script(&self, script: &XrayAsset) -> Option<Finding> {
+    let path: &str = script.get_logical_path().as_str();
+    let parse: Arc<XrfResult<XRayLuaScript>> = match Self::read_parsed(self.project, script) {
+      Ok(parse) => parse,
       Err(error) => {
         return Some(GamedataFindingFactory::for_asset(
           GamedataVerificationRule::ScriptsRead,
@@ -113,8 +120,7 @@ impl ScriptsVerifier<'_> {
         ));
       }
     };
-
-    let error = XRayLuaScript::verify(Path::new(path), &code).err()?;
+    let error: &XrfError = parse.as_ref().as_ref().err()?;
 
     Some(GamedataFindingFactory::for_asset(
       GamedataVerificationRule::ScriptsSyntax,

@@ -64,28 +64,28 @@ impl<'a> GamedataCheck<'a> for DialogsVerifier<'a> {
       Some(listed) => DialogProject::from_listed(search.clone(), &roots, &layout, listed),
       None => DialogProject::from_search(search.clone(), &roots, &layout)?,
     };
-    let partners: DialogPartners = DialogPartners::from_project(&project)?;
+    let partners: &DialogPartners = self.project.get_dialog_partners()?;
     let declared: HashMap<&str, &Dialog> = Self::index_declared(&project);
 
     result.has_dialogs = true;
 
     self.report_dialog_files(&project, system.listed.as_ref(), &mut result)?;
     self.report_duplicate_dialogs(&project, &declared, &mut result);
-    self.report_partner_files(&partners, system.listed.as_ref(), &mut result)?;
+    self.report_partner_files(partners, system.listed.as_ref(), &mut result)?;
     self.options.job.check_cancelled()?;
     self.verify_dialogs(&project, &declared, &mut result);
     self.options.job.check_cancelled()?;
     self.verify_functors(&project, &declared, &mut result);
     self.options.job.check_cancelled()?;
-    self.verify_offers(&partners, &declared, &mut result);
-    let mut spawned: HashSet<String> = self.verify_spawns(&partners, &declared, &mut result);
+    self.verify_offers(partners, &declared, &mut result);
+    let mut spawned: HashSet<String> = self.verify_spawns(partners, &declared, &mut result);
 
     self.options.job.check_cancelled()?;
-    spawned.extend(self.verify_squads(&partners, &system_ltx.ltx, &mut result));
+    spawned.extend(self.verify_squads(partners, &system_ltx.ltx, &mut result));
 
     self.options.job.check_cancelled()?;
-    self.verify_profiles(&partners, &system, &spawned, &mut result);
-    self.verify_characters(&partners, &mut result);
+    self.verify_profiles(partners, &system, &spawned, &mut result);
+    self.verify_characters(partners, &mut result);
     self.options.job.check_cancelled()?;
     self.verify_logic(&declared, &mut result);
     self.options.job.check_cancelled()?;

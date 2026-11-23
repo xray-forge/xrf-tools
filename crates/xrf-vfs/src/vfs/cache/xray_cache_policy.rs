@@ -20,9 +20,14 @@ impl XrayCachePolicy {
     Self::default()
   }
 
-  /// What a verification sweep benefits from.
+  /// What a verification sweep benefits from: motions many visuals share, configs, and the spawn files and scripts
+  /// several checks each read whole, so every check asking for one meets a single parse of it.
   pub fn verification() -> Self {
-    Self::none().with(XrayAssetType::Omf).with(XrayAssetType::Ltx)
+    Self::none()
+      .with(XrayAssetType::Omf)
+      .with(XrayAssetType::Ltx)
+      .with(XrayAssetType::Spawn)
+      .with(XrayAssetType::Script)
   }
 
   /// What a command that only reads configs benefits from.

@@ -39,7 +39,7 @@ impl<'a> InfoPortionScriptNames<'a> {
     let mut names: Self = Self::default();
 
     for script in scripts {
-      let Ok(lua) = &script.script else {
+      let Some(lua) = script.get_script() else {
         names.unread_count += 1;
         continue;
       };

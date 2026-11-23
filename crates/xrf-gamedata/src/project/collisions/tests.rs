@@ -92,6 +92,7 @@ fn project(collisions: Vec<XrayPathCollision>) -> GamedataProject {
   let search: XraySearch = XraySearch::new(vfs).with_step("gamedata", XrayLookupScope::all());
 
   GamedataProject {
+    dialog_partners: std::sync::OnceLock::new(),
     engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
     ltx_project: LtxProject::open_at_search_opt(PathBuf::new(), &search, None, LtxProjectOptions::default())
       .expect("a project over an empty mount assembles"),

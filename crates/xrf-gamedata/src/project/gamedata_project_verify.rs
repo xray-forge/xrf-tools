@@ -146,6 +146,7 @@ mod tests {
   /// A project with nothing mounted, for asserting which checks run rather than what they find.
   fn empty_project() -> GamedataProject {
     GamedataProject {
+      dialog_partners: std::sync::OnceLock::new(),
       engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
       ltx_project: LtxProject::empty(PathBuf::new()),
       root: PathBuf::new(),

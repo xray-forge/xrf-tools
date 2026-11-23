@@ -1,9 +1,10 @@
 use std::io;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
+use xrf_dialog::DialogPartners;
 use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamemtl::GameMtlFile;
@@ -35,6 +36,9 @@ pub struct GamedataProject {
   pub(crate) root: PathBuf,
   /// The engine the tree is meant for, which the environment check reads its configs as, and what decided it.
   pub(crate) engine: XrayEngineResolution,
+  /// The dialog partners, read once by the first check asking (`get_dialog_partners`). A plain once-lock rather than
+  /// `PoolOnceLock`: reading them never fans out over the pool, so a worker building them takes no other job meanwhile.
+  pub(crate) dialog_partners: OnceLock<XrfResult<DialogPartners>>,
 }
 
 impl GamedataProject {
@@ -139,6 +143,7 @@ impl GamedataProject {
     .map_err(|error| XrfError::new_asset_error(format!("Failed to open gamedata project ltx configs: {error}")))?;
 
     Ok(Self {
+      dialog_partners: OnceLock::new(),
       engine,
       ltx_project,
       root: options.root.clone(),
@@ -161,8 +166,9 @@ impl GamedataProject {
     })
   }
 
-  /// The snapshot checks read through; it retains motions and configs, so a sweep reads a shared animation bank once
-  /// rather than once per visual.
+  /// The snapshot checks read through; it retains motions, configs, spawn files and parsed scripts, so a sweep reads a
+  /// shared animation bank once rather than once per visual, and the checks reading the root spawn or a script share
+  /// one parse of it.
   fn new_verification_vfs() -> XrayVfs {
     XrayVfs::new().with_cache_policy(XrayCachePolicy::verification())
   }
@@ -388,6 +394,20 @@ impl GamedataProject {
   /// Returns an error when no mount holds the asset's container, or the source cannot read it.
   pub(crate) fn read_resolved(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
     self.search.read_asset(asset)
+  }
+
+  /// Reads and parses an asset the project already resolved, serving what this project is already holding.
+  ///
+  /// # Errors
+  ///
+  /// Returns whatever reading the asset or parsing it answers with. A failure is not retained, as for
+  /// [`Self::read_parsed`].
+  pub(crate) fn read_resolved_parsed<T, F>(&self, asset: &XrayAsset, parse: F) -> XrfResult<Arc<T>>
+  where
+    T: Send + Sync + 'static,
+    F: FnOnce(Vec<u8>) -> XrfResult<T>,
+  {
+    self.search.read_parsed(asset, parse)
   }
 
   /// Opens a chunk reader over an asset the project already resolved.

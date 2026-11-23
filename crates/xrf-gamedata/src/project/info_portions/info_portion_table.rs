@@ -130,10 +130,8 @@ impl InfoPortionTable {
     let listed_dialogs: Option<DialogProject> =
       listed.map(|listed| DialogProject::from_listed(search, &roots, &layout, listed));
     let dialogs: Option<&DialogProject> = listed_dialogs.as_ref().or(named.as_ref());
-    let partners: DialogPartners = match dialogs {
-      Some(dialogs) => DialogPartners::from_project(dialogs)?,
-      None => DialogPartners::from_search(project.search(), DialogProjectMode::DIALOGS_PREFIX)?,
-    };
+    // The partners the lists name, or those named as partner files, as either project would read them.
+    let partners: &DialogPartners = project.get_dialog_partners()?;
 
     for info_portion in partners.get_info_portions().values() {
       let id: &str = info_portion.get_id();

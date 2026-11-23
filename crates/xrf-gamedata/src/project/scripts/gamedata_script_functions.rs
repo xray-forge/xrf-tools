@@ -41,7 +41,7 @@ impl GamedataScriptFunctions {
 
     let mut functions: Self = Self::default();
 
-    for parsed in scripts {
+    for parsed in &scripts {
       functions.add(parsed);
     }
 
@@ -50,10 +50,10 @@ impl GamedataScriptFunctions {
 
   /// Take in what one script defines: the names it registers, and the functions of the namespace it fills, if it lies
   /// directly under `scripts`.
-  fn add(&mut self, parsed: GamedataParsedScript) {
+  fn add(&mut self, parsed: &GamedataParsedScript) {
     let namespace: Option<String> = Self::find_namespace(&parsed.path);
 
-    let Ok(script) = parsed.script else {
+    let Some(script) = parsed.get_script() else {
       // The scripts check reports the script; neither what it defines nor what it registers is known.
       self.unread.extend(namespace);
       self.is_registration_hidden = true;
