@@ -143,8 +143,8 @@ fn reports_a_portion_read_that_nothing_gives() {
 
 /// A portion given and never read is reported where it is first given, unless a script reads it through a reader call
 /// or names it where what it does is unknown, such as a table keyed by it, or its declaration opens a dialog or takes
-/// another portion away. A script
-/// reading a portion does not give it, so one only a reader call names is still read and never given.
+/// another portion away. A script reading a portion does not give it, so one only a reader call names is still read and
+/// never given.
 #[test]
 fn reports_a_portion_given_that_nothing_reads() {
   let result: GamedataInfoPortionsVerificationResult = InfoPortionTree::new()
@@ -183,6 +183,55 @@ fn reports_a_portion_given_that_nothing_reads() {
       .map(|finding| finding.rule_id().as_str())
       .collect::<Vec<&str>>(),
     ["info-portion.read-only", "info-portion.unread"]
+  );
+}
+
+/// A declaration that opens a dialog or takes portions away does nothing if nothing gives the portion; one a condlist
+/// gives, a debug scene starts with, a script names or the engine gives (`ui_pda`) acts, and a plain declaration nothing
+/// uses is not judged.
+#[test]
+fn reports_a_declaration_that_acts_for_a_portion_nothing_gives() {
+  let result: GamedataInfoPortionsVerificationResult = InfoPortionTree::new()
+    .with(
+      "configs/gameplay/info_portions.xml",
+      r#"<game_information_portions>
+  <info_portion id="stranded_dialog"><dialog>d</dialog></info_portion>
+  <info_portion id="stranded_disable"><disable>other</disable></info_portion>
+  <info_portion id="given_dialog"><dialog>d</dialog></info_portion>
+  <info_portion id="scene_dialog"><dialog>d</dialog></info_portion>
+  <info_portion id="scripted_dialog"><dialog>d</dialog></info_portion>
+  <info_portion id="plain_unused"></info_portion>
+  <info_portion id="ui_pda"><disable>ui_pda_hide</disable></info_portion>
+</game_information_portions>"#,
+    )
+    .with(
+      "configs/scripts/giver.ltx",
+      "[sr_idle@give]\non_info = sr_idle@nil %+given_dialog%\n",
+    )
+    .with(
+      "configs/scripts/scenes.ltx",
+      "[zaton]\nscene = scene_dialog | walk | look\n",
+    )
+    .with(
+      "scripts/quest.script",
+      "function give()\n  handlers.store(\"scripted_dialog\")\nend\n",
+    )
+    .verify();
+
+  assert_eq!(
+    messages(&result),
+    [
+      "Info portion 'stranded_dialog' is declared to open dialogs or take other portions away, but nothing gives it, \
+       so that never happens",
+      "Info portion 'stranded_disable' is declared to open dialogs or take other portions away, but nothing gives it, \
+       so that never happens",
+    ]
+  );
+  assert!(
+    result
+      .get_findings()
+      .iter()
+      .all(|finding| finding.rule_id().as_str() == "info-portion.unreachable")
   );
 }
 

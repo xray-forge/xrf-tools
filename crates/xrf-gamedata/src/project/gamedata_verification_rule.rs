@@ -112,6 +112,10 @@ pub enum GamedataVerificationRule {
   /// which is state nothing acts on.
   #[display("info-portion.unread")]
   InfoPortionUnread,
+  /// An info portion whose declaration opens a dialog or takes other portions away, that nothing gives, so what the
+  /// declaration does never happens.
+  #[display("info-portion.unreachable")]
+  InfoPortionUnreachable,
   #[display("levels.ai-guid")]
   LevelsAiGuid,
   #[display("levels.ai-node-count")]

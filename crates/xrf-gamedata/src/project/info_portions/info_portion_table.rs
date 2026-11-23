@@ -43,6 +43,17 @@ pub(crate) struct InfoPortionTable {
 }
 
 impl InfoPortionTable {
+  /// The info portions Call of Pripyat's engine gives the actor itself: the PDA opening and closing (`xray-16`
+  /// `src/xrGame/ui/UIPdaWnd.cpp`), the talk window showing and hiding (`UITalkDialogWnd.cpp`), and the PDA map's local
+  /// view (`UIMapWnd.cpp`). Shadow of Chernobyl's `ui_inventory`, `ui_trade`, `ui_car_body` and `ui_talk`, which vanilla
+  /// still declares, are no longer among them.
+  const ENGINE_GIVEN: [&'static str; 5] = [
+    "ui_pda",
+    "ui_pda_hide",
+    "ui_talk_show",
+    "ui_talk_hide",
+    "ui_pda_map_local",
+  ];
   /// The debug scenes vanilla's developer menu jumps into, each starting with an info portion it gives.
   const SCENES_PATH: &'static str = "configs\\scripts\\scenes.ltx";
   /// What separates a debug scene's fields: its info portion, walk and look paths, and items.
@@ -67,6 +78,7 @@ impl InfoPortionTable {
     table.add_spawns(project, job);
     table.add_scripts(project, job);
     table.mark_passed();
+    table.mark_given_by_engine();
 
     Ok(table)
   }
@@ -333,6 +345,16 @@ impl InfoPortionTable {
   fn mark_passed(&mut self) {
     for (name, uses) in &mut self.uses {
       uses.is_passed = self.passed.contains(name);
+    }
+  }
+
+  /// Marks the portions the engine gives itself, as Call of Pripyat's windows send them to the actor
+  /// (`InventoryUtilities::SendInfoToActor`).
+  fn mark_given_by_engine(&mut self) {
+    for name in Self::ENGINE_GIVEN {
+      if let Some(uses) = self.uses.get_mut(name) {
+        uses.is_given_by_engine = true;
+      }
     }
   }
 

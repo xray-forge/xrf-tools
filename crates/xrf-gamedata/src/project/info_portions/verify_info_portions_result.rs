@@ -15,6 +15,8 @@ pub(crate) struct GamedataInfoPortionsVerificationResult {
   pub(crate) read_only_count: u32,
   /// Info portions something gives and nothing reads.
   pub(crate) unread_count: u32,
+  /// Info portions whose declaration does something, that nothing gives.
+  pub(crate) unreachable_count: u32,
   /// Configs that did not resolve, whose condlists went unread; the LTX check reports them.
   pub(crate) unread_configs_count: u32,
   /// Scripts that did not read or parse, whose names went unread; the scripts check reports them.
@@ -56,6 +58,11 @@ impl GamedataCheckResult for GamedataInfoPortionsVerificationResult {
       "{} info portions named; {} read but never given, {} given but never read",
       self.checked_info_portions_count, self.read_only_count, self.unread_count
     );
+
+    // Only when there is something to say: most trees declare few portions that do something by being held.
+    if self.unreachable_count > 0 {
+      message.push_str(&format!(", {} declared to act but never given", self.unreachable_count));
+    }
 
     // Only when there is something to say: what went unread may hide a giver.
     if self.unread_configs_count > 0 || self.unread_scripts_count > 0 {

@@ -26,17 +26,27 @@ pub(crate) struct InfoPortionUses {
   pub(crate) is_passed: bool,
   /// Whether holding it does something by itself: its declaration opens dialogs or takes other portions away.
   pub(crate) is_effective: bool,
+  /// Whether the engine gives it itself, as a window opens or closes, so that what reads it is answered whatever the
+  /// tree writes.
+  pub(crate) is_given_by_engine: bool,
 }
 
 impl InfoPortionUses {
   /// Where something first reads the portion, when nothing gives it: no condlist, dialog the engine loads, known info
   /// section, spawned document or script giver call, no script naming it otherwise, no condlist function receiving it,
-  /// and no debug scene starting with it, which is the author's own entry into the quest.
+  /// no debug scene starting with it, which is the author's own entry into the quest, and not the engine.
   pub(crate) fn find_read_only(&self) -> Option<&InfoPortionPlace> {
-    self
-      .read
-      .as_ref()
-      .filter(|_| self.given.is_none() && self.given_by_debug_scene.is_none() && !self.is_scripted && !self.is_passed)
+    self.read.as_ref().filter(|_| !self.is_given_anyhow())
+  }
+
+  /// Whether anything may give the portion: a giver the tree writes, a debug scene, the engine itself, or a script or
+  /// condlist function naming it with a role unknown.
+  fn is_given_anyhow(&self) -> bool {
+    self.given.is_some()
+      || self.given_by_debug_scene.is_some()
+      || self.is_given_by_engine
+      || self.is_scripted
+      || self.is_passed
   }
 
   /// Where something first gives the portion, when nothing reads it and holding it does nothing: no condlist or dialog
@@ -46,5 +56,14 @@ impl InfoPortionUses {
     self.given.as_ref().filter(|_| {
       self.read.is_none() && !self.is_script_read && !self.is_scripted && !self.is_passed && !self.is_effective
     })
+  }
+
+  /// Where the portion is declared, when its declaration does something that can never happen: it opens a dialog or
+  /// takes other portions away, and nothing gives it, as `find_read_only` judges giving.
+  pub(crate) fn find_unreachable(&self) -> Option<&InfoPortionPlace> {
+    self
+      .declared
+      .as_ref()
+      .filter(|_| self.is_effective && !self.is_given_anyhow())
   }
 }
