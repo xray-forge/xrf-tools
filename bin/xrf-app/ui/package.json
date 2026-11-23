@@ -8,7 +8,7 @@
     "url": "https://github.com/xray-forge/xrf-tools.git"
   },
   "engines": {
-    "node": ">=24.15.0"
+    "node": ">=26.0.0"
   },
   "scripts": {
     "dev": "vite",

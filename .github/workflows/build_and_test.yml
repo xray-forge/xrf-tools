@@ -91,6 +91,12 @@ jobs:
       - name: Build CLI
         run: cargo make build-cli-release
 
+      - name: Use Node.js 26.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.x
+          package-manager-cache: false
+
       - name: Package the CLI as a development build
         run: node cli/package/cli.mjs --name xrf-cli-dev-windows-x64
 
@@ -114,10 +120,10 @@ jobs:
           package_json_file: package.json
           run_install: false
 
-      - name: Use Node.js 24.x
+      - name: Use Node.js 26.x
         uses: actions/setup-node@v7
         with:
-          node-version: 24.x
+          node-version: 26.x
           package-manager-cache: false
 
       - uses: ./.github/actions/pnpm-store
@@ -192,10 +198,10 @@ jobs:
           package_json_file: package.json
           run_install: false
 
-      - name: Use Node.js 24.x
+      - name: Use Node.js 26.x
         uses: actions/setup-node@v7
         with:
-          node-version: 24.x
+          node-version: 26.x
           package-manager-cache: false
 
       - uses: ./.github/actions/pnpm-store
@@ -288,6 +294,12 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-about@0.9.3
+
+      - name: Use Node.js 26.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.x
+          package-manager-cache: false
 
       - name: Package the CLI as a development build
         run: node cli/package/cli.mjs --name xrf-cli-dev-linux-x64
