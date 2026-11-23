@@ -128,7 +128,9 @@ fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplit
       world_plane(texel, in.clip.xy, position));
   }
 
-  let shadow: f32 = seen * contacted * relief;
+  // The lesser of the cascades' or the traced ray's share and the contact shadows': both see the casters near a pixel,
+  // and multiplied, a soft edge both draw darkened twice, a band under a rail on a sunlit hull.
+  let shadow: f32 = min(seen, contacted) * relief;
 
   // Foliage passes the sun through from behind.
   var through: vec3<f32> = vec3<f32>(0.0);

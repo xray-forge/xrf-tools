@@ -117,14 +117,15 @@ fn cs_visibility(@builtin(global_invocation_id) id: vec3<u32>) {
         lights.shadow_filter == 1u);
     }
 
-    // Among the strongest at the pixel and still reaching it past its shadow: what its march met.
+    // Among the strongest at the pixel and still reaching it past its shadow: the lesser of its shadow and what its
+    // march met, as the sun takes them, so a soft edge both draw is not darkened twice.
     if (is_contacted && visible > 0.0) {
       if (!has_neighbours) {
         neighbours = contact_neighbours(floor(clip), -pixel.position.z);
         has_neighbours = true;
       }
 
-      visible *= contact_seen(neighbours, item, layers);
+      visible = min(visible, contact_seen(neighbours, item, layers));
     }
 
     seen[slot] = visible;
