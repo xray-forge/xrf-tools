@@ -1,4 +1,4 @@
-#import "common/depth_plane"
+#import "common/screen_plane"
 #import "common/noise"
 #import "common/camera"
 #import "common/marks"
@@ -47,33 +47,6 @@ fn contact_view_ray(pixel: vec2<f32>) -> vec3<f32> {
   );
 }
 
-// The view space point a neighbouring texel shows, one in `w` where something is drawn there.
-fn contact_neighbour(depth_target: texture_depth_2d, texel: vec2<i32>, pixel: vec2<f32>) -> vec4<f32> {
-  let depth: f32 = textureLoad(depth_target, texel, 0);
-
-  return vec4<f32>(camera_view_position(pixel, max(depth, 1e-7)), select(0.0, 1.0, depth > 0.0));
-}
-
-// The normal of the plane a pixel's depth lies in, facing the eye: across and down, each to whichever neighbour lies
-// nearer along the view, so an edge does not bend it. The G-buffer's normal is bumped; this is the surface's own.
-fn contact_plane_normal(
-  depth_target: texture_depth_2d,
-  texel: vec2<i32>,
-  pixel: vec2<f32>,
-  position: vec3<f32>
-) -> vec3<f32> {
-  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
-  let x: vec2<i32> = vec2<i32>(1, 0);
-  let y: vec2<i32> = vec2<i32>(0, 1);
-  return surface_normal(
-    position,
-    contact_neighbour(depth_target, max(texel - x, vec2<i32>(0)), pixel - vec2<f32>(x)),
-    contact_neighbour(depth_target, min(texel + x, last), pixel + vec2<f32>(x)),
-    contact_neighbour(depth_target, max(texel - y, vec2<i32>(0)), pixel - vec2<f32>(y)),
-    contact_neighbour(depth_target, min(texel + y, last), pixel + vec2<f32>(y)),
-  );
-}
-
 // How much a read hides as a caster by what it shows: whole, but grass only within the metres from the eye the grass
 // casts to (`contact.grass.x`, none where it casts none), fading out from `contact.grass.y`.
 fn contact_grass_weight(contact: ContactShadows, marks: f32, distance: f32) -> f32 {
@@ -85,7 +58,7 @@ fn contact_grass_weight(contact: ContactShadows, marks: f32, distance: f32) -> f
 }
 
 // How much of a light the point a pixel shows keeps past what stands within `ray_length` metres of it along
-// `direction`, in view space and of unit length, from none to all. `plane_normal` is `contact_plane_normal`'s. Grass
+// `direction`, in view space and of unit length, from none to all. `plane_normal` is `screen_plane_normal`'s. Grass
 // (`MARK_GRASS` in `material_target`) hides it only as far as the grass casts (`contact_grass_weight`).
 // `falloff` weakens a hit by how far behind what the depth shows the ray passes: zero counts every hit inside the
 // thickness whole, one counts the front half of the thickness whole and fades the back half out to none, as fewer

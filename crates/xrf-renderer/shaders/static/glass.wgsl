@@ -124,8 +124,10 @@ fn fs_glass(in: GBufferVarying) -> @location(0) vec4<f32> {
   let to_sun_world: vec3<f32> = normalize(rotation * lighting.to_sun.xyz);
   // How open to the sky the pane stands: a model's sky share, a level surface's baked hemisphere.
   let open: f32 = select(saturate(in.hemi), saturate(in.sky * GLASS_OPEN), (surface.flags & SURFACE_IS_MODEL) != 0u);
-  let sun: f32 =
-    sun_shadow(shadow_maps, shadow_compare, shadows, in.world, normal_world, dot(facing, lighting.to_sun.xyz));
+  // The pane's own plane, the side it faces the eye from, which its waviness does not tilt.
+  let pane_world: vec3<f32> = normalize(rotation * select(flat_normal, -flat_normal, dot(flat_normal, eye) > 0.0));
+  let sun: f32 = sun_shadow(shadow_maps, shadow_compare, shadows, in.world, normal_world,
+    dot(facing, lighting.to_sun.xyz), pane_world);
   let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
   let dirt_lit: vec3<f32> = saturate(dirt_light(normal_world, open, sun, to_sun_world) * texel * 2.0);
   let reflection: vec3<f32> = glass_sky(reflect(normalize(rotation * position), normal_world)) * open;

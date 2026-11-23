@@ -33,7 +33,7 @@ fn fs_contact_shadows(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(1.0, -position.z, 0.0, 0.0);
   }
 
-  let plane_normal: vec3<f32> = contact_plane_normal(depth_target, texel, pixel, position);
+  let plane_normal: vec3<f32> = screen_plane_normal(depth_target, texel, pixel, position);
 
   // Every hit inside the thickness whole and every step taken, as the sun's shadows were tuned.
   let lit: f32 = contact_lit(depth_target, material_target, contact, pixel, position, plane_normal, to_sun,

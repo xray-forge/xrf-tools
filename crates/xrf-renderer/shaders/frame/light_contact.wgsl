@@ -59,7 +59,7 @@ fn cs_light_contact(@builtin(global_invocation_id) id: vec3<u32>) {
       let reach: f32 = length(to_light_point);
 
       if (slot == 0u) {
-        plane_normal = contact_plane_normal(depth_target, texel, clip, pixel.position);
+        plane_normal = screen_plane_normal(depth_target, texel, clip, pixel.position);
       }
 
       let lit: f32 = contact_lit(depth_target, material_target, contact, clip, pixel.position, plane_normal,

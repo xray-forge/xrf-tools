@@ -4,6 +4,7 @@
 #import "common/hmodel"
 #import "common/fullscreen"
 #import "common/sun_shadow"
+#import "common/screen_plane"
 #import "common/occlusion"
 #import "common/scene_light"
 #import "common/brdf"
@@ -58,6 +59,14 @@ fn fs_sun_split_traced(in: FullscreenVarying) -> SunSplitTargets {
   return light_sun(in, true, true);
 }
 
+// The plane a drawn pixel's surface lies in, in world space, from the depth about it: the receiver the sun's cascades
+// are compared against, which a bumped G-buffer normal would tilt by its bumps.
+fn world_plane(texel: vec2<i32>, pixel: vec2<f32>, position: vec3<f32>) -> vec3<f32> {
+  let plane: vec3<f32> = screen_plane_normal(depth_target, texel, pixel, position);
+
+  return normalize((transpose(camera.view) * vec4<f32>(plane, 0.0)).xyz);
+}
+
 // The sun's light at a pixel, its shadow the cascades' or, `is_traced`, the traced shadow's; the engine's, or, where
 // `is_split`, the one BRDF's diffuse and coloured specular.
 fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplitTargets {
@@ -82,8 +91,8 @@ fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplit
     let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
     let cascade: u32 = sun_cascade(shadows, world);
     let order: f32 = select(0.0, f32(cascade) + 1.0, cascade < shadows.count);
-    let seen: f32 =
-      sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal, dot(normal, lighting.to_sun.xyz));
+    let seen: f32 = sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal,
+      dot(normal, lighting.to_sun.xyz), world_plane(texel, in.clip.xy, position));
 
     return SunSplitTargets(vec4<f32>(order, seen, 0.0, 0.0), vec4<f32>(0.0), vec4<f32>(0.0));
   }
@@ -115,7 +124,8 @@ fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplit
   } else if (has_mark(material.a, MARK_PLANT)) {
     seen = plant_sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal, dot(normal, to_light));
   } else {
-    seen = sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal, dot(normal, to_light));
+    seen = sun_shadow(shadow_maps, shadow_compare, shadows, world, world_normal, dot(normal, to_light),
+      world_plane(texel, in.clip.xy, position));
   }
 
   let shadow: f32 = seen * contacted * relief;
