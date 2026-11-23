@@ -7,6 +7,10 @@ use crate::project::gamedata_verification_type::GamedataVerificationType;
 pub struct GamedataProjectVerifyOptions {
   /// What hears the run's events: its start, and each check as it finishes. Nothing hears them by default.
   pub listener: Option<GamedataListener>,
+  /// Whether somebody reads the run as it goes, so the checks run in waves and the listener hears each wave as it
+  /// finishes. Unfollowed, the default, every check runs at once and the listener hears them all at the end: a silent or
+  /// scripted run still wants the findings, only not sooner at the cost of a slower sweep.
+  pub is_followed: bool,
   /// Where progress goes and where cancellation comes from.
   pub job: xrf_job::JobHandle,
   pub is_strict: bool,

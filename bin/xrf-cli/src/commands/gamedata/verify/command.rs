@@ -5,7 +5,7 @@ use xrf_gamedata::{
   GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataRunPrinter,
   GamedataVerificationReport, GamedataVerificationType,
 };
-use xrf_output::OutputOptions;
+use xrf_output::{OutputChannel, OutputOptions};
 use xrf_utils::format_path;
 
 use super::report::GamedataVerifyReport;
@@ -93,6 +93,8 @@ impl GenericCommand for VerifyCommand {
     // Created before the project opens, so the reported total covers mounting and indexing.
     let verify_options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
       listener: GamedataRunPrinter::new_listener(&output),
+      // Findings are errors and print even when silent, so the listener alone does not say whether anyone reads along.
+      is_followed: output.is_visible(OutputChannel::Info),
       is_strict,
       checks,
       job: CliJob::for_output(&output),

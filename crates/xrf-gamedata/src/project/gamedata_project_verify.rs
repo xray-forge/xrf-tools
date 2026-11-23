@@ -57,9 +57,9 @@ impl GamedataProject {
     // contract `--jobs` states and what the reports are compared on.
     let schedule: GamedataCheckSchedule = GamedataCheckSchedule::default();
 
-    // A run nobody listens to has no reader to hand reports to, so it pays nothing for one: the window buys
-    // responsiveness, and where nobody is watching that is not worth a slower sweep. A scripted run is this case.
-    let window: usize = if options.listener.is_some() {
+    // A run nobody follows pays nothing for a reader: the window buys responsiveness, and where nobody is watching that
+    // is not worth a slower sweep. A silent or scripted run is this case, even with a listener taking its findings.
+    let window: usize = if options.is_followed {
       CHECK_WINDOW
     } else {
       checks.len()
