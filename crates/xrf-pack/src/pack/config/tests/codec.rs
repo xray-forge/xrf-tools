@@ -34,7 +34,7 @@ fn populated() -> ArchivePackConfig {
   config.include_directories = vec![directory("configs", true), directory("spawns", false)];
   config.exclude_directories = vec![directory("levels\\build", true)];
   // Not the default a blank configuration already holds, so a round trip that dropped it would show.
-  config.header =
+  config.volume_settings.header =
     Some(ArchivePackHeader::default().with_overrides(&[ArchivePackHeaderEntry::new("creator", "Modder")]));
 
   config
@@ -88,14 +88,18 @@ fn equivalent_ltx_and_json_produce_the_same_file_owned_fields() {
 
   // The header is compared as text too, because the archive stores exactly those bytes as chunk 666.
   assert_eq!(
-    from_ltx.header.as_ref().map(ArchivePackHeader::to_text),
-    from_json.header.as_ref().map(ArchivePackHeader::to_text)
+    from_ltx.volume_settings.header.as_ref().map(ArchivePackHeader::to_text),
+    from_json
+      .volume_settings
+      .header
+      .as_ref()
+      .map(ArchivePackHeader::to_text)
   );
   assert_eq!(from_ltx.exclude_extensions, from_json.exclude_extensions);
   assert_eq!(from_ltx.include_files, from_json.include_files);
   assert_eq!(from_ltx.include_directories, from_json.include_directories);
   assert_eq!(from_ltx.exclude_directories, from_json.exclude_directories);
-  assert_eq!(from_ltx.header, from_json.header);
+  assert_eq!(from_ltx.volume_settings.header, from_json.volume_settings.header);
 }
 
 #[test]
@@ -110,7 +114,7 @@ fn each_format_round_trips_on_its_own() {
     assert_eq!(restored.include_files, source.include_files, "{name}");
     assert_eq!(restored.include_directories, source.include_directories, "{name}");
     assert_eq!(restored.exclude_directories, source.exclude_directories, "{name}");
-    assert_eq!(restored.header, source.header, "{name}");
+    assert_eq!(restored.volume_settings.header, source.volume_settings.header, "{name}");
   }
 }
 
@@ -209,7 +213,7 @@ fn an_absent_field_leaves_what_the_caller_holds() {
     populated().include_directories,
     "what it omits is left alone, the way an absent LTX section is"
   );
-  assert_eq!(applied.header, populated().header);
+  assert_eq!(applied.volume_settings.header, populated().volume_settings.header);
 }
 
 #[test]
@@ -242,7 +246,7 @@ fn keeps_the_previous_configuration_when_a_write_is_refused() {
 fn json_carries_no_header_when_the_configuration_has_none() {
   let mut config: ArchivePackConfig = populated();
 
-  config.header = None;
+  config.volume_settings.header = None;
 
   let json: ArchivePackConfigJson = ArchivePackConfigJson::from(&config);
 

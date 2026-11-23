@@ -9,7 +9,7 @@ use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 
 use crate::pack::ArchivePacker;
-use crate::pack::config::{ArchivePackConfig, ArchivePackMode};
+use crate::pack::config::{ArchivePackMode, ArchiveVolumeSettings};
 use crate::pack::tests::fixtures::{
   CONFIG, assert_one_payload, assert_volumes_within, borrow_files, create_config, descriptor, distinct_files, open,
   pack, read,
@@ -18,7 +18,7 @@ use crate::pack::tests::fixtures::{
 fn assert_pack_rejects_invalid_volume_size(scope: &str, max_volume_size: u64) {
   let (mut config, destination) = create_config(scope, &[("configs\\system.ltx", CONFIG)]);
 
-  config.max_volume_size = max_volume_size;
+  config.volume_settings.max_volume_size = max_volume_size;
 
   assert!(matches!(ArchivePacker::pack(&config), Err(XrfError::Invalid { .. })));
   assert!(!destination.exists(), "an invalid configuration creates no destination");
@@ -32,7 +32,7 @@ fn splits_volumes_at_the_configured_size() {
   let (result, destination) = pack(
     "splits_volumes_at_the_configured_size",
     &borrow_files(&files),
-    |config| config.max_volume_size = MAX_VOLUME_SIZE,
+    |config| config.volume_settings.max_volume_size = MAX_VOLUME_SIZE,
   );
   let project: ArchiveProject = open(&destination);
 
@@ -69,11 +69,11 @@ fn places_an_entry_by_the_size_it_is_stored_at() {
   let scope: &str = "places_an_entry_by_the_size_it_is_stored_at";
 
   let (compressed, compressed_destination) = pack(&format!("{scope}/compress"), &borrowed, |config| {
-    config.max_volume_size = MAX_VOLUME_SIZE;
+    config.volume_settings.max_volume_size = MAX_VOLUME_SIZE;
   });
   let (stored, _) = pack(&format!("{scope}/store"), &borrowed, |config| {
-    config.max_volume_size = MAX_VOLUME_SIZE;
-    config.mode = ArchivePackMode::Store;
+    config.volume_settings.max_volume_size = MAX_VOLUME_SIZE;
+    config.volume_settings.mode = ArchivePackMode::Store;
   });
 
   assert_eq!(compressed.files_compressed, files.len(), "every entry shrank");
@@ -110,7 +110,7 @@ fn keeps_a_cap_its_descriptors_and_header_nearly_fill() {
   let (result, destination) = pack(
     "keeps_a_cap_its_descriptors_and_header_nearly_fill",
     &borrow_files(&files),
-    |config| config.max_volume_size = MAX_VOLUME_SIZE,
+    |config| config.volume_settings.max_volume_size = MAX_VOLUME_SIZE,
   );
   let project: ArchiveProject = open(&destination);
 
@@ -131,7 +131,7 @@ fn rejects_a_zero_volume_size_before_writing() {
 fn rejects_an_oversized_volume_before_writing() {
   assert_pack_rejects_invalid_volume_size(
     "rejects_an_oversized_volume_before_writing",
-    ArchivePackConfig::VOLUME_SIZE_MAX + 1,
+    ArchiveVolumeSettings::VOLUME_SIZE_MAX + 1,
   );
 }
 
@@ -150,7 +150,7 @@ fn refuses_an_entry_no_volume_of_that_size_could_hold() {
 
   // Room for the chunks every volume carries, and none for this entry. Isolating it would publish a volume eight
   // times the advertised cap, so the pack is refused instead.
-  config.max_volume_size = 512;
+  config.volume_settings.max_volume_size = 512;
 
   assert!(matches!(ArchivePacker::pack(&config), Err(XrfError::Invalid { .. })));
 }
@@ -171,7 +171,7 @@ fn an_alias_stays_inside_the_volume_holding_its_payload() {
   let (result, destination) = pack(
     "an_alias_stays_inside_the_volume_holding_its_payload",
     &files,
-    |config| config.max_volume_size = MAX_VOLUME_SIZE,
+    |config| config.volume_settings.max_volume_size = MAX_VOLUME_SIZE,
   );
   let project: ArchiveProject = open(&destination);
 
@@ -216,7 +216,7 @@ fn an_alias_whose_row_does_not_fit_is_written_again_in_the_next_volume() {
   let (result, destination) = pack(
     "an_alias_whose_row_does_not_fit_is_written_again_in_the_next_volume",
     &borrow_files(&files),
-    |config| config.max_volume_size = MAX_VOLUME_SIZE,
+    |config| config.volume_settings.max_volume_size = MAX_VOLUME_SIZE,
   );
   let project: ArchiveProject = open(&destination);
 

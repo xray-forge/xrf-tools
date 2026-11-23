@@ -39,11 +39,11 @@ impl ArchivePackPrinter {
       ArchivePackEvent::Settings(config) => xrf_output::verbose!(
         output,
         "Pack mode: {}, volume cap {}, skip list {}, {} excluded extension(s)",
-        match config.mode {
+        match config.volume_settings.mode {
           ArchivePackMode::Compress => "compress",
           ArchivePackMode::Store => "store",
         },
-        format_bytes(config.max_volume_size),
+        format_bytes(config.volume_settings.max_volume_size),
         if config.is_with_skip_list { "on" } else { "off" },
         config.exclude_extensions.len()
       ),

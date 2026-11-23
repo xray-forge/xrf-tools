@@ -32,7 +32,7 @@ impl ArchivePatchConfig {
     }
 
     if let Some(header) = ArchiveConfigLtx::read_header(ltx) {
-      self.header = Some(header);
+      self.volume_settings.header = Some(header);
     }
 
     self
@@ -50,7 +50,7 @@ impl From<&ArchivePatchConfig> for Ltx {
     ArchiveConfigLtx::write_extensions(&mut ltx, &config.exclude_extensions);
     ArchiveConfigLtx::write_names(&mut ltx, ArchivePatchConfig::SECTION_INCLUDE, &config.include);
     ArchiveConfigLtx::write_names(&mut ltx, ArchivePatchConfig::SECTION_IGNORE, &config.ignore);
-    ArchiveConfigLtx::write_header(&mut ltx, config.header.as_ref());
+    ArchiveConfigLtx::write_header(&mut ltx, config.volume_settings.header.as_ref());
 
     ltx
   }

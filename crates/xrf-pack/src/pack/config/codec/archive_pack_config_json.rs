@@ -56,7 +56,7 @@ impl From<&ArchivePackConfig> for ArchivePackConfigJson {
       include_files: Self::some_if_populated(&config.include_files),
       include_directories: Self::some_if_populated(&config.include_directories),
       exclude_directories: Self::some_if_populated(&config.exclude_directories),
-      header: config.header.clone(),
+      header: config.volume_settings.header.clone(),
     }
   }
 }
@@ -84,7 +84,7 @@ impl ArchivePackConfig {
     }
 
     if let Some(header) = &json.header {
-      self.header = Some(header.clone());
+      self.volume_settings.header = Some(header.clone());
     }
 
     self

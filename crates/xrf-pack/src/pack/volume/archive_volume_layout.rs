@@ -2,7 +2,7 @@ use xrf_archive::{CHUNK_HEADER_SIZE, CHUNK_SIZE_FIELD_SIZE};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::encode_string_to_w1251_bytes;
 
-use crate::pack::config::ArchivePackConfig;
+use crate::pack::config::ArchiveVolumeSettings;
 use crate::pack::volume::ArchiveDescriptorTable;
 
 /// What every volume of one archive set costs before it holds anything, and the size it must close within.
@@ -15,8 +15,8 @@ pub(crate) struct ArchiveVolumeLayout {
 
 impl ArchiveVolumeLayout {
   /// Measure what every volume repeats, refusing a cap those parts already fill.
-  pub(crate) fn new(config: &ArchivePackConfig, descriptors: &ArchiveDescriptorTable) -> XrfResult<Self> {
-    let header: Option<Vec<u8>> = config
+  pub(crate) fn new(settings: &ArchiveVolumeSettings, descriptors: &ArchiveDescriptorTable) -> XrfResult<Self> {
+    let header: Option<Vec<u8>> = settings
       .header
       .as_ref()
       .map(|header| {
@@ -27,7 +27,7 @@ impl ArchiveVolumeLayout {
       .transpose()?;
 
     let layout: Self = Self {
-      maximum: config.max_volume_size,
+      maximum: settings.max_volume_size,
       opening: header
         .as_ref()
         .map_or(0, |header| CHUNK_HEADER_SIZE + header.len() as u64)
@@ -86,17 +86,18 @@ mod tests {
   use xrf_error::XrfError;
 
   use super::{ArchiveVolumeLayout, CHUNK_HEADER_SIZE};
-  use crate::pack::config::{ArchivePackConfig, ArchivePackHeader};
+  use crate::pack::config::{ArchivePackHeader, ArchiveVolumeSettings};
   use crate::pack::volume::ArchiveDescriptorTable;
 
   fn layout_of(max_volume_size: u64, header: Option<ArchivePackHeader>) -> Result<ArchiveVolumeLayout, XrfError> {
-    let mut config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "packed");
-
-    config.max_volume_size = max_volume_size;
-    config.header = header;
+    let settings: ArchiveVolumeSettings = ArchiveVolumeSettings {
+      header,
+      max_volume_size,
+      ..ArchiveVolumeSettings::default()
+    };
 
     ArchiveVolumeLayout::new(
-      &config,
+      &settings,
       &ArchiveDescriptorTable::of_directories(&[]).expect("empty table"),
     )
   }
@@ -137,21 +138,22 @@ mod tests {
 
   #[test]
   fn directory_rows_count_against_the_cap_in_every_volume() {
-    let mut config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "packed");
     let table: ArchiveDescriptorTable =
       ArchiveDescriptorTable::of_directories(&[String::from("configs")]).expect("directories encode");
-
-    config.header = None;
-    config.max_volume_size = ArchiveVolumeLayout::get_closed_size(
-      CHUNK_HEADER_SIZE,
-      table.get_size() + ArchiveDescriptorTable::ROW_SIZE_MIN,
-    ) - 1;
+    let settings: ArchiveVolumeSettings = ArchiveVolumeSettings {
+      header: None,
+      max_volume_size: ArchiveVolumeLayout::get_closed_size(
+        CHUNK_HEADER_SIZE,
+        table.get_size() + ArchiveDescriptorTable::ROW_SIZE_MIN,
+      ) - 1,
+      ..ArchiveVolumeSettings::default()
+    };
 
     // The same cap holds an archive that lists no directories and not one that lists `configs`.
-    assert!(ArchiveVolumeLayout::new(&config, &table).is_err());
+    assert!(ArchiveVolumeLayout::new(&settings, &table).is_err());
     assert!(
       ArchiveVolumeLayout::new(
-        &config,
+        &settings,
         &ArchiveDescriptorTable::of_directories(&[]).expect("empty table")
       )
       .is_ok()

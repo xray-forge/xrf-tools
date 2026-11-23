@@ -49,7 +49,7 @@ impl ArchivePatchPrinter {
           output,
           "Patch '{}', volume cap {}, {} scope prefix(es), {} ignored prefix(es), {} excluded extension(s)",
           config.name,
-          format_bytes(config.max_volume_size),
+          format_bytes(config.volume_settings.max_volume_size),
           config.include.len(),
           config.ignore.len(),
           config.exclude_extensions.len()

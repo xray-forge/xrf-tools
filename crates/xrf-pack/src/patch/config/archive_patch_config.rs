@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackHeader, ArchivePackMode, ArchiveVolumeExtension};
+use crate::pack::config::{ArchivePackConfig, ArchiveVolumeSettings};
 use crate::patch::config::ArchivePatchScope;
 
 /// Comparison roots, entry filters, and patch volume settings.
@@ -30,12 +30,9 @@ pub struct ArchivePatchConfig {
   pub ignore: Vec<String>,
   /// Extension patterns that keep a file out of the comparison, such as `*.txt`, matched with the dot.
   pub exclude_extensions: Vec<String>,
-  /// `[header]` written into every published volume as chunk 666, defaulting to the mountable gamedata header.
-  pub header: Option<ArchivePackHeader>,
-  pub mode: ArchivePackMode,
-  pub max_volume_size: u64,
-  pub is_with_oversized_volumes: bool,
-  pub volume_extension: ArchiveVolumeExtension,
+  /// How the published volumes are written, as a pack writes them.
+  #[serde(flatten)]
+  pub volume_settings: ArchiveVolumeSettings,
 }
 
 impl ArchivePatchConfig {
@@ -49,34 +46,8 @@ impl ArchivePatchConfig {
       include: Vec::new(),
       ignore: Vec::new(),
       exclude_extensions: Vec::new(),
-      header: Some(ArchivePackHeader::default()),
-      mode: ArchivePackMode::default(),
-      max_volume_size: ArchivePackConfig::VOLUME_SIZE_MAX,
-      is_with_oversized_volumes: false,
-      volume_extension: ArchiveVolumeExtension::default(),
+      volume_settings: ArchiveVolumeSettings::default(),
     }
-  }
-
-  /// Take an explicit volume size, refusing one outside the range the engine can mount, as packing does.
-  ///
-  /// # Errors
-  ///
-  /// Returns an invalid error below [`ArchivePackConfig::VOLUME_SIZE_MIN`], or above
-  /// [`ArchivePackConfig::VOLUME_SIZE_MAX`] unless oversized volumes are allowed.
-  pub fn with_max_volume_size(mut self, size: u64) -> XrfResult<Self> {
-    ArchivePackConfig::check_volume_size(size, self.is_with_oversized_volumes)?;
-
-    self.max_volume_size = size;
-
-    Ok(self)
-  }
-
-  /// Allow a volume size past [`ArchivePackConfig::VOLUME_SIZE_MAX`], which only an engine fork that raised
-  /// `XRP_MAX_SIZE` can open.
-  pub fn with_oversized_volumes(mut self, is_allowed: bool) -> Self {
-    self.is_with_oversized_volumes = is_allowed;
-
-    self
   }
 
   /// The same run delivering a tree of its own rather than the input's loose half.
@@ -94,11 +65,7 @@ impl ArchivePatchConfig {
   /// Builds volume settings for publication. Payloads come from the mounted target, not a source walk.
   pub(crate) fn to_publication(&self) -> ArchivePackConfig {
     ArchivePackConfig {
-      header: self.header.clone(),
-      is_with_oversized_volumes: self.is_with_oversized_volumes,
-      max_volume_size: self.max_volume_size,
-      mode: self.mode,
-      volume_extension: self.volume_extension,
+      volume_settings: self.volume_settings.clone(),
       ..ArchivePackConfig::new(self.get_target_root(), &self.destination, &self.name)
     }
   }

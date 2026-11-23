@@ -13,24 +13,27 @@ fn loadable_with(extra: ArchivePackHeaderEntry) -> ArchivePackHeader {
   ArchivePackHeader::default().with_overrides(&[extra])
 }
 
+/// A configuration that packs, holding `header`.
+fn config_with(header: Option<ArchivePackHeader>) -> ArchivePackConfig {
+  let mut config: ArchivePackConfig = ArchivePackConfig::new("C:\\source", "C:\\out", "patch");
+
+  config.volume_settings.header = header;
+
+  config
+}
+
 /// The refusal a configuration produced, or a panic when it was accepted.
 fn refusal(header: ArchivePackHeader) -> String {
-  ArchivePackConfig {
-    header: Some(header),
-    ..ArchivePackConfig::new("C:\\source", "C:\\out", "patch")
-  }
-  .validate_for_packing()
-  .expect_err("the header is refused")
-  .to_string()
+  config_with(Some(header))
+    .validate_for_packing()
+    .expect_err("the header is refused")
+    .to_string()
 }
 
 fn accepts(header: ArchivePackHeader) {
-  ArchivePackConfig {
-    header: Some(header.clone()),
-    ..ArchivePackConfig::new("C:\\source", "C:\\out", "patch")
-  }
-  .validate_for_packing()
-  .unwrap_or_else(|error| panic!("{header:?} is a header the engine reads as written, but was refused: {error}"));
+  config_with(Some(header.clone()))
+    .validate_for_packing()
+    .unwrap_or_else(|error| panic!("{header:?} is a header the engine reads as written, but was refused: {error}"));
 }
 
 #[test]
@@ -203,12 +206,9 @@ fn a_key_named_twice_is_refused_whatever_its_case() {
 #[test]
 fn a_run_asking_for_no_header_at_all_is_still_allowed() {
   // The documented escape hatch, and the one case where nothing is written for the engine to fail to read.
-  ArchivePackConfig {
-    header: None,
-    ..ArchivePackConfig::new("C:\\source", "C:\\out", "patch")
-  }
-  .validate_for_packing()
-  .expect("a headerless volume is a choice, not a malformed header");
+  config_with(None)
+    .validate_for_packing()
+    .expect("a headerless volume is a choice, not a malformed header");
 }
 
 #[test]

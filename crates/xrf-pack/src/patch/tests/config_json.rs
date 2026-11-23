@@ -38,7 +38,7 @@ fn a_round_trip_returns_the_scope_and_the_header() {
   assert_eq!(read.include, ["configs"]);
   assert_eq!(read.ignore, ["configs\\text"]);
   assert_eq!(read.exclude_extensions, ["*.txt"]);
-  assert_eq!(read.header, Some(ArchivePackHeader::default()));
+  assert_eq!(read.volume_settings.header, Some(ArchivePackHeader::default()));
 }
 
 #[test]
@@ -152,5 +152,5 @@ fn both_formats_carry_the_same_payload() {
   assert_eq!(from_json.include, from_ltx.include);
   assert_eq!(from_json.ignore, from_ltx.ignore);
   assert_eq!(from_json.exclude_extensions, from_ltx.exclude_extensions);
-  assert_eq!(from_json.header, from_ltx.header);
+  assert_eq!(from_json.volume_settings.header, from_ltx.volume_settings.header);
 }

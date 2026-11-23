@@ -80,7 +80,7 @@ impl From<&ArchivePatchConfig> for ArchivePatchConfigJson {
       include: Self::some_if_populated(&config.include),
       ignore: Self::some_if_populated(&config.ignore),
       exclude_extensions: Self::some_if_populated(&config.exclude_extensions),
-      header: config.header.clone(),
+      header: config.volume_settings.header.clone(),
     }
   }
 }
@@ -102,7 +102,7 @@ impl ArchivePatchConfig {
     }
 
     if let Some(header) = &json.header {
-      self.header = Some(header.clone());
+      self.volume_settings.header = Some(header.clone());
     }
 
     self

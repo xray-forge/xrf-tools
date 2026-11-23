@@ -177,7 +177,7 @@ fn a_cap_no_volume_could_hold_leaves_the_destination_as_it_found_it() {
     &[("textures\\a.dds", &[b'a'; 128]), ("textures\\z.dds", &[b'z'; 8192])],
   );
 
-  config.max_volume_size = 2048;
+  config.volume_settings.max_volume_size = 2048;
 
   let error: XrfError = ArchivePacker::pack(&config).expect_err("an entry no volume could hold is refused");
 
@@ -278,7 +278,7 @@ fn every_published_volume_is_a_direct_child_of_the_destination() {
 
   // Both publication paths: the file each volume is created as, and the rename a lone volume ends under.
   let split: (ArchivePackResult, PathBuf) = pack(&format!("{scope}/split"), &borrowed, |config| {
-    config.max_volume_size = 8 * 1024;
+    config.volume_settings.max_volume_size = 8 * 1024;
   });
   let single: (ArchivePackResult, PathBuf) =
     pack(&format!("{scope}/single"), &[("configs\\system.ltx", CONFIG)], |_| {});

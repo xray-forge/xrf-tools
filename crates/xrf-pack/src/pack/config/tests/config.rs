@@ -35,7 +35,7 @@ fn populated() -> ArchivePackConfig {
   config.include_files = vec![String::from("gamemtl.xr"), String::from("shaders.xr")];
   config.include_directories = vec![directory("configs", true), directory("spawns", false)];
   config.exclude_directories = vec![directory("levels\\build", true)];
-  config.header =
+  config.volume_settings.header =
     Some(ArchivePackHeader::default().with_overrides(&[ArchivePackHeaderEntry::new("creator", "Modder")]));
 
   config
@@ -58,7 +58,10 @@ fn selection_rules_survive_a_round_trip() {
 #[test]
 fn the_header_survives_a_round_trip() {
   // The engine reads the mount point out of this, so losing it in an export would break the archive.
-  assert_eq!(round_trip(&populated()).header, populated().header);
+  assert_eq!(
+    round_trip(&populated()).volume_settings.header,
+    populated().volume_settings.header
+  );
 }
 
 #[test]
@@ -88,7 +91,7 @@ fn an_empty_config_writes_nothing_to_mislead_a_reader() {
 fn a_fresh_config_mounts_where_gamedata_belongs() {
   let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs");
   // Defaulting to none would hand the engine an archive it reads as an encrypted ShoC one.
-  assert_eq!(config.header, Some(ArchivePackHeader::default()));
+  assert_eq!(config.volume_settings.header, Some(ArchivePackHeader::default()));
   assert!(write_config(&config).contains("entry_point"));
 }
 
@@ -97,7 +100,7 @@ fn a_configured_header_replaces_the_default() {
   let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
     .with_ltx(&Ltx::read_from_str("[header]\nentry_point = $fs_root$\\levels\\\n").expect("ltx parses"));
   assert_eq!(
-    config.header,
+    config.volume_settings.header,
     Some(ArchivePackHeader::new(vec![ArchivePackHeaderEntry::new(
       "entry_point",
       "$fs_root$\\levels\\"

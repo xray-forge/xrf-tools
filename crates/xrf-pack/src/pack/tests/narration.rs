@@ -74,7 +74,7 @@ fn a_verbose_run_names_its_settings_before_it_does_anything() {
     "a_verbose_run_names_its_settings_before_it_does_anything",
     OutputVerbosity::Verbose,
     &[("configs\\system.ltx", CONFIG)],
-    |config| config.mode = ArchivePackMode::Store,
+    |config| config.volume_settings.mode = ArchivePackMode::Store,
   );
 
   // First, because every later line is read against it: why a file was stored, where a volume was cut.

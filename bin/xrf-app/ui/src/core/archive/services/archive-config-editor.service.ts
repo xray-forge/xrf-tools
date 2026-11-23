@@ -3,7 +3,7 @@ import { transformError } from "@xrf/errors";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
-import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
+import { ArchivePackConfig, ArchiveVolumeSettings } from "@xrf/ipc/types/xrf-pack";
 import { Logger, Timer } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
@@ -12,13 +12,10 @@ import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/arc
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 
 /**
- * What every archive configuration carries that the shared editor reads and writes: the volumes' name, header and
- * write options, and the packer's own volume ceiling.
+ * What every archive configuration carries that the shared editor reads and writes: the volumes' name and the
+ * settings both a pack and a patch write them with.
  */
-export type IArchiveEditedConfig = Pick<
-  ArchivePackConfig,
-  "name" | "header" | "mode" | "volumeExtension" | "maxVolumeSize"
->;
+export type IArchiveEditedConfig = Pick<ArchivePackConfig, "name"> & ArchiveVolumeSettings;
 
 /**
  * Any archive configuration editor, as the shared editor components read one: blind to what its configuration holds

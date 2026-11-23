@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_pack::ArchivePackConfig;
+use xrf_pack::ArchiveVolumeSettings;
 use xrf_test_utils::GeneratedResources;
 
 use crate::commands::archive::pack::command::PackCommand;
@@ -63,7 +63,7 @@ fn refuses_a_cap_past_what_the_engine_mounts() -> CommandResult {
   let error: String = pack(
     &source,
     &destination,
-    megabytes_past(ArchivePackConfig::VOLUME_SIZE_MAX),
+    megabytes_past(ArchiveVolumeSettings::VOLUME_SIZE_MAX),
     false,
   )
   .expect_err("the engine cap stands unless it is lifted")
@@ -84,7 +84,7 @@ fn packs_past_that_cap_when_the_flag_lifts_it() -> CommandResult {
   pack(
     &source,
     &destination,
-    megabytes_past(ArchivePackConfig::VOLUME_SIZE_MAX),
+    megabytes_past(ArchiveVolumeSettings::VOLUME_SIZE_MAX),
     true,
   )?;
 
@@ -100,7 +100,7 @@ fn refuses_a_mistyped_cap_even_with_the_flag() -> CommandResult {
   let error: String = pack(
     &source,
     &destination,
-    megabytes_past(ArchivePackConfig::VOLUME_SIZE_HARD_MAX),
+    megabytes_past(ArchiveVolumeSettings::VOLUME_SIZE_HARD_MAX),
     true,
   )
   .expect_err("nothing lifts the hard bound")

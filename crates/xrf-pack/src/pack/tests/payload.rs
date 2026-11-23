@@ -36,7 +36,7 @@ fn store_mode_stores_everything() {
   let (result, destination) = pack(
     "store_mode_stores_everything",
     &[("configs\\system.ltx", CONFIG)],
-    |config| config.mode = ArchivePackMode::Store,
+    |config| config.volume_settings.mode = ArchivePackMode::Store,
   );
 
   assert_eq!(result.files_compressed, 0);

@@ -56,7 +56,11 @@ fn writes_and_reads_back_either_format() {
 
     assert_eq!(imported.include_files, open_form().include_files, "{name}");
     assert_eq!(imported.exclude_extensions, open_form().exclude_extensions, "{name}");
-    assert_eq!(imported.header, open_form().header, "{name}");
+    assert_eq!(
+      imported.volume_settings.header,
+      open_form().volume_settings.header,
+      "{name}"
+    );
 
     // The file carries the rules; the form keeps the paths and the volume name it was opened with.
     assert_eq!(imported.source, PathBuf::from(""), "{name}");
@@ -80,7 +84,7 @@ fn both_formats_carry_the_same_rules() {
   assert_eq!(from_ltx.exclude_extensions, from_json.exclude_extensions);
   assert_eq!(from_ltx.include_directories, from_json.include_directories);
   assert_eq!(from_ltx.exclude_directories, from_json.exclude_directories);
-  assert_eq!(from_ltx.header, from_json.header);
+  assert_eq!(from_ltx.volume_settings.header, from_json.volume_settings.header);
 }
 
 #[test]

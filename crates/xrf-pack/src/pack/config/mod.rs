@@ -5,21 +5,20 @@
 //!
 //! - [`codec`] — the LTX and JSON files a configuration is read from and written back to.
 //! - [`header`] — the `[header]` every volume carries, and what makes one loadable.
+//! - [`volume`] — how the volumes are written, shared with a patch's publication.
 
 mod archive_pack_config;
 mod archive_pack_config_rules;
 mod archive_pack_directory;
-mod archive_pack_mode;
-mod archive_volume_extension;
 mod codec;
 mod header;
+mod volume;
 
 #[cfg(test)]
 mod tests;
 
 pub use archive_pack_config::ArchivePackConfig;
 pub use archive_pack_directory::ArchivePackDirectory;
-pub use archive_pack_mode::ArchivePackMode;
-pub use archive_volume_extension::ArchiveVolumeExtension;
 pub use codec::ArchivePackConfigJson;
 pub use header::{ArchivePackHeader, ArchivePackHeaderEntry};
+pub use volume::{ArchivePackMode, ArchiveVolumeExtension, ArchiveVolumeSettings};

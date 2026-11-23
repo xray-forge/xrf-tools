@@ -224,7 +224,7 @@ impl ArchivePacker {
     // Both are measured before anything is created, because an unsatisfiable cap is a property of the archive rather
     // than of the file that would first overflow, and refusing it must leave no destination behind.
     let descriptors: ArchiveDescriptorTable = ArchiveDescriptorTable::of_directories(names.get_directories())?;
-    let layout: ArchiveVolumeLayout = ArchiveVolumeLayout::new(config, &descriptors)?;
+    let layout: ArchiveVolumeLayout = ArchiveVolumeLayout::new(&config.volume_settings, &descriptors)?;
 
     fs::create_dir_all(&config.destination)?;
 

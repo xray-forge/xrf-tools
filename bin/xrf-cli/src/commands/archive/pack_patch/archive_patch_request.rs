@@ -55,8 +55,10 @@ impl ArchivePatchRequest {
       config.exclude_extensions = extensions.cloned().collect();
     }
 
+    config.volume_settings = volumes.apply_to(config.volume_settings)?;
+
     Ok(Self {
-      config: volumes.apply_to_patch(config)?,
+      config,
       options: ArchivePatchOptions::default()
         .with_listener(ArchivePatchPrinter::new_listener(&output))
         .with_force(volumes.is_forced)

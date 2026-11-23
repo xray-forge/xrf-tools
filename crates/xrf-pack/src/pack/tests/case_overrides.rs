@@ -25,7 +25,9 @@ fn create_set(scope: &str) -> PathBuf {
     ("a_base", ("configs\\system.ltx", BASE)),
     ("z_patch", ("configs\\System.ltx", PATCH)),
   ] {
-    pack_volume(&scope, name, &[file], |config| config.mode = ArchivePackMode::Store);
+    pack_volume(&scope, name, &[file], |config| {
+      config.volume_settings.mode = ArchivePackMode::Store;
+    });
   }
 
   destination

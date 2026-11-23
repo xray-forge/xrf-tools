@@ -27,7 +27,8 @@ impl ArchivePublishedSet {
   /// A destination that is not there yet holds nothing; any other listing failure is reported, because a destination
   /// that cannot be listed cannot be packed into either and saying so here names the real problem.
   pub(crate) fn read(config: &ArchivePackConfig) -> XrfResult<Self> {
-    let prefix: String = format!("{}.{}", config.name, config.volume_extension.as_str());
+    // Every volume of the set opens with the name a single-volume set is published under.
+    let prefix: String = config.single_volume_name();
     let entries: ReadDir = match fs::read_dir(&config.destination) {
       Ok(entries) => entries,
       Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Self { volumes: Vec::new() }),

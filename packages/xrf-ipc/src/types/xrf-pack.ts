@@ -33,19 +33,7 @@ export type ArchivePackConfig = {
   excludeExtensions: Array<string>;
   /** Apply the skip rules xrCompress hard-codes for editor and source leftovers. */
   isWithSkipList: boolean;
-  /** `[header]` written into every volume as chunk 666, or none for volumes without one. */
-  header: ArchivePackHeader | null;
-  mode: ArchivePackMode;
-  /**
-   * Hard maximum for a produced volume file, counting every byte it holds: chunk headers, header text, payloads as
-   * they are actually stored, and the descriptor table written last. Packing refuses a cap it cannot keep rather
-   * than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
-   */
-  maxVolumeSize: number;
-  /** Let `max_volume_size` exceed [`Self::VOLUME_SIZE_MAX`], for an engine fork that raised `XRP_MAX_SIZE`. */
-  isWithOversizedVolumes?: boolean;
-  volumeExtension: ArchiveVolumeExtension;
-};
+} & ArchiveVolumeSettings;
 
 /** One `[include_folders]` or `[exclude_folders]` entry. */
 export type ArchivePackDirectory = {
@@ -177,13 +165,7 @@ export type ArchivePatchConfig = {
   ignore: Array<string>;
   /** Extension patterns that keep a file out of the comparison, such as `*.txt`, matched with the dot. */
   excludeExtensions: Array<string>;
-  /** `[header]` written into every published volume as chunk 666, defaulting to the mountable gamedata header. */
-  header: ArchivePackHeader | null;
-  mode: ArchivePackMode;
-  maxVolumeSize: number;
-  isWithOversizedVolumes: boolean;
-  volumeExtension: ArchiveVolumeExtension;
-};
+} & ArchiveVolumeSettings;
 
 /** Every `kind` the `ArchivePatchOrigin` union is told apart by, so a switch or a comparison names one. */
 export enum EArchivePatchOrigin {
@@ -317,3 +299,25 @@ export enum EArchiveVolumeExtension {
 
 /** Every `EArchiveVolumeExtension` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type ArchiveVolumeExtension = `${EArchiveVolumeExtension}`;
+
+/**
+ * How a set of archive volumes is written, whatever chose what goes in it: the header every volume carries, how
+ * payloads are stored, how large a volume may grow, and the extension the volumes take.
+ *
+ * A packing and a patching configuration both publish volumes and hold one of these each, flattened, so the wire and
+ * the generated types name these fields beside the configuration's own.
+ */
+export type ArchiveVolumeSettings = {
+  /** `[header]` written into every volume as chunk 666, or none for volumes without one. */
+  header: ArchivePackHeader | null;
+  mode: ArchivePackMode;
+  /**
+   * Hard maximum for a produced volume file, counting every byte it holds: chunk headers, header text, payloads as
+   * they are actually stored, and the descriptor table written last. Packing refuses a cap it cannot keep rather
+   * than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
+   */
+  maxVolumeSize: number;
+  /** Let `max_volume_size` exceed [`Self::VOLUME_SIZE_MAX`], for an engine fork that raised `XRP_MAX_SIZE`. */
+  isWithOversizedVolumes?: boolean;
+  volumeExtension: ArchiveVolumeExtension;
+};

@@ -17,7 +17,7 @@ const SCRIPTS: &[u8] = b"[scripts]\n";
 /// Pack one file into a volume of its own under `entry_point`, beside the set's other volumes.
 fn pack_at(scope: &str, name: &str, entry_point: &str, file: (&str, &[u8])) {
   pack_volume(&format!("entry_points/{scope}"), name, &[file], |config| {
-    config.header =
+    config.volume_settings.header =
       Some(ArchivePackHeader::default().with_overrides(&[ArchivePackHeaderEntry::new("entry_point", entry_point)]));
   });
 }

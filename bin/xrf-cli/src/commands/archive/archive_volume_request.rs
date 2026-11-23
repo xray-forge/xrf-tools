@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;
-use xrf_pack::{ArchivePackConfig, ArchivePackHeader, ArchivePackMode, ArchivePatchConfig, ArchiveVolumeExtension};
+use xrf_pack::{ArchivePackHeader, ArchivePackMode, ArchiveVolumeExtension, ArchiveVolumeSettings};
 
 /// The volumes a pack or a patch was asked to write: where, under what name and header, how stored, how large, and
 /// whether a set already there may be replaced.
@@ -19,56 +19,30 @@ pub(crate) struct ArchiveVolumeRequest {
 }
 
 impl ArchiveVolumeRequest {
-  /// `config` with these volumes' settings applied over it.
+  /// `settings` with what this request names applied over them, the same for a pack and a patch.
   ///
   /// # Errors
   ///
-  /// Returns an error for a volume size the configuration refuses.
-  pub(crate) fn apply_to_pack(&self, mut config: ArchivePackConfig) -> XrfResult<ArchivePackConfig> {
+  /// Returns an error for a volume size the settings refuse.
+  pub(crate) fn apply_to(&self, mut settings: ArchiveVolumeSettings) -> XrfResult<ArchiveVolumeSettings> {
     if let Some(header) = &self.header {
-      config.header = Some(header.clone());
+      settings.header = Some(header.clone());
     }
 
     if self.is_stored {
-      config.mode = ArchivePackMode::Store;
+      settings.mode = ArchivePackMode::Store;
     }
 
     if self.is_xdb {
-      config.volume_extension = ArchiveVolumeExtension::Xdb;
+      settings.volume_extension = ArchiveVolumeExtension::Xdb;
     }
 
     // Before the size it lifts the bound for, which is the order `with_max_volume_size` reads them in.
-    config = config.with_oversized_volumes(self.is_oversized_allowed);
+    settings = settings.with_oversized_volumes(self.is_oversized_allowed);
 
     match self.max_volume_size {
-      Some(size) => config.with_max_volume_size(size),
-      None => Ok(config),
-    }
-  }
-
-  /// `config` with these volumes' settings applied over it.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error for a volume size the configuration refuses.
-  pub(crate) fn apply_to_patch(&self, mut config: ArchivePatchConfig) -> XrfResult<ArchivePatchConfig> {
-    if let Some(header) = &self.header {
-      config.header = Some(header.clone());
-    }
-
-    if self.is_stored {
-      config.mode = ArchivePackMode::Store;
-    }
-
-    if self.is_xdb {
-      config.volume_extension = ArchiveVolumeExtension::Xdb;
-    }
-
-    config = config.with_oversized_volumes(self.is_oversized_allowed);
-
-    match self.max_volume_size {
-      Some(size) => config.with_max_volume_size(size),
-      None => Ok(config),
+      Some(size) => settings.with_max_volume_size(size),
+      None => Ok(settings),
     }
   }
 }

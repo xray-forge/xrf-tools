@@ -5,7 +5,7 @@ use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_pack::{
   ArchivePackConfig, ArchivePackDirectory, ArchivePackOptions, ArchivePackPrinter, ArchivePackResult, ArchivePacker,
-  ArchiveVolumeExtension,
+  ArchiveVolumeExtension, ArchiveVolumeSettings,
 };
 use xrf_utils::format_path;
 
@@ -128,24 +128,26 @@ impl GenericCommand for PackCommand {
       config.is_with_skip_list = false;
     }
 
-    config = volumes.apply_to_pack(config)?;
+    config.volume_settings = volumes.apply_to(config.volume_settings)?;
 
     xrf_output::info!(output, "Pack source: {}", format_path(&path));
     xrf_output::info!(output, "Pack destination: {}", format_path(destination));
 
-    if config.max_volume_size > ArchivePackConfig::VOLUME_SIZE_MAX {
+    let settings: &ArchiveVolumeSettings = &config.volume_settings;
+
+    if settings.max_volume_size > ArchiveVolumeSettings::VOLUME_SIZE_MAX {
       xrf_output::warning!(
         output,
         "Volumes are capped at {}, past the {} MB no unmodified engine mounts. These volumes load only in \
          a fork that raised XRP_MAX_SIZE.",
-        xrf_utils::format_bytes(config.max_volume_size),
-        ArchivePackConfig::VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+        xrf_utils::format_bytes(settings.max_volume_size),
+        ArchiveVolumeSettings::VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
       );
     }
 
     // A headerless archive is not neutral to the engine: unless it is named `xdb`, the loader assumes it
     // is an encrypted Shadow of Chernobyl archive and decrypts it into nonsense.
-    if config.header.is_none() && config.volume_extension != ArchiveVolumeExtension::Xdb {
+    if settings.header.is_none() && settings.volume_extension != ArchiveVolumeExtension::Xdb {
       xrf_output::warning!(
         output,
         "No [header] section configured: the engine will read these volumes as encrypted ShoC archives. \

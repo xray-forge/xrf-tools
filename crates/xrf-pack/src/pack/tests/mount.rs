@@ -133,7 +133,7 @@ fn carries_the_header_the_engine_mounts_by() {
     "carries_the_header_the_engine_mounts_by",
     &[("configs\\system.ltx", CONFIG)],
     |config| {
-      config.header = Some(ArchivePackHeader::default());
+      config.volume_settings.header = Some(ArchivePackHeader::default());
     },
   );
   let project: ArchiveProject = open(&destination);

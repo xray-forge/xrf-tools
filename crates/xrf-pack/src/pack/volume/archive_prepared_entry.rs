@@ -33,7 +33,7 @@ impl ArchivePreparedEntry {
 
   /// Whether the engine expects this entry compressed, which is what makes preparing it cost more than reading it.
   pub(crate) fn is_compressed_kind(config: &ArchivePackConfig, entry: &ArchivePackEntry) -> bool {
-    config.mode == ArchivePackMode::Compress
+    config.volume_settings.mode == ArchivePackMode::Compress
       && XrayExtensionOf::of(&entry.name)
         .known()
         .is_some_and(|extension| Self::COMPRESSED_EXTENSIONS.contains(&extension))

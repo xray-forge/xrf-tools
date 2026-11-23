@@ -13,7 +13,7 @@ pub(crate) mod unpack;
 pub use crate::archive_config_format::ArchiveConfigFormat;
 pub use crate::pack::config::{
   ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory, ArchivePackHeader, ArchivePackHeaderEntry,
-  ArchivePackMode, ArchiveVolumeExtension,
+  ArchivePackMode, ArchiveVolumeExtension, ArchiveVolumeSettings,
 };
 pub use crate::pack::events::{ArchivePackEvent, ArchivePackListener, ArchivePackPrinter};
 pub use crate::pack::source::{ArchivePackExcludedDirectory, ArchivePackSkipReason, ArchivePackSkippedFile};
