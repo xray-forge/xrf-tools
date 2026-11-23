@@ -7,7 +7,6 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::fog::fog_scattering_parameters::FogScatteringParameters;
 use crate::feature::weather::fog::fog_scattering_pass::FogScatteringPass;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
-use crate::frame::targets::texture_copy::add_texture_copy;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::scene::level::level_time::LevelTime;
@@ -65,8 +64,9 @@ impl FogFeature {
     self.height
   }
 
-  /// Adds the scattering over the scene: the blurs to a quarter and to half its size, the scattering at its size, and
-  /// the scattered frame copied back over the scene; nothing where it does not scatter.
+  /// Adds the scattering over the scene: the blurs to a quarter and to half its size, then the scattering at its size
+  /// into a target of its own, which it answers as the scene every pass after it reads and draws into; the scene itself
+  /// where it does not scatter.
   pub(crate) fn add_passes<'a>(
     &self,
     GraphDeclaration {
@@ -81,9 +81,9 @@ impl FogFeature {
       lit,
       ..
     }: ViewRecord<'a>,
-  ) {
+  ) -> GraphTexture {
     let Some(stages) = self.stages else {
-      return;
+      return targets.scene;
     };
     let empty: GraphTexture = bindings.import_view(
       &mut *graph,
@@ -129,7 +129,7 @@ impl FogFeature {
         .record(move |context| passes.weather.fog_scattering.record(context, view, &parameters, stage));
     }
 
-    add_texture_copy(&mut *graph, FogScatteringPass::STAGES[3], scattered, targets.scene);
+    scattered
   }
 }
 

@@ -9,7 +9,7 @@ use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 
 /// The enhanced fog's scattering: the finished scene blurred down to a quarter and back up to half its size, then
-/// blended into the scene where the fog lies and the blur is brighter, into a copy the scene takes back.
+/// blended into the scene where the fog lies and the blur is brighter, into a target the frame takes as its scene.
 pub(crate) struct FogScatteringPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -24,13 +24,8 @@ impl FogScatteringPass {
   /// The blurs' targets: eight bits a channel, as the engine's blur targets are.
   pub(crate) const BLURRED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-  /// Its stages: the blur to a quarter of the frame, the blur to half of it, the scattering, and the copy back.
-  pub(crate) const STAGES: [&'static str; 4] = [
-    "fog scatter quarter",
-    "fog scatter half",
-    "fog scattering",
-    "fog scattering copy",
-  ];
+  /// Its stages: the blur to a quarter of the frame, the blur to half of it, and the scattering.
+  pub(crate) const STAGES: [&'static str; 3] = ["fog scatter quarter", "fog scatter half", "fog scattering"];
   /// The scattering's index in [`Self::STAGES`], past the blurs.
   pub(crate) const SCATTERING: usize = 2;
 

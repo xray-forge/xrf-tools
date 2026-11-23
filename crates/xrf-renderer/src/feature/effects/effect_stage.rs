@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use xrf_renderer_core::GraphDeclaration;
+use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
@@ -15,6 +15,7 @@ use crate::feature::weather::sun_shafts::sun_shafts_feature::SunShaftsFeature;
 use crate::feature::weather::volumetric::shaft_inputs::ShaftInputs;
 use crate::feature::weather::volumetric::volumetric_feature::VolumetricFeature;
 use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::lighting::weather::render_lighting::RenderLighting;
@@ -149,7 +150,8 @@ impl EffectStage {
   }
 
   /// Adds what is laid over the frame after its transparent layers: the lens flares and the scattering fog, then the
-  /// spot meter reading what they leave.
+  /// spot meter reading what they leave. Answers the record every pass after them takes: its scene the target the fog
+  /// scattered into, where it scattered.
   pub(crate) fn add_over_lit<'a>(
     &'a self,
     GraphDeclaration {
@@ -158,16 +160,27 @@ impl EffectStage {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-  ) {
+  ) -> ViewRecord<'a> {
     self
       .flares
       .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
-    self
+
+    let scene: GraphTexture = self
       .fog
       .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
+    let fogged: ViewRecord<'a> = ViewRecord {
+      handles: ViewTargetHandles {
+        scene,
+        ..record.handles
+      },
+      ..record
+    };
+
     self
       .meter
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), fogged);
+
+    fogged
   }
 }
 

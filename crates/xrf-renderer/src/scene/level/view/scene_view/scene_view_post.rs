@@ -114,10 +114,12 @@ impl SceneView {
 
     ResolveFeature::add_transparency_guide(&mut *graph, handles, &mut ray_guides, before_water);
 
-    self
+    // The fog scatters into a target of its own, which every pass after it takes as the scene.
+    let record: ViewRecord<'a> = self
       .stages
       .effects
       .add_over_lit(GraphDeclaration::new(graph, bindings, runtime), record);
+    let handles: ViewTargetHandles = record.handles;
 
     self
       .features
