@@ -10,4 +10,4 @@ export * from "./use-stored-value";
  * as a sibling.
  */
 export { EStorageNamespace, isInStorageNamespace } from "./namespace";
-export { getLocalStorageRevision, subscribeToLocalStorage, useLocalStorageRevision } from "./revision";
+export { useLocalStorageRevision } from "./revision";

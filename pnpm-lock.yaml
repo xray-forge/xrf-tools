@@ -241,9 +241,6 @@ importers:
       '@wirestate/react':
         specifier: 'catalog:'
         version: 1.0.0(@wirestate/core@1.0.0)(react@19.3.1)
-      '@wirestate/react-mobx':
-        specifier: 1.0.0
-        version: 1.0.0(mobx-react-lite@4.1.1(mobx@6.16.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(mobx@6.16.1)(react@19.3.1)
       '@xrf/async':
         specifier: workspace:*
         version: link:../../../packages/xrf-async
@@ -450,6 +447,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.14.0(jiti@2.7.0)(supports-color@8.1.1)
+      jest:
+        specifier: 'catalog:'
+        version: 30.5.2(@types/node@24.19.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
       prettier:
         specifier: 'catalog:'
         version: 3.10.1
@@ -3599,13 +3599,6 @@ packages:
     peerDependencies:
       '@wirestate/core': ^1.0.0
       mobx: '>=6.0.0'
-
-  '@wirestate/react-mobx@1.0.0':
-    resolution: {integrity: sha512-xDaO0/mN2TQ0NCT7xNAdf00mqisdEV+PoYPnuucHNlZbhv+JiUsh2w6HYOeZz4fcf8P+WQTOVZrLza6C45n0kQ==}
-    peerDependencies:
-      mobx: '>=6.0.0'
-      mobx-react-lite: '>=4.0.0'
-      react: '>=16.8.0 <20.0.0'
 
   '@wirestate/react@1.0.0':
     resolution: {integrity: sha512-HyB1lsZNcjrfLnGMfFgkGhIrn4YYjllK7fu6UDwJiS1uPb27zgeoixywxRZx9G7AX7I06DP0z14iz4opfpFIgQ==}
@@ -8657,12 +8650,6 @@ snapshots:
     dependencies:
       '@wirestate/core': 1.0.0
       mobx: 6.16.1
-
-  '@wirestate/react-mobx@1.0.0(mobx-react-lite@4.1.1(mobx@6.16.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(mobx@6.16.1)(react@19.3.1)':
-    dependencies:
-      mobx: 6.16.1
-      mobx-react-lite: 4.1.1(mobx@6.16.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      react: 19.3.1
 
   '@wirestate/react@1.0.0(@wirestate/core@1.0.0)(react@19.3.1)':
     dependencies:

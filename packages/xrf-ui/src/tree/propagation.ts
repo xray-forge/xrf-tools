@@ -4,10 +4,6 @@ export function stopPropagation(event: SyntheticEvent<HTMLElement>): void {
   event.stopPropagation();
 }
 
-export function preventDefault(event: MouseEvent<HTMLElement>): void {
-  event.preventDefault();
-}
-
 /**
  * Wraps an action so the click that runs it goes no further.
  *

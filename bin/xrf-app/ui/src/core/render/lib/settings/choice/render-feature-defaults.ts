@@ -6,8 +6,6 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 
 import {
-  TRenderAmbientOcclusionGtaoSettings,
-  TRenderAmbientOcclusionRtaoSettings,
   TRenderAmbientOcclusionSettings,
   TRenderCameraSettings,
   TRenderContactShadowSettings,
@@ -39,12 +37,6 @@ const OUTPUT: TSettled<RenderViewOutput> = RENDER_DEFAULT_VIEW_OUTPUT as TSettle
 
 /** The sun's cascade widths in metres, nearest first. */
 export const RENDER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = FEATURES.shadows.cascades;
-
-export const DEFAULT_RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS: TRenderAmbientOcclusionGtaoSettings =
-  FEATURES.ambientOcclusion.gtao;
-
-export const DEFAULT_RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS: TRenderAmbientOcclusionRtaoSettings =
-  FEATURES.ambientOcclusion.rtao;
 
 export const DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS: TRenderAmbientOcclusionSettings = FEATURES.ambientOcclusion;
 

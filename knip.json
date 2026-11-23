@@ -3,7 +3,10 @@
   "includeEntryExports": true,
   "ignoreExportsUsedInFile": true,
   "ignore": ["bin/xrf-app/app/extensions/**", "packages/xrf-ipc/src/types/**"],
+  "ignoreBinaries": ["rustc"],
   "ignoreIssues": {
+    "packages/xrf-logging/src/log-forwarder/index.ts": ["types"],
+    "packages/xrf-math/src/**": ["exports", "types"],
     "packages/xrf-ui/src/theme/root/preload.ts": ["exports"]
   },
   "workspaces": {
@@ -20,7 +23,8 @@
       "entry": ["package/*.mjs"]
     },
     "packages/xrf-ui": {
-      "entry": ["cli/*.mjs"]
+      "entry": ["cli/*.mjs"],
+      "ignoreDependencies": ["@base-ui/utils"]
     }
   }
 }

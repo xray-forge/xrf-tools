@@ -20,10 +20,6 @@ import {
 } from "#/theme";
 import { Theme } from "#/theme/styles";
 
-/** Every published property, so a consumer and a test name the same thing. */
-export type TThemeVariableName =
-  keyof ReturnType<typeof getThemeVariables> | keyof ReturnType<typeof getSchemeVariables>;
-
 /** A measurement declared as a number of pixels, which is how `tokens.ts` states every length. */
 function px(value: number): string {
   return `${value}px`;

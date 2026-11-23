@@ -29,7 +29,6 @@
     "@wirestate/core": "catalog:",
     "@wirestate/mobx": "catalog:",
     "@wirestate/react": "catalog:",
-    "@wirestate/react-mobx": "1.0.0",
     "@xrf/async": "workspace:*",
     "@xrf/collections": "workspace:*",
     "@xrf/errors": "workspace:*",
