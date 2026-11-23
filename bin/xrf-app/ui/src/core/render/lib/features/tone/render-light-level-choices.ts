@@ -19,30 +19,12 @@ export function explainRenderLightLevel(level: RenderLightLevel): string {
   return RENDER_LIGHT_LEVEL_DESCRIPTIONS[level];
 }
 
-/**
- * The light levels, in the order they are offered: those past the authored shown but not offered outside dev mode.
- *
- * @param isDevAvailable - Whether the dev light levels may be chosen (`isDevLightLevelAvailable`).
- * @returns The options.
- */
-export function getRenderLightLevelOptions(
-  isDevAvailable: boolean
-): ReadonlyArray<IChoiceFormRowOption<RenderLightLevel>> {
-  return [
-    { label: "Authored", value: ERenderLightLevel.AUTHORED },
-    { label: "Anchored", value: ERenderLightLevel.ANCHORED, isDisabled: !isDevAvailable },
-    { label: "Physical", value: ERenderLightLevel.PHYSICAL, isDisabled: !isDevAvailable },
-  ];
-}
-
-/**
- * @param level - A light level as chosen and kept.
- * @param isDevAvailable - Whether the dev light levels may be drawn.
- * @returns The level drawn: the authored one where a dev level may not be.
- */
-export function toDrawnRenderLightLevel(level: RenderLightLevel, isDevAvailable: boolean): RenderLightLevel {
-  return level !== ERenderLightLevel.AUTHORED && !isDevAvailable ? ERenderLightLevel.AUTHORED : level;
-}
+/** The light levels, in the order they are offered. */
+export const RENDER_LIGHT_LEVEL_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderLightLevel>> = [
+  { label: "Authored", value: ERenderLightLevel.AUTHORED },
+  { label: "Anchored", value: ERenderLightLevel.ANCHORED },
+  { label: "Physical", value: ERenderLightLevel.PHYSICAL },
+];
 
 /** @returns A sun tint in hundredths. */
 export function formatSunTint(value: number): string {

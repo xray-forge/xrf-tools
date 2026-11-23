@@ -15,7 +15,7 @@ pub use crate::material::{
   XrayMaterialBumpInput, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialDetail, XrayMaterialResolver,
 };
 pub use crate::surface::{
-  XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDetail, XraySurfaceDraw, XraySurfaceResolver,
-  XraySurfaceSampler, XraySurfaceTerrain, XraySurfaceTerrainLayer,
+  XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDetail, XraySurfaceDraw, XraySurfaceEmission,
+  XraySurfaceFade, XraySurfaceResolver, XraySurfaceSampler, XraySurfaceTerrain, XraySurfaceTerrainLayer,
 };
 pub use crate::texture::{XrayReducedTextures, XrayTextureScope};

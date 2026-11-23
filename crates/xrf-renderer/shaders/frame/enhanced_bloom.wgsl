@@ -16,7 +16,7 @@
 // The Gaussian blurring the scene to half its size: its deviation, in half-size texels, and the reads each side.
 const BLUR_SIGMA: f32 = 2.5;
 const BLUR_REACH: i32 = 3;
-// What a self-lit surface adds to the bloom, whatever its colour.
+// What a self-lit surface at the brightest fill adds to the bloom, in its own colour; a dimmer fill adds its share.
 const SELF_LIT: f32 = 0.25;
 // How far, in the frame's pixels, the finish reads the bloom's red one way and its blue the other.
 const RED_SHIFT: vec2<f32> = vec2<f32>(4.5, 5.3);
@@ -40,11 +40,13 @@ fn sample_at(image: texture_2d<f32>, at: vec2<f32>) -> vec4<f32> {
   return textureSampleLevel(image, source_sampler, at, 0.0);
 }
 
-// Whether a texel of the frame shows a self-lit surface, held to the frame's edges.
+// How brightly a texel of the frame is self-lit, held to the frame's edges: its fill over the brightest
+// (`EMISSIVE_LIGHT`), which the G-buffer keeps in a self-lit texel's sun channel; none where it is lit as any other.
 fn self_lit(texel: vec2<i32>) -> f32 {
   let last: vec2<i32> = vec2<i32>(bloom.size.zw) - 1;
+  let material: vec4<f32> = textureLoad(material_target, clamp(texel, vec2<i32>(0), last), 0);
 
-  return select(0.0, 1.0, has_mark(textureLoad(material_target, clamp(texel, vec2<i32>(0), last), 0).a, MARK_EMISSIVE));
+  return select(0.0, material.y, has_mark(material.a, MARK_EMISSIVE));
 }
 
 // A blur at half the frame's size, one way: seven unfiltered reads a half-size texel apart, weighed by the Gaussian.
@@ -73,8 +75,11 @@ fn fogged_at(texel: vec2<i32>) -> f32 {
   return select(fog_amount(lighting, camera_view_position(vec2<f32>(at) + 0.5, depth)), 1.0, depth <= 0.0);
 }
 
-// The build: the blurred scene, the sky's times its share, raised to the threshold's power; self-lit surfaces added by
-// how much of the four frame texels under the texel they cover, and that share kept in alpha. Fogged light counts as
+// The build: the blurred scene, the sky's times its share, raised to the threshold's power; self-lit surfaces added in
+// their own colour, the scene's under the texel, by how much of the four frame texels under it they cover and how
+// brightly each is lit, so a dim `selflightl` artefact glows its own green or blue a sixteenth as much as a lamp's
+// `selflight` shade, rather than every self-lit surface laying the same white haze; that share kept in alpha.
+// Fogged light counts as
 // the sky's by how much fog lies before it, so far ground fading into the sky blooms as the sky does, not brighter.
 // The bloom is built from the resolved image while the depth and the marks are the frame's as drawn, jittered: both are
 // read over the four frame texels under the texel, so the share does not flip with the jitter at an edge.
@@ -84,7 +89,8 @@ fn fs_bloom_build(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let corner: vec2<i32> = vec2<i32>(floor(uv * bloom.size.zw - 0.5));
   let fogged: f32 = (fogged_at(corner) + fogged_at(corner + vec2<i32>(1, 0)) + fogged_at(corner + vec2<i32>(0, 1)) +
     fogged_at(corner + vec2<i32>(1, 1))) / 4.0;
-  var result: vec3<f32> = sample_at(source, uv).rgb * mix(1.0, bloom.strengths.z, fogged);
+  let shown: vec3<f32> = sample_at(source, uv).rgb;
+  var result: vec3<f32> = shown * mix(1.0, bloom.strengths.z, fogged);
 
   result = pow(abs(result), vec3<f32>(bloom.strengths.x));
 
@@ -92,7 +98,7 @@ fn fs_bloom_build(in: FullscreenVarying) -> @location(0) vec4<f32> {
     self_lit(corner + vec2<i32>(1, 1))) / 4.0;
   let added: f32 = covered * SELF_LIT;
 
-  return vec4<f32>(saturate(result + added), added * 3.0);
+  return vec4<f32>(saturate(result + saturate(shown) * added), added * 3.0);
 }
 
 // A halving: the source's texel four times over and its four diagonal neighbours, half a texel of the target times the

@@ -8,7 +8,10 @@ use xrf_shaders::{
 use xrf_vfs::{XrayAsset, XraySearch};
 
 use crate::material::{XrayMaterialDescriptor, XrayMaterialResolver};
-use crate::surface::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler};
+use crate::surface::{
+  XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceEmission, XraySurfaceFade,
+  XraySurfaceSampler,
+};
 use crate::texture::XrayTextureScope;
 
 /// The renderer shader script a surface's name resolves to, which the engine prefers over the blender library.
@@ -98,7 +101,10 @@ impl XraySurfaceScript {
       // `r__dsgraph_build`: the special pass goes to the distortion when it says `distort(true)`, and to the light
       // gathered when the base pass says `emissive(true)`.
       is_distorting: special.is_some_and(|pass| pass.state().is_distorting),
-      is_emissive: special.is_some() && base.is_some_and(|pass| pass.state().is_emissive),
+      emission: special
+        .filter(|_| base.is_some_and(|pass| pass.state().is_emissive))
+        .map(|pass| XraySurfaceEmission::of_program(pass.pixel_shader())),
+      fade: base.and_then(|pass| XraySurfaceFade::of_programs(pass.vertex_shader(), pass.pixel_shader())),
       is_shadowless: script.pass_of(XRayShaderPass::SHADOW_FUNCTION).is_none(),
       is_object_lod: false,
     })

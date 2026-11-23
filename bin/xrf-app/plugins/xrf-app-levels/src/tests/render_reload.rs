@@ -66,7 +66,7 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
   );
   assert_eq!(
     LevelRenderParts::select_reload(&[LevelSpawnVisualsPart::NAME]),
-    parts(&[LevelPart::Spawn, LevelPart::Lights])
+    parts(&[LevelPart::Spawn, LevelPart::Lights, LevelPart::Particles])
   );
   assert_eq!(
     LevelRenderParts::select_reload(&[LevelSoundFilesPart::NAME]),

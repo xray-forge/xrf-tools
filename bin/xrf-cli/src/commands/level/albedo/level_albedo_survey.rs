@@ -47,7 +47,7 @@ impl LevelAlbedoSurvey {
         }
       };
 
-      let Some(base) = reference.textures.first().filter(|_| !surface.is_emissive) else {
+      let Some(base) = reference.textures.first().filter(|_| surface.emission.is_none()) else {
         unlit_surfaces += 1;
         continue;
       };

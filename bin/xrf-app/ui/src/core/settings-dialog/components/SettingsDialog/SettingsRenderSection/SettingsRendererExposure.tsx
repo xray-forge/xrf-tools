@@ -6,7 +6,7 @@ import { RenderSettingRow } from "@/core/render/components/settings/RenderSettin
 import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
 import { RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/features/tone/render-exposure-choices";
 import { RENDER_GRADING_SETTINGS } from "@/core/render/lib/features/tone/render-grading-choices";
-import { getRenderLightLevelOptions } from "@/core/render/lib/features/tone/render-light-level-choices";
+import { RENDER_LIGHT_LEVEL_OPTIONS } from "@/core/render/lib/features/tone/render-light-level-choices";
 import { RENDER_LIGHT_SETTINGS } from "@/core/render/lib/features/tone/render-light-model-choices";
 import {
   IRenderFeatureSettings,
@@ -49,7 +49,7 @@ export function SettingsRendererExposure(): ReactElement {
           name={"lightLevel"}
           group={features}
           features={features}
-          options={getRenderLightLevelOptions(renderSettingsService.isDevLightLevelAvailable)}
+          options={RENDER_LIGHT_LEVEL_OPTIONS}
           onSet={onSetLight}
         />
 

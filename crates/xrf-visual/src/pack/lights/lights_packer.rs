@@ -82,7 +82,7 @@ impl<'a> LightsPacker<'a> {
   ///
   /// * `objects` - The objects spawned on the level.
   /// * `pose_visual` - The rest pose of a visual by the name an object gives it, `None` for one that cannot be read;
-  ///   asked once per lamp, so a caller reading from disk keeps what it read.
+  ///   asked once per lamp and lit artefact, so a caller reading from disk keeps what it read.
   pub fn add_objects<'o>(
     &mut self,
     objects: impl IntoIterator<Item = &'o AlifeObject>,
@@ -95,7 +95,7 @@ impl<'a> LightsPacker<'a> {
           self.add_zone(object, None);
         }
         AlifeObjectInherited::CseAlifeTorridZone(zone) => self.add_zone(object, Some(zone)),
-        AlifeObjectInherited::CseAlifeItemArtefact(_) => self.add_artefact(object),
+        AlifeObjectInherited::CseAlifeItemArtefact(_) => self.add_artefact(object, pose_visual),
         _ => {}
       }
     }
@@ -307,11 +307,19 @@ impl<'a> LightsPacker<'a> {
     });
   }
 
-  /// `CArtefact::Load` and `StartLights`: an artefact whose section sets `lights_enabled` lights a point at its origin,
+  /// `CArtefact::Load` and `StartLights`: an artefact whose section sets `lights_enabled` lights a point,
   /// `trail_light_color` raw over `trail_light_range`, shadowed only by `idle_light_shadow`, unanimated, and marked
-  /// where it lies hidden until a detector reveals it. It goes out while anything holds it (`OnH_A_Chield`). A colour of fewer than three numbers or a missing range, which the engine would refuse, lights
-  /// nothing.
-  pub(crate) fn add_artefact(&mut self, object: &AlifeObject) {
+  /// where it lies hidden until a detector reveals it. It goes out while anything holds it (`OnH_A_Chield`). A colour of
+  /// fewer than three numbers or a missing range, which the engine would refuse, lights nothing.
+  ///
+  /// The point is the visual's root bone, the middle of an artefact, where its idle particles play, rather than the
+  /// engine's `Position()`, its origin, which an artefact's model stands on: lit from the middle, as it looks to glow;
+  /// the origin for a visual that cannot be read.
+  pub(crate) fn add_artefact(
+    &mut self,
+    object: &AlifeObject,
+    pose_visual: &mut dyn FnMut(&str) -> Option<Arc<VisualRestPose>>,
+  ) {
     if object.header.has_parent() {
       return;
     }
@@ -334,10 +342,19 @@ impl<'a> LightsPacker<'a> {
     else {
       return;
     };
+    let object_transform: VisualTransform =
+      VisualTransform::of_spawn(&object.header.position, &object.header.direction);
+    // The root bone, the first, in the renderer's space as the object's transform is.
+    let position: Vector3d = object
+      .inherited
+      .get_visual()
+      .and_then(pose_visual)
+      .and_then(|pose| pose.get_root().map(|root| object_transform.apply_to_point(&root.c)))
+      .unwrap_or(object_transform.c);
 
     self.lights.push(LightDescription {
       kind: LightKind::Point,
-      position: convert_vector(&object.header.position),
+      position,
       direction: Vector3d::new(0.0, 0.0, 1.0),
       right: Vector3d::new(1.0, 0.0, 0.0),
       color: [red, green, blue],

@@ -1,4 +1,5 @@
 use std::collections::{BTreeSet, HashMap};
+use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_app_core::TauriResult;
@@ -6,14 +7,19 @@ use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
+use xrf_math::Vector3d;
 use xrf_particles::{ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
-use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectMotion, ClsId};
+use xrf_spawn::{
+  AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectItemArtefact, AlifeObjectMotion, ClsId,
+};
 use xrf_vfs::XraySearch;
-use xrf_visual::{VisualTransform, ZoneSphere};
+use xrf_visual::{VisualRestPose, VisualTransform, ZoneSphere};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, LevelTextureReference, PackedLevelParticles};
+use crate::parts::{
+  LevelEnvironmentPart, LevelSpawnPart, LevelSpawnVisualsPart, LevelTextureReference, PackedLevelParticles,
+};
 use crate::report::LevelReport;
 use crate::weather::LevelWorldAmbients;
 
@@ -40,8 +46,8 @@ impl LevelParticlesPart {
   /// The height `CLevel::Load_GameSpecific_After` lifts every planted system by.
   const PLANTED_LIFT: f32 = 0.01;
 
-  /// Reads the game's particle library and places what the open level plants and what its zones play, each effect any
-  /// of them reaches described, what it reads recorded as the level's particles part.
+  /// Reads the game's particle library and places what the open level plants and what its zones and artefacts play,
+  /// each effect any of them reaches described, what it reads recorded as the level's particles part.
   ///
   /// # Errors
   ///
@@ -86,11 +92,15 @@ impl LevelParticlesPart {
     // todo: Play the systems of space restrictors whose logic starts in `sr_particle` (`name` at `path`'s points, after
     //  each point's delay, `looped` or once), as the b53 steam field's do; condition switches would stay unread.
 
-    // Without the configs no zone names its particles; their reader has said why.
+    // Without the configs no zone or artefact names its particles; their reader has said why.
     match (LevelSpawnPart::get(current, search), sections) {
-      (Ok(spawn), Some(sections)) => {
-        placements.extend(spawn.list_kept().filter_map(|it| Self::place_zone(it, sections)));
-      }
+      (Ok(spawn), Some(sections)) => LevelSpawnVisualsPart::with_reader(current, search, |visuals| {
+        let mut pose_visual = |name: &str| visuals.get(name).ok().and_then(|it| it.rest.clone());
+
+        placements.extend(spawn.list_kept().filter_map(|it| {
+          Self::place_zone(it, sections).or_else(|| Self::place_artefact(it, sections, &mut pose_visual))
+        }));
+      }),
       (Err(error), _) => LevelReport::missing_zone_particles(&current.source, &error),
       (Ok(_), None) => {}
     }
@@ -202,6 +212,62 @@ impl LevelParticlesPart {
     })
   }
 
+  /// `CArtefact::net_Spawn` and `SwitchAfParticles`: an artefact whose section names `particles` plays them at its
+  /// visual's root bone (`GetBonePos`), turned upright as `CParticlesPlayer::StartParticles` turns them for the
+  /// direction up, its basis the engine's `generate_orthonormal_basis` of it whatever the artefact's own turn; none
+  /// while anything holds it (`OnH_A_Chield`).
+  ///
+  /// # Arguments
+  ///
+  /// * `pose_visual` - The rest pose of a visual by the name an object gives it, `None` for one that cannot be read,
+  ///   whose effect then plays at the object's origin.
+  pub(crate) fn place_artefact(
+    object: &AlifeObject,
+    sections: &Ltx,
+    pose_visual: &mut dyn FnMut(&str) -> Option<Arc<VisualRestPose>>,
+  ) -> Option<RenderParticlePlacement> {
+    if !matches!(object.inherited, AlifeObjectInherited::CseAlifeItemArtefact(_)) || object.header.has_parent() {
+      return None;
+    }
+
+    let section: &Section = sections.section(&object.header.section)?;
+    let idle: String = section
+      .get("particles")
+      .map(str::trim)
+      .filter(|value| !value.is_empty())?
+      .to_owned();
+    let object_transform: VisualTransform =
+      VisualTransform::of_spawn(&object.header.position, &object.header.direction);
+    // `LoadParticles` falls back to the root bone at no offset; both spaces are the renderer's.
+    let root: Option<Vector3d> = object
+      .inherited
+      .get_visual()
+      .and_then(pose_visual)
+      .and_then(|pose| pose.get_root().map(|bone| object_transform.apply_to_point(&bone.c)));
+    let at: Vector3d = root.unwrap_or(object_transform.c);
+
+    // todo: Play at each bone a visual's `particle_bones` user data names, at its offset, as `LoadParticles` reads
+    //  them; every artefact read so far names none, so it plays at its root alone.
+    Some(RenderParticlePlacement {
+      source: RenderParticleSource::Artefact {
+        idle,
+        is_detector_hidden: AlifeObjectItemArtefact::is_detector_hidden(section),
+      },
+      // Mirrored through `z` from the renderer's space into the engine's, which the simulation runs in.
+      transform: Self::get_upright_transform(&Vector3d::new(at.x, at.y, -at.z)),
+      motion: None,
+      zone_sphere: None,
+    })
+  }
+
+  /// The engine-space transform at `position` whose third axis points up, its first and second as
+  /// `generate_orthonormal_basis` makes them for that direction: `i` along `+x`, `j` along `-z`; column by column.
+  fn get_upright_transform(position: &Vector3d) -> [f32; 16] {
+    [
+      1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 1.0, 0.0, 0.0, position.x, position.y, position.z, 1.0,
+    ]
+  }
+
   /// Every effect a placement or an ambient can play: the effects they name, each effect of the groups they name, and
   /// the children those effects start.
   fn list_reached_effects(
@@ -214,7 +280,7 @@ impl LevelParticlesPart {
       .iter()
       .flat_map(|placement| match &placement.source {
         RenderParticleSource::Static { name } => vec![name.as_str()],
-        RenderParticleSource::Zone { idle } => vec![idle.as_str()],
+        RenderParticleSource::Zone { idle } | RenderParticleSource::Artefact { idle, .. } => vec![idle.as_str()],
         RenderParticleSource::Campfire {
           idle,
           disabled,

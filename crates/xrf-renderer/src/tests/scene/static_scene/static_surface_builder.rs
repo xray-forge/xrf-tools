@@ -1,6 +1,6 @@
 use xrf_material::{
   XrayBumpMode, XrayMaterialBump, XrayMaterialBumpInput, XraySurfaceDeclaration, XraySurfaceDescriptor,
-  XraySurfaceDetail, XraySurfaceDraw,
+  XraySurfaceDetail, XraySurfaceDraw, XraySurfaceEmission, XraySurfaceFade,
 };
 use xrf_vfs::XrayResolution;
 use xrf_visual::SectorSurface;
@@ -237,4 +237,86 @@ fn names_each_texture_at_its_slot_with_the_role_it_is_asked_for_as() {
     Some(("crete\\crete_bump#", TextureRole::BumpCompanion))
   );
   assert_eq!(plan.slots[StaticSurface::HEMI], Some(("lmap#3_2", TextureRole::Hemi)));
+}
+
+// `models\selflight` fills sixteen and `models\selflightl` one, which keeps a self-lit artefact's colour; a surface
+// lit as any other fills none.
+#[test]
+fn fills_a_self_lit_surface_with_its_own_emission() {
+  let surface: SectorSurface = create_surface("artifact\\artifact_electra");
+  let emitting = |emission: Option<XraySurfaceEmission>| XraySurfaceDescriptor {
+    emission,
+    ..create_descriptor("models\\selflight", "LM", XraySurfaceDraw::Opaque)
+  };
+  let emissions: Vec<f32> = [Some(XraySurfaceEmission::Bright), Some(XraySurfaceEmission::Dim), None]
+    .into_iter()
+    .map(|emission| {
+      StaticSurfaceBuilder::plan(&surface, Some(&emitting(emission)))
+        .unwrap()
+        .emission
+    })
+    .collect();
+
+  assert_eq!(emissions, [16.0, 1.0, 0.0]);
+}
+
+/// A script's surface drawn faded as `fade` says, blended, or opaque where `draw` says so.
+fn create_faded(fade: Option<XraySurfaceFade>, draw: XraySurfaceDraw) -> XraySurfaceDescriptor {
+  XraySurfaceDescriptor {
+    draw,
+    fade,
+    ..create_descriptor("models\\xdistort", "MODEL", draw)
+  }
+}
+
+// `models\xdistortcolor*` draws its texel unlit by the rim's fade, `model_distort_inv` by the fade facing the eye, and
+// `models\xdistort` its faded alpha as a grey; a surface not faded, or not composited, takes none of it.
+#[test]
+fn fades_a_distortion_models_colour_pass_unlit() {
+  let blended: XraySurfaceDraw = XraySurfaceDraw::Blended { reference: 0 };
+  let rim: XraySurfaceFade = XraySurfaceFade {
+    is_facing: false,
+    is_alpha_only: false,
+  };
+  let facing: XraySurfaceFade = XraySurfaceFade { is_facing: true, ..rim };
+  let alpha_only: XraySurfaceFade = XraySurfaceFade {
+    is_alpha_only: true,
+    ..rim
+  };
+  let built: Vec<u32> = build(&[
+    (
+      create_surface("artifact\\artifact_anim_dist"),
+      create_faded(Some(rim), blended),
+    ),
+    (
+      create_surface("artifact\\artifact_anim_dist"),
+      create_faded(Some(facing), blended),
+    ),
+    (
+      create_surface("artifact\\artifact_anim_dist"),
+      create_faded(Some(alpha_only), blended),
+    ),
+    (
+      create_surface("artifact\\artifact_anim_dist"),
+      create_faded(None, blended),
+    ),
+    (
+      create_surface("artifact\\artifact_anim_dist"),
+      create_faded(Some(rim), XraySurfaceDraw::Opaque),
+    ),
+  ])
+  .into_iter()
+  .map(|(flags, _)| flags & (StaticSurface::IS_FADED | StaticSurface::IS_FADED_FACING | StaticSurface::IS_FADED_ALPHA))
+  .collect();
+
+  assert_eq!(
+    built,
+    [
+      StaticSurface::IS_FADED,
+      StaticSurface::IS_FADED | StaticSurface::IS_FADED_FACING,
+      StaticSurface::IS_FADED | StaticSurface::IS_FADED_ALPHA,
+      0,
+      0
+    ]
+  );
 }

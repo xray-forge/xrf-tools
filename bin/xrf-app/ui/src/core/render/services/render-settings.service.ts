@@ -1,4 +1,4 @@
-import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
+import { Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, comparer, Computed, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { renderCommands } from "@xrf/ipc/commands/render";
 import {
@@ -12,7 +12,6 @@ import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { toDrawnRenderLightLevel } from "@/core/render/lib/features/tone/render-light-level-choices";
 import {
   IRenderFeatureChoice,
   listUnkeptRenderSettings,
@@ -41,7 +40,6 @@ import {
   toRenderOutputScale,
   toRenderResolution,
 } from "@/core/render/lib/settings/device/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings.service";
 import {
   booleanCodec,
   FRAME_RATE_LIMIT_STORAGE_KEY,
@@ -123,8 +121,6 @@ export class RenderSettingsService {
   /** Stops telling the renderer its settings, while provisioned. */
   private stopConfiguring: Nullable<() => void> = null;
 
-  public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
-
   /** Frames a second every viewport is allowed to draw. */
   @Computed()
   public get frameRateLimit(): TFrameRateLimit {
@@ -173,21 +169,10 @@ export class RenderSettingsService {
     return this.storedRendererChoice.value;
   }
 
-  /** Whether the light levels past the authored (the anchored and the physical) may be chosen and drawn: in dev mode. */
-  @Computed()
-  public get isDevLightLevelAvailable(): boolean {
-    return this.settingsService.isDevModeEnabled;
-  }
-
-  /** Every renderer feature as the choice sets it, a dev light level drawn as the authored one outside dev mode. */
+  /** Every renderer feature as the choice sets it. */
   @Computed()
   public get rendererFeatures(): IRenderFeatureSettings {
-    const features: IRenderFeatureSettings = resolveRenderFeatures(this.rendererChoice);
-
-    return {
-      ...features,
-      lightLevel: toDrawnRenderLightLevel(features.lightLevel, this.isDevLightLevelAvailable),
-    };
+    return resolveRenderFeatures(this.rendererChoice);
   }
 
   /**

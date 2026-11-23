@@ -1,5 +1,6 @@
 //! What WGSL declares by hand of what Rust also declares, held to Rust: constants, flags and the sizes they set.
 
+use xrf_material::XraySurfaceEmission;
 use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
 
 use crate::contract::feature::lighting::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_LIGHTS;
@@ -499,13 +500,15 @@ fn the_static_draws_read_a_surface_s_flags_as_rust_sets_them() {
     ("SURFACE_IS_ENVIRONMENT_MAPPED", StaticSurface::IS_ENVIRONMENT_MAPPED),
     ("SURFACE_IS_STILL", StaticSurface::IS_STILL),
     ("SURFACE_IS_TERRAIN", StaticSurface::IS_TERRAIN),
-    ("SURFACE_IS_EMISSIVE", StaticSurface::IS_EMISSIVE),
+    ("SURFACE_IS_FADED_ALPHA", StaticSurface::IS_FADED_ALPHA),
     ("SURFACE_IS_SHADOWLESS", StaticSurface::IS_SHADOWLESS),
     ("SURFACE_IS_STEEP", StaticSurface::IS_STEEP),
     ("SURFACE_HAS_LIGHTMAP", StaticSurface::HAS_LIGHTMAP),
     ("SURFACE_IS_DISTORTING", StaticSurface::IS_DISTORTING),
     ("SURFACE_IS_GLASS", StaticSurface::IS_GLASS),
     ("SURFACE_IS_RELIEF_BUMPED", StaticSurface::IS_RELIEF_BUMPED),
+    ("SURFACE_IS_FADED", StaticSurface::IS_FADED),
+    ("SURFACE_IS_FADED_FACING", StaticSurface::IS_FADED_FACING),
   ] {
     assert_eq!(get_constant(&library, "static/records", name), flag, "{name}");
   }
@@ -615,6 +618,16 @@ fn the_impostors_and_the_grass_write_the_material_slices_rust_gives_them() {
 
   assert!((impostor - material_slice(StaticSurfaceBuilder::IMPOSTOR_MATERIAL)).abs() < 1e-6);
   assert!((grass - material_slice(1.0)).abs() < 1e-6);
+}
+
+/// The G-buffer stores a self-lit surface's fill over the brightest a surface fills, which the sun pass multiplies
+/// back.
+#[test]
+fn the_self_lit_fill_is_stored_over_the_brightest_rust_gives() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let brightest: f32 = get_float_constant(&library, "common/marks", "EMISSIVE_LIGHT");
+
+  assert_eq!(brightest, XraySurfaceEmission::Bright.get_light());
 }
 
 /// naga lays the camera and the page's backdrop out where the derive does, and takes each as a uniform.

@@ -4,7 +4,10 @@ use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 
 use crate::fixtures::FixtureTree;
-use crate::surface::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler};
+use crate::surface::{
+  XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceEmission, XraySurfaceFade,
+  XraySurfaceSampler,
+};
 use crate::tests::surface::surface_search::{describe, describe_dressed, library};
 
 /// The pass `shaders/r3/effects_lightplanes.s` declares, which is what a lamp's light planes are drawn with.
@@ -283,6 +286,61 @@ end
   assert_eq!(descriptor.draw, XraySurfaceDraw::Invisible);
   assert!(descriptor.is_distorting);
   assert_eq!(descriptor.samplers[0].texture, "pfx\\pfx_dist_flame");
+  assert_eq!(descriptor.fade, None);
+}
+
+// `models_xdistort*.s`: a base pass beginning `model_distort` or `model_distort_inv` into a particle program draws the
+// model unlit by its fade, its texel or its alpha alone, the programs named in any case; one into a lit program does
+// not fade, whatever its special pass begins.
+#[test]
+fn a_distortion_models_base_pass_fades_it_by_its_programs() {
+  let scripts: [(&str, &str, &str); 4] = [
+    ("models\\xdistort", "model_distort", "particle_alphaonly"),
+    ("models\\xdistortcolorlinv", "Model_Distort_Inv", "particle_hard"),
+    ("models\\xdistortcolor", "model_distort", "Particle"),
+    ("models\\xdistortlit", "model_distort", "model_def_lq"),
+  ];
+  let fades: Vec<Option<XraySurfaceFade>> = scripts
+    .iter()
+    .enumerate()
+    .map(|(index, (name, program, pixel_program))| {
+      let tree: FixtureTree = library(&format!("surface_script_fade_{index}"), &[]).with_shader_script(
+        name,
+        &format!(
+          r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("{program}","{pixel_program}") : blend (true, blend.srcalpha, blend.invsrcalpha) : zb (true, false)
+end
+
+function l_special (shader, t_base, t_second, t_detail)
+  shader:begin ("model_distort","particle_distort") : blend (true, blend.srccolor, blend.invsrcalpha) : distort (true)
+end
+"#
+        ),
+      );
+
+      describe_dressed(&tree, name, &["artifact\\artifact_anim_dist"]).fade
+    })
+    .collect();
+
+  assert_eq!(
+    fades,
+    [
+      Some(XraySurfaceFade {
+        is_facing: false,
+        is_alpha_only: true
+      }),
+      Some(XraySurfaceFade {
+        is_facing: true,
+        is_alpha_only: false
+      }),
+      Some(XraySurfaceFade {
+        is_facing: false,
+        is_alpha_only: false
+      }),
+      None,
+    ]
+  );
 }
 
 // `models_selflight.s`: a self-lit base pass, whose special pass fills the light it gathers rather than distorting.
@@ -303,10 +361,32 @@ end
   let descriptor: XraySurfaceDescriptor = describe_dressed(&tree, "models\\selflight", &["prop\\prop_lampa_g"]);
 
   assert_eq!(descriptor.draw, XraySurfaceDraw::Opaque);
-  assert!(descriptor.is_emissive);
+  assert_eq!(descriptor.emission, Some(XraySurfaceEmission::Bright));
   assert!(!descriptor.is_distorting);
   // Without an `l_point` it has no shadow element, so the lamp never shadows its own light.
   assert!(descriptor.is_shadowless);
+}
+
+// `models_selflightl.s`: the same, its special pass `accum_emissivel`, which fills one rather than sixteen.
+#[test]
+fn a_dim_self_lit_script_fills_one() {
+  let tree: FixtureTree = library("surface_script_self_lit_dim", &[]).with_shader_script(
+    "models\\selflightl",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("deffer_model_flat","deffer_base_flat") : fog (false) : emissive (true)
+end
+
+function l_special (shader, t_base, t_second, t_detail)
+  shader:begin ("shadow_direct_model","accum_emissivel") : zb (true,false) : fog (false) : emissive (true)
+end
+"#,
+  );
+  let descriptor: XraySurfaceDescriptor = describe_dressed(&tree, "models\\selflightl", &["artifact\\artifact_lava"]);
+
+  assert_eq!(descriptor.emission, Some(XraySurfaceEmission::Dim));
+  assert_eq!(XraySurfaceEmission::Dim.get_light(), 1.0);
+  assert_eq!(XraySurfaceEmission::Bright.get_light(), 16.0);
 }
 
 // `_lua_Compile` hands a function its first two textures after the compiler, whatever the script names them.

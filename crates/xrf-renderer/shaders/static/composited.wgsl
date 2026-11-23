@@ -155,6 +155,28 @@ fn level_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
     lighting.display);
 }
 
+// A faded surface as `model_distort` colours it and a particle program draws it, into the frame already tonemapped:
+// unlit and unfogged, its texel times the fade in colour and alpha, which is `1 - |dot(view, normal)|` in view space,
+// the rim's, or `|dot(view, normal)|` facing the eye for `model_distort_inv`; tested against nothing, as `clip` keeps
+// all but an empty texel. `particle_alphaonly` draws its faded alpha alone in every channel, a grey whatever the texel's
+// colour. Monolith's `model_distort` also fogs it; OpenXRay's does not.
+fn faded_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> CompositedOutput {
+  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
+  let facing: f32 = abs(dot(normalize(position), normalize(in.normal)));
+  let fade: f32 = select(1.0 - facing, facing, (surface.flags & SURFACE_IS_FADED_FACING) != 0u);
+  let alpha: f32 = base.a * fade;
+
+  if (alpha <= surface.alpha_reference) {
+    discard;
+  }
+
+  let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
+  let drawn: vec3<f32> = select(texel * fade, vec3<f32>(alpha), (surface.flags & SURFACE_IS_FADED_ALPHA) != 0u);
+
+  return composite(surface.flags, drawn, alpha, picture_for_display(saturate(drawn), lighting.display), 0.0,
+    lighting.display);
+}
+
 // The fog's colour as shown along the view to a world point.
 fn fog_shown_from_eye(world: vec3<f32>) -> vec3<f32> {
   return fog_shown_toward(lighting, normalize(world - camera.position.xyz));
@@ -249,6 +271,10 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   let is_lit: bool = lighting.params.y > 0.5;
   let is_blended: bool = (surface.flags & (SURFACE_IS_ADDED | SURFACE_IS_MULTIPLIED)) == 0u;
 
+  if ((surface.flags & SURFACE_IS_FADED) != 0u && is_lit) {
+    return faded_composited(in, surface, base);
+  }
+
   if ((surface.flags & SURFACE_IS_MODEL) != 0u && is_blended && is_lit) {
     return model_composited(in, surface, base);
   }
@@ -273,16 +299,24 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   return composite(surface.flags, texel, base.a, laid, fog, lighting.display);
 }
 
-// A distorting surface's special pass as `model_distort4glass` and `particle_distort` draw it into the distortion
-// target: its distortion texture's offset, by its alpha times the vertex's fade, `0.9 |dot(view, normal)|`, so a pane
-// seen edge on bends nothing; and on Monolith into the fog by what is left of it, squared, as Anomaly's
-// `particle_distort.ps` fades it (OpenXRay's does not).
+// A distorting surface's special pass as `particle_distort` draws it into the distortion target: its distortion
+// texture's offset, by its alpha times the vertex's fade. The fade is its vertex program's: `model_distort4glass`'s
+// `0.9 |dot(view, normal)|`, so a pane seen edge on bends nothing; a faded model's rim, `1 - |dot(view, normal)|`, or
+// its facing fade, as `model_distort` and `model_distort_inv` colour it, so an artefact's shell bends and blurs at its
+// edge alone. On Monolith it fades into the fog by what is left of it, squared, as Anomaly's `particle_distort.ps`
+// fades it (OpenXRay's does not).
 @fragment
 fn fs_composited_distort(in: GBufferVarying) -> @location(0) vec4<f32> {
   let surface: Surface = surfaces[in.surface];
   let at: Footprint = take_footprint(in);
   let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
-  let fade: f32 = 0.9 * abs(dot(camera_view_ray(position), normalize(in.normal)));
+  let facing: f32 = abs(dot(camera_view_ray(position), normalize(in.normal)));
+  var fade: f32 = 0.9 * facing;
+
+  if ((surface.flags & SURFACE_IS_FADED) != 0u) {
+    fade = select(1.0 - facing, facing, (surface.flags & SURFACE_IS_FADED_FACING) != 0u);
+  }
+
   let distort: vec4<f32> = sample_slot(surface.distortion, at.uv, at.dx, at.dy);
   var factor: f32 = distort.a * fade;
 

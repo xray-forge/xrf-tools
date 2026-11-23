@@ -48,7 +48,7 @@ impl StaticScene {
     let base: StaticGeometryBase = writer.put_words(StaticLayout::Model, &model.words, &model.indices);
     let vertex_count: u32 = (model.words.len() / StaticLayout::STRIDE as usize) as u32;
     let mut slots: Vec<(u32, u32, StaticBatch, u32)> = Vec::new();
-    // The composited parts' clusters, which each object lists to be drawn sorted.
+    // The composited parts' clusters, strictly sorted or not, which each object lists to be drawn sorted.
     let mut sorted: Vec<(u32, u32)> = Vec::new();
     let mut sight: StaticSight = StaticSight::default();
 
@@ -109,7 +109,9 @@ impl StaticScene {
           },
         );
 
-        if class == StaticClass::Composited {
+        // A model's composited parts are drawn only from this list, the strictly sorted ones as much as the rest, which
+        // the composited pass leaves to it rather than drawing in the cull's order.
+        if class.is_composited() {
           sorted.push((first_cluster, count));
         }
 

@@ -3,7 +3,8 @@ use xrf_vfs::XrayAsset;
 
 use crate::material::{XrayMaterialBump, XrayMaterialDescriptor};
 use crate::surface::{
-  XraySurfaceDeclaration, XraySurfaceDetail, XraySurfaceDraw, XraySurfaceSampler, XraySurfaceTerrain,
+  XraySurfaceDeclaration, XraySurfaceDetail, XraySurfaceDraw, XraySurfaceEmission, XraySurfaceFade, XraySurfaceSampler,
+  XraySurfaceTerrain,
 };
 
 /// How the renderer draws one surface, resolved from the shader name it declares and the textures it dresses with.
@@ -41,9 +42,12 @@ pub struct XraySurfaceDescriptor {
   pub is_texture_clamped: bool,
   /// Whether it also draws into the distortion target, by a script's `l_special` pass marked `distort(true)`.
   pub is_distorting: bool,
-  /// Whether it is self-lit, a script's base pass marked `emissive(true)` with an `l_special` pass to fill the light it
-  /// gathers (`accum_emissive`).
-  pub is_emissive: bool,
+  /// The light it fills where it is self-lit, a script's base pass marked `emissive(true)` with an `l_special` pass to
+  /// fill the light it gathers; `None` for a surface lit as any other.
+  pub emission: Option<XraySurfaceEmission>,
+  /// How a script's base pass draws it unlit, faded by how it faces the eye (`models\xdistort*`); `None` for a surface
+  /// drawn any other way.
+  pub fade: Option<XraySurfaceFade>,
   /// Whether it casts no shadow: a script declaring no `l_point`, which the deferred renderers compile its shadow element
   /// from, leaving it out of every shadow map.
   pub is_shadowless: bool,
@@ -68,7 +72,8 @@ impl XraySurfaceDescriptor {
       environment: None,
       is_texture_clamped: false,
       is_distorting: false,
-      is_emissive: false,
+      emission: None,
+      fade: None,
       is_shadowless: false,
       is_object_lod: false,
     }

@@ -6,6 +6,8 @@ mod rule;
 mod xray_surface_declaration;
 mod xray_surface_descriptor;
 mod xray_surface_draw;
+mod xray_surface_emission;
+mod xray_surface_fade;
 mod xray_surface_resolver;
 mod xray_surface_script;
 
@@ -13,5 +15,7 @@ pub use binding::{XraySurfaceDetail, XraySurfaceSampler, XraySurfaceTerrain, Xra
 pub use xray_surface_declaration::XraySurfaceDeclaration;
 pub use xray_surface_descriptor::XraySurfaceDescriptor;
 pub use xray_surface_draw::XraySurfaceDraw;
+pub use xray_surface_emission::XraySurfaceEmission;
+pub use xray_surface_fade::XraySurfaceFade;
 pub use xray_surface_resolver::XraySurfaceResolver;
 pub(crate) use xray_surface_script::XraySurfaceScript;

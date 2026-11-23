@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_math::glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::SectorSurface;
@@ -136,6 +137,64 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
       .add_object(device, queue, objects.allocate(), model, &place(4))
       .is_err()
   );
+}
+
+/// A blended model surface's descriptor, strictly sorted or not, as `models\window` and its kin describe one.
+fn blended(is_strict_sorting: bool) -> XraySurfaceDescriptor {
+  XraySurfaceDescriptor {
+    draw: XraySurfaceDraw::Blended { reference: 0 },
+    ..XraySurfaceDescriptor::opaque(
+      None,
+      XraySurfaceDeclaration::Described {
+        class: String::from("MODELEbB"),
+        is_alpha_used: Some(true),
+        alpha_reference: None,
+        is_strict_sorting,
+      },
+    )
+  }
+}
+
+// A model's composited parts are drawn only from the sorted list each of its objects carries, so a strictly sorted part
+// left off it would stand in the scene and never be drawn.
+#[test]
+fn lists_every_composited_part_of_a_model_to_be_drawn_sorted() {
+  let Some(context) = create_test_context("to hold a scene") else {
+    return;
+  };
+  let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
+  let source: Arc<dyn RenderAssetSource> = Arc::new(EmptySource);
+  let mut textures: TextureCache = TextureCache::new(device, queue, &create_workers());
+  let mut scene: StaticScene = StaticScene::new(device, queue);
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
+  let (mut models, mut objects): (ProxyAllocator<StaticModelProxy>, ProxyAllocator<StaticObjectProxy>) =
+    (ProxyAllocator::new(), ProxyAllocator::new());
+  let model: ProxyHandle<StaticModelProxy> = models.allocate();
+  let mut parts: StaticModel = create_model(3);
+
+  parts.parts[1].descriptor = Some(blended(false));
+  parts.parts[2].descriptor = Some(blended(true));
+
+  scene
+    .add_model(
+      &mut StaticItemContext {
+        device,
+        queue,
+        encoder: &mut encoder,
+        textures: &mut textures,
+        source: &source,
+      },
+      model,
+      &parts,
+    )
+    .unwrap();
+  scene
+    .add_object(device, queue, objects.allocate(), model, &place(1))
+    .unwrap();
+
+  let sorted: Vec<usize> = scene.list_sorted_places().map(|place| place.clusters.len()).collect();
+
+  assert_eq!(sorted, [2], "one object, its blended and its strictly sorted part");
 }
 
 #[test]

@@ -23,6 +23,7 @@ use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::effects::level_campfires::LevelCampfires;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::level::effects::placed_emitter::PlacedEmitter;
+use crate::level::effects::placed_world::PlacedWorld;
 use crate::level::level_drive::LevelDrive;
 use crate::level::loading::loader_once::LoaderOnce;
 use crate::sound::schedule::zone_states::ZoneStates;
@@ -225,8 +226,11 @@ impl LevelEffects {
       Self::place(
         updates,
         systems,
-        eye,
-        gust.get_velocity(),
+        PlacedWorld {
+          eye,
+          wind: gust.get_velocity(),
+          toggles,
+        },
         &mut self.campfires,
         &motions,
       );
@@ -299,13 +303,12 @@ impl LevelEffects {
   /// Plays what each placement's source plays: a planted system always; a zone's idle effect while it is enabled,
   /// stopped on Monolith while the camera stands past `ZONE_FAST_DISTANCE` (`o_switch_2_slow`) and played afresh once
   /// it comes back (`o_switch_2_fast`); a campfire's as `CZoneCampfire` switches them, following its campfire's state,
-  /// its idle particles carried by the `wind`. A placement a motion carries moves first. `eye` is where the camera
-  /// stands, in engine space.
+  /// its idle particles carried by the wind; an artefact's while it shows, which for one a detector must reveal is
+  /// while the toggles show those. A placement a motion carries moves first.
   fn place(
     updates: &mut Vec<RenderSceneUpdate>,
     systems: &mut EffectSystems,
-    eye: Vec3,
-    wind: Vec3,
+    PlacedWorld { eye, wind, toggles }: PlacedWorld<'_>,
     campfires: &mut LevelCampfires,
     motions: &HashMap<String, RenderMotionPose>,
   ) {
@@ -328,6 +331,11 @@ impl LevelEffects {
         RenderParticleSource::Static { name } => emitter.play(updates, PlacedEffect::Idle, name),
         RenderParticleSource::Zone { .. } if is_far => emitter.stop(updates, PlacedEffect::Idle),
         RenderParticleSource::Zone { idle } => emitter.play(updates, PlacedEffect::Idle, idle),
+        RenderParticleSource::Artefact {
+          is_detector_hidden: true,
+          ..
+        } if !toggles.is_spawned_detector_hidden => emitter.stop(updates, PlacedEffect::Idle),
+        RenderParticleSource::Artefact { idle, .. } => emitter.play(updates, PlacedEffect::Idle, idle),
         RenderParticleSource::Campfire {
           id,
           idle,

@@ -21,7 +21,10 @@ use xrf_material::fixtures::FixtureTree;
 use xrf_math::{Vector2d, Vector3d};
 use xrf_rawdata::{LevelVisualGeometry, ObjectDecompiler, SurfaceDress};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
-use xrf_spawn::{AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, ClsId, SpawnPacketHeader};
+use xrf_spawn::{
+  AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectInherited, AlifeObjectItem,
+  AlifeObjectItemArtefact, ClsId, SpawnPacketHeader,
+};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayRevision, XrayRoots, XraySearch, XrayVfs};
 
@@ -100,6 +103,32 @@ pub(super) fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
     custom_data: String::new(),
     story_id,
     spawn_story_id: AlifeObjectAbstract::INVALID_STORY_ID,
+  }
+}
+
+/// An artefact named `name` of `section`, at `1, 2, 3`, drawn as Medusa.
+pub(super) fn new_artefact(name: &str, section: &str) -> AlifeObject {
+  new_object(
+    name,
+    section,
+    ClsId::Artefact,
+    AlifeObjectInherited::CseAlifeItemArtefact(Box::new(AlifeObjectItemArtefact {
+      base: new_item_base("dynamics\\artefacts\\af_medusa"),
+    })),
+  )
+}
+
+/// An item drawn as `visual`, whole, with no story id and no physics state.
+pub(super) fn new_item_base(visual: &str) -> AlifeObjectItem {
+  AlifeObjectItem {
+    base: AlifeObjectDynamicVisual {
+      base: new_abstract(AlifeObjectAbstract::INVALID_STORY_ID),
+      visual_name: String::from(visual),
+      visual_flags: 0,
+    },
+    condition: 1.0,
+    upgrades: Vec::new(),
+    update_state: None,
   }
 }
 

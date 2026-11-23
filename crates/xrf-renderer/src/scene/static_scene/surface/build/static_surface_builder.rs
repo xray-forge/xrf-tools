@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use xrf_material::{
-  XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler, XraySurfaceTerrain,
+  XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceEmission,
+  XraySurfaceSampler, XraySurfaceTerrain,
 };
 use xrf_math::glam::{UVec4, Vec3};
 use xrf_visual::SectorSurface;
@@ -111,7 +112,8 @@ impl StaticSurfaceBuilder {
         textures: texture_slots,
         terrain,
         distortion,
-        _pad: [0; 3],
+        emission: plan.emission,
+        _pad: [0; 2],
       },
       plan.class,
     ))
@@ -242,6 +244,9 @@ impl StaticSurfaceBuilder {
       distortion,
       detail_scale: detail.map_or(1.0, |it| it.scale),
       material: descriptor.map_or(DEFAULT_MATERIAL, |it| it.material),
+      emission: descriptor
+        .and_then(|it| it.emission)
+        .map_or(0.0, XraySurfaceEmission::get_light),
     })
   }
 
@@ -292,12 +297,12 @@ impl StaticSurfaceBuilder {
       flags |= StaticSurface::IS_STILL;
     }
 
-    if descriptor.is_some_and(|it| it.is_emissive) {
-      flags |= StaticSurface::IS_EMISSIVE;
-    }
-
     if descriptor.is_some_and(|it| it.is_shadowless) {
       flags |= StaticSurface::IS_SHADOWLESS;
+    }
+
+    if class.is_composited() {
+      flags |= descriptor.map_or(0, Self::get_fade);
     }
 
     if flags & StaticSurface::HAS_BUMP != 0 && descriptor.is_some_and(Self::is_steep) {
@@ -382,7 +387,8 @@ impl StaticSurfaceBuilder {
       textures: texture_slots,
       terrain: StaticTerrainSlots::default(),
       distortion: 0,
-      _pad: [0; 3],
+      emission: 0.0,
+      _pad: [0; 2],
     }
   }
 
@@ -406,6 +412,24 @@ impl StaticSurfaceBuilder {
           name.contains(glass)
         }
       })
+    })
+  }
+
+  /// The fade flags of a surface its script draws unlit by its fade (`XraySurfaceFade`): its texel times the fade
+  /// (`models\xdistortcolor*`) or a grey of its faded alpha (`models\xdistort`), at its rim or facing the eye.
+  fn get_fade(descriptor: &XraySurfaceDescriptor) -> u32 {
+    descriptor.fade.map_or(0, |fade| {
+      StaticSurface::IS_FADED
+        | if fade.is_facing {
+          StaticSurface::IS_FADED_FACING
+        } else {
+          0
+        }
+        | if fade.is_alpha_only {
+          StaticSurface::IS_FADED_ALPHA
+        } else {
+          0
+        }
     })
   }
 

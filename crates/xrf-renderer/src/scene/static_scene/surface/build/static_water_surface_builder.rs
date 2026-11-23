@@ -94,7 +94,8 @@ impl StaticWaterSurfaceBuilder {
       textures: texture_slots,
       terrain: StaticTerrainSlots::default(),
       distortion: 0,
-      _pad: [0; 3],
+      emission: 0.0,
+      _pad: [0; 2],
     }
   }
 }

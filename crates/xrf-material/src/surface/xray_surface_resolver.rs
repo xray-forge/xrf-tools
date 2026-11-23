@@ -132,7 +132,8 @@ impl XraySurfaceResolver {
       environment: rule.environment(blender),
       is_texture_clamped: rule.is_texture_clamped(blender),
       is_distorting: false,
-      is_emissive: false,
+      emission: None,
+      fade: None,
       is_shadowless: false,
       is_object_lod: rule.is_object_lod(blender),
     }

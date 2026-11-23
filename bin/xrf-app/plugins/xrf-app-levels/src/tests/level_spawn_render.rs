@@ -5,36 +5,11 @@ use std::collections::HashMap;
 
 use xrf_ltx::Ltx;
 use xrf_renderer::{RenderLevelSpawn, RenderSpawnCategory, RenderSpawnGroup};
-use xrf_spawn::{
-  AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectInherited, AlifeObjectItem,
-  AlifeObjectItemArtefact, ClsId,
-};
+use xrf_spawn::{AlifeObject, AlifeObjectInherited, ClsId};
 
 use crate::parts::LevelSpawn;
 use crate::spawn::LevelSpawnRelease;
-use crate::tests::fixtures::{new_abstract, new_object};
-
-fn new_item_base() -> AlifeObjectItem {
-  AlifeObjectItem {
-    base: AlifeObjectDynamicVisual {
-      base: new_abstract(AlifeObjectAbstract::INVALID_STORY_ID),
-      visual_name: String::from("dynamics\\artefacts\\af_medusa"),
-      visual_flags: 0,
-    },
-    condition: 1.0,
-    upgrades: Vec::new(),
-    update_state: None,
-  }
-}
-
-fn new_artefact(name: &str, section: &str) -> AlifeObject {
-  new_object(
-    name,
-    section,
-    ClsId::Artefact,
-    AlifeObjectInherited::CseAlifeItemArtefact(Box::new(AlifeObjectItemArtefact { base: new_item_base() })),
-  )
-}
+use crate::tests::fixtures::{new_artefact, new_item_base, new_object};
 
 /// A plain item whose section would hide it were it an artefact.
 fn new_item(name: &str, section: &str) -> AlifeObject {
@@ -42,7 +17,7 @@ fn new_item(name: &str, section: &str) -> AlifeObject {
     name,
     section,
     ClsId::SFood,
-    AlifeObjectInherited::CseAlifeItem(Box::new(new_item_base())),
+    AlifeObjectInherited::CseAlifeItem(Box::new(new_item_base("dynamics\\artefacts\\af_medusa"))),
   )
 }
 

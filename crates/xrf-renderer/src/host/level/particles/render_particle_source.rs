@@ -14,4 +14,7 @@ pub enum RenderParticleSource {
     disabled: String,
     enabling: String,
   },
+  /// An artefact's `particles` (`CArtefact::SwitchAfParticles`), playing while it shows: always, or for one a detector
+  /// must reveal, only while the view shows those.
+  Artefact { idle: String, is_detector_hidden: bool },
 }

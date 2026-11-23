@@ -23,4 +23,6 @@ pub(crate) struct StaticSurfacePlan<'a> {
   pub detail_scale: f32,
   /// The lighting model its texture's descriptor gives it.
   pub material: f32,
+  /// The light a self-lit surface fills where it stands; nought for one lit as any other.
+  pub emission: f32,
 }

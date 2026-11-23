@@ -38,8 +38,9 @@ impl LevelRenderParts {
   }
 
   /// The session parts `LevelRenderSource` reads `part` from; sectors have none (`VIEW_PARTS`). The spawn reads the
-  /// sections for which artefacts a detector must reveal. Helpers include the sound emitters, whose files' distances
-  /// size their spheres; weather reads its rain, thunder and ambient sounds.
+  /// sections for which artefacts a detector must reveal; the particles read the spawned visuals for the root bone an
+  /// artefact plays its own at. Helpers include the sound emitters, whose files' distances size their spheres; weather
+  /// reads its rain, thunder and ambient sounds.
   fn list_read_from(part: LevelPart) -> &'static [&'static str] {
     match part {
       LevelPart::Spawn => &[
@@ -57,6 +58,7 @@ impl LevelRenderParts {
       ],
       LevelPart::Particles => &[
         LevelSpawnPart::NAME,
+        LevelSpawnVisualsPart::NAME,
         LevelSectionsPart::NAME,
         LevelEnvironmentPart::NAME,
         LevelCollisionPart::NAME,

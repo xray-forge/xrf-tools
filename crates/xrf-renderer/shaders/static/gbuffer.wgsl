@@ -1048,6 +1048,13 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     sun = relief;
   }
 
+  // A self-lit surface's sun term is its own fill instead, which the sun pass fills its light with.
+  let is_emissive: bool = surface.emission > 0.0;
+
+  if (is_emissive) {
+    sun = surface.emission / EMISSIVE_LIGHT;
+  }
+
   var out: GBufferOutput;
 
   out.albedo = vec4<f32>(mix(untextured_color(surface.color), diffuse, is_textured), gloss);
@@ -1055,7 +1062,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   // Its alpha holds the marks: what is selected, which the present pass outlines, what is self-lit, foliage and
   // terrain.
   out.material = vec4<f32>(hemi, sun, surface.slice,
-    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain, at.is_relief,
+    encode_marks(is_selected(in.entry), is_emissive, is_flora, is_terrain, at.is_relief,
       in.flora.z > 0.5, is_moved(in.moved)));
   out.motion = camera_motion(in.world, in.world + in.moved);
   // The clearance stored from one down, so a target cleared to none reads as clear.

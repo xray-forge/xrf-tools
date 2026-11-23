@@ -14,7 +14,7 @@ import {
 import {
   explainRenderLightLevel,
   formatSunTint,
-  getRenderLightLevelOptions,
+  RENDER_LIGHT_LEVEL_OPTIONS,
 } from "@/core/render/lib/features/tone/render-light-level-choices";
 import { TRenderLightSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
@@ -64,7 +64,7 @@ export const RENDER_LIGHT_SETTINGS: TRenderSettings<TRenderLightSettings> = {
     explain: explainRenderLightLevel,
     isInert: isEngineLight,
     label: "Light levels",
-    options: getRenderLightLevelOptions(true),
+    options: RENDER_LIGHT_LEVEL_OPTIONS,
   },
   lightModel: {
     control: ERenderSettingControl.CHOICE,

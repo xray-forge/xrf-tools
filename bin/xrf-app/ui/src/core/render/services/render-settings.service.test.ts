@@ -13,7 +13,6 @@ import {
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/choice/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/choice/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { SettingsService } from "@/core/settings/services/settings.service";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
@@ -208,25 +207,15 @@ describe("RenderSettingsService", () => {
     expect(mockInjectedService(RenderSettingsService).service.rendererChoice.preset).toBe(ERenderPreset.BASE);
   });
 
-  // The light levels past the authored are parked: outside dev mode a kept choice of them is drawn at the authored
-  // levels, and kept for when dev mode returns.
-  it("draws the parked dev light levels as the authored ones outside dev mode", () => {
-    const { container, service } = mockInjectedService(RenderSettingsService);
-    const settingsService: SettingsService = container.get(SettingsService);
+  it("draws every light level as chosen, dev mode or not", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
 
-    settingsService.setDevModeEnabled(true);
     service.setRendererOverrides({ lightLevel: ERenderLightLevel.PHYSICAL });
 
-    expect(service.isDevLightLevelAvailable).toBe(true);
     expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
 
-    settingsService.setDevModeEnabled(false);
+    service.setRendererOverrides({ lightLevel: ERenderLightLevel.ANCHORED });
 
-    expect(service.isDevLightLevelAvailable).toBe(false);
-    expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.AUTHORED);
-
-    settingsService.setDevModeEnabled(true);
-
-    expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
+    expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.ANCHORED);
   });
 });

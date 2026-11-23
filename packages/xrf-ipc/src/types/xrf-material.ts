@@ -280,10 +280,15 @@ export type XraySurfaceDescriptor = {
   /** Whether it also draws into the distortion target, by a script's `l_special` pass marked `distort(true)`. */
   isDistorting: boolean;
   /**
-   * Whether it is self-lit, a script's base pass marked `emissive(true)` with an `l_special` pass to fill the light it
-   * gathers (`accum_emissive`).
+   * The light it fills where it is self-lit, a script's base pass marked `emissive(true)` with an `l_special` pass to
+   * fill the light it gathers; `None` for a surface lit as any other.
    */
-  isEmissive: boolean;
+  emission: XraySurfaceEmission | null;
+  /**
+   * How a script's base pass draws it unlit, faded by how it faces the eye (`models\xdistort*`); `None` for a surface
+   * drawn any other way.
+   */
+  fade: XraySurfaceFade | null;
   /**
    * Whether it casts no shadow: a script declaring no `l_point`, which the deferred renderers compile its shadow element
    * from, leaving it out of every shadow map.
@@ -364,6 +369,40 @@ export type XraySurfaceDraw =
    * blends, over the depth behind it, as vanilla's `water_soft` and every Anomaly program does; plain `water` is whole.
    */
   | { kind: "water"; isSoft: boolean };
+
+/**
+ * The light a self-lit surface's special pass fills where it stands, which every light then adds to: a script whose
+ * base pass says `emissive(true)` and whose `l_special` pass begins one of the engine's emissive programs.
+ */
+export enum EXraySurfaceEmission {
+  /**
+   * `accum_emissive.ps`, `models\selflight`'s: sixteen in every channel, its specular too, which washes its albedo
+   * white wherever the colour is not already one of its own.
+   */
+  BRIGHT = "bright",
+  /** `accum_emissivel.ps`, `models\selflightl`'s: one in colour and none in specular, which shows its albedo as it is. */
+  DIM = "dim",
+}
+
+/** Every `EXraySurfaceEmission` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type XraySurfaceEmission = `${EXraySurfaceEmission}`;
+
+/**
+ * How a script's base pass draws a model unlit and faded by how it faces the eye: `model_distort` or
+ * `model_distort_inv` colouring each vertex by its fade, into a particle program that draws by it.
+ */
+export type XraySurfaceFade = {
+  /**
+   * Whether it fades in where it faces the eye, `|dot(view, normal)|` (`model_distort_inv`), rather than at its rim,
+   * `1 - |dot(view, normal)|` (`model_distort`).
+   */
+  isFacing: boolean;
+  /**
+   * Whether it draws its faded alpha alone, a grey in every channel (`particle_alphaonly`), rather than its texel times
+   * the fade (`particle`, `particle_hard`).
+   */
+  isAlphaOnly: boolean;
+};
 
 /** A texture file a surface's script binds to one of its samplers. */
 export type XraySurfaceSampler = {

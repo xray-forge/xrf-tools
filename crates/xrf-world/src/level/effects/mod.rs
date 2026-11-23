@@ -7,3 +7,4 @@ pub(crate) mod level_campfires;
 pub(crate) mod level_effects;
 pub(crate) mod level_object_motions;
 pub(crate) mod placed_emitter;
+pub(crate) mod placed_world;

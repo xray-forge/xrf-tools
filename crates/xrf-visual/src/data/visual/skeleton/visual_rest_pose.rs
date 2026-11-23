@@ -36,6 +36,12 @@ impl VisualRestPose {
     self.transforms.get(index)
   }
 
+  /// The root bone's transform, the first, as `LL_GetBoneRoot` takes it: where an object's own effects and light stand
+  /// where nothing names a bone for them.
+  pub fn get_root(&self) -> Option<&VisualTransform> {
+    self.transforms.first()
+  }
+
   /// A pose of one transform a bone, or `None` for one naming no bone or naming them unevenly.
   pub(crate) fn new(names: Vec<String>, transforms: Vec<VisualTransform>) -> Option<Self> {
     (names.len() == transforms.len() && !names.is_empty()).then_some(Self { names, transforms })

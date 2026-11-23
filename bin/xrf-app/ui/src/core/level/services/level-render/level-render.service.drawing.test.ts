@@ -15,7 +15,6 @@ import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { SettingsService } from "@/core/settings/services/settings.service";
 import { clearLocalStorage } from "@/core/storage";
 describe("LevelRenderDrawing", () => {
   beforeEach(() => {
@@ -136,24 +135,11 @@ describe("LevelRenderDrawing", () => {
     );
   });
 
-  // A view's own physical light level is parked as the settings' is: drawn at the authored levels outside dev mode,
-  // and kept for when dev mode returns.
-  it("draws a view's own physical light level as the authored one outside dev mode", async () => {
+  it("draws a view's own physical light level as it chose", async () => {
     const { container, service } = await mockAttachedLevelRender();
-    const settings: SettingsService = container.get(SettingsService);
     const view: LevelViewService = container.get(LevelViewService);
 
-    settings.setDevModeEnabled(true);
     view.setFeatures({ ...view.features, lightLevel: ERenderLightLevel.PHYSICAL });
-
-    expect(service.drawing.options.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
-
-    settings.setDevModeEnabled(false);
-
-    expect(service.drawing.options.features.lightLevel).toBe(ERenderLightLevel.AUTHORED);
-    expect(view.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
-
-    settings.setDevModeEnabled(true);
 
     expect(service.drawing.options.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
   });

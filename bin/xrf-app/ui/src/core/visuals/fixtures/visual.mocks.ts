@@ -278,9 +278,10 @@ export function mockLoadedVisual(
 export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
   return {
     bump: null,
+    emission: null,
     environment: null,
+    fade: null,
     isDistorting: false,
-    isEmissive: false,
     isObjectLod: false,
     isShadowless: false,
     isTextureClamped: false,

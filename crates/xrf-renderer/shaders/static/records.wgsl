@@ -80,8 +80,8 @@ const SURFACE_IS_ENVIRONMENT_MAPPED: u32 = 1048576u;
 const SURFACE_IS_STILL: u32 = 2097152u;
 // A terrain's, which lays four details and their bumps over its base by its mask, lit by its base's alpha.
 const SURFACE_IS_TERRAIN: u32 = 4194304u;
-// A self-lit surface's, whose light the sun pass fills.
-const SURFACE_IS_EMISSIVE: u32 = 8388608u;
+// A faded surface drawn as `particle_alphaonly` draws it: grey by its faded alpha in every channel.
+const SURFACE_IS_FADED_ALPHA: u32 = 8388608u;
 // A surface casting no shadow, whose script declares no shadow element.
 const SURFACE_IS_SHADOWLESS: u32 = 16777216u;
 // A level surface the engines' steep parallax reaches, its height in its bump pair's second's alpha.
@@ -93,6 +93,10 @@ const SURFACE_IS_DISTORTING: u32 = 134217728u;
 const SURFACE_IS_GLASS: u32 = 268435456u;
 // A level surface the engines leave flat, its bump pair's second's alpha a height the enhanced parallax marches.
 const SURFACE_IS_RELIEF_BUMPED: u32 = 536870912u;
+// A composited surface drawn unlit, its texel times the rim's fade (`model_distort` into a particle program).
+const SURFACE_IS_FADED: u32 = 1073741824u;
+// A faded surface whose fade faces the eye instead (`model_distort_inv`).
+const SURFACE_IS_FADED_FACING: u32 = 2147483648u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

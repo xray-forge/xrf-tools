@@ -13,6 +13,9 @@ const MARK_PLANT: u32 = 8u;
 const MARK_RELIEF: u32 = 4u;
 const MARK_MOVED: u32 = 2u;
 const MARK_GRASS: u32 = 1u;
+// The light `accum_emissive.ps` fills a self-lit surface with, its brightest. A self-lit pixel's sun channel holds its
+// own fill over this, which no sun reads there.
+const EMISSIVE_LIGHT: f32 = 16.0;
 // The least a surface's own movement since the last frame, in metres, that counts as moved.
 const MOVED_THRESHOLD: f32 = 1e-4;
 

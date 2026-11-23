@@ -26,7 +26,10 @@ pub(crate) struct StaticSurface {
   /// The texture a distorting surface's special pass draws into the distortion target, `s_distort`, read where it is
   /// [`StaticSurface::IS_DISTORTING`].
   pub distortion: u32,
-  pub _pad: [u32; 3],
+  /// The light a self-lit surface fills where it stands, `XraySurfaceEmission::get_light`; nought for one lit as any
+  /// other.
+  pub emission: f32,
+  pub _pad: [u32; 2],
 }
 
 impl StaticSurface {
@@ -63,8 +66,9 @@ impl StaticSurface {
   pub(crate) const IS_STILL: u32 = 1 << 21;
   /// A terrain's, which lays four details and their bumps over its base by its mask, and is lit by its base's alpha.
   pub(crate) const IS_TERRAIN: u32 = 1 << 22;
-  /// A self-lit surface's, whose light the sun pass fills as `accum_emissive` does.
-  pub(crate) const IS_EMISSIVE: u32 = 1 << 23;
+  /// A faded surface drawn as `particle_alphaonly` draws it: grey by its faded alpha, `fade · texel.a` in every
+  /// channel, whatever its texel's colour.
+  pub(crate) const IS_FADED_ALPHA: u32 = 1 << 23;
   /// A surface casting no shadow, whose script declares no shadow element.
   pub(crate) const IS_SHADOWLESS: u32 = 1 << 24;
   /// A level surface the engines' steep parallax reaches: its base's descriptor asks for parallax, its class is one of
@@ -83,6 +87,11 @@ impl StaticSurface {
   /// A level surface the engines leave flat whose bump pair carries a height in its second's alpha, which the enhanced
   /// parallax marches: an opaque one of the level's flat classes, not steep, not terrain.
   pub(crate) const IS_RELIEF_BUMPED: u32 = 1 << 29;
+  /// A composited surface drawn unlit as `model_distort` and a particle program draw it: its texel times the vertex's
+  /// fade in colour and alpha, which is the rim's, `1 - |dot(view, normal)|`, bright where it turns from the eye.
+  pub(crate) const IS_FADED: u32 = 1 << 30;
+  /// A faded surface whose fade faces the eye instead, `|dot(view, normal)|`, as `model_distort_inv` fades it.
+  pub(crate) const IS_FADED_FACING: u32 = 1 << 31;
 
   pub(crate) const BASE: usize = 0;
   pub(crate) const DETAIL: usize = 1;

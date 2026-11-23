@@ -12,7 +12,6 @@ import { Maybe, Nullable } from "@xrf/types";
 
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import {
-  ILevelFeatureOptions,
   LEVEL_FEATURE_TOGGLES_ON,
   TLevelOutputOptions,
   toLevelOutput,
@@ -36,7 +35,6 @@ import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { toDrawnAntialiasing } from "@/core/render/lib/features/image/render-antialiasing-choices";
-import { toDrawnRenderLightLevel } from "@/core/render/lib/features/tone/render-light-level-choices";
 import { toNativeWorldToggles } from "@/core/render/lib/native/contract/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
@@ -137,31 +135,12 @@ export class LevelRenderDrawing {
     return toShownLevelShading(this.sources.viewService.shading, this.antialiasing);
   }
 
-  /**
-   * What the view sets over the settings as it is drawn: a dev light level it keeps drawn as the authored one outside
-   * dev mode, as the settings' own is (`RenderSettingsService.rendererFeatures`).
-   */
-  @Computed()
-  public get viewFeatures(): ILevelFeatureOptions {
-    const features: ILevelFeatureOptions = this.sources.viewService.features;
-
-    return features.lightLevel === null
-      ? features
-      : {
-          ...features,
-          lightLevel: toDrawnRenderLightLevel(
-            features.lightLevel,
-            this.sources.renderSettingsService.isDevLightLevelAvailable
-          ),
-        };
-  }
-
   /** Every feature as the view draws it with every toolbar toggle on, which its popovers show and its snapshots keep. */
   @Computed()
   public get features(): IRenderFeatureSettings {
     return toLevelRendererFeatures(
       this.sources.renderSettingsService.rendererFeatures,
-      this.viewFeatures,
+      this.sources.viewService.features,
       LEVEL_FEATURE_TOGGLES_ON
     );
   }
@@ -185,7 +164,7 @@ export class LevelRenderDrawing {
       output: toRenderOutput(output.resolution, output.scale),
       shading: this.shading,
       sunShafts: weatherService.sunShafts,
-      view: this.viewFeatures,
+      view: viewService.features,
     });
     const { hidden, hovered, selected } = viewportService;
 

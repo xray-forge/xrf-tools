@@ -19,6 +19,7 @@ use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::lights_description::LightsDescription;
 use crate::data::lights::zone_sphere::ZoneSphere;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
+use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::lights::lights_packer::LightsPacker;
 use crate::pack::tests::fixtures::{MODEL_TYPE_SKELETON_ANIM, bind, bones, vector, visual};
 use crate::pack::visual::visual_skeleton::VisualSkeleton;
@@ -783,10 +784,11 @@ fn pack_objects(objects: &[AlifeObject], sections: Option<&Ltx>) -> LightsDescri
   packer.pack()
 }
 
-// Every artefact its section lights, a detector-hidden one as much as one always shown: a point at its origin, its
-// colour raw up to a trailing comment, unshadowed unless its section asks, unanimated and without shafts.
+// Every artefact its section lights, a detector-hidden one as much as one always shown: a point at its origin where its
+// visual cannot be read, its colour raw up to a trailing comment, unshadowed unless its section asks, unanimated and
+// without shafts.
 #[test]
-fn lights_each_artefact_its_section_lights_at_its_origin() {
+fn lights_each_artefact_its_section_lights_at_its_origin_without_its_visual() {
   let ltx: Ltx = sections();
   let description: LightsDescription = pack_objects(
     &[
@@ -816,6 +818,33 @@ fn lights_each_artefact_its_section_lights_at_its_origin() {
   // A controlled artefact of rank 1 lies hidden until a detector reveals it; one of rank 0 never hides.
   assert!(lit.is_detector_hidden);
   assert!(!junk.is_detector_hidden);
+}
+
+// Lit from its middle, its visual's root bone, rather than the origin its model stands on: carried with the object's
+// place into renderer space.
+#[test]
+fn lights_an_artefact_at_its_visuals_root_bone() {
+  let ltx: Ltx = sections();
+  let root: Arc<VisualRestPose> = Arc::new(VisualRestPose {
+    names: vec![String::from("link")],
+    transforms: vec![VisualTransform {
+      i: vector(1.0, 0.0, 0.0),
+      j: vector(0.0, 1.0, 0.0),
+      k: vector(0.0, 0.0, 1.0),
+      c: vector(0.0, 0.25, 0.0),
+    }],
+  });
+  let mut packer: LightsPacker<'_> = LightsPacker::new(None).with_sections(&ltx);
+
+  packer.add_objects(
+    &[artefact("af_lit", 10.0, SpawnPacketHeader::NO_PARENT_ID)],
+    &mut |_| Some(Arc::clone(&root)),
+  );
+
+  let description: LightsDescription = packer.pack();
+
+  // The root a quarter metre up, which the object's quarter turn about `y` leaves where it stands.
+  assert_close(&description.lights[0].position, vector(10.0, 2.25, -5.0));
 }
 
 // The engine would refuse a colour of fewer than three numbers or a missing range; the viewer lights nothing instead.

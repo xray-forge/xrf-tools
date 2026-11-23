@@ -49,7 +49,7 @@ import { RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/features/tone/render
 import { RENDER_GRADING_SETTINGS } from "@/core/render/lib/features/tone/render-grading-choices";
 import {
   explainRenderLightLevel,
-  getRenderLightLevelOptions,
+  RENDER_LIGHT_LEVEL_OPTIONS,
 } from "@/core/render/lib/features/tone/render-light-level-choices";
 import {
   explainRenderLightModel,
@@ -61,7 +61,6 @@ import {
   TRenderGradingSettings,
   TRenderLightSettings,
 } from "@/core/render/lib/settings/choice/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { LevelLookSliders } from "@/tools/level-viewer/components/toolbar/image/LevelLookSliders";
 import {
   LEVEL_LOOK_BLOOM_FIELDS,
@@ -120,7 +119,6 @@ export function LevelLookAction({
 }: BaseComponentProps): ReactElement {
   const lookService: LevelLookService = useInjection(LevelLookService);
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const { features, drawn } = useLevelRenderFeatures();
   const { set: setBloom } = useLevelFeatureOverride("enhancedBloom");
   const onBloomReset: Optional<() => void> = useLevelFeatureReset("enhancedBloom");
@@ -135,7 +133,6 @@ export function LevelLookAction({
   const lightModel: RenderLightModel = drawn.lightModel;
   const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
   const displayTransform: RenderDisplayTransform = drawn.displayTransform;
-  const isDevLevelAvailable: boolean = renderSettingsService.isDevLightLevelAvailable;
   const lightLevel: RenderLightLevel = drawn.lightLevel;
   const isPhysicalLevels: boolean = isPhysical && lightLevel === ERenderLightLevel.PHYSICAL;
 
@@ -225,7 +222,7 @@ export function LevelLookAction({
             name={"lightLevel"}
             group={drawn}
             features={drawn}
-            options={getRenderLightLevelOptions(isDevLevelAvailable)}
+            options={RENDER_LIGHT_LEVEL_OPTIONS}
             onSet={onSetLight}
           />
 

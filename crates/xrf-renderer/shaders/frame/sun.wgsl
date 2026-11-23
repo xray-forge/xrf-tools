@@ -19,9 +19,6 @@
 
 #import "generated/frame/sun"
 
-// What `accum_emissive.ps` writes into a self-lit surface's light.
-const EMISSIVE_LIGHT: f32 = 16.0;
-
 // The sun's light at a pixel, and how much of the sun reaches it.
 struct SunTargets {
   @location(0) light: vec4<f32>,
@@ -97,9 +94,17 @@ fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplit
     return SunSplitTargets(vec4<f32>(order, seen, 0.0, 0.0), vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
-  // `accum_emissive`: a self-lit surface's light is filled with sixteen, which the local lights then add to.
+  // A self-lit surface's light is filled with its own, which the local lights then add to: `accum_emissive` fills
+  // sixteen in colour and specular, `accum_emissivel` one in colour alone. Written at the scale a lamp is, the key
+  // light's gain with it where the light is summed (`authored_local_scale`), so the sum taken back to the engine's units
+  // reads the engine's fill; without the gain a dim key light's frame read it as one over the gain, and a self-lit
+  // surface's colour washed out to white.
   if (has_mark(material.a, MARK_EMISSIVE)) {
-    return SunSplitTargets(vec4<f32>(EMISSIVE_LIGHT * local_light_scale(lighting)), vec4<f32>(0.0), vec4<f32>(0.0));
+    let scale: f32 = select(local_light_scale(lighting), authored_local_scale(lighting), is_light_summed(lighting));
+    let fill: f32 = material.y * EMISSIVE_LIGHT * scale;
+    let specular: f32 = select(0.0, fill, material.y >= 1.0);
+
+    return SunSplitTargets(vec4<f32>(vec3<f32>(fill), specular), vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
   let to_light: vec3<f32> = lighting.to_sun.xyz;
