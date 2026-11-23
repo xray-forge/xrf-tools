@@ -1,18 +1,24 @@
 use std::cmp::Ordering;
 
-use xrf_math::Vector3d;
-use xrf_math::glam::Vec3;
+use xrf_math::glam::{Vec3, Vec4};
+use xrf_math::{Vector3d, glam};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::{LightDescription, LightKind};
 
+use crate::camera::camera_view::CameraView;
+use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
+use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::lights::atlas::level_light_shadows::LevelLightShadows;
 use crate::scene::level::lights::atlas::light_face_rank::LightFaceRank;
 use crate::scene::level::lights::atlas::light_shadow_ask::LightShadowAsk;
+use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::tests::support::test_context::create_test_context;
+use crate::tests::support::test_random::TestRandom;
 use crate::tests::support::test_time::at;
 
 // Near the eye, wide and long enough to want the largest square.
@@ -98,6 +104,118 @@ fn grows_a_light_given_smaller_squares_back_once_room_is_made() {
     (9 + 6) * square(1024),
     "nine spots and its six faces at its own size, its smaller squares given back"
   );
+}
+
+// More lights than the atlas holds come into view and leave it, kept ready out of it, drawn, shrunk, grown and
+// evicted, with frames abandoned and the lights forgotten between: `begin` asserts every frame that the squares in use
+// are the lights' faces, and once the lights are forgotten the atlas is whole again.
+#[test]
+fn gives_back_every_square_through_frames_of_lights_coming_and_going() {
+  let Some(context) = create_test_context("to hold the lights' shadow atlas") else {
+    return;
+  };
+  let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
+  let mut shadows: LevelLightShadows = LevelLightShadows::new(device, &ViewBinding::create_layout(device));
+  let statics: StaticScene = StaticScene::new(device, queue);
+  let settings: RenderShadowSettings = RenderShadowSettings::default();
+  let camera: CameraView = CameraView::new(
+    Vec3::ZERO,
+    glam::camera::rh::view::look_at_mat4(Vec3::ZERO, Vec3::Z, Vec3::Y),
+    60.0,
+    1.0,
+    0.1,
+    1000.0,
+  );
+  let mut handles: ProxyAllocator<LightDescription> = ProxyAllocator::new();
+  // Nearest first, as a view asks for them; the points six faces each, so a few fill the atlas.
+  let lights: Vec<(ProxyHandle<LightDescription>, LightDescription)> = (0..24)
+    .map(|index| {
+      let kind: LightKind = if index % 2 == 0 {
+        LightKind::Spot
+      } else {
+        LightKind::Point
+      };
+
+      (handles.allocate(), light(kind, index as f32 * 1.5))
+    })
+    .collect();
+  let mut random: TestRandom = TestRandom::new(0x9e37_79b9_7f4a_7c15);
+
+  for frame in 1..=120 {
+    let in_view: Vec<bool> = lights.iter().map(|_| random.next(3) == 0).collect();
+    let sway: ShadowSway<'_> = ShadowSway {
+      amplitude: 0.0,
+      reach: 0.0,
+      time: at(f64::from(frame) / 30.0),
+      places: &[],
+    };
+    let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
+    let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
+
+    shadows.begin();
+    shadows.cast();
+    lights
+      .iter()
+      .zip(&in_view)
+      .filter(|(_, is_in_view)| **is_in_view)
+      .for_each(|((handle, _), _)| shadows.see(*handle));
+
+    // Every light in view first, then a few kept ready out of it.
+    for is_in_view in [true, false] {
+      for ((handle, light), _) in lights.iter().zip(&in_view).filter(|(_, seen)| **seen == is_in_view) {
+        if !is_in_view && random.next(4) > 0 {
+          continue;
+        }
+
+        let basis: LightBasis = LightBasis::of(light);
+
+        shadows.ask(&LightShadowAsk {
+          handle: *handle,
+          light,
+          basis: &basis,
+          eye: Vec3::ZERO,
+          forward: Vec3::Z,
+          is_in_view,
+          is_driving: true,
+          statics: &statics,
+          sway: &sway,
+          casters: &[],
+        });
+      }
+    }
+
+    scheduler.begin(1000.0, &[], &[]);
+    shadows.finish(&mut scheduler);
+    scheduler.grant();
+    shadows.prepare(
+      device,
+      &mut encoder,
+      &ShadowFrame {
+        scene: &statics,
+        camera: &camera,
+        settings: &settings,
+        sun_direction: Vec3::NEG_Y,
+        is_sunlit: true,
+        switches: Vec4::ONE,
+        sway,
+        casters: &[],
+      },
+      &scheduler,
+    );
+
+    if random.next(4) == 0 {
+      shadows.abandon_frame();
+    }
+
+    if frame % 50 == 0 {
+      shadows.forget_lights();
+    }
+  }
+
+  shadows.begin();
+  shadows.forget_lights();
+
+  assert_eq!(shadows.get_atlas_use().used, 0, "every square given back");
 }
 
 // A year in, `f32` seconds step by two and the two draws would tie.

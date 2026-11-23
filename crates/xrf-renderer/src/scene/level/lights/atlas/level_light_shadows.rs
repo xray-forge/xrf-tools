@@ -235,6 +235,13 @@ impl LevelLightShadows {
 
   /// Starts a frame's asks.
   pub(crate) fn begin(&mut self) {
+    // A set dropped without its squares given back fills the atlas until lights go unshadowed, which no frame shows.
+    debug_assert_eq!(
+      self.allocator.get_used(),
+      self.get_held(),
+      "the atlas's squares in use are the lights' faces"
+    );
+
     self.frame += 1;
     self.candidates.clear();
     self.queue.clear();
@@ -272,6 +279,17 @@ impl LevelLightShadows {
     self.drawn.clear();
     self.due.clear();
     self.allocator = ShadowTileAllocator::new(Self::ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE);
+  }
+
+  /// Texels every light's faces hold, shown and next.
+  fn get_held(&self) -> u64 {
+    self
+      .entries
+      .values()
+      .flat_map(|entry| entry.shown.iter().chain(entry.next.iter()))
+      .flat_map(|set| set.faces.iter())
+      .map(|face| u64::from(face.tile.size) * u64::from(face.tile.size))
+      .sum()
   }
 
   /// Makes the atlas while a view casts the lights' shadows, and lets it go, with every light's faces, once none does.

@@ -1,5 +1,6 @@
 use crate::scene::level::lights::atlas::shadow_tile::ShadowTile;
 use crate::scene::level::lights::atlas::shadow_tile_allocator::ShadowTileAllocator;
+use crate::tests::support::test_random::TestRandom;
 
 #[test]
 fn shadow_tile_allocator_fills_the_atlas_with_squares_that_never_overlap() {
@@ -38,30 +39,22 @@ fn shadow_tile_allocator_rounds_up_and_joins_released_squares() {
   assert_eq!(whole.len(), 15);
 }
 
-// The audit of its arithmetic (2026-10-17): whatever the order squares are taken and given back in, the live ones never
-// overlap or leave the atlas, its count of texels used is theirs, and once all are back the atlas is one square again.
+// Whatever the order squares are taken and given back in, the live ones never overlap or leave the atlas, its count of
+// texels used is theirs, and once all are back the atlas is one square again.
 #[test]
 fn shadow_tile_allocator_keeps_its_squares_apart_through_any_order_of_takes_and_returns() {
   const SIZE: u32 = 2048;
   let mut allocator: ShadowTileAllocator = ShadowTileAllocator::new(SIZE, 32);
   let mut live: Vec<ShadowTile> = Vec::new();
-  // A linear congruential generator, so the sequence is the same every run.
-  let mut seed: u64 = 0x2545_f491_4f6c_dd1d;
-  let mut next = |bound: u64| -> u64 {
-    seed = seed
-      .wrapping_mul(6_364_136_223_846_793_005)
-      .wrapping_add(1_442_695_040_888_963_407);
-
-    (seed >> 33) % bound
-  };
+  let mut random: TestRandom = TestRandom::new(0x2545_f491_4f6c_dd1d);
 
   for _ in 0..4000 {
-    if live.is_empty() || next(3) > 0 {
-      if let Some(tile) = allocator.allocate(16 << next(6)) {
+    if live.is_empty() || random.next(3) > 0 {
+      if let Some(tile) = allocator.allocate(16 << random.next(6)) {
         live.push(tile);
       }
     } else {
-      let index: usize = next(live.len() as u64) as usize;
+      let index: usize = random.next(live.len() as u64) as usize;
 
       allocator.release(live.swap_remove(index));
     }
