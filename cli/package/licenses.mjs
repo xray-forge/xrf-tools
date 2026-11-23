@@ -38,25 +38,31 @@ const LOCAL_PACKAGE = /^(\S+) v\S+(?: \(proc-macro\))? \(([A-Za-z]:\\[^)]+|\/[^)
  * @returns {string} Every registry crate the binary links, grouped by licence text, with each text in full.
  */
 export function renderCrateLicenses({ binary, features = [] }) {
-  const report = JSON.parse(
-    cp.execFileSync(
-      "cargo",
-      [
-        "about",
-        "generate",
-        "--format",
-        "json",
-        "--locked",
-        "--fail",
-        "--manifest-path",
-        getManifest(binary),
-        "--target",
-        getHostTarget(),
-        ...(features.length > 0 ? ["--features", features.join(" ")] : []),
-      ],
-      { cwd: REPOSITORY_ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] }
-    )
+  // A file, not stdout: under PowerShell, the CI shell on Windows, cargo-about refuses to write to a pipe.
+  const output = path.join(REPOSITORY_ROOT, "target", "licenses", `${binary}-crates.json`);
+
+  fs.mkdirSync(path.dirname(output), { recursive: true });
+  cp.execFileSync(
+    "cargo",
+    [
+      "about",
+      "generate",
+      "--format",
+      "json",
+      "--locked",
+      "--fail",
+      "--manifest-path",
+      getManifest(binary),
+      "--target",
+      getHostTarget(),
+      "--output-file",
+      output,
+      ...(features.length > 0 ? ["--features", features.join(" ")] : []),
+    ],
+    { cwd: REPOSITORY_ROOT, stdio: ["ignore", "inherit", "inherit"] }
   );
+
+  const report = JSON.parse(readText(output));
 
   const sections = report.licenses.map((license) => {
     const crates = license.used_by.map((it) => `${it.crate.name} ${it.crate.version}`).join(", ");
