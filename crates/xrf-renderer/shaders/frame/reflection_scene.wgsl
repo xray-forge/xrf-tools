@@ -93,6 +93,10 @@ fn keep_trace_wait() {
 // whose record asks for no ray this frame (the screen answered it whole), or where no water drew, passed over.
 @compute @workgroup_size(8, 8)
 fn cs_water_scene(@builtin(global_invocation_id) id: vec3<u32>) {
+  if (all(id.xy == vec2<u32>(0u))) {
+    settle_water_calibration();
+  }
+
   let size: vec2<u32> = vec2<u32>(camera.viewport.xy);
   let at: u32 = water_ray_at(id.xy);
 
@@ -127,19 +131,63 @@ fn cs_water_scene(@builtin(global_invocation_id) id: vec3<u32>) {
   request.screen = vec2<u32>(water_rays[at + 1u], water_rays[at + 2u]);
   request.hit_end = TRACE_REQUEST_WATER | (pack2x16float(vec2<f32>(water_rays_frame.sky_share, 0.0)) & 0xffffu);
 
-  trace_water_request(request);
+  let measured: vec2<f32> = trace_water_request(request, water_calibration_ratio());
+
+  if (measured.y > 0.0) {
+    let slot: u32 = (water_rays_frame.frame & 1u) * 2u;
+
+    atomicAdd(&water_calibration[slot], u32(measured.x * WATER_CALIBRATION_STEPS));
+    atomicAdd(&water_calibration[slot + 1u], u32(measured.y * WATER_CALIBRATION_STEPS));
+  }
 }
 
-// A water's request traced against the level's geometry and the grass's cards, answered into the water's reflection.
-fn trace_water_request(request: TraceRequest) {
+// How the trace's own light of the water's hits is brought to the screen's: the screen's shown luminance and the
+// trace's of the same hits, where the screen's share fades into the trace's, summed a frame in steps (two slots, the
+// frame's parity choosing which this frame adds to) and their ratio kept in the fifth word, eased towards each frame's
+// and held within `WATER_CALIBRATION_BOUNDS`, so the light the trace leaves out (the frame's occlusion, its grass's
+// shadows, its indirect light) does not draw a line where the two meet. A step is a 256th of a shown unit, so a 4K
+// screen's whole edge band shown near one sums well within a word; a frame needs 64 units of both to count.
+const WATER_CALIBRATION_STEPS: f32 = 256.0;
+const WATER_CALIBRATION_LEAST: f32 = 64.0 * WATER_CALIBRATION_STEPS;
+const WATER_CALIBRATION_EASING: f32 = 0.1;
+const WATER_CALIBRATION_BOUNDS: vec2<f32> = vec2<f32>(0.5, 2.0);
+const WATER_CALIBRATION_RATIO: u32 = 4u;
+
+// The ratio the trace's light is brought to the screen's by, one where none was kept.
+fn water_calibration_ratio() -> f32 {
+  let ratio: f32 = bitcast<f32>(atomicLoad(&water_calibration[WATER_CALIBRATION_RATIO]));
+
+  return select(1.0, ratio, ratio >= WATER_CALIBRATION_BOUNDS.x && ratio <= WATER_CALIBRATION_BOUNDS.y);
+}
+
+// The last frame's sums taken into the ratio, where enough of the water showed both, and emptied for the next frame.
+fn settle_water_calibration() {
+  let slot: u32 = ((water_rays_frame.frame + 1u) & 1u) * 2u;
+  let screen: f32 = f32(atomicLoad(&water_calibration[slot]));
+  let traced: f32 = f32(atomicLoad(&water_calibration[slot + 1u]));
+
+  if (traced >= WATER_CALIBRATION_LEAST) {
+    let wanted: f32 = clamp(screen / traced, WATER_CALIBRATION_BOUNDS.x, WATER_CALIBRATION_BOUNDS.y);
+
+    atomicStore(&water_calibration[WATER_CALIBRATION_RATIO],
+      bitcast<u32>(mix(water_calibration_ratio(), wanted, WATER_CALIBRATION_EASING)));
+  }
+
+  atomicStore(&water_calibration[slot], 0u);
+  atomicStore(&water_calibration[slot + 1u], 0u);
+}
+
+// A water's request traced against the level's geometry and the grass's cards, answered into the water's reflection,
+// the trace's own light brought to the screen's by `calibration`; what it measured of both where they meet.
+fn trace_water_request(request: TraceRequest, calibration: f32) -> vec2<f32> {
   let toward: vec3<f32> = normalize(octahedral_decode(unpack2x16snorm(request.toward)));
   let cone: SceneCone = request_cone(request);
   let screen: vec4<f32> = vec4<f32>(unpack2x16float(request.screen.x), unpack2x16float(request.screen.y));
   let pixel: vec2<u32> = vec2<u32>(request.pixel & 0xffffu, request.pixel >> 16u);
   let reach: f32 = unpack2x16float(request.reach).x;
 
-  answer_water(request, toward, cone,
-    trace_water_ray(trace_request_origin(request.origin), toward, 0.0, reach, cone), screen, pixel);
+  return answer_water(request, toward, cone,
+    trace_water_ray(trace_request_origin(request.origin), toward, 0.0, reach, cone), screen, pixel, calibration);
 }
 
 // A request's cone as it carries it, two halves.
@@ -163,7 +211,8 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
 
   let request: TraceRequest = trace_requests[index];
   if ((request.hit_end & TRACE_REQUEST_WATER) != 0u) {
-    trace_water_request(request);
+    // A listed water ray binds no calibration (group 6 stays empty here): its trace's light goes in as it is.
+    trace_water_request(request, 1.0);
 
     return;
   }
@@ -208,8 +257,13 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   }
 }
 
+// The share of the screen's width and height over which a water's hit fades from the screen's colour to its own light
+// towards the screen's edge, as HDRP's screen space reflections fade into their fallback, so the two meet over a band
+// rather than along the line where the hits leave the screen.
+const SCREEN_EDGE_FADE: f32 = 0.1;
+
 // What the frame's screen, copied before the water, shows of a water's hit at a world point, as the colour shown, and in
-// `w` one where it shows it.
+// `w` how much of the answer it is: none where it does not show it, fading out over `SCREEN_EDGE_FADE` to its edge.
 fn screen_shown_at(point: vec3<f32>) -> vec4<f32> {
   let place: vec4<f32> = screen_place(point, camera.view_projection);
 
@@ -217,7 +271,11 @@ fn screen_shown_at(point: vec3<f32>) -> vec4<f32> {
     return vec4<f32>(0.0);
   }
 
-  return vec4<f32>(scene_shown(textureLoad(screen_scene, vec2<i32>(place.xy), 0).rgb), 1.0);
+  let uv: vec2<f32> = (place.xy + 0.5) / camera.viewport.xy;
+  let edge: vec2<f32> = min(uv, 1.0 - uv);
+
+  return vec4<f32>(scene_shown(textureLoad(screen_scene, vec2<i32>(place.xy), 0).rgb),
+    smoothstep(0.0, SCREEN_EDGE_FADE, min(edge.x, edge.y)));
 }
 
 // A water's ray answered: what it met as the screen shows it where it does, so a traced hit reads as the march's do,
@@ -225,9 +283,10 @@ fn screen_shown_at(point: vec3<f32>) -> vec4<f32> {
 // it; a grass card it met lit as the frame lights its tufts where the screen does not show it, or past the cards the
 // grass it passed on the way over what it met; the screen's weighed answer over both. Its distance is where the mirror
 // shows the grass or the hit, the screen's where it met something; a ray meeting neither grass nor geometry keeps the
-// sky its pass wrote.
+// sky its pass wrote. The trace's own light is brought to the screen's by `calibration`; answers the screen's and the
+// trace's shown luminance where the screen's share fades into the trace's, before the calibration, none elsewhere.
 fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: SceneHit, screen: vec4<f32>,
-  pixel: vec2<u32>) {
+  pixel: vec2<u32>, calibration: f32) -> vec2<f32> {
   let is_card: bool = is_scene_grass_card(hit);
   let is_met: bool = hit.distance >= 0.0;
   let start: vec3<f32> = trace_request_origin(request.origin);
@@ -242,8 +301,10 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
   }
 
   if (!is_met && grass.opacity <= 0.0) {
-    return;
+    return vec2<f32>(0.0);
   }
+
+  var measured: vec2<f32> = vec2<f32>(0.0);
 
   let scale: f32 = frame_scale(lighting, exposure);
   // The sky's picture as the frame's display brings it in, as the water's own pass writes it.
@@ -255,17 +316,21 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
   if (is_met) {
     let seen: vec4<f32> = screen_shown_at(hit.position);
 
-    if (seen.w > 0.5) {
-      behind = seen.rgb;
-      // A card the screen shows reads as the screen shows its blades.
-      grass.opacity = select(grass.opacity, 0.0, is_card);
-    } else if (!is_card) {
+    // The hit's own light where the screen is not the whole answer, the screen's colour over it by its share; a card
+    // the screen shows reads as the screen shows its blades, by the same share.
+    if (!is_card && seen.w < 1.0) {
       let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
         sky_environment_1, sky_clamp);
-
-      behind = shown_from_light(
+      let lit: vec3<f32> = shown_from_light(
         fog_mixed(lighting, shown, fog_light(lighting, toward), path_fog(lighting, hit.distance)), scale);
+
+      measured = select(vec2<f32>(0.0), vec2<f32>(shown_luminance(seen.rgb), shown_luminance(lit)), seen.w > 0.0);
+      behind = lit * calibration;
     }
+
+    // A card's sky stays behind its blades, never between them and the screen's colour over them.
+    behind = select(mix(behind, seen.rgb, seen.w), seen.rgb, is_card && seen.w > 0.0);
+    grass.opacity = select(grass.opacity, grass.opacity * (1.0 - seen.w), is_card);
   }
 
   var met_length: f32 = hit.distance;
@@ -275,7 +340,8 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
       sky_environment_0, sky_environment_1, sky_clamp);
 
     behind = mix(behind,
-      shown_from_light(fog_mixed(lighting, lit, fog_light(lighting, toward), path_fog(lighting, grass.entry)), scale),
+      shown_from_light(fog_mixed(lighting, lit, fog_light(lighting, toward), path_fog(lighting, grass.entry)), scale) *
+        calibration,
       grass.opacity);
     met_length = select(met_length, grass.entry, !is_met || grass.opacity > 0.5);
   }
@@ -285,4 +351,11 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
 
   textureStore(traced_out, pixel, vec4<f32>(screen.rgb + behind * (1.0 - screen.w),
     select(along, lengths.y, lengths.y > 0.0)));
+
+  return measured;
+}
+
+// A shown colour's luminance, Rec. 709's weights.
+fn shown_luminance(colour: vec3<f32>) -> f32 {
+  return dot(colour, vec3<f32>(0.2126, 0.7152, 0.0722));
 }

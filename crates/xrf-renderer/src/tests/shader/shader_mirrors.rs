@@ -696,6 +696,16 @@ fn the_water_ray_records_fill_the_room_rust_makes() {
   );
 }
 
+#[test]
+fn the_water_calibration_ratio_stands_where_rust_starts_it() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "frame/reflection_scene", "WATER_CALIBRATION_RATIO"),
+    u32::try_from(WaterRays::CALIBRATION_RATIO).expect("the ratio's word fits a u32")
+  );
+}
+
 /// Each compute entry dispatched by groups of a size Rust counts in declares that size: one side for a line of work,
 /// two for a square of pixels.
 #[test]

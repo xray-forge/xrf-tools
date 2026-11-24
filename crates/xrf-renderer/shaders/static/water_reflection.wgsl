@@ -301,11 +301,12 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
     hit = march_reflection(position, reflected, uv);
   }
 
-  // Fully traced, the screen answers only the plants past the grass's cards (`plant_reach`, from the eye), which the
-  // level's trace does not hold; every other ray is traced, so a cable's or a pipe's reflection is what the ray meets
-  // lit, not the side the eye sees, and a reed's its blades, not its screen copy stretched down behind it.
+  // Fully traced, the screen answers only the grass past its cards (`plant_reach`, from the eye), which the level's
+  // trace does not hold; every other ray is traced, so a cable's or a pipe's reflection is what the ray meets lit, not
+  // the side the eye sees, a reed's its blades, not its screen copy stretched down behind it, and a far tree's crown
+  // its leaves and the gaps between them, not its silhouette.
   if (is_traced && enhanced.fully_traced != 0u && hit.w > 0.0 &&
-    (!has_mark(textureLoad(material_target, walk_pixel(hit.xy), 0).a, MARK_PLANT) ||
+    (!has_mark(textureLoad(material_target, walk_pixel(hit.xy), 0).a, MARK_GRASS) ||
       length(view_point(hit.xy, hit.z)) < enhanced.plant_reach)) {
     hit = vec4<f32>(0.0);
   }

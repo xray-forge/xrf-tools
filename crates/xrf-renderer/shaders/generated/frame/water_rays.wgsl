@@ -5,3 +5,4 @@
 @group(6) @binding(0) var<storage, read> water_rays: array<u32>;
 @group(6) @binding(1) var<uniform> water_rays_frame: WaterRaysFrame;
 @group(6) @binding(2) var water_depth: texture_depth_2d;
+@group(6) @binding(3) var<storage, read_write> water_calibration: array<atomic<u32>>;

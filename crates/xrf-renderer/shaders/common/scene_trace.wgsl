@@ -38,9 +38,10 @@ struct SceneHit {
   are_cards_met: bool,
 }
 
-// A hit's surface as a reflection shades it, in renderer space: where it is, its normal, its albedo, its baked
-// hemisphere and baked sun share, and its surface's slice of the material table; whether it is a swaying tree's leaf,
-// and the normal the enhanced foliage lights such a leaf by, the sphere about the tree's foot its point stands on.
+// A hit's surface as a reflection shades it, in renderer space: where it is, its normal (a terrain's tilted by its
+// details' bumps), its albedo, its baked hemisphere and baked sun share, and its surface's slice of the material table;
+// whether it is a swaying tree's leaf, and the normal the enhanced foliage lights such a leaf by, the sphere about the
+// tree's foot its point stands on; and its gloss, a terrain's from its details' bumps, none elsewhere.
 struct SceneSurface {
   position: vec3<f32>,
   normal: vec3<f32>,
@@ -50,6 +51,16 @@ struct SceneSurface {
   slice: f32,
   is_leaf: bool,
   crown: vec3<f32>,
+  gloss: f32,
+}
+
+// What a surface's details give it, as the G-buffer lays them: the colour they multiply its base by, and a terrain's
+// bump in its own tangent space and its gloss, its layers weighed by its mask; no bump elsewhere.
+struct SceneDetail {
+  colour: vec3<f32>,
+  bump: vec3<f32>,
+  gloss: f32,
+  is_bumped: bool,
 }
 
 // How wide a ray's cone is where it starts, in metres, and how much wider each metre along it: what the level of
@@ -127,9 +138,16 @@ fn is_scene_grass_card(hit: SceneHit) -> bool {
   return hit.distance >= 0.0 && hit.record == SCENE_GRASS_CARDS;
 }
 
+// How far a traced blade's normal leans from up at its tip, nought at its foot, as a tuft's leans out from below its foot
+// (`vs_grass`) and back up under the enhanced foliage; and how open a blade stands at its foot, rising to whole at its
+// tip, as the frame's occlusion darkens a tuft's lower blades, which the trace has no screen to measure.
+const GRASS_TIP_LEAN: f32 = 0.35;
+const GRASS_FOOT_OPEN: f32 = 0.35;
+
 // A grass card met, as the grass a ray passed: wholly hiding what lies behind, of its model's texture's colour where it
 // was met at the level of detail the cone's `width` there reads, the hemisphere its slot was baked with, from the
-// distance it was met at.
+// distance it was met at; lit by a normal leaning its own way, hashed from its triangle, further the higher up the
+// blade the ray met it (its texture's height, the foot at the bottom), and open to the sky by that height.
 fn scene_card_grass(hit: SceneHit, width: f32) -> SceneGrassPassed {
   let at: u32 = hit.primitive * 4u;
   let head: u32 = trace_grass_cards[at];
@@ -145,7 +163,13 @@ fn scene_card_grass(hit: SceneHit, width: f32) -> SceneGrassPassed {
   let slot: vec2<i32> = vec2<i32>(floor(engine));
   let grass: SceneGrassSlot = scene_grass_slot(slot, engine - vec2<f32>(slot), 1.0);
 
-  return SceneGrassPassed(1.0, base.rgb, select(1.0, grass.hemi, grass.is_planted), hit.distance);
+  let height: f32 = saturate(1.0 - fract(uv.y));
+  let turn: f32 = f32((hit.primitive * 2654435761u) >> 8u) / 16777216.0 * 6.2831853;
+  let lean: vec3<f32> = normalize(vec3<f32>(cos(turn), 0.0, sin(turn)) * GRASS_TIP_LEAN * height +
+    vec3<f32>(0.0, 1.0, 0.0));
+
+  return SceneGrassPassed(1.0, base.rgb, select(1.0, grass.hemi, grass.is_planted), hit.distance, lean,
+    mix(GRASS_FOOT_OPEN, 1.0, height));
 }
 
 // Whether anything solid of the level's static geometry, or of the grass's cards the view stands near its eye while the
@@ -281,7 +305,17 @@ fn scene_surface(hit: SceneHit, width: f32) -> SceneSurface {
     hemi = cube_hemi(place.cube, world_normal);
   }
 
-  var albedo: vec3<f32> = base.rgb * scene_detail(surface, triangle, uv, width, area);
+  let detail: SceneDetail = scene_detail(surface, triangle, uv, width, area);
+  var albedo: vec3<f32> = base.rgb * detail.colour;
+  // The normal it is lit by: tilted by its details' bumps as the G-buffer tilts a terrain's, about the tangents its
+  // triangle's coordinates run along; the grass's cover still follows the ground's own.
+  var shaded: vec3<f32> = world_normal;
+
+  if (detail.is_bumped) {
+    let tangents: mat2x3<f32> = scene_tangents(triangle, hit.to_world, world_normal);
+
+    shaded = normalize(tangents[0] * detail.bump.x + tangents[1] * detail.bump.y + world_normal * detail.bump.z);
+  }
 
   // A terrain is lit by its base's alpha, as the G-buffer lights it, and covered by the grass planted on it; a
   // lightmapped surface by its lightmap. Within the cards' reach a ray meeting them met the ground between their blades.
@@ -313,13 +347,38 @@ fn scene_surface(hit: SceneHit, width: f32) -> SceneSurface {
     (TRACE_RECORD_TREE | TRACE_RECORD_CUT_OUT) && (surface.flags & SURFACE_IS_STILL) == 0u;
   let crown: vec3<f32> = normalize(hit.to_world * normalize(local + vec3<f32>(0.0, 1e-4, 0.0)));
 
-  return SceneSurface(hit.position, world_normal, authored_colour(albedo), hemi, sun, surface.slice, is_leaf, crown);
+  return SceneSurface(hit.position, shaded, authored_colour(albedo), hemi, sun, surface.slice, is_leaf, crown,
+    detail.gloss);
 }
 
-// What a surface's details multiply its base by, as the G-buffer lays them: a terrain's four by its mask, a surface's
-// one, each doubled; one for a surface without. A terrain's layers blend by its mask alone, not sharpened by their
-// heights as the G-buffer's are. `area` is the triangle's in renderer space.
-fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width: f32, area: f32) -> vec3<f32> {
+// The directions a triangle's coordinates run along on it, `u` then `v`, in renderer space and square to `normal`, as
+// a vertex's tangent and binormal stand; `normal`'s own frame where its coordinates do not span it.
+fn scene_tangents(triangle: SceneTriangle, to_world: mat3x3<f32>, normal: vec3<f32>) -> mat2x3<f32> {
+  let along: vec3<f32> = triangle.positions[1] - triangle.positions[0];
+  let across: vec3<f32> = triangle.positions[2] - triangle.positions[0];
+  let first: vec2<f32> = triangle.uvs[1] - triangle.uvs[0];
+  let second: vec2<f32> = triangle.uvs[2] - triangle.uvs[0];
+  let spanned: f32 = first.x * second.y - second.x * first.y;
+
+  if (abs(spanned) < 1e-12) {
+    let frame: AxisFrame = axis_frame(normal);
+
+    return mat2x3<f32>(frame.across, frame.along);
+  }
+
+  let u: vec3<f32> = to_world * ((along * second.y - across * first.y) / spanned);
+  let v: vec3<f32> = to_world * ((across * first.x - along * second.x) / spanned);
+  let tangent: vec3<f32> = normalize(u - normal * dot(normal, u));
+  let binormal: vec3<f32> = normalize(v - normal * dot(normal, v) - tangent * dot(tangent, v));
+
+  return mat2x3<f32>(tangent, binormal);
+}
+
+// What a surface's details give it, as the G-buffer lays them: a terrain's four by its mask, their colours doubled,
+// their bumps (`.wzyx`, the normal about a half, the gloss) summed with the normal's out-of-plane part halved; a
+// surface's one detail, doubled; one for a surface without. A terrain's layers blend by its mask alone, not sharpened
+// by their heights as the G-buffer's are. `area` is the triangle's in renderer space.
+fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width: f32, area: f32) -> SceneDetail {
   let scale: f32 = surface.detail_scale;
 
   if ((surface.flags & SURFACE_IS_TERRAIN) != 0u) {
@@ -328,27 +387,36 @@ fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width:
       texture_lod(surface.tiling, triangle, mask_slot, width, 1.0, area));
     let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
     var detail: vec3<f32> = vec3<f32>(0.0);
+    var bump: vec3<f32> = vec3<f32>(0.0);
+    var gloss: f32 = 0.0;
 
     for (var layer: u32 = 0u; layer < 4u; layer++) {
       if (weights[layer] > TERRAIN_LAYER_LEAST) {
         let slot: u32 = surface.terrain.details[layer];
+        let bump_slot: u32 = surface.terrain.bumps[layer];
+        let lod: f32 = texture_lod(surface.tiling, triangle, slot, width, scale, area);
+        let read: vec4<f32> = textureSampleLevel(trace_textures[bump_slot], trace_sampler, uv * scale,
+          texture_lod(surface.tiling, triangle, bump_slot, width, scale, area)).wzyx;
 
-        detail += textureSampleLevel(trace_textures[slot], trace_sampler, uv * scale,
-          texture_lod(surface.tiling, triangle, slot, width, scale, area)).rgb * weights[layer];
+        detail += textureSampleLevel(trace_textures[slot], trace_sampler, uv * scale, lod).rgb * weights[layer];
+        bump += (read.xyz - 0.5) * weights[layer];
+        gloss += read.w * weights[layer];
       }
     }
 
-    return detail * 2.0;
+    return SceneDetail(detail * 2.0, vec3<f32>(bump.xy, bump.z * 0.5), gloss, true);
   }
 
   if ((surface.flags & SURFACE_HAS_DETAIL) != 0u) {
     let slot: u32 = surface.textures[SLOT_DETAIL];
 
-    return textureSampleLevel(trace_textures[slot], trace_sampler, uv * scale,
-      texture_lod(surface.tiling, triangle, slot, width, scale, area)).rgb * 2.0;
+    let colour: vec3<f32> = textureSampleLevel(trace_textures[slot], trace_sampler, uv * scale,
+      texture_lod(surface.tiling, triangle, slot, width, scale, area)).rgb;
+
+    return SceneDetail(colour * 2.0, vec3<f32>(0.0, 0.0, 1.0), 0.0, false);
   }
 
-  return vec3<f32>(1.0);
+  return SceneDetail(vec3<f32>(1.0), vec3<f32>(0.0, 0.0, 1.0), 0.0, false);
 }
 
 // A traced hit lit as combine lights the G-buffer, unfogged: `hmodel` over its base and its baked hemisphere, the sun
@@ -392,7 +460,7 @@ fn shade_scene_hit(
   let occlusion: f32 = mix(1.0, select(met.hemi, clamp(met.hemi, 0.3, 1.0), is_crown), camera.switches.z);
   let visible: f32 = scene_occlusion(lifted, facing, width, own);
 
-  return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler, vec4<f32>(met.albedo, 0.0),
+  return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler, vec4<f32>(met.albedo, met.gloss),
     sun + lamps, facing, toward, met.slice, occlusion, vec3<f32>(visible));
 }
 
@@ -439,9 +507,11 @@ fn scene_occlusion(position: vec3<f32>, normal: vec3<f32>, width: f32, passed: u
   return open / f32(SCENE_OCCLUSION_RAYS);
 }
 
-// The grass a ray passed through, lit as the frame lights its tufts: its blades facing the ray across and leaning up as
-// the frame's flora normal leans them, the sun through a ray towards it from where the ray first met grass and passed
-// through from behind under the enhanced foliage, and the hemisphere its slots were baked with.
+// The grass a ray passed through, lit as the frame lights its tufts: by its blades' `lean`, about up as a tuft's normal
+// averages over its blades (`fs_grass`) and never turned to the ray, so a low sun across the water does not light a
+// reflection's blades evenly bright; the sun through a ray towards it from where the ray first met grass and passed
+// through from behind under the enhanced foliage, and the sun and the hemisphere its slots were baked with by how
+// `open` the blades stand where the ray met them.
 fn shade_scene_grass(
   grass: SceneGrassPassed,
   origin: vec3<f32>,
@@ -454,8 +524,7 @@ fn shade_scene_grass(
   cube_sampler: sampler,
 ) -> vec3<f32> {
   let up: vec3<f32> = vec3<f32>(0.0, 1.0, 0.0);
-  let across: vec3<f32> = -vec3<f32>(toward.x, 0.0, toward.z) / max(length(toward.xz), 1e-4);
-  let facing: vec3<f32> = normalize(across + up);
+  let facing: vec3<f32> = grass.lean;
   let point: vec3<f32> = origin + toward * grass.entry;
   let to_sun: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(state.to_sun.xyz, 0.0)).xyz);
   let lit: vec4<f32> = surface_light_terms(state, lut, lut_sampler, to_sun, facing, toward, GRASS_MATERIAL_SLICE);
@@ -469,8 +538,9 @@ fn shade_scene_grass(
 
   let occlusion: f32 = mix(1.0, grass.hemi, camera.switches.z);
 
-  return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler, vec4<f32>(authored_colour(grass.albedo), 0.0), sun,
-    facing, toward, GRASS_MATERIAL_SLICE, occlusion, vec3<f32>(1.0));
+  return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler,
+    vec4<f32>(authored_colour(grass.albedo), 0.0), sun * grass.open, facing, toward, GRASS_MATERIAL_SLICE, occlusion,
+    vec3<f32>(grass.open));
 }
 
 // What the view's local lights give a point a ray met, its `normal` facing the ray, as the lights pass gives a pixel
@@ -685,6 +755,9 @@ struct SceneGrassPassed {
   albedo: vec3<f32>,
   hemi: f32,
   entry: f32,
+  // The normal its blades are lit by, and how open they stand to the sky and the ambient about them.
+  lean: vec3<f32>,
+  open: f32,
 }
 
 // Metres a ray is walked through the grass at most, and a step of the walk; and the metres before what the ray met
@@ -702,7 +775,7 @@ const SCENE_GRASS_RISE: f32 = 3.0;
 // bank's own grass covers it where the ray meets it. Within the traced cards' reach (`TraceGrass::card_reach`) the ray
 // met the grass as its cards (`trace_water_ray`) and walks no layer.
 fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met: bool) -> SceneGrassPassed {
-  var out: SceneGrassPassed = SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
+  var out: SceneGrassPassed = SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0, vec3<f32>(0.0, 1.0, 0.0), 1.0);
 
   if (trace_grass.model_count == 0u) {
     return out;

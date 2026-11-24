@@ -1,4 +1,4 @@
-use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
+use xrf_renderer_core::{GraphTexture, PassParameters, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding};
 
 use crate::feature::tracing::scene_trace::requests::water_rays_uniform::WaterRaysUniform;
 
@@ -14,4 +14,7 @@ pub(crate) struct WaterRayParameters {
   pub water_rays_frame: UniformBinding<WaterRaysUniform>,
   #[texture(d2, depth)]
   pub water_depth: GraphTexture,
+  /// How the trace's own light is brought to the screen's (`WaterRays::calibration`).
+  #[storage]
+  pub water_calibration: StorageArrayMut<ShaderAtomicU32>,
 }

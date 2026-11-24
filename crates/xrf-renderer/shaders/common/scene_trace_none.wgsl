@@ -22,6 +22,7 @@ struct SceneSurface {
   slice: f32,
   is_leaf: bool,
   crown: vec3<f32>,
+  gloss: f32,
 }
 
 struct SceneCone {
@@ -46,7 +47,7 @@ fn is_scene_grass_card(hit: SceneHit) -> bool {
 }
 
 fn scene_card_grass(hit: SceneHit, width: f32) -> SceneGrassPassed {
-  return SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
+  return SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0, vec3<f32>(0.0, 1.0, 0.0), 1.0);
 }
 
 fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32, cone: SceneCone, passed: u32) -> bool {
@@ -81,7 +82,7 @@ fn scene_lamps(
 
 fn scene_surface(hit: SceneHit, spread: f32) -> SceneSurface {
   return SceneSurface(vec3<f32>(0.0), vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(0.0), 0.0, 0.0, 0.0, false,
-    vec3<f32>(0.0, 1.0, 0.0));
+    vec3<f32>(0.0, 1.0, 0.0), 0.0);
 }
 
 struct SceneGrassPassed {
@@ -89,10 +90,12 @@ struct SceneGrassPassed {
   albedo: vec3<f32>,
   hemi: f32,
   entry: f32,
+  lean: vec3<f32>,
+  open: f32,
 }
 
 fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met: bool) -> SceneGrassPassed {
-  return SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
+  return SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0, vec3<f32>(0.0, 1.0, 0.0), 1.0);
 }
 
 

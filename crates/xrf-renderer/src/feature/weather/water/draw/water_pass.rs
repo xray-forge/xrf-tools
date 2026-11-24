@@ -427,6 +427,11 @@ impl WaterPass {
             frame: enhanced_values.trace_frame,
           }),
           water_depth: frame.nearest,
+          water_calibration: StorageArrayMut::new(bindings.import_buffer(
+            graph,
+            "water reflection calibration",
+            &reflection.rays.calibration,
+          )),
         };
 
         draw
