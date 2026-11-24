@@ -356,10 +356,21 @@ var<private> is_terrain_marched: bool = false;
 // that barely varies, about a half throughout, leaves the coordinate where it was.
 const BUMPED_PLANE: f32 = 0.5;
 
+// The least mean a bump pair's second's alpha has where it holds a height: one made with none leaves it black, and
+// marched, all of it read as the deepest hollow, darkened and flooded whole wherever its faces lay level.
+const RELIEF_LEAST_MEAN: f32 = 2.0 / 255.0;
+
 // Whether the enhanced parallax marches a surface the engines leave flat (`SURFACE_IS_RELIEF_BUMPED`).
 fn is_relief_bumped(flags: u32) -> bool {
   return has_surfaces_bit(SURFACES_STEEP) && has_surfaces_bit(SURFACES_ENHANCED) &&
     (flags & SURFACE_IS_RELIEF_BUMPED) != 0u;
+}
+
+// Whether a height channel holds any relief, by its mean, the alpha of its coarsest level.
+fn has_relief_height(slot: u32) -> bool {
+  let coarsest: f32 = f32(textureNumLevels(textures[slot]) - 1u);
+
+  return textureSampleLevel(textures[slot], texture_sampler, vec2<f32>(0.5), coarsest).a > RELIEF_LEAST_MEAN;
 }
 
 fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
@@ -367,7 +378,7 @@ fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let distance: f32 = -position.z;
 
-  if (is_relief_bumped(surface.flags)) {
+  if (is_relief_bumped(surface.flags) && has_relief_height(surface.textures[SLOT_BUMP_COMPANION])) {
     return surface_relief(in, at, position, BUMPED_PLANE);
   }
 
