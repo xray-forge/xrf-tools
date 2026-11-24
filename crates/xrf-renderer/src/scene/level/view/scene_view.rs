@@ -233,7 +233,8 @@ impl SceneView {
   /// by, then the resolve.
   fn decide(&mut self, frame: &ViewPrepare<'_>, now: Instant) {
     let options: &RenderViewOptions = frame.options;
-    let exposure: ExposureDecisions = self.features.exposure.prepare(frame.queue, options, now);
+    let is_striking: bool = frame.lighting.thunderbolt.is_some();
+    let exposure: ExposureDecisions = self.features.exposure.prepare(frame.queue, options, is_striking, now);
 
     self.shared.exposure = exposure;
     self.shared.display = DisplayMode::of(options).get_display(&options.features.grading, &exposure.metering);

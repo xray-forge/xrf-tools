@@ -667,6 +667,7 @@ struct ExposureHistogram {
   delta: f32,
   brightening: f32,
   darkening: f32,
+  easing_stops: f32,
   low_share: f32,
   high_share: f32,
   least_scale_log: f32,

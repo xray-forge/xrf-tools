@@ -4,6 +4,7 @@ mod display_transform;
 mod enhanced_bloom;
 mod exposure_readback;
 mod exposure_restart;
+mod exposure_strike;
 mod fsr;
 mod image_corrections;
 mod ngx_evaluation;

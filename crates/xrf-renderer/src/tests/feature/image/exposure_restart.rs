@@ -24,31 +24,31 @@ fn a_restarted_exposure_takes_its_next_measure_whole() {
   let mut exposure: ExposureFeature = ExposureFeature::new(device, queue);
 
   for index in 0..4 {
-    exposure.prepare(queue, &engine, frame(index));
+    exposure.prepare(queue, &engine, false, frame(index));
   }
 
   assert!(exposure.params.blend < 1.0, "an adapting exposure eases");
 
   exposure.restart(ViewRestart::Motion);
-  exposure.prepare(queue, &engine, frame(4));
+  exposure.prepare(queue, &engine, false, frame(4));
 
   assert_eq!(
     exposure.params.blend, 1.0,
     "the engine's exposure takes the measure whole"
   );
 
-  exposure.prepare(queue, &engine, frame(5));
+  exposure.prepare(queue, &engine, false, frame(5));
 
   assert!(exposure.params.blend < 1.0, "and eases again after");
 
   for index in 6..10 {
-    exposure.prepare(queue, &physical, frame(index));
+    exposure.prepare(queue, &physical, false, frame(index));
   }
 
   assert_eq!(exposure.get_histogram().snap, 0.0, "the physical exposure eases");
 
   exposure.restart(ViewRestart::Motion);
-  exposure.prepare(queue, &physical, frame(10));
+  exposure.prepare(queue, &physical, false, frame(10));
 
   assert_eq!(
     exposure.get_histogram().snap,
@@ -56,7 +56,7 @@ fn a_restarted_exposure_takes_its_next_measure_whole() {
     "the physical exposure takes the measure whole"
   );
 
-  exposure.prepare(queue, &physical, frame(11));
+  exposure.prepare(queue, &physical, false, frame(11));
 
   assert_eq!(exposure.get_histogram().snap, 0.0, "and eases again after");
 }

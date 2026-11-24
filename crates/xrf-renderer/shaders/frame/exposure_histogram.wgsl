@@ -6,7 +6,8 @@
 // four each way, the centre weighed up to four times the edges and the sky not at all, then the average between the
 // darkest and the brightest shares it leaves out (`LOW_SHARE`, `HIGH_SHARE`) brought to where a daylit exterior's is
 // shown, less the share of its distance from one it keeps, never under the dark's limit, the scale moving towards it at
-// most so many stops a second, faster darkening than brightening. At the authored levels the scale is the engine's own
+// most so many stops a second, faster darkening than brightening, easing in near it, and standing still while a strike
+// lights the frame (no time passes for it). At the authored levels the scale is the engine's own
 // instead (`ExposureHistogramUniform::is_engine_metered`): the frame read as the engine's meter reads its high
 // part, the sky with the land, and the engine's step taken on the scale the engine would show it at.
 
@@ -200,8 +201,15 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
   let shown: f32 = max(log2(params.aim) + params.kept_share * (average - params.reference_log), params.darkest_log);
   let wanted: f32 = clamp(shown - average, params.least_scale_log, params.most_scale_log);
   let current: f32 = log2(max(state.adapted, 1e-6));
-  let reach: f32 = select(params.brightening, params.darkening, wanted < current) * params.delta;
-  let next: f32 = select(current + clamp(wanted - current, -reach, reach), wanted, params.snap > 0.5);
+  let gap: f32 = wanted - current;
+  let rate: f32 = select(params.brightening, params.darkening, wanted < current);
+  let reach: f32 = rate * params.delta;
+  // At its full rate far from the target; within the easing stops a share of what is left, at the rate's pace where
+  // the two meet, whichever moves less.
+  let linear: f32 = clamp(gap, -reach, reach);
+  let eased: f32 = gap * (1.0 - exp(-reach / params.easing_stops));
+  let moved: f32 = select(linear, eased, abs(eased) < abs(linear));
+  let next: f32 = select(current + moved, wanted, params.snap > 0.5);
 
   state.adapted = exp2(next);
   // The key and the bright end as the scale now exposes them.

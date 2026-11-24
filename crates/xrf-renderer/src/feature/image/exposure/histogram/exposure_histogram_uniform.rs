@@ -23,9 +23,12 @@ pub(crate) struct ExposureHistogramUniform {
   pub kept_share: f32,
   /// The log2 luminance the frame's average is never shown under: the dark's limit.
   pub darkest_log: f32,
+  /// Seconds the law steps by this frame; none while a flash holds it.
   pub delta: f32,
   pub brightening: f32,
   pub darkening: f32,
+  /// Stops from its target within which the scale eases in exponentially rather than at its full rate.
+  pub easing_stops: f32,
   pub low_share: f32,
   pub high_share: f32,
   pub least_scale_log: f32,
@@ -74,6 +77,10 @@ impl ExposureHistogramUniform {
   /// and quick enough that a night under the physical levels, eleven stops under noon, settles in about three seconds.
   pub(crate) const DARKENING: f32 = 12.0;
   pub(crate) const BRIGHTENING: f32 = 4.0;
+  /// Stops from its target within which the scale eases in, its step a share of what is left rather than its full
+  /// rate, as Unreal's eye adaptation turns exponential 1.5 stops out (`r.EyeAdaptation.ExponentialTransitionDistance`):
+  /// a flickering light or a brief flash nudges the scale rather than pulling it at full speed.
+  pub(crate) const EASING_STOPS: f32 = 1.5;
   /// The darkest and the brightest shares of the frame the average leaves out.
   pub(crate) const LOW_SHARE: f32 = 0.1;
   pub(crate) const HIGH_SHARE: f32 = 0.9;
@@ -136,9 +143,10 @@ impl ExposureHistogramUniform {
         RenderLightLevel::Authored | RenderLightLevel::Anchored => Self::LEAST_LOG,
         RenderLightLevel::Physical => aim - Self::PHYSICAL_DARKEST_STOPS,
       },
-      delta: step.delta,
+      delta: if step.is_held { 0.0 } else { step.delta },
       brightening: Self::BRIGHTENING,
       darkening: Self::DARKENING,
+      easing_stops: Self::EASING_STOPS,
       low_share: Self::LOW_SHARE,
       high_share: Self::HIGH_SHARE,
       least_scale_log: Self::LEAST_SCALE_LOG,

@@ -25,6 +25,9 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The longest step between frames the adaptation takes, so a stall does not snap it to what one frame measured.
 const LONGEST_STEP: Duration = Duration::from_millis(250);
+/// How long after a strike's last lit frame the physical law still holds, so the frames as its light goes out, and a
+/// second strike following at once, do not pull the scale between them.
+const STRIKE_TAIL: Duration = Duration::from_millis(250);
 
 /// One viewport's exposure: the scale its tonemap multiplies by, adapted on the GPU, the cells it was measured from,
 /// and the adaptation's rate, which the CPU advances by the time between frames; under the physical light, a histogram
@@ -65,6 +68,8 @@ pub(crate) struct ExposureFeature {
   is_frozen: bool,
   /// Whether the next metered frame takes its measure whole, the view having restarted.
   is_restarted: bool,
+  /// When a lightning strike last lit a frame.
+  struck_at: Option<Instant>,
 }
 
 impl ExposureFeature {
@@ -104,6 +109,7 @@ impl ExposureFeature {
       metering: ExposureMetering::default(),
       is_frozen: false,
       is_restarted: false,
+      struck_at: None,
     };
 
     exposure.reset(queue, 1.0);
@@ -115,13 +121,20 @@ impl ExposureFeature {
   /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
   /// off, the scale holds at its level's (`ExposureHistogramUniform::get_held_scale`); a change of light model starts
   /// the scale afresh, dropping what the other model metered. Then the scale the frame's light is written at: the
-  /// physical light's last read back, one under the engine's. Answers what it decided, which every other unit reads.
+  /// physical light's last read back, one under the engine's. While a lightning strike lights the frame
+  /// (`is_striking`), and a moment after, the physical levels' law holds its scale. Answers what it decided, which
+  /// every other unit reads.
   pub(crate) fn prepare(
     &mut self,
     queue: &wgpu::Queue,
     options: &RenderViewOptions,
+    is_striking: bool,
     now: Instant,
   ) -> ExposureDecisions {
+    if is_striking {
+      self.struck_at = Some(now);
+    }
+
     self.advance(queue, options, now);
 
     ExposureDecisions {
@@ -281,6 +294,9 @@ impl ExposureFeature {
         delta: delta.as_secs_f32(),
         engine_blend,
         is_snapped: self.last.is_none() || is_restarted,
+        is_held: self
+          .struck_at
+          .is_some_and(|struck| now.saturating_duration_since(struck) <= STRIKE_TAIL),
       },
     );
     self.is_measuring = true;

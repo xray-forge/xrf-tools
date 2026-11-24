@@ -41,23 +41,26 @@ fn a_light_model_switch_drops_what_was_metered_before_it() {
   let now: Instant = Instant::now();
   let mut exposure: ExposureFeature = ExposureFeature::new(device, queue);
 
-  let start: f32 = exposure.prepare(queue, &physical, now).pre_exposure.current;
+  let start: f32 = exposure.prepare(queue, &physical, false, now).pre_exposure.current;
   let metered: f32 = start * 4096.0;
 
   // Back by the switch to the engine's light.
   copy_out(device, queue, &exposure, metered);
   wait();
-  exposure.prepare(queue, &engine, now);
+  exposure.prepare(queue, &engine, false, now);
 
-  assert_eq!(exposure.prepare(queue, &physical, now).pre_exposure.current, start);
+  assert_eq!(
+    exposure.prepare(queue, &physical, false, now).pre_exposure.current,
+    start
+  );
 
   // Still on its way across both switches, back only after them.
   copy_out(device, queue, &exposure, metered);
-  exposure.prepare(queue, &engine, now);
-  exposure.prepare(queue, &physical, now);
+  exposure.prepare(queue, &engine, false, now);
+  exposure.prepare(queue, &physical, false, now);
   wait();
 
-  let decided: ExposureDecisions = exposure.prepare(queue, &physical, now);
+  let decided: ExposureDecisions = exposure.prepare(queue, &physical, false, now);
 
   assert_eq!(decided.pre_exposure.current, start);
   assert_eq!(decided.metering.land, None);
@@ -66,7 +69,7 @@ fn a_light_model_switch_drops_what_was_metered_before_it() {
   copy_out(device, queue, &exposure, metered);
   wait();
 
-  let decided: ExposureDecisions = exposure.prepare(queue, &physical, now);
+  let decided: ExposureDecisions = exposure.prepare(queue, &physical, false, now);
 
   assert_eq!(decided.pre_exposure.current, metered);
   assert_eq!(decided.metering.bright, Some(2.0));

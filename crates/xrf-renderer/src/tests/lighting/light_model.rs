@@ -377,6 +377,7 @@ fn the_authored_levels_expose_as_the_engines_meter_does() {
     delta: 0.016,
     engine_blend: 0.3,
     is_snapped: false,
+    is_held: false,
   };
   let authored = ExposureHistogramUniform::new(&settings, RenderLightLevel::Authored, step);
   let physical = ExposureHistogramUniform::new(&settings, RenderLightLevel::Physical, step);
