@@ -1082,7 +1082,6 @@ fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
     return dropped;
   }
 
-  let local: Moments = neighbourhood(traced, pixel);
   let toward: vec3<f32> = surface.world - camera.position.xyz;
   let through: vec3<f32> = camera.position.xyz + normalize(toward) * (length(toward) + fresh.a);
   let surface_uv: vec2<f32> = previous_uv(surface.world);
@@ -1108,6 +1107,8 @@ fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
     channel = 2u;
     weight = DISOCCLUSION_HIT_WEIGHT;
   } else {
+    // Read here alone: the reflected point's history keeps without the neighbourhood's twenty-five texels.
+    let local: Moments = neighbourhood(traced, pixel);
     let away: vec3<f32> = reprojection - local.mean;
 
     if (dot(away, away) >= SURFACE_DISCARD_VARIANCE * length(local.variance)) {
