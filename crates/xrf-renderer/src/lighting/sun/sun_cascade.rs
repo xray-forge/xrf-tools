@@ -138,6 +138,19 @@ impl SunCascade {
     self.is_held_within(drawn, 1.0)
   }
 
+  /// Whether a map drawn at `drawn` holds this fit at the same snapped place, the light alone turned within what
+  /// `is_held_by` allows: the nearest cascade, seen closest, keeps its texels where they were while the sun turns.
+  pub(crate) fn is_held_in_place_by(&self, drawn: &Self) -> bool {
+    self.get_place() == drawn.get_place() && self.is_held_by(drawn)
+  }
+
+  /// Where its square's centre was snapped to: across the light by its texels, along it by its depth step.
+  fn get_place(&self) -> [f32; 3] {
+    let [x, y, z, ..] = self.key;
+
+    [x, y, z]
+  }
+
   /// Whether a map drawn at `drawn` holds this fit within `share` of what `is_held_by` allows: a map about to stop
   /// holding has its successor drawn ahead.
   pub(crate) fn is_held_within(&self, drawn: &Self, share: f32) -> bool {

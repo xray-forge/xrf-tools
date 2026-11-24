@@ -198,7 +198,7 @@ impl LevelShadows {
       }
 
       if offer.draw == CascadeDraw::Static {
-        cascade.drawn_static = Some((offer.fit.version, offer.contents));
+        cascade.drawn_static = Some(offer.contents);
         cascade.static_fit = offer.fit;
         cascade.prefetch = None;
       }

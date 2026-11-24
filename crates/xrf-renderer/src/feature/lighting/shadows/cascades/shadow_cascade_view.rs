@@ -29,10 +29,10 @@ pub(crate) struct ShadowCascadeView {
   pub received_at: Option<(Vec3, Vec3)>,
   /// The level's clock a banded redraw of its trees started at and the band it draws next, while one runs.
   pub sway_sweep: Option<(LevelTime, u32)>,
-  /// The layer of the static layers it shows, and the version and contents its static layer was drawn at, none before
-  /// it was or since it went stale; and the fit it was drawn at.
+  /// The layer of the static layers it shows, and the contents its static layer was drawn at, none before it was or
+  /// since it went stale; and the fit it was drawn at.
   pub static_layer: u32,
-  pub drawn_static: Option<(u64, usize)>,
+  pub drawn_static: Option<usize>,
   pub static_fit: SunCascade,
   /// Its next static layer, while one is drawn ahead, and the cut its bands are culled and drawn by.
   pub prefetch: Option<ShadowPrefetch>,

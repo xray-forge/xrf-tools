@@ -253,6 +253,28 @@ fn sun_cascade_is_held_by_its_map_through_a_clocks_turn_but_not_a_seek() {
   assert!(!fit_over(&camera, turned(0.01), 160.0, &LEVEL).is_held_by(&drawn));
 }
 
+// The nearest map holds through the clock's turn where its texels stay put, and not once the camera walks it a texel.
+#[test]
+fn sun_cascade_is_held_in_place_by_its_map_through_a_clocks_turn_but_not_a_walk() {
+  let position: Vec3 = Vec3::new(0.0, 1.7, 0.0);
+  let camera: CameraView = create_forward_camera(position);
+  let light: Vec3 = Vec3::new(0.3, -1.0, 0.2).normalize();
+  let drawn: SunCascade = fit_over(&camera, light, 20.0, &LEVEL);
+  let (nearest, _) = get_span(&LEVEL, light).unwrap_or_default();
+  let limit: f32 = 0.5 * 20.0 / 2048.0 / (-nearest + 20.0 / 16.0);
+  let turned: Vec3 = glam::Quat::from_rotation_z(limit * 0.5) * light;
+  let walked: SunCascade = fit_over(
+    &create_forward_camera(position + Vec3::new(0.1, 0.0, 0.3)),
+    light,
+    20.0,
+    &LEVEL,
+  );
+
+  assert!(fit_over(&camera, turned, 20.0, &LEVEL).is_held_in_place_by(&drawn));
+  assert!(walked.is_held_by(&drawn));
+  assert!(!walked.is_held_in_place_by(&drawn));
+}
+
 // A two-metre caster whose sunward side stands `past` metres beyond the level's nearest along `light`.
 fn create_level_with_caster(light: Vec3, past: f32) -> (Vec<Vec4>, Vec3) {
   let (nearest, _) = get_span(&LEVEL, light).unwrap_or_default();

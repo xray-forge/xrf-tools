@@ -180,10 +180,10 @@ impl LevelShadows {
 
   /// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway or anything moves every
   /// frame, as [`CascadeSplitState::choose`] chooses it: over its static layer, at the fit that layer was drawn at,
-  /// while the cascade's fit holds by it and nothing changed under it (the nearest cascade's only while its fit is the
-  /// same); else a new static layer at the cascade's fit. One what moves every frame lands in (`has_moving`) draws every
-  /// frame, at once: the grass sways every frame, and a shadow drawn at the sway's interval would trail the blades drawn
-  /// over it wherever the frame rate passes it.
+  /// while the cascade's fit holds by it and nothing changed under it (the nearest cascade's only at the same snapped
+  /// place, the sun alone turned); else a new static layer at the cascade's fit. One what moves every frame lands in
+  /// (`has_moving`) draws every frame, at once: the grass sways every frame, and a shadow drawn at the sway's interval
+  /// would trail the blades drawn over it wherever the frame rate passes it.
   fn offer_split(
     index: usize,
     cascade: &mut ShadowCascadeView,
@@ -197,9 +197,9 @@ impl LevelShadows {
     let scene = frame.scene;
     let current: SunCascade = cascade.cascade;
     let static_fit: SunCascade = cascade.static_fit;
-    let is_held: bool = cascade.drawn_static.is_some_and(|(version, contents)| {
+    let is_held: bool = cascade.drawn_static.is_some_and(|contents| {
       let is_fit: bool = if index == 0 {
-        version == current.version
+        current.is_held_in_place_by(&static_fit)
       } else {
         current.is_held_by(&static_fit)
       };
@@ -380,7 +380,7 @@ impl LevelShadows {
 
     cascade.static_layer = Self::get_hidden_layer(index, cascade.static_layer);
     cascade.static_fit = prefetch.fit;
-    cascade.drawn_static = Some((prefetch.fit.version, prefetch.contents));
+    cascade.drawn_static = Some(prefetch.contents);
     cascade.prefetch = None;
     cascade.is_swapped = true;
   }
