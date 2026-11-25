@@ -1,4 +1,3 @@
-import { Logger } from "@xrf/logging";
 import { Nullable, Optional } from "@xrf/types";
 
 /** One encoder for the process: constructing one per call would cost more than the measurement it serves. */
@@ -17,8 +16,10 @@ export function weighIpcPayload(value: unknown): Nullable<number> {
     // An absent payload crosses as nothing rather than as unknown, which is a different statement.
     return json === undefined ? 0 : ENCODER.encode(json).length;
   } catch (error: unknown) {
-    // A channel is a transport handle rather than data, and nothing here is worth failing a command over.
-    Logger.warn("Cannot weigh IPC payload:", error);
+    // A channel is a transport handle rather than data, and nothing here is worth failing a command over. The console
+    // rather than a `Logger`: the UI log's batches are sent through a weighed command, and a logged line would be
+    // forwarded through it again.
+    console.warn("Cannot weigh IPC payload:", error);
 
     return null;
   }
