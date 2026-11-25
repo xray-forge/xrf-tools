@@ -37,6 +37,7 @@ impl JitterGuard {
   pub(crate) const RESOLVES: &'static str = "jitter resolves";
   pub(crate) const READS_ALBEDO: &'static str = "jitter reads albedo";
   pub(crate) const READS_AMBIENT_OCCLUSION: &'static str = "jitter reads ambient occlusion";
+  pub(crate) const READS_BLOOM: &'static str = "jitter reads bloom";
   pub(crate) const READS_DEPTH: &'static str = "jitter reads depth";
   pub(crate) const READS_DEPTH_WITH_WATER: &'static str = "jitter reads depth with water";
   pub(crate) const READS_HIGH: &'static str = "jitter reads high";
@@ -52,10 +53,12 @@ impl JitterGuard {
   pub(crate) const READS_SCENE: &'static str = "jitter reads scene";
 
   /// The drawn targets the present reads, for a window or a capture: the debug views' raw targets, the drawn scene
-  /// (only the luminance view reads it), and the depth or marks a capture copies for a tool.
-  pub(crate) const PRESENT_READS: [&'static str; 13] = [
+  /// (only the luminance view reads it), the depth or marks a capture copies for a tool, and the engine's bloom, built
+  /// from the whole footprint of each of its texels at a fixed small size, so a sample of it cannot show the jitter.
+  pub(crate) const PRESENT_READS: [&'static str; 14] = [
     Self::READS_ALBEDO,
     Self::READS_AMBIENT_OCCLUSION,
+    Self::READS_BLOOM,
     Self::READS_DEPTH,
     Self::READS_INDIRECT_LIGHT,
     Self::READS_INDIRECT_TRACED,

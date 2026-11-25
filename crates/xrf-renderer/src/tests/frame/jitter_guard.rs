@@ -133,6 +133,64 @@ fn allows_the_present_the_raw_traced_targets_of_ray_reconstruction() {
   assert_eq!(JitterGuard::list_jittered_reads(&report), [read("window", "frame")]);
 }
 
+/// The engine's bloom is built before the resolve from the jittered high part, so it carries the jitter; the present
+/// reads it as one of its allowed targets, while any other pass after the resolve reading it is still found.
+#[test]
+fn allows_the_present_the_engines_bloom_built_before_the_resolve() {
+  let view: GraphOwner = GraphOwner::Part(1);
+  let report: GraphReport = report(
+    vec![
+      jittered("frame", view),
+      jittered("high", view),
+      texture("bloom", view),
+      texture("resolved", view),
+    ],
+    vec![
+      raster(pass("opaque", view, &[], &[0, 1])),
+      raster(pass("bloom build", view, &[1], &[2])),
+      tagged(pass("temporal", view, &[0], &[3]), &[JitterGuard::RESOLVES]),
+      pass("bloom after the resolve", view, &[2], &[]),
+      tagged(
+        pass("window", GraphOwner::Frame, &[2, 3], &[]),
+        &JitterGuard::PRESENT_READS,
+      ),
+    ],
+  );
+
+  assert_eq!(
+    JitterGuard::list_jittered_reads(&report),
+    [read("bloom after the resolve", "bloom")]
+  );
+}
+
+/// The helper marks draw after the resolve over the view's depth, read-only: allowed by their tag, the marks target
+/// they draw anew left unjittered for the present's outline.
+#[test]
+fn allows_the_helper_marks_the_depth_they_are_tested_against() {
+  let view: GraphOwner = GraphOwner::Part(1);
+  let report: GraphReport = report(
+    vec![
+      jittered("depth", view),
+      texture("resolved", view),
+      texture("helper marks", view),
+    ],
+    vec![
+      raster(pass("opaque", view, &[], &[0])),
+      tagged(pass("temporal", view, &[0], &[1]), &[JitterGuard::RESOLVES]),
+      tagged(
+        raster(pass("helper marks", view, &[0], &[2])),
+        &[JitterGuard::READS_DEPTH],
+      ),
+      tagged(
+        pass("window", GraphOwner::Frame, &[1, 2], &[]),
+        &JitterGuard::PRESENT_READS,
+      ),
+    ],
+  );
+
+  assert!(JitterGuard::list_jittered_reads(&report).is_empty());
+}
+
 /// A view with no resolve, drawn and shown as it is, has no reads to find.
 #[test]
 fn finds_nothing_in_a_frame_never_resolved() {
