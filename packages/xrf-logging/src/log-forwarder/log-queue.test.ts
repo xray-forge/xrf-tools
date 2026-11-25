@@ -108,6 +108,7 @@ describe("LogQueue", () => {
     expect(warning).toEqual({
       records: [expect.objectContaining({ message: "1 record dropped: the queue overflowed or a send failed" })],
       firstSequence: 2,
+      queued: 0,
       lostOnFailure: 1,
     });
     expect(queue.take(1)?.records.map((it: ILogRecord) => it.message)).toEqual(["line 1"]);
@@ -130,5 +131,55 @@ describe("LogQueue", () => {
 
     expect(takeAll(queue).records.map((it: ILogRecord) => it.message)).toEqual(["line 1", "line 2"]);
     expect(queue.mostSevere).toBeNull();
+  });
+
+  it("keeps the dropped count when the filter empties the queue, and takes its warning alone", () => {
+    const queue: LogQueue = new LogQueue(2, "forwarder");
+    const filter: LogLevelFilter = new LogLevelFilter();
+
+    queue.push(createRecord(0, ELogLevel.DEBUG));
+    queue.push(createRecord(1, ELogLevel.DEBUG));
+    queue.push(createRecord(2, ELogLevel.DEBUG));
+
+    filter.set(ELogLevel.INFO);
+    queue.keepPassing(filter);
+
+    expect(queue).toHaveLength(0);
+    expect(queue.isEmpty).toBe(false);
+    expect(takeAll(queue)).toEqual({
+      records: [expect.objectContaining({ message: "1 record dropped: the queue overflowed or a send failed" })],
+      firstSequence: 4,
+      queued: 0,
+      lostOnFailure: 1,
+    });
+    expect(queue.isEmpty).toBe(true);
+    expect(queue.take(1)).toBeNull();
+  });
+
+  it("forgets the dropped count where the filter would remove its warning", () => {
+    const queue: LogQueue = new LogQueue(1, "forwarder");
+    const filter: LogLevelFilter = new LogLevelFilter();
+
+    fill(queue, 2);
+    filter.set(ELogLevel.ERROR);
+    queue.keepPassing(filter);
+
+    expect(queue.isEmpty).toBe(true);
+    expect(queue.take(1)).toBeNull();
+  });
+
+  it("does not count again a lost batch that carried only the warning", () => {
+    const queue: LogQueue = new LogQueue(10, "forwarder");
+
+    fill(queue, 2);
+    queue.countLost(takeAll(queue));
+
+    const warning: ILogBatch = takeAll(queue);
+
+    expect(warning.queued).toBe(0);
+
+    queue.countLost(warning);
+
+    expect(queue.isEmpty).toBe(true);
   });
 });

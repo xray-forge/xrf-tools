@@ -17,7 +17,9 @@ import { ELogLevel, ILogSink } from "#/logger.types";
  * Until {@link LogForwarder.setLevel} is first called every line is kept and nothing is sent, so the lines logged before
  * the level is known are filtered and sent once it is. A batch goes when the flush interval passes, when a full batch
  * waits, at once for a warning or an error but at most once per interval, or on {@link LogForwarder.flush}. Past the
- * queue's bound the oldest records are dropped, and the next batch opens with a warning counting them.
+ * queue's bound the oldest records are dropped, and the next batch opens with a warning counting them; with nothing else
+ * waiting, that warning is sent alone at the interval. A count is lost only where the warning's own send fails, which
+ * goes to the console like any failed send, or where the level filters warnings out.
  */
 export class LogForwarder implements ILogSink {
   /** The limits used where the constructor is given none. */
@@ -121,7 +123,7 @@ export class LogForwarder implements ILogSink {
       return;
     }
 
-    if (this.queue.length === 0) {
+    if (this.queue.isEmpty) {
       return this.schedule.reset();
     }
 

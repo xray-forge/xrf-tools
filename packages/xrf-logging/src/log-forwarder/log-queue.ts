@@ -40,6 +40,11 @@ export class LogQueue {
     return this.entries.length - this.head;
   }
 
+  /** Whether nothing is left to send: no record waits and no dropped record is still to be reported. */
+  public get isEmpty(): boolean {
+    return this.length === 0 && this.dropped === 0;
+  }
+
   /** The number of the last record written, sent or not. */
   public get lastWritten(): number {
     return this.lastSequence;
@@ -82,8 +87,8 @@ export class LogQueue {
   }
 
   /**
-   * Removes the records a filter does not pass, which are filtered rather than dropped. Where nothing is left waiting,
-   * the count of dropped records is forgotten too.
+   * Removes the records a filter does not pass, which are filtered rather than dropped. The count of dropped records is
+   * kept for its warning, unless the filter would remove that warning too.
    *
    * @param filter - The levels kept.
    */
@@ -93,7 +98,7 @@ export class LogQueue {
     );
     this.head = 0;
 
-    if (this.entries.length === 0) {
+    if (!filter.passes(ELogLevel.WARN)) {
       this.dropped = 0;
       this.droppedSince = Infinity;
     }
@@ -101,13 +106,13 @@ export class LogQueue {
 
   /**
    * Takes the oldest records to send together. The warning about dropped records takes a place of its own, so a batch
-   * of one carries it alone and the records follow in the next.
+   * of one carries it alone and the records follow in the next; with no record waiting, the warning goes alone.
    *
    * @param size - The most records the batch carries, the warning about dropped records included; at least one.
-   * @returns The batch, or null when nothing waits.
+   * @returns The batch, or null when nothing is left to send.
    */
   public take(size: number): Nullable<ILogBatch> {
-    if (this.length === 0) {
+    if (this.isEmpty) {
       return null;
     }
 
@@ -126,15 +131,20 @@ export class LogQueue {
     this.droppedSince = Infinity;
     this.compact();
 
-    return { records, firstSequence, lostOnFailure: carried + taken.length };
+    return { records, firstSequence, queued: taken.length, lostOnFailure: carried + taken.length };
   }
 
   /**
-   * Counts a batch whose send failed as dropped, so the next batch's warning includes it.
+   * Counts a batch whose send failed as dropped, so the next batch's warning includes it. A lost batch that carried
+   * only the warning is not counted again: a sender failing for good would otherwise be sent that warning forever.
    *
    * @param batch - The batch that was lost.
    */
   public countLost(batch: ILogBatch): void {
+    if (batch.queued === 0) {
+      return;
+    }
+
     this.countDropped(batch.lostOnFailure, batch.records[0].time);
   }
 

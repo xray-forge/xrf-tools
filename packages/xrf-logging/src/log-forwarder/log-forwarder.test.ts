@@ -266,15 +266,44 @@ describe("LogForwarder", () => {
     await jest.advanceTimersByTimeAsync(250);
 
     sent[0].reject(new Error("refused"));
-    await jest.advanceTimersByTimeAsync(1_000);
-
-    expect(sent).toHaveLength(1);
-    expect(report).toHaveBeenCalledTimes(1);
-
+    await settle();
     writeInfo(forwarder, 1, 2);
     await jest.advanceTimersByTimeAsync(250);
 
+    expect(report).toHaveBeenCalledTimes(1);
     expect(messagesOf(sent[1])).toEqual(["2 records dropped: the queue overflowed or a send failed", "line 2"]);
+  });
+
+  it("sends the count of a failed batch alone when nothing follows it, and gives up if that send fails too", async () => {
+    const { forwarder, sent } = createForwarder();
+    const report: jest.SpiedFunction<typeof console.error> = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    forwarder.setLevel(ELogLevel.DEBUG);
+    writeInfo(forwarder, 2);
+    await jest.advanceTimersByTimeAsync(250);
+
+    sent[0].reject(new Error("refused"));
+    await jest.advanceTimersByTimeAsync(250);
+
+    expect(sent.map(messagesOf).slice(1)).toEqual([["2 records dropped: the queue overflowed or a send failed"]]);
+
+    sent[1].reject(new Error("refused"));
+    await jest.advanceTimersByTimeAsync(1_000);
+
+    expect(sent).toHaveLength(2);
+    expect(report).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends the count of records dropped before the level is known though the level filters every one left", async () => {
+    const { forwarder, sent } = createForwarder({ queueSize: 2 });
+
+    forwarder.write(ELogLevel.INFO, "scope", ["line 0"]);
+    forwarder.write(ELogLevel.DEBUG, "scope", ["detail 1"]);
+    forwarder.write(ELogLevel.DEBUG, "scope", ["detail 2"]);
+    forwarder.setLevel(ELogLevel.INFO);
+    await jest.advanceTimersByTimeAsync(250);
+
+    expect(sent.map(messagesOf)).toEqual([["1 record dropped: the queue overflowed or a send failed"]]);
   });
 
   it("counts the dropped records a failed batch carried again", async () => {
