@@ -63,7 +63,7 @@ export function LevelWindAction({
       label={"Wind"}
       description={
         isOn
-          ? `Wind ${formatNumber(manual.windVelocity, 1)} m/s, trees sway ${formatNumber(manual.treesAmplitude, 3)}`
+          ? `Wind ${formatNumber(manual.windSpeed, 1)} m/s, trees sway ${formatNumber(manual.treesAmplitude, 3)}`
           : "Wind off, trees stand still"
       }
       icon={<AirIcon />}
@@ -74,7 +74,7 @@ export function LevelWindAction({
       onReset={onWeatherReset}
     >
       <LevelManualWeatherSlider
-        field={"windVelocity"}
+        field={"windSpeed"}
         manual={manual}
         format={(value: number) => `${formatNumber(value, 1)} m/s`}
         onEdit={weatherService.editManual}

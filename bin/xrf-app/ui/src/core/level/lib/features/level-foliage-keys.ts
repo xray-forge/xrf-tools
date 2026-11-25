@@ -9,6 +9,8 @@ export const LEVEL_FOLIAGE_MOTION_KEYS: ReadonlyArray<keyof TRenderFoliageSettin
   "grassTurbulence",
   "grassPush",
   "grassWave",
+  "gusts",
+  "gustSpacing",
   "treesSpeed",
   "treesTrunk",
   "treesBend",

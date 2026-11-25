@@ -96,7 +96,7 @@ describe("level manual weather", () => {
     expect(readLevelManualWeather(stored)).toEqual(DEFAULT_LEVEL_MANUAL_WEATHER);
     expect(readLevelManualWeather({ ...DEFAULT_LEVEL_MANUAL_WEATHER, farPlane: "far" })).toBeNull();
     expect(readLevelManualWeather({ ...DEFAULT_LEVEL_MANUAL_WEATHER, fogColor: [1, 1, Infinity] })).toBeNull();
-    expect(readLevelManualWeather({ ...DEFAULT_LEVEL_MANUAL_WEATHER, windVelocity: undefined })).toBeNull();
+    expect(readLevelManualWeather({ ...DEFAULT_LEVEL_MANUAL_WEATHER, windSpeed: undefined })).toBeNull();
     expect(readLevelManualWeather("sky")).toBeNull();
   });
 });

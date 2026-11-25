@@ -33,7 +33,8 @@ pub struct WeatherMix {
   pub sun_shafts_intensity: f32,
   pub rain_density: f32,
   pub rain_color: [f32; 3],
-  pub wind_velocity: f32,
+  /// Metres a second.
+  pub wind_speed: f32,
   /// Radians.
   pub wind_direction: f32,
   pub tree_amplitude: f32,
@@ -78,7 +79,7 @@ impl WeatherMix {
       water_intensity: self.water_intensity,
       sun_shafts_intensity: self.sun_shafts_intensity,
       wind_direction: self.wind_direction,
-      wind_velocity: self.wind_velocity,
+      wind_speed: self.wind_speed,
       ..heavier.clone()
     }
   }

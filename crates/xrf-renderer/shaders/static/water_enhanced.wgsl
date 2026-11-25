@@ -156,7 +156,7 @@ fn rain_ripples(coordinates: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>, distance: 
 // Its maps are read with the base coordinates' own gradients, which the parallax's march, ending where the height
 // says, must not decide.
 fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
-  let wind: f32 = saturate(enhanced.wind_velocity * 0.001);
+  let wind: f32 = enhanced.wind_strength;
   let base: vec2<f32> = vec2<f32>(in.world.x, -in.world.z) * WAVE_WORLD_SCALE * ENHANCED_TILING;
   // The axes the coordinates run along, laid onto the surface: the world's `x` and `-z`.
   let surface_normal: vec3<f32> = normalize(in.normal);

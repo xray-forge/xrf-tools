@@ -14,9 +14,6 @@ const STRAY: f32 = 15.0 * std::f32::consts::PI / 180.0;
 const SOURCE_OFFSET: f32 = 20.0;
 const MAX_DISTANCE: f32 = SOURCE_OFFSET * 1.5;
 
-/// Monolith reads `wind_velocity` over a thousand.
-const WIND: f32 = 0.001;
-
 /// How far ahead along the camera's way `Born` aims the drops, in metres.
 const AIM: f32 = 5.0;
 
@@ -55,7 +52,7 @@ impl RainFall {
   /// One `frame`'s fall.
   pub(crate) fn new(frame: &RainFrame<'_>) -> Self {
     let density: f32 = frame.rain.density.clamp(0.0, 1.0);
-    let velocity: f32 = (frame.wind.velocity * WIND).clamp(0.0, 1.0);
+    let velocity: f32 = frame.wind.get_strength();
     let lean: f32 = (velocity + frame.gust.rain).clamp(0.0, 1.0);
 
     Self {

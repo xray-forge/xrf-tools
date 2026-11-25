@@ -8,7 +8,7 @@ const ENVIRONMENT_SUFFIX: string = "#small";
 
 /**
  * A keyframe set by hand, named by its keys as a weather config writes them and holding what it would write: angles
- * in degrees, colours as the engine holds them.
+ * in degrees, colours as the engine holds them, and the wind's speed in metres a second whichever engine it is for.
  */
 export interface ILevelManualWeather {
   skyTexture: string;
@@ -39,7 +39,8 @@ export interface ILevelManualWeather {
   waterIntensity: number;
   rainDensity: number;
   rainColor: TVector3;
-  windVelocity: number;
+  /** Metres a second. */
+  windSpeed: number;
   /** Degrees. */
   windDirection: number;
   treesAmplitude: number;
@@ -84,7 +85,7 @@ export const DEFAULT_LEVEL_MANUAL_WEATHER: ILevelManualWeather = {
   thunderboltPeriod: 0,
   waterIntensity: 1,
   windDirection: 0,
-  windVelocity: 0,
+  windSpeed: 0,
 };
 
 /**
@@ -181,7 +182,7 @@ export function toLevelManualDescriptor(
     sun: manual.sun || null,
     sunShaftsIntensity: manual.sunShaftsIntensity,
     windDirection: toRadians(manual.windDirection),
-    windVelocity: manual.windVelocity,
+    windSpeed: manual.windSpeed,
   };
 }
 
@@ -231,7 +232,7 @@ export function toLevelManualWeather(current: WeatherDescriptor): ILevelManualWe
     sun: current.sun ?? "",
     sunShaftsIntensity: current.sunShaftsIntensity ?? 0,
     windDirection: toDegrees(current.windDirection ?? 0),
-    windVelocity: current.windVelocity ?? 0,
+    windSpeed: current.windSpeed ?? 0,
   };
 }
 

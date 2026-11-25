@@ -1,5 +1,8 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** Metres a second a unit of Monolith's `wind_velocity` stands for. */
+export const WEATHER_EXTENDED_WIND_SPEED: number = 0.02;
+
 /** One problem with a game's environment configs, placed at the file, section and key it is about. */
 export type EnvironmentFinding = {
   rule: EnvironmentRule;
@@ -116,7 +119,8 @@ export type WeatherDescriptor = {
   /** Clamped to a unit. */
   rainDensity: number | null;
   rainColor: [number | null, number | null, number | null];
-  windVelocity: number | null;
+  /** Metres a second. */
+  windSpeed: number | null;
   /** Radians. */
   windDirection: number | null;
   hemiColor: [number | null, number | null, number | null, number | null];

@@ -183,6 +183,8 @@ struct GrassWind {
   foliage_previous_anim: vec4<f32>,
   foliage_flora: vec4<f32>,
   foliage_previous_wind: vec4<f32>,
+  foliage_gusts: vec4<f32>,
+  foliage_previous_gusts: vec4<f32>,
   alignment: vec4<f32>,
 }
 
@@ -318,6 +320,8 @@ struct Wind {
   foliage_previous_anim: vec4<f32>,
   foliage_flora: vec4<f32>,
   foliage_previous_wind: vec4<f32>,
+  foliage_gusts: vec4<f32>,
+  foliage_previous_gusts: vec4<f32>,
 }
 
 struct Shadows {
@@ -491,7 +495,7 @@ struct EnhancedWater {
   blur_noise: f32,
   reflected: f32,
   history: f32,
-  wind_velocity: f32,
+  wind_strength: f32,
   specular: f32,
   caustics: f32,
   parallax_height: f32,

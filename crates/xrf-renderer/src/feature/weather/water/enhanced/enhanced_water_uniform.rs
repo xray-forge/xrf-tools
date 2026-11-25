@@ -20,8 +20,8 @@ pub(crate) struct EnhancedWaterUniform {
   /// One where the reflection drew this frame, and one where the history it accumulates over holds a frame.
   pub reflected: f32,
   pub history: f32,
-  /// The weather's wind velocity, which strengthens the waves.
-  pub wind_velocity: f32,
+  /// The share of its strongest the weather's wind blows at, which strengthens the waves.
+  pub wind_strength: f32,
   /// The sun's highlight and the caustics.
   pub specular: f32,
   pub caustics: f32,
@@ -85,7 +85,7 @@ impl EnhancedWaterUniform {
       blur_noise: settings.blur_noise,
       reflected: u32::from(is_reflected) as f32,
       history: u32::from(has_history) as f32,
-      wind_velocity: wind.velocity,
+      wind_strength: wind.get_strength(),
       specular: settings.specular,
       caustics: settings.caustics,
       parallax_height: settings.parallax_height,

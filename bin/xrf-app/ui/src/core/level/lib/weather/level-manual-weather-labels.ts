@@ -32,7 +32,7 @@ export const LEVEL_MANUAL_WEATHER_LABELS: Readonly<Record<keyof ILevelManualWeat
   treesWave: "Tree wave",
   waterIntensity: "Water intensity",
   windDirection: "Wind direction",
-  windVelocity: "Wind speed",
+  windSpeed: "Wind speed",
 };
 
 /** The fields shown negated: `sun_longitude` points the sun down as it grows, so its elevation is its negation. */

@@ -2,14 +2,14 @@ use crate::contract::feature::weather::water::render_enhanced_water_settings::Re
 use crate::feature::weather::water::enhanced::enhanced_water_scroll::EnhancedWaterScroll;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
 use crate::feature::weather::water::enhanced::water_weather::WaterWeather;
-use crate::lighting::wind::render_wind::RenderWind;
+use crate::lighting::wind::render_wind::{RENDER_STRONGEST_WIND, RenderWind};
 use crate::tests::support::test_time::frame_at;
 
-fn wind(velocity: f32) -> WaterWeather {
+fn wind(strength: f32) -> WaterWeather {
   WaterWeather {
     wind: RenderWind {
       direction: 0.0,
-      velocity,
+      speed: strength * RENDER_STRONGEST_WIND,
     },
     rain: 0.5,
   }
@@ -26,7 +26,7 @@ fn a_change_of_wind_changes_how_fast_the_water_moves_not_where_it_stands() {
   let calm: WaterFlow = flow;
 
   // A strong wind a frame later moves the maps by that frame's seconds alone, at its own pace.
-  flow.advance(frame_at(1100.1, Some(1100.0)), &settings, wind(1000.0));
+  flow.advance(frame_at(1100.1, Some(1100.0)), &settings, wind(1.0));
 
   assert!((flow.waves - calm.waves - 0.1 * 0.97).abs() < 1e-6);
   assert!(((flow.gusts[0] - calm.gusts[0]).hypot(flow.gusts[1] - calm.gusts[1]) - 0.1).abs() < 1e-6);
@@ -43,8 +43,8 @@ fn the_flow_scales_every_scroll_and_none_stills_them() {
   };
   let mut flow: WaterFlow = WaterFlow::default();
 
-  flow.advance(frame_at(0.0, None), &still, wind(500.0));
-  flow.advance(frame_at(60.0, Some(0.0)), &still, wind(500.0));
+  flow.advance(frame_at(0.0, None), &still, wind(0.5));
+  flow.advance(frame_at(60.0, Some(0.0)), &still, wind(0.5));
 
   assert_eq!(
     [flow.seconds, flow.waves, flow.heights, flow.gusts[0], flow.gusts[1]],

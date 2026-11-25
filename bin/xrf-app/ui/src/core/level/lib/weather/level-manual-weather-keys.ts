@@ -30,5 +30,5 @@ export const LEVEL_MANUAL_WEATHER_KEYS: Readonly<Record<keyof ILevelManualWeathe
   treesWave: "trees_wave",
   waterIntensity: "water_intensity",
   windDirection: "wind_direction",
-  windVelocity: "wind_velocity",
+  windSpeed: "wind_velocity",
 };

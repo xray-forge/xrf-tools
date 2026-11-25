@@ -53,7 +53,7 @@ export function mockWeatherDescriptor(overrides: Partial<WeatherDescriptor> = {}
     waterIntensity: 1,
     wetSurfaceFactor: 0,
     windDirection: 0,
-    windVelocity: 0,
+    windSpeed: 0,
     ...overrides,
   };
 }

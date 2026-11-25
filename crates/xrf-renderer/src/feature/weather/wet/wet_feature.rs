@@ -63,7 +63,7 @@ impl WetFeature {
     self.views = None;
 
     let density: f32 = falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)));
-    let gust: Vec2 = WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity);
+    let gust: Vec2 = WetUniform::get_gust(lighting.wind.direction, lighting.wind.speed);
 
     self.drift.advance(clock.view, gust, density);
 

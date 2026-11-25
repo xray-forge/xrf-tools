@@ -12,8 +12,8 @@ fn drifted(drift: &WetDrift) -> Vec4 {
 fn a_turning_wind_changes_where_the_gusts_go_not_where_they_stand() {
   let mut drift: WetDrift = WetDrift::default();
   // A metre a second along `z`, then along `x`.
-  let first: Vec2 = WetUniform::get_gust(std::f32::consts::PI, 100.0);
-  let turned: Vec2 = WetUniform::get_gust(-std::f32::consts::FRAC_PI_2, 100.0);
+  let first: Vec2 = WetUniform::get_gust(std::f32::consts::PI, 2.0);
+  let turned: Vec2 = WetUniform::get_gust(-std::f32::consts::FRAC_PI_2, 2.0);
 
   drift.advance(frame_at(36_000.0, None), first, 0.0);
   drift.advance(frame_at(36_010.0, Some(36_000.0)), first, 0.0);

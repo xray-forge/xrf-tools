@@ -48,7 +48,7 @@ export const LEVEL_MANUAL_WEATHER_WATER_KEYS: ReadonlyArray<keyof ILevelManualWe
 
 /** The wind's and the trees' keys of a keyframe set by hand, set back together. */
 export const LEVEL_MANUAL_WEATHER_WIND_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
-  "windVelocity",
+  "windSpeed",
   "windDirection",
   "treesAmplitude",
   "treesSpeed",

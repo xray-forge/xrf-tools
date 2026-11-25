@@ -1,4 +1,5 @@
 import { EXrayEngine, XrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+import { WEATHER_EXTENDED_WIND_SPEED } from "@xrf/ipc/types/xrf-environment";
 
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_KEYS } from "@/core/level/lib/weather/level-manual-weather-keys";
@@ -43,7 +44,10 @@ export function toLevelManualWeatherLtx(input: ILevelManualWeatherLtxInput): str
     [LEVEL_MANUAL_WEATHER_KEYS.fogDensity, toNumber(manual.fogDensity)],
     [LEVEL_MANUAL_WEATHER_KEYS.rainDensity, toNumber(manual.rainDensity)],
     [LEVEL_MANUAL_WEATHER_KEYS.rainColor, toList(manual.rainColor)],
-    [LEVEL_MANUAL_WEATHER_KEYS.windVelocity, toNumber(manual.windVelocity)],
+    [
+      LEVEL_MANUAL_WEATHER_KEYS.windSpeed,
+      toNumber(isVanilla ? manual.windSpeed : manual.windSpeed / WEATHER_EXTENDED_WIND_SPEED),
+    ],
     [LEVEL_MANUAL_WEATHER_KEYS.windDirection, toNumber(manual.windDirection)],
     [LEVEL_MANUAL_WEATHER_KEYS.hemisphereColor, toList(manual.hemisphereColor)],
     [LEVEL_MANUAL_WEATHER_KEYS.sunColor, toList(manual.sunColor)],

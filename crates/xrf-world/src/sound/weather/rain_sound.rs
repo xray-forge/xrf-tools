@@ -40,11 +40,7 @@ impl RainSound {
     let factor: f32 = match engine {
       XrayEngine::Vanilla => frame.density,
       XrayEngine::Extended => {
-        let wind: f32 = if frame.density > 0.0 {
-          (frame.wind_velocity * 0.001).clamp(0.0, 1.0)
-        } else {
-          0.0
-        };
+        let wind: f32 = if frame.density > 0.0 { frame.wind_strength } else { 0.0 };
 
         frame.density * 0.5 + wind * 0.5
       }

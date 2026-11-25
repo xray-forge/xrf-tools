@@ -8511,6 +8511,7 @@ dependencies = [
  "xrf-engine-target",
  "xrf-error",
  "xrf-extension",
+ "xrf-ipc",
  "xrf-job",
  "xrf-ltx",
  "xrf-ltx-project",

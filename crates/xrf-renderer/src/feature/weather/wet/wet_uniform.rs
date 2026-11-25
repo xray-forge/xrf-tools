@@ -57,8 +57,8 @@ pub(crate) struct WetUniform {
 }
 
 impl WetUniform {
-  /// Metres a second gusts drift at for a keyframe's `wind_velocity`, a hundredth of it, and the least and most.
-  const GUST_SPEED: (f32, f32, f32) = (0.01, 1.0, 12.0);
+  /// The share of the wind's speed gusts drift at, and the least and most metres a second of it.
+  const GUST_SPEED: (f32, f32, f32) = (0.5, 1.0, 12.0);
   /// Metres the gusts' drift repeats over: a whole number of the noise's 70 m and, at half the drift, 29 m tiles
   /// (`GUST_TILES` in `shaders/frame/wet_patch.wgsl`).
   pub(crate) const GUST_REPEAT: f64 = 2030.0;
@@ -67,9 +67,9 @@ impl WetUniform {
   pub(crate) const CREEP_MOST: f32 = 1.5;
 
   /// The way and speed gusts drift for a wind: downwind, as the rain leans, in renderer space.
-  pub(crate) fn get_gust(direction: f32, velocity: f32) -> Vec2 {
-    let (scale, least, most): (f32, f32, f32) = Self::GUST_SPEED;
-    let speed: f32 = (velocity * scale).clamp(least, most);
+  pub(crate) fn get_gust(direction: f32, speed: f32) -> Vec2 {
+    let (share, least, most): (f32, f32, f32) = Self::GUST_SPEED;
+    let speed: f32 = (speed * share).clamp(least, most);
 
     Vec2::new(-direction.sin() * speed, -direction.cos() * speed)
   }

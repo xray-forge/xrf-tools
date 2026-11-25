@@ -133,7 +133,7 @@ impl WeatherMixer<'_> {
       rain_color: Self::lerp(f, &a.rain_color, &b.rain_color),
       rain_density: scalar(a.rain_density, b.rain_density),
       wind_direction: scalar(a.wind_direction, b.wind_direction),
-      wind_velocity: scalar(a.wind_velocity, b.wind_velocity),
+      wind_speed: scalar(a.wind_speed, b.wind_speed),
       weight: f,
       modifiers: modified.count,
     }

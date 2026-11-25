@@ -47,7 +47,7 @@ impl WeatherFade {
       rain: Self::fade_rain(from.rain, to.rain, t),
       wind: RenderWind {
         direction: lerp(from.wind.direction, to.wind.direction),
-        velocity: lerp(from.wind.velocity, to.wind.velocity),
+        speed: lerp(from.wind.speed, to.wind.speed),
       },
       engine: to.engine,
       thunderbolt: to.thunderbolt.clone(),

@@ -23,6 +23,12 @@ pub struct RenderFoliageSettings {
   pub grass_push: f32,
   #[setting(min = 0, max = 5)]
   pub grass_wave: f32,
+  /// How far gusts travelling with the wind calm and drive what it moves, and tilt the grass, none at nothing; and how
+  /// many metres apart they stand.
+  #[setting(min = 0, max = 5)]
+  pub gusts: f32,
+  #[setting(min = 4, max = 100)]
+  pub gust_spacing: f32,
   /// How fast the branches' flow field drifts, how fast the trunks swing, and how far.
   #[setting(min = 0, max = 20)]
   pub trees_speed: f32,
@@ -47,6 +53,8 @@ impl Default for RenderFoliageSettings {
       grass_turbulence: 1.4,
       grass_push: 1.5,
       grass_wave: 0.4,
+      gusts: 0.0,
+      gust_spacing: 24.0,
       trees_speed: 11.0,
       trees_trunk: 0.15,
       trees_bend: 0.5,

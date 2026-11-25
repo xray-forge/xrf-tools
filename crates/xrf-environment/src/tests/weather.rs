@@ -46,6 +46,7 @@ fn loads_a_keyframe_as_the_engine_holds_it() {
   // Rotated as the sky is, where not written.
   assert_eq!(noon.clouds_rotation, noon.sky_rotation);
   assert!((noon.wind_direction - std::f32::consts::PI).abs() < 1e-6);
+  assert_eq!(noon.wind_speed, 5.0);
   // Defaults the keyframe leaves out.
   assert_eq!(noon.water_intensity, 1.0);
   assert_eq!(noon.tree_amplitude, 0.005);
@@ -259,6 +260,8 @@ fn reads_an_extended_keyframe_by_monoliths_rules() {
   assert_eq!(noon.bloom_threshold, 2.5);
   assert_eq!(noon.tree_amplitude, 0.01);
   assert_eq!(noon.tree_speed, 1.0);
+  // Its 150 of a thousand is that share of the strongest wind, twenty metres a second.
+  assert!((noon.wind_speed - 3.0).abs() < 1e-5);
   assert_eq!(
     catalog.sun_table.as_ref().map(|table| table.get_hour(12)),
     Some(SunPosition {

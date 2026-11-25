@@ -28,6 +28,9 @@ pub(crate) struct GrassWindUniform {
   pub foliage_previous_anim: Vec4,
   pub foliage_flora: Vec4,
   pub foliage_previous_wind: Vec4,
+  /// The gusts, this frame and the last.
+  pub foliage_gusts: Vec4,
+  pub foliage_previous_gusts: Vec4,
   /// One in `x` where a tuft stands along its ground's normal rather than straight up.
   pub alignment: Vec4,
 }
@@ -53,6 +56,8 @@ impl GrassWindUniform {
     self.foliage_previous_anim = foliage.previous_anim;
     self.foliage_flora = foliage.flora;
     self.foliage_previous_wind = foliage.previous_wind;
+    self.foliage_gusts = foliage.gusts;
+    self.foliage_previous_gusts = foliage.previous_gusts;
     self
   }
 

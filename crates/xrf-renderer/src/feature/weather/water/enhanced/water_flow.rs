@@ -21,8 +21,6 @@ pub(crate) struct WaterFlow {
 }
 
 impl WaterFlow {
-  /// The share of its strongest a wind's velocity is taken for.
-  const WIND_SHARE: f64 = 0.001;
   /// The rain ripples' pace by the rain's density: its density 1.6 times over, held between these.
   const RIPPLE_RAIN: (f64, f64, f64) = (1.6, 0.65, 1.0);
 
@@ -35,7 +33,7 @@ impl WaterFlow {
   ) {
     let step: f64 = time.get_advance();
     let elapsed: f64 = step * f64::from(settings.flow);
-    let strength: f64 = (f64::from(wind.velocity) * Self::WIND_SHARE).clamp(0.0, 1.0);
+    let strength: f64 = f64::from(wind.get_strength());
     let calm_flow: f64 = f64::from(settings.calm_flow);
     let pace = |most: f64, least: f64| (most * strength).max(least * calm_flow).min(most);
     let (rain_scale, rain_least, rain_most): (f64, f64, f64) = Self::RIPPLE_RAIN;

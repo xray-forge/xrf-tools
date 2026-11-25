@@ -6,6 +6,10 @@ use crate::section::key::EnvironmentValue;
 use crate::weather::weather_key::WeatherKey;
 use crate::weather::weather_keyframe::WeatherKeyframe;
 
+/// Metres a second a unit of Monolith's `wind_velocity` stands for.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const WEATHER_EXTENDED_WIND_SPEED: f32 = 0.02;
+
 /// One keyframe as the engine holds it once loaded, `CEnvDescriptor` after `load`: angles in radians, the clouds'
 /// colour scaled by its multiplier, the sun's direction built, every key the section leaves out at its default.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -32,7 +36,8 @@ pub struct WeatherDescriptor {
   /// Clamped to a unit.
   pub rain_density: f32,
   pub rain_color: [f32; 3],
-  pub wind_velocity: f32,
+  /// Metres a second.
+  pub wind_speed: f32,
   /// Radians.
   pub wind_direction: f32,
   pub hemi_color: [f32; 4],
@@ -151,7 +156,7 @@ impl WeatherDescriptor {
       water_intensity: number(WeatherKey::WaterIntensity),
       wet_surface_factor: number(WeatherKey::WetSurfaceFactor),
       wind_direction: number(WeatherKey::WindDirection).to_radians(),
-      wind_velocity: number(WeatherKey::WindVelocity),
+      wind_speed: Self::read_wind_speed(section, engine),
     }
   }
 
@@ -209,6 +214,17 @@ impl WeatherDescriptor {
     };
 
     Some(Self::direction_of(altitude.to_radians(), longitude.to_radians()))
+  }
+
+  /// The wind's speed in metres a second. OpenXRay's configs write it so, its rain leaning furthest at twenty
+  /// (`drop_max_wind_vel`); Monolith takes its thousand as the strongest wind, so a thousand stands for those twenty.
+  fn read_wind_speed(section: &EnvironmentSection<WeatherKey>, engine: XrayEngine) -> f32 {
+    let velocity: f32 = section.get_number(WeatherKey::WindVelocity, engine);
+
+    match engine {
+      XrayEngine::Vanilla => velocity,
+      XrayEngine::Extended => velocity * WEATHER_EXTENDED_WIND_SPEED,
+    }
   }
 
   /// The trees' sway speed, rotation and wave. Monolith reads none of them and sways by OpenXRay's defaults, which an

@@ -1,3 +1,5 @@
+import { RENDER_STRONGEST_WIND } from "@xrf/ipc/types/xrf-renderer";
+
 /** The bounds each number of a keyframe set by hand is offered between on a slider, in its own units. */
 export const LEVEL_MANUAL_WEATHER_LIMITS = {
   cloudsRotation: { max: 360, min: 0, step: 1 },
@@ -16,5 +18,5 @@ export const LEVEL_MANUAL_WEATHER_LIMITS = {
   treesSpeed: { max: 5, min: 0, step: 0.05 },
   waterIntensity: { max: 1, min: 0, step: 0.01 },
   windDirection: { max: 360, min: 0, step: 1 },
-  windVelocity: { max: 50, min: 0, step: 0.5 },
+  windSpeed: { max: RENDER_STRONGEST_WIND, min: 0, step: 0.1 },
 } as const;

@@ -1,5 +1,5 @@
-import { formatDegrees, formatNumber, formatPercent } from "@xrf/format";
-import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
+import { formatDegrees, formatNumber } from "@xrf/format";
+import { ERenderFoliageMode, RENDER_STRONGEST_WIND, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
@@ -47,6 +47,11 @@ export const RENDER_GRASS_DENSITY_LIMITS: IRenderLimits = {
 /** @returns One of the enhanced foliage motion's strengths. */
 export function formatFoliageStrength(strength: number): string {
   return formatNumber(strength, 2);
+}
+
+/** @returns A share of the strongest wind as the speed it stands for. */
+export function formatWindShare(share: number): string {
+  return `${formatNumber(share * RENDER_STRONGEST_WIND, 1)} m/s`;
 }
 
 /** @returns A grass density as the settings offer it: how many times the game's. */
@@ -205,10 +210,22 @@ export const RENDER_FOLIAGE_SETTINGS: TRenderSettings<TRenderFoliageSettings> = 
     toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.grassTurbulence, 0.05)
   ),
   grassWave: toFoliageSlider("Grass wave", toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.grassWave, 0.05)),
+  gusts: {
+    ...toFoliageSlider("Gusts", toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.gusts, 0.05)),
+    description: "Gusts travelling with the wind over trees and grass; none at 0.",
+  },
+  gustSpacing: {
+    ...toFoliageSlider(
+      "Gust spacing",
+      toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.gustSpacing, 1),
+      formatGrassRadius
+    ),
+    isInert: (foliage: TRenderFoliageSettings) => foliage.mode !== ERenderFoliageMode.ENHANCED || foliage.gusts <= 0,
+  },
   minSpeed: toFoliageSlider(
     "Least wind",
     toRenderLimits(RENDER_FEATURE_SCHEMA.grass.foliage.minSpeed, 0.01),
-    formatPercent
+    formatWindShare
   ),
   mode: {
     control: ERenderSettingControl.CHOICE,

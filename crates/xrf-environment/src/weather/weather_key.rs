@@ -27,6 +27,7 @@ declare_environment_keys! {
     RainDensity = "rain_density": Number, vanilla: Required(Number(0.0)), extended: Required(Number(0.0));
     RainColor = "rain_color": Vector { least: 3, most: 3 },
       vanilla: Required(Vector(&[0.0, 0.0, 0.0])), extended: Required(Vector(&[0.0, 0.0, 0.0]));
+    /// Metres a second, or of the strongest wind's thousand on Monolith.
     WindVelocity = "wind_velocity": Number, vanilla: Required(Number(0.0)), extended: Required(Number(0.0));
     /// Degrees.
     WindDirection = "wind_direction": Number, vanilla: Required(Number(0.0)), extended: Required(Number(0.0));

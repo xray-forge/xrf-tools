@@ -9,6 +9,10 @@ pub(crate) struct FoliageWindValues {
   pub previous_wind: Vec4,
   /// The grass's drift speed, turbulence, push and wave.
   pub grass: Vec4,
+  /// The gusts, none while their strength in `x` is nothing: the metres apart they stand in `y`, and the cells their
+  /// broad and smaller layers have moved downwind in `zw`, this frame and the last.
+  pub gusts: Vec4,
+  pub previous_gusts: Vec4,
   /// The branches' drift speed, the trunks' swing speed and bend, and one while the enhanced motion draws.
   pub trees: Vec4,
   /// How far the flow fields have drifted, this frame and the last.

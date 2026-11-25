@@ -56,7 +56,7 @@ impl WeatherLighting {
       }),
       wind: RenderWind {
         direction: mix.wind_direction,
-        velocity: mix.wind_velocity,
+        speed: mix.wind_speed,
       },
       engine,
       thunderbolt: None,

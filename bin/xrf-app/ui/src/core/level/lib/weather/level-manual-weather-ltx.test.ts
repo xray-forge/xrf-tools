@@ -26,6 +26,14 @@ describe("toLevelManualWeatherLtx", () => {
     expect(text).not.toContain("tree_amplitude_intensity");
   });
 
+  // OpenXRay's configs write metres a second, Monolith's a thousand for the strongest wind, twenty of them.
+  it("writes the wind in its engine's units", () => {
+    const input = { manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, windSpeed: 10 }, time: 0 };
+
+    expect(toLevelManualWeatherLtx({ ...input, engine: EXrayEngine.VANILLA })).toContain("\nwind_velocity = 10\n");
+    expect(toLevelManualWeatherLtx({ ...input, engine: EXrayEngine.EXTENDED })).toContain("\nwind_velocity = 500\n");
+  });
+
   // Monolith stands its sun by the sun table and reads Call of Chernobyl's one tree key.
   it("leaves out what an extended engine does not read", () => {
     const text: string = toLevelManualWeatherLtx({

@@ -73,6 +73,8 @@ export const RENDER_DEFAULT_VIEW_FEATURES: RenderViewFeatures = {
       grassSpeed: 9.5,
       grassTurbulence: 1.4,
       grassWave: 0.4,
+      gustSpacing: 24.0,
+      gusts: 0.0,
       minSpeed: 0.1,
       mode: "engine",
       sssColor: 0.75,
@@ -318,6 +320,8 @@ export const RENDER_FEATURE_SCHEMA: RenderSettingNode = {
       grassSpeed: { isInteger: false, kind: "number", max: 20.0, min: 0.0, recommended: null, wastedAbove: null },
       grassTurbulence: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
       grassWave: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+      gustSpacing: { isInteger: false, kind: "number", max: 100.0, min: 4.0, recommended: null, wastedAbove: null },
+      gusts: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
       minSpeed: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
       mode: { kind: "choice", values: ["engine", "enhanced"] },
       sssColor: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
@@ -545,6 +549,9 @@ export const RENDER_MAX_SHADOW_CASCADES: number = 4;
 
 /** Texels the sun's shadow filter reaches each way at most: the widest the sun's pass has a pipeline for. */
 export const RENDER_MAX_SHADOW_FILTER: number = 3;
+
+/** Metres a second of the strongest wind, at which what a wind drives is at its most. */
+export const RENDER_STRONGEST_WIND: number = 20.0;
 
 /** GTAO's search: the slices it turns about a pixel and the steps it takes each way along each. */
 export type RenderAmbientOcclusionGtaoSettings = {
@@ -1353,6 +1360,12 @@ export type RenderFoliageSettings = {
   grassTurbulence: number | null;
   grassPush: number | null;
   grassWave: number | null;
+  /**
+   * How far gusts travelling with the wind calm and drive what it moves, and tilt the grass, none at nothing; and how
+   * many metres apart they stand.
+   */
+  gusts: number | null;
+  gustSpacing: number | null;
   /** How fast the branches' flow field drifts, how fast the trunks swing, and how far. */
   treesSpeed: number | null;
   treesTrunk: number | null;

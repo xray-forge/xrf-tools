@@ -10,7 +10,7 @@ use crate::lighting::weather::render_fog::RenderFog;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 use crate::lighting::wind::render_tree_wind::RenderTreeWind;
-use crate::lighting::wind::render_wind::RenderWind;
+use crate::lighting::wind::render_wind::{RENDER_STRONGEST_WIND, RenderWind};
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::tests::support::test_time::at;
@@ -66,9 +66,9 @@ fn draws_the_engine_s_streaks_and_the_enhanced_drops_each_by_its_look() {
 
 #[test]
 fn falls_the_rain_as_monolith_leans_scatters_and_slows_it() {
-  let rain = |velocity: f32, gust: f32| {
+  let rain = |strength: f32, gust: f32| {
     falling_rain(Falling {
-      velocity,
+      strength,
       gust,
       ..Falling::default()
     })
@@ -79,23 +79,23 @@ fn falls_the_rain_as_monolith_leans_scatters_and_slows_it() {
   assert_eq!(still.fall.truncate(), Vec3::new(20.0, 30.0, 15.0));
   assert_eq!(still.aim.truncate().truncate(), AIM);
   // Still air falls straight down at half the pace, each drop scattered by up to fifteen degrees and a half more; a
-  // wind past two thirds of Monolith's thousand falls at all of the pace, and its strongest leans them thirty five
+  // wind past two thirds of Monolith's strongest falls at all of the pace, and its strongest leans them thirty five
   // degrees, scattered by half of fifteen.
   assert!(still.axis.truncate().distance(Vec3::NEG_Y) < 1e-6);
   assert!((still.axis.w - 22.5f32.to_radians()).abs() < 1e-6);
   assert_eq!(still.pace, 0.5);
-  assert_eq!(rain(700.0, 0.0).pace, 1.0);
-  assert!((rain(1000.0, 0.0).axis.y + 35f32.to_radians().cos()).abs() < 1e-5);
-  assert!((rain(1000.0, 0.0).axis.w - 7.5f32.to_radians()).abs() < 1e-6);
+  assert_eq!(rain(0.7, 0.0).pace, 1.0);
+  assert!((rain(1.0, 0.0).axis.y + 35f32.to_radians().cos()).abs() < 1e-5);
+  assert!((rain(1.0, 0.0).axis.w - 7.5f32.to_radians()).abs() < 1e-6);
   // The rain's own gust leans still air, and takes a wind's lean off.
   assert!((rain(0.0, 0.5).axis.y + 17.5f32.to_radians().cos()).abs() < 1e-5);
-  assert!(rain(500.0, -0.5).axis.truncate().distance(Vec3::NEG_Y) < 1e-6);
+  assert!(rain(0.5, -0.5).axis.truncate().distance(Vec3::NEG_Y) < 1e-6);
 }
 
 #[test]
 fn leans_the_rain_against_monolith_s_negated_wind_direction() {
   let lean: Vec4 = falling_rain(Falling {
-    velocity: 1000.0,
+    strength: 1.0,
     direction: 90f32.to_radians(),
     ..Falling::default()
   })
@@ -174,8 +174,8 @@ const AIM: Vec2 = Vec2::new(0.0, -5.0);
 struct Falling {
   drops: RenderRainDropsMode,
   density: f32,
-  /// `wind_velocity` and `wind_direction`.
-  velocity: f32,
+  /// The share of its strongest the wind blows at, and its direction.
+  strength: f32,
   direction: f32,
   /// The gust of Monolith's rain.
   gust: f32,
@@ -186,7 +186,7 @@ impl Default for Falling {
     Self {
       drops: RenderRainDropsMode::Engine,
       density: 1.0,
-      velocity: 0.0,
+      strength: 0.0,
       direction: 0.0,
       gust: 0.0,
     }
@@ -202,7 +202,7 @@ fn falling_rain(falling: Falling) -> RainUniform {
     drops: falling.drops,
     wind: RenderWind {
       direction: falling.direction,
-      velocity: falling.velocity,
+      speed: falling.strength * RENDER_STRONGEST_WIND,
     },
     gust: AmbientGust {
       rain: falling.gust,

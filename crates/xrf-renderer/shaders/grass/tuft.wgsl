@@ -19,7 +19,8 @@ fn tuft_swayed(wind: GrassWind, standing: vec3<f32>, foot: f32, wave: f32, share
   if (wind.foliage_trees.w > 0.5) {
     let anim: vec4<f32> = select(wind.foliage_anim, wind.foliage_previous_anim, is_previous);
     let blowing: vec4<f32> = select(wind.foliage_wind, wind.foliage_previous_wind, is_previous);
-    let setup: FoliageSetup = FoliageSetup(blowing, wind.foliage_grass, wind.foliage_trees, anim);
+    let gusts: vec4<f32> = select(wind.foliage_gusts, wind.foliage_previous_gusts, is_previous);
+    let setup: FoliageSetup = FoliageSetup(blowing, wind.foliage_grass, wind.foliage_trees, anim, gusts);
     let moved: vec3<f32> = foliage_grass(vec2<f32>(standing.x, -standing.z), standing.y - foot, setup);
 
     return standing + vec3<f32>(moved.x, moved.y, -moved.z);

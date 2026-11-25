@@ -40,7 +40,7 @@ fn keyframe(time: u32, sun: f32) -> WeatherDescriptor {
     fog_distance: 900.0,
     rain_density: 0.0,
     rain_color: [0.5; 3],
-    wind_velocity: 0.0,
+    wind_speed: 0.0,
     wind_direction: 0.0,
     hemi_color: [0.4, 0.4, 0.4, 1.0],
     sun_color: [sun; 3],

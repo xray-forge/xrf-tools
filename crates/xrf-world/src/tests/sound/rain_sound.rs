@@ -38,7 +38,7 @@ fn rain(engine: XrayEngine, frame: RainFrame) -> Option<AudioSceneEmitter> {
 fn loops_at_the_origin_once_it_rains_and_stops_when_it_does_not() {
   let wet: RainFrame = RainFrame {
     density: 0.4,
-    wind_velocity: 0.0,
+    wind_strength: 0.0,
     hemi: Some(1.0),
   };
   let playing: AudioSceneEmitter = rain(XrayEngine::Vanilla, wet).expect("it rains");
@@ -54,7 +54,7 @@ fn loops_at_the_origin_once_it_rains_and_stops_when_it_does_not() {
 fn is_as_loud_as_each_engine_makes_it() {
   let frame: RainFrame = RainFrame {
     density: 0.05,
-    wind_velocity: 600.0,
+    wind_strength: 0.6,
     hemi: Some(0.5),
   };
   let vanilla: AudioSceneEmitter = rain(XrayEngine::Vanilla, frame).expect("it rains");

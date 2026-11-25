@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use xrf_math::glam::Vec3;
 use xrf_renderer::{
   EngineSpace, RenderLighting, RenderSceneId, RenderViewBurst, RenderViewFrame, RenderViewInput, RenderViewOptions,
+  RenderWind,
 };
 
 use crate::camera::camera_controller::CameraController;
@@ -168,7 +169,7 @@ impl WorldViewport {
 
     RainFrame {
       density: mix.map_or(0.0, |mix| mix.rain_density),
-      wind_velocity: mix.map_or(0.0, |mix| mix.wind_velocity),
+      wind_strength: mix.map_or(0.0, |mix| RenderWind::get_strength_of(mix.wind_speed)),
       hemi,
     }
   }

@@ -5,7 +5,7 @@ use xrf_math::glam::{DVec4, Vec4};
 use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::lighting::wind::foliage_motion::FoliageMotion;
-use crate::lighting::wind::render_wind::RenderWind;
+use crate::lighting::wind::render_wind::{RENDER_STRONGEST_WIND, RenderWind};
 use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::view_time::ViewTime;
 
@@ -18,15 +18,23 @@ pub(crate) struct FoliageWind {
   /// Drifted across the engine's ground in `xy`, the trunks' clock in `z`, seconds in `w`.
   anim: DVec4,
   previous: DVec4,
+  /// Metres the gusts have travelled downwind, this frame and the last: a distance along the wind rather than a place,
+  /// so a turning wind turns the gusts about the level and not about all the way they came.
+  travelled: f64,
+  previous_travelled: f64,
   /// The wind the last frame was drawn in.
   wind: Option<Vec4>,
 }
 
 impl FoliageWind {
-  /// The share of its strongest a wind's velocity is taken for.
-  const VELOCITY_SHARE: f32 = 0.001;
-  /// The least velocity the fields drift at, so a near calm does not crawl in slow motion.
-  const LEAST_VELOCITY: f32 = 200.0;
+  /// The least share of the strongest wind the fields drift at, so a near calm does not crawl in slow motion.
+  const LEAST_DRIFT: f32 = 0.2;
+  /// The cells along the wind the gusts' noise repeats over, which keeps their place precise however long the wind
+  /// blows (`GUST_MASK` in `shaders/common/foliage_wind.wgsl`).
+  pub(crate) const GUST_REPEAT: f64 = 1024.0;
+  /// The cells the gusts' broad and smaller layer move by as the wind crosses their spacing: the broad's are a spacing
+  /// each, the smaller's 0.45 of one (`GUST_BROAD` and `GUST_MIDDLE` there), running 1.3 times as fast.
+  const GUST_PACE: (f64, f64) = (1.0, 1.3 / 0.45);
 
   /// Moves the fields on by the view's step at this frame's `wind`, as far as `motion` lets them; `wetness`, from
   /// nothing to one, bends the leaves' normals harder.
@@ -40,17 +48,16 @@ impl FoliageWind {
   ) -> FoliageWindValues {
     let is_windy: bool = motion == FoliageMotion::Blowing;
     let elapsed: f64 = time.get_advance();
-    let velocity: f32 = wind
-      .velocity
-      .max(settings.min_speed / Self::VELOCITY_SHARE)
-      .max(Self::LEAST_VELOCITY)
-      * Self::VELOCITY_SHARE;
+    let strength: f32 = wind.get_strength().max(settings.min_speed);
+    let velocity: f32 = strength.max(Self::LEAST_DRIFT);
     let turn: f32 = -wind.direction + FRAC_PI_2;
     let (sine, cosine): (f32, f32) = turn.sin_cos();
 
     self.previous = self.anim;
+    self.previous_travelled = self.travelled;
 
     if is_windy {
+      self.travelled += f64::from(velocity * RENDER_STRONGEST_WIND) * elapsed;
       self.anim += Vec4::new(
         velocity * cosine,
         velocity * sine,
@@ -61,13 +68,7 @@ impl FoliageWind {
         * elapsed;
     }
 
-    let speed: f32 = if is_windy {
-      settings
-        .min_speed
-        .max((wind.velocity * Self::VELOCITY_SHARE).clamp(0.0, 1.0))
-    } else {
-      0.0
-    };
+    let speed: f32 = if is_windy { strength } else { 0.0 };
 
     let blowing: Vec4 = Vec4::new(cosine, sine, speed, (speed * 1.66).sqrt().clamp(0.0, 1.0));
 
@@ -80,6 +81,8 @@ impl FoliageWind {
         settings.grass_push,
         settings.grass_wave,
       ),
+      gusts: Self::get_gusts(settings, self.travelled),
+      previous_gusts: Self::get_gusts(settings, self.previous_travelled),
       trees: Vec4::new(
         settings.trees_speed,
         settings.trees_trunk,
@@ -90,6 +93,20 @@ impl FoliageWind {
       previous_anim: Self::get_anim(self.previous, settings.trees_trunk),
       flora: Vec4::new(0.0, 0.0, wetness, u32::from(settings.is_enhanced()) as f32),
     }
+  }
+
+  /// The gusts as `shaders/common/foliage_wind.wgsl` reads them, `travelled` metres downwind, each layer's move taken
+  /// within the cells its noise repeats over.
+  fn get_gusts(settings: &RenderFoliageSettings, travelled: f64) -> Vec4 {
+    let spacings: f64 = travelled / f64::from(settings.gust_spacing);
+    let (broad, middle): (f64, f64) = Self::GUST_PACE;
+
+    Vec4::new(
+      settings.gusts,
+      settings.gust_spacing,
+      LevelTime::wrap(spacings * broad, Self::GUST_REPEAT),
+      LevelTime::wrap(spacings * middle, Self::GUST_REPEAT),
+    )
   }
 
   /// The drift as `shaders/common/foliage_wind.wgsl` reads it, the trunks' clock wrapped within the period of their
