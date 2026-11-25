@@ -1,8 +1,8 @@
 mod geometry_clusters;
 mod sector_fixture;
 mod static_row;
-mod static_sector_picks;
 mod static_scene;
+mod static_sector_picks;
 mod static_surface_builder;
 mod static_trace;
 mod static_trace_density;
