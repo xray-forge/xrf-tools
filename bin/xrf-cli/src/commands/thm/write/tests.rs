@@ -20,7 +20,7 @@ fn texture(case: &str) -> CommandResult<PathBuf> {
 
   DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast)
     .encode(&DdsMipChain::build(
-      &RgbaImage::from_pixel(32, 16, Rgba([90, 80, 70, 200])),
+      RgbaImage::from_pixel(32, 16, Rgba([90, 80, 70, 200])),
       DdsMipmaps::Filtered(DdsMipFilter::Box),
     )?)?
     .write_to_path(&path)?;

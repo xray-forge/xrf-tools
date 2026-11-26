@@ -109,7 +109,7 @@ mod tests {
   use crate::mip::dds_mipmaps::DdsMipmaps;
 
   fn chain(width: u32, height: u32) -> XrfResult<DdsMipChain> {
-    DdsMipChain::build(&RgbaImage::new(width, height), DdsMipmaps::Filtered(DdsMipFilter::Box))
+    DdsMipChain::build(RgbaImage::new(width, height), DdsMipmaps::Filtered(DdsMipFilter::Box))
   }
 
   #[test]

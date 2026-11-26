@@ -184,7 +184,7 @@ mod tests {
   fn encode(width: u32, height: u32, mipmaps: DdsMipmaps) -> XrfResult<DdsFile> {
     let base: RgbaImage = RgbaImage::from_fn(width, height, |x, y| Rgba([(x * 16) as u8, (y * 32) as u8, 0, u8::MAX]));
 
-    DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast).encode(&DdsMipChain::build(&base, mipmaps)?)
+    DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast).encode(&DdsMipChain::build(base, mipmaps)?)
   }
 
   #[test]
@@ -209,7 +209,7 @@ mod tests {
     let base: RgbaImage = RgbaImage::from_fn(16, 16, |x, y| {
       Rgba([(x * 16) as u8, (y * 16) as u8, ((x + y) * 8) as u8, u8::MAX])
     });
-    let chain: DdsMipChain = DdsMipChain::build(&base, DdsMipmaps::Filtered(DdsMipFilter::Box))?;
+    let chain: DdsMipChain = DdsMipChain::build(base, DdsMipmaps::Filtered(DdsMipFilter::Box))?;
 
     for candidate in DdsEncodeCandidate::ALL {
       let file: DdsFile = DdsEncoding::new(candidate.to_image_format(), Quality::Fast).encode(&chain)?;
@@ -249,7 +249,7 @@ mod tests {
     // Each face one flat shade, so the layer it reads back from shows where it was written.
     let new_face = |side: u32, face: u8| {
       DdsMipChain::build(
-        &RgbaImage::from_pixel(side, side, Rgba([40 * (face + 1), 0, 0, u8::MAX])),
+        RgbaImage::from_pixel(side, side, Rgba([40 * (face + 1), 0, 0, u8::MAX])),
         DdsMipmaps::Filtered(DdsMipFilter::Kaiser),
       )
     };
@@ -319,7 +319,7 @@ mod tests {
         Rgba([0, 0, 0, 0])
       }
     });
-    let chain: DdsMipChain = DdsMipChain::build(&base, DdsMipmaps::Disabled)?;
+    let chain: DdsMipChain = DdsMipChain::build(base, DdsMipmaps::Disabled)?;
     let read = |encoding: DdsEncoding| -> XrfResult<RgbaImage> {
       DdsFile::read_from_bytes(&encoding.encode(&chain)?.write_to_bytes()?)?.decode_rgba(0)
     };

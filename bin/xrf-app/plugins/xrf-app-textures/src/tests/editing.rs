@@ -38,7 +38,7 @@ fn rewritten_later(path: &Path) {
 /// A candidate's bytes, encoded as `format` names.
 fn encoded(format: ImageFormat) -> Vec<u8> {
   DdsEncoding::new(format, Quality::Fast)
-    .encode(&DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain"))
+    .encode(&DdsMipChain::build(source_image(16), DdsMipmaps::Disabled).expect("chain"))
     .expect("encode")
     .write_to_bytes()
     .expect("bytes")

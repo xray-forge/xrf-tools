@@ -25,7 +25,10 @@ impl LevelLodStrip {
   /// Returns an error when the image does not encode.
   pub(crate) fn encode(image: &RgbaImage) -> XrfResult<Vec<u8>> {
     DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Normal)
-      .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?)?
+      .encode(&DdsMipChain::build(
+        image.clone(),
+        DdsMipmaps::Filtered(DdsMipFilter::Kaiser),
+      )?)?
       .write_to_bytes()
   }
 

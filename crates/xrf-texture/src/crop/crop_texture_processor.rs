@@ -73,7 +73,7 @@ mod tests {
     let source: PathBuf = GeneratedResources::write(&resource, []).expect("expect scratch source");
 
     let chain: DdsMipChain =
-      DdsMipChain::build(&RgbaImage::new(8, 8), DdsMipmaps::Disabled).expect("expect a source chain");
+      DdsMipChain::build(RgbaImage::new(8, 8), DdsMipmaps::Disabled).expect("expect a source chain");
 
     DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Slow)
       .encode(&chain)

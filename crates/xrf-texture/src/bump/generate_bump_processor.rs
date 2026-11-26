@@ -103,7 +103,8 @@ impl GenerateBumpProcessor {
     drop(normals);
     drop(gloss);
 
-    let encoded_bump: DdsFile = Self::encode(&bump, options)?;
+    // A copy, since the companion is measured against the bump as it was before the encoder.
+    let encoded_bump: DdsFile = Self::encode(bump.clone(), options)?;
 
     steps.advance();
 
@@ -127,7 +128,7 @@ impl GenerateBumpProcessor {
     steps.advance();
     options.job.set_detail(Some(String::from("Encoding the height")));
 
-    let encoded_companion: DdsFile = Self::encode(&companion, options)?;
+    let encoded_companion: DdsFile = Self::encode(companion, options)?;
 
     steps.advance();
 
@@ -293,7 +294,7 @@ impl GenerateBumpProcessor {
 
   /// Both halves are written the same way, in the pair's one format with a mip chain, as `fmt0` in the SDK sets up
   /// twice.
-  fn encode(image: &RgbaImage, options: &GenerateBumpOptions) -> XrfResult<DdsFile> {
+  fn encode(image: RgbaImage, options: &GenerateBumpOptions) -> XrfResult<DdsFile> {
     DdsEncoding::new(options.format.to_candidate().to_image_format(), options.quality)
       .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(options.mip_filter))?)
   }

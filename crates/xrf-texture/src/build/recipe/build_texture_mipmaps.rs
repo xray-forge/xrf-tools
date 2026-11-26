@@ -60,11 +60,11 @@ impl BuildTextureMipmaps {
   /// # Errors
   ///
   /// Returns an error when the face has no pixels, or the `Advanced` chain cannot halve one of its levels.
-  pub fn build(&self, face: &RgbaImage) -> XrfResult<DdsMipChain> {
+  pub fn build(&self, face: RgbaImage) -> XrfResult<DdsMipChain> {
     match self {
       Self::Disabled => DdsMipChain::build(face, DdsMipmaps::Disabled),
       Self::Filtered { filter, fade } => fade.fade_chain(DdsMipChain::build(face, DdsMipmaps::Filtered(*filter))?),
-      Self::Advanced(chain) => chain.build(face),
+      Self::Advanced(chain) => chain.build(&face),
     }
   }
 }

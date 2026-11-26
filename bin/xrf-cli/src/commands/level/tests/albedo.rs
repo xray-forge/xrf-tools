@@ -22,7 +22,7 @@ fn write_grey(root: &Path, path: &str, value: u8) -> XrfResult {
   fs::create_dir_all(target.parent().expect("a texture directory"))?;
 
   DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
-    .encode(&DdsMipChain::build(&image, DdsMipmaps::Disabled)?)?
+    .encode(&DdsMipChain::build(image, DdsMipmaps::Disabled)?)?
     .write_to_path(&target)
 }
 

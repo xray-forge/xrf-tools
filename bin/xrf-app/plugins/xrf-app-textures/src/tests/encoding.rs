@@ -26,7 +26,7 @@ fn comparison_of(
   files: Option<TextureFiles>,
   candidates: &[DdsEncodeCandidate],
 ) -> TextureComparison {
-  let chain: DdsMipChain = DdsMipChain::build(image, DdsMipmaps::Disabled).expect("chain");
+  let chain: DdsMipChain = DdsMipChain::build(image.clone(), DdsMipmaps::Disabled).expect("chain");
 
   TextureComparison {
     roots: XrayRoots::default(),

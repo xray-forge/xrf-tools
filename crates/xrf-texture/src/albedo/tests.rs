@@ -11,7 +11,7 @@ fn linear(value: u8) -> f64 {
 /// A flat grey texture `side` texels a side, its chain as `mipmaps` builds it.
 fn grey_texture(side: u32, mipmaps: DdsMipmaps) -> XrfResult<DdsFile> {
   DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast).encode(&DdsMipChain::build(
-    &RgbaImage::from_pixel(side, side, grey(128, 255)),
+    RgbaImage::from_pixel(side, side, grey(128, 255)),
     mipmaps,
   )?)
 }

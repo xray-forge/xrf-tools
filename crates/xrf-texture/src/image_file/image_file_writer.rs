@@ -27,7 +27,7 @@ impl ImageFileWriter {
   /// dimensions the image was built with.
   pub fn write_dds(path: &Path, image: &RgbaImage, format: DDSImageFormat, mipmaps: DdsMipmaps) -> XrfResult {
     DdsEncoding::new(format, Quality::Slow)
-      .encode(&DdsMipChain::build(image, mipmaps)?)?
+      .encode(&DdsMipChain::build(image.clone(), mipmaps)?)?
       .write_to_path(path)
   }
 

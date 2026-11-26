@@ -198,7 +198,7 @@ impl TextureRenderSource {
     let picture: RgbaImage = DdsFile::read_from_bytes(&bytes)?.decode_rgba(0)?;
 
     DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
-      .encode(&DdsMipChain::build(&picture, DdsMipmaps::Disabled)?)?
+      .encode(&DdsMipChain::build(picture, DdsMipmaps::Disabled)?)?
       .write_to_bytes()
   }
 }

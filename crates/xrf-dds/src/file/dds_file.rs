@@ -348,7 +348,7 @@ mod tests {
 
   /// A texture to read facts back off, built through the encoder rather than hand-assembled.
   fn encoded_file(width: u32, height: u32, mipmaps: DdsMipmaps) -> DdsFile {
-    let chain: DdsMipChain = DdsMipChain::build(&RgbaImage::new(width, height), mipmaps).expect("expect a chain");
+    let chain: DdsMipChain = DdsMipChain::build(RgbaImage::new(width, height), mipmaps).expect("expect a chain");
 
     DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Slow)
       .encode(&chain)

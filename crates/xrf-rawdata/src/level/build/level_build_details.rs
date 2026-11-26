@@ -142,7 +142,10 @@ impl LevelBuildDetails {
   pub(crate) fn encode(image: &RgbaImage) -> XrfResult<Vec<u8>> {
     DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Normal)
       .with_cut_out()
-      .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?)?
+      .encode(&DdsMipChain::build(
+        image.clone(),
+        DdsMipmaps::Filtered(DdsMipFilter::Kaiser),
+      )?)?
       .write_to_bytes()
   }
 

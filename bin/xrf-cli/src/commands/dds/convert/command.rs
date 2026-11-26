@@ -69,7 +69,7 @@ impl GenericCommand for ConvertCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let base: RgbaImage = DdsFile::read_from_path(source)?.decode_rgba(0)?;
-    let chain: DdsMipChain = DdsMipChain::build(&base, Self::get_mipmaps(matches))?;
+    let chain: DdsMipChain = DdsMipChain::build(base, Self::get_mipmaps(matches))?;
 
     let written: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, candidate, quality)?;
 

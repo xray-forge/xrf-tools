@@ -277,7 +277,7 @@ mod tests {
       image::Rgba([byte(x * 9), byte(y * 5), byte(x ^ y), byte(x * 17 + y * 31)])
     });
     let bytes: Vec<u8> = DdsEncoding::new(ImageFormat::BC2RgbaUnorm, Quality::Fast)
-      .encode(&DdsMipChain::build(&base, DdsMipmaps::Disabled)?)?
+      .encode(&DdsMipChain::build(base, DdsMipmaps::Disabled)?)?
       .write_to_bytes()?;
     let dds: Dds = Dds::read(&mut bytes.as_slice()).expect("expect the DDS to read back");
     let decoded: Vec<u8> = alphas(&DdsSdkAlphaDecoder::decode(&dds)?);

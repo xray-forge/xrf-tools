@@ -51,7 +51,7 @@ impl TextureComparison {
   ) -> TauriResult<(Self, TextureEncodingCurrent, JobOutcome)> {
     let file: DdsFile = DdsFile::read_from_bytes(bytes).map_err(error_to_string)?;
     let base: RgbaImage = file.decode_rgba(0).map_err(error_to_string)?;
-    let chain: DdsMipChain = DdsMipChain::build(&base, mipmaps).map_err(error_to_string)?;
+    let chain: DdsMipChain = DdsMipChain::build(base, mipmaps).map_err(error_to_string)?;
 
     let weighing: JobScope = job.enter(Self::PHASE_WEIGH, Some(DdsEncodeCandidate::ALL.len() as u64));
     let mut attempts: Vec<DdsEncodeAttempt> = Vec::with_capacity(DdsEncodeCandidate::ALL.len());

@@ -143,7 +143,7 @@ pub(crate) fn encode_dds(size: u32) -> Vec<u8> {
   let base: RgbaImage = RgbaImage::from_fn(size, size, |x, y| Rgba([(x * 8) as u8, (y * 8) as u8, 0, u8::MAX]));
 
   DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
-    .encode(&DdsMipChain::build(&base, DdsMipmaps::Disabled).expect("chain"))
+    .encode(&DdsMipChain::build(base, DdsMipmaps::Disabled).expect("chain"))
     .expect("encode")
     .write_to_bytes()
     .expect("bytes")

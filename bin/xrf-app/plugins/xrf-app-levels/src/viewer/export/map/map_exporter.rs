@@ -83,7 +83,7 @@ impl MapExporter {
       MapExportFormat::Tga => ViewerImage::encode_tga(&image, target)?,
       MapExportFormat::Svg => return Err(Self::refuse_svg()),
       MapExportFormat::Dds(export) => {
-        let dds: DdsFile = DdsMipChain::build(&image, export.to_mipmaps())
+        let dds: DdsFile = DdsMipChain::build(image, export.to_mipmaps())
           .and_then(|chain| export.to_encoding().encode(&chain))
           .map_err(|error| format!("Failed to encode map '{}': {error}", target.display()))?;
 

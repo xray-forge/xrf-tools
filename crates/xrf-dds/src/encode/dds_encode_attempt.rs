@@ -88,7 +88,7 @@ mod tests {
 
   #[test]
   fn prices_each_candidate_against_the_pixels_it_was_given() -> XrfResult {
-    let chain: DdsMipChain = DdsMipChain::build(&noisy(32, 32), DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?;
+    let chain: DdsMipChain = DdsMipChain::build(noisy(32, 32), DdsMipmaps::Filtered(DdsMipFilter::Kaiser))?;
 
     let uncompressed: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Rgba8, Quality::Fast)?;
     let compressed: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc1, Quality::Fast)?;

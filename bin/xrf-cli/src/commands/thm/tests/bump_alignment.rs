@@ -33,7 +33,7 @@ fn tiles(seed: u32) -> Vec<f32> {
 
 fn write_texture(root: &Path, name: &str, image: &RgbaImage) -> XrfResult {
   DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
-    .encode(&DdsMipChain::build(image, DdsMipmaps::Disabled)?)?
+    .encode(&DdsMipChain::build(image.clone(), DdsMipmaps::Disabled)?)?
     .write_to_path(&root.join("textures").join(format!("{name}.dds")))
 }
 

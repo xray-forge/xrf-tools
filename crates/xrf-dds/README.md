@@ -72,7 +72,7 @@ use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, 
 
 fn main() -> xrf_error::XrfResult {
   let pixels = RgbaImage::from_pixel(4, 4, Rgba([255, 0, 0, 255]));
-  let chain = DdsMipChain::build(&pixels, DdsMipmaps::Disabled)?;
+  let chain = DdsMipChain::build(pixels, DdsMipmaps::Disabled)?;
   let texture = DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Normal).encode(&chain)?;
 
   assert_eq!(texture.metadata().mipmap_levels, 1);

@@ -142,7 +142,7 @@ mod tests {
 
   fn flat(size: u32) -> XrfResult<DdsMipChain> {
     DdsMipChain::build(
-      &RgbaImage::from_pixel(size, size, Rgba([100, 100, 100, 200])),
+      RgbaImage::from_pixel(size, size, Rgba([100, 100, 100, 200])),
       DdsMipmaps::Filtered(DdsMipFilter::Box),
     )
   }

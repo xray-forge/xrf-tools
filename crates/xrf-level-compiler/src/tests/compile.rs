@@ -211,7 +211,7 @@ fn counts_an_implicitly_lit_textures_maps_among_the_geometry_steps_outputs() -> 
   )?;
   DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast)
     .encode(&DdsMipChain::build(
-      &RgbaImage::from_pixel(4, 4, Rgba([96, 96, 96, 255])),
+      RgbaImage::from_pixel(4, 4, Rgba([96, 96, 96, 255])),
       DdsMipmaps::Disabled,
     )?)?
     .write_to_path(&textures.join("ground.dds"))?;

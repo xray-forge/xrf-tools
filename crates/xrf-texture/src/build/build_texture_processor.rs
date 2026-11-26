@@ -42,7 +42,7 @@ impl BuildTextureProcessor {
     let faces: Vec<DdsMipChain> = recipe
       .layout
       .split(source)?
-      .iter()
+      .into_iter()
       .map(|face| recipe.mipmaps.build(face))
       .collect::<XrfResult<_>>()?;
     let levels: u32 = u32::try_from(faces[0].levels().len())

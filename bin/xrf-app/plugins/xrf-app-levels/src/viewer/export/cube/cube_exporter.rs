@@ -78,7 +78,7 @@ impl CubeExporter {
       CubeExportFormat::Dds(export) => {
         let target: &Path = &paths[0];
         let dds: DdsFile = faces
-          .iter()
+          .into_iter()
           .map(|face| DdsMipChain::build(face, export.to_mipmaps()))
           .collect::<Result<Vec<DdsMipChain>, _>>()
           .and_then(|chains| export.to_encoding().encode_cube(&chains))

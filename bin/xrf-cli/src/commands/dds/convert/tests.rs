@@ -21,7 +21,7 @@ fn source(case: &str) -> CommandResult<PathBuf> {
   });
 
   DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
-    .encode(&DdsMipChain::build(&base, DdsMipmaps::Disabled)?)?
+    .encode(&DdsMipChain::build(base, DdsMipmaps::Disabled)?)?
     .write_to_path(&path)?;
 
   Ok(path)

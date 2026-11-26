@@ -106,7 +106,7 @@ mod tests {
     std::fs::create_dir_all(path.parent().expect("case directory"))?;
     DdsEncoding::new(format, Quality::Fast)
       .encode(&DdsMipChain::build(
-        &RgbaImage::from_pixel(16, 8, Rgba([10, 20, 30, 40])),
+        RgbaImage::from_pixel(16, 8, Rgba([10, 20, 30, 40])),
         mipmaps,
       )?)?
       .write_to_path(&path)?;

@@ -342,7 +342,7 @@ fn exports_the_planted_details_with_their_atlas() -> XrfResult {
   std::fs::write(
     textures.join("detail").join("detail_grass.dds"),
     DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
-      .encode(&DdsMipChain::build(&texture, DdsMipmaps::Disabled)?)?
+      .encode(&DdsMipChain::build(texture, DdsMipmaps::Disabled)?)?
       .write_to_bytes()?,
   )?;
 

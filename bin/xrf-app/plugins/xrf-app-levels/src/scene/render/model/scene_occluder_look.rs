@@ -58,7 +58,7 @@ impl SceneOccluderLook {
     let base: RgbaImage = RgbaImage::from_pixel(Self::FILL_SIZE, Self::FILL_SIZE, Rgba(fill));
 
     DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast)
-      .encode(&DdsMipChain::build(&base, DdsMipmaps::Disabled)?)?
+      .encode(&DdsMipChain::build(base, DdsMipmaps::Disabled)?)?
       .write_to_bytes()
       .map(Some)
   }

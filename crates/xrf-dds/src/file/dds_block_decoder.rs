@@ -115,7 +115,7 @@ mod tests {
     let base: RgbaImage = RgbaImage::from_fn(203, 141, |x, y| {
       Rgba([byte(x * 7 + y * 3), byte(x * y), byte(x ^ y), byte(x + 2 * y)])
     });
-    let chain: DdsMipChain = DdsMipChain::build(&base, DdsMipmaps::Filtered(DdsMipFilter::Box))?;
+    let chain: DdsMipChain = DdsMipChain::build(base, DdsMipmaps::Filtered(DdsMipFilter::Box))?;
 
     for format in [
       ImageFormat::BC1RgbaUnorm,
@@ -144,7 +144,7 @@ mod tests {
 
   #[test]
   fn leaves_an_uncompressed_layout_to_the_caller() -> XrfResult {
-    let chain: DdsMipChain = DdsMipChain::build(&RgbaImage::new(8, 8), DdsMipmaps::Disabled)?;
+    let chain: DdsMipChain = DdsMipChain::build(RgbaImage::new(8, 8), DdsMipmaps::Disabled)?;
     let bytes: Vec<u8> = DdsEncoding::new(ImageFormat::Rgba8Unorm, Quality::Fast)
       .encode(&chain)?
       .write_to_bytes()?;
@@ -158,7 +158,7 @@ mod tests {
 
   #[test]
   fn leaves_a_header_claiming_no_texels_to_the_caller() -> XrfResult {
-    let chain: DdsMipChain = DdsMipChain::build(&RgbaImage::new(8, 8), DdsMipmaps::Disabled)?;
+    let chain: DdsMipChain = DdsMipChain::build(RgbaImage::new(8, 8), DdsMipmaps::Disabled)?;
     let bytes: Vec<u8> = DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Fast)
       .encode(&chain)?
       .write_to_bytes()?;

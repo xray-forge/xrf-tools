@@ -180,7 +180,7 @@ impl Scene {
     let image: RgbaImage = RgbaImage::from_fn(width, 4, |x, _| Rgba([0, 128, 0, if x < 4 { 0 } else { 255 }]));
 
     DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast)
-      .encode(&DdsMipChain::build(&image, DdsMipmaps::Disabled)?)?
+      .encode(&DdsMipChain::build(image, DdsMipmaps::Disabled)?)?
       .write_to_path(path)
   }
 }
