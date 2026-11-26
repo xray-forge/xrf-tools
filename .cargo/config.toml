@@ -31,9 +31,11 @@ rustflags = [
 ]
 
 # The SDKs `cargo make fetch-sdks` places; any set in the environment wins. bindgen loads libclang from
-# `.sdks/libclang`: the fetched one on Windows, a link to the system's elsewhere.
+# `.sdks/libclang`: the fetched one on Windows, a link to the system's elsewhere. `sdl3-sys` links `SDL3` without a
+# search path, so a crate linking SDL adds `SDL3_LIB_DIR` to the linker's search path in its build script.
 [env]
 DLSS_SDK = { value = ".sdks/dlss", relative = true }
 VULKAN_SDK = { value = ".sdks/vulkan-headers", relative = true }
 LIBCLANG_PATH = { value = ".sdks/libclang", relative = true }
 STEAMAUDIO_LIB_DIR = { value = ".sdks/steam-audio", relative = true }
+SDL3_LIB_DIR = { value = ".sdks/sdl3", relative = true }

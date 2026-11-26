@@ -120,6 +120,12 @@ acoustics:
   development build loads it from `.sdks/steam-audio`.
 - `xrf-audio` builds without it when its `steam-audio` feature is off, playing dry; Linux CI tests it that way.
 
+The native game's window and input come from SDL 3 (zlib licence, through the `sdl3` crate), linked against the library
+SDL itself builds, so no C compiler is involved; no workspace member links it yet. On Windows, `cargo make fetch-sdks`
+places the pinned 3.4.20 release in `.sdks/sdl3` (`SDL3.dll`, `SDL3.lib` and SDL's `LICENSE.txt`), and
+`.cargo/config.toml` points `SDL3_LIB_DIR` there, which the crate linking SDL adds to the linker's search path. Nothing
+is fetched on other platforms, where the game does not run yet.
+
 ### DLSS
 
 The desktop app upscales with NVIDIA DLSS when built with the `dlss` feature (`cargo build -p xrf-app --features dlss`),

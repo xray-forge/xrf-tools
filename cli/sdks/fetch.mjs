@@ -8,7 +8,8 @@ import * as process from "node:process";
 /**
  * Fetches the SDKs the native features build against into `.sdks/`, where `.cargo/config.toml` points the builds. Each
  * is pinned to a commit and checked out sparsely, only the headers and libraries a build reads. Pinned archives add
- * Steam Audio on every platform, and libclang and DXC on Windows; elsewhere `.sdks/libclang` links the system's one.
+ * Steam Audio on every platform, and libclang, DXC and SDL3 on Windows; elsewhere `.sdks/libclang` links the system's
+ * one.
  */
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const SDKS_ROOT = path.join(REPOSITORY_ROOT, ".sdks");
@@ -250,6 +251,34 @@ const ARCHIVED_TOOLS = [
         hash: "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
       },
     ],
+  },
+  {
+    // SDL 3.4.20 (November 2026), the game's window and input, as SDL builds it for Visual C++, so no C build is
+    // needed. It moves in step with `sdl3-sys`, whose 0.7.3 targets this release. A crate linking it finds `SDL3.lib`
+    // through `SDL3_LIB_DIR` (`.cargo/config.toml`), and its binary needs `SDL3.dll` at run time. Windows only: the
+    // game runs nowhere else yet.
+    name: "sdl3",
+    url: "https://github.com/libsdl-org/SDL/releases/download/release-3.4.20/SDL3-devel-3.4.20-VC.zip",
+    hash: "1ec3009655ee37b1f73e52b3b120acc5afd8abaf9532f3303b1bf1dfe91b5969",
+    files: {
+      win32: [
+        {
+          member: "SDL3-3.4.20/lib/x64/SDL3.dll",
+          file: "SDL3.dll",
+          hash: "66844f10251cc1c10619ed5d8e4e3224f564900ee6d69ba87d63de782addae40",
+        },
+        {
+          member: "SDL3-3.4.20/lib/x64/SDL3.lib",
+          file: "SDL3.lib",
+          hash: "c60802d826fe9a724f824ecdeac1f422bdf53a53705ef32eb12dd73e5d566e2c",
+        },
+        {
+          member: "SDL3-3.4.20/LICENSE.txt",
+          file: "LICENSE.txt",
+          hash: "1c040b8271b37e5076359f8fd54240e371114112924d2df81ef87c7d6a1dfdfd",
+        },
+      ],
+    },
   },
 ];
 

@@ -79,7 +79,7 @@ dependencies = ["check-format", "lint", "test", "test-derive", "test-doc", "veri
 # Builds.
 
 [tasks.fetch-sdks]
-description = "Fetch the pinned DLSS SDK, Vulkan headers, libclang and DXC into .sdks. Skips what is already at its pin."
+description = "Fetch the pinned DLSS SDK, Vulkan headers, libclang, DXC, Steam Audio and SDL3 into .sdks. Skips what is already at its pin."
 category = "Build"
 command = "node"
 args = ["cli/sdks/fetch.mjs"]
