@@ -45,6 +45,23 @@ impl RenderQueue {
     }
   }
 
+  /// A queue whose commands land in the answered receiver instead of on a render thread, which it never starts, so a
+  /// test counts what its callers send with no GPU. A wait or a stop is answered only once the receiver is dropped,
+  /// as `NotRunning`.
+  #[cfg(any(test, feature = "testing"))]
+  pub fn new_recording(
+    workers: RenderWorkers,
+    bundle: Arc<dyn RenderBundle>,
+    world: Arc<Mutex<dyn RenderWorld>>,
+  ) -> (Self, Receiver<RenderCommand>) {
+    let queue: Self = Self::new(workers, bundle, world);
+    let (sender, receiver): (Sender<RenderCommand>, Receiver<RenderCommand>) = channel();
+
+    queue.lock().sender = Some(sender);
+
+    (queue, receiver)
+  }
+
   /// The same, keeping the driver's compiled pipelines in `store` between runs.
   pub fn with_cache_store(mut self, store: Arc<dyn RenderCacheStore>) -> Self {
     self.store = Some(store);

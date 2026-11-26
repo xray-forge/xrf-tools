@@ -65,6 +65,7 @@ typescript-bindings = [
 ]
 # Upscales with NVIDIA DLSS on Vulkan and D3D12, built against its SDK as DEVELOPMENT.md sets it up.
 dlss = ["xrf-dlss/sdk"]
+testing = []
 
 [lints]
 workspace = true

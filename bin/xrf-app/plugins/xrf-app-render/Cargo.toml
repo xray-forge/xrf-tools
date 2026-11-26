@@ -58,6 +58,7 @@ tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
 xrf-environment = { workspace = true }
 xrf-job = { workspace = true, features = ["testing"] }
+xrf-renderer = { workspace = true, features = ["testing"] }
 xrf-test-utils = { workspace = true }
 xrf-visual = { workspace = true }
 

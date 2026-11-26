@@ -14,8 +14,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::testing::create_test_pool;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderBundle, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
-  RenderQueue, RenderSpawnModels, RenderViewportId, RenderWindowHost, RenderWorkers, SurfaceTargetUnsafe,
+  RenderAssetSource, RenderBundle, RenderCommand, RenderHoldId, RenderLevelDetails, RenderLevelParticles,
+  RenderLevelSource, RenderLevelSpawn, RenderQueue, RenderSpawnModels, RenderViewportId, RenderWindowHost,
+  RenderWorkers, SurfaceTargetUnsafe,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 use xrf_world::{WorldLevelSource, WorldLevelWeather};
@@ -139,6 +140,31 @@ fn create_units() -> Units {
   }
 }
 
+/// Viewports over a queue that records every command sent instead of starting a render thread, since a hold would
+/// start the GPU; and the commands it recorded.
+fn create_recording_viewports() -> (RenderViewports, Receiver<RenderCommand>) {
+  let pool = Arc::new(create_test_pool(2));
+  let workers: RenderWorkers = RenderWorkers::new(pool);
+  let world: WorldState = WorldState::new(workers.clone());
+  let (queue, commands): (RenderQueue, Receiver<RenderCommand>) =
+    RenderQueue::new_recording(workers, Arc::new(EmptyBundle), world.as_render_world());
+  let shows: ViewportShows = ViewportShows::new(world.clone());
+
+  (RenderViewports::new(Renderer::new(queue), world, shows), commands)
+}
+
+/// The holds taken and released among the commands recorded since the last call, in the order they were sent.
+fn list_hold_commands(commands: &Receiver<RenderCommand>) -> Vec<(bool, RenderHoldId)> {
+  commands
+    .try_iter()
+    .filter_map(|command| match command {
+      RenderCommand::Hold { id } => Some((true, id)),
+      RenderCommand::Release { id } => Some((false, id)),
+      _ => None,
+    })
+    .collect()
+}
+
 /// Attaches a viewport to `window` for a page that hears nothing.
 fn attach(viewports: &RenderViewports, window: &str) -> RenderViewportId {
   viewports
@@ -194,6 +220,54 @@ fn lets_go_only_of_the_viewports_of_a_window_whose_page_went() {
   assert!(shows.show(kept, kept_ticket, level()).is_some());
 
   viewports.shut_down();
+}
+
+#[test]
+fn releases_a_hold_only_for_the_window_that_took_it() {
+  let (viewports, commands): (RenderViewports, Receiver<RenderCommand>) = create_recording_viewports();
+  let hold: RenderHoldId = viewports.hold("main").expect("a hold number");
+
+  assert_eq!(list_hold_commands(&commands), [(true, hold)]);
+
+  viewports.release_hold("viewer", hold);
+
+  assert_eq!(
+    list_hold_commands(&commands),
+    [],
+    "another window's page cannot release it"
+  );
+
+  viewports.release_hold("main", hold);
+
+  assert_eq!(list_hold_commands(&commands), [(false, hold)]);
+
+  viewports.release_hold("main", hold);
+
+  assert_eq!(list_hold_commands(&commands), [], "a hold is released once");
+}
+
+#[test]
+fn releases_the_holds_of_a_window_whose_page_went_and_no_other() {
+  let (viewports, commands): (RenderViewports, Receiver<RenderCommand>) = create_recording_viewports();
+  let gone: RenderHoldId = viewports.hold("main").expect("a hold number");
+  let kept: RenderHoldId = viewports.hold("viewer").expect("a hold number");
+
+  list_hold_commands(&commands);
+
+  assert!(!viewports.detach_window("main"), "it drew no viewport");
+  assert_eq!(list_hold_commands(&commands), [(false, gone)]);
+
+  viewports.release_hold("main", gone);
+
+  assert_eq!(
+    list_hold_commands(&commands),
+    [],
+    "its page's own release finds nothing left"
+  );
+
+  viewports.release_hold("viewer", kept);
+
+  assert_eq!(list_hold_commands(&commands), [(false, kept)]);
 }
 
 // Held no longer once the renderer let go, whatever the destroy answers, so a window that failed to go still closes.
