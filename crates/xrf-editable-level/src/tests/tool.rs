@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkLayout, ChunkWriter, XRayWrite};
+use xrf_chunk::{ChunkLayout, ChunkReader, ChunkWriter, XRayWrite};
 use xrf_error::XrfResult;
 use xrf_math::{Aabb, AiNodePosition, Sphere, Vector3d};
 
@@ -245,18 +245,60 @@ fn a_detail_object_tool_saved_as_its_part_reads_back_the_same() -> XrfResult {
     panic!("a detail part reads as chunks");
   };
 
+  let mut read_tool: EditableDetailObjectTool = EditableDetailObjectTool::read_from_part(&read)?;
+
+  read_tool.layout = ChunkLayout::default();
+  read_tool
+    .objects
+    .iter_mut()
+    .for_each(|object| object.layout = ChunkLayout::default());
+
   assert_eq!(scene_tool.get_file_name(0), "detail_object.part");
-  assert_eq!(
-    EditableDetailObjectTool {
-      layout: ChunkLayout::default(),
-      ..EditableDetailObjectTool::read_from_part(&read)?
-    },
-    detail_tool()
-  );
+  assert_eq!(read_tool, detail_tool());
   assert_eq!(read.write_to_bytes()?, bytes);
   assert!(
     EditableDetailObjectTool::read_from_scene_tool(&tool().to_scene_tool(GUID)?).is_err(),
     "the wall mark tool's part"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn a_detail_object_takes_the_first_of_a_repeated_chunk_and_keeps_an_unknown_one_as_the_editor_passes_it_over()
+-> XrfResult {
+  let mut stored: ChunkWriter = ChunkWriter::new();
+
+  for (id, payload) in [
+    (0x1000_u32, 1_u32.to_le_bytes().to_vec()),
+    (0x0101, b"detail\\trava_green\0".to_vec()),
+    (0x0103, 0.25_f32.to_le_bytes().to_vec()),
+    (0x0777, vec![7, 7, 7]),
+    (0x0102, [1.5_f32.to_le_bytes(), 2.0_f32.to_le_bytes()].concat()),
+    (0x0103, 4.0_f32.to_le_bytes().to_vec()),
+    (0x0104, 1_u32.to_le_bytes().to_vec()),
+  ] {
+    stored.write_u32(id)?;
+    stored.write_u32(payload.len() as u32)?;
+    stored.buffer.extend(payload);
+  }
+
+  let object: EditableDetailObject = EditableDetailObject::read(
+    &mut ChunkReader::from_vec(stored.flush_chunk_into_buffer(0)?)?.read_child_by_index(0)?,
+  )?;
+  let mut written: ChunkWriter = ChunkWriter::new();
+
+  object.write(&mut written)?;
+
+  assert_eq!(
+    object.density_factor, 0.25,
+    "the first density chunk, as `find_chunk` finds it"
+  );
+  assert_eq!((object.min_scale, object.max_scale), (1.5, 2.0));
+  assert_eq!(object.flags, EditableDetailObject::NO_WAVING_FLAG);
+  assert_eq!(
+    written.buffer, stored.buffer,
+    "the unknown and the repeated chunk come back as stored"
   );
 
   Ok(())

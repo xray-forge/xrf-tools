@@ -1,4 +1,4 @@
-use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite};
+use xrf_chunk::{ChunkLayout, ChunkReader, ChunkSequence, ChunkWriter, InMemoryChunkDataSource, XRayRead, XRayWrite};
 use xrf_error::{XrfError, XrfResult};
 
 /// One detail object of the detail tool, `EDetail` as `EDetail::Save` writes it: the library object it plants, by
@@ -14,6 +14,9 @@ pub struct EditableDetailObject {
   pub density_factor: f32,
   /// `DO_NO_WAVING` and the rest of `EDetail`'s flags.
   pub flags: u32,
+  /// How the object laid its chunks out, with any chunk the editor does not read, or reads only the first of, as
+  /// stored.
+  pub layout: ChunkLayout,
 }
 
 impl EditableDetailObject {
@@ -40,19 +43,51 @@ impl EditableDetailObject {
       max_scale,
       density_factor: Self::DEFAULT_DENSITY_FACTOR,
       flags,
+      layout: ChunkLayout::default(),
     }
   }
 
   /// The object as `EDetail::Load` reads its chunk, but keeping as stored a zero minimum scale or a maximum below it,
   /// which the editor fixes on load.
   ///
+  /// The editor finds each chunk by id from the start of the object (`IReader::find_chunk`), so the first of a
+  /// repeated chunk is the field and a chunk it does not know is passed over; both are kept in [`Self::layout`].
+  ///
   /// # Errors
   ///
-  /// Returns an error when a chunk the editor asserts on is missing, the version is another, a chunk does not hold
-  /// exactly what it is read as, or the object holds a chunk `EDetail::Save` does not write.
+  /// Returns an error when a chunk the editor asserts on is missing, the version is another, or a chunk does not hold
+  /// exactly what it is read as.
   pub(crate) fn read(reader: &mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = reader.read_children()?;
-    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32_payload()?;
+    let mut version: Option<u32> = None;
+    let mut reference: Option<String> = None;
+    let mut scale_limits: Option<(f32, f32)> = None;
+    let mut density_factor: Option<f32> = None;
+    let mut flags: Option<u32> = None;
+    let layout: ChunkLayout = ChunkLayout::read(reader, |chunk| {
+      match chunk.id {
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u32_payload()?),
+        Self::REFERENCE_CHUNK_ID if reference.is_none() => {
+          reference = Some(chunk.read_whole_payload(
+            "Expect the detail object reference chunk to hold exactly its name",
+            |chunk| chunk.read_w1251_string(),
+          )?);
+        }
+        Self::SCALE_LIMITS_CHUNK_ID if scale_limits.is_none() => {
+          scale_limits = Some(chunk.read_whole_payload(
+            "Expect the detail object scale chunk to hold exactly its two limits",
+            |chunk| Ok((chunk.read_f32()?, chunk.read_f32()?)),
+          )?);
+        }
+        Self::DENSITY_FACTOR_CHUNK_ID if density_factor.is_none() => {
+          density_factor = Some(chunk.read_f32_payload()?);
+        }
+        Self::FLAGS_CHUNK_ID if flags.is_none() => flags = Some(chunk.read_u32_payload()?),
+        _ => return Ok(false),
+      }
+
+      Ok(true)
+    })?;
+    let version: u32 = Self::require(version, "version")?;
 
     if version != Self::VERSION {
       return Err(XrfError::new_parsing_error(format!(
@@ -61,47 +96,35 @@ impl EditableDetailObject {
       )));
     }
 
-    let reference: String = ChunkReader::find_required_by_id(&chunks, Self::REFERENCE_CHUNK_ID)?.read_whole_payload(
-      "Expect the detail object reference chunk to hold exactly its name",
-      |chunk| chunk.read_w1251_string(),
-    )?;
-    let (min_scale, max_scale) = ChunkReader::find_required_by_id(&chunks, Self::SCALE_LIMITS_CHUNK_ID)?
-      .read_whole_payload(
-        "Expect the detail object scale chunk to hold exactly its two limits",
-        |chunk| Ok((chunk.read_f32()?, chunk.read_f32()?)),
-      )?;
-    let mut object: Self = Self::new(reference, min_scale, max_scale, 0);
+    let (min_scale, max_scale) = Self::require(scale_limits, "scale")?;
 
-    for mut chunk in chunks {
-      match chunk.id {
-        Self::VERSION_CHUNK_ID | Self::REFERENCE_CHUNK_ID | Self::SCALE_LIMITS_CHUNK_ID => {}
-        Self::DENSITY_FACTOR_CHUNK_ID => object.density_factor = chunk.read_f32_payload()?,
-        Self::FLAGS_CHUNK_ID => object.flags = chunk.read_u32_payload()?,
-        id => {
-          return Err(XrfError::new_parsing_error(format!(
-            "Detail object holds chunk {id:#06x}, which the editor does not save"
-          )));
-        }
-      }
-    }
-
-    Ok(object)
+    Ok(Self {
+      reference: Self::require(reference, "reference")?,
+      min_scale,
+      max_scale,
+      density_factor: density_factor.unwrap_or(Self::DEFAULT_DENSITY_FACTOR),
+      flags: flags.unwrap_or_default(),
+      layout,
+    })
   }
 
-  /// The object's chunks as `EDetail::Save` writes them.
+  /// A chunk `EDetail::Load` asserts on, `what` naming it.
+  fn require<V>(value: Option<V>, what: &str) -> XrfResult<V> {
+    value.ok_or_else(|| {
+      XrfError::new_parsing_error(format!(
+        "Detail object has no {what} chunk, which the editor asserts on"
+      ))
+    })
+  }
+
+  /// The object's chunks as `EDetail::Save` writes them, in [`Self::layout`]'s chunk order with its kept chunks.
   ///
   /// # Errors
   ///
   /// Returns an error when the reference does not encode.
   pub(crate) fn write(&self, writer: &mut ChunkWriter) -> XrfResult {
-    let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult {
-      let mut child: ChunkWriter = ChunkWriter::new();
-
-      write(&mut child)?;
-      child.flush_chunk_into(&mut writer.buffer, id)?;
-
-      Ok(())
-    };
+    let mut sequence: ChunkSequence = ChunkSequence::new();
+    let mut chunk = |id: u32, write: &dyn Fn(&mut ChunkWriter) -> XrfResult| -> XrfResult { sequence.push(id, write) };
 
     chunk(Self::VERSION_CHUNK_ID, &|child| Ok(child.write_u32(Self::VERSION)?))?;
     chunk(Self::REFERENCE_CHUNK_ID, &|child| {
@@ -115,6 +138,8 @@ impl EditableDetailObject {
     chunk(Self::DENSITY_FACTOR_CHUNK_ID, &|child| {
       Ok(child.write_f32(self.density_factor)?)
     })?;
-    chunk(Self::FLAGS_CHUNK_ID, &|child| Ok(child.write_u32(self.flags)?))
+    chunk(Self::FLAGS_CHUNK_ID, &|child| Ok(child.write_u32(self.flags)?))?;
+
+    self.layout.write(writer, sequence)
   }
 }
