@@ -236,7 +236,12 @@ impl LevelScene {
     slots.sort_unstable();
     slots.dedup();
     self.texture_slots = slots;
-    self.load.advance(streaming, &self.texture_slots, textures);
+
+    let waiting: (u32, u64) = self.pending.iter().fold((0, 0), |(sectors, bytes), (_, package)| {
+      (sectors + 1, bytes + package.buffer.len() as u64)
+    });
+
+    self.load.advance(streaming, waiting, &self.texture_slots, textures);
     self.driver = driver;
     self.skeleton_segments = skeleton_segments;
     self.gust = gust;
