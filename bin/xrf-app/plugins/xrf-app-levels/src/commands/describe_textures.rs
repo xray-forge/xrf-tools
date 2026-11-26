@@ -18,13 +18,13 @@ pub(crate) async fn levels_describe_textures(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Arc<Vec<LevelTextureReference>>>> {
-  LevelAnswer::read(
+  LevelAnswer::get(
     &levels,
     &assets,
     &execution,
     session_id,
     "Describing the level's textures",
-    |current, search| Ok(LevelTexturesPart::get(current, search)),
+    LevelTexturesPart::get,
   )
   .await
 }

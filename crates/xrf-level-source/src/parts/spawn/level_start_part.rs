@@ -61,7 +61,7 @@ impl LevelStartPart {
       .and_then(|bytes| {
         LevelCformFile::read_open_above_from_bytes(bytes, &eyes)
           .inspect_err(|error| {
-            LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCformFile::FILE_NAME, error));
+            LevelReport::unreadable_open_sky(source, &source.create_read_error(LevelCformFile::FILE_NAME, error));
           })
           .ok()
       })

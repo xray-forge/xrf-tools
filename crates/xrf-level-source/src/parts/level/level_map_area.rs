@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-
-use crate::LevelSourceResult;
+use xrf_error::{XrfError, XrfResult};
 
 /// The ground a level map covers, engine space: its least and greatest `x` and `z`, as `bound_rect` places it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -21,7 +20,7 @@ impl LevelMapArea {
   /// # Errors
   ///
   /// Returns an error naming the corners when either least edge is not below its greatest.
-  pub fn require_ground(&self) -> LevelSourceResult<()> {
+  pub fn require_ground(&self) -> XrfResult<()> {
     let Self {
       min_x,
       min_z,
@@ -32,9 +31,9 @@ impl LevelMapArea {
     if min_x < max_x && min_z < max_z {
       Ok(())
     } else {
-      Err(format!(
+      Err(XrfError::new_invalid_error(format!(
         "A level map's area spans no ground: {min_x}, {min_z}, {max_x}, {max_z}"
-      ))
+      )))
     }
   }
 }

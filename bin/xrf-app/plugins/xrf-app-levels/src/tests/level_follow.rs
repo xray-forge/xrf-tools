@@ -19,9 +19,9 @@ use xrf_job::testing::create_test_pool;
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
 use xrf_level_source::{
   LevelAudio, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelLightsPart,
-  LevelMapPart, LevelMount, LevelObjectMotionsPart, LevelParticlesPart, LevelRenderParts, LevelRenderSource,
-  LevelSectionsPart, LevelSource, LevelSpawnPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart,
-  LevelWeatherPart, OpenedLevel, SelectedLevel,
+  LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelRenderParts, LevelRenderSource, LevelSectionsPart,
+  LevelSource, LevelSpawnPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart, LevelWeatherPart, OpenedLevel,
+  SelectedLevel,
 };
 use xrf_renderer::{LevelPart, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::GeneratedResources;
@@ -99,10 +99,10 @@ fn new_levels(assets: &AssetMountState, pool: Option<Arc<ThreadPool>>) -> Select
   let levels: SelectedLevels = SelectedLevels::new("level", &SessionScopes::default());
   let levels: SelectedLevels = match pool {
     Some(pool) => levels.with_deferred_derivation(assets, pool, |current, assets| {
-      OpenedLevel::derive(current, &LevelMount::new(Arc::clone(assets.get_host())))
+      OpenedLevel::derive(current, assets.get_host()).map_err(|error| error.to_string())
     }),
     None => levels.with_derivation(assets, |current, assets| {
-      OpenedLevel::derive(current, &LevelMount::new(Arc::clone(assets.get_host())))
+      OpenedLevel::derive(current, assets.get_host()).map_err(|error| error.to_string())
     }),
   };
 
@@ -512,7 +512,7 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&levels, &assets, &roots);
   let source: LevelRenderSource = LevelRenderSource::new(
     Arc::clone(&opened),
-    LevelMount::new(Arc::clone(assets.get_host())),
+    Arc::clone(assets.get_host()),
     LevelAudio::new(silent_server()),
   );
 

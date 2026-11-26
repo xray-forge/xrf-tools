@@ -2,6 +2,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use std::time::Instant;
 
+use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
@@ -15,7 +16,6 @@ use xrf_spawn::{
 use xrf_vfs::XraySearch;
 use xrf_visual::{VisualRestPose, VisualTransform, ZoneSphere};
 
-use crate::LevelSourceResult;
 use crate::level::{LevelSource, SelectedLevel};
 use crate::parts::{
   LevelEnvironmentPart, LevelSpawnPart, LevelSpawnVisualsPart, LevelTextureReference, PackedLevelParticles,
@@ -56,7 +56,7 @@ impl LevelParticlesPart {
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,
-  ) -> LevelSourceResult<PackedLevelParticles> {
+  ) -> XrfResult<PackedLevelParticles> {
     current
       .parts
       .record_read::<Self, _>(search, |search| Self::pack_recorded(current, search, sections))
@@ -84,7 +84,7 @@ impl LevelParticlesPart {
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,
-  ) -> LevelSourceResult<PackedLevelParticles> {
+  ) -> XrfResult<PackedLevelParticles> {
     let started: Instant = Instant::now();
     let library: ParticleLibrary = Self::read_library(search)?;
     let mut placements: Vec<RenderParticlePlacement> = Self::read_planted(&current.source, search)?;
@@ -139,21 +139,21 @@ impl LevelParticlesPart {
     })
   }
 
-  fn read_library(search: &XraySearch) -> LevelSourceResult<ParticleLibrary> {
+  fn read_library(search: &XraySearch) -> XrfResult<ParticleLibrary> {
     search
       .read(ParticlesFile::FILE_NAME)
       .and_then(ParticlesFile::read_from_bytes)
       .map(ParticleLibrary::from)
-      .map_err(|error| format!("Failed to read '{}': {error}", ParticlesFile::FILE_NAME))
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read '{}': {error}", ParticlesFile::FILE_NAME)))
   }
 
   /// `CLevel::Load_GameSpecific_After`: each system the level plants for a single player game, lifted a centimetre.
-  fn read_planted(source: &LevelSource, search: &XraySearch) -> LevelSourceResult<Vec<RenderParticlePlacement>> {
+  fn read_planted(source: &LevelSource, search: &XraySearch) -> XrfResult<Vec<RenderParticlePlacement>> {
     let Some(bytes) = source.read_optional_file(search, LevelPsStaticFile::FILE_NAME)? else {
       return Ok(Vec::new());
     };
     let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes(bytes)
-      .map_err(|error| source.describe_read_failure(LevelPsStaticFile::FILE_NAME, &error))?;
+      .map_err(|error| source.create_read_error(LevelPsStaticFile::FILE_NAME, &error))?;
 
     Ok(
       file

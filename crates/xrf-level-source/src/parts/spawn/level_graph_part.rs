@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
+use xrf_error::{XrfError, XrfResult};
 use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_spawn::{SpawnFile, SpawnLevelGraph};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
-use crate::LevelSourceResult;
 use crate::level::SelectedLevel;
 use crate::parts::LevelSpawnPart;
 
@@ -17,7 +17,7 @@ pub(crate) const LEVEL_GRAPH_PART: &str = "graph";
 pub struct LevelGraphPart;
 
 impl SessionPart for LevelGraphPart {
-  type Value = LevelSourceResult<Arc<SpawnLevelGraph>>;
+  type Value = XrfResult<Arc<SpawnLevelGraph>>;
 
   const NAME: &'static str = LEVEL_GRAPH_PART;
 }
@@ -30,7 +30,7 @@ impl LevelGraphPart {
   ///
   /// Returns the reason when the spawn's graph or patrols cannot be read or the level has no name to find them by,
   /// which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> LevelSourceResult<Arc<SpawnLevelGraph>> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<SpawnLevelGraph>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let level: String = current.source.require_name()?;
       let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) =
@@ -38,7 +38,7 @@ impl LevelGraphPart {
 
       SpawnFile::read_level_graph_from_chunks(&chunks, &level)
         .map(Arc::new)
-        .map_err(|error| format!("Failed to read the graph of '{path}': {error}"))
+        .map_err(|error| XrfError::new_read_error(format!("Failed to read the graph of '{path}': {error}")))
     })
   }
 }

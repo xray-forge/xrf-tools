@@ -17,13 +17,13 @@ pub(crate) async fn levels_describe_level_map(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Option<LevelMapDescription>>> {
-  LevelAnswer::read(
+  LevelAnswer::get(
     &levels,
     &assets,
     &execution,
     session_id,
     "Describing the level's map",
-    |current, search| Ok(LevelMapPart::get(current, search)),
+    LevelMapPart::get,
   )
   .await
 }

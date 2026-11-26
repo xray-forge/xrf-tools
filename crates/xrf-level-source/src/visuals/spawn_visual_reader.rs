@@ -10,7 +10,6 @@ use xrf_visual::{
   VisualSurfaces,
 };
 
-use crate::LevelSourceResult;
 use crate::parts::LevelTextureReference;
 use crate::report::LevelReport;
 use crate::visuals::{SpawnVisual, SpawnVisuals};
@@ -53,7 +52,7 @@ impl SpawnVisualReader {
   /// # Errors
   ///
   /// Returns why it cannot be read; the failure is reported once and kept, not retried.
-  pub fn get(&self, name: &str) -> LevelSourceResult<Arc<SpawnVisual>> {
+  pub fn get(&self, name: &str) -> XrfResult<Arc<SpawnVisual>> {
     self.visuals.get_or_read(name, || {
       self
         .read(name)
@@ -75,19 +74,19 @@ impl SpawnVisualReader {
       .is_ok_and(|file| VisualPacker::holds_skinned_vertices(&file))
   }
 
-  fn read(&self, name: &str) -> LevelSourceResult<SpawnVisual> {
+  fn read(&self, name: &str) -> XrfResult<SpawnVisual> {
     let search: &XraySearch = &self.search;
     let file: Arc<OgfFile> = self
       .read_file(name)
-      .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read visual '{name}': {error}")))?;
     let package: VisualPackage = VisualPacker::pack(&file);
 
     // Drawn as nothing, it would stand where its spawn point's icon is: a load failure says why instead.
     if package.description.computed_bounds.is_none() {
-      return Err(format!(
+      return Err(XrfError::new_asset_error(format!(
         "Visual '{name}' packs no geometry: {}",
         Self::describe_skips(&package)
-      ));
+      )));
     }
     let rest: Option<Arc<VisualRestPose>> =
       Self::find_rest_pose(search, name, &file, &package.description).map(Arc::new);

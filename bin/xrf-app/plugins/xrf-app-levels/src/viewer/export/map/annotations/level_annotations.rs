@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionSnapshot;
+use xrf_error::XrfResult;
 use xrf_level_source::{LevelGraphPart, LevelObjectsDescription, SelectedLevel};
 use xrf_spawn::SpawnLevelGraph;
 use xrf_vfs::XraySearch;
@@ -23,7 +23,7 @@ impl LevelAnnotations {
   /// # Errors
   ///
   /// Returns an error when the level has no name, or its spawn or graph cannot be read.
-  pub(crate) fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Self> {
+  pub(crate) fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Self> {
     let graph: Arc<SpawnLevelGraph> = LevelGraphPart::get(current, search)?;
 
     Ok(Self::of(

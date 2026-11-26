@@ -1,9 +1,9 @@
+use xrf_error::XrfResult;
 use xrf_level::{LevelAiFile, LevelAiHeader, LevelAiNode, LevelAiNodes};
 use xrf_renderer::{RenderAiMapNode, RenderLevelAiMap};
 use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 
-use crate::LevelSourceResult;
 use crate::level::{LevelSource, SelectedLevel};
 
 /// The part name a change event uses when a level's AI map goes stale.
@@ -30,18 +30,18 @@ impl LevelAiMapPart {
   pub(crate) fn read(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
-  ) -> LevelSourceResult<Option<RenderLevelAiMap>> {
+  ) -> XrfResult<Option<RenderLevelAiMap>> {
     current
       .parts
       .record_read::<Self, _>(search, |search| Self::read_recorded(&current.source, search))
   }
 
-  fn read_recorded(source: &LevelSource, search: &XraySearch) -> LevelSourceResult<Option<RenderLevelAiMap>> {
+  fn read_recorded(source: &LevelSource, search: &XraySearch) -> XrfResult<Option<RenderLevelAiMap>> {
     let Some(bytes) = source.read_optional_file(search, LevelAiFile::FILE_NAME)? else {
       return Ok(None);
     };
     let (file, nodes) = LevelAiFile::read_with_nodes_from_bytes(bytes)
-      .map_err(|error| source.describe_read_failure(LevelAiFile::FILE_NAME, &error))?;
+      .map_err(|error| source.create_read_error(LevelAiFile::FILE_NAME, &error))?;
 
     Ok(Some(Self::describe(&file.header, &nodes)))
   }

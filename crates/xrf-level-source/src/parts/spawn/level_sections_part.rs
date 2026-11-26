@@ -2,12 +2,12 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxResolution};
 use xrf_material::XrayReducedTextures;
 use xrf_session::{SessionPart, SessionParts, SessionSnapshot};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
-use crate::LevelSourceResult;
 use crate::level::{LevelConfigs, LevelSource, SelectedLevel};
 use crate::parts::{LevelSpawn, LevelSpawnPart};
 use crate::report::LevelReport;
@@ -21,7 +21,7 @@ pub(crate) const LEVEL_SECTIONS_PART: &str = "sections";
 pub struct LevelSectionsPart;
 
 impl SessionPart for LevelSectionsPart {
-  type Value = LevelSourceResult<Arc<Ltx>>;
+  type Value = XrfResult<Arc<Ltx>>;
 
   const NAME: &'static str = LEVEL_SECTIONS_PART;
 }
@@ -33,7 +33,7 @@ impl LevelSectionsPart {
   /// # Errors
   ///
   /// Returns the reason the spawn or the configs cannot be read, which every later ask answers with again.
-  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> LevelSourceResult<Arc<Ltx>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<Ltx>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let spawn: Arc<LevelSpawn> = LevelSpawnPart::get(current, search)?;
 
@@ -47,11 +47,7 @@ impl LevelSectionsPart {
   }
 
   /// `parts` with the sections an open read from `inputs` kept as the level's.
-  pub(crate) fn with(
-    parts: SessionParts,
-    sections: LevelSourceResult<Arc<Ltx>>,
-    inputs: XrayInputRecord,
-  ) -> SessionParts {
+  pub(crate) fn with(parts: SessionParts, sections: XrfResult<Arc<Ltx>>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(sections, inputs)
   }
 
@@ -65,7 +61,7 @@ impl LevelSectionsPart {
     search: &XraySearch,
     configs: &LevelConfigs,
     spawn: &LevelSpawn,
-  ) -> LevelSourceResult<Arc<Ltx>> {
+  ) -> XrfResult<Arc<Ltx>> {
     let started: Instant = Instant::now();
     let resolved: Arc<LtxResolution> = Self::resolve(source, search, configs)?;
 
@@ -83,11 +79,13 @@ impl LevelSectionsPart {
     source: &LevelSource,
     search: &XraySearch,
     configs: &LevelConfigs,
-  ) -> LevelSourceResult<Arc<LtxResolution>> {
-    configs
-      .open(search)?
-      .system_ltx()
-      .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))
+  ) -> XrfResult<Arc<LtxResolution>> {
+    configs.open(search)?.system_ltx().map_err(|error| {
+      XrfError::new_read_error(format!(
+        "Failed to read 'system.ltx' for {}: {error}",
+        source.get_label()
+      ))
+    })
   }
 
   /// Keep the sections `spawn`'s objects name, plus [`XrayReducedTextures::SECTION`], out of `resolved`; `read_in` is

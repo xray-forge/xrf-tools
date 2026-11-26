@@ -3,13 +3,13 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use serde::Serialize;
+use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_session::SessionSnapshot;
 use xrf_spawn::{Patrol, SpawnLevelGraph};
 use xrf_vfs::XraySearch;
 use xrf_visual::VisualTransform;
 
-use crate::LevelSourceResult;
 use crate::level::SelectedLevel;
 use crate::objects::{
   LevelObject, LevelObjectId, LevelObjectKind, LevelObjectPatrol, LevelObjectPatrolPoint, LevelObjectSources,
@@ -36,7 +36,7 @@ impl LevelObjectsDescription {
   /// # Errors
   ///
   /// Returns an error when the spawn cannot be read.
-  pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> LevelSourceResult<Self> {
+  pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Self> {
     let started: Instant = Instant::now();
     let spawn: Arc<LevelSpawn> = LevelSpawnPart::get(current, search)
       .inspect_err(|error| LevelReport::missing_level_objects(&current.source, error))?;

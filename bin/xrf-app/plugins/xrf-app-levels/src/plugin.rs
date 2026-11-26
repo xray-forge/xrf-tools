@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use tauri::plugin::TauriPlugin;
 use tauri::webview::{PageLoadEvent, PageLoadPayload};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, State, Webview, WindowEvent};
@@ -8,7 +6,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionScopes;
 use xrf_app_render::WorldState;
 use xrf_audio::AudioServer;
-use xrf_level_source::{LevelMount, LevelRenderParts, OpenedLevel};
+use xrf_level_source::{LevelRenderParts, OpenedLevel};
 
 use crate::level::SelectedLevels;
 use crate::rawdata::level_compiler_libraries::LevelCompilerLibraries;
@@ -37,7 +35,7 @@ impl LevelsPlugin {
           .with_deferred_derivation(
             &assets,
             application.state::<ExecutionState>().get_pool(),
-            |current, assets| OpenedLevel::derive(current, &LevelMount::new(Arc::clone(assets.get_host()))),
+            |current, assets| OpenedLevel::derive(current, assets.get_host()).map_err(|error| error.to_string()),
           )
           .with_view_parts(LevelRenderParts::VIEW_PARTS);
         // A scene records its inputs and is derived again on the pool as a level is.

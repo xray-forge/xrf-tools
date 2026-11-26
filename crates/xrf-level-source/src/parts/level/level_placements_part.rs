@@ -78,7 +78,7 @@ impl LevelPlacementsPart {
         bytes
           .map(parse)
           .transpose()
-          .map_err(|error| source.describe_read_failure(file, &error))
+          .map_err(|error| source.create_read_error(file, &error))
       })
       .inspect_err(|error| LevelReport::unreadable_placements(source, error))
       .ok()

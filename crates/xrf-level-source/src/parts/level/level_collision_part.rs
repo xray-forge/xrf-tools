@@ -1,12 +1,12 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use xrf_error::XrfResult;
 use xrf_geometry::{BvhTracer, Tracer};
 use xrf_level::{LevelCformFile, LevelCformGeometry};
 use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 
-use crate::LevelSourceResult;
 use crate::level::{LevelSource, SelectedLevel};
 use crate::report::LevelReport;
 
@@ -20,7 +20,7 @@ pub(crate) const LEVEL_COLLISION_PART: &str = "collision";
 pub struct LevelCollisionPart;
 
 impl SessionPart for LevelCollisionPart {
-  type Value = LevelSourceResult<Arc<BvhTracer>>;
+  type Value = XrfResult<Arc<BvhTracer>>;
 
   const NAME: &'static str = LEVEL_COLLISION_PART;
 }
@@ -31,10 +31,7 @@ impl LevelCollisionPart {
   /// # Errors
   ///
   /// Returns why the collision form cannot be read, which every later ask answers with again.
-  pub(crate) fn get(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-  ) -> LevelSourceResult<Arc<BvhTracer>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<BvhTracer>> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search))
@@ -45,12 +42,12 @@ impl LevelCollisionPart {
   /// # Errors
   ///
   /// Returns why the collision form cannot be read.
-  pub(crate) fn read_geometry(source: &LevelSource, search: &XraySearch) -> LevelSourceResult<LevelCformGeometry> {
+  pub(crate) fn read_geometry(source: &LevelSource, search: &XraySearch) -> XrfResult<LevelCformGeometry> {
     LevelCformFile::read_geometry_from_bytes(source.read_file(search, LevelCformFile::FILE_NAME)?)
-      .map_err(|error| source.describe_read_failure(LevelCformFile::FILE_NAME, &error))
+      .map_err(|error| source.create_read_error(LevelCformFile::FILE_NAME, &error))
   }
 
-  fn read(source: &LevelSource, search: &XraySearch) -> LevelSourceResult<Arc<BvhTracer>> {
+  fn read(source: &LevelSource, search: &XraySearch) -> XrfResult<Arc<BvhTracer>> {
     let started: Instant = Instant::now();
     let geometry: LevelCformGeometry = Self::read_geometry(source, search)?;
     let read: Duration = started.elapsed();

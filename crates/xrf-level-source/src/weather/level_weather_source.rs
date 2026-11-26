@@ -1,10 +1,9 @@
 use xrf_environment::EnvironmentCatalog;
+use xrf_error::XrfResult;
 use xrf_level::DetailModel;
 use xrf_material::XrayTextureScope;
-use xrf_utils::error_to_string;
 use xrf_vfs::XraySearch;
 
-use crate::LevelSourceResult;
 use crate::parts::LevelTextureReference;
 
 /// What the open level's cycles are read against: the game's catalog, and where the level finds its textures.
@@ -25,9 +24,7 @@ impl LevelWeatherSource<'_> {
   /// # Errors
   ///
   /// Returns why the model is not in the mounted roots or does not read.
-  pub fn read_model(&self, logical_path: &str) -> LevelSourceResult<DetailModel> {
-    let bytes: Vec<u8> = self.search.read(logical_path).map_err(error_to_string)?;
-
-    DetailModel::read_from_bytes(bytes).map_err(error_to_string)
+  pub fn read_model(&self, logical_path: &str) -> XrfResult<DetailModel> {
+    self.search.read(logical_path).and_then(DetailModel::read_from_bytes)
   }
 }

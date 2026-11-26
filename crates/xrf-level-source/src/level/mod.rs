@@ -4,7 +4,6 @@
 mod level_bundle;
 mod level_configs;
 mod level_entry;
-mod level_mount;
 mod level_source;
 mod level_sun_description;
 mod opened_level;
@@ -14,7 +13,6 @@ mod selected_level_description;
 pub use level_bundle::LevelBundle;
 pub use level_configs::LevelConfigs;
 pub use level_entry::LevelEntry;
-pub use level_mount::LevelMount;
 pub use level_source::LevelSource;
 pub use level_sun_description::LevelSunDescription;
 pub use opened_level::OpenedLevel;

@@ -1,7 +1,8 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use crate::LevelSourceResult;
+use xrf_error::{XrfError, XrfResult};
+
 use crate::sound::BurstSoundFrame;
 
 /// Copies a burst's sound frames off the live scene: armed for one burst at a time, every shown level's sink sends it
@@ -17,11 +18,11 @@ impl BurstSoundTee {
   /// # Errors
   ///
   /// Returns an error while another burst is armed.
-  pub fn arm(&self) -> LevelSourceResult<Receiver<BurstSoundFrame>> {
+  pub fn arm(&self) -> XrfResult<Receiver<BurstSoundFrame>> {
     let mut armed = self.lock();
 
     if armed.is_some() {
-      return Err(String::from("Another burst records its sound"));
+      return Err(XrfError::new_invalid_error("Another burst records its sound"));
     }
 
     let (sender, frames) = mpsc::channel();

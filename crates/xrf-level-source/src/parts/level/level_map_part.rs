@@ -60,7 +60,7 @@ impl LevelMapPart {
     decode_bytes_to_string(&bytes, new_windows1251_encoder())
       .map_err(XrfError::from)
       .and_then(|text| Self::parse(&text))
-      .inspect_err(|error| LevelReport::unreadable_map(source, &source.describe_read_failure(Self::FILE, error)))
+      .inspect_err(|error| LevelReport::unreadable_map(source, &source.create_read_error(Self::FILE, error)))
       .ok()
       .flatten()
   }

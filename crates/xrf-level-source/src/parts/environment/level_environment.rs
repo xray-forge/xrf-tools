@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use xrf_environment::{EnvironmentCatalog, LevelWeather, SunTable, WeatherCycle, WeatherCycleId, WeatherKey};
+use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelEnvModFile, LevelEnvModifier};
 use xrf_session::SessionSnapshot;
 use xrf_vfs::XraySearch;
 
-use crate::LevelSourceResult;
 use crate::level::SelectedLevel;
 use crate::parts::LevelWeatherPart;
 use crate::report::LevelReport;
@@ -64,12 +64,18 @@ impl LevelEnvironment {
   /// # Errors
   ///
   /// Returns that the game has no cycle or effect `id` names.
-  pub fn read_cycle(&self, id: &WeatherCycleId) -> LevelSourceResult<LevelWeatherCycle> {
+  pub fn read_cycle(&self, id: &WeatherCycleId) -> XrfResult<LevelWeatherCycle> {
     self
       .catalog
       .find_by_id(id)
       .map(|cycle| LevelWeatherCycle::of(cycle, &self.catalog))
-      .ok_or_else(|| format!("There is no {} '{}'", id.kind.get_subject().to_lowercase(), id.name))
+      .ok_or_else(|| {
+        XrfError::new_not_found_error(format!(
+          "There is no {} '{}'",
+          id.kind.get_subject().to_lowercase(),
+          id.name
+        ))
+      })
   }
 
   /// What the level's cycles are read against, its textures found in the search.
@@ -115,11 +121,7 @@ impl LevelEnvironment {
     current
       .source
       .read_optional_file(search, LevelWeatherPart::ENV_MOD_FILE)
-      .and_then(|bytes| {
-        bytes
-          .map(|bytes| LevelEnvModFile::read_from_bytes(bytes).map_err(|error| error.to_string()))
-          .transpose()
-      })
+      .and_then(|bytes| bytes.map(LevelEnvModFile::read_from_bytes).transpose())
       .inspect_err(|error| LevelReport::unreadable_modifiers(&current.source, error))
       .ok()
       .flatten()

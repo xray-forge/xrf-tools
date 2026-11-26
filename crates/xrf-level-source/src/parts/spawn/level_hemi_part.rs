@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+use xrf_error::XrfResult;
 use xrf_geometry::BvhTracer;
 use xrf_job::parallel::prelude::*;
 use xrf_level::{LevelLight, LevelLightsChunk, LevelLightsFile};
@@ -10,7 +11,6 @@ use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 use xrf_visual::{HemiEstimator, VisualTransform};
 
-use crate::LevelSourceResult;
 use crate::level::{LevelSource, SelectedLevel};
 use crate::parts::{LevelCollisionPart, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnPart, NamedSpawnVisual};
 use crate::report::LevelReport;
@@ -25,7 +25,7 @@ pub(crate) const LEVEL_HEMI_PART: &str = "hemi";
 pub struct LevelHemiPart;
 
 impl SessionPart for LevelHemiPart {
-  type Value = LevelSourceResult<Arc<HemiEstimator>>;
+  type Value = XrfResult<Arc<HemiEstimator>>;
 
   const NAME: &'static str = LEVEL_HEMI_PART;
 }
@@ -39,10 +39,7 @@ impl LevelHemiPart {
   /// # Errors
   ///
   /// Returns why the collision form cannot be read, which every later ask answers with again.
-  pub(crate) fn get(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-  ) -> LevelSourceResult<Arc<HemiEstimator>> {
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<HemiEstimator>> {
     current.parts.get_or_record::<Self>(search, |search| {
       Self::read(current, search).inspect_err(|error| LevelReport::missing_hemi(&current.source, error))
     })
@@ -94,7 +91,7 @@ impl LevelHemiPart {
     Self::estimate_spawn(estimator, &spawn, &spheres)
   }
 
-  fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> LevelSourceResult<Arc<HemiEstimator>> {
+  fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<HemiEstimator>> {
     let started: Instant = Instant::now();
     let tracer: Arc<BvhTracer> = LevelCollisionPart::get(current, search)?;
     let estimator: HemiEstimator = HemiEstimator::new(tracer, &Self::read_lights(&current.source, search));
@@ -106,12 +103,9 @@ impl LevelHemiPart {
 
   /// The compiled lights `CLight_DB::LoadHemi` reads, none for a level without `build.lights` or with one unreadable.
   fn read_lights(source: &LevelSource, search: &XraySearch) -> Vec<LevelLight> {
-    let file: LevelSourceResult<Option<LevelLightsFile>> =
-      source.read_optional_file(search, Self::LIGHTS_FILE).and_then(|bytes| {
-        bytes
-          .map(|bytes| LevelLightsFile::read_from_bytes(bytes).map_err(|error| error.to_string()))
-          .transpose()
-      });
+    let file: XrfResult<Option<LevelLightsFile>> = source
+      .read_optional_file(search, Self::LIGHTS_FILE)
+      .and_then(|bytes| bytes.map(LevelLightsFile::read_from_bytes).transpose());
 
     match file {
       Ok(file) => file

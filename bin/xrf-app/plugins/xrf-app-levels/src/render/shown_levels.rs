@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_audio::AudioServer;
-use xrf_level_source::{LevelAudio, LevelMount, LevelRenderSource, SelectedLevel};
+use xrf_level_source::{LevelAudio, LevelRenderSource, SelectedLevel};
 
 /// The source each level session is drawn from, while anything draws it: every viewport showing a snapshot shares
 /// one, and a commit moving the session moves its scene onto the next. A clone holds the same sources.
@@ -32,11 +32,7 @@ impl ShownLevels {
     level: Arc<SessionSnapshot<SelectedLevel>>,
     assets: &AssetMountState,
   ) -> LevelRenderSource {
-    LevelRenderSource::new(
-      level,
-      LevelMount::new(Arc::clone(assets.get_host())),
-      self.audio.clone(),
-    )
+    LevelRenderSource::new(level, Arc::clone(assets.get_host()), self.audio.clone())
   }
 
   /// The source drawing `level`: the one drawing it already, else one following the session's source onto it, keeping

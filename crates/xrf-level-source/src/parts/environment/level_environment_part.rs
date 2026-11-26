@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use xrf_environment::{EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather};
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx_project::LtxProject;
 use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 
-use crate::LevelSourceResult;
 use crate::level::{LevelConfigs, SelectedLevel};
 use crate::parts::LevelEnvironment;
 
@@ -18,7 +18,7 @@ pub(crate) const LEVEL_ENVIRONMENT_PART: &str = "environment";
 pub struct LevelEnvironmentPart;
 
 impl SessionPart for LevelEnvironmentPart {
-  type Value = LevelSourceResult<Arc<LevelEnvironment>>;
+  type Value = XrfResult<Arc<LevelEnvironment>>;
 
   const NAME: &'static str = LEVEL_ENVIRONMENT_PART;
 }
@@ -29,21 +29,20 @@ impl LevelEnvironmentPart {
   /// # Errors
   ///
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
-  pub fn get(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-  ) -> LevelSourceResult<Arc<LevelEnvironment>> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<LevelEnvironment>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let project: LtxProject = LevelConfigs::of(current).open(search)?;
       let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(
         &project,
         &EnvironmentReadOptions::default().with_engine(current.engine.engine),
       )
-      .map_err(|error| format!("Failed to read the game's environment configs: {error}"))?;
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read the game's environment configs: {error}")))?;
       // A level the game does not know by name plays the `[default]` weathers, as one `game.ltx` leaves out does.
       let level: String = current.source.get_name().unwrap_or_default();
-      let weather: LevelWeather = EnvironmentReader::read_level_weather(&project, &catalog, &level)
-        .map_err(|error| format!("Failed to read which weathers level '{level}' plays: {error}"))?;
+      let weather: LevelWeather =
+        EnvironmentReader::read_level_weather(&project, &catalog, &level).map_err(|error| {
+          XrfError::new_read_error(format!("Failed to read which weathers level '{level}' plays: {error}"))
+        })?;
 
       Ok(Arc::new(LevelEnvironment {
         catalog: Arc::new(catalog),

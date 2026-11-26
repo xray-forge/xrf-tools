@@ -20,7 +20,8 @@ pub(crate) async fn levels_list_levels(
   execution
     .run_blocking("Listing levels", move || {
       let started: Instant = Instant::now();
-      let entries: Vec<LevelEntry> = LevelEntry::list(&assets.search_fresh(&roots)?)?;
+      let entries: Vec<LevelEntry> =
+        LevelEntry::list(&assets.search_fresh(&roots)?).map_err(|error| error.to_string())?;
 
       LevelReport::listed_levels(&entries, started);
 

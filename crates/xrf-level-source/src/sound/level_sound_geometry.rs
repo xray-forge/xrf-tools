@@ -2,13 +2,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use xrf_audio::{AudioMaterial, AudioSceneGeometry, AudioSceneMesh};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_gamemtl::{GameMtlAcoustics, GameMtlFile, GameMtlMaterial};
 use xrf_level::{LevelCformFace, LevelCformGeometry};
 use xrf_session::SessionSnapshot;
-use xrf_vfs::XraySearch;
+use xrf_vfs::{XraySearch, XrayVfsHost};
 
-use crate::level::{LevelMount, SelectedLevel};
+use crate::level::SelectedLevel;
 use crate::parts::LevelCollisionPart;
 use crate::report::LevelReport;
 
@@ -17,12 +17,12 @@ use crate::report::LevelReport;
 /// when it asks. Passable faces, such as bushes, let sound through and are left out.
 pub(crate) struct LevelSoundGeometry {
   level: Arc<SessionSnapshot<SelectedLevel>>,
-  assets: LevelMount,
+  host: Arc<XrayVfsHost>,
 }
 
 impl LevelSoundGeometry {
-  pub(crate) fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: LevelMount) -> Self {
-    Self { level, assets }
+  pub(crate) fn new(level: Arc<SessionSnapshot<SelectedLevel>>, host: Arc<XrayVfsHost>) -> Self {
+    Self { level, host }
   }
 
   /// The game materials by id; empty when the library cannot be read, so every face takes the default.
@@ -55,12 +55,8 @@ impl LevelSoundGeometry {
 
 impl AudioSceneGeometry for LevelSoundGeometry {
   fn read_mesh(&self) -> XrfResult<AudioSceneMesh> {
-    let search: XraySearch = self
-      .assets
-      .search(&self.level.roots)
-      .map_err(XrfError::new_asset_error)?;
-    let geometry: LevelCformGeometry =
-      LevelCollisionPart::read_geometry(&self.level.source, &search).map_err(XrfError::new_asset_error)?;
+    let search: XraySearch = self.host.search(&self.level.roots)?;
+    let geometry: LevelCformGeometry = LevelCollisionPart::read_geometry(&self.level.source, &search)?;
     let library: HashMap<u16, GameMtlMaterial> = Self::read_materials(&search);
     // Each kept face's game material id, mapped to its mesh material index.
     let mut indices: HashMap<u16, u32> = HashMap::new();

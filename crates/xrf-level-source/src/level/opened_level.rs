@@ -3,16 +3,16 @@ use std::time::{Duration, Instant};
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_engine_target::XrayEngineResolution;
+use xrf_error::XrfResult;
 use xrf_job::parallel;
 use xrf_level::LevelGeomSource;
 use xrf_ltx::{Ltx, LtxDialect, LtxResolution};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_session::{SessionDerived, SessionParts, SessionSnapshot};
-use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
+use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch, XrayVfsHost};
 use xrf_visual::SectorOutline;
 
-use crate::LevelSourceResult;
-use crate::level::{LevelBundle, LevelConfigs, LevelMount, LevelSource, SelectedLevel};
+use crate::level::{LevelBundle, LevelConfigs, LevelSource, SelectedLevel};
 use crate::parts::{
   LevelGeometryPart, LevelMapDescription, LevelMapPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelStart,
   LevelStartPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
@@ -33,7 +33,7 @@ impl OpenedLevel {
     roots: XrayRoots,
     dialect: Arc<dyn LtxDialect>,
     engine: impl FnOnce(&XraySearch, &XrayRoots) -> XrayEngineResolution,
-  ) -> LevelSourceResult<SessionDerived<SelectedLevel>> {
+  ) -> XrfResult<SessionDerived<SelectedLevel>> {
     xrf_profiler::scope!("level open");
 
     let inputs: XrayInputRecord = XrayInputRecord::new();
@@ -61,13 +61,14 @@ impl OpenedLevel {
     })
   }
 
-  /// The open level read again over the source, roots and dialect it was opened with, as the engine it was read as.
+  /// The open level read again over the source, roots and dialect it was opened with, as the engine it was read as,
+  /// through `host`, which mounts its roots where they are not yet.
   pub fn derive(
     current: &SessionSnapshot<SelectedLevel>,
-    assets: &LevelMount,
-  ) -> LevelSourceResult<SessionDerived<SelectedLevel>> {
+    host: &XrayVfsHost,
+  ) -> XrfResult<SessionDerived<SelectedLevel>> {
     Self::read(
-      assets.search(&current.roots)?,
+      host.search(&current.roots)?,
       current.source.clone(),
       current.roots.clone(),
       Arc::clone(&current.dialect),
@@ -84,7 +85,7 @@ impl OpenedLevel {
     source: &LevelSource,
     search: &XraySearch,
     configs: &LevelConfigs,
-  ) -> LevelSourceResult<(LevelBundle, Vec<SectorOutline>, SessionParts)> {
+  ) -> XrfResult<(LevelBundle, Vec<SectorOutline>, SessionParts)> {
     let scope: XrayTextureScope = source.get_texture_scope();
     let geometry_inputs: XrayInputRecord = XrayInputRecord::new();
     let surfaces_inputs: XrayInputRecord = XrayInputRecord::new();
@@ -110,8 +111,8 @@ impl OpenedLevel {
             LevelGeometryPart::read(source, &search.clone().with_recording(&geometry_inputs))
           },
         );
-        let dressed: LevelSourceResult<(LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>)> = bundle
-          .map(|bundle| {
+        let dressed: XrfResult<(LevelBundle, Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>)> =
+          bundle.map(|bundle| {
             xrf_profiler::scope!("level surfaces and textures");
 
             let surfaces: Vec<XraySurfaceDescriptor> =
@@ -134,8 +135,8 @@ impl OpenedLevel {
       },
       || {
         let (spawned, (resolved, read_in)) = parallel::join(
-          || -> (LevelSourceResult<Arc<LevelSpawn>>, Vec<bool>) {
-            let spawn: LevelSourceResult<Arc<LevelSpawn>> = {
+          || -> (XrfResult<Arc<LevelSpawn>>, Vec<bool>) {
+            let spawn: XrfResult<Arc<LevelSpawn>> = {
               xrf_profiler::scope!("level spawn");
 
               LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs), configs)
@@ -155,11 +156,11 @@ impl OpenedLevel {
 
             (spawn, open)
           },
-          || -> (LevelSourceResult<Arc<LtxResolution>>, Duration) {
+          || -> (XrfResult<Arc<LtxResolution>>, Duration) {
             xrf_profiler::scope!("level configs");
 
             let started: Instant = Instant::now();
-            let resolved: LevelSourceResult<Arc<LtxResolution>> =
+            let resolved: XrfResult<Arc<LtxResolution>> =
               LevelSectionsPart::resolve(source, &search.clone().with_recording(&sections_inputs), configs);
 
             (resolved, started.elapsed())
@@ -170,7 +171,7 @@ impl OpenedLevel {
         // The sections kept are those the spawn names.
         sections_inputs.extend_from(&spawn_inputs);
 
-        let sections: Option<LevelSourceResult<Arc<Ltx>>> = spawn
+        let sections: Option<XrfResult<Arc<Ltx>>> = spawn
           .as_deref()
           .ok()
           .map(|found| resolved.map(|resolved| LevelSectionsPart::keep(source, &resolved, read_in, found)));

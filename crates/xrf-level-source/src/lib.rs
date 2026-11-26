@@ -5,7 +5,6 @@ pub(crate) mod console;
 pub mod fixtures;
 pub(crate) mod helpers;
 pub(crate) mod level;
-pub(crate) mod level_source_result;
 pub(crate) mod objects;
 pub(crate) mod parts;
 pub(crate) mod render;
@@ -20,10 +19,9 @@ pub(crate) mod weather;
 pub use crate::console::LevelConsoleDefaults;
 pub use crate::helpers::{HelperColor, HelperLinkLines};
 pub use crate::level::{
-  LevelBundle, LevelConfigs, LevelEntry, LevelMount, LevelSource, LevelSunDescription, OpenedLevel, SelectedLevel,
+  LevelBundle, LevelConfigs, LevelEntry, LevelSource, LevelSunDescription, OpenedLevel, SelectedLevel,
   SelectedLevelDescription,
 };
-pub use crate::level_source_result::LevelSourceResult;
 pub use crate::objects::{
   LEVEL_OBJECT_KINDS, LEVEL_SOUND_EMITTERS_HELPER_KIND, LevelObject, LevelObjectGroup, LevelObjectId, LevelObjectKind,
   LevelObjectKindEntry, LevelObjectPatrol, LevelObjectPatrolPoint, LevelObjectPlacement, LevelObjectShape,

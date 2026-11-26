@@ -3,6 +3,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_error::XrfError;
 use xrf_level_source::{LevelSpawnObjectDetails, LevelSpawnPart};
 
 use crate::level::{LevelAnswer, SelectedLevels};
@@ -30,7 +31,7 @@ pub(crate) async fn levels_describe_spawn_object(
         .objects
         .get(index as usize)
         .map(LevelSpawnObjectDetails::of)
-        .ok_or_else(|| format!("The level spawns no object {index}"))
+        .ok_or_else(|| XrfError::new_not_found_error(format!("The level spawns no object {index}")))
     },
   )
   .await

@@ -16,13 +16,13 @@ pub(crate) async fn levels_describe_start(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Option<LevelStart>>> {
-  LevelAnswer::read(
+  LevelAnswer::get(
     &levels,
     &assets,
     &execution,
     session_id,
     "Describing where the level starts",
-    |current, search| Ok(LevelStartPart::get(current, search)),
+    LevelStartPart::get,
   )
   .await
 }

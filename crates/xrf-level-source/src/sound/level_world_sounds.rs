@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_ltx::LtxResolution;
 use xrf_ltx_project::LtxProject;
 use xrf_session::SessionSnapshot;
@@ -49,9 +49,7 @@ impl LevelWorldSounds {
     files: &LevelSoundFiles<'_>,
   ) -> XrfResult<Vec<WorldMusicTrack>> {
     let name: String = level.source.get_name().unwrap_or_default();
-    let project: LtxProject = LevelConfigs::of(level)
-      .open(search)
-      .map_err(XrfError::new_asset_error)?;
+    let project: LtxProject = LevelConfigs::of(level).open(search)?;
     let path: XrayLogicalPath = project.config_path(Self::GAME)?;
 
     if project.search().find(path.as_str())?.is_none() {

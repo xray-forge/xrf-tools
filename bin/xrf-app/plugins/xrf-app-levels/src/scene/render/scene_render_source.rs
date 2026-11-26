@@ -293,7 +293,8 @@ impl WorldLevelSource for SceneRenderSource {
             // The reader reports a visual that does not read.
             Some(model) => reader
               .get(&model.visual)
-              .map(|visual| Some(self.pose_visual(name, &visual))),
+              .map(|visual| Some(self.pose_visual(name, &visual)))
+              .map_err(|error| error.to_string()),
             None => Err(format!("No scene object or spawn point stands as model '{name}'"))
               .inspect_err(|reason| SceneReport::undrawn_object(name, reason)),
           },

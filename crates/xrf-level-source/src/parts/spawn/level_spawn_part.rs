@@ -3,11 +3,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
+use xrf_error::{XrfError, XrfResult};
 use xrf_session::{SessionPart, SessionParts, SessionSnapshot};
 use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayInputRecord, XrayLogicalPath, XraySearch};
 
-use crate::LevelSourceResult;
 use crate::level::{LevelConfigs, LevelSource, SelectedLevel};
 use crate::parts::LevelSpawn;
 use crate::report::LevelReport;
@@ -21,7 +21,7 @@ pub(crate) const LEVEL_SPAWN_PART: &str = "spawn";
 pub struct LevelSpawnPart;
 
 impl SessionPart for LevelSpawnPart {
-  type Value = LevelSourceResult<Arc<LevelSpawn>>;
+  type Value = XrfResult<Arc<LevelSpawn>>;
 
   const NAME: &'static str = LEVEL_SPAWN_PART;
 }
@@ -39,18 +39,14 @@ impl LevelSpawnPart {
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by, which every
   /// later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> LevelSourceResult<Arc<LevelSpawn>> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<LevelSpawn>> {
     current.parts.get_or_record::<Self>(search, |search| {
       Self::read(&current.source, search, &LevelConfigs::of(current))
     })
   }
 
   /// `parts` with the spawn an open read from `inputs` kept as the level's.
-  pub(crate) fn with(
-    parts: SessionParts,
-    spawn: LevelSourceResult<Arc<LevelSpawn>>,
-    inputs: XrayInputRecord,
-  ) -> SessionParts {
+  pub(crate) fn with(parts: SessionParts, spawn: XrfResult<Arc<LevelSpawn>>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(spawn, inputs)
   }
 
@@ -59,11 +55,7 @@ impl LevelSpawnPart {
   /// # Errors
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by.
-  pub(crate) fn read(
-    source: &LevelSource,
-    search: &XraySearch,
-    configs: &LevelConfigs,
-  ) -> LevelSourceResult<Arc<LevelSpawn>> {
+  pub(crate) fn read(source: &LevelSource, search: &XraySearch, configs: &LevelConfigs) -> XrfResult<Arc<LevelSpawn>> {
     Self::read_level(search, configs, &source.require_name()?).map(Arc::new)
   }
 
@@ -74,26 +66,26 @@ impl LevelSpawnPart {
   /// Returns why the spawn cannot be named or read.
   pub(crate) fn read_chunks(
     search: &XraySearch,
-  ) -> LevelSourceResult<(XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>)> {
+  ) -> XrfResult<(XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>)> {
     let path: XrayLogicalPath = XrayLogicalPath::new(Self::SPAWNS_DIRECTORY)
       .and_then(|directory| directory.join(Self::SPAWN_FILE))
-      .map_err(|error| format!("Failed to name '{}': {error}", Self::SPAWN_FILE))?;
+      .map_err(|error| XrfError::new_invalid_error(format!("Failed to name '{}': {error}", Self::SPAWN_FILE)))?;
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = search
       .read(path.as_str())
       .and_then(ChunkReader::from_vec)
       .and_then(|mut it| it.read_children())
-      .map_err(|error| format!("Failed to read '{path}': {error}"))?;
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read '{path}': {error}")))?;
 
     Ok((path, chunks))
   }
 
   /// The objects standing on a level when a new game starts, by the level each game vertex belongs to, reading nothing
   /// of the spawn but its objects and the head of its graph.
-  fn read_level(search: &XraySearch, configs: &LevelConfigs, level: &str) -> LevelSourceResult<LevelSpawn> {
+  fn read_level(search: &XraySearch, configs: &LevelConfigs, level: &str) -> XrfResult<LevelSpawn> {
     let started: Instant = Instant::now();
     let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) = Self::read_chunks(search)?;
     let read: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks(&chunks, level)
-      .map_err(|error| format!("Failed to read '{path}': {error}"))?;
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read '{path}': {error}")))?;
 
     LevelReport::spawn(level, path.as_str(), &read, started);
 

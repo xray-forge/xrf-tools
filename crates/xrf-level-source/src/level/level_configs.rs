@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::LtxDialect;
 use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_vfs::{XrayRoots, XraySearch};
 
-use crate::LevelSourceResult;
 use crate::level::SelectedLevel;
 
 /// How a level reads the game's configs: over the roots it was opened in, with the dialect it was opened with. Its
@@ -33,13 +33,13 @@ impl LevelConfigs {
   /// # Errors
   ///
   /// Returns the reason the configs directory cannot be named.
-  pub(crate) fn open(&self, search: &XraySearch) -> LevelSourceResult<LtxProject> {
+  pub(crate) fn open(&self, search: &XraySearch) -> XrfResult<LtxProject> {
     LtxProject::open_lean_at_search_opt(
       self.roots.describe(),
       search,
       Some(Self::DIRECTORY),
       LtxProjectOptions::default().with_dialect(Arc::clone(&self.dialect)),
     )
-    .map_err(|error| format!("Failed to open the game's configs: {error}"))
+    .map_err(|error| XrfError::new_read_error(format!("Failed to open the game's configs: {error}")))
   }
 }

@@ -51,6 +51,7 @@ pub(crate) async fn levels_open_level(
         OpenedLevel::read(search, source, roots, dialect, |search, roots| {
           engine.resolve(|| XrayEngineDetector::detect(roots, |logical_path| search.read(logical_path).ok()))
         })
+        .map_err(|error| error.to_string())
       },
     )
     .await?;

@@ -21,7 +21,7 @@ pub(crate) async fn levels_write_map_annotations(
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<String>> {
   LevelViewerFolder::require_screenshot(&directories, &request.path)?;
-  request.area.require_ground()?;
+  request.area.require_ground().map_err(|error| error.to_string())?;
 
   LevelAnswer::read(
     &levels,
@@ -31,7 +31,7 @@ pub(crate) async fn levels_write_map_annotations(
     "Drawing a level map's annotations",
     move |current, search| {
       AnnotationCanvas::over_map(&request)?.write(
-        &LevelAnnotations::read(current, search)?,
+        &LevelAnnotations::read(current, search).map_err(|error| error.to_string())?,
         &LevelViewerFolder::get_annotations_path(&request.path),
       )
     },

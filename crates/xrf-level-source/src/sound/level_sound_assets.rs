@@ -1,21 +1,22 @@
-use xrf_audio::AudioAssetSource;
-use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayRoots, XraySearch};
+use std::sync::Arc;
 
-use crate::level::LevelMount;
+use xrf_audio::AudioAssetSource;
+use xrf_error::XrfResult;
+use xrf_vfs::{XrayRoots, XraySearch, XrayVfsHost};
+
 use crate::sound::LevelSoundFiles;
 
-/// A shown level's sound source: its opened roots, read through the shared mount.
+/// A shown level's sound source: its opened roots, read through the shared VFS host.
 pub(crate) struct LevelSoundAssets {
-  assets: LevelMount,
+  host: Arc<XrayVfsHost>,
   roots: XrayRoots,
   /// Keeps its sounds apart from another level's, keyed by its roots as its textures are.
   scope: String,
 }
 
 impl LevelSoundAssets {
-  pub(crate) fn new(assets: LevelMount, roots: XrayRoots, scope: String) -> Self {
-    Self { assets, roots, scope }
+  pub(crate) fn new(host: Arc<XrayVfsHost>, roots: XrayRoots, scope: String) -> Self {
+    Self { host, roots, scope }
   }
 }
 
@@ -25,7 +26,7 @@ impl AudioAssetSource for LevelSoundAssets {
   }
 
   fn read_sound(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    let search: XraySearch = self.assets.search(&self.roots).map_err(XrfError::new_asset_error)?;
+    let search: XraySearch = self.host.search(&self.roots)?;
 
     match search.find(&LevelSoundFiles::resolve_path(reference))? {
       Some(asset) => search.read_asset(&asset).map(Some),

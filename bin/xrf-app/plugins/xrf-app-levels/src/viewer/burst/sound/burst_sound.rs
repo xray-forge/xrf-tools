@@ -94,7 +94,7 @@ impl BurstSound {
       video,
       scratch: vec![0.0; Self::CHUNK_FRAMES * 2],
     };
-    let frames: Receiver<BurstSoundFrame> = tee.arm()?;
+    let frames: Receiver<BurstSoundFrame> = tee.arm().map_err(|error| error.to_string())?;
     let thread: JoinHandle<TauriResult<Vec<f32>>> = thread::Builder::new()
       .name(String::from("xrf-burst-sound"))
       .spawn(move || render.play(&frames))

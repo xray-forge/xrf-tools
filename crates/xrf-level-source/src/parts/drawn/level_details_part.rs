@@ -1,5 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
+use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformGeometry, LevelDetailsFile};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
@@ -7,7 +8,6 @@ use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
-use crate::LevelSourceResult;
 use crate::level::{LevelSource, SelectedLevel};
 use crate::parts::{LevelCollisionPart, LevelTextureReference, PackedLevelDetails};
 use crate::report::LevelReport;
@@ -38,20 +38,20 @@ impl LevelDetailsPart {
   pub(crate) fn pack(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
-  ) -> LevelSourceResult<Option<PackedLevelDetails>> {
+  ) -> XrfResult<Option<PackedLevelDetails>> {
     current
       .parts
       .record_read::<Self, _>(search, |search| Self::pack_recorded(&current.source, search))
   }
 
   /// The grass packed, every read through `search`.
-  fn pack_recorded(source: &LevelSource, search: &XraySearch) -> LevelSourceResult<Option<PackedLevelDetails>> {
+  fn pack_recorded(source: &LevelSource, search: &XraySearch) -> XrfResult<Option<PackedLevelDetails>> {
     let Some(details) = source.read_optional_file(search, LevelDetailsFile::FILE_NAME)? else {
       return Ok(None);
     };
 
     let details: LevelDetailsFile = LevelDetailsFile::read_from_bytes(details)
-      .map_err(|error| source.describe_read_failure(LevelDetailsFile::FILE_NAME, &error))?;
+      .map_err(|error| source.create_read_error(LevelDetailsFile::FILE_NAME, &error))?;
     let collision: LevelCformGeometry = LevelCollisionPart::read_geometry(source, search)?;
     let passable: HashSet<u16> = Self::read_passable_materials(search);
     let is_passable = |material: u16| passable.contains(&material);

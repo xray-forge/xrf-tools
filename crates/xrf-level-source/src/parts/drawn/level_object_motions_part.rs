@@ -1,9 +1,9 @@
 use xrf_anm::AnmFile;
+use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 
-use crate::LevelSourceResult;
 use crate::level::{LevelSource, SelectedLevel};
 
 /// What a change event calls what a level's object motions were read from when it goes stale.
@@ -33,30 +33,27 @@ impl LevelObjectMotionsPart {
   /// # Errors
   ///
   /// Returns why the motion is no `.anm` file, is found nowhere, or cannot be read.
-  pub(crate) fn read(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-    name: &str,
-  ) -> LevelSourceResult<AnmFile> {
+  pub(crate) fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch, name: &str) -> XrfResult<AnmFile> {
     current
       .parts
       .record_read::<Self, _>(search, |search| Self::read_recorded(&current.source, search, name))
   }
 
   /// The motion read, every read through `search`.
-  fn read_recorded(source: &LevelSource, search: &XraySearch, name: &str) -> LevelSourceResult<AnmFile> {
+  fn read_recorded(source: &LevelSource, search: &XraySearch, name: &str) -> XrfResult<AnmFile> {
     // todo: Read `.anms` files, several motions of which `Play(true)` plays the first; no shipped spawn names one.
     if !XrayExtension::Anm.matches(name) {
-      return Err(format!("Object motion '{name}' is not an '.anm' file"));
+      return Err(XrfError::new_not_implemented_error(format!(
+        "Object motion '{name}' is not an '.anm' file"
+      )));
     }
 
     let bytes: Vec<u8> = match source.read_optional_file(search, name)? {
       Some(bytes) => bytes,
-      None => search
-        .read(&format!("{}\\{name}", Self::GAME_ANIMS_DIRECTORY))
-        .map_err(|error| error.to_string())?,
+      None => search.read(&format!("{}\\{name}", Self::GAME_ANIMS_DIRECTORY))?,
     };
 
-    AnmFile::read_from_bytes(bytes).map_err(|error| format!("Object motion '{name}' cannot be read: {error}"))
+    AnmFile::read_from_bytes(bytes)
+      .map_err(|error| XrfError::new_read_error(format!("Object motion '{name}' cannot be read: {error}")))
   }
 }

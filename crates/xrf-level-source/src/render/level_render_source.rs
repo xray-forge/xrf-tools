@@ -16,11 +16,11 @@ use xrf_renderer::{
 };
 use xrf_renderer_host::{ResolvedTexture, TextureResolver};
 use xrf_session::SessionSnapshot;
-use xrf_vfs::XraySearch;
+use xrf_vfs::{XraySearch, XrayVfsHost};
 use xrf_visual::{HemiEstimator, LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
 use xrf_world::{WorldLevelSounds, WorldLevelSource, WorldLevelWeather, WorldSoundSink};
 
-use crate::level::{LevelMount, SelectedLevel};
+use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
 use crate::parts::{
   LevelAiMapPart, LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart,
@@ -45,7 +45,7 @@ struct DrawnSurfaces {
 /// read from the roots the level was opened in. How its session parts feed the scene is `LevelRenderParts`'.
 pub struct LevelRenderSource {
   level: Arc<SessionSnapshot<SelectedLevel>>,
-  assets: LevelMount,
+  host: Arc<XrayVfsHost>,
   /// How the level's shader table is drawn, as its surfaces part holds it for the snapshot drawn.
   surfaces: Arc<Vec<XraySurfaceDescriptor>>,
   /// Where each texture reference the level's surfaces bind resolved to at open, each projector its lights name once
@@ -70,8 +70,8 @@ impl LevelRenderSource {
   };
 
   /// A source drawing `level` with its parts' surfaces and textures, playing its sound through `audio`.
-  pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: LevelMount, audio: LevelAudio) -> Self {
-    let DrawnSurfaces { surfaces, textures } = Self::find_surfaces(&level, &assets);
+  pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, host: Arc<XrayVfsHost>, audio: LevelAudio) -> Self {
+    let DrawnSurfaces { surfaces, textures } = Self::find_surfaces(&level, &host);
     let resolver: TextureResolver = TextureResolver::new(
       level.roots.clone(),
       level.source.get_texture_scope(),
@@ -82,7 +82,7 @@ impl LevelRenderSource {
       reduced: Self::find_reduced(&level).unwrap_or_default(),
       surfaces,
       level,
-      assets,
+      host,
       textures: Arc::new(resolver),
       audio,
     }
@@ -90,12 +90,12 @@ impl LevelRenderSource {
 
   /// The level's surfaces and their textures as its parts hold them, resolved where a commit let them go; none where
   /// its roots cannot be searched, which draws every surface flat.
-  fn find_surfaces(level: &SessionSnapshot<SelectedLevel>, assets: &LevelMount) -> DrawnSurfaces {
+  fn find_surfaces(level: &SessionSnapshot<SelectedLevel>, host: &XrayVfsHost) -> DrawnSurfaces {
     if let (Some(surfaces), Some(textures)) = (LevelSurfacesPart::find(level), LevelTexturesPart::find(level)) {
       return DrawnSurfaces { surfaces, textures };
     }
 
-    match assets.search(&level.roots) {
+    match host.search(&level.roots) {
       Ok(search) => DrawnSurfaces {
         surfaces: LevelSurfacesPart::get(level, &search),
         textures: LevelTexturesPart::get(level, &search),
@@ -127,7 +127,7 @@ impl LevelRenderSource {
       reduced: Self::find_reduced(&next).unwrap_or_else(|| self.reduced.clone()),
       surfaces: LevelSurfacesPart::find(&next).unwrap_or_else(|| Arc::clone(&self.surfaces)),
       level: next,
-      assets: LevelMount::clone(&self.assets),
+      host: Arc::clone(&self.host),
       textures: Arc::clone(&self.textures),
       audio: self.audio.clone(),
     }
@@ -146,7 +146,7 @@ impl LevelRenderSource {
 
   /// A search over the roots the level opened with, which every read the renderer asks for goes through.
   fn search(&self) -> XrfResult<XraySearch> {
-    self.assets.search(&self.level.roots).map_err(XrfError::new_asset_error)
+    self.host.search(&self.level.roots)
   }
 
   /// The sections a level's spawned objects name, none where its spawn or the configs cannot be read.
@@ -163,11 +163,11 @@ impl RenderAssetSource for LevelRenderSource {
   }
 
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    self.textures.read(self.assets.get_host(), reference)
+    self.textures.read(&self.host, reference)
   }
 
   fn read_texture_sequence(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    self.textures.read_sequence(self.assets.get_host(), reference)
+    self.textures.read_sequence(&self.host, reference)
   }
 
   fn forget_textures(&self, names: &[String]) {
@@ -175,7 +175,7 @@ impl RenderAssetSource for LevelRenderSource {
   }
 
   fn get_texture_stamp(&self, reference: &str) -> Option<u64> {
-    self.textures.get_stamp(self.assets.get_host(), reference)
+    self.textures.get_stamp(&self.host, reference)
   }
 
   fn is_texture_reduced(&self, reference: &str) -> bool {
@@ -207,8 +207,7 @@ impl WorldLevelSource for LevelRenderSource {
       .ok_or_else(|| XrfError::new_not_found_error(format!("The level has no sector {sector}")))?
       .root;
     let composition: LevelSectorComposition = LevelSectorComposition::of(&self.level.visuals, root);
-    let geometry: Arc<LevelGeomSource<InMemoryChunkDataSource>> =
-      LevelGeometryPart::get(&self.level, &self.search()?).map_err(XrfError::new_read_error)?;
+    let geometry: Arc<LevelGeomSource<InMemoryChunkDataSource>> = LevelGeometryPart::get(&self.level, &self.search()?)?;
     let started: Instant = Instant::now();
     let package: SectorPackage = SectorPacker::new(&self.level.visuals, self.level.level.shaders.as_ref(), &geometry)
       .pack(sector, &composition, Self::DRAWN_ATTRIBUTES);
@@ -234,8 +233,7 @@ impl WorldLevelSource for LevelRenderSource {
   fn read_weather(&self) -> XrfResult<WorldLevelWeather> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let search: XraySearch = self.search()?;
-    let environment: Arc<LevelEnvironment> =
-      LevelEnvironmentPart::get(level, &search).map_err(XrfError::new_asset_error)?;
+    let environment: Arc<LevelEnvironment> = LevelEnvironmentPart::get(level, &search)?;
 
     Ok(LevelWeatherPart::record(level, &search, |search| {
       LevelWorldWeather::read(level, &environment, search)
@@ -243,8 +241,7 @@ impl WorldLevelSource for LevelRenderSource {
   }
 
   fn read_weather_cycle(&self, name: &str) -> XrfResult<Vec<WeatherDescriptor>> {
-    let environment: Arc<LevelEnvironment> =
-      LevelEnvironmentPart::get(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
+    let environment: Arc<LevelEnvironment> = LevelEnvironmentPart::get(&self.level, &self.search()?)?;
     let cycle = environment
       .catalog
       .find_cycle(name)
@@ -254,8 +251,7 @@ impl WorldLevelSource for LevelRenderSource {
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
-    let packed: Option<PackedLevelDetails> =
-      LevelDetailsPart::pack(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
+    let packed: Option<PackedLevelDetails> = LevelDetailsPart::pack(&self.level, &self.search()?)?;
     let Some(packed) = packed else {
       return Ok(None);
     };
@@ -269,12 +265,12 @@ impl WorldLevelSource for LevelRenderSource {
   }
 
   fn read_ai_map(&self) -> XrfResult<Option<RenderLevelAiMap>> {
-    LevelAiMapPart::read(&self.level, &self.search()?).map_err(XrfError::new_asset_error)
+    LevelAiMapPart::read(&self.level, &self.search()?)
   }
 
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
     let search: XraySearch = self.search()?;
-    let spawn = LevelSpawnPart::get(&self.level, &search).map_err(XrfError::new_asset_error)?;
+    let spawn = LevelSpawnPart::get(&self.level, &search)?;
 
     Ok(spawn.get_render(Self::read_sections(&self.level, &search).as_deref()))
   }
@@ -283,8 +279,7 @@ impl WorldLevelSource for LevelRenderSource {
   fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
     let search: XraySearch = self.search()?;
     // The objects the page lists, in its order: each helper is named by its object's place among them.
-    let objects: LevelObjectsDescription =
-      LevelObjectsDescription::read(&self.level, &search).map_err(XrfError::new_asset_error)?;
+    let objects: LevelObjectsDescription = LevelObjectsDescription::read(&self.level, &search)?;
     let emitters: LevelSoundEmitters = LevelSoundFilesPart::with_files(&self.level, &search, |files| {
       LevelSoundEmitters::read(&self.level, &search, Some(&objects), files)
     });
@@ -299,8 +294,7 @@ impl WorldLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let search: XraySearch = self.search()?;
     let packed: PackedLevelParticles =
-      LevelParticlesPart::pack(level, &search, Self::read_sections(level, &search).as_deref())
-        .map_err(XrfError::new_asset_error)?;
+      LevelParticlesPart::pack(level, &search, Self::read_sections(level, &search).as_deref())?;
     let collision = LevelCollisionPart::get(level, &search);
 
     self.textures.extend(packed.textures.iter().map(ResolvedTexture::from));
@@ -328,7 +322,7 @@ impl WorldLevelSource for LevelRenderSource {
   }
 
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
-    LevelObjectMotionsPart::read(&self.level, &self.search()?, name).map_err(XrfError::new_asset_error)
+    LevelObjectMotionsPart::read(&self.level, &self.search()?, name)
   }
 
   fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
@@ -339,14 +333,12 @@ impl WorldLevelSource for LevelRenderSource {
   /// collision form.
   fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {
     let assets: Arc<dyn AudioAssetSource> = Arc::new(LevelSoundAssets::new(
-      LevelMount::clone(&self.assets),
+      Arc::clone(&self.host),
       self.level.roots.clone(),
       self.textures.get_scope_key().to_owned(),
     ));
-    let geometry: Arc<dyn AudioSceneGeometry> = Arc::new(LevelSoundGeometry::new(
-      Arc::clone(&self.level),
-      LevelMount::clone(&self.assets),
-    ));
+    let geometry: Arc<dyn AudioSceneGeometry> =
+      Arc::new(LevelSoundGeometry::new(Arc::clone(&self.level), Arc::clone(&self.host)));
     let inbox: AudioSceneInbox = self
       .audio
       .server
@@ -378,7 +370,7 @@ impl WorldLevelSource for LevelRenderSource {
           Err(error) => {
             failures.push(RenderLoadFailure {
               name: name.clone(),
-              reason: error,
+              reason: error.to_string(),
             });
 
             None

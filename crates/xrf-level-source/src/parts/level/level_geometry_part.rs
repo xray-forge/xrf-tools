@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use xrf_chunk::InMemoryChunkDataSource;
+use xrf_error::XrfResult;
 use xrf_level::{LevelGeomFile, LevelGeomSource};
 use xrf_session::{SessionPart, SessionParts, SessionSnapshot};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
-use crate::LevelSourceResult;
 use crate::level::{LevelSource, SelectedLevel};
 
 /// What a change event calls a level's render geometry when it goes stale.
@@ -18,7 +18,7 @@ pub(crate) const LEVEL_GEOMETRY_PART: &str = "geometry";
 pub struct LevelGeometryPart;
 
 impl SessionPart for LevelGeometryPart {
-  type Value = LevelSourceResult<Arc<LevelGeomSource<InMemoryChunkDataSource>>>;
+  type Value = XrfResult<Arc<LevelGeomSource<InMemoryChunkDataSource>>>;
 
   const NAME: &'static str = LEVEL_GEOMETRY_PART;
 }
@@ -41,7 +41,7 @@ impl LevelGeometryPart {
   pub(crate) fn get(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
-  ) -> LevelSourceResult<Arc<LevelGeomSource<InMemoryChunkDataSource>>> {
+  ) -> XrfResult<Arc<LevelGeomSource<InMemoryChunkDataSource>>> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search).map(Arc::new))
@@ -52,11 +52,8 @@ impl LevelGeometryPart {
   /// # Errors
   ///
   /// Returns why `level.geom` could not be read.
-  pub(crate) fn read(
-    source: &LevelSource,
-    search: &XraySearch,
-  ) -> LevelSourceResult<LevelGeomSource<InMemoryChunkDataSource>> {
+  pub(crate) fn read(source: &LevelSource, search: &XraySearch) -> XrfResult<LevelGeomSource<InMemoryChunkDataSource>> {
     LevelGeomSource::open_from_bytes(source.read_file(search, LevelGeomFile::FILE_NAME)?)
-      .map_err(|error| source.describe_read_failure(LevelGeomFile::FILE_NAME, &error))
+      .map_err(|error| source.create_read_error(LevelGeomFile::FILE_NAME, &error))
   }
 }

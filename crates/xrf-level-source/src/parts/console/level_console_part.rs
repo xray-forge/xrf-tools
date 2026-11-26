@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use xrf_error::{XrfError, XrfResult};
 use xrf_session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 
-use crate::LevelSourceResult;
 use crate::console::LevelConsoleDefaults;
 use crate::level::SelectedLevel;
 
@@ -16,7 +16,7 @@ pub(crate) const LEVEL_CONSOLE_PART: &str = "console";
 pub struct LevelConsolePart;
 
 impl SessionPart for LevelConsolePart {
-  type Value = LevelSourceResult<Arc<LevelConsoleDefaults>>;
+  type Value = XrfResult<Arc<LevelConsoleDefaults>>;
 
   const NAME: &'static str = LEVEL_CONSOLE_PART;
 
@@ -34,14 +34,11 @@ impl LevelConsolePart {
   /// # Errors
   ///
   /// Returns the reason the shipped defaults cannot be read, which every later ask answers with again.
-  pub fn get(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-  ) -> LevelSourceResult<Arc<LevelConsoleDefaults>> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<Arc<LevelConsoleDefaults>> {
     current.parts.get_or_record::<Self>(search, |search| {
       LevelConsoleDefaults::read(search, &current.roots)
         .map(Arc::new)
-        .map_err(|error| format!("Failed to read the game's console defaults: {error}"))
+        .map_err(|error| XrfError::new_read_error(format!("Failed to read the game's console defaults: {error}")))
     })
   }
 }

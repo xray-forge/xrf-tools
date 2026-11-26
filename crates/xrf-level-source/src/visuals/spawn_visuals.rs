@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
+use xrf_error::XrfResult;
 use xrf_job::PoolOnceLock;
 
-use crate::LevelSourceResult;
 use crate::visuals::SpawnVisual;
 
 /// One visual's slot: empty until read, then the visual or its failure. The renderer's loaders are pool workers, so one
 /// waiting on another's read keeps working the pool rather than blocking it.
-type Cell = Arc<PoolOnceLock<LevelSourceResult<Arc<SpawnVisual>>>>;
+type Cell = Arc<PoolOnceLock<XrfResult<Arc<SpawnVisual>>>>;
 
 /// A session's spawned visuals, each read on first ask and kept.
 pub struct SpawnVisuals {
@@ -30,8 +30,8 @@ impl SpawnVisuals {
   pub(crate) fn get_or_read(
     &self,
     name: &str,
-    read: impl FnOnce() -> LevelSourceResult<Arc<SpawnVisual>> + Send,
-  ) -> LevelSourceResult<Arc<SpawnVisual>> {
+    read: impl FnOnce() -> XrfResult<Arc<SpawnVisual>> + Send,
+  ) -> XrfResult<Arc<SpawnVisual>> {
     let cell: Cell = Arc::clone(self.lock().entry(name.to_owned()).or_default());
 
     cell.get_or_init(read).clone()

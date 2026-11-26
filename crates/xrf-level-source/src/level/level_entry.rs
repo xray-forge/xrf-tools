@@ -1,8 +1,8 @@
 use serde::Serialize;
+use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelFile, LevelGeomFile};
 use xrf_vfs::{XrayDirectoryListing, XrayLogicalPath, XraySearch};
 
-use crate::LevelSourceResult;
 use crate::level::LevelSource;
 
 /// One compiled level the roots hold, as a picker lists it.
@@ -24,12 +24,10 @@ impl LevelEntry {
   /// # Errors
   ///
   /// Returns an error when `levels` cannot be listed.
-  pub fn list(search: &XraySearch) -> LevelSourceResult<Vec<Self>> {
-    let levels: XrayLogicalPath =
-      XrayLogicalPath::new(LevelSource::LEVELS_DIRECTORY).map_err(|error| format!("Failed to list levels: {error}"))?;
-    let listing: XrayDirectoryListing = search
-      .list_children(levels.as_str())
-      .map_err(|error| format!("Failed to list levels: {error}"))?;
+  pub fn list(search: &XraySearch) -> XrfResult<Vec<Self>> {
+    let failed = |error: XrfError| XrfError::new_read_error(format!("Failed to list levels: {error}"));
+    let levels: XrayLogicalPath = XrayLogicalPath::new(LevelSource::LEVELS_DIRECTORY).map_err(failed)?;
+    let listing: XrayDirectoryListing = search.list_children(levels.as_str()).map_err(failed)?;
 
     Ok(
       listing

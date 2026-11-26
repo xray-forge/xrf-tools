@@ -2,10 +2,9 @@ use std::fmt::Display;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+use xrf_error::{XrfError, XrfResult};
 use xrf_material::XrayTextureScope;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRootProbe, XraySearch};
-
-use crate::LevelSourceResult;
 
 /// Where a compiled level is read from.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -74,10 +73,10 @@ impl LevelSource {
   /// # Errors
   ///
   /// Returns that the level has no engine identity to take a name from.
-  pub fn require_name(&self) -> LevelSourceResult<String> {
-    self
-      .get_name()
-      .ok_or_else(|| format!("Level {} has no name the game knows it by", self.get_label()))
+  pub fn require_name(&self) -> XrfResult<String> {
+    self.get_name().ok_or_else(|| {
+      XrfError::new_not_found_error(format!("Level {} has no name the game knows it by", self.get_label()))
+    })
   }
 
   /// One of the level's files, from disk or out of the mounted roots.
@@ -85,10 +84,10 @@ impl LevelSource {
   /// # Errors
   ///
   /// Returns why the file was refused or could not be read, or that the level has none.
-  pub fn read_file(&self, search: &XraySearch, file: &str) -> LevelSourceResult<Vec<u8>> {
+  pub fn read_file(&self, search: &XraySearch, file: &str) -> XrfResult<Vec<u8>> {
     self
       .read_optional_file(search, file)?
-      .ok_or_else(|| format!("Level '{}' has no '{file}'", self.get_label()))
+      .ok_or_else(|| XrfError::new_not_found_error(format!("Level '{}' has no '{file}'", self.get_label())))
   }
 
   /// One of the level's files through `search`, or `None` where the level has none: only a file that is not there, not
@@ -97,16 +96,16 @@ impl LevelSource {
   /// # Errors
   ///
   /// Returns why the file was refused or could not be read.
-  pub fn read_optional_file(&self, search: &XraySearch, file: &str) -> LevelSourceResult<Option<Vec<u8>>> {
+  pub fn read_optional_file(&self, search: &XraySearch, file: &str) -> XrfResult<Option<Vec<u8>>> {
     let logical_path: XrayLogicalPath = self.to_file_logical_path(file)?;
     let found: Option<XrayAsset> = search
       .find(logical_path.as_str())
-      .map_err(|error| format!("Rejected level file '{logical_path}': {error}"))?;
+      .map_err(|error| XrfError::new_invalid_error(format!("Rejected level file '{logical_path}': {error}")))?;
 
     found
       .map(|asset| search.read_asset(&asset))
       .transpose()
-      .map_err(|error| format!("Failed to read level file '{logical_path}': {error}"))
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read level file '{logical_path}': {error}")))
   }
 
   /// A level file's engine identity, which the search reads it by: a level opened as a directory is read by the logical
@@ -117,27 +116,35 @@ impl LevelSource {
   ///
   /// Returns why the file was refused: a name that would leave the level's directory (a root, a drive, `.` or `..`, as
   /// a spawn's motion names can be written), or a directory under no root a search would mount.
-  pub fn to_file_logical_path(&self, file: &str) -> LevelSourceResult<XrayLogicalPath> {
+  pub fn to_file_logical_path(&self, file: &str) -> XrfResult<XrayLogicalPath> {
     let directory: XrayLogicalPath = match self {
-      Self::Asset { logical_path } => {
-        XrayLogicalPath::new(logical_path).map_err(|error| format!("Rejected level '{logical_path}': {error}"))?
-      }
+      Self::Asset { logical_path } => XrayLogicalPath::new(logical_path)
+        .map_err(|error| XrfError::new_invalid_error(format!("Rejected level '{logical_path}': {error}")))?,
       Self::Directory { path } => XrayRootProbe::implied_logical_path(path).ok_or_else(|| {
-        format!("Level directory '{path}' lies under no game data root, so no search of its roots reaches it")
+        XrfError::new_invalid_error(format!(
+          "Level directory '{path}' lies under no game data root, so no search of its roots reaches it"
+        ))
       })?,
     };
 
     if file.is_empty() {
-      return Err(format!("Rejected a level file of '{directory}' named by nothing"));
+      return Err(XrfError::new_invalid_error(format!(
+        "Rejected a level file of '{directory}' named by nothing"
+      )));
     }
 
     directory.join(file).map_err(|error| {
-      format!("Rejected level file '{file}' of '{directory}': it names no file inside the level: {error}")
+      XrfError::new_invalid_error(format!(
+        "Rejected level file '{file}' of '{directory}': it names no file inside the level: {error}"
+      ))
     })
   }
 
-  /// Why one of its files, read, could not be taken for what it holds.
-  pub fn describe_read_failure(&self, file: &str, error: &impl Display) -> String {
-    format!("Failed to read '{file}' of level '{}': {error}", self.get_label())
+  /// The error of one of its files that was read but could not be taken for what it holds.
+  pub fn create_read_error(&self, file: &str, error: &impl Display) -> XrfError {
+    XrfError::new_read_error(format!(
+      "Failed to read '{file}' of level '{}': {error}",
+      self.get_label()
+    ))
   }
 }

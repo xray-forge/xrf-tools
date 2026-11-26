@@ -8,19 +8,21 @@ read by `xrf-level`, the spawn by `xrf-spawn` and the weather by `xrf-environmen
 
 ## Opening and showing a level
 
-1. `LevelMount::new(host)` wraps the [xrf-vfs](../xrf-vfs/README.md) host every read goes through.
-2. `OpenedLevel::read(search, source, roots, dialect, engine)` reads the level a `LevelSource` names and answers a
-   `SessionDerived<SelectedLevel>`: the root, what it was read from, and the parts read on the way.
-3. A host keeps that as an [xrf-session](../xrf-session/README.md) `SessionSnapshot<SelectedLevel>`.
-4. `LevelRenderSource::new(snapshot, mount, audio)` is the source the world shows; `follow(next)` draws a later
-   snapshot of the same session with the textures resolved so far.
+1. `OpenedLevel::read(search, source, roots, dialect, engine)` reads the level a `LevelSource` names, through a search
+   of the [xrf-vfs](../xrf-vfs/README.md) host, and answers a `SessionDerived<SelectedLevel>`: the root, what it was
+   read from, and the parts read on the way.
+2. A host keeps that as an [xrf-session](../xrf-session/README.md) `SessionSnapshot<SelectedLevel>`.
+3. `LevelRenderSource::new(snapshot, host, audio)` is the source the world shows, every read it makes going through
+   the shared `XrayVfsHost`; `follow(next)` draws a later snapshot of the same session with the textures resolved so
+   far.
 
-`OpenedLevel::derive` reads an open level again over what it was opened with, for a host that follows its files.
+`OpenedLevel::derive(snapshot, host)` reads an open level again over what it was opened with, for a host that follows
+its files.
 
 ## Layout
 
 - `level`: a level as a document: where it is read from (`LevelSource`), its `level` bundle, how an open reads it and
-  reads it again (`OpenedLevel`), the mount its reads go through (`LevelMount`), and what a host is shown of one.
+  reads it again (`OpenedLevel`), and what a host is shown of one.
 - `parts`: what an open level reads beside its bundle, each a part of its session with its value beside it, one part
   type to a file (`Level<Part>Part`): from the level's own files (`level`), the game's spawn and what it names
   (`spawn`), what the renderer draws beside the sectors (`drawn`), the game's environment (`environment`) and its
@@ -42,8 +44,10 @@ read by `xrf-level`, the spawn by `xrf-spawn` and the weather by `xrf-environmen
 
 ## Errors
 
-The readers answer `LevelSourceResult<T>`, text a host shows as it is. `XrfResult` stays where the crate meets the
-renderer's and the world's traits.
+Every reader answers `XrfResult`, the error's kind saying what went wrong: a read that failed (`Read`), a file or name
+that is not there (`NotFound`), a name or input refused (`Invalid`). A host showing one to a person turns it to text
+where it crosses, as the app's levels plugin does into its `TauriResult`; the renderer's and the world's traits take it
+as it is.
 
 ## Features
 
