@@ -1,0 +1,24 @@
+[package]
+name = "xrf-game-platform"
+version = "0.1.0"
+publish = false
+description = "XRF game: the window, its input and the gamepads, over SDL 3"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+log = { workspace = true }
+sdl3 = { workspace = true }
+xrf-renderer = { workspace = true }
+xrf-renderer-host = { workspace = true }
+
+# Loads SDL's library by its full path before the first call into it.
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_System_LibraryLoader"] }
+
+[lints]
+workspace = true

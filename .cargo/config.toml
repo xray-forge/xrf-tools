@@ -6,7 +6,8 @@
 rustflags = ["-Clink-arg=-lstdc++"]
 
 # Steam Audio is loaded when the audio starts rather than when a binary does, so one without it plays dry: on Windows
-# its library is delay-loaded, which every binary linking it needs, hence here rather than in a build script. Media
+# its library is delay-loaded, which every binary linking it needs, hence here rather than in a build script. SDL is
+# delay-loaded the same way, loaded by its path when the game's platform starts, so its tests run without it. Media
 # Foundation's libraries are delayed the same way, which the `windows` crate's raw-dylib imports take, so a Windows
 # without them (an N edition lacking the Media Feature Pack) still starts the app and only video is refused. A binary
 # importing nothing of a library is told so by the linker (LNK4199), which is no fault. A set `RUSTFLAGS` replaces this
@@ -14,6 +15,7 @@ rustflags = ["-Clink-arg=-lstdc++"]
 [target.'cfg(windows)']
 rustflags = [
   "-Clink-arg=/DELAYLOAD:phonon.dll",
+  "-Clink-arg=/DELAYLOAD:SDL3.dll",
   "-Clink-arg=/DELAYLOAD:mfplat.dll",
   "-Clink-arg=/DELAYLOAD:mfreadwrite.dll",
   "-Clink-arg=/DELAYLOAD:mf.dll",

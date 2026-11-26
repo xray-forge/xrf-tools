@@ -4894,6 +4894,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
+name = "sdl3"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68fa206a2da1250b294edc95defee46fa6e61a04aaff0ca69c0352e23c351166"
+dependencies = [
+ "bitflags 2.13.2",
+ "libc",
+ "objc2",
+ "raw-window-handle",
+ "sdl3-sys",
+]
+
+[[package]]
+name = "sdl3-sys"
+version = "0.7.3+SDL-3.4.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e68da4d2bcf29a81a1ea71ec27b93bb27151d649c2b186eb5988ad4dcb17d11"
+dependencies = [
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "selectors"
 version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6853,6 +6876,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
+name = "vcpkg"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
 name = "version-compare"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8563,6 +8592,17 @@ dependencies = [
  "serde_json",
  "specta",
  "xrf-test-utils",
+]
+
+[[package]]
+name = "xrf-game-platform"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "sdl3",
+ "windows",
+ "xrf-renderer",
+ "xrf-renderer-host",
 ]
 
 [[package]]
