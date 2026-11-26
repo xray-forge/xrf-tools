@@ -383,8 +383,6 @@ impl SceneRender {
       Some(voice) => voice.is_placed,
       None => rendered.is_placeable(&self.acoustics),
     };
-    // todo: A placed voice keeps the effects made at the rate the mixer ran at when it started, so a device opened at
-    // another rate afterwards plays it through effects tuned to the old one until it starts over.
     let spatial: Option<Box<VoiceSpatial>> = if is_placed && rendered.voice.is_none() {
       self.acoustics.create_voice_spatial(tick.rate)
     } else {

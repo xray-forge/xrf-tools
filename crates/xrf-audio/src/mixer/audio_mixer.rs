@@ -122,13 +122,33 @@ impl AudioMixer {
     self.output_rate
   }
 
-  /// Renders at `rate` from the next buffer on, as the device sets before it plays. A new rate remakes the reverb and
-  /// ends a tap's stream.
+  /// The rate each placed voice's effects are tuned to, in slot order.
+  #[cfg(all(test, feature = "steam-audio"))]
+  pub(crate) fn get_spatial_rates(&self) -> Vec<u32> {
+    self
+      .voices
+      .iter()
+      .flatten()
+      .filter_map(|voice| voice.get_spatial())
+      .map(|spatial| spatial.get_rate())
+      .collect()
+  }
+
+  /// Renders at `rate` from the next buffer on, as the device sets before it plays, off the audio thread. A new rate
+  /// remakes the reverb and every placed voice's effects, and ends a tap's stream.
   pub fn set_output_rate(&mut self, rate: u32) {
     let rate: u32 = rate.max(1);
 
     if rate != self.output_rate || (self.reverb.is_none() && self.acoustics.is_running()) {
       self.reverb = MixerReverb::for_acoustics(&self.acoustics, rate);
+    }
+
+    if rate != self.output_rate {
+      // todo: A placed voice whose effects the control side made at the old rate but whose start reaches the mixer only
+      // after this keeps them until it starts over: refuse such a voice at take-up and have its scene make it again.
+      for voice in self.voices.iter_mut().flatten() {
+        voice.follow_rate(&self.acoustics, rate);
+      }
     }
 
     if let Some(tap) = &self.tap {

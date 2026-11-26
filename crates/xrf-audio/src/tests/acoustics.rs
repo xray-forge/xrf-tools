@@ -728,4 +728,50 @@ mod steam {
     assert_eq!(violation_count(), 0);
     assert!(rms_left(&out) > 0.0);
   }
+
+  #[test]
+  fn makes_a_playing_placed_voice_s_effects_again_at_a_new_output_rate() {
+    let acoustics: AudioAcoustics = checkout_acoustics();
+    let steam = acoustics.get_steam().expect("Steam Audio runs");
+    let sound: Arc<DecodedSound> = Arc::new(sine(RATE, RATE as usize, 440.0, 0.5, SoundChannels::Mono));
+    let AudioEngineParts { mut engine, mixer } = AudioEngineParts::with_acoustics(
+      AudioEngineSettings {
+        voices_count: 4,
+        ..AudioEngineSettings::default()
+      },
+      acoustics.clone(),
+    );
+    let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+
+    engine
+      .play_placed(
+        AudioPlay::new(looped(&sound), AudioBus::World),
+        Box::new(steam.create_voice_effects(RATE).expect("the effects are made")),
+        &VoiceSpatialParameters::default(),
+      )
+      .expect("a placed voice starts");
+    engine
+      .play(AudioPlay::new(looped(&sound), AudioBus::Music))
+      .expect("a dry voice starts");
+    render.render(512);
+
+    let mut mixer: AudioMixer = render.into_mixer();
+
+    assert_eq!(mixer.get_spatial_rates(), [RATE]);
+
+    mixer.set_output_rate(44_100);
+
+    assert_eq!(
+      mixer.get_spatial_rates(),
+      [44_100],
+      "the placed voice's effects, the dry voice still without any"
+    );
+
+    let mut render: OfflineRender = OfflineRender::new(mixer, 44_100);
+
+    assert!(
+      rms_left(&render.render(4_410)) > 0.0,
+      "both voices play on at the new rate"
+    );
+  }
 }

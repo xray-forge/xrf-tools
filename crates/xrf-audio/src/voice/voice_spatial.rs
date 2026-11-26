@@ -9,6 +9,7 @@ pub(crate) use crate::acoustics::steam::voice_effects::VoiceEffects as VoiceSpat
 
 #[cfg(not(feature = "steam-audio"))]
 mod dry {
+  use crate::acoustics::audio_acoustics::AudioAcoustics;
   use crate::acoustics::effects::placed_block::PlacedBlock;
   use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 
@@ -16,6 +17,10 @@ mod dry {
   pub(crate) enum VoiceSpatial {}
 
   impl VoiceSpatial {
+    pub(crate) fn for_acoustics(_: &AudioAcoustics, _: u32) -> Option<Box<Self>> {
+      None
+    }
+
     pub(crate) fn apply(&mut self, _: &VoiceSpatialParameters, _: &[f32]) -> PlacedBlock<'_> {
       match *self {}
     }

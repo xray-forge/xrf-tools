@@ -1,5 +1,6 @@
 use xrf_audio_scene::AudioBus;
 
+use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::effects::ear_blocks::EarBlocks;
 use crate::acoustics::effects::placed_block::PlacedBlock;
 use crate::mixer::gain_ramp::GainRamp;
@@ -75,6 +76,21 @@ impl Voice {
   /// The voice with its first frame playing at mixer frame `at`, none for the block the mixer takes it up in.
   pub(crate) fn starting_at(self, at: Option<u64>) -> Self {
     Self { at, ..self }
+  }
+
+  /// Makes a placed voice's effects again for the mixer's new `rate`, so it is never heard through effects tuned to
+  /// another; one whose effects `acoustics` cannot make at that rate keeps those it has.
+  pub(crate) fn follow_rate(&mut self, acoustics: &AudioAcoustics, rate: u32) {
+    if self.spatial.is_some()
+      && let Some(spatial) = VoiceSpatial::for_acoustics(acoustics, rate)
+    {
+      self.spatial = Some(spatial);
+    }
+  }
+
+  #[cfg(all(test, feature = "steam-audio"))]
+  pub(crate) fn get_spatial(&self) -> Option<&VoiceSpatial> {
+    self.spatial.as_deref()
   }
 
   /// Lines the voice up with the mixer's clock as the mixer takes it up for the block at mixer frame `block`: a start

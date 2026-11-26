@@ -4,6 +4,7 @@ use audionimbus::{
   PanningEffectParams, PanningEffectSettings, SpeakerLayout, Transmission,
 };
 
+use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::acoustics::effects::ear_blocks::EarBlocks;
 use crate::acoustics::effects::placed_block::PlacedBlock;
@@ -26,19 +27,36 @@ pub(crate) struct VoiceEffects {
   fading: Box<[f32]>,
   /// How the last block reached the ears, none before the first.
   last_ears: Option<AudioSpatialization>,
+  /// The mixer rate the effects are tuned to.
+  rate: u32,
 }
 
 impl std::fmt::Debug for VoiceEffects {
   fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.debug_struct("VoiceEffects").finish_non_exhaustive()
+    formatter
+      .debug_struct("VoiceEffects")
+      .field("rate", &self.rate)
+      .finish_non_exhaustive()
   }
 }
 
 impl VoiceEffects {
+  /// The effects `acoustics` give a placed voice at the mixer's `rate`, none where they cannot be made, when the voice
+  /// plays dry.
+  pub(crate) fn for_acoustics(acoustics: &AudioAcoustics, rate: u32) -> Option<Box<Self>> {
+    acoustics
+      .get_steam()?
+      .create_voice_effects(rate)
+      .inspect_err(|error| log::warn!("A sound plays dry: {error}"))
+      .ok()
+      .map(Box::new)
+  }
+
   pub(crate) fn new(context: &Context, settings: &AudioSettings, hrtf: Hrtf) -> Result<Self, String> {
     let failed = |what: &str, error: audionimbus::SteamAudioError| format!("Steam Audio's {what} is not made: {error}");
 
     Ok(Self {
+      rate: settings.sampling_rate,
       direct: DirectEffect::try_new(context, settings, &DirectEffectSettings { num_channels: 1 })
         .map_err(|error| failed("direct effect", error))?,
       binaural: BinauralEffect::try_new(context, settings, &BinauralEffectSettings { hrtf: hrtf.clone() })
@@ -63,6 +81,11 @@ impl VoiceEffects {
       fading: vec![0.0; AudioMixer::BLOCK_FRAMES * 2].into_boxed_slice(),
       last_ears: None,
     })
+  }
+
+  #[cfg(test)]
+  pub(crate) fn get_rate(&self) -> u32 {
+    self.rate
   }
 
   /// Renders one mono block of [`AudioMixer::BLOCK_FRAMES`] frames through the direct path and onto both ears.

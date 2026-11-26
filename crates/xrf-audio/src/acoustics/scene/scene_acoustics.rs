@@ -80,13 +80,7 @@ impl SceneAcoustics {
   pub(crate) fn create_voice_spatial(&self, rate: u32) -> Option<Box<VoiceSpatial>> {
     #[cfg(feature = "steam-audio")]
     {
-      self
-        .acoustics
-        .get_steam()?
-        .create_voice_effects(rate)
-        .inspect_err(|error| log::warn!("A sound plays dry: {error}"))
-        .ok()
-        .map(Box::new)
+      VoiceSpatial::for_acoustics(&self.acoustics, rate)
     }
 
     #[cfg(not(feature = "steam-audio"))]
