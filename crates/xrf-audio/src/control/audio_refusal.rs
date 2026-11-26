@@ -5,6 +5,9 @@ use std::fmt::{Display, Formatter};
 pub enum AudioRefusal {
   /// Every voice slot plays: the engines' target budget, here the mixer's pool.
   VoicesExhausted,
+  /// The World and Ambience buses hold every voice they may: the rest of the pool is kept for Music and Previews
+  /// ([`crate::AudioEngineSettings::world_voices_count`]).
+  VoicesCapped,
   /// The command ring is full: the audio thread has not taken commands for a while, as when no device plays.
   CommandsFull,
   /// Every tap the mixer can hand back is out, held by it or on its way back: taps were opened faster than the audio
@@ -16,6 +19,7 @@ impl Display for AudioRefusal {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
     formatter.write_str(match self {
       Self::VoicesExhausted => "every voice is playing",
+      Self::VoicesCapped => "every voice the world and ambience may hold is playing",
       Self::CommandsFull => "the audio thread is not taking commands",
       Self::TapsBusy => "the audio thread has not let go of the taps opened before",
     })

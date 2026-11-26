@@ -41,7 +41,13 @@ impl AudioEngineParts {
     };
 
     Self {
-      engine: AudioEngine::new(commands, retired, retired_taps, shared.clone()),
+      engine: AudioEngine::new(
+        commands,
+        retired,
+        retired_taps,
+        shared.clone(),
+        settings.world_voices_count,
+      ),
       mixer: AudioMixer::new(mixer_commands, mixer_retired, mixer_retired_taps, shared),
     }
   }

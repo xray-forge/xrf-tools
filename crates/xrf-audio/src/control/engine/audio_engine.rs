@@ -55,11 +55,13 @@ impl AudioEngine {
   /// Taps the mixer may hold or be handing back at once, the ring they come back through.
   pub(crate) const TAPS_MOST: usize = 2;
 
+  /// An engine whose World and Ambience voices hold at most `world_voices_count` of the pool together.
   pub(crate) fn new(
     commands: Producer<MixerCommand>,
     retired: Consumer<Box<Voice>>,
     retired_taps: Consumer<Box<MixerTap>>,
     shared: EngineShared,
+    world_voices_count: usize,
   ) -> Self {
     let EngineShared {
       parameters,
@@ -68,7 +70,7 @@ impl AudioEngine {
       acoustics,
       reverb,
     } = shared;
-    let slots: VoiceSlots = VoiceSlots::new(statuses.len());
+    let slots: VoiceSlots = VoiceSlots::new(statuses.len(), world_voices_count);
     let start_frames: Box<[u64]> = vec![0; statuses.len()].into_boxed_slice();
 
     Self {
@@ -101,7 +103,8 @@ impl AudioEngine {
   ///
   /// # Errors
   ///
-  /// Refuses the voice when every slot plays or the audio thread has not taken its commands; the source is dropped.
+  /// Refuses the voice when every slot plays, when a World or Ambience voice finds those buses holding every voice
+  /// they may, or when the audio thread has not taken its commands; the source is dropped.
   pub fn play(&mut self, play: AudioPlay) -> Result<AudioVoiceId, AudioRefusal> {
     self.start(play, None)
   }
@@ -136,7 +139,7 @@ impl AudioEngine {
   fn start(&mut self, play: AudioPlay, placed: Option<PlacedStart<'_>>) -> Result<AudioVoiceId, AudioRefusal> {
     self.collect();
 
-    let id: AudioVoiceId = self.slots.take().ok_or(AudioRefusal::VoicesExhausted)?;
+    let id: AudioVoiceId = self.slots.take(Self::is_capped(play.bus))?;
     let parameters: &VoiceParameters = &self.parameters[id.slot as usize];
 
     // The slot is free, so no voice reads its block until this one starts with what is written here.
@@ -158,6 +161,15 @@ impl AudioEngine {
     }
 
     Ok(id)
+  }
+
+  /// Whether a voice on `bus` counts against the World and Ambience cap: a scene fills those buses up to its targets,
+  /// while music and previews play a few voices that must not wait for one of its sounds to end.
+  fn is_capped(bus: AudioBus) -> bool {
+    match bus {
+      AudioBus::World | AudioBus::Ambience => true,
+      AudioBus::Music | AudioBus::Previews => false,
+    }
   }
 
   /// Fades the voice out and ends it. A voice that has ended already is left alone.

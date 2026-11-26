@@ -206,12 +206,53 @@ fn ignores_a_command_for_a_voice_whose_slot_was_reused() {
 }
 
 #[test]
+fn keeps_the_voices_past_the_world_cap_for_music_and_previews() {
+  let sound: Arc<DecodedSound> = Arc::new(sine(RATE, 1000, 1000.0, 0.5, SoundChannels::Mono));
+  let AudioEngineParts { mut engine, mixer } = AudioEngineParts::new(AudioEngineSettings {
+    voices_count: 4,
+    world_voices_count: 2,
+    ..AudioEngineSettings::default()
+  });
+  let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+
+  engine
+    .play(AudioPlay::new(once(&sound), AudioBus::World))
+    .expect("the first world voice starts");
+  engine
+    .play(AudioPlay::new(looped(&sound), AudioBus::Ambience))
+    .expect("an ambience voice shares the cap");
+  assert_eq!(
+    engine.play(AudioPlay::new(once(&sound), AudioBus::World)),
+    Err(AudioRefusal::VoicesCapped),
+    "two slots stay free, but not for the world"
+  );
+  engine
+    .play(AudioPlay::new(looped(&sound), AudioBus::Music))
+    .expect("music takes a kept slot");
+  engine
+    .play(AudioPlay::new(looped(&sound), AudioBus::Previews))
+    .expect("a preview takes the other");
+  assert_eq!(
+    engine.play(AudioPlay::new(once(&sound), AudioBus::Previews)),
+    Err(AudioRefusal::VoicesExhausted)
+  );
+
+  // The world voice played once ends, handing its place under the cap back.
+  render.render(2048);
+  engine
+    .play(AudioPlay::new(once(&sound), AudioBus::World))
+    .expect("the world voice that ended left room under the cap");
+  assert_eq!(engine.get_playing_count(), 4);
+}
+
+#[test]
 fn refuses_commands_while_no_buffer_takes_them() {
   let AudioEngineParts {
     mut engine,
     mixer: _mixer,
   } = AudioEngineParts::new(AudioEngineSettings {
     voices_count: 1,
+    world_voices_count: 1,
     commands_count: 2,
   });
 
@@ -251,6 +292,7 @@ fn keeps_the_last_of_many_writes_while_no_buffer_renders() {
   let sound: Arc<DecodedSound> = Arc::new(sine(RATE, RATE as usize, 1000.0, 0.5, SoundChannels::Mono));
   let AudioEngineParts { mut engine, mixer } = AudioEngineParts::new(AudioEngineSettings {
     voices_count: 1,
+    world_voices_count: 1,
     commands_count: 4,
   });
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
