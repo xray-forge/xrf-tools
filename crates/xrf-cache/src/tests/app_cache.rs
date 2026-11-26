@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use xrf_test_utils::GeneratedResources;
-use xrf_utils::AppCacheStore;
 
-use crate::cache::{AppCache, AppCachePolicy, AppCacheTidy};
-use crate::directories::AppDirectories;
+use crate::app_cache::AppCache;
+use crate::app_cache_policy::{AppCachePolicy, DEFAULT_APP_CACHE_POLICY};
+use crate::app_cache_store::AppCacheStore;
+use crate::app_cache_tidy::AppCacheTidy;
 
 const DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
-/// Fresh caches in a folder of their own, and that folder.
 fn caches(name: &str) -> (AppCache, PathBuf) {
   let root: PathBuf = GeneratedResources::path(&format!("app_cache/{name}"));
 
@@ -19,7 +19,6 @@ fn caches(name: &str) -> (AppCache, PathBuf) {
   (AppCache::new(root.clone()), root)
 }
 
-/// Writes `entry` of `bytes` bytes into `store`, last used `age` ago, answering its file.
 fn keep(root: &Path, store: &AppCacheStore, entry: &str, bytes: usize, age: Duration) -> PathBuf {
   let path: PathBuf = root.join(store.get_name()).join(entry);
 
@@ -55,7 +54,7 @@ fn removes_what_went_unused_past_the_age_and_keeps_the_rest() {
   let stale: PathBuf = keep(&root, &renderer, "stale", 20, DAY * 9);
   let other: PathBuf = keep(&root, &materials, "zaton.json", 30, DAY * 30);
 
-  let tidy: AppCacheTidy = cache.tidy(AppCachePolicy::DEFAULT, true);
+  let tidy: AppCacheTidy = cache.tidy(DEFAULT_APP_CACHE_POLICY, true);
 
   assert_eq!(
     tidy,
@@ -92,17 +91,17 @@ fn removes_the_least_recently_used_until_the_rest_fit_the_limit() {
   assert!(newest.exists());
 }
 
-/// However full the caches and however old the files beside them, a tidy removes nothing outside the cache folder: the
-/// level viewer's screenshots and bursts, saved views, logs, preferences and exports stay.
+// However full the caches and however old the files beside them, a tidy removes nothing outside the cache folder: an
+// application's saved screenshots, bursts and views, logs, preferences and exports stay.
 #[test]
 fn removes_nothing_outside_the_cache_folder() {
   let data: PathBuf = GeneratedResources::path("app_cache/outside/appdata");
   let output: PathBuf = GeneratedResources::path("app_cache/outside/target");
+  let root: PathBuf = data.join("cache");
 
   let _ = fs::remove_dir_all(GeneratedResources::path("app_cache/outside"));
 
-  // The cache folder within the data directory, as `AppCache::of` takes it from `AppDirectories::get_cache_root`.
-  let cache: AppCache = AppCache::new(data.join(AppDirectories::CACHE_DIRECTORY));
+  let cache: AppCache = AppCache::new(root.clone());
   let kept: Vec<PathBuf> = [
     data.join("level-viewer/screenshots/zaton.png"),
     data.join("level-viewer/bursts/rain/frame-000.png"),
@@ -121,13 +120,7 @@ fn removes_nothing_outside_the_cache_folder() {
   }
 
   let store: AppCacheStore = cache.get_store("renderer");
-  let stale: PathBuf = keep(
-    &data.join(AppDirectories::CACHE_DIRECTORY),
-    &store,
-    "pipelines",
-    64,
-    DAY * 365,
-  );
+  let stale: PathBuf = keep(&root, &store, "pipelines", 64, DAY * 365);
   let policy: AppCachePolicy = AppCachePolicy {
     unused_days: 1,
     size_limit: 0,
@@ -143,13 +136,13 @@ fn tidies_once_a_day_unless_forced() {
   let (cache, root) = caches("once_a_day");
   let store: AppCacheStore = cache.get_store("renderer");
 
-  assert!(cache.tidy(AppCachePolicy::DEFAULT, false).is_done);
+  assert!(cache.tidy(DEFAULT_APP_CACHE_POLICY, false).is_done);
 
   let stale: PathBuf = keep(&root, &store, "stale", 10, DAY * 30);
 
-  assert!(!cache.tidy(AppCachePolicy::DEFAULT, false).is_done);
+  assert!(!cache.tidy(DEFAULT_APP_CACHE_POLICY, false).is_done);
   assert!(stale.exists());
-  assert_eq!(cache.tidy(AppCachePolicy::DEFAULT, true).removed_entries, 1);
+  assert_eq!(cache.tidy(DEFAULT_APP_CACHE_POLICY, true).removed_entries, 1);
 }
 
 #[test]
@@ -167,7 +160,7 @@ fn leaves_a_tidy_another_instance_holds() {
 
   lock.lock().expect("the other instance holds the caches");
 
-  assert!(!cache.tidy(AppCachePolicy::DEFAULT, true).is_done);
+  assert!(!cache.tidy(DEFAULT_APP_CACHE_POLICY, true).is_done);
 }
 
 #[test]

@@ -10,10 +10,10 @@ path = "src/lib.rs"
 
 [dependencies]
 log = { workspace = true }
+xrf-cache = { workspace = true }
 xrf-error = { workspace = true }
 xrf-material = { workspace = true }
 xrf-renderer = { workspace = true }
-xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 
 [dev-dependencies]

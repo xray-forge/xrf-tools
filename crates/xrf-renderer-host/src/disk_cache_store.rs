@@ -1,16 +1,21 @@
+use xrf_cache::{AppCache, AppCacheStore};
 use xrf_renderer::RenderCacheStore;
-use xrf_utils::AppCacheStore;
 
-/// The renderer's cache as one client of the application's caches, which mark what it reads used and tidy what it
-/// stops reading.
+/// The renderer's cache as one client of an application's caches, which mark what it reads used and tidy what it stops
+/// reading.
 pub struct DiskCacheStore {
   store: AppCacheStore,
 }
 
 impl DiskCacheStore {
-  /// The renderer's cache over the application's `store` for it.
-  pub fn new(store: AppCacheStore) -> Self {
-    Self { store }
+  /// The client's name, its folder within the caches: every host keeps the driver's compiled pipelines under it.
+  pub const CLIENT: &'static str = "renderer";
+
+  /// The renderer's cache within `cache`.
+  pub fn new(cache: &AppCache) -> Self {
+    Self {
+      store: cache.get_store(Self::CLIENT),
+    }
   }
 }
 

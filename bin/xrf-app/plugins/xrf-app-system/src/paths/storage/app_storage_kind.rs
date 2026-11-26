@@ -1,8 +1,9 @@
 use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use xrf_app_core::cache::AppCache;
 use xrf_app_core::directories::AppDirectories;
+use xrf_cache::AppCache;
+use xrf_renderer_host::DiskCacheStore;
 
 /// What a file the application keeps of its own is for, by where it lies in its data directory.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -48,7 +49,7 @@ impl AppStorageKind {
 
     Some(match parts.as_slice() {
       [AppDirectories::CACHE_DIRECTORY, name] if AppCache::is_own_file(name) => return None,
-      [AppDirectories::CACHE_DIRECTORY, AppDirectories::RENDERER_CACHE, _, ..] => Self::RendererCache,
+      [AppDirectories::CACHE_DIRECTORY, DiskCacheStore::CLIENT, _, ..] => Self::RendererCache,
       [AppDirectories::CACHE_DIRECTORY, _, ..] => Self::OtherCaches,
       [AppDirectories::LOGS_DIRECTORY, _, ..] => Self::Logs,
       [AppDirectories::PREFERENCES_FILE] => Self::Preferences,
@@ -62,7 +63,7 @@ impl AppStorageKind {
   pub(crate) fn get_clearable_folder(self) -> Option<PathBuf> {
     match self {
       Self::RendererCache => Some(
-        [AppDirectories::CACHE_DIRECTORY, AppDirectories::RENDERER_CACHE]
+        [AppDirectories::CACHE_DIRECTORY, DiskCacheStore::CLIENT]
           .iter()
           .collect(),
       ),

@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::TauriResult;
-use xrf_app_core::cache::{AppCache, AppCachePolicy, AppCacheTidy};
 use xrf_app_core::execution::ExecutionState;
+use xrf_cache::{AppCache, AppCachePolicy, AppCacheTidy};
 
 /// Tidies the application's caches by `policy`, the settings' limits: what went unused past its age goes, then the
 /// least recently used past its size; once a day as the page starts, or now where `is_forced`.

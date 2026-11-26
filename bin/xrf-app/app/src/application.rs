@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use tauri::{App, Builder, Manager, RunEvent, Runtime, Window, WindowEvent, Wry};
 use xrf_app_core::assets::AssetMountState;
-use xrf_app_core::cache::AppCache;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
@@ -101,7 +100,7 @@ fn assemble<R: Runtime>(builder: Builder<R>, foundation: ApplicationFoundation) 
   // Closed documents are dropped on the pool, so neither a command nor the event loop waits for a level to go.
   let scopes: SessionScopes = SessionScopes::new(execution.get_pool());
   // Every client's cache in one, where the application has a data directory to keep it in.
-  let builder: Builder<R> = match AppCache::of(&directories) {
+  let builder: Builder<R> = match directories.get_cache() {
     Some(cache) => builder.manage(cache),
     None => builder,
   };

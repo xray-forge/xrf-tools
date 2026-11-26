@@ -19,8 +19,10 @@ tauri-specta = { workspace = true, optional = true }
 xrf-app-core = { workspace = true }
 xrf-app-render = { workspace = true }
 xrf-build-info = { workspace = true }
+xrf-cache = { workspace = true }
 xrf-env-flags = { workspace = true }
 xrf-renderer = { workspace = true }
+xrf-renderer-host = { workspace = true }
 xrf-utils = { workspace = true }
 
 # Both already in the tree through wry, at the versions it resolves: the memory reading asks WebView2 for its processes.
@@ -43,6 +45,7 @@ typescript-bindings = [
   "xrf-app-core/typescript-bindings",
   "xrf-app-render/typescript-bindings",
   "xrf-build-info/typescript-bindings",
+  "xrf-cache/typescript-bindings",
   "xrf-env-flags/typescript-bindings",
   "xrf-renderer/typescript-bindings",
 ]

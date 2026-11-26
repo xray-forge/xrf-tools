@@ -3,7 +3,7 @@ use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use crate::staging::StagedFile;
+use xrf_utils::StagedFile;
 
 /// One client's cache in an application's caches: a folder of entries, each a file written whole or not at all. An
 /// entry's modification time is when it was last used: set when it is written, and moved on when it is read, so a tidy

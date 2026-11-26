@@ -1,11 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { DEFAULT_APP_CACHE_POLICY } from "@xrf/ipc/types/xrf-cache";
 
-import {
-  APP_CACHE_POLICY_CODEC,
-  APP_CACHE_POLICY_LIMITS,
-  DEFAULT_APP_CACHE_POLICY,
-  GIBIBYTE,
-} from "@/core/settings/lib/app-cache";
+import { APP_CACHE_POLICY_CODEC, APP_CACHE_POLICY_LIMITS, GIBIBYTE } from "@/core/settings/lib/app-cache";
 
 describe("app cache policy", () => {
   it("reads nothing stored as the backend's defaults: a week unused, five gibibytes", () => {

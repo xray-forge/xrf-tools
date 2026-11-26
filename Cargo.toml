@@ -13,6 +13,7 @@ members = [
   "crates/xrf-audio",
   "crates/xrf-audio-scene",
   "crates/xrf-build-info",
+  "crates/xrf-cache",
   "crates/xrf-chunk",
   "crates/xrf-collections",
   "crates/xrf-dds",
@@ -141,6 +142,7 @@ xrf-archive-stats = { path = "crates/xrf-archive-stats" }
 xrf-audio = { path = "crates/xrf-audio" }
 xrf-audio-scene = { path = "crates/xrf-audio-scene" }
 xrf-build-info = { path = "crates/xrf-build-info" }
+xrf-cache = { path = "crates/xrf-cache" }
 xrf-chunk = { path = "crates/xrf-chunk" }
 xrf-collections = { path = "crates/xrf-collections" }
 xrf-dds = { path = "crates/xrf-dds" }

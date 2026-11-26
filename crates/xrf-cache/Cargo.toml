@@ -1,0 +1,26 @@
+[package]
+name = "xrf-cache"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+xrf-ipc = { workspace = true, optional = true }
+xrf-utils = { workspace = true }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
+
+[features]
+# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
+typescript-bindings = ["specta", "xrf-ipc"]
+
+[lints]
+workspace = true

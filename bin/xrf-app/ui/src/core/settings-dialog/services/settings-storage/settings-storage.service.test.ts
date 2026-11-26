@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { ESystemCommand } from "@xrf/ipc/commands/system";
 import { mockIpcCommands } from "@xrf/ipc/testing";
-import { AppCacheTidy } from "@xrf/ipc/types/xrf-app-core";
 import { AppStorageUsage, EAppStorageKind } from "@xrf/ipc/types/xrf-app-system";
+import { AppCacheTidy } from "@xrf/ipc/types/xrf-cache";
 
 import { SettingsStorageService } from "@/core/settings-dialog/services/settings-storage";
 import { mockInjectedService } from "@/fixtures/utils/container";

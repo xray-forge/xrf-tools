@@ -1,8 +1,8 @@
 import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { systemCommands } from "@xrf/ipc/commands/system";
-import { AppCacheTidy } from "@xrf/ipc/types/xrf-app-core";
 import { AppStorageUsage, EAppStorageKind } from "@xrf/ipc/types/xrf-app-system";
+import { AppCacheTidy } from "@xrf/ipc/types/xrf-cache";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

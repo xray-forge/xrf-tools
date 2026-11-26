@@ -1,5 +1,5 @@
 import { systemCommands } from "@xrf/ipc/commands/system";
-import { AppCachePolicy, AppCacheTidy } from "@xrf/ipc/types/xrf-app-core";
+import { AppCachePolicy, AppCacheTidy, DEFAULT_APP_CACHE_POLICY } from "@xrf/ipc/types/xrf-cache";
 import { Logger } from "@xrf/logging";
 import { isRecord } from "@xrf/types";
 
@@ -7,9 +7,6 @@ import { APP_CACHE_POLICY_STORAGE_KEY, IStoredValueCodec, jsonCodec, StoredValue
 
 /** A gibibyte, the unit the size limit is offered in. */
 export const GIBIBYTE: number = 1024 ** 3;
-
-/** The backend's own (`AppCachePolicy::DEFAULT`): a week unused, five gibibytes. */
-export const DEFAULT_APP_CACHE_POLICY: Readonly<AppCachePolicy> = { sizeLimit: 5 * GIBIBYTE, unusedDays: 7 };
 
 /** The bounds each limit is offered between: from a day to three months unused, from one gibibyte to fifty. */
 export const APP_CACHE_POLICY_LIMITS = {

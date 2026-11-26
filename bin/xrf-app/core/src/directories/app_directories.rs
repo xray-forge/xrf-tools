@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
+use xrf_cache::AppCache;
+
 /// Where this application writes: beside its executable when that directory accepts files, as a portable install keeps
 /// everything together, else in its own local data directory. Each kind of place is a list of candidates, best first.
 pub struct AppDirectories {
@@ -19,9 +21,6 @@ impl AppDirectories {
 
   /// Directory within the application's own data that caches rebuilt from nothing are kept in.
   pub const CACHE_DIRECTORY: &'static str = "cache";
-
-  /// The renderer's cache (`AppCache::get_store`), what it rebuilds: its driver's compiled pipelines.
-  pub const RENDERER_CACHE: &'static str = "renderer";
 
   /// Directory within the application's own data the logs are kept in.
   pub const LOGS_DIRECTORY: &'static str = "logs";
@@ -78,6 +77,12 @@ impl AppDirectories {
       .into_iter()
       .next()
       .map(|directory| directory.join(Self::CACHE_DIRECTORY))
+  }
+
+  /// The application's caches, over its cache folder alone, none where it has no data directory: a tidy removes files
+  /// within that folder, and never reaches the tools' saved files, logs or exports beside it.
+  pub fn get_cache(&self) -> Option<AppCache> {
+    self.get_cache_root().map(AppCache::new)
   }
 
   /// The first of `directories` the page can address without changing it: one with a Unicode path.

@@ -7957,6 +7957,7 @@ dependencies = [
  "tokio",
  "uuid",
  "windows",
+ "xrf-cache",
  "xrf-dds",
  "xrf-engine-target",
  "xrf-env-flags",
@@ -8094,6 +8095,7 @@ dependencies = [
  "tauri",
  "tauri-specta",
  "xrf-app-core",
+ "xrf-cache",
  "xrf-environment",
  "xrf-error",
  "xrf-extension",
@@ -8173,8 +8175,10 @@ dependencies = [
  "xrf-app-core",
  "xrf-app-render",
  "xrf-build-info",
+ "xrf-cache",
  "xrf-env-flags",
  "xrf-renderer",
+ "xrf-renderer-host",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -8324,6 +8328,18 @@ dependencies = [
  "jiff",
  "serde",
  "specta",
+]
+
+[[package]]
+name = "xrf-cache"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "xrf-ipc",
+ "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -9147,11 +9163,11 @@ dependencies = [
  "objc2-foundation",
  "objc2-quartz-core",
  "windows",
+ "xrf-cache",
  "xrf-error",
  "xrf-material",
  "xrf-renderer",
  "xrf-test-utils",
- "xrf-utils",
  "xrf-vfs",
 ]
 

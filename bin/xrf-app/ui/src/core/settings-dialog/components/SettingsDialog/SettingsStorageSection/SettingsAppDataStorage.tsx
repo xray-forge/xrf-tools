@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
-import { AppCachePolicy, AppCacheTidy } from "@xrf/ipc/types/xrf-app-core";
 import { AppStorageArea, AppStorageUsage, EAppStorageKind } from "@xrf/ipc/types/xrf-app-system";
+import { AppCachePolicy, AppCacheTidy } from "@xrf/ipc/types/xrf-cache";
 import { useMountEffect } from "@xrf/react/mount-effect";
 import { Nullable } from "@xrf/types";
 import { Button } from "@xrf/ui/button";

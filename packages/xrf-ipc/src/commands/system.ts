@@ -2,7 +2,6 @@
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { AppCachePolicy, AppCacheTidy } from "#/types/xrf-app-core";
 import {
   AppStorageUsage,
   EAppStorageKind,
@@ -15,6 +14,7 @@ import {
   UiLogRecord,
 } from "#/types/xrf-app-system";
 import { BuildInfo } from "#/types/xrf-build-info";
+import { AppCachePolicy, AppCacheTidy } from "#/types/xrf-cache";
 import { EnvFlagReading } from "#/types/xrf-env-flags";
 
 /** The wire name of every command of the `system` plugin. */

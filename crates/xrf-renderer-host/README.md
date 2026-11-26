@@ -44,8 +44,9 @@ resolves its own at open) or once first asked for. `read`, `read_sequence` and `
 
 ## The pipeline cache
 
-`DiskCacheStore::new(store)` keeps the driver's compiled pipelines between runs as the renderer's `RenderCacheStore`,
-in one client's folder of a host's caches ([xrf-utils](../xrf-utils/README.md)'s `AppCacheStore`).
+`DiskCacheStore::new(&cache)` keeps the driver's compiled pipelines between runs as the renderer's `RenderCacheStore`,
+in the client folder `DiskCacheStore::CLIENT` (`renderer`) of a host's caches ([xrf-cache](../xrf-cache/README.md)'s
+`AppCache`). Every host names the same folder, so the app's storage settings and any other host find it there.
 
 ## Checks
 

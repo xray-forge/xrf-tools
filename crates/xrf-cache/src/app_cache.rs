@@ -3,13 +3,13 @@ use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use xrf_utils::{AppCacheStore, StagedFile};
+use xrf_utils::StagedFile;
 
-use crate::cache::app_cache_policy::AppCachePolicy;
-use crate::cache::app_cache_tidy::AppCacheTidy;
-use crate::directories::AppDirectories;
+use crate::app_cache_policy::AppCachePolicy;
+use crate::app_cache_store::AppCacheStore;
+use crate::app_cache_tidy::AppCacheTidy;
 
-/// The application's caches, one folder for every client (the renderer's pipelines, and whatever else rebuilds from
+/// An application's caches, one folder for every client (the renderer's pipelines, and whatever else rebuilds from
 /// nothing), tidied as one: entries unused past the policy's age go, then the least recently used until every cache
 /// together fits its size limit. A tidy runs at most once a day unless forced, and only while no other instance of the
 /// application holds the caches, as Cargo's cache cleanup skips a locked cache rather than wait.
@@ -38,15 +38,10 @@ impl AppCache {
     name == Self::LOCK_FILE || name == Self::TIDIED_FILE
   }
 
-  /// The caches in the application's cache folder (`AppDirectories::get_cache_root`), none where it has no data
-  /// directory. They stand over that folder alone: a tidy removes files within it, and must never reach the tools'
-  /// saved files or exports beside it.
-  pub fn of(directories: &AppDirectories) -> Option<Self> {
-    directories.get_cache_root().map(Self::new)
-  }
-
-  /// The caches kept in `root`, made when the first entry is written; the application's own are `AppCache::of`.
-  pub(crate) fn new(root: PathBuf) -> Self {
+  /// The caches kept in `root`, made when the first entry is written. `root` is a folder of caches and nothing else: a
+  /// tidy removes files within its client folders, so it must never be a folder holding an application's saved files,
+  /// logs or exports.
+  pub fn new(root: PathBuf) -> Self {
     Self { root }
   }
 

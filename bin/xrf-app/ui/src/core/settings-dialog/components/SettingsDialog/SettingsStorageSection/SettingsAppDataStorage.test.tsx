@@ -2,10 +2,9 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { ESystemCommand } from "@xrf/ipc/commands/system";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { AppCacheTidy } from "@xrf/ipc/types/xrf-app-core";
 import { AppStorageUsage, EAppStorageKind } from "@xrf/ipc/types/xrf-app-system";
+import { AppCacheTidy, DEFAULT_APP_CACHE_POLICY } from "@xrf/ipc/types/xrf-cache";
 
-import { DEFAULT_APP_CACHE_POLICY } from "@/core/settings/lib/app-cache";
 import { describeLastUse } from "@/core/settings/lib/app-storage";
 import { SettingsAppDataStorage } from "@/core/settings-dialog/components/SettingsDialog/SettingsStorageSection/SettingsAppDataStorage";
 import { clearLocalStorage } from "@/core/storage";

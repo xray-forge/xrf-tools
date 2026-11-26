@@ -27,6 +27,7 @@ tauri-plugin-store = { workspace = true }
 tauri-specta = { workspace = true, optional = true }
 tokio = { version = "1.53.1", features = ["net", "rt"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
+xrf-cache = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-env-flags = { workspace = true }
@@ -53,6 +54,7 @@ typescript-bindings = [
   "specta",
   "specta-typescript",
   "tauri-specta",
+  "xrf-cache/typescript-bindings",
   "xrf-engine-target/typescript-bindings",
   "xrf-env-flags/typescript-bindings",
   "xrf-ipc-typescript",
