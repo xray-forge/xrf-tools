@@ -1,4 +1,4 @@
-import { LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 import { ERenderHelperIcon, RenderHelperIcon } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";

@@ -1,5 +1,5 @@
-//! What the level plugin says to the log.
+//! What the level plugin says to the log of its scenes.
 
-mod level_report;
+mod scene_report;
 
-pub(crate) use level_report::LevelReport;
+pub(crate) use scene_report::SceneReport;

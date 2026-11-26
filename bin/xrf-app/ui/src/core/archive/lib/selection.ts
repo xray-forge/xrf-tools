@@ -1,6 +1,7 @@
 import { ArchiveFileDescription, AudioDescriptor, ImageDescriptor } from "@xrf/ipc/types/xrf-app-archives";
-import { AssetTextureDescriptor, SessionId } from "@xrf/ipc/types/xrf-app-core";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { EPathEntryKind } from "@xrf/path";
 
 import { IArchiveEntry } from "./entry";

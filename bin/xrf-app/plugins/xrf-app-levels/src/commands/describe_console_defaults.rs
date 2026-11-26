@@ -5,10 +5,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_level_source::{LevelConsoleDefaults, LevelConsolePart};
 
-use crate::console::LevelConsoleDefaults;
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::LevelConsolePart;
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
 /// its shipped defaults; read again where a commit let the shipped ones go.
@@ -20,7 +19,7 @@ pub(crate) async fn levels_describe_console_defaults(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Arc<LevelConsoleDefaults>>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

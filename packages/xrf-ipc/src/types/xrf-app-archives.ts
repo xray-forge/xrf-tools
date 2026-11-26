@@ -1,8 +1,9 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { AssetTextureShape, SessionId } from "#/types/xrf-app-core";
+import { AssetTextureShape } from "#/types/xrf-app-core";
 import { ArchiveProject } from "#/types/xrf-archive";
 import { ArchivePackConfig, ArchivePatchConfig } from "#/types/xrf-pack";
+import { SessionId } from "#/types/xrf-session";
 import { ImageShape } from "#/types/xrf-texture";
 import { XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "#/types/xrf-vfs";
 

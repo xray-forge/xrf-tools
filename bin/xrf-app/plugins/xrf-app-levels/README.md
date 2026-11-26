@@ -9,22 +9,12 @@ its `.object` by `xrf-object-visual`. A scene builds into a level, and a level d
 
 ## Layout
 
-- `level`: a level as a document: where it is read from (`LevelSource`), its `level` bundle, how an open reads it and a
-  commit reads it again (`OpenedLevel`), the levels open (`SelectedLevels`), and what the page is shown of one.
-- `parts`: what an open level reads beside its bundle, each a part of its session with its value beside it, one part
-  type to a file (`Level<Part>Part`): from the level's own files (`level`), the game's spawn and what it names
-  (`spawn`), what the renderer draws beside the sectors (`drawn`), the game's environment (`environment`) and its
-  console defaults (`console`). A commit that changes what a part read moves that part and not the level.
-- `objects`: a level's objects (`LevelObject`) as the Outliner, picks and helpers address them (`LevelObjectId`), read
-  from its share of the spawn, its companion files and its static lights.
-- `spawn`, `weather`, `console`: the page's answers about a level's spawn objects and why a new game releases one, its
-  weather cycles and effects (with `weather/render` holding the rain, wet surfaces and thunderbolts only the renderer
-  reads), and the console values it is lit and exposed with.
-- `sound`: a shown level's sound: its static and zone emitters and music (`LevelWorldSounds`), the sound files it names
-  (`LevelSoundFilesPart`), the collision geometry with each material's acoustics (`LevelSoundGeometry`), the sink that
-  carries the world's sound to the audio thread, and the report joining both.
-- `render`: a level drawn by the native renderer: its render source, the levels shown (`ShownLevels`), how a shown
-  level follows a commit (`LevelSceneFollower`), and its ambients, lens flares and particle collider.
+A level itself, its parts, objects, weather, sound and the source the renderer draws it from are `xrf-level-source`'s,
+which knows nothing of the application; this plugin holds what the application adds.
+
+- `level`: the levels open (`SelectedLevels`), how a page asks for one (`LevelOpenRequest`), and how a query of an
+  open level is answered on the pool (`LevelAnswer`).
+- `render`: the levels shown (`ShownLevels`) and how a shown level follows a commit (`LevelSceneFollower`).
 - `viewer`: the level viewer's own files in the application's data: its views, screenshots, and the level map and
   cubemap captures and their exports, with the map's annotations of logic volumes, patrols and graph points.
 - `scene`: a Level Editor scene as a document, each piece a part with its own query:
@@ -38,7 +28,7 @@ its `.object` by `xrf-object-visual`. A scene builds into a level, and a level d
     unreadable (`SceneDrawPart`).
   - `spawn`: the spawn points drawn as their entities' models, as the SDK's editor draws them: each whose packet names
     a visual (`LevelSpawnDataFields::read_visual`) the scene's game data holds (`SceneSpawnModelsPart`), and those
-    visuals, read through the shared `SpawnVisualReader` (`SceneSpawnVisualsPart`).
+    visuals, read through `xrf-level-source`'s `SpawnVisualReader` (`SceneSpawnVisualsPart`).
   - `helpers`: what has no geometry, drawn as helpers (`SceneHelpersPart`), one per object of a tool listed in
     `SCENE_HELPER_TOOLS`; a spawn point drawn as its model keeps its attached volume and loses its icon.
   - `render`: the scene as the renderer draws it (`SceneRenderSource`): no sectors, scene objects in the props group
@@ -47,19 +37,15 @@ its `.object` by `xrf-object-visual`. A scene builds into a level, and a level d
     carries (model, lighting, hiding, selection, helper and pick): the tool's place in `SceneToolKind::ALL` above
     `SCENE_RENDER_INDEX_BITS` of the object's index. `SceneRenderSpace` is engine space mirrored through `z`;
     `SceneObjectSphere` frames one object for a camera; `ShownScenes` holds the scenes shown.
-- `visuals`: spawned objects' visuals for a compiled level's spawn and a scene's spawn points alike: `SpawnVisualReader`
-  reads each beside the level, then in the shared meshes, packed, posed in the idle rest pose and dressed, into the
-  `SpawnVisuals` a session hands it. `LevelSpawnVisualsPart` and `SceneSpawnVisualsPart` keep each session's own.
-- `helpers`: how helpers look for a compiled level and a scene alike: a link's arrowed lines and a kind's colour.
 - `rawdata`: building a scene into a level, with an optional compile after it (`LevelBuildRun`), and decompiling a
   level into a scene, run as jobs, and how each ended.
 - `commands/`: listing, opening, restoring, closing and showing a level; describing its map, start, surfaces, textures,
   spawn objects, weather and console defaults; reading any weather cycle; building and decompiling; and in `sound/`
   the shown level's sound and its music. `commands/scene/` opens, restores, closes and shows a scene, describes its
   objects, binary tools, drawing and helpers, and locates one object. The viewer's commands are in `viewer/commands/`.
-- `report`: what the plugin writes to the log.
+- `report`: what the plugin writes to the log of its scenes (`SceneReport`); a level's lines are `LevelReport`'s.
 - `plugin` and `ipc`: `LevelsPlugin` and its command domain.
-- `tests/`: the crate's tests and their fixtures.
+- `tests/`: the crate's tests and their scene fixtures; a level's own builders are `xrf_level_source::fixtures`.
 
 ## In the application
 

@@ -1,4 +1,4 @@
-import { LEVEL_OBJECT_KINDS, LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_OBJECT_KINDS, LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 import { clamp } from "@xrf/math";
 import { isRecord } from "@xrf/types";
 

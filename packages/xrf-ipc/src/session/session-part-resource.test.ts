@@ -2,7 +2,8 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
 import { SESSION_CHANGE_EVENT, SessionPartResource } from "#/session/index";
-import { ESessionRootChange, SessionChange, SessionSnapshot } from "#/types/xrf-app-core";
+import { ESessionRootChange, SessionChange } from "#/types/xrf-app-core";
+import { SessionSnapshot } from "#/types/xrf-session";
 
 import { mockContainer } from "../../test/container";
 

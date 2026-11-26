@@ -3,9 +3,9 @@ import { BoundAction, Computed } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionPartResource } from "@xrf/ipc/session";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { LEVEL_CONSOLE_PART, LevelConsoleDefaults, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { XrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+import { LEVEL_CONSOLE_PART, LevelConsoleDefaults, SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

@@ -4,7 +4,8 @@ import { AsyncState } from "@xrf/async";
 import { call, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { isSessionMovedPast, SessionPartResource } from "@xrf/ipc/session";
-import { SessionChange, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { LevelOpenRequest } from "@xrf/ipc/types/xrf-app-levels";
 import {
   LEVEL_MAP_PART,
   LEVEL_PLACEMENTS_PART,
@@ -14,13 +15,13 @@ import {
   LEVEL_TEXTURES_PART,
   LevelMapDescription,
   LevelObjectsDescription,
-  LevelOpenRequest,
   LevelSource,
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
-} from "@xrf/ipc/types/xrf-app-levels";
+} from "@xrf/ipc/types/xrf-level-source";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { XrayRevision } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Maybe, Nullable } from "@xrf/types";

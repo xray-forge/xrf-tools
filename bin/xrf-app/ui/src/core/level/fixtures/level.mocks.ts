@@ -1,6 +1,6 @@
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { IpcCommandMocks } from "@xrf/ipc/testing";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
 import {
   ELevelObjectId,
   ELevelObjectKind,
@@ -13,10 +13,10 @@ import {
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
-} from "@xrf/ipc/types/xrf-app-levels";
-import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
+} from "@xrf/ipc/types/xrf-level-source";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { EClsId } from "@xrf/ipc/types/xrf-spawn";
 import { SectorOutline } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";

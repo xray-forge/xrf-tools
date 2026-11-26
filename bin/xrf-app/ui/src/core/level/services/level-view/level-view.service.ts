@@ -1,6 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
-import { LevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObjectKind } from "@xrf/ipc/types/xrf-level-source";
 import { Logger } from "@xrf/logging";
 
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";

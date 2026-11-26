@@ -4,8 +4,8 @@ import { waitFor } from "@testing-library/react";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands } from "@xrf/ipc/testing";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { ELevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind } from "@xrf/ipc/types/xrf-level-source";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { ILevelHelperOptions } from "@/core/level/lib/objects/level-helper-options";

@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { Injectable } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 
 import { SessionTool } from "@/core/session/components/SessionTool";

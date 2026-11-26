@@ -8,7 +8,7 @@ import {
   LevelPatrolLink,
   LevelRestriction,
   LevelSoundWindow,
-} from "@xrf/ipc/types/xrf-app-levels";
+} from "@xrf/ipc/types/xrf-level-source";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { toPoint3 } from "@xrf/math";
 import { assertExhaustive, Maybe, Nullable } from "@xrf/types";

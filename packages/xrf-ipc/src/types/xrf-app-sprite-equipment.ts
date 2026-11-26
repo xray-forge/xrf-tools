@@ -1,6 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { AssetSource, SessionId } from "#/types/xrf-app-core";
+import { AssetSource } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 import { EquipmentSlotOccupant } from "#/types/xrf-sprite";
 import { XrayAsset, XrayRoots } from "#/types/xrf-vfs";
 

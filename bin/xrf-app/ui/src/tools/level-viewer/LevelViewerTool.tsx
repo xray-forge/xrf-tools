@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useState } from "react";

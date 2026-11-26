@@ -1,5 +1,5 @@
-import { ELevelSource, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
+import { ELevelSource, SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import { clamp } from "@xrf/math";
 import { isRecord, Maybe, Nullable } from "@xrf/types";
 

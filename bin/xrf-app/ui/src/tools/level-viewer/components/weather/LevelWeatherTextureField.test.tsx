@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-level-source";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { LevelWeatherTextureField } from "@/tools/level-viewer/components/weather/LevelWeatherTextureField";

@@ -3,10 +3,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_render::WorldState;
 use xrf_audio::{AudioSceneReport, AudioServer};
+use xrf_level_source::LevelSoundReport;
 use xrf_renderer::{RenderSceneId, RenderViewportId};
 use xrf_world::{WorldSceneSound, WorldSoundReport};
-
-use crate::sound::LevelSoundReport;
 
 /// Describe what the level a viewport shows plays: each sound with its position and heard loudness, the music, the
 /// ambient channels, and every sound that could not play; none for a viewport showing no level.

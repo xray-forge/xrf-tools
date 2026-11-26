@@ -10,10 +10,11 @@ use xrf_audio::{
   AudioSceneFrame, AudioSceneGeometry, AudioSceneMesh, AudioSceneRules, AudioServer,
 };
 use xrf_error::XrfResult;
+use xrf_level_source::{BurstSoundFrame, BurstSoundTee};
 use xrf_renderer::RenderBurst;
 use xrf_test_utils::GeneratedResources;
 
-use crate::viewer::burst::{BurstSound, BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
+use crate::viewer::burst::{BurstSound, BurstSoundChunk, BurstSoundOutcome};
 
 // The viewer's defaults with fewer frames.
 const BURST: RenderBurst = RenderBurst {

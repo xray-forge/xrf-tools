@@ -6,9 +6,10 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_render::{Renderer, WorldState};
+use xrf_level_source::LevelAudio;
 use xrf_renderer::BurstEvent;
 
-use crate::render::{LevelAudio, ShownLevels};
+use crate::render::ShownLevels;
 use crate::viewer::LevelViewerFolder;
 use crate::viewer::burst::{BurstCaptureRequest, BurstOutcome, BurstSound, BurstVideo, BurstWriter};
 use crate::viewer::recording::writer::MediaProbe;

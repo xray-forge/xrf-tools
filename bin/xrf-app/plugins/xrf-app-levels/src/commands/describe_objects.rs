@@ -3,9 +3,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_level_source::LevelObjectsDescription;
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::objects::LevelObjectsDescription;
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Describe the open level's objects and the visuals they are drawn as, reading no visual; an error where the spawn
 /// cannot be read.
@@ -17,7 +17,7 @@ pub(crate) async fn levels_describe_objects(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelObjectsDescription>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

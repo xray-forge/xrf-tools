@@ -1,6 +1,5 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { SessionId } from "#/types/xrf-app-core";
 import {
   LtxAnchoredFinding,
   LtxDeclarationSearch,
@@ -8,6 +7,7 @@ import {
   LtxFileText,
   LtxInventory,
 } from "#/types/xrf-ltx-inspect";
+import { SessionId } from "#/types/xrf-session";
 import { XrayRoots } from "#/types/xrf-vfs";
 
 /** Checking that a directory's configs are formatted, writing nothing. */

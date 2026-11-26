@@ -1,9 +1,5 @@
-import {
-  LEVEL_OBJECT_KINDS,
-  LevelObjectKind,
-  LevelObjectKindEntry,
-  MapAnnotationsWriteRequest,
-} from "@xrf/ipc/types/xrf-app-levels";
+import { MapAnnotationsWriteRequest } from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_OBJECT_KINDS, LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 
 import { ILevelHelperOptions, isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
 

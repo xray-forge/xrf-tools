@@ -5,6 +5,11 @@ use std::path::{Path, PathBuf};
 use image::RgbaImage;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
+use xrf_level_source::{
+  LEVEL_OBJECT_KINDS, LevelMapArea, LevelObject, LevelObjectId, LevelObjectKind, LevelObjectPlacement,
+  LevelObjectShape, LevelObjectSources, LevelObjectsDescription, LevelPlacementDetails, LevelPlacementFile, LevelSpawn,
+  fixtures,
+};
 use xrf_math::{Affine3d, Sphere, Vector3d};
 use xrf_spawn::{
   AlifeLevelChanger, AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, AlifeObjectSpaceRestrictor, ClsId,
@@ -13,12 +18,6 @@ use xrf_spawn::{
 use xrf_test_utils::GeneratedResources;
 use xrf_visual::VisualTransform;
 
-use crate::objects::{
-  LEVEL_OBJECT_KINDS, LevelObject, LevelObjectId, LevelObjectKind, LevelObjectPlacement, LevelObjectShape,
-  LevelObjectSources, LevelObjectsDescription, LevelPlacementDetails, LevelPlacementFile,
-};
-use crate::parts::{LevelMapArea, LevelSpawn};
-use crate::tests::fixtures;
 use crate::viewer::export::map::annotations::{
   AnnotationCanvas, AnnotationMarker, AnnotationOutline, AnnotationVolume, LevelAnnotations, MapAnnotationsWriteRequest,
 };

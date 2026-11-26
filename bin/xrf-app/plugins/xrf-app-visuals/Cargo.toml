@@ -27,6 +27,7 @@ xrf-object-visual = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-rawdata = { workspace = true }
 xrf-renderer = { workspace = true }
+xrf-renderer-host = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-visual = { workspace = true }
 xrf-world = { workspace = true }

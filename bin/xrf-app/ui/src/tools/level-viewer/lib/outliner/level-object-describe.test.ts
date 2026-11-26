@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelObjectShape, ELevelRestriction, LevelObject } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectShape, ELevelRestriction, LevelObject } from "@xrf/ipc/types/xrf-level-source";
 
 import { mockLevelObject, mockLevelPatrol } from "@/core/level/fixtures/level.mocks";
 import {

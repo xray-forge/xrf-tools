@@ -1,4 +1,5 @@
-use crate::objects::{LevelObject, LevelObjectPatrol};
+use xrf_level_source::{LevelObject, LevelObjectPatrol};
+
 use crate::viewer::export::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// A patrol path from above: its points, and links between them by index.

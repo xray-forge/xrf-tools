@@ -9,5 +9,5 @@ pub(crate) use burst_capture_request::BurstCaptureRequest;
 pub(crate) use burst_files::BurstFiles;
 pub(crate) use burst_outcome::BurstOutcome;
 pub(crate) use burst_writer::BurstWriter;
-pub(crate) use sound::{BurstSound, BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
+pub(crate) use sound::{BurstSound, BurstSoundChunk, BurstSoundOutcome};
 pub(crate) use video::{BurstVideo, BurstVideoOutcome};

@@ -41,6 +41,7 @@ xrf-job = { workspace = true }
 xrf-level = { workspace = true }
 # The details step's GPU backend, traced on D3D12 through the DXC the app bundles for the renderer.
 xrf-level-compiler = { workspace = true, features = ["gpu"] }
+xrf-level-source = { workspace = true }
 xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-project = { workspace = true }
@@ -52,6 +53,7 @@ xrf-particles = { workspace = true }
 xrf-profiler = { workspace = true }
 xrf-rawdata = { workspace = true }
 xrf-renderer = { workspace = true }
+xrf-renderer-host = { workspace = true }
 xrf-shaders = { workspace = true }
 xrf-sound = { workspace = true }
 xrf-spawn = { workspace = true }
@@ -79,6 +81,7 @@ xrf-app-core = { workspace = true, features = ["fixtures"] }
 # Writes a scene's text parts as the editor saves them, groups and broken saves among them.
 xrf-ini = { workspace = true }
 xrf-job = { workspace = true, features = ["testing"] }
+xrf-level-source = { workspace = true, features = ["fixtures"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-shaders = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
@@ -97,6 +100,7 @@ typescript-bindings = [
   "xrf-job/typescript-bindings",
   "xrf-level/typescript-bindings",
   "xrf-level-compiler/typescript-bindings",
+  "xrf-level-source/typescript-bindings",
   "xrf-ltx-project/typescript-bindings",
   "xrf-material/typescript-bindings",
   "xrf-math/typescript-bindings",

@@ -1,4 +1,4 @@
-import { LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { GridOnIcon } from "@xrf/ui/icons/grid-on";
 import { Inventory2Icon } from "@xrf/ui/icons/inventory2";

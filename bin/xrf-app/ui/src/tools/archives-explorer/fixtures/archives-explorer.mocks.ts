@@ -2,7 +2,7 @@ import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { EPathEntryKind } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 

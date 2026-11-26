@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
-import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";

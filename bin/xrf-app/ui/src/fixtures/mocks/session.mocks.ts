@@ -1,4 +1,4 @@
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Nullable, Optional } from "@xrf/types";
 
 /** The arguments a session-opening command was invoked with, as far as a fixture reads them for an identity. */

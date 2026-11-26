@@ -16,7 +16,7 @@ import {
   AudioDescriptor,
   ImageDescriptor,
 } from "#/types/xrf-app-archives";
-import { AssetTextureDescriptor, SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { AssetTextureDescriptor, SessionRestore } from "#/types/xrf-app-core";
 import { ArchiveReadResult, ArchiveSharedPayload } from "#/types/xrf-archive";
 import { ArchiveStatistics } from "#/types/xrf-archive-stats";
 import { AudioTransportId } from "#/types/xrf-audio";
@@ -30,6 +30,7 @@ import {
   ArchivePatchResult,
   ArchiveUnpackResult,
 } from "#/types/xrf-pack";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { XrayRoots } from "#/types/xrf-vfs";
 
 /** The wire name of every command of the `archives` plugin. */

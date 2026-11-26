@@ -1,4 +1,4 @@
-import { LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";

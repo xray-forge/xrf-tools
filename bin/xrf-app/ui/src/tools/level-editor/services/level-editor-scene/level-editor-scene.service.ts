@@ -3,7 +3,6 @@ import { BoundAction, Computed, flowResult, RefObservable } from "@wirestate/mob
 import { call, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionPartResource } from "@xrf/ipc/session";
-import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   SCENE_BINARY_TOOLS_PART,
   SCENE_DRAW_PART,
@@ -17,6 +16,7 @@ import {
   SceneSource,
   SelectedSceneDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 import { Maybe, Nullable } from "@xrf/types";
 

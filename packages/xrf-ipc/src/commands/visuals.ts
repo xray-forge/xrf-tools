@@ -2,9 +2,10 @@
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { AssetSource, SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { AssetSource, SessionRestore } from "#/types/xrf-app-core";
 import { SelectedVisualDescription } from "#/types/xrf-app-visuals";
 import { RenderViewportId } from "#/types/xrf-renderer";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { XrayRoots } from "#/types/xrf-vfs";
 import { VisualMotionBake } from "#/types/xrf-visual";
 

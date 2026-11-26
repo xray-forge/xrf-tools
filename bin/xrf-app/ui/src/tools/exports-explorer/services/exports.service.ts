@@ -4,8 +4,8 @@ import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { exportsCommands } from "@xrf/ipc/commands/exports";
 import { requireSessionId } from "@xrf/ipc/session";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ExportSourceContent, ExportsProject } from "@xrf/ipc/types/xrf-export";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

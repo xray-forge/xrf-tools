@@ -6,10 +6,9 @@ use image::{Rgba, RgbaImage};
 use resvg::usvg::fontdb::Database;
 use resvg::{tiny_skia, usvg};
 use xrf_app_core::TauriResult;
+use xrf_level_source::{LevelMapArea, LevelObjectKind, LevelObjectKindEntry};
 use xrf_utils::StagedFile;
 
-use crate::objects::{LevelObjectKind, LevelObjectKindEntry};
-use crate::parts::LevelMapArea;
 use crate::viewer::export::map::annotations::{
   AnnotationMarker, AnnotationOutline, AnnotationPatrol, AnnotationPoint, AnnotationVolume, LevelAnnotations,
   MapAnnotationsWriteRequest,

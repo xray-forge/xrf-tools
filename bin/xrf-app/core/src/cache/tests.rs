@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use xrf_test_utils::GeneratedResources;
+use xrf_utils::AppCacheStore;
 
-use crate::cache::{AppCache, AppCachePolicy, AppCacheStore, AppCacheTidy};
+use crate::cache::{AppCache, AppCachePolicy, AppCacheTidy};
 use crate::directories::AppDirectories;
 
 const DAY: Duration = Duration::from_secs(24 * 60 * 60);

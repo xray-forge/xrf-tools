@@ -2,7 +2,7 @@ import { Injectable } from "@wirestate/core";
 import { BoundAction, Computed } from "@wirestate/mobx";
 import { LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelEntry } from "@xrf/ipc/types/xrf-level-source";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 

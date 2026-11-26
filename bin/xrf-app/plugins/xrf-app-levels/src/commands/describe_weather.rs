@@ -3,10 +3,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_level_source::{LevelEnvironmentPart, LevelWeatherDescription};
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::LevelEnvironmentPart;
-use crate::weather::LevelWeatherDescription;
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Describe the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
 /// the sun table and the level's own overrides.
@@ -18,7 +17,7 @@ pub(crate) async fn levels_describe_weather(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelWeatherDescription>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

@@ -4,14 +4,10 @@ import { transformError } from "@xrf/errors";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
-import {
-  LevelMapDescription,
-  LEVELS_JOB_CAPTURE_CUBE,
-  LEVELS_JOB_CAPTURE_MAP,
-  SelectedLevelDescription,
-} from "@xrf/ipc/types/xrf-app-levels";
+import { LEVELS_JOB_CAPTURE_CUBE, LEVELS_JOB_CAPTURE_MAP } from "@xrf/ipc/types/xrf-app-levels";
 import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
+import { LevelMapDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import { Logger } from "@xrf/logging";
 import { assertExhaustive, Nullable } from "@xrf/types";
 

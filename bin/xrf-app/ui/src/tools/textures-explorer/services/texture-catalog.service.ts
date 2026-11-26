@@ -3,13 +3,13 @@ import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
 import { TFlow } from "@xrf/flow";
 import { toEnumMember } from "@xrf/ipc";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
-import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   ETextureCatalogMode,
   TextureCatalog,
   TextureMaterialSummary,
   TextureSource,
 } from "@xrf/ipc/types/xrf-app-textures";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";

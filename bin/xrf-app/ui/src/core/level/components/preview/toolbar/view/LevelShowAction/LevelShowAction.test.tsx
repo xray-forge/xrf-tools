@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ELevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind } from "@xrf/ipc/types/xrf-level-source";
 
 import { LevelShowAction } from "@/core/level/components/preview/toolbar/view/LevelShowAction";
 import {

@@ -8,13 +8,13 @@ import { fetchBulk, toEnumMember } from "@xrf/ipc";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
 import { texturesBulkRoutes } from "@xrf/ipc/commands/textures-bulk";
 import { Session, SessionScopeService } from "@xrf/ipc/session";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import {
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingReport,
   TEXTURES_JOB_COMPARE_ENCODINGS,
 } from "@xrf/ipc/types/xrf-app-textures";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { ETextureEncodingFormat, TextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";

@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { SessionId, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { TranslationLanguage, TranslationProjectDescriptor, TranslationProjectMode } from "#/types/xrf-translation";
 import { XrayRoots } from "#/types/xrf-vfs";
 

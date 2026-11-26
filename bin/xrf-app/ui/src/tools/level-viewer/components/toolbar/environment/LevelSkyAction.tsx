@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { EMPTY_ARRAY } from "@xrf/collections";
 import { formatDegrees, formatPercent } from "@xrf/format";
-import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-level-source";
 import { Optional } from "@xrf/types";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";

@@ -3,7 +3,7 @@ import {
   LevelObjectLight,
   LevelObjectPlacement,
   LevelObjectShape,
-} from "@xrf/ipc/types/xrf-app-levels";
+} from "@xrf/ipc/types/xrf-level-source";
 import { assertExhaustive, Nullable } from "@xrf/types";
 import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { ReactElement } from "react";

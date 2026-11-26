@@ -66,6 +66,11 @@ impl AssetMountState {
       .with_budget(Self::CACHE_BUDGET)
   }
 
+  /// The host itself, for a reader that knows nothing of the application and only searches.
+  pub fn get_host(&self) -> &Arc<XrayVfsHost> {
+    &self.host
+  }
+
   /// The snapshot every search taken now reads, for a session checking what it was read from against it.
   pub fn get_vfs(&self) -> Arc<XrayVfs> {
     self.host.get_vfs()

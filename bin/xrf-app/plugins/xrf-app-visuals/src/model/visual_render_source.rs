@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
-use xrf_app_render::TextureResolver;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
@@ -11,6 +10,7 @@ use xrf_renderer::{
   RenderModelSkeleton, RenderMotion, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
   RenderSpawnObject,
 };
+use xrf_renderer_host::TextureResolver;
 use xrf_visual::{
   LightsDescription, SectorPackage, VisualDescription, VisualMotionPose, VisualPackage, VisualPoser, VisualTransform,
 };
@@ -109,11 +109,11 @@ impl RenderAssetSource for VisualRenderSource {
   }
 
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    self.textures.read(&self.assets, reference)
+    self.textures.read(self.assets.get_host(), reference)
   }
 
   fn read_texture_sequence(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    self.textures.read_sequence(&self.assets, reference)
+    self.textures.read_sequence(self.assets.get_host(), reference)
   }
 
   fn forget_textures(&self, names: &[String]) {
@@ -121,7 +121,7 @@ impl RenderAssetSource for VisualRenderSource {
   }
 
   fn get_texture_stamp(&self, reference: &str) -> Option<u64> {
-    self.textures.get_stamp(&self.assets, reference)
+    self.textures.get_stamp(self.assets.get_host(), reference)
   }
 }
 

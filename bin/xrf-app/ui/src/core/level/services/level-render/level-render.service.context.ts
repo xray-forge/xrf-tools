@@ -1,4 +1,4 @@
-import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 

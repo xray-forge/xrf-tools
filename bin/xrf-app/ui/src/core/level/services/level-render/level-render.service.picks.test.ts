@@ -12,7 +12,7 @@ import {
   LEVEL_SPAWN_PART,
   LEVEL_SURFACES_PART,
   LevelObject,
-} from "@xrf/ipc/types/xrf-app-levels";
+} from "@xrf/ipc/types/xrf-level-source";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { ERenderLevelHit, ERenderSelectionTarget, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 

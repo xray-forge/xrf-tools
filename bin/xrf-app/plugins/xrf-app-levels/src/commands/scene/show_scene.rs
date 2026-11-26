@@ -9,7 +9,7 @@ use xrf_app_render::{TextureReloads, ViewportShows};
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldLevelSource;
 
-use crate::report::LevelReport;
+use crate::report::SceneReport;
 use crate::scene::{SceneRenderSource, SelectedScene, SelectedScenes, ShownScenes};
 
 /// Draw the open scene in a viewport, or nothing without a session; answers the drawn scene's id, which the viewport's
@@ -39,7 +39,7 @@ pub(crate) async fn levels_show_scene(
       let scene: Arc<SessionSnapshot<SelectedScene>> = scenes.require(session_id)?;
 
       reloads.watch(&scene.game.roots);
-      LevelReport::showing_scene(&scene, viewport);
+      SceneReport::showing(&scene, viewport);
 
       let shown: ShownScenes = ShownScenes::clone(&shown);
       let assets: AssetMountState = AssetMountState::clone(&assets);

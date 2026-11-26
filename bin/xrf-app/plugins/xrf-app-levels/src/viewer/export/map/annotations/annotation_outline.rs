@@ -1,9 +1,9 @@
 use xrf_geometry::ConvexOutline;
+use xrf_level_source::LevelObjectShape;
 use xrf_math::Vector3d;
 use xrf_math::glam::DVec2;
 use xrf_visual::VisualTransform;
 
-use crate::objects::LevelObjectShape;
 use crate::viewer::export::map::annotations::AnnotationPoint;
 
 /// A volume shape's footprint seen from above.

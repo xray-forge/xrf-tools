@@ -6,8 +6,8 @@ import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { LtxStructureParseError } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

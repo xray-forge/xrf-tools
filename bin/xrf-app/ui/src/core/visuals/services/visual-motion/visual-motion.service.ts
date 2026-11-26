@@ -2,7 +2,7 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { cancelFlows, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";

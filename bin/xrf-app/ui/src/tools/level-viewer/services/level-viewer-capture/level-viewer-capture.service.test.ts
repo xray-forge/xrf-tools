@@ -3,7 +3,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
 import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
-import { LevelMapDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelMapDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import { RenderCubeCapture, RenderMapCapture } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 

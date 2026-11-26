@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { ISessionIdentity, ISessionRevision } from "#/session/session.types";
-import { SessionId } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 
 /**
  * Requires an opening's identity before a session-addressed command can run.

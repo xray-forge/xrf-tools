@@ -8,8 +8,9 @@ use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::window::{WindowCloseApprovals, WindowHandles};
 use xrf_renderer::{RenderQueue, RenderWorkers};
+use xrf_renderer_host::{DiskCacheStore, PackagedBundle};
 
-use crate::renderer::{DiskCacheStore, PackagedBundle, Renderer};
+use crate::renderer::Renderer;
 use crate::texture::TextureReloads;
 use crate::viewport::{RenderViewports, ViewportShows};
 use crate::world::WorldState;

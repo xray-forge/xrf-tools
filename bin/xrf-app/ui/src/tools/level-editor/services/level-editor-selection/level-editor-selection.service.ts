@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mobx";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { SceneObjectDescription, SceneObjectId, SceneObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { Nullable } from "@xrf/types";
 
 import { findSceneObject } from "@/tools/level-editor/lib/tools/scene-objects";

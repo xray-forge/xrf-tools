@@ -5,7 +5,7 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
-import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@xrf/ipc/types/xrf-level-source";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load";

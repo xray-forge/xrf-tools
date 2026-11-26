@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverGroup } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";

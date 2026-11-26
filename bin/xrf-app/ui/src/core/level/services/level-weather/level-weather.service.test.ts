@@ -4,10 +4,10 @@ import { Container } from "@wirestate/core";
 import { autorun, flowResult } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngine } from "@xrf/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherCycleId } from "@xrf/ipc/types/xrf-environment";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { EWorldWeatherPlay, EWorldWeatherTransition } from "@xrf/ipc/types/xrf-world";
 
 import {

@@ -13,8 +13,8 @@ import {
   resetMockInvoke,
 } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
-import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@xrf/ipc/types/xrf-level-source";
 import {
   ERenderAntialiasing,
   ERenderDlssAvailability,

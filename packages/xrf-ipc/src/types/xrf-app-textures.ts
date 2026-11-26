@@ -1,8 +1,9 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { AssetSource, AssetTextureDescriptor, FileStamp, SessionId } from "#/types/xrf-app-core";
+import { AssetSource, AssetTextureDescriptor, FileStamp } from "#/types/xrf-app-core";
 import { JobOutcome } from "#/types/xrf-job";
 import { XrayMaterialDescriptor } from "#/types/xrf-material";
+import { SessionId } from "#/types/xrf-session";
 import { GenerateBumpFormat, TextureEncodingFormat, TextureEncodingQuality } from "#/types/xrf-texture";
 import { XrayAsset, XrayRoots } from "#/types/xrf-vfs";
 

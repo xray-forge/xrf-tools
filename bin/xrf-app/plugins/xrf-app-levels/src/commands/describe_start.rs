@@ -3,9 +3,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_level_source::{LevelStart, LevelStartPart};
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::{LevelStart, LevelStartPart};
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Describe where the open level opens, or none for a viewer to decide; decided again where a commit let it go.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
@@ -16,7 +16,7 @@ pub(crate) async fn levels_describe_start(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Option<LevelStart>>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

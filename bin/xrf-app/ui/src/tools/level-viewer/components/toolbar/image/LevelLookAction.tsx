@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
-import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-level-source";
 import {
   ERenderBloomMode,
   ERenderLightLevel,

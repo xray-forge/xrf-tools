@@ -4,10 +4,9 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_environment::WeatherCycleId;
+use xrf_level_source::{LevelEnvironmentPart, LevelWeatherCycle};
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::LevelEnvironmentPart;
-use crate::weather::LevelWeatherCycle;
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
 /// not offer itself.
@@ -20,7 +19,7 @@ pub(crate) async fn levels_read_level_cycle(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelWeatherCycle>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

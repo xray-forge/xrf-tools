@@ -1,7 +1,7 @@
 use serde::Serialize;
+use xrf_level_source::HelperColor;
 use xrf_renderer::RenderHelperIcon;
 
-use crate::helpers::HelperColor;
 use crate::scene::SceneToolKind;
 
 /// One helped tool's row of the scene's helper table: how the Show action names, colours, pictures and switches its

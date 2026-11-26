@@ -3,7 +3,8 @@ import { Container, EventBus, Injectable, WireEvent } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 import { SessionScopeService } from "@xrf/ipc/session";
 import { mockIpcCommands } from "@xrf/ipc/testing";
-import { SessionId, SessionRestore, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionRestore } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";

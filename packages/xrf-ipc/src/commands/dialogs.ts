@@ -2,9 +2,10 @@
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import { DialogsOpenRequest, DialogsReadRequest } from "#/types/xrf-app-dialogs";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "#/types/xrf-dialog";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { XrayRoots } from "#/types/xrf-vfs";
 
 /** The wire name of every command of the `dialogs` plugin. */

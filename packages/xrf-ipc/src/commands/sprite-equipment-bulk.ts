@@ -2,7 +2,7 @@
 
 import { IBulkCall } from "#/bulk/bulk-call";
 import { IIpcBulkRouteSignature } from "#/signature";
-import { SessionId } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 
 /** Every bulk route of the `sprite-equipment` plugin, as the transport serves it. */
 export enum ESpriteEquipmentBulkRoute {

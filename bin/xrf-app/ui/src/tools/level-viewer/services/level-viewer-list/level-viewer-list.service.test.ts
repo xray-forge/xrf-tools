@@ -3,7 +3,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { isComputedProp } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelEntry } from "@xrf/ipc/types/xrf-level-source";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { createRoots } from "@/core/assets/lib/roots";

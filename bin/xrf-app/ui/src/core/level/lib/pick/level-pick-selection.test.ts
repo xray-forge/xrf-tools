@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelObjectId } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectId } from "@xrf/ipc/types/xrf-level-source";
 import { ERenderSelectionTarget } from "@xrf/ipc/types/xrf-renderer";
 
 import { mockLevelObject, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";

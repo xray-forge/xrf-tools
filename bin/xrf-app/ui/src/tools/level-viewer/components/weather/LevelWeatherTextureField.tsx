@@ -1,4 +1,4 @@
-import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverRow, IEditorPopoverRowControlProps } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";

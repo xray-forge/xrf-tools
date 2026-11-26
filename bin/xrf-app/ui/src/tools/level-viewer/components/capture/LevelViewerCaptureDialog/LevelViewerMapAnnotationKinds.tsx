@@ -1,4 +1,4 @@
-import { LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObjectKind, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { cn } from "@xrf/ui/theme";

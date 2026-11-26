@@ -2,7 +2,8 @@
 
 import { IBulkCall } from "#/bulk/bulk-call";
 import { IIpcBulkRouteSignature } from "#/signature";
-import { AssetSource, SessionId } from "#/types/xrf-app-core";
+import { AssetSource } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 import { ETextureEncodingFormat } from "#/types/xrf-texture";
 import { XrayRoots } from "#/types/xrf-vfs";
 

@@ -4,8 +4,9 @@ import { flowResult } from "@wirestate/mobx";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 
 import {
   mockArchiveStatistics,

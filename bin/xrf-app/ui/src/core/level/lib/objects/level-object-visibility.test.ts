@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelObjectKind, LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind, LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-level-source";
 
 import { getLevelVisibleOption, ILevelVisibleKindEntry, LEVEL_VISIBLE_KINDS } from "./level-object-visibility";
 

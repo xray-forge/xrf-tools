@@ -4,24 +4,15 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import {
   BurstCaptureRequest,
   BurstOutcome,
   CubeCaptureRequest,
   CubeExportRequest,
   LevelBuildResult,
-  LevelConsoleDefaults,
   LevelDecompileResult,
-  LevelEntry,
-  LevelMapDescription,
-  LevelObjectsDescription,
   LevelOpenRequest,
-  LevelSpawnObjectDetails,
-  LevelStart,
-  LevelTextureReference,
-  LevelWeatherCycle,
-  LevelWeatherDescription,
   MapAnnotationsWriteRequest,
   MapCaptureRequest,
   MapExportOutcome,
@@ -36,17 +27,29 @@ import {
   SceneObjectsDescription,
   SceneOpenRequest,
   ScreenshotSaveRequest,
-  SelectedLevelDescription,
   SelectedSceneDescription,
 } from "#/types/xrf-app-levels";
 import { CaptureOutcome } from "#/types/xrf-app-render";
 import { WeatherCycleId } from "#/types/xrf-environment";
 import { JobProgress } from "#/types/xrf-job";
 import { LevelCompileRequest } from "#/types/xrf-level-compiler";
+import {
+  LevelConsoleDefaults,
+  LevelEntry,
+  LevelMapDescription,
+  LevelObjectsDescription,
+  LevelSpawnObjectDetails,
+  LevelStart,
+  LevelTextureReference,
+  LevelWeatherCycle,
+  LevelWeatherDescription,
+  SelectedLevelDescription,
+} from "#/types/xrf-level-source";
 import { XraySurfaceDescriptor } from "#/types/xrf-material";
 import { Sphere } from "#/types/xrf-math";
 import { LevelBuildRequest, LevelDecompileRequest } from "#/types/xrf-rawdata";
 import { RenderViewportId } from "#/types/xrf-renderer";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { XrayRoots } from "#/types/xrf-vfs";
 import { WorldMusicCommand, WorldSoundReport } from "#/types/xrf-world";
 

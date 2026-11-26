@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { ELevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind } from "@xrf/ipc/types/xrf-level-source";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 

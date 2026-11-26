@@ -1,8 +1,8 @@
 import { Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
 import { dialogsCommands } from "@xrf/ipc/commands/dialogs";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { DialogProjectDescriptor, DialogProjectMode } from "@xrf/ipc/types/xrf-dialog";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
+use xrf_level_source::{SpawnVisualReader, SpawnVisuals};
 use xrf_material::XrayTextureScope;
 use xrf_vfs::XraySearch;
 
 use crate::scene::SelectedScene;
-use crate::visuals::{SpawnVisualReader, SpawnVisuals};
 
 /// The change event name for stale spawn visuals.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

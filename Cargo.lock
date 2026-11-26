@@ -7934,6 +7934,7 @@ dependencies = [
  "xrf-error",
  "xrf-ipc-typescript",
  "xrf-job",
+ "xrf-session",
  "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",
@@ -8027,6 +8028,7 @@ dependencies = [
  "xrf-job",
  "xrf-level",
  "xrf-level-compiler",
+ "xrf-level-source",
  "xrf-light-anim",
  "xrf-ltx",
  "xrf-ltx-project",
@@ -8038,6 +8040,7 @@ dependencies = [
  "xrf-profiler",
  "xrf-rawdata",
  "xrf-renderer",
+ "xrf-renderer-host",
  "xrf-shaders",
  "xrf-sound",
  "xrf-spawn",
@@ -8057,15 +8060,10 @@ dependencies = [
  "image",
  "log",
  "notify",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "objc2-quartz-core",
  "serde",
  "specta",
  "tauri",
  "tauri-specta",
- "windows",
  "xrf-app-core",
  "xrf-environment",
  "xrf-error",
@@ -8074,6 +8072,7 @@ dependencies = [
  "xrf-material",
  "xrf-profiler",
  "xrf-renderer",
+ "xrf-renderer-host",
  "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",
@@ -8224,6 +8223,7 @@ dependencies = [
  "xrf-ogf",
  "xrf-rawdata",
  "xrf-renderer",
+ "xrf-renderer-host",
  "xrf-test-utils",
  "xrf-vfs",
  "xrf-visual",
@@ -8740,6 +8740,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-level-source"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "log",
+ "serde",
+ "serde_json",
+ "specta",
+ "uuid",
+ "xrf-anm",
+ "xrf-audio",
+ "xrf-chunk",
+ "xrf-dds",
+ "xrf-dltx",
+ "xrf-engine-target",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-extension",
+ "xrf-gamemtl",
+ "xrf-geometry",
+ "xrf-ini",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-level",
+ "xrf-light-anim",
+ "xrf-ltx",
+ "xrf-ltx-project",
+ "xrf-material",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-particles",
+ "xrf-profiler",
+ "xrf-renderer",
+ "xrf-renderer-host",
+ "xrf-session",
+ "xrf-shaders",
+ "xrf-sound",
+ "xrf-spawn",
+ "xrf-test-utils",
+ "xrf-thm",
+ "xrf-utils",
+ "xrf-vfs",
+ "xrf-visual",
+ "xrf-world",
+]
+
+[[package]]
 name = "xrf-light-anim"
 version = "0.1.0"
 dependencies = [
@@ -9051,6 +9098,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-renderer-host"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-quartz-core",
+ "windows",
+ "xrf-error",
+ "xrf-material",
+ "xrf-renderer",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
 name = "xrf-report"
 version = "0.1.0"
 dependencies = [
@@ -9059,6 +9124,17 @@ dependencies = [
  "specta",
  "xrf-error",
  "xrf-utils",
+]
+
+[[package]]
+name = "xrf-session"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "specta",
+ "uuid",
+ "xrf-job",
+ "xrf-vfs",
 ]
 
 [[package]]

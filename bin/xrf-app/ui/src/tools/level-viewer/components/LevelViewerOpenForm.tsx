@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ELevelSource, LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelSource, LevelEntry } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";

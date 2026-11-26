@@ -1,5 +1,5 @@
-//! Shared test builders: levels, searches, catalogs, spawned objects, Level Editor scenes on disk, and a silent audio
-//! server.
+//! Shared test builders: Level Editor scenes on disk, and a silent audio server. A level's own builders are
+//! `xrf_level_source::fixtures`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,19 +14,13 @@ use xrf_editable_level::{
   EditableLevelOptions, EditableObjectPart, EditableObjectTransform, EditableToolObject,
 };
 use xrf_editable_object::{EditableObjectFile, EditableSurface, EditableSurfaceFaces};
-use xrf_engine_target::{XrayEngine, XrayEngineChoice};
-use xrf_environment::{EnvironmentCatalog, WeatherGraphs};
-use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk, LevelVertex};
-use xrf_material::fixtures::FixtureTree;
+use xrf_engine_target::XrayEngineChoice;
+use xrf_level::LevelVertex;
 use xrf_math::{Vector2d, Vector3d};
 use xrf_rawdata::{LevelVisualGeometry, ObjectDecompiler, SurfaceDress};
 use xrf_shaders::{ShaderCompilerFile, ShaderCompilerShader};
-use xrf_spawn::{
-  AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectInherited, AlifeObjectItem,
-  AlifeObjectItemArtefact, ClsId, SpawnPacketHeader,
-};
 use xrf_test_utils::GeneratedResources;
-use xrf_vfs::{XrayLookupScope, XrayMountId, XrayRevision, XrayRoots, XraySearch, XrayVfs};
+use xrf_vfs::{XrayRevision, XrayRoots, XraySearch};
 
 use crate::scene::{OpenedScene, SceneGameData, SceneSource, SelectedScene, SelectedScenes};
 
@@ -44,119 +38,6 @@ pub(super) fn silent_server() -> AudioServer {
   let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
 
   AudioServer::start_on(engine, None, |_: AudioEvent| {}).expect("the audio control starts")
-}
-
-/// A level whose shader table holds exactly these raw entries.
-pub(super) fn new_level(entries: &[&str]) -> LevelFile {
-  LevelFile {
-    header: LevelHeaderChunk {
-      xrlc_quality: 1,
-      xrlc_version: 14,
-    },
-    glows: None,
-    lights: None,
-    portals: None,
-    sectors: None,
-    shaders: Some(LevelShadersChunk {
-      entries: entries.iter().map(|raw| LevelShaderEntry::parse(raw)).collect(),
-    }),
-  }
-}
-
-/// A search over `tree` alone, mounted as the game's root.
-pub(super) fn mount_search(tree: &FixtureTree) -> XraySearch {
-  let mut vfs: XrayVfs = XrayVfs::new();
-  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-
-  XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]))
-}
-
-/// A catalog of nothing, the vanilla engine's, for a test to fill what it reads.
-pub(super) fn new_catalog() -> EnvironmentCatalog {
-  EnvironmentCatalog {
-    ambient_effects: Vec::new(),
-    ambients: Vec::new(),
-    configs: Vec::new(),
-    cycles: Vec::new(),
-    effects: Vec::new(),
-    engine: XrayEngine::Vanilla,
-    findings: Vec::new(),
-    graphs: WeatherGraphs::default(),
-    level_ambients: Vec::new(),
-    sound_channels: Vec::new(),
-    sun_table: None,
-    suns: Vec::new(),
-    thunderbolt_collections: Vec::new(),
-    thunderbolt_settings: None,
-    thunderbolts: Vec::new(),
-  }
-}
-
-/// An object's abstract part with `story_id`, on no vertex.
-pub(super) fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
-  AlifeObjectAbstract {
-    game_vertex_id: 0,
-    distance: 0.0,
-    direct_control: 1,
-    level_vertex_id: 0,
-    flags: 0,
-    custom_data: String::new(),
-    story_id,
-    spawn_story_id: AlifeObjectAbstract::INVALID_STORY_ID,
-  }
-}
-
-/// An artefact named `name` of `section`, at `1, 2, 3`, drawn as Medusa.
-pub(super) fn new_artefact(name: &str, section: &str) -> AlifeObject {
-  new_object(
-    name,
-    section,
-    ClsId::Artefact,
-    AlifeObjectInherited::CseAlifeItemArtefact(Box::new(AlifeObjectItemArtefact {
-      base: new_item_base("dynamics\\artefacts\\af_medusa"),
-    })),
-  )
-}
-
-/// An item drawn as `visual`, whole, with no story id and no physics state.
-pub(super) fn new_item_base(visual: &str) -> AlifeObjectItem {
-  AlifeObjectItem {
-    base: AlifeObjectDynamicVisual {
-      base: new_abstract(AlifeObjectAbstract::INVALID_STORY_ID),
-      visual_name: String::from(visual),
-      visual_flags: 0,
-    },
-    condition: 1.0,
-    upgrades: Vec::new(),
-    update_state: None,
-  }
-}
-
-/// A spawned object named `name` of `section`, at `1, 2, 3` facing nowhere in particular.
-pub(super) fn new_object(name: &str, section: &str, clsid: ClsId, inherited: AlifeObjectInherited) -> AlifeObject {
-  AlifeObject {
-    header: SpawnPacketHeader {
-      id: 0,
-      net_action: 1,
-      section: String::from(section),
-      name: String::from(name),
-      script_game_id: 0,
-      script_rp: 0,
-      position: Vector3d::new(1.0, 2.0, 3.0),
-      direction: Vector3d::new(0.0, 0.0, 0.0),
-      respawn_time: 0,
-      parent_id: u16::MAX,
-      phantom_id: u16::MAX,
-      script_flags: 0,
-      version: 128,
-      game_type: 0,
-      script_version: 12,
-      client_data: Vec::new(),
-      spawn_id: 0,
-    },
-    clsid,
-    inherited,
-  }
 }
 
 /// A fresh rawdata tree under `resource` holding scene `labx8` with only its `.level`, as the CoP SDK editor saves a

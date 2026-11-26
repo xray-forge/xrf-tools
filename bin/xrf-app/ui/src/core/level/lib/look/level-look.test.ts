@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-level-source";
 
 import {
   GAMMA_LEVEL_LOOK,

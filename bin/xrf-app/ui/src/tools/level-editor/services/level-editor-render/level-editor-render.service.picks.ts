@@ -1,7 +1,7 @@
 import { BoundAction, comparer, makeObservable, reaction } from "@wirestate/mobx";
 import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { RenderLevelHit, RenderSelection } from "@xrf/ipc/types/xrf-renderer";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { Nullable } from "@xrf/types";
 
 import { LevelHoverPick } from "@/core/level/lib/pick/level-hover-pick";

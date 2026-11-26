@@ -1,5 +1,5 @@
 import { AsyncState } from "@xrf/async";
-import { LevelObject, LevelObjectShape, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObject, LevelObjectShape, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";

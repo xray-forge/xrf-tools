@@ -11,13 +11,8 @@ import {
   SESSION_CHANGE_EVENT,
   SessionScopeService,
 } from "@xrf/ipc/session";
-import {
-  ESessionRootChange,
-  SessionChange,
-  SessionId,
-  SessionRestore,
-  SessionSnapshot,
-} from "@xrf/ipc/types/xrf-app-core";
+import { ESessionRootChange, SessionChange, SessionRestore } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 

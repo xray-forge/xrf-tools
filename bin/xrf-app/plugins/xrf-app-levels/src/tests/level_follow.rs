@@ -17,18 +17,19 @@ use xrf_engine_target::{XrayEngine, XrayEngineResolution};
 use xrf_job::parallel::ThreadPool;
 use xrf_job::testing::create_test_pool;
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
+use xrf_level_source::{
+  LevelAudio, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelLightsPart,
+  LevelMapPart, LevelMount, LevelObjectMotionsPart, LevelParticlesPart, LevelRenderParts, LevelRenderSource,
+  LevelSectionsPart, LevelSource, LevelSpawnPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart,
+  LevelWeatherPart, OpenedLevel, SelectedLevel,
+};
 use xrf_renderer::{LevelPart, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 use xrf_world::{WorldEventSink, WorldLevelSource, WorldViewportEvent};
 
-use crate::level::{LevelSource, OpenedLevel, SelectedLevel, SelectedLevels};
-use crate::parts::{
-  LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelLightsPart, LevelMapPart,
-  LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelSurfacesPart,
-  LevelTexturesPart, LevelWeatherPart,
-};
-use crate::render::{LevelAudio, LevelRenderParts, LevelRenderSource, LevelSceneFollower, ShownLevels};
+use crate::level::SelectedLevels;
+use crate::render::{LevelSceneFollower, ShownLevels};
 use crate::tests::fixtures::silent_server;
 
 /// Longer than a synthetic level takes to read on the test pool.
@@ -97,8 +98,12 @@ fn level_tree(name: &str) -> (AssetMountState, XrayRoots, XraySearch) {
 fn new_levels(assets: &AssetMountState, pool: Option<Arc<ThreadPool>>) -> SelectedLevels {
   let levels: SelectedLevels = SelectedLevels::new("level", &SessionScopes::default());
   let levels: SelectedLevels = match pool {
-    Some(pool) => levels.with_deferred_derivation(assets, pool, OpenedLevel::derive),
-    None => levels.with_derivation(assets, OpenedLevel::derive),
+    Some(pool) => levels.with_deferred_derivation(assets, pool, |current, assets| {
+      OpenedLevel::derive(current, &LevelMount::new(Arc::clone(assets.get_host())))
+    }),
+    None => levels.with_derivation(assets, |current, assets| {
+      OpenedLevel::derive(current, &LevelMount::new(Arc::clone(assets.get_host())))
+    }),
   };
 
   levels.with_view_parts(LevelRenderParts::VIEW_PARTS)
@@ -507,7 +512,7 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&levels, &assets, &roots);
   let source: LevelRenderSource = LevelRenderSource::new(
     Arc::clone(&opened),
-    AssetMountState::clone(&assets),
+    LevelMount::new(Arc::clone(assets.get_host())),
     LevelAudio::new(silent_server()),
   );
 

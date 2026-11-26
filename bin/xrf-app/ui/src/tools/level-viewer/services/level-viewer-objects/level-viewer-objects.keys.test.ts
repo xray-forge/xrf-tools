@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { LevelObject } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObject } from "@xrf/ipc/types/xrf-level-source";
 
 import { KeybindCommandsService } from "@/core/commands";
 import {

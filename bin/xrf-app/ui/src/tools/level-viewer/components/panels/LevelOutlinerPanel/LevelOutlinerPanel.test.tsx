@@ -6,6 +6,7 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import {
   ELevelObjectId,
   ELevelObjectKind,
@@ -14,8 +15,7 @@ import {
   LEVEL_SPAWN_PART,
   LevelObject,
   LevelObjectsDescription,
-} from "@xrf/ipc/types/xrf-app-levels";
-import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+} from "@xrf/ipc/types/xrf-level-source";
 
 import {
   mockLevelObject,

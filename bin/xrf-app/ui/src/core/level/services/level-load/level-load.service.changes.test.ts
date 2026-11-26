@@ -5,7 +5,8 @@ import { flowResult } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { IpcCommandAnswer, mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import {
   ELevelObjectId,
   LEVEL_ENVIRONMENT_PART,
@@ -13,8 +14,8 @@ import {
   LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
   LevelObjectsDescription,
-} from "@xrf/ipc/types/xrf-app-levels";
-import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+} from "@xrf/ipc/types/xrf-level-source";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 
 import { createRoots } from "@/core/assets/lib/roots";
 import {

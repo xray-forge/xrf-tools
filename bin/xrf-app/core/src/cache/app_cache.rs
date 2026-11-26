@@ -3,10 +3,9 @@ use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use xrf_utils::StagedFile;
+use xrf_utils::{AppCacheStore, StagedFile};
 
 use crate::cache::app_cache_policy::AppCachePolicy;
-use crate::cache::app_cache_store::AppCacheStore;
 use crate::cache::app_cache_tidy::AppCacheTidy;
 use crate::directories::AppDirectories;
 

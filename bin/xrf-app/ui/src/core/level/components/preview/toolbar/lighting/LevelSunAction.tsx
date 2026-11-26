@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { EMPTY_ARRAY } from "@xrf/collections";
 import { formatCount, formatDegrees } from "@xrf/format";
-import { LevelSunDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelSunDescription } from "@xrf/ipc/types/xrf-level-source";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable, Optional } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";

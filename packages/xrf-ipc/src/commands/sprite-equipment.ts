@@ -4,13 +4,14 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import {
   EquipmentSpriteMetadata,
   SpriteEquipmentOpenRequest,
   SpriteEquipmentPackRequest,
 } from "#/types/xrf-app-sprite-equipment";
 import { JobProgress } from "#/types/xrf-job";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { EquipmentSpritePackResult } from "#/types/xrf-sprite";
 
 /** The wire name of every command of the `sprite-equipment` plugin. */

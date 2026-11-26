@@ -1,7 +1,7 @@
 import { fetchBulk } from "@xrf/ipc";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { archivesBulkRoutes } from "@xrf/ipc/commands/archives-bulk";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 
 import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { TArchiveContent } from "@/core/archive/lib/selection";

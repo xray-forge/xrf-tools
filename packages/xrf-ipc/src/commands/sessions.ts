@@ -2,7 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 
 /** The wire name of every command of the `sessions` plugin. */
 export enum ESessionsCommand {

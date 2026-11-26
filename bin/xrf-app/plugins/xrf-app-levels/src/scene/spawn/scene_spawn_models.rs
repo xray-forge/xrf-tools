@@ -1,8 +1,8 @@
 use xrf_editable_level::{EditableSpawnPointKind, EditableSpawnPointObject, EditableToolObjects};
+use xrf_level_source::SpawnVisualReader;
 use xrf_rawdata::LevelSpawnDataFields;
 
 use crate::scene::{SceneObjectId, SceneSpawnModel, SceneToolKind, SelectedScene};
-use crate::visuals::SpawnVisualReader;
 
 /// The spawn points a scene stands as their entities' models, as the SDK's editor does: each whose packet reads and
 /// names a visual the scene's game data holds. The rest keep their icon, as does one whose visual draws nothing.

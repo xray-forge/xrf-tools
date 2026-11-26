@@ -2,8 +2,9 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::window::InvokingWindow;
+use xrf_level_source::{SelectedLevel, SelectedLevelDescription};
 
-use crate::level::{SelectedLevel, SelectedLevelDescription, SelectedLevels};
+use crate::level::SelectedLevels;
 
 /// Restore the level `tool` holds in the asking window, the newest it opened, without reading the level again: as a
 /// page attaches to it, or reads it again after a commit derived it anew. Its parts are read by their own queries.

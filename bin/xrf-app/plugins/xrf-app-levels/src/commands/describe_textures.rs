@@ -5,9 +5,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_level_source::{LevelTextureReference, LevelTexturesPart};
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::{LevelTextureReference, LevelTexturesPart};
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Describe what every texture the open level's surfaces bind resolved to; resolved again where a commit let it go.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
@@ -18,7 +18,7 @@ pub(crate) async fn levels_describe_textures(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Arc<Vec<LevelTextureReference>>>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

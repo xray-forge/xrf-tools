@@ -1,5 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelObjectId, ELevelObjectKind, LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  ELevelObjectId,
+  ELevelObjectKind,
+  LevelObject,
+  LevelObjectsDescription,
+} from "@xrf/ipc/types/xrf-level-source";
 import { ITreeNode } from "@xrf/ui/tree";
 
 import { mockLevelObject, mockLevelPatrol, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";

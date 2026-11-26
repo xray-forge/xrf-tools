@@ -8,9 +8,10 @@ use xrf_audio::{
   AudioAcoustics, AudioEngineSettings, AudioSceneFrame, AudioSceneInbox, AudioServer, AudioSpatialization,
   OfflineSession,
 };
+use xrf_level_source::{BurstSoundFrame, BurstSoundTee};
 use xrf_renderer::RenderBurst;
 
-use crate::viewer::burst::{BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
+use crate::viewer::burst::{BurstSoundChunk, BurstSoundOutcome};
 
 /// A burst's sound, rendered on its own thread as the burst draws: the burst's scene frames play in order through an
 /// offline session on the burst's clock, acoustics stepped with them, so a burst sounds the same however fast it draws.

@@ -5,8 +5,8 @@ import { Container } from "@wirestate/core";
 import { EAssetsCommand } from "@xrf/ipc/commands/assets";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@xrf/ipc/types/xrf-engine-target";
+import { LevelEntry } from "@xrf/ipc/types/xrf-level-source";
 
 import { AssetService } from "@/core/assets/services";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";

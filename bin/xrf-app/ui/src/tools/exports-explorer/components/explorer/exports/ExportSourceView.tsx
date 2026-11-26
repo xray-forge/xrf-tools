@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { Nullable } from "@xrf/types";
 import { CodeView } from "@xrf/ui/code/view";
 import { BaseComponentProps } from "@xrf/ui/element-types";

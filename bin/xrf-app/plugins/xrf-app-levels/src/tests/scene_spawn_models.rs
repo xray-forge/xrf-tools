@@ -8,6 +8,7 @@ use xrf_chunk::{ChunkFieldRecorder, ChunkReadWrite, ChunkWriter};
 use xrf_editable_level::{EditableShape, EditableShapeObject, EditableSpawnPointKind, EditableSpawnPointObject};
 use xrf_error::XrfResult;
 use xrf_ini::IniSection;
+use xrf_level_source::fixtures::{new_abstract, new_object};
 use xrf_math::{Aabb, Sphere, Vector3d};
 use xrf_ogf::{OgfGeometry, OgfHeaderChunk, OgfTextureChunk, OgfVertex, OgfVertexLink, OgfVertexLinks};
 use xrf_rawdata::{LevelSpawnDataFields, ObjectCompileOptions, ObjectCompileSource, ObjectCompiler};
@@ -23,8 +24,7 @@ use crate::scene::{
   SceneRenderSource, SceneSource, SceneSpawnModelDescription, SceneToolKind, SelectedScene, ShownScenes,
 };
 use crate::tests::fixtures::{
-  new_abstract, new_object, new_scenes, open_scene, scene_custom_object, scene_library_object, scene_part, write_scene,
-  write_scene_part,
+  new_scenes, open_scene, scene_custom_object, scene_library_object, scene_part, write_scene, write_scene_part,
 };
 
 const BOX: &str = "dynamics\\box\\box_wood";

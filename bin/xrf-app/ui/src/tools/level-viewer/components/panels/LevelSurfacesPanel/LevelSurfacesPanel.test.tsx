@@ -7,7 +7,7 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
-import { LEVEL_SURFACES_PART } from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_SURFACES_PART } from "@xrf/ipc/types/xrf-level-source";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 

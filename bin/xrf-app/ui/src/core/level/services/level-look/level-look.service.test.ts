@@ -3,8 +3,8 @@ import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { LevelConsoleDefaults, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineChoice, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
+import { LevelConsoleDefaults, SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look/level-look";

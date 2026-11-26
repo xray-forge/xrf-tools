@@ -4,26 +4,26 @@ use std::sync::{Arc, OnceLock};
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_app_render::{ResolvedTexture, TextureResolver};
 use xrf_editable_object::EditableObjectFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
+use xrf_level_source::SpawnVisual;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_renderer::{
   RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
   RenderLoadFailure, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
 };
+use xrf_renderer_host::{ResolvedTexture, TextureResolver};
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorPackage, VisualPoser};
 use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
-use crate::report::LevelReport;
+use crate::report::SceneReport;
 use crate::scene::{
   SceneDrawnObject, SceneDrawnObjects, SceneDrawnObjectsPart, SceneHelpersPart, SceneObjectCompiler, SceneObjectModels,
   SceneOccluderLook, SceneRenderId, SceneSpawnModels, SceneSpawnModelsPart, SceneSpawnVisualsPart, SceneSurfaceKind,
   SceneSurfaceKinds, SelectedScene,
 };
-use crate::visuals::SpawnVisual;
 
 /// An open scene as the native renderer draws it, with no sectors and no level. Each scene object whose `.object` is
 /// found is a model compiled from it: an occluder's faces as its fill ([`SceneOccluderLook`]), the faces a player never
@@ -147,12 +147,12 @@ impl RenderAssetSource for SceneRenderSource {
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
     match SceneOccluderLook::read_texture(reference)? {
       Some(fill) => Ok(Some(fill)),
-      None => self.textures.read(&self.assets, reference),
+      None => self.textures.read(self.assets.get_host(), reference),
     }
   }
 
   fn read_texture_sequence(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    self.textures.read_sequence(&self.assets, reference)
+    self.textures.read_sequence(self.assets.get_host(), reference)
   }
 
   fn forget_textures(&self, names: &[String]) {
@@ -160,7 +160,7 @@ impl RenderAssetSource for SceneRenderSource {
   }
 
   fn get_texture_stamp(&self, reference: &str) -> Option<u64> {
-    self.textures.get_stamp(&self.assets, reference)
+    self.textures.get_stamp(self.assets.get_host(), reference)
   }
 }
 
@@ -269,7 +269,7 @@ impl WorldLevelSource for SceneRenderSource {
         .and_then(EditableObjectFile::read_from_bytes)
         .map_err(|error| format!("Library object '{}' does not read: {error}", object.logical_path))
         .and_then(|file| compiler.compile(object, file, &Self::list_asked(object, names)))
-        .inspect_err(|reason| LevelReport::undrawn_scene_object(&object.reference, reason))
+        .inspect_err(|reason| SceneReport::undrawn_object(&object.reference, reason))
     };
     // Each library object's models by its reference, compiled for the first of its visuals this batch asks for.
     let mut compiled: HashMap<String, TauriResult<SceneObjectModels>> = HashMap::new();
@@ -295,7 +295,7 @@ impl WorldLevelSource for SceneRenderSource {
               .get(&model.visual)
               .map(|visual| Some(self.pose_visual(name, &visual))),
             None => Err(format!("No scene object or spawn point stands as model '{name}'"))
-              .inspect_err(|reason| LevelReport::undrawn_scene_object(name, reason)),
+              .inspect_err(|reason| SceneReport::undrawn_object(name, reason)),
           },
         };
 

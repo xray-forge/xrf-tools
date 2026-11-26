@@ -4,8 +4,8 @@ import { isObservableProp } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { LevelObjectsDescription, LevelSource, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+import { LevelObjectsDescription, LevelSource, SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { createRoots } from "@/core/assets/lib/roots";

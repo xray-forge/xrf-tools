@@ -1,4 +1,4 @@
-import { LevelStart } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelStart } from "@xrf/ipc/types/xrf-level-source";
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 import { IPoint3, toPoint3 } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";

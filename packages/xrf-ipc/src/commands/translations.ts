@@ -4,7 +4,7 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import {
   TranslationSaveOutcome,
   TranslationsBuildRequest,
@@ -14,6 +14,7 @@ import {
   TranslationsVerifyRequest,
 } from "#/types/xrf-app-translations";
 import { JobProgress } from "#/types/xrf-job";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import {
   TranslationBuildResult,
   TranslationEdit,

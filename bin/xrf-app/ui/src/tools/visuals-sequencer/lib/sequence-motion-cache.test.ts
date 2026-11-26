@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 
 import { mockLoadedVisual, mockSelectedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";

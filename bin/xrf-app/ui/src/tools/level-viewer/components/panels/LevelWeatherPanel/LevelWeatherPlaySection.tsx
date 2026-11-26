@@ -1,4 +1,4 @@
-import { LevelWeatherCycle } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelWeatherCycle } from "@xrf/ipc/types/xrf-level-source";
 import { WorldWeatherEffectReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";

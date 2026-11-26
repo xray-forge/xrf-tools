@@ -1,4 +1,4 @@
-import { LevelMapDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelMapDescription } from "@xrf/ipc/types/xrf-level-source";
 import {
   RENDER_MAP_MOST_PIXELS,
   RENDER_MAP_MOST_SUPERSAMPLING,

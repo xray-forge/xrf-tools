@@ -4,10 +4,8 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
+use xrf_level_source::{LevelEntry, LevelReport};
 use xrf_vfs::XrayRoots;
-
-use crate::level::LevelEntry;
-use crate::report::LevelReport;
 
 /// Every compiled level the mounted roots hold, loose or archived alike, listed on the pool from a fresh search.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

@@ -1,4 +1,4 @@
-import { LevelSource } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelSource } from "@xrf/ipc/types/xrf-level-source";
 import { getPathName } from "@xrf/path";
 import { Maybe, Nullable } from "@xrf/types";
 

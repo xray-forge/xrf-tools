@@ -1,6 +1,6 @@
+use xrf_level_source::{LevelObject, LevelObjectKind, LevelObjectShape, LevelObjectVolume, LevelRestriction};
 use xrf_spawn::SpawnLevelGraph;
 
-use crate::objects::{LevelObject, LevelObjectKind, LevelObjectShape, LevelObjectVolume, LevelRestriction};
 use crate::viewer::export::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// A level object covering a space, seen from above: a logic volume or a placement with shapes.

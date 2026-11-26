@@ -9,15 +9,15 @@ is infrastructure for the domain plugins and knows no domain: a domain such as `
 
 - `renderer/`: `Renderer`, the renderer as the application calls it, each call a command on the render thread's queue
   and each question of a viewport answered through `RenderAnswer` on a blocking thread of its own; the request a pick
-  takes (`RenderPickRequest`); and `bundle/`, the renderer's bundle as the application ships it (or the renderer's
-  checkout in a development build) and the folder of the application's cache the driver's compiled pipelines are kept
-  in between runs.
+  takes (`RenderPickRequest`). The renderer's bundle and the folder of the application's cache the driver's compiled
+  pipelines are kept in between runs are `xrf-renderer-host`'s `PackagedBundle` and `DiskCacheStore`.
 - `world/`: `WorldState`, the world the renderer draws, which the camera, weather and show commands steer.
 - `viewport/`: the viewports in each window (`RenderViewports`), what each was last asked to show (`ViewportShows`),
-  the window each draws into, the events a viewport sends its page, and `window_host/`, the native windows viewports are
-  drawn into, one host per platform the renderer presents on (Win32 and macOS).
+  the window each draws into and the events a viewport sends its page. The native windows viewports are drawn into, one
+  host per platform the renderer presents on (Win32 and macOS), are `xrf-renderer-host`'s `WindowHostBuilder`.
 - `texture/`: drawn textures kept current with their files (`TextureReloads`): the shown roots watched for texture
-  files written by anything, and where a render source's texture references resolve (`TextureResolver`).
+  files written by anything. Where a render source's texture references resolve is `xrf-renderer-host`'s
+  `TextureResolver`.
 - `capture/`: frames read back and written to PNG files, and how a many-shot capture names itself and ends; the level
   plugin's map and cubemap captures use them.
 - `commands/`: one adapter a command, by what it addresses: `viewport/` (attach, detach, layout, capture), `view/` (view

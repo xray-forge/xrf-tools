@@ -5,7 +5,7 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
-import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART } from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART } from "@xrf/ipc/types/xrf-level-source";
 import { EWorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";

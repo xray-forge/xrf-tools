@@ -2,12 +2,10 @@ use std::sync::Arc;
 
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionSnapshot;
+use xrf_level_source::{LevelGraphPart, LevelObjectsDescription, SelectedLevel};
 use xrf_spawn::SpawnLevelGraph;
 use xrf_vfs::XraySearch;
 
-use crate::level::SelectedLevel;
-use crate::objects::LevelObjectsDescription;
-use crate::parts::LevelGraphPart;
 use crate::viewer::export::map::annotations::{AnnotationMarker, AnnotationPatrol, AnnotationVolume};
 
 /// A level's objects as map annotations, in engine space from above: volumes by outline, patrol paths by their links,

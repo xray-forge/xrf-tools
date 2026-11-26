@@ -3,8 +3,8 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { dialogsCommands } from "@xrf/ipc/commands/dialogs";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

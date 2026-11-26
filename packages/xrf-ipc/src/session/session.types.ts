@@ -1,6 +1,6 @@
 import { EventType } from "@wirestate/core";
 
-import { SessionId } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 import { XrayRevision } from "#/types/xrf-vfs";
 
 /** Identifies the native opening that owns a value. */

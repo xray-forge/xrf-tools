@@ -12,10 +12,10 @@ import {
   ArchiveWorldEntry,
   EArchiveSubject,
 } from "@xrf/ipc/types/xrf-app-archives";
-import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveSharedPayload } from "@xrf/ipc/types/xrf-archive";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { XrayPathCollision, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { ELevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind } from "@xrf/ipc/types/xrf-level-source";
 import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";

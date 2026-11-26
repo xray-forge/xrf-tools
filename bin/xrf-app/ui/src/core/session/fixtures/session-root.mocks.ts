@@ -1,6 +1,6 @@
 import { runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 

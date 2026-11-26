@@ -6,12 +6,12 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_render::{TextureReloads, ViewportShows};
+use xrf_level_source::{LevelRenderSource, LevelReport, SelectedLevel};
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldLevelSource;
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::render::{LevelRenderSource, ShownLevels};
-use crate::report::LevelReport;
+use crate::level::SelectedLevels;
+use crate::render::ShownLevels;
 
 /// Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
 /// the scene drawn, which the viewport's load reports name, or none. The source may resolve the level's surfaces, so

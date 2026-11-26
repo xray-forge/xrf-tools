@@ -7,6 +7,9 @@ mod xray_declared_root;
 mod xray_file_stamp;
 mod xray_source_kind;
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) use directory::XrayDirectorySource;
 pub use xray_archive_source::XrayArchiveSource;
 pub use xray_asset_source::{XrayAssetSource, label_from_path};

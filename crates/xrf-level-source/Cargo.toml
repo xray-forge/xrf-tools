@@ -1,0 +1,82 @@
+[package]
+name = "xrf-level-source"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+image = { workspace = true, features = ["png", "tga"] }
+log = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+uuid = { workspace = true, features = ["serde", "v4"] }
+xrf-anm = { workspace = true }
+xrf-audio = { workspace = true }
+xrf-chunk = { workspace = true }
+xrf-dds = { workspace = true }
+xrf-engine-target = { workspace = true }
+xrf-environment = { workspace = true }
+xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
+xrf-gamemtl = { workspace = true }
+xrf-geometry = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
+xrf-job = { workspace = true }
+xrf-level = { workspace = true }
+xrf-light-anim = { workspace = true }
+xrf-ltx = { workspace = true }
+xrf-ltx-project = { workspace = true }
+xrf-material = { workspace = true }
+xrf-math = { workspace = true }
+xrf-ogf = { workspace = true }
+xrf-particles = { workspace = true }
+xrf-profiler = { workspace = true }
+xrf-renderer = { workspace = true }
+xrf-renderer-host = { workspace = true }
+xrf-session = { workspace = true }
+xrf-shaders = { workspace = true }
+xrf-sound = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-utils = { workspace = true }
+xrf-vfs = { workspace = true }
+xrf-visual = { workspace = true }
+xrf-world = { workspace = true }
+
+[dev-dependencies]
+# Reads back the spelling a type crosses IPC with.
+serde_json = { workspace = true }
+xrf-dltx = { workspace = true }
+xrf-ini = { workspace = true }
+xrf-job = { workspace = true, features = ["testing"] }
+xrf-material = { workspace = true, features = ["fixtures"] }
+xrf-session = { workspace = true, features = ["fixtures"] }
+xrf-shaders = { workspace = true, features = ["fixtures"] }
+xrf-test-utils = { workspace = true }
+xrf-thm = { workspace = true }
+
+[features]
+# Test builders a host's tests share with this crate's: levels, searches, catalogs and spawned objects.
+fixtures = ["xrf-material/fixtures"]
+# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
+typescript-bindings = [
+  "specta",
+  "xrf-ipc",
+  "xrf-engine-target/typescript-bindings",
+  "xrf-environment/typescript-bindings",
+  "xrf-level/typescript-bindings",
+  "xrf-material/typescript-bindings",
+  "xrf-math/typescript-bindings",
+  "xrf-renderer/typescript-bindings",
+  "xrf-session/typescript-bindings",
+  "xrf-spawn/typescript-bindings",
+  "xrf-vfs/typescript-bindings",
+  "xrf-visual/typescript-bindings",
+  "xrf-world/typescript-bindings",
+]
+
+[lints]
+workspace = true

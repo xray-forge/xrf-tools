@@ -3,7 +3,7 @@ import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
 import { TFlow } from "@xrf/flow";
 import { assetsCommands } from "@xrf/ipc/commands/assets";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";

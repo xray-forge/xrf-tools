@@ -1,6 +1,6 @@
-import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
+import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-level-source";
 import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 
 import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualDescriptor } from "@/core/level/lib/weather/level-manual-weather";

@@ -1,5 +1,5 @@
 import { comparer, Computed, makeObservable, reaction } from "@wirestate/mobx";
-import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
 import {
   ERenderDlssAvailability,
   RenderAntialiasing,

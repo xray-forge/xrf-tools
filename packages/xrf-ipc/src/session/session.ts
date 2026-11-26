@@ -4,7 +4,7 @@ import { Maybe } from "@xrf/types";
 
 import { SessionScopeService } from "#/session/session-scope.service";
 import { IScopedSession, ISessionIdentity } from "#/session/session.types";
-import { SessionId } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 
 /**
  * Owns native openings through completion and teardown, including cancelled frontend flows. Each opening is bound to

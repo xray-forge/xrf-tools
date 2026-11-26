@@ -1,4 +1,4 @@
-import { ELevelObjectKind, LevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind, LevelObjectKind } from "@xrf/ipc/types/xrf-level-source";
 import { Maybe, Nullable } from "@xrf/types";
 
 /** The view options that show each kind of level object drawn as a model. */

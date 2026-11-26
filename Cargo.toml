@@ -39,6 +39,7 @@ members = [
   "crates/xrf-job",
   "crates/xrf-level",
   "crates/xrf-level-compiler",
+  "crates/xrf-level-source",
   "crates/xrf-light-anim",
   "crates/xrf-ltx",
   "crates/xrf-ltx-inspect",
@@ -58,8 +59,10 @@ members = [
   "crates/xrf-rawdata",
   "crates/xrf-renderer-core",
   "crates/xrf-renderer-derive",
+  "crates/xrf-renderer-host",
   "crates/xrf-renderer",
   "crates/xrf-report",
+  "crates/xrf-session",
   "crates/xrf-shaders",
   "crates/xrf-skeleton",
   "crates/xrf-sound",
@@ -162,6 +165,7 @@ xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
 xrf-job = { path = "crates/xrf-job" }
 xrf-level = { path = "crates/xrf-level" }
 xrf-level-compiler = { path = "crates/xrf-level-compiler" }
+xrf-level-source = { path = "crates/xrf-level-source" }
 xrf-light-anim = { path = "crates/xrf-light-anim" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-ltx-inspect = { path = "crates/xrf-ltx-inspect" }
@@ -181,8 +185,10 @@ xrf-profiler = { path = "crates/xrf-profiler" }
 xrf-rawdata = { path = "crates/xrf-rawdata" }
 xrf-renderer-core = { path = "crates/xrf-renderer-core" }
 xrf-renderer-derive = { path = "crates/xrf-renderer-derive" }
+xrf-renderer-host = { path = "crates/xrf-renderer-host" }
 xrf-renderer = { path = "crates/xrf-renderer" }
 xrf-report = { path = "crates/xrf-report" }
+xrf-session = { path = "crates/xrf-session" }
 xrf-shaders = { path = "crates/xrf-shaders" }
 xrf-skeleton = { path = "crates/xrf-skeleton" }
 xrf-sound = { path = "crates/xrf-sound" }

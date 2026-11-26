@@ -1,4 +1,4 @@
-import { LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-level-source";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3, toXraySpace } from "@xrf/math";

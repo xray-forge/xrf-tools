@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-level-source";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { useCopiedText } from "@xrf/react/copied-text";

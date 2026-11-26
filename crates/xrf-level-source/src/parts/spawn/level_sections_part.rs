@@ -1,0 +1,126 @@
+use std::collections::BTreeSet;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use xrf_ltx::{Ltx, LtxResolution};
+use xrf_material::XrayReducedTextures;
+use xrf_session::{SessionPart, SessionParts, SessionSnapshot};
+use xrf_vfs::{XrayInputRecord, XraySearch};
+
+use crate::LevelSourceResult;
+use crate::level::{LevelConfigs, LevelSource, SelectedLevel};
+use crate::parts::{LevelSpawn, LevelSpawnPart};
+use crate::report::LevelReport;
+
+/// What a change event calls a level's sections when they go stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_SECTIONS_PART: &str = "sections";
+
+/// The sections of the game's resolved `system.ltx` a level's spawned objects name, which their lights are read from:
+/// the game's configs as a level reads them.
+pub struct LevelSectionsPart;
+
+impl SessionPart for LevelSectionsPart {
+  type Value = LevelSourceResult<Arc<Ltx>>;
+
+  const NAME: &'static str = LEVEL_SECTIONS_PART;
+}
+
+impl LevelSectionsPart {
+  /// The sections the open level's spawned objects name and [`XrayReducedTextures::SECTION`], kept with the level:
+  /// read as it opened, or the first time anything asks where the open did not.
+  ///
+  /// # Errors
+  ///
+  /// Returns the reason the spawn or the configs cannot be read, which every later ask answers with again.
+  pub(crate) fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> LevelSourceResult<Arc<Ltx>> {
+    current.parts.get_or_record::<Self>(search, |search| {
+      let spawn: Arc<LevelSpawn> = LevelSpawnPart::get(current, search)?;
+
+      Self::read(&current.source, search, &LevelConfigs::of(current), &spawn)
+    })
+  }
+
+  /// The open level's sections where they were read, as the open reads them; asking reads nothing.
+  pub(crate) fn find(current: &SessionSnapshot<SelectedLevel>) -> Option<Arc<Ltx>> {
+    current.parts.get::<Self>()?.ok()
+  }
+
+  /// `parts` with the sections an open read from `inputs` kept as the level's.
+  pub(crate) fn with(
+    parts: SessionParts,
+    sections: LevelSourceResult<Arc<Ltx>>,
+    inputs: XrayInputRecord,
+  ) -> SessionParts {
+    parts.with::<Self>(sections, inputs)
+  }
+
+  /// The sections a level's spawned objects name, plus [`XrayReducedTextures::SECTION`], from the resolved configs.
+  ///
+  /// # Errors
+  ///
+  /// Returns the reason the configs cannot be read.
+  pub(crate) fn read(
+    source: &LevelSource,
+    search: &XraySearch,
+    configs: &LevelConfigs,
+    spawn: &LevelSpawn,
+  ) -> LevelSourceResult<Arc<Ltx>> {
+    let started: Instant = Instant::now();
+    let resolved: Arc<LtxResolution> = Self::resolve(source, search, configs)?;
+
+    Ok(Self::keep(source, &resolved, started.elapsed(), spawn))
+  }
+
+  /// `system.ltx` with includes merged and parents resolved, in the level's dialect.
+  ///
+  /// It needs nothing of the spawn, so an open reads it beside the spawn: it is the open's longest read.
+  ///
+  /// # Errors
+  ///
+  /// Returns the reason the configs cannot be read.
+  pub(crate) fn resolve(
+    source: &LevelSource,
+    search: &XraySearch,
+    configs: &LevelConfigs,
+  ) -> LevelSourceResult<Arc<LtxResolution>> {
+    configs
+      .open(search)?
+      .system_ltx()
+      .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))
+  }
+
+  /// Keep the sections `spawn`'s objects name, plus [`XrayReducedTextures::SECTION`], out of `resolved`; `read_in` is
+  /// how long the resolve took.
+  pub(crate) fn keep(
+    source: &LevelSource,
+    resolved: &LtxResolution,
+    read_in: Duration,
+    spawn: &LevelSpawn,
+  ) -> Arc<Ltx> {
+    let names: BTreeSet<&str> = spawn
+      .objects
+      .iter()
+      .map(|object| object.header.section.as_str())
+      .chain([XrayReducedTextures::SECTION])
+      .collect();
+    let mut kept: Ltx = Ltx::new();
+    let mut missing: Vec<&str> = Vec::new();
+
+    for name in names {
+      match resolved.ltx.section(name) {
+        Some(section) => {
+          kept.entry(name.to_owned()).or_insert_with(|| section.clone());
+        }
+        // A game whose configs reduce no texture is not missing anything.
+        None if name == XrayReducedTextures::SECTION => {}
+        None => missing.push(name),
+      }
+    }
+
+    LevelReport::sections(source, kept.len(), resolved.ltx.len(), read_in);
+    LevelReport::missing_sections_named(source, &missing);
+
+    Arc::new(kept)
+  }
+}

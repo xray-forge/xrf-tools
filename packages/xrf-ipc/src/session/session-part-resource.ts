@@ -6,7 +6,8 @@ import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
 import { SESSION_CHANGE_EVENT } from "#/session/session.types";
 import { isOlderSessionAnswer, isSessionMovedPast } from "#/session/session.utils";
-import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "#/types/xrf-app-core";
+import { ESessionRootChange, SessionChange } from "#/types/xrf-app-core";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 
 /**
  * Reads one part of an open session: what its `describe_<part>` query answers.

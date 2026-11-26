@@ -8,7 +8,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_vfs::XrayRoots;
 
-use crate::report::LevelReport;
+use crate::report::SceneReport;
 use crate::scene::{
   OpenedScene, SceneGameData, SceneOpenRequest, SelectedScene, SelectedSceneDescription, SelectedScenes,
 };
@@ -34,7 +34,7 @@ pub(crate) async fn levels_open_scene(
 
   let started: Instant = Instant::now();
 
-  LevelReport::opening_scene(&source);
+  SceneReport::opening(&source);
 
   let roots: XrayRoots = source.get_roots()?;
   let scene: OpenedScene = OpenedScene {
@@ -57,7 +57,7 @@ pub(crate) async fn levels_open_scene(
     )
     .await?;
 
-  LevelReport::opened_scene(&opened, started);
+  SceneReport::opened(&opened, started);
 
   // The page asks for each part's description separately.
   Ok(opened.map(SelectedScene::describe))

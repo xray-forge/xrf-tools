@@ -6,7 +6,7 @@ import {
   LevelObjectKind,
   LevelObjectKindEntry,
   LevelObjectsDescription,
-} from "@xrf/ipc/types/xrf-app-levels";
+} from "@xrf/ipc/types/xrf-level-source";
 import { Maybe, Nullable } from "@xrf/types";
 import { Chip } from "@xrf/ui/badge";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";

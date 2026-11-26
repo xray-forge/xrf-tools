@@ -5,10 +5,10 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_level_source::LevelSurfacesPart;
 use xrf_material::XraySurfaceDescriptor;
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::LevelSurfacesPart;
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Describe how the renderer draws each entry of the open level's shader table, in its order, so the page names a
 /// surface by the shader id a packed surface carries; resolved again where a commit let it go.
@@ -20,7 +20,7 @@ pub(crate) async fn levels_describe_surfaces(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Arc<Vec<XraySurfaceDescriptor>>>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

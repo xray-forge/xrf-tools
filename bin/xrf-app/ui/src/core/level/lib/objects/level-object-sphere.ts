@@ -1,4 +1,4 @@
-import { ELevelObjectShape, LevelObject, LevelObjectShape } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectShape, LevelObject, LevelObjectShape } from "@xrf/ipc/types/xrf-level-source";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { VisualTransform } from "@xrf/ipc/types/xrf-visual";
 import { IPoint3, toPoint3, toXraySpace } from "@xrf/math";

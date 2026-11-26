@@ -2,8 +2,9 @@
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import { ExportSourceContent, ExportsProject } from "#/types/xrf-export";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 
 /** The wire name of every command of the `exports` plugin. */
 export enum EExportsCommand {

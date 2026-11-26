@@ -132,6 +132,15 @@ The `staging-faults` feature exposes, for a dependent crate's tests only:
 - `StagingFaults::fail_next_write()`: the next staged write on the current thread fails with `StorageFull`;
 - `StagingFaults::fail_publish_after(n)`: a publish fails once `n` more have succeeded.
 
+## A cache folder
+
+`AppCacheStore::new(name, directory)` is one client's folder in a host's caches: each entry a file written whole
+(`write`) or not at all.
+
+- `read` answers an entry's bytes, or none where it is not kept or cannot be read.
+- An entry's modification time is when it was last used: set as it is written, and moved on by a read once it stands
+  an hour stale. A host tidies its caches by that time, with no index to keep in step across processes.
+
 ## Text
 
 ```rust

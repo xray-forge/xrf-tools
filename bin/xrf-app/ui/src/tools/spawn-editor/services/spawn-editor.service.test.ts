@@ -3,8 +3,8 @@ import { flowResult } from "@wirestate/mobx";
 import { cancelFlow } from "@xrf/flow";
 import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
 import { IpcCommandAnswer, mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ESpawnChunkKind, SpawnChunk, SpawnSessionDescriptor } from "@xrf/ipc/types/xrf-app-spawn";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { SpawnGraphsChunk } from "@xrf/ipc/types/xrf-spawn";
 
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";

@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
-import { EnvironmentCycleEntry, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EWeatherCycleKind, LevelWeatherOption } from "@xrf/ipc/types/xrf-environment";
+import { EnvironmentCycleEntry, LevelWeatherDescription } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 
 /**

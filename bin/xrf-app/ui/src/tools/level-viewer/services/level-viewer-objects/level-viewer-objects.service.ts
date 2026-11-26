@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@wirestate/core";
 import { call, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { LevelObject, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObject, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-level-source";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

@@ -5,7 +5,7 @@ use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::level::{SelectedLevel, SelectedLevels};
+use crate::level::{LevelAnswer, SelectedLevels};
 use crate::viewer::LevelViewerFolder;
 use crate::viewer::export::map::annotations::{AnnotationCanvas, LevelAnnotations, MapAnnotationsWriteRequest};
 
@@ -23,7 +23,7 @@ pub(crate) async fn levels_write_map_annotations(
   LevelViewerFolder::require_screenshot(&directories, &request.path)?;
   request.area.require_ground()?;
 
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

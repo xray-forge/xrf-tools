@@ -4,7 +4,7 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import {
   ETextureCatalogMode,
   TextureBuildOutcome,
@@ -28,6 +28,7 @@ import {
 } from "#/types/xrf-app-textures";
 import { JobProgress } from "#/types/xrf-job";
 import { RenderViewportId } from "#/types/xrf-renderer";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { XrayRoots } from "#/types/xrf-vfs";
 
 /** The wire name of every command of the `textures` plugin. */

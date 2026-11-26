@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelObjectId, LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectId, LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-level-source";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";

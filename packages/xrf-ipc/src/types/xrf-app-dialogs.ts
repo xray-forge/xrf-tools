@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { SessionId } from "#/types/xrf-app-core";
 import { DialogProjectMode } from "#/types/xrf-dialog";
+import { SessionId } from "#/types/xrf-session";
 import { XrayRoots } from "#/types/xrf-vfs";
 
 /** What opening a dialogs project was asked to do. */

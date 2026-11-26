@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
-import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";

@@ -4,7 +4,7 @@ import { Logger } from "@xrf/logging";
 
 import { sessionsCommands } from "#/commands/sessions";
 import { IScopedSession } from "#/session/session.types";
-import { SessionId } from "#/types/xrf-app-core";
+import { SessionId } from "#/types/xrf-session";
 
 /** The tool a container's services hold their openings for: an application's id, or the shell's. */
 export const SESSION_TOOL: InjectionToken<string> = new InjectionToken<string>("SessionTool");

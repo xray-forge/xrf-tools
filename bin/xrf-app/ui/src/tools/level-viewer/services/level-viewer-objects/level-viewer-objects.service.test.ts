@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands } from "@xrf/ipc/testing";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { LevelObjectsDescription, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+import { LevelObjectsDescription, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-level-source";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import {

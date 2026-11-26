@@ -2,9 +2,9 @@ import { inject, Injectable } from "@wirestate/core";
 import { transformError } from "@xrf/errors";
 import { call, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { SceneObjectId } from "@xrf/ipc/types/xrf-app-levels";
 import { Sphere } from "@xrf/ipc/types/xrf-math";
+import { SessionId } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

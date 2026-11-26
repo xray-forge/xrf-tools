@@ -3,9 +3,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_level_source::{LevelMapDescription, LevelMapPart};
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::{LevelMapDescription, LevelMapPart};
+use crate::level::{LevelAnswer, SelectedLevels};
 
 /// Describe where the open level's map lies over it, as its `level.ltx` places it, or none where it places none; read
 /// again where a commit let it go.
@@ -17,7 +17,7 @@ pub(crate) async fn levels_describe_level_map(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Option<LevelMapDescription>>> {
-  SelectedLevel::answer(
+  LevelAnswer::read(
     &levels,
     &assets,
     &execution,

@@ -5,7 +5,7 @@ import {
   LEVEL_SOUND_EMITTERS_HELPER_KIND,
   LevelObject,
   LevelObjectKindEntry,
-} from "@xrf/ipc/types/xrf-app-levels";
+} from "@xrf/ipc/types/xrf-level-source";
 
 import { mockLevelObject, mockLevelPatrol, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_HELPER_OPTIONS } from "@/core/level/lib/objects/level-helper-options";

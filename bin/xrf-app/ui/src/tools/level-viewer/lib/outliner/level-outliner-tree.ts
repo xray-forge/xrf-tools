@@ -4,7 +4,7 @@ import {
   LevelObjectKind,
   LevelObjectKindEntry,
   LevelObjectsDescription,
-} from "@xrf/ipc/types/xrf-app-levels";
+} from "@xrf/ipc/types/xrf-level-source";
 import { Nullable } from "@xrf/types";
 import { ITreeNode } from "@xrf/ui/tree";
 

@@ -1,6 +1,6 @@
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-level-source";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { EWorldWeatherPlay, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 

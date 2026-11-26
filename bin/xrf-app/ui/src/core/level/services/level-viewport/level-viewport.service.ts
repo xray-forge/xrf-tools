@@ -1,6 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
-import { LevelObject } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObject } from "@xrf/ipc/types/xrf-level-source";
 import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 

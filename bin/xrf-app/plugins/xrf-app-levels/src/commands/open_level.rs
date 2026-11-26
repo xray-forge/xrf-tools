@@ -8,12 +8,13 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::XrayEngineDetector;
+use xrf_level_source::{
+  LevelReport, LevelSurfacesPart, LevelTexturesPart, OpenedLevel, SelectedLevel, SelectedLevelDescription,
+};
 use xrf_ltx::LtxDialect;
 use xrf_vfs::XrayRoots;
 
-use crate::level::{LevelOpenRequest, OpenedLevel, SelectedLevel, SelectedLevelDescription, SelectedLevels};
-use crate::parts::{LevelSurfacesPart, LevelTexturesPart};
-use crate::report::LevelReport;
+use crate::level::{LevelOpenRequest, SelectedLevels};
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

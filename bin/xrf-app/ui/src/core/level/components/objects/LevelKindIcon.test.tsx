@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ELevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind } from "@xrf/ipc/types/xrf-level-source";
 import { RENDER_HELPER_ICONS, RenderHelperIconEntry } from "@xrf/ipc/types/xrf-renderer";
 
 import { LEVEL_KIND_ICONS, LevelKindIcon } from "@/core/level/components/objects/LevelKindIcon";

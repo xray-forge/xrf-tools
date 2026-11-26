@@ -1,4 +1,5 @@
-use crate::objects::{LevelObject, LevelObjectId, LevelObjectKind};
+use xrf_level_source::{LevelObject, LevelObjectId, LevelObjectKind};
+
 use crate::viewer::export::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// A level object standing at a point, drawn from above as a dot.

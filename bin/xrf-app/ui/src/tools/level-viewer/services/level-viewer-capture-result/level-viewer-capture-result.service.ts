@@ -2,7 +2,7 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
 import { cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

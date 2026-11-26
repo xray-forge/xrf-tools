@@ -1,9 +1,9 @@
 use xrf_editable_level::{EditableObjectTransform, EditableShapeElement, EditableWayPoint};
+use xrf_level_source::HelperLinkLines;
 use xrf_math::Vector3d;
 use xrf_math::glam::{Mat4, Vec3};
 use xrf_renderer::{RenderHelperIcon, RenderHelperShape};
 
-use crate::helpers::HelperLinkLines;
 use crate::scene::SceneRenderSpace;
 
 /// What one scene object's helper draws and where it stands, in renderer space.

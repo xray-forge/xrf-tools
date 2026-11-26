@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod binary;
+mod cache;
 mod host_path;
 mod output;
 mod staging;
@@ -11,6 +12,7 @@ pub use crate::binary::{
   ContentGuid, FormatWidth, assert, assert_count_fits, assert_equal, assert_length, assert_not_equal,
   narrow_format_size, new_bounded_vec, new_declared_vec, read_exact_at,
 };
+pub use crate::cache::AppCacheStore;
 pub use crate::host_path::{
   HostDestination, HostFileName, HostLinkPolicy, HostRelativePath, format_path, format_path_or, format_portable_path,
   resolve_absolute_path,

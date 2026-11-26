@@ -3,12 +3,12 @@ use std::sync::{Arc, MutexGuard};
 use xrf_app_core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use xrf_app_core::session::{SessionChange, SessionRootChange, SessionSnapshot};
 use xrf_app_render::WorldState;
+use xrf_level_source::{LevelRenderParts, LevelRenderSource, LevelReport, SelectedLevel};
 use xrf_renderer::{LevelParts, RenderSceneId};
 use xrf_world::{World, WorldLevelSource};
 
-use crate::level::{SelectedLevel, SelectedLevels};
-use crate::render::{LevelRenderParts, LevelRenderSource, ShownLevels};
-use crate::report::LevelReport;
+use crate::level::SelectedLevels;
+use crate::render::ShownLevels;
 
 /// Moves the scene of each level shown along with its session through every commit, in the backend: a kept value's
 /// scene goes on from the next snapshot, reading again only what its stale parts fed; a value derived again streams

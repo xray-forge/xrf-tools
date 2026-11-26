@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_engine_target::XrayEngineChoice;
+use xrf_level_source::LevelSource;
 use xrf_vfs::XrayRoots;
-
-use crate::level::LevelSource;
 
 /// What opening a level was asked to read, and how the game's configs beside it are read.
 #[derive(Clone, Debug, Deserialize, Serialize)]

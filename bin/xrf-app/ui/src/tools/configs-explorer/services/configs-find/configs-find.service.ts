@@ -6,7 +6,7 @@ import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { ConfigsDeclarationSearch } from "@xrf/ipc/types/xrf-app-configs";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-session";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 

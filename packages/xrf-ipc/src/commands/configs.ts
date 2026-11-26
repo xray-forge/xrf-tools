@@ -17,7 +17,7 @@ import {
   ConfigsReadSectionsRequest,
   ConfigsVerifyRequest,
 } from "#/types/xrf-app-configs";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import { JobProgress } from "#/types/xrf-job";
 import {
   LtxAnchoredFinding,
@@ -26,6 +26,7 @@ import {
   LtxSectionSchemeReport,
 } from "#/types/xrf-ltx-inspect";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "#/types/xrf-ltx-project";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 
 /** The wire name of every command of the `configs` plugin. */
 export enum EConfigsCommand {

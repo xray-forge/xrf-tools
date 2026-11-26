@@ -4,7 +4,7 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
+import { SessionRestore } from "#/types/xrf-app-core";
 import {
   ESpawnChunkKind,
   SpawnBuildResult,
@@ -14,6 +14,7 @@ import {
   SpawnSessionDescriptor,
 } from "#/types/xrf-app-spawn";
 import { JobProgress } from "#/types/xrf-job";
+import { SessionId, SessionSnapshot } from "#/types/xrf-session";
 import { SpawnListedLevel, SpawnRootRequest } from "#/types/xrf-spawn-builder";
 
 /** The wire name of every command of the `spawn` plugin. */
