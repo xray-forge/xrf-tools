@@ -6,6 +6,7 @@ use xrf_job::parallel::prelude::*;
 
 use crate::encode::dds_bc1_cut_out::DdsBc1CutOut;
 use crate::encode::dds_surface_levels::DdsSurfaceLevels;
+use crate::file::dds_block_layout::DdsBlockLayout;
 use crate::file::dds_file::DdsFile;
 use crate::mip::dds_mip_chain::DdsMipChain;
 
@@ -21,7 +22,7 @@ pub struct DdsEncoding {
 
 impl DdsEncoding {
   /// Pixels along one edge of a block, which every block-compressed family in this format shares.
-  pub const BLOCK_SIZE: u32 = 4;
+  pub const BLOCK_SIZE: u32 = DdsBlockLayout::SIDE;
 
   /// Rows of a level encoded as one piece, whole blocks high so only a level's last piece is padded.
   const STRIPE_ROWS: u32 = 16 * Self::BLOCK_SIZE;
@@ -111,27 +112,82 @@ impl DdsEncoding {
   /// Every level encoded and laid end to end, as one surface's payload stores them.
   ///
   /// Levels are encoded in stripes of [`Self::STRIPE_ROWS`] on every worker. A block encodes from its own pixels
-  /// alone, so the stripes laid end to end are byte for byte the level encoded whole.
+  /// alone, so the stripes laid end to end are byte for byte the level encoded whole. Where the layout's size is known,
+  /// each stripe is written straight into its place in the payload, so the encoded texture is never held twice.
   fn encode_levels(&self, levels: &[&RgbaImage]) -> XrfResult<Vec<u8>> {
-    let is_cut_out: bool = self.is_cut_out && self.format == ImageFormat::BC1RgbaUnorm;
     let stripes: Vec<SurfaceRgba8<&[u8]>> = levels.iter().flat_map(|level| Self::stripes_of(level)).collect();
-    let encoded: Vec<Vec<u8>> = stripes
-      .par_iter()
-      .map(|stripe| {
-        let mut data: Vec<u8> = stripe
-          .encode(self.format, self.quality, Mipmaps::FromSurface)
-          .map(|surface| surface.data)
-          .map_texture_processing_err()?;
+    let Some(sizes) = stripes
+      .iter()
+      .map(|stripe| self.encoded_size(stripe.width, stripe.height))
+      .collect::<Option<Vec<usize>>>()
+    else {
+      let encoded: Vec<Vec<u8>> = stripes
+        .par_iter()
+        .map(|stripe| self.encode_stripe(stripe))
+        .collect::<XrfResult<Vec<Vec<u8>>>>()?;
 
-        if is_cut_out {
-          DdsBc1CutOut::apply(&mut data, stripe.data, stripe.width, stripe.height);
+      return Ok(encoded.concat());
+    };
+    let mut payload: Vec<u8> = vec![0; sizes.iter().sum()];
+    let mut rest: &mut [u8] = &mut payload;
+    let mut pieces: Vec<&mut [u8]> = Vec::with_capacity(sizes.len());
+
+    for size in sizes {
+      let (piece, tail) = rest.split_at_mut(size);
+
+      pieces.push(piece);
+      rest = tail;
+    }
+
+    pieces
+      .into_par_iter()
+      .zip(stripes.par_iter())
+      .try_for_each(|(piece, stripe)| {
+        let data: Vec<u8> = self.encode_stripe(stripe)?;
+
+        if data.len() != piece.len() {
+          return Err(XrfError::new_texture_processing_error(format!(
+            "The encoder wrote {} bytes for a {}x{} stripe of {:?}, not {}",
+            data.len(),
+            stripe.width,
+            stripe.height,
+            self.format,
+            piece.len()
+          )));
         }
 
-        Ok(data)
-      })
-      .collect::<XrfResult<Vec<Vec<u8>>>>()?;
+        piece.copy_from_slice(&data);
 
-    Ok(encoded.concat())
+        Ok(())
+      })?;
+
+    Ok(payload)
+  }
+
+  /// One stripe encoded, its cut-out alpha applied where asked.
+  fn encode_stripe(&self, stripe: &SurfaceRgba8<&[u8]>) -> XrfResult<Vec<u8>> {
+    let mut data: Vec<u8> = stripe
+      .encode(self.format, self.quality, Mipmaps::FromSurface)
+      .map(|surface| surface.data)
+      .map_texture_processing_err()?;
+
+    if self.is_cut_out && self.format == ImageFormat::BC1RgbaUnorm {
+      DdsBc1CutOut::apply(&mut data, stripe.data, stripe.width, stripe.height);
+    }
+
+    Ok(data)
+  }
+
+  /// Bytes a `width` by `height` piece takes in this encoding's layout: whole blocks for a block-compressed one, four
+  /// a pixel uncompressed; `None` for a layout whose size this crate does not know.
+  fn encoded_size(&self, width: u32, height: u32) -> Option<usize> {
+    if let Some(block_bytes) = DdsBlockLayout::block_bytes(self.format) {
+      return Some(
+        height.div_ceil(DdsBlockLayout::SIDE) as usize * DdsBlockLayout::block_row_bytes(width, block_bytes),
+      );
+    }
+
+    (self.format == ImageFormat::Rgba8Unorm).then(|| width as usize * height as usize * 4)
   }
 
   /// One level as surfaces of [`Self::STRIPE_ROWS`] rows each, the last holding what remains.

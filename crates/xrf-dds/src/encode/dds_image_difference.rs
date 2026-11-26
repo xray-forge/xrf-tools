@@ -1,8 +1,7 @@
 use image::RgbaImage;
 use xrf_error::{XrfError, XrfResult};
 
-/// Channel order the per-channel figures are reported in.
-const CHANNELS: usize = 4;
+use crate::encode::dds_image_squares::DdsImageSquares;
 
 /// How far one image sits from another, measured rather than judged.
 ///
@@ -13,7 +12,7 @@ const CHANNELS: usize = 4;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DdsImageDifference {
   /// Root mean square error per channel, in the eight-bit units the pixels are stored in.
-  pub channel_rmse: [f64; CHANNELS],
+  pub channel_rmse: [f64; Self::CHANNELS],
   /// Root mean square error over every channel at once.
   pub rmse: f64,
   /// Peak signal-to-noise ratio in decibels, or `None` for two images that do not differ at all.
@@ -23,6 +22,9 @@ pub struct DdsImageDifference {
 }
 
 impl DdsImageDifference {
+  /// Channels a pixel holds, in the order the per-channel figures are reported in.
+  pub const CHANNELS: usize = 4;
+
   /// Compares two images of the same size, pixel for pixel.
   ///
   /// # Errors
@@ -40,33 +42,7 @@ impl DdsImageDifference {
       )));
     }
 
-    let pixels: usize = reference.pixels().len();
-
-    if pixels == 0 {
-      return Err(XrfError::new_texture_processing_error(
-        "Cannot compare images with no pixels",
-      ));
-    }
-
-    let mut squares: [f64; CHANNELS] = [0.0; CHANNELS];
-
-    for (left, right) in reference.pixels().zip(candidate.pixels()) {
-      for (total, (left, right)) in squares.iter_mut().zip(left.0.iter().zip(right.0.iter())) {
-        let difference: f64 = f64::from(*left) - f64::from(*right);
-
-        *total += difference * difference;
-      }
-    }
-
-    let channel_rmse: [f64; CHANNELS] = squares.map(|total| (total / pixels as f64).sqrt());
-    let rmse: f64 = (squares.iter().sum::<f64>() / (pixels * CHANNELS) as f64).sqrt();
-
-    Ok(Self {
-      channel_rmse,
-      rmse,
-      // Undefined at zero error, which is the one case a reader has to be able to tell from a very large number.
-      psnr: (rmse > 0.0).then(|| 20.0 * (f64::from(u8::MAX) / rmse).log10()),
-    })
+    DdsImageSquares::of(reference.as_raw(), candidate.as_raw()).finish()
   }
 }
 

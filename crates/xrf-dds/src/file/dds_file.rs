@@ -8,6 +8,7 @@ use image::{ExtendedColorType, GrayImage, ImageEncoder, RgbaImage};
 use xrf_error::{MapXrfErr, XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
+use crate::encode::dds_image_difference::DdsImageDifference;
 use crate::file::dds_block_decoder::DdsBlockDecoder;
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
@@ -185,6 +186,20 @@ impl DdsFile {
           "Failed to convert DDS to RGBA image: {error}, and it is no expandable packing either: {fallback}"
         ))
       }),
+    }
+  }
+
+  /// How far a level sits from `reference`, as [`DdsImageDifference::between`] measures it against the level
+  /// [`Self::decode_rgba`] decodes. A flat block-compressed level is compared a stripe at a time on every worker, never
+  /// held decoded whole; any other is decoded whole first.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where [`Self::decode_rgba`] does, or where [`DdsImageDifference::between`] refuses the pair.
+  pub fn compare_rgba(&self, mipmap_level: u32, reference: &RgbaImage) -> XrfResult<DdsImageDifference> {
+    match DdsBlockDecoder::compare(&self.dds, mipmap_level, reference) {
+      Some(squares) => squares.finish(),
+      None => DdsImageDifference::between(reference, &self.decode_rgba(mipmap_level)?),
     }
   }
 

@@ -56,7 +56,7 @@ impl DdsEncodeAttempt {
       // blocks this crate has the size of wrong cannot report a size the file does not have.
       gpu_bytes: metadata.file_size.saturating_sub(metadata.metadata_size),
       encode_duration,
-      difference: DdsImageDifference::between(reference, &file.decode_rgba(0)?)?,
+      difference: file.compare_rgba(0, reference)?,
       file,
     })
   }
