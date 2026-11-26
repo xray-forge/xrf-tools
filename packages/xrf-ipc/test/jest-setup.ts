@@ -1,5 +1,5 @@
 import { afterEach, jest } from "@jest/globals";
-import { Logger } from "@xrf/logging";
+import { LOGGER_CONFIG } from "@xrf/logging";
 
 import {
   MockChannel,
@@ -20,9 +20,7 @@ jest.mock("@tauri-apps/api/core", () => ({
 
 Object.defineProperty(globalThis, "fetch", { configurable: true, value: mockFetch, writable: true });
 
-// The static logger binds console methods as its module loads, so it is silenced by assignment rather than the flag.
-Logger.IS_GLOBAL_LOGGING_ENABLED = false;
-Object.assign(Logger, { debug: () => {}, error: () => {}, info: () => {}, log: () => {}, warn: () => {} });
+LOGGER_CONFIG.setEnabled(false);
 
 afterEach(() => {
   resetMockInvoke();

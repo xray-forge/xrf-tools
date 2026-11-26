@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { EUiLogLevel, UiLogLevel, UiLogRecord } from "@xrf/ipc/types/xrf-app-system";
-import { ELogLevel, ILogRecord, LogForwarder, Logger } from "@xrf/logging";
+import { ELogLevel, ILogRecord, LogForwarder, Logger, LOGGER_CONFIG } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 /**
@@ -57,7 +57,7 @@ export class UiLog {
     );
 
     this.forwarder = forwarder;
-    Logger.sink = forwarder;
+    LOGGER_CONFIG.install(forwarder);
     window.addEventListener("pagehide", this.onPageHide);
 
     systemCommands.getUiLogLevel().then(
@@ -76,8 +76,8 @@ export class UiLog {
   public uninstall(): void {
     window.removeEventListener("pagehide", this.onPageHide);
 
-    if (Logger.sink === this.forwarder) {
-      Logger.sink = null;
+    if (this.forwarder !== null) {
+      LOGGER_CONFIG.release(this.forwarder);
     }
 
     this.forwarder = null;

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { ESystemCommand } from "@xrf/ipc/commands/system";
 import { listMockInvokeCalls, mockInvoke, mockIpcCommands, mockIsTauri } from "@xrf/ipc/testing";
 import { EUiLogLevel, UiLogRecord } from "@xrf/ipc/types/xrf-app-system";
-import { ELogLevel, Logger } from "@xrf/logging";
+import { ELogLevel, LOGGER_CONFIG } from "@xrf/logging";
 
 import { UiLog } from "@/core/logging/lib/ui-log";
 import { flush } from "@/fixtures/utils/promise";
@@ -25,7 +25,7 @@ describe("UiLog", () => {
 
     log.install();
 
-    expect(Logger.sink).toBeNull();
+    expect(LOGGER_CONFIG.sink).toBeNull();
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
@@ -35,8 +35,8 @@ describe("UiLog", () => {
     log.install();
     await flush();
 
-    Logger.sink?.write(ELogLevel.DEBUG, "scope", ["detail"]);
-    Logger.sink?.write(ELogLevel.WARN, "scope", ["slow", 3]);
+    LOGGER_CONFIG.sink?.write(ELogLevel.DEBUG, "scope", ["detail"]);
+    LOGGER_CONFIG.sink?.write(ELogLevel.WARN, "scope", ["slow", 3]);
     await flush();
 
     expect(listMockInvokeCalls(ESystemCommand.WRITE_UI_LOG)).toEqual([
@@ -55,7 +55,7 @@ describe("UiLog", () => {
     await flush();
 
     for (const it of Object.values(ELogLevel)) {
-      Logger.sink?.write(it, "scope", [it]);
+      LOGGER_CONFIG.sink?.write(it, "scope", [it]);
     }
 
     await log.flush();
@@ -75,7 +75,7 @@ describe("UiLog", () => {
     });
 
     log.install();
-    Logger.sink?.write(ELogLevel.ERROR, "scope", ["failed"]);
+    LOGGER_CONFIG.sink?.write(ELogLevel.ERROR, "scope", ["failed"]);
     await flush();
     await log.flush();
 
@@ -88,7 +88,7 @@ describe("UiLog", () => {
     log.install();
     await flush();
 
-    Logger.sink?.write(ELogLevel.INFO, "scope", ["leaving"]);
+    LOGGER_CONFIG.sink?.write(ELogLevel.INFO, "scope", ["leaving"]);
     window.dispatchEvent(new Event("pagehide"));
     await flush();
 
@@ -102,7 +102,7 @@ describe("UiLog", () => {
     await flush();
     log.uninstall();
 
-    expect(Logger.sink).toBeNull();
+    expect(LOGGER_CONFIG.sink).toBeNull();
   });
 
   it("stops waiting for a write that does not settle once the timeout passes", async () => {
@@ -115,7 +115,7 @@ describe("UiLog", () => {
     log.install();
     await jest.advanceTimersByTimeAsync(0);
 
-    Logger.sink?.write(ELogLevel.INFO, "scope", ["closing"]);
+    LOGGER_CONFIG.sink?.write(ELogLevel.INFO, "scope", ["closing"]);
 
     const done: jest.Mock<() => void> = jest.fn();
 

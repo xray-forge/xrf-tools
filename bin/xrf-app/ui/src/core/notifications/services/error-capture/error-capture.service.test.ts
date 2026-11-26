@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
-import { ELogLevel, ILogSink, Logger } from "@xrf/logging";
+import { ELogLevel, ILogSink, LOGGER_CONFIG } from "@xrf/logging";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { ErrorCaptureService } from "@/core/notifications/services/error-capture/error-capture.service";
@@ -37,11 +37,11 @@ describe("ErrorCaptureService", () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     sink.write.mockReset();
-    Logger.sink = sink;
+    LOGGER_CONFIG.install(sink);
   });
 
   afterEach(() => {
-    Logger.sink = null;
+    LOGGER_CONFIG.release(sink);
   });
 
   it("registers and releases the same handler references", () => {
@@ -104,13 +104,13 @@ describe("ErrorCaptureService", () => {
   });
 
   describe("error records", () => {
-    // The suite turns logging off, and a logger made then records nothing.
+    // The suite turns logging off, and nothing is recorded while it is.
     beforeEach(() => {
-      Logger.IS_GLOBAL_LOGGING_ENABLED = true;
+      LOGGER_CONFIG.setEnabled(true);
     });
 
     afterEach(() => {
-      Logger.IS_GLOBAL_LOGGING_ENABLED = false;
+      LOGGER_CONFIG.setEnabled(false);
     });
 
     it("writes an uncaught exception with its location and stack", () => {
