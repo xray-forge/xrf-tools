@@ -11,6 +11,11 @@ function createRecord(index: number, level: ELogLevel = ELogLevel.INFO): ILogRec
   return { level, scope: "scope", time: 1_000 + index, message: `line ${index}` };
 }
 
+/** A queue bounded by `records` alone, its byte bound out of reach. */
+function createQueue(records: number, bytes: number = Number.MAX_SAFE_INTEGER): LogQueue {
+  return new LogQueue({ records, bytes }, "forwarder");
+}
+
 function fill(queue: LogQueue, count: number, from: number = 0): void {
   for (let index: number = from; index < from + count; index += 1) {
     queue.push(createRecord(index));
@@ -23,7 +28,7 @@ function takeAll(queue: LogQueue): ILogBatch {
 
 describe("LogQueue", () => {
   it("keeps the newest records in order at capacity, dropping one for each record past it", () => {
-    const queue: LogQueue = new LogQueue(3, "forwarder");
+    const queue: LogQueue = createQueue(3);
 
     fill(queue, 3);
     expect(queue).toHaveLength(3);
@@ -47,7 +52,7 @@ describe("LogQueue", () => {
   });
 
   it("stamps the warning with the oldest dropped record's time, not later than the next record's", () => {
-    const queue: LogQueue = new LogQueue(2, "forwarder");
+    const queue: LogQueue = createQueue(2);
 
     fill(queue, 5);
 
@@ -63,7 +68,7 @@ describe("LogQueue", () => {
   });
 
   it("stamps the warning for a lost batch with its oldest record's time", () => {
-    const queue: LogQueue = new LogQueue(10, "forwarder");
+    const queue: LogQueue = createQueue(10);
 
     fill(queue, 2);
 
@@ -80,7 +85,7 @@ describe("LogQueue", () => {
   });
 
   it("takes batches in order, counting the warning against the batch size", () => {
-    const queue: LogQueue = new LogQueue(4, "forwarder");
+    const queue: LogQueue = createQueue(4);
 
     fill(queue, 6);
 
@@ -99,7 +104,7 @@ describe("LogQueue", () => {
   });
 
   it("takes the warning alone into a batch of one, the records following one a batch", () => {
-    const queue: LogQueue = new LogQueue(2, "forwarder");
+    const queue: LogQueue = createQueue(2);
 
     fill(queue, 3);
 
@@ -117,7 +122,7 @@ describe("LogQueue", () => {
   });
 
   it("keeps the records a filter passes and names the most severe one waiting", () => {
-    const queue: LogQueue = new LogQueue(10, "forwarder");
+    const queue: LogQueue = createQueue(10);
     const filter: LogLevelFilter = new LogLevelFilter();
 
     queue.push(createRecord(0, ELogLevel.DEBUG));
@@ -134,7 +139,7 @@ describe("LogQueue", () => {
   });
 
   it("keeps the dropped count when the filter empties the queue, and takes its warning alone", () => {
-    const queue: LogQueue = new LogQueue(2, "forwarder");
+    const queue: LogQueue = createQueue(2);
     const filter: LogLevelFilter = new LogLevelFilter();
 
     queue.push(createRecord(0, ELogLevel.DEBUG));
@@ -157,7 +162,7 @@ describe("LogQueue", () => {
   });
 
   it("forgets the dropped count where the filter would remove its warning", () => {
-    const queue: LogQueue = new LogQueue(1, "forwarder");
+    const queue: LogQueue = createQueue(1);
     const filter: LogLevelFilter = new LogLevelFilter();
 
     fill(queue, 2);
@@ -168,8 +173,41 @@ describe("LogQueue", () => {
     expect(queue.take(1)).toBeNull();
   });
 
+  it("drops the oldest records while their text is over the byte bound, keeping the newest however long", () => {
+    // "line N" is six UTF-16 units, twelve bytes: three fit in 40 bytes, a fourth does not.
+    const queue: LogQueue = createQueue(10, 40);
+
+    fill(queue, 4);
+
+    expect(queue).toHaveLength(3);
+    expect(takeAll(queue).records.map((it: ILogRecord) => it.message)).toEqual([
+      "1 record dropped: the queue overflowed or a send failed",
+      "line 1",
+      "line 2",
+      "line 3",
+    ]);
+
+    queue.push({ ...createRecord(4), message: "x".repeat(100) });
+
+    expect(queue).toHaveLength(1);
+  });
+
+  it("frees the bytes of the records taken and filtered, so later records fit again", () => {
+    const queue: LogQueue = createQueue(10, 40);
+    const filter: LogLevelFilter = new LogLevelFilter();
+
+    fill(queue, 3);
+    queue.take(2);
+    queue.push(createRecord(3, ELogLevel.DEBUG));
+    filter.set(ELogLevel.INFO);
+    queue.keepPassing(filter);
+    fill(queue, 2, 4);
+
+    expect(takeAll(queue).records.map((it: ILogRecord) => it.message)).toEqual(["line 2", "line 4", "line 5"]);
+  });
+
   it("does not count again a lost batch that carried only the warning", () => {
-    const queue: LogQueue = new LogQueue(10, "forwarder");
+    const queue: LogQueue = createQueue(10);
 
     fill(queue, 2);
     queue.countLost(takeAll(queue));

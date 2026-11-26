@@ -1,5 +1,13 @@
 import { ILogRecord } from "#/log-forwarder/log-forwarder.types";
 
+/** How much the queue keeps waiting before it drops its oldest records. */
+export interface ILogQueueBound {
+  /** The most records. */
+  records: number;
+  /** The most bytes of their text, two a UTF-16 unit. */
+  bytes: number;
+}
+
 /** A record waiting in the queue, numbered in the order it was written. */
 export interface IQueuedLogRecord {
   sequence: number;

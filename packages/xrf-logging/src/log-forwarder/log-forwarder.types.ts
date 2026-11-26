@@ -28,6 +28,11 @@ export interface ILogForwarderLimits {
   batchSize: number;
   /** The most records waiting to be sent; past it the oldest are dropped. */
   queueSize: number;
+  /**
+   * The most bytes of text waiting to be sent, counted as the page holds it (two a UTF-16 unit); past it the oldest
+   * records are dropped, so a burst of long records cannot hold what a count alone would let it.
+   */
+  queueBytes: number;
   /** Milliseconds a line waits for its batch, and the least time between two sends a warning hurries. */
   flushInterval: number;
   /** The most characters one record's text keeps before it is cut and marked as cut. */

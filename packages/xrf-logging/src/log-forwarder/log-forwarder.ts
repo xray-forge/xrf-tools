@@ -25,7 +25,8 @@ export class LogForwarder implements ILogSink {
   /** The limits used where the constructor is given none. */
   public static readonly DEFAULT_LIMITS: Readonly<ILogForwarderLimits> = {
     batchSize: 512,
-    queueSize: 2_048,
+    queueSize: 8_192,
+    queueBytes: 8 * 1_024 * 1_024,
     flushInterval: 250,
     messageLength: LogTextWriter.MAX_LENGTH,
   };
@@ -66,7 +67,7 @@ export class LogForwarder implements ILogSink {
       throw new RangeError(`A log batch must carry at least one record, not ${this.limits.batchSize}`);
     }
 
-    this.queue = new LogQueue(this.limits.queueSize, LogForwarder.SCOPE);
+    this.queue = new LogQueue({ records: this.limits.queueSize, bytes: this.limits.queueBytes }, LogForwarder.SCOPE);
     this.schedule = new LogFlushSchedule(this.limits.flushInterval, () => this.sendNextBatch());
   }
 
