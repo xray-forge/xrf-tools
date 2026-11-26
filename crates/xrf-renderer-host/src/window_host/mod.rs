@@ -1,5 +1,6 @@
 //! The native windows viewports are drawn into: one host for each platform the renderer presents on.
 
+pub(crate) mod hosted_window;
 #[cfg(target_os = "macos")]
 pub(crate) mod macos_window_host;
 #[cfg(windows)]

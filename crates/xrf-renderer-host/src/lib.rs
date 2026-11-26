@@ -11,4 +11,5 @@ pub use crate::disk_cache_store::DiskCacheStore;
 pub use crate::packaged_bundle::PackagedBundle;
 pub use crate::texture::resolved_texture::ResolvedTexture;
 pub use crate::texture::texture_resolver::TextureResolver;
+pub use crate::window_host::hosted_window::HostedWindow;
 pub use crate::window_host::window_host_builder::WindowHostBuilder;

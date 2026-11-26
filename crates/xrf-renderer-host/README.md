@@ -21,6 +21,14 @@ the same pieces.
   every viewport drawn into it.
 - Windows is the only platform verified; the macOS host compiles for it and is not run.
 
+A host that owns its window takes the safe route: `HostedWindow::new(window)` holds any window with a
+`raw-window-handle` handle, and `get_host` answers the host to attach its viewports with. It keeps the window alive
+while any host of it is held, so the window outlives every frame drawn into it without the caller's promise. Detach the
+window's viewports, wait for `RenderQueue::wait_handled` to answer, then drop the `HostedWindow` on the thread that made
+the window: it drops the window there. Dropped while a host is still held, it leaks the window rather than close it
+under the renderer, and logs an error. An application whose window type is a cheap clone, as SDL's is, hands it a
+clone and keeps its own to change the window through. It hosts Win32 windows only; elsewhere `new` fails.
+
 ## The bundle
 
 `PackagedBundle::locate(resource_dir)` reads the renderer's bundle from `resources/renderer` under a packaged
