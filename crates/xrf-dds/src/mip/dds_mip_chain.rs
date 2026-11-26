@@ -104,6 +104,12 @@ impl DdsMipChain {
     &self.levels
   }
 
+  /// The base level alone, the levels below it let go; `None` only for a chain holding no level, which neither
+  /// constructor makes.
+  pub fn into_base(self) -> Option<RgbaImage> {
+    self.levels.into_iter().next()
+  }
+
   /// The size of one mip level of a base this size, which halves on each axis and never falls below one pixel.
   ///
   /// The one rule for it, shared by building a chain and by reading one back out of a payload.

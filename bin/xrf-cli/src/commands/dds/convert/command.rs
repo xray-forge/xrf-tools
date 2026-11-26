@@ -70,20 +70,27 @@ impl GenericCommand for ConvertCommand {
 
     let base: RgbaImage = DdsFile::read_from_path(source)?.decode_rgba(0)?;
     let chain: DdsMipChain = DdsMipChain::build(base, Self::get_mipmaps(matches))?;
+    let levels: usize = chain.levels().len();
 
-    let written: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, candidate, quality)?;
+    let (written, compared): (DdsEncodeAttempt, Vec<DdsEncodeAttempt>) = if matches.get_flag("compare") {
+      let written: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, candidate, quality)?;
 
-    written.file.write_to_path(destination)?;
+      written.file.write_to_path(destination)?;
 
-    // The other four are measured against the same levels and thrown away; nothing but their figures is kept.
-    let compared: Vec<DdsEncodeAttempt> = if matches.get_flag("compare") {
-      DdsEncodeCandidate::ALL
+      // The other four are measured against the same levels and thrown away; nothing but their figures is kept.
+      let compared: Vec<DdsEncodeAttempt> = DdsEncodeCandidate::ALL
         .into_iter()
         .filter(|it| *it != candidate)
         .map(|it| DdsEncodeAttempt::measure(&chain, it, quality))
-        .collect::<XrfResult<Vec<DdsEncodeAttempt>>>()?
+        .collect::<XrfResult<Vec<DdsEncodeAttempt>>>()?;
+
+      (written, compared)
     } else {
-      Vec::new()
+      let written: DdsEncodeAttempt = DdsEncodeAttempt::measure_last(chain, candidate, quality)?;
+
+      written.file.write_to_path(destination)?;
+
+      (written, Vec::new())
     };
 
     xrf_output::success!(
@@ -92,7 +99,7 @@ impl GenericCommand for ConvertCommand {
       format_path(source),
       format_path(destination),
       candidate.label(),
-      chain.levels().len(),
+      levels,
       written.file_bytes
     );
 

@@ -39,15 +39,45 @@ impl DdsEncodeAttempt {
   /// Returns an error when the chain holds no levels, when the encoder refuses the pixels, or when the encoded
   /// texture cannot be decoded back to compare it.
   pub fn measure(chain: &DdsMipChain, candidate: DdsEncodeCandidate, quality: Quality) -> XrfResult<Self> {
+    let (file, encode_duration): (DdsFile, Duration) = Self::encode(chain, candidate, quality)?;
+    let reference: &RgbaImage = chain.levels().first().ok_or_else(Self::refuse_empty)?;
+
+    Self::compare(candidate, file, encode_duration, reference)
+  }
+
+  /// [`Self::measure`] for a chain encoded for the last time: the levels below its base are let go once it is
+  /// encoded, before the base is compared, so they are not held beside the encoded texture and its comparison.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where [`Self::measure`] does.
+  pub fn measure_last(chain: DdsMipChain, candidate: DdsEncodeCandidate, quality: Quality) -> XrfResult<Self> {
+    let (file, encode_duration): (DdsFile, Duration) = Self::encode(&chain, candidate, quality)?;
+    let reference: RgbaImage = chain.into_base().ok_or_else(Self::refuse_empty)?;
+
+    Self::compare(candidate, file, encode_duration, &reference)
+  }
+
+  /// The chain encoded as `candidate`, and how long that took.
+  fn encode(chain: &DdsMipChain, candidate: DdsEncodeCandidate, quality: Quality) -> XrfResult<(DdsFile, Duration)> {
     let started: Instant = Instant::now();
     let file: DdsFile = DdsEncoding::new(candidate.to_image_format(), quality).encode(chain)?;
-    let encode_duration: Duration = started.elapsed();
 
+    Ok((file, started.elapsed()))
+  }
+
+  fn refuse_empty() -> XrfError {
+    XrfError::new_texture_processing_error("Cannot measure a chain holding no levels")
+  }
+
+  /// The attempt of an encoded `file`, its base level compared with `reference`.
+  fn compare(
+    candidate: DdsEncodeCandidate,
+    file: DdsFile,
+    encode_duration: Duration,
+    reference: &RgbaImage,
+  ) -> XrfResult<Self> {
     let metadata = file.metadata();
-    let reference: &RgbaImage = chain
-      .levels()
-      .first()
-      .ok_or_else(|| XrfError::new_texture_processing_error("Cannot measure a chain holding no levels"))?;
 
     Ok(Self {
       candidate,
@@ -111,6 +141,19 @@ mod tests {
 
     // The header is what the file has and the upload does not.
     assert!(compressed.file_bytes > compressed.gpu_bytes);
+
+    Ok(())
+  }
+
+  #[test]
+  fn measures_a_chain_encoded_for_the_last_time_as_one_kept() -> XrfResult {
+    let chain = || DdsMipChain::build(noisy(32, 32), DdsMipmaps::Filtered(DdsMipFilter::Kaiser));
+    let kept: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain()?, DdsEncodeCandidate::Bc3, Quality::Fast)?;
+    let last: DdsEncodeAttempt = DdsEncodeAttempt::measure_last(chain()?, DdsEncodeCandidate::Bc3, Quality::Fast)?;
+
+    assert_eq!(last.file.write_to_bytes()?, kept.file.write_to_bytes()?);
+    assert_eq!(last.difference, kept.difference);
+    assert_eq!((last.file_bytes, last.gpu_bytes), (kept.file_bytes, kept.gpu_bytes));
 
     Ok(())
   }
