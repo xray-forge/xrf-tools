@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use xrf_game_alife::{Alife, AlifeSettings};
+use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
 use xrf_game_loop::{GameClock, LoopFeed, LoopFrame, LoopStepper, LoopTime};
 use xrf_game_movement::Movement;
 use xrf_game_movement::{
@@ -51,7 +51,7 @@ fn state() -> GameState {
   GameState {
     objects,
     movement: Movement::new(MovementCamera::default(), MovementMode::default()),
-    alife: Alife::new(AlifeSettings::default(), Some(LEVEL)),
+    alife: Alife::new(AlifeSettings::default(), AlifeData::default(), Some(LEVEL)),
   }
 }
 

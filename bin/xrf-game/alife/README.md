@@ -2,7 +2,8 @@
 
 A-Life, a system of the game loop (`xrf-game-loop`'s `LoopSystem`): which objects are online near the actor, and which
 offline objects take their turn to live on. Its context (`AlifeContext`) is the object registry (`xrf-game-objects`) and where
-the actor stands; it reaches nothing else.
+the actor stands; it reaches nothing else. What it reads and never changes (`AlifeData`: the game graph of
+`xrf-game-graph`, the simulation's configs of `xrf-game-simulation`) is read once a session and shared.
 
 Parity is with what the player sees of X-Ray's A-Life, not with its code: its rules are kept where they shape play, its
 stalls and faults are not. Each part is a module of its own, measured and replaced alone.

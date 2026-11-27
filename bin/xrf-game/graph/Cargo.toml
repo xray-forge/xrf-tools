@@ -1,0 +1,22 @@
+[package]
+name = "xrf-game-graph"
+version = "0.1.0"
+publish = false
+description = "XRF game: the game graph offline life walks, read once from the spawn"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+xrf-error = { workspace = true }
+xrf-math = { workspace = true }
+xrf-spawn = { workspace = true }
+
+[dev-dependencies]
+uuid = { workspace = true }
+
+[lints]
+workspace = true

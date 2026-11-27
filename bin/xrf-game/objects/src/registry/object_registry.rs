@@ -6,7 +6,6 @@ use crate::id::id_map::IdMap;
 use crate::id::object_id::ObjectId;
 use crate::record::object_ammo::ObjectAmmo;
 use crate::record::object_creature::ObjectCreature;
-use crate::record::object_level::ObjectLevel;
 use crate::record::object_online::ObjectOnline;
 use crate::record::object_record::ObjectRecord;
 use crate::record::object_schedule::ObjectSchedule;
@@ -19,7 +18,6 @@ use crate::record::object_schedule_kind::ObjectScheduleKind;
 /// (what each object holds); a system needing more of some objects adds a table, never a field to every record.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ObjectRegistry {
-  levels: Vec<ObjectLevel>,
   records: IdMap<ObjectRecord>,
   creatures: IdMap<ObjectCreature>,
   ammo: IdMap<ObjectAmmo>,
@@ -35,8 +33,8 @@ impl ObjectRegistry {
 
   /// A new game's objects: every object the spawn places, given ids in the spawn's order as a new game creates them
   /// (a spawn packet's own id is not the object's: X-Ray hands ids out as it creates each, `xrServer::PerformIDgen`),
-  /// with the game graph's levels, all offline. A parent is found by its spawn id; objects past the sixteen-bit id space
-  /// are left out, as X-Ray could not create them either.
+  /// all offline. A parent is found by its spawn id; objects past the sixteen-bit id space are left out, as X-Ray could
+  /// not create them either. The levels a record's level id names are the game graph's (`xrf-game-graph`).
   pub fn of_spawn(placed: &SpawnPlacedObjects) -> Self {
     // Numbered once, so a parent's id and its record's id are the same number.
     let numbered: Vec<(ObjectId, &SpawnPlacedObject)> =
@@ -45,17 +43,7 @@ impl ObjectRegistry {
       .iter()
       .map(|(id, object)| (object.object.header.spawn_id, *id))
       .collect();
-    let mut registry: Self = Self {
-      levels: placed
-        .levels
-        .iter()
-        .map(|level| ObjectLevel {
-          id: level.id,
-          name: level.name.clone(),
-        })
-        .collect(),
-      ..Self::default()
-    };
+    let mut registry: Self = Self::default();
 
     for (id, object) in &numbered {
       registry.insert(*id, Self::create_record(object, &ids));
@@ -172,19 +160,6 @@ impl ObjectRegistry {
     }
 
     self.records.insert(id, record);
-  }
-
-  pub fn get_levels(&self) -> &[ObjectLevel] {
-    &self.levels
-  }
-
-  /// The id of the level named `name`, case aside.
-  pub fn find_level(&self, name: &str) -> Option<u8> {
-    self
-      .levels
-      .iter()
-      .find(|level| level.name.eq_ignore_ascii_case(name))
-      .map(|level| level.id)
   }
 
   pub fn get_records(&self) -> &IdMap<ObjectRecord> {

@@ -5,11 +5,15 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineChoice, XrayEngineDetector, XrayEngineResolution};
 use xrf_error::XrfResult;
-use xrf_game_alife::AlifeSettings;
+use xrf_game_graph::GameGraph;
 use xrf_level_source::LevelEntry;
-use xrf_ltx::{Ltx, LtxDialect};
-use xrf_spawn::{SpawnFile, SpawnPlacedObjects};
+use xrf_ltx::LtxDialect;
+use xrf_ltx_project::{LtxProject, LtxProjectOptions};
+use xrf_spawn::SpawnFile;
 use xrf_vfs::{XrayAssetType, XrayCachePolicy, XrayMountMode, XrayRoots, XraySearch, XrayVfs, XrayVfsHost};
+
+use crate::level::game_configs::GameConfigs;
+use crate::level::game_spawn::GameSpawn;
 
 /// The X-Ray game tree the game plays: its roots mounted as the tools mount them (an installation with its archives,
 /// a set of volumes, or loose files), the file system host every read goes through, and the engine it was made for.
@@ -26,8 +30,8 @@ impl GameTree {
   /// The game's spawn, which places what a new game starts with on every level.
   const SPAWN_FILE: &'static str = "spawns\\all.spawn";
 
-  /// The configs file holding `[alife]`.
-  const ALIFE_FILE: &'static str = "configs\\alife.ltx";
+  /// Where the tree keeps its configs.
+  const CONFIGS_DIRECTORY: &'static str = "configs";
 
   /// Mounts the tree at `root`, its kind and its engine detected.
   ///
@@ -74,37 +78,34 @@ impl GameTree {
     DltxDialect::select(self.engine.engine == XrayEngine::Extended)
   }
 
-  /// Every object its spawn (`spawns\all.spawn`) places, each with its level, those no reader takes skipped: what a
-  /// new game starts from.
+  /// What a new game starts from, read from its spawn (`spawns\all.spawn`) in one pass: every object it places, each
+  /// with its level, those no reader takes skipped, and the game graph.
   ///
   /// # Errors
   ///
   /// Returns why the spawn cannot be read: the tree has none, or its chunks or graph do not read.
-  pub fn read_spawn(&self) -> XrfResult<SpawnPlacedObjects> {
+  pub fn read_spawn(&self) -> XrfResult<GameSpawn> {
     let bytes: Vec<u8> = self.search()?.read(Self::SPAWN_FILE)?;
     let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;
 
-    SpawnFile::read_objects_from_chunks(&chunks)
+    Ok(GameSpawn {
+      placed: SpawnFile::read_objects_from_chunks(&chunks)?,
+      graph: GameGraph::of_spawn(&SpawnFile::read_graphs_from_chunks(&chunks)?)?,
+    })
   }
 
-  /// The configs' `[alife]` (`configs\alife.ltx`), Call of Pripyat's where the tree holds none or it does not read.
-  pub fn read_alife_settings(&self) -> AlifeSettings {
-    let text: XrfResult<String> = self
-      .search()
-      .and_then(|search| search.read(Self::ALIFE_FILE))
-      .map(|bytes| String::from_utf8_lossy(&bytes).into_owned());
-
-    match text.and_then(|text| Ltx::read_from_str(&text)) {
-      Ok(ltx) => AlifeSettings::read_ltx(&ltx),
-      Err(error) => {
-        log::warn!(
-          "{} does not read ({error}); A-Life runs on Call of Pripyat's",
-          Self::ALIFE_FILE
-        );
-
-        AlifeSettings::default()
-      }
-    }
+  /// Its configs (`configs`), read in its dialect, `system.ltx` resolved.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the configs cannot be searched or `system.ltx` does not resolve.
+  pub fn open_configs(&self) -> XrfResult<GameConfigs> {
+    GameConfigs::open(LtxProject::open_lean_at_search_opt(
+      self.roots.describe(),
+      &self.search()?,
+      Some(Self::CONFIGS_DIRECTORY),
+      LtxProjectOptions::default().with_dialect(self.get_dialect()),
+    )?)
   }
 
   /// The names of the levels it holds geometry for, in order.

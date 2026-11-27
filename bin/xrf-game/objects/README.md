@@ -20,7 +20,8 @@ not a system. The game's state owns it and hands each system the tables it reads
   `bring_online` and `take_offline` move an object with everything it holds, as X-Ray's `add_online` and
   `add_offline` move children.
 - `ObjectRegistry::of_spawn` builds a new game's registry from `xrf-spawn`'s `SpawnPlacedObjects`: every readable
-  object of `all.spawn`, with the game graph's levels (`ObjectLevel`). A spawn packet's own id is not the object's:
+  object of `all.spawn`; the levels a record's level id names are the game graph's (`xrf-game-graph`), which owns
+  them. A spawn packet's own id is not the object's:
   X-Ray hands ids out as a new game creates each object (`xrServer::PerformIDgen`), and nearly every packet of
   `all.spawn` carries the same placeholder (Anomaly's 18,652 collapsed to 2 when keyed by it). So ids go out in the
   spawn's order, each record keeps its `spawn_id`, and a parent is found by spawn id. Whether X-Ray's order is the

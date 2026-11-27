@@ -39,6 +39,7 @@ and level counts against the chunks. The game graph is most of a set's bytes, so
 
 - `read_graphs_from_path` reads only the game graph (`SpawnGraphsChunk`): levels, vertices, edges, level points and
   cross tables. It parses no alife object, so it works on sets holding classes this crate cannot read.
+  `SpawnGraphsChunk::get_edges` finds a vertex's edges by its stored offset, as `CGameGraph::begin` does.
 - `read_objects_from_chunks` reads every object the set places, each with the id of the graph level it stands on
   (`SpawnPlacedObjects`, with the graph's levels), continuing past unreadable ones: what a new game is built from.
 - `read_level_objects_from_chunks` reads the objects one level places, continuing past unreadable ones (each listed

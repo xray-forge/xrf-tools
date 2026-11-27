@@ -7,12 +7,14 @@ members = [
   "bin/xrf-cli",
   "bin/xrf-game/alife",
   "bin/xrf-game/game",
+  "bin/xrf-game/graph",
   "bin/xrf-game/loop",
   "bin/xrf-game/mcp",
   "bin/xrf-game/movement",
   "bin/xrf-game/objects",
   "bin/xrf-game/platform",
   "bin/xrf-game/settings",
+  "bin/xrf-game/simulation",
   "crates/xrf-animation-envelope",
   "crates/xrf-anm",
   "crates/xrf-archive",
@@ -172,12 +174,14 @@ xrf-env-flags = { path = "crates/xrf-env-flags" }
 xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
 xrf-game-alife = { path = "bin/xrf-game/alife" }
+xrf-game-graph = { path = "bin/xrf-game/graph" }
 xrf-game-loop = { path = "bin/xrf-game/loop" }
 xrf-game-mcp = { path = "bin/xrf-game/mcp" }
 xrf-game-movement = { path = "bin/xrf-game/movement" }
 xrf-game-objects = { path = "bin/xrf-game/objects" }
 xrf-game-platform = { path = "bin/xrf-game/platform" }
 xrf-game-settings = { path = "bin/xrf-game/settings" }
+xrf-game-simulation = { path = "bin/xrf-game/simulation" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
 xrf-gamemtl = { path = "crates/xrf-gamemtl" }
 xrf-geometry = { path = "crates/xrf-geometry" }

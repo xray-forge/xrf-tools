@@ -62,7 +62,6 @@ fn builds_an_empty_registry_from_a_spawn_with_no_objects() {
   });
 
   assert!(registry.get_records().is_empty());
-  assert!(registry.get_levels().is_empty());
 }
 
 #[test]

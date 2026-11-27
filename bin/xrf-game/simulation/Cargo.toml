@@ -1,0 +1,19 @@
+[package]
+name = "xrf-game-simulation"
+version = "0.1.0"
+publish = false
+description = "XRF game: Call of Pripyat's simulation rules, smart terrains and squads, which A-Life runs offline"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+xrf-error = { workspace = true }
+xrf-ltx = { workspace = true }
+xrf-spawn = { workspace = true }
+
+[lints]
+workspace = true

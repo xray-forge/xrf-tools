@@ -8636,16 +8636,19 @@ dependencies = [
  "xrf-engine-target",
  "xrf-error",
  "xrf-game-alife",
+ "xrf-game-graph",
  "xrf-game-loop",
  "xrf-game-mcp",
  "xrf-game-movement",
  "xrf-game-objects",
  "xrf-game-platform",
  "xrf-game-settings",
+ "xrf-game-simulation",
  "xrf-job",
  "xrf-level-source",
  "xrf-logging",
  "xrf-ltx",
+ "xrf-ltx-project",
  "xrf-math",
  "xrf-renderer",
  "xrf-renderer-host",
@@ -8661,9 +8664,21 @@ name = "xrf-game-alife"
 version = "0.1.0"
 dependencies = [
  "log",
+ "xrf-game-graph",
  "xrf-game-loop",
  "xrf-game-objects",
+ "xrf-game-simulation",
  "xrf-ltx",
+ "xrf-math",
+ "xrf-spawn",
+]
+
+[[package]]
+name = "xrf-game-graph"
+version = "0.1.0"
+dependencies = [
+ "uuid",
+ "xrf-error",
  "xrf-math",
  "xrf-spawn",
 ]
@@ -8723,6 +8738,15 @@ dependencies = [
  "serde_json",
  "xrf-ltx",
  "xrf-renderer",
+]
+
+[[package]]
+name = "xrf-game-simulation"
+version = "0.1.0"
+dependencies = [
+ "xrf-error",
+ "xrf-ltx",
+ "xrf-spawn",
 ]
 
 [[package]]

@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use xrf_game_loop::{LoopSystem, LoopTime};
 
 use crate::alife_context::AlifeContext;
+use crate::alife_data::AlifeData;
 use crate::schedule::alife_schedule::AlifeSchedule;
 use crate::schedule::alife_schedule_report::AlifeScheduleReport;
 use crate::settings::alife_settings::AlifeSettings;
@@ -16,6 +17,7 @@ use crate::switch::alife_switch_report::AlifeSwitchReport;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Alife {
   settings: AlifeSettings,
+  data: AlifeData,
   /// The graph level the actor is on, none while it is on none the graph holds; the switch rests then, offline life
   /// goes on.
   level: Option<u8>,
@@ -28,10 +30,11 @@ pub struct Alife {
 }
 
 impl Alife {
-  /// A-Life by `settings`, the actor on graph level `level`.
-  pub fn new(settings: AlifeSettings, level: Option<u8>) -> Self {
+  /// A-Life by `settings` over `data`, the actor on graph level `level`.
+  pub fn new(settings: AlifeSettings, data: AlifeData, level: Option<u8>) -> Self {
     Self {
       settings,
+      data,
       level,
       until_update: Duration::ZERO,
       schedule: AlifeSchedule::default(),
@@ -42,6 +45,10 @@ impl Alife {
 
   pub fn get_settings(&self) -> &AlifeSettings {
     &self.settings
+  }
+
+  pub fn get_data(&self) -> &AlifeData {
+    &self.data
   }
 
   pub fn get_last_switch(&self) -> &AlifeSwitchReport {

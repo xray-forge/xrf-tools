@@ -205,6 +205,20 @@ impl SpawnGraphsChunk {
       .collect()
   }
 
+  /// The edges leaving `vertex`, found by its edge offset as `CGameGraph::begin` finds them, none for an offset off the
+  /// edge table.
+  pub fn get_edges(&self, vertex: &GraphVertex) -> Option<&[GraphEdge]> {
+    let [edge_table, _] = self.get_tables();
+
+    if !edge_table.holds(vertex.edges_offset, vertex.edges_count) {
+      return None;
+    }
+
+    let first: usize = usize::try_from((u64::from(vertex.edges_offset) - edge_table.start) / edge_table.record).ok()?;
+
+    self.edges.get(first..first + usize::from(vertex.edges_count))
+  }
+
   /// The edge and level point tables after the vertices, every record of the three its fixed `MIN_SERIALIZED_SIZE`.
   fn get_tables(&self) -> [GraphTable; 2] {
     let edges: u64 = self.vertices.len() as u64 * GraphVertex::MIN_SERIALIZED_SIZE;
@@ -829,6 +843,24 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[test]
+  fn finds_a_vertexs_edges_by_its_offset() {
+    let mut graph: SpawnGraphsChunk = laid_out_graph();
+    let edges = |graph: &SpawnGraphsChunk, index: usize| {
+      graph
+        .get_edges(&graph.vertices[index])
+        .map(|edges| edges.iter().map(|edge| edge.game_vertex_id).collect::<Vec<u16>>())
+    };
+
+    assert_eq!(edges(&graph, 0), Some(vec![1]));
+    assert_eq!(edges(&graph, 1), Some(vec![0]));
+    assert_eq!(edges(&graph, 2), Some(vec![]));
+
+    graph.vertices[0].edges_offset = 7;
+
+    assert_eq!(edges(&graph, 0), None);
   }
 
   #[test]

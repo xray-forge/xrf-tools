@@ -6,6 +6,7 @@ use xrf_math::glam::Vec3;
 
 use crate::alife::Alife;
 use crate::alife_context::AlifeContext;
+use crate::alife_data::AlifeData;
 use crate::settings::alife_settings::AlifeSettings;
 use crate::tests::fixtures::{LEVEL, object, registry, schedule};
 
@@ -39,7 +40,7 @@ fn run(alife: &mut Alife, objects: &mut ObjectRegistry, from: u64, ticks: u64, a
 #[test]
 fn sweeps_at_the_first_step_then_once_an_update_interval() {
   let mut objects: ObjectRegistry = registry(vec![object(100.0, ObjectSwitching::ByDistance)]);
-  let mut alife: Alife = Alife::new(AlifeSettings::default(), Some(LEVEL));
+  let mut alife: Alife = Alife::new(AlifeSettings::default(), AlifeData::default(), Some(LEVEL));
 
   assert_eq!(run(&mut alife, &mut objects, 0, 1, 0.0), vec![0]);
   assert!(objects.is_online(ObjectId(0)));
@@ -59,7 +60,7 @@ fn updates_offline_objects_once_an_update_interval_after_the_sweep() {
     objects_per_update: 1,
     ..AlifeSettings::default()
   };
-  let mut alife: Alife = Alife::new(settings, Some(LEVEL));
+  let mut alife: Alife = Alife::new(settings, AlifeData::default(), Some(LEVEL));
 
   for id in 0..4 {
     schedule(&mut objects, id);
@@ -79,7 +80,7 @@ fn updates_offline_objects_once_an_update_interval_after_the_sweep() {
 #[test]
 fn rests_the_switch_while_the_actor_is_on_no_level_the_graph_holds_but_not_offline_life() {
   let mut objects: ObjectRegistry = registry(vec![object(1.0, ObjectSwitching::ByDistance)]);
-  let mut alife: Alife = Alife::new(AlifeSettings::default(), None);
+  let mut alife: Alife = Alife::new(AlifeSettings::default(), AlifeData::default(), None);
 
   schedule(&mut objects, 0);
   run(&mut alife, &mut objects, 0, 100, 0.0);
