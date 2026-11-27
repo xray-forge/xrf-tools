@@ -67,6 +67,7 @@ members = [
   "crates/xrf-particles",
   "crates/xrf-ppe",
   "crates/xrf-profiler",
+  "crates/xrf-random",
   "crates/xrf-rawdata",
   "crates/xrf-renderer-core",
   "crates/xrf-renderer-derive",
