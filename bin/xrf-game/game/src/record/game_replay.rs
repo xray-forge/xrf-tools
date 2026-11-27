@@ -90,6 +90,7 @@ impl GameReplay {
     LoopSession {
       replay: Some(self.log),
       witness: Some(Box::new(GameReplayCheck::new(self.digests, end))),
+      waker: None,
     }
   }
 

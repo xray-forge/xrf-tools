@@ -20,7 +20,12 @@ checkout's `.sdks/sdl3`, which `cargo make fetch-sdks` fills. The build script p
 event, so the main thread rests until there is input or its own next work is due; a zero timeout only reads. SDL waits
 whole milliseconds and a millisecond short of what it is asked (asked one, it returns at once), so the platform asks
 it for one more: a wait ends up to about a millisecond late, never early (asked 4 ms, 4.4 ms at the median and 5.5 at
-p99 on Windows). Each event is stamped with when it happened on SDL's clock (`PlatformEvent::at`):
+p99 on Windows).
+
+Another thread ends the wait through a `PlatformWaker`, which pushes a user event the wait returns on and appends
+nothing for. It may be made before the platform starts and handed to threads that start first; `Platform::attach`
+takes it, a wake asked before then ends the first wait, and wakes between two waits count as one. `to_waker` gives the
+standard library's `Waker` for crates that know nothing of the platform. Each event is stamped with when it happened on SDL's clock (`PlatformEvent::at`):
 
 | Kind                        | What it carries                                                                      |
 | --------------------------- | ------------------------------------------------------------------------------------ |

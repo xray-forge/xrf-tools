@@ -1,5 +1,7 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
+use std::task::{Wake, Waker};
 use std::time::{Duration, Instant};
 
 use crate::clock::loop_clock::LoopClock;
@@ -65,6 +67,7 @@ impl Watched {
     let thread: GameLoop<TestState> = start_session(LoopSession {
       replay,
       witness: Some(Box::new(TestWitness(Arc::clone(&witnessed)))),
+      waker: None,
     });
 
     Self { thread, witnessed }
@@ -98,6 +101,42 @@ fn wait_past(thread: &GameLoop<TestState>, tick: u64) {
     assert!(Instant::now() < deadline, "the loop never passed tick {tick}");
     std::thread::sleep(Duration::from_millis(1));
   }
+}
+
+/// Counts the wakes it is asked for.
+#[derive(Default)]
+struct CountingWake(AtomicU64);
+
+impl Wake for CountingWake {
+  fn wake(self: Arc<Self>) {
+    self.wake_by_ref();
+  }
+
+  fn wake_by_ref(self: &Arc<Self>) {
+    self.0.fetch_add(1, Ordering::AcqRel);
+  }
+}
+
+#[test]
+fn wakes_its_reader_to_each_published_frame_and_to_its_stop() {
+  let wakes: Arc<CountingWake> = Arc::new(CountingWake::default());
+  let thread: GameLoop<TestState> = start_session(LoopSession {
+    waker: Some(Waker::from(Arc::clone(&wakes))),
+    ..LoopSession::default()
+  });
+
+  wait_past(&thread, 3);
+
+  let feed = Arc::clone(thread.get_feed());
+
+  drop(thread);
+
+  // The frame published at the start wakes nobody, as its reader is only then handed the loop; each tick's does, and
+  // the stop adds one.
+  let stepped: u64 = feed.get_latest().expect("a frame").tick;
+
+  assert_eq!(feed.get_status(), LoopStatus::Stopped);
+  assert_eq!(wakes.0.load(Ordering::Acquire), stepped + 1);
 }
 
 #[test]

@@ -1,11 +1,14 @@
 #[cfg(feature = "mcp")]
 use std::path::PathBuf;
 use std::sync::Arc;
+#[cfg(feature = "mcp")]
+use std::task::Waker;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 #[cfg(feature = "mcp")]
 use xrf_game_mcp::GameEndpoint;
+use xrf_game_platform::PlatformWaker;
 use xrf_game_settings::{GameSettings, GameSettingsStore};
 use xrf_job::ExecutionRequest;
 use xrf_logging::LogTail;
@@ -56,13 +59,15 @@ impl GameRun {
     let progress: Arc<GameLoadProgress> = Arc::new(GameLoadProgress::new(&GameLoadStage::LAUNCH));
     // The load reads on the pool while the main thread starts the shell, which needs no level: the renderer's own
     // start no longer waits for the level's.
-    let flow: GameFlow = GameFlow::launch(&request, Arc::clone(&pool), Arc::clone(&progress))?;
+    // Made before the platform it wakes, for the threads that start before it: the load's, the endpoint's reader.
+    let waker: PlatformWaker = PlatformWaker::default();
+    let flow: GameFlow = GameFlow::launch(&request, Arc::clone(&pool), Arc::clone(&progress), waker.to_waker())?;
     #[cfg(feature = "mcp")]
-    let control: Option<GameControl> = Self::start_control(arguments, &request.level, directories)?;
+    let control: Option<GameControl> = Self::start_control(arguments, &request.level, directories, waker.to_waker())?;
 
     progress.begin(GameLoadStage::Renderer);
 
-    let mut shell: GameShell = GameShell::start(&request.level, settings, directories, &pool)?;
+    let mut shell: GameShell = GameShell::start(&request.level, settings, directories, &pool, &waker)?;
     // Play, and with it the flow and the game's loop, ends before the shell is stopped, however it ends.
     let played: XrfResult<()> = {
       // The presentation layers, topmost first: input runs down them, and they draw from the bottom up.
@@ -112,21 +117,23 @@ impl GameRun {
   }
 
   /// The control endpoint `arguments` ask for: on standard input for the bridge's child (`--mcp`), listening for a
-  /// bridge to attach to a game started by hand (`--listen`), or none.
+  /// bridge to attach to a game started by hand (`--listen`), or none. Its reader wakes the main thread through `waker`
+  /// as each request arrives.
   #[cfg(feature = "mcp")]
   fn start_control(
     arguments: &GameArguments,
     level_name: &str,
     directories: &GameDirectories,
+    waker: Waker,
   ) -> XrfResult<Option<GameControl>> {
     let endpoint: GameEndpoint = if arguments.mcp {
-      GameEndpoint::start()?
+      GameEndpoint::start(waker)?
     } else if arguments.listen {
       let directory: PathBuf = directories
         .get_attach_directory()
         .ok_or_else(|| XrfError::new_not_found_error("the game has no folder to write how to attach to it"))?;
 
-      GameEndpoint::listen(&directory, level_name)?
+      GameEndpoint::listen(&directory, level_name, waker)?
     } else {
       return Ok(None);
     };

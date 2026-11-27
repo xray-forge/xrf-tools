@@ -89,8 +89,11 @@ lends each layer in turn, so no layer holds another:
 - `GamePlayerLayer`: the game itself. The mouse turns the look, the keys bound become the loop's movement commands (the
   player held while loading), and each frame the loop is checked for still stepping and what its steps told is played.
 
-A frame of `GamePlay` waits for the platform's events until a layer's next work is due (`GameLayer::get_due`) and 4 ms
-at most, since what other threads bring ends no wait; offers each event down the chain until a layer keeps it
+A frame of `GamePlay` waits for the platform's events until a layer's next work is due (`GameLayer::get_due`) or
+another thread wakes it through the platform's waker (`PlatformWaker`): the loop as it publishes each frame and as it
+stops, the load's thread with each thing it opened, the endpoint's reader with each request, the renderer as the level
+first stands ready. So the main thread runs about 130 times a second while a game plays and 30 otherwise, and a request
+is taken within 0.1 ms of arriving. It then offers each event down the chain until a layer keeps it
 (`GameInputFate`); moves the flow and then every layer on, from the top; and has them draw, from the bottom. A layer
 that seizes the keyboard and the mouse, as the console does opening, makes the layers under it let go of what they
 hold and frees the cursor (`GameCursor`) until it yields them. What no layer keeps is the window's own: its close, its

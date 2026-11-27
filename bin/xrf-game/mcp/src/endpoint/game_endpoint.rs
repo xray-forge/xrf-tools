@@ -1,15 +1,16 @@
-use std::fs;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex, PoisonError};
-use std::thread;
+use std::task::Waker;
 use std::time::Duration;
+use std::{fs, thread};
 
 use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::endpoint::game_endpoint_inbox::GameEndpointInbox;
 use crate::wire::game_attach::GameAttach;
 use crate::wire::game_event::GameEvent;
 use crate::wire::game_request::GameRequest;
@@ -38,17 +39,18 @@ impl GameEndpoint {
   /// How long a connection is given to send its token.
   const TOKEN_WAIT: Duration = Duration::from_secs(5);
 
-  /// Starts reading the game's standard input.
+  /// Starts reading the game's standard input, waking the game through `waker` as each request arrives.
   ///
   /// # Errors
   ///
   /// Returns why the reader's thread cannot be started.
-  pub fn start() -> XrfResult<Self> {
+  pub fn start(waker: Waker) -> XrfResult<Self> {
     let (sender, requests) = mpsc::channel::<GameRequest>();
+    let inbox: GameEndpointInbox = GameEndpointInbox { sender, waker };
 
     thread::Builder::new()
       .name(String::from("xrf-game-mcp"))
-      .spawn(move || Self::read_requests(io::stdin().lock(), &sender))?;
+      .spawn(move || Self::read_requests(io::stdin().lock(), &inbox))?;
 
     log::info!("Control endpoint reads the game's standard input");
 
@@ -60,12 +62,12 @@ impl GameEndpoint {
   }
 
   /// Listens on a loopback port for a bridge to attach, and writes how into `directory`'s `attach.json`, for the game
-  /// showing `level`.
+  /// showing `level`, waking the game through `waker` as each request arrives.
   ///
   /// # Errors
   ///
   /// Returns why the port cannot be opened, the attach file written, or the listening thread started.
-  pub fn listen(directory: &Path, level: &str) -> XrfResult<Self> {
+  pub fn listen(directory: &Path, level: &str, waker: Waker) -> XrfResult<Self> {
     let listener: TcpListener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?;
     let attach: GameAttach = GameAttach {
       port: listener.local_addr()?.port(),
@@ -82,13 +84,14 @@ impl GameEndpoint {
     )?;
 
     let (sender, requests) = mpsc::channel::<GameRequest>();
+    let inbox: GameEndpointInbox = GameEndpointInbox { sender, waker };
     let output: GameEndpointOutput = Arc::new(Mutex::new(None));
     let driven: GameEndpointOutput = Arc::clone(&output);
     let token: String = attach.token;
 
     thread::Builder::new()
       .name(String::from("xrf-game-mcp-listen"))
-      .spawn(move || Self::serve_attached(&listener, &token, &sender, &driven))?;
+      .spawn(move || Self::serve_attached(&listener, &token, &inbox, &driven))?;
 
     log::info!(
       "Control endpoint listens on 127.0.0.1:{}; a bridge attaches by '{}'",
@@ -117,9 +120,9 @@ impl GameEndpoint {
   }
 
   /// Sends each request the bridge's `input` holds, as [`Self::forward_requests`] does, then a quit once it ends.
-  pub(crate) fn read_requests(input: impl BufRead, sender: &Sender<GameRequest>) {
-    if Self::forward_requests(input, sender) {
-      let _ = sender.send(GameRequest {
+  pub(crate) fn read_requests(input: impl BufRead, inbox: &GameEndpointInbox) {
+    if Self::forward_requests(input, inbox) {
+      inbox.deliver(GameRequest {
         id: String::from(GameRequest::END_OF_INPUT),
         kind: GameRequestKind::Quit,
       });
@@ -128,7 +131,7 @@ impl GameEndpoint {
 
   /// Sends each request `input` holds, a line each, skipping a line that holds none, until it ends; answers whether the
   /// game still takes requests.
-  pub(crate) fn forward_requests(input: impl BufRead, sender: &Sender<GameRequest>) -> bool {
+  pub(crate) fn forward_requests(input: impl BufRead, inbox: &GameEndpointInbox) -> bool {
     for line in input.lines() {
       let line: String = match line {
         Ok(line) => line,
@@ -141,7 +144,7 @@ impl GameEndpoint {
 
       match GameRequest::parse(&line) {
         Some(request) => {
-          if sender.send(request).is_err() {
+          if !inbox.deliver(request) {
             return false;
           }
         }
@@ -155,7 +158,7 @@ impl GameEndpoint {
 
   /// Takes connections one at a time while the game takes requests: one whose first line is `token` drives the game,
   /// its answers going to it, until it leaves.
-  fn serve_attached(listener: &TcpListener, token: &str, sender: &Sender<GameRequest>, output: &GameEndpointOutput) {
+  fn serve_attached(listener: &TcpListener, token: &str, inbox: &GameEndpointInbox, output: &GameEndpointOutput) {
     for stream in listener.incoming() {
       let stream: TcpStream = match stream {
         Ok(stream) => stream,
@@ -189,7 +192,7 @@ impl GameEndpoint {
       log::info!("A bridge attached to the control endpoint");
       *output.lock().unwrap_or_else(PoisonError::into_inner) = Some(Box::new(writer));
 
-      let is_open: bool = Self::forward_requests(reader, sender);
+      let is_open: bool = Self::forward_requests(reader, inbox);
 
       *output.lock().unwrap_or_else(PoisonError::into_inner) = None;
       log::info!("The bridge left the control endpoint");

@@ -30,6 +30,11 @@ impl GameStartup {
     }
   }
 
+  /// Whether the window was shown.
+  pub(crate) fn is_shown(&self) -> bool {
+    self.is_shown
+  }
+
   /// Shows `window` once a frame of `view` drawn after a layer was first sent to it is presented, or once the wait ran
   /// out, and takes the cursor for the view unless a layer holds it (`cursor`), which a hidden window cannot.
   pub(crate) fn show_when_covered(&mut self, window: &mut PlatformWindow, view: &GameView, cursor: GameCursor) {

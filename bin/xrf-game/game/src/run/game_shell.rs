@@ -4,7 +4,8 @@ use std::sync::Arc;
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_platform::{
-  Platform, PlatformSize, PlatformWindow, PlatformWindowHandle, PlatformWindowMode, PlatformWindowRequest,
+  Platform, PlatformSize, PlatformWaker, PlatformWindow, PlatformWindowHandle, PlatformWindowMode,
+  PlatformWindowRequest,
 };
 use xrf_game_settings::{GameSettings, GameWindowMode};
 use xrf_renderer::RenderWorkers;
@@ -24,7 +25,9 @@ pub(crate) struct GameShell {
 }
 
 impl GameShell {
-  /// Opens the window titled for `level` as `settings` set it, and starts the renderer in it on `pool`'s workers.
+  /// Opens the window titled for `level` as `settings` set it, and starts the renderer in it on `pool`'s workers. The
+  /// platform takes `waker`, so the threads holding it end the main thread's wait for events from here on, the
+  /// renderer's among them.
   ///
   /// # Errors
   ///
@@ -34,8 +37,12 @@ impl GameShell {
     settings: &GameSettings,
     directories: &GameDirectories,
     pool: &Arc<ThreadPool>,
+    waker: &PlatformWaker,
   ) -> XrfResult<Self> {
-    let platform: Platform = Platform::start().map_err(Self::create_platform_error)?;
+    let mut platform: Platform = Platform::start().map_err(Self::create_platform_error)?;
+
+    platform.attach(waker.clone());
+
     let window: PlatformWindow = platform
       .open_window(&PlatformWindowRequest {
         title: format!("XRF: {level}"),
@@ -56,7 +63,7 @@ impl GameShell {
       directories.get_cache().as_ref(),
     );
 
-    view.attach(hosted.get_host(), &window, settings);
+    view.attach(hosted.get_host(), &window, settings, waker.to_waker());
 
     Ok(Self {
       platform,

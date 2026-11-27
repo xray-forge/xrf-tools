@@ -3,8 +3,8 @@
 The native game's control endpoint, for agents to drive, debug and view the game. Two halves over one line protocol:
 
 - **The game's side** (`GameEndpoint`), which the game takes behind its `mcp` feature, started by an argument and
-  never otherwise: a thread reads request lines into a channel the game drains between frames, and answers go back a
-  line each.
+  never otherwise: a thread reads request lines into a channel the game drains between frames, waking the game through
+  the `Waker` it was started with as each arrives (`GameEndpointInbox`), and answers go back a line each.
   - `--mcp` (`GameEndpoint::start`): the bridge's child, over the game's standard input and output; the input ending
     quits the game.
   - `--listen` (`GameEndpoint::listen`): a game started by hand listens on a loopback port the system picks and

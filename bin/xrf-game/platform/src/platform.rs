@@ -4,10 +4,11 @@ use std::time::Duration;
 use sdl3::event::Event;
 use sdl3::gamepad::Gamepad;
 use sdl3::video::Window;
-use sdl3::{EventPump, GamepadSubsystem, Sdl, VideoSubsystem};
+use sdl3::{EventPump, EventSubsystem, GamepadSubsystem, Sdl, VideoSubsystem};
 
 use crate::event::platform_event::PlatformEvent;
 use crate::platform_library::PlatformLibrary;
+use crate::platform_waker::PlatformWaker;
 use crate::window::platform_window::PlatformWindow;
 use crate::window::platform_window_command::PlatformWindowCommand;
 use crate::window::platform_window_mode::PlatformWindowMode;
@@ -20,11 +21,27 @@ pub struct Platform {
   video: VideoSubsystem,
   gamepads: GamepadSubsystem,
   pump: EventPump,
+  /// SDL's events, kept so another thread's wake has a queue to reach.
+  events: EventSubsystem,
   /// The gamepads connected, by the id their events carry: an unopened pad sends none.
   opened: HashMap<u32, Gamepad>,
+  /// How other threads end the wait for events, once given one.
+  waker: Option<PlatformWaker>,
+}
+
+impl Drop for Platform {
+  fn drop(&mut self) {
+    // SDL closes with the platform: a thread still running wakes nothing from here.
+    if let Some(waker) = &self.waker {
+      waker.detach();
+    }
+  }
 }
 
 impl Platform {
+  /// The longest SDL is asked to wait, in milliseconds: it keeps a wait signed, and reads a negative one as endless.
+  const LONGEST_WAIT: u32 = i32::MAX as u32;
+
   /// Starts SDL with its video and gamepads.
   ///
   /// # Errors
@@ -43,6 +60,9 @@ impl Platform {
     let pump: EventPump = context
       .event_pump()
       .map_err(|error| format!("SDL's events cannot be read: {error}"))?;
+    let events: EventSubsystem = context
+      .event()
+      .map_err(|error| format!("SDL's events cannot be reached: {error}"))?;
 
     log::info!(
       "SDL {} started, video on {}",
@@ -55,8 +75,17 @@ impl Platform {
       video,
       gamepads,
       pump,
+      events,
       opened: HashMap::new(),
+      waker: None,
     })
+  }
+
+  /// Takes `waker`, through which other threads end the wait for events from now; a wake asked of it before ends the
+  /// next wait at once.
+  pub fn attach(&mut self, waker: PlatformWaker) {
+    waker.attach(&self.events);
+    self.waker = Some(waker);
   }
 
   /// Opens the game's window, centred on the main display and hidden until `PlatformWindowCommand::Show`: the
@@ -93,8 +122,9 @@ impl Platform {
     }
 
     u32::try_from(timeout.as_nanos().div_ceil(1_000_000))
-      .unwrap_or(u32::MAX)
+      .unwrap_or(Self::LONGEST_WAIT)
       .saturating_add(1)
+      .min(Self::LONGEST_WAIT)
   }
 
   /// Now on the clock events are stamped with, to the millisecond: the time since SDL started.
@@ -104,9 +134,15 @@ impl Platform {
 
   /// Waits for an event until `timeout` has passed, to SDL's whole milliseconds, then appends every event waiting to
   /// `events`, oldest first, opening each gamepad as it is connected. An event waiting already ends the wait at once,
-  /// and so does one arriving meanwhile; no timeout reads what waits without waiting.
+  /// and so does one arriving meanwhile, or another thread's wake (`PlatformWaker`), which appends nothing; no timeout
+  /// reads what waits without waiting.
   pub fn wait(&mut self, timeout: Duration, events: &mut Vec<PlatformEvent>) {
     let first: Option<Event> = self.pump.wait_event_timeout_ms(Self::get_wait_milliseconds(timeout));
+
+    // Before the caller looks at what threads brought: one bringing more from here asks for a wake of its own.
+    if let Some(waker) = &self.waker {
+      waker.settle();
+    }
 
     for event in first.into_iter().chain(self.pump.poll_iter()) {
       match &event {

@@ -235,7 +235,7 @@ fn records_a_walk_to_a_file_and_replays_it_to_every_digest() {
   assert_eq!(recorded.log.len(), commands);
   assert_eq!(recorded.digests.len() as u64, TICKS / GameStateDigest::INTERVAL);
 
-  let LoopSession { replay, witness } = replayed.into_session();
+  let LoopSession { replay, witness, .. } = replayed.into_session();
   let log: LoopCommandLog<GameCommand> = replay.expect("a replay's commands");
 
   assert!(witness.is_some());

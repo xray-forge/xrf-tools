@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::task::Waker;
 
 use rayon::ThreadPool;
 use xrf_error::XrfResult;
@@ -14,6 +15,7 @@ use crate::render::game_view::GameView;
 use crate::run::game_flow_stage::GameFlowStage;
 use crate::run::game_running::GameRunning;
 use crate::session::game_load_request::GameLoadRequest;
+use crate::session::game_session::GameSession;
 
 /// What the main thread runs between the window's frames: a load while one runs (its view drawn over the window, the
 /// player held, the game opening on a thread of its own and then running under the view while its level streams), and
@@ -29,11 +31,13 @@ pub(crate) struct GameFlow {
   loading_view: Option<DeveloperLoading>,
   /// The load's picture, from its arrival until the layer drawing the loading view takes it.
   loading_picture: Option<DeveloperPicture>,
+  /// How the load's thread and the game's loop wake the main thread to what they bring it.
+  waker: Waker,
 }
 
 impl GameFlow {
   /// Starts loading what `request` asks, its reads on `pool` and its stages reported to `progress`, which the loading
-  /// view shows.
+  /// view shows; the load's thread, and the game's loop after it, wake the main thread through `waker`.
   ///
   /// # Errors
   ///
@@ -42,14 +46,16 @@ impl GameFlow {
     request: &GameLoadRequest,
     pool: Arc<ThreadPool>,
     progress: Arc<GameLoadProgress>,
+    waker: Waker,
   ) -> XrfResult<Self> {
     Ok(Self {
       loading: Some(GameLoading::new(&request.level, Arc::clone(&progress))),
-      opening: Some(GameOpening::start(request.clone(), pool, progress)?),
+      opening: Some(GameOpening::start(request.clone(), pool, progress, waker.clone())?),
       running: None,
       look: Arc::new(GameLook::default()),
       loading_view: None,
       loading_picture: None,
+      waker,
     })
   }
 
@@ -106,8 +112,12 @@ impl GameFlow {
       match event {
         GameOpened::Picture(picture) => self.loading_picture = Some(picture),
         GameOpened::Session(session) => {
+          let mut session: GameSession = (*session)?;
+
+          // The loop wakes the main thread to each frame it publishes, rather than be looked at.
+          session.loop_session.waker = Some(self.waker.clone());
           self.opening = None;
-          self.running = Some(GameRunning::start((*session)?, view, &self.look, input)?);
+          self.running = Some(GameRunning::start(session, view, &self.look, input)?);
         }
       }
     }

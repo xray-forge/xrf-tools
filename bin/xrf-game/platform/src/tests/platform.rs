@@ -9,5 +9,6 @@ fn asks_sdl_for_a_millisecond_more_than_the_wait_so_a_short_one_never_returns_at
   assert_eq!(Platform::get_wait_milliseconds(Duration::from_millis(1)), 2);
   assert_eq!(Platform::get_wait_milliseconds(Duration::from_micros(3_200)), 5);
   assert_eq!(Platform::get_wait_milliseconds(Duration::from_millis(4)), 5);
-  assert_eq!(Platform::get_wait_milliseconds(Duration::MAX), u32::MAX);
+  // SDL keeps a wait signed: the longest stays positive.
+  assert_eq!(Platform::get_wait_milliseconds(Duration::MAX), i32::MAX as u32);
 }

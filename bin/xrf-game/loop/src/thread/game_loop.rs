@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::task::Waker;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -48,7 +49,7 @@ impl<S: LoopState> GameLoop<S> {
   ///
   /// Returns why the thread cannot be started.
   pub fn start(stepper: LoopStepper<S>, clock: LoopClock, session: LoopSession<S>) -> XrfResult<Self> {
-    let LoopSession { replay, witness } = session;
+    let LoopSession { replay, witness, waker } = session;
     let replay_end: Option<u64> = replay.as_ref().map(LoopCommandLog::get_end);
     let (sender, receiver) = mpsc::channel::<S::Command>();
     let (control, controls) = mpsc::channel::<LoopControl<S>>();
@@ -62,6 +63,7 @@ impl<S: LoopState> GameLoop<S> {
       let outlets: LoopOutlets<S> = LoopOutlets {
         feed: Arc::clone(&feed),
         events: Arc::clone(&events),
+        waker,
       };
       let is_stopping: Arc<AtomicBool> = Arc::clone(&is_stopping);
 
@@ -157,22 +159,32 @@ impl<S: LoopState> Drop for GameLoop<S> {
   }
 }
 
-/// Where the loop's thread puts what it publishes: the frames and status, and the events.
+/// Where the loop's thread puts what it publishes: the frames and status, and the events; and whom it wakes to them.
 struct LoopOutlets<S: LoopState> {
   feed: Arc<LoopFeed<S::Frame>>,
   events: Arc<LoopEvents<S::Event>>,
+  waker: Option<Waker>,
 }
 
-/// Notes how the thread ended once it does, however it does: a panic is a fault, and anything else a stop, unless a
-/// fault was noted first.
-struct LoopEnding<'a, F> {
-  feed: &'a LoopFeed<F>,
+impl<S: LoopState> LoopOutlets<S> {
+  /// Wakes whoever reads what was just put out, where the session named one.
+  fn wake(&self) {
+    if let Some(waker) = &self.waker {
+      waker.wake_by_ref();
+    }
+  }
+}
+
+/// Notes how the thread ended once it does, however it does, and wakes its reader to it: a panic is a fault, and
+/// anything else a stop, unless a fault was noted first.
+struct LoopEnding<'a, S: LoopState> {
+  outlets: &'a LoopOutlets<S>,
   tick: u64,
 }
 
-impl<F> Drop for LoopEnding<'_, F> {
+impl<S: LoopState> Drop for LoopEnding<'_, S> {
   fn drop(&mut self) {
-    self.feed.end(if thread::panicking() {
+    self.outlets.feed.end(if thread::panicking() {
       LoopStatus::Faulted {
         tick: self.tick,
         message: String::from("the game loop's thread panicked"),
@@ -180,6 +192,7 @@ impl<F> Drop for LoopEnding<'_, F> {
     } else {
       LoopStatus::Stopped
     });
+    self.outlets.wake();
   }
 }
 
@@ -201,8 +214,8 @@ impl<S: LoopState> LoopThread<S> {
     outlets: &LoopOutlets<S>,
     is_stopping: &AtomicBool,
   ) {
-    let mut ending: LoopEnding<'_, S::Frame> = LoopEnding {
-      feed: &outlets.feed,
+    let mut ending: LoopEnding<'_, S> = LoopEnding {
+      outlets,
       tick: self.stepper.get_time().tick,
     };
     let mut commands: Vec<S::Command> = Vec::new();
@@ -262,6 +275,7 @@ impl<S: LoopState> LoopThread<S> {
       outlets
         .feed
         .publish(self.clock.get_instant(tick), self.stepper.get_frame());
+      outlets.wake();
 
       if let Some(witness) = &mut self.witness {
         witness.see_step(&self.stepper);

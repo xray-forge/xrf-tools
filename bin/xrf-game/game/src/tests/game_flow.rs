@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::task::{Wake, Waker};
 use std::time::{Duration, Instant};
 
 use rayon::{ThreadPool, ThreadPoolBuilder};
@@ -27,6 +29,15 @@ fn request() -> GameLoadRequest {
   }
 }
 
+/// Notes that it was woken.
+struct NotingWake(Arc<AtomicBool>);
+
+impl Wake for NotingWake {
+  fn wake(self: Arc<Self>) {
+    self.0.store(true, Ordering::Release);
+  }
+}
+
 fn pool() -> Arc<ThreadPool> {
   Arc::new(ThreadPoolBuilder::new().num_threads(2).build().expect("a pool"))
 }
@@ -34,7 +45,7 @@ fn pool() -> Arc<ThreadPool> {
 #[test]
 fn launches_into_loading_with_no_game_running_while_it_opens() {
   let progress: Arc<GameLoadProgress> = Arc::new(GameLoadProgress::new(&GameLoadStage::LAUNCH));
-  let flow: GameFlow = GameFlow::launch(&request(), pool(), progress).expect("the load starts");
+  let flow: GameFlow = GameFlow::launch(&request(), pool(), progress, Waker::noop().clone()).expect("the load starts");
 
   assert_eq!(flow.get_stage(), GameFlowStage::Loading);
   assert!(flow.get_running().is_none());
@@ -43,7 +54,14 @@ fn launches_into_loading_with_no_game_running_while_it_opens() {
 #[test]
 fn tells_why_a_game_did_not_open() {
   let progress: Arc<GameLoadProgress> = Arc::new(GameLoadProgress::new(&GameLoadStage::LAUNCH));
-  let opening: GameOpening = GameOpening::start(request(), pool(), Arc::clone(&progress)).expect("the load starts");
+  let woken: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+  let opening: GameOpening = GameOpening::start(
+    request(),
+    pool(),
+    Arc::clone(&progress),
+    Waker::from(Arc::new(NotingWake(Arc::clone(&woken)))),
+  )
+  .expect("the load starts");
   let deadline: Instant = Instant::now() + WAIT;
 
   let error: String = loop {
@@ -64,6 +82,8 @@ fn tells_why_a_game_did_not_open() {
   };
 
   assert!(!error.is_empty());
+  // The main thread was woken to the answer rather than left to look for it.
+  assert!(woken.load(Ordering::Acquire));
   // The tree's stage ended with its failure rather than running on.
   assert!(!progress.list_running().contains(&GameLoadStage::Tree));
 }

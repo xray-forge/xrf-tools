@@ -10,7 +10,8 @@ use crate::run::game_cursor::GameCursor;
 use crate::run::game_startup::GameStartup;
 
 /// The main thread from the window's opening to the game's end, as a chain of presentation layers over what they
-/// share. Each frame it waits for the platform's events until a layer's next work is due, offers each event down the
+/// share. Each frame it waits for the platform's events until a layer's next work is due or another thread wakes it
+/// (the loop, the load, the control endpoint's reader, the renderer), offers each event down the
 /// chain (what no layer keeps is the window's own: its close, its resize, the quit key), moves the flow on (a load's
 /// view while it runs, then the game played) and every layer after it, and has them draw, until the player, a console
 /// line or an agent quits, or the loop stops stepping.
@@ -27,9 +28,9 @@ impl<'a> GamePlay<'a> {
   /// The key that quits until the game has a menu: Escape's place.
   const QUIT_KEY: PlatformScancode = PlatformScancode(41);
 
-  /// The longest the main thread waits for the platform's events. What other threads bring it (the loop's events and
-  /// frames, the load's news, an agent's requests) ends no wait, so it looks for them this often at least.
-  const LONGEST_WAIT: Duration = Duration::from_millis(4);
+  /// How often the main thread looks whether the hidden window may show: the frames it waits to see drawn wake nobody,
+  /// as one comes many times a second for the whole run and only the first few matter.
+  const HIDDEN_WAIT: Duration = Duration::from_millis(4);
 
   /// Play of `layers` over `context`, the window still hidden.
   pub(crate) fn new(context: GameLayerContext<'a>, layers: GameLayers<GameLayerContext<'a>>) -> Self {
@@ -85,12 +86,20 @@ impl<'a> GamePlay<'a> {
     }
   }
 
-  /// How long the wait for the platform's events may last: until the first layer's next work is due, and no longer
-  /// than what other threads bring may wait.
+  /// How long the wait for the platform's events may last: until the first layer's next work is due, however long
+  /// that is, since what another thread brings (the loop's frames and events, the load's news, an agent's request, the
+  /// level standing ready) ends the wait itself; and no longer than the hidden window's look while it is hidden.
   fn get_wait(&self) -> Duration {
-    self.layers.get_due().map_or(Self::LONGEST_WAIT, |due| {
-      due.saturating_duration_since(Instant::now()).min(Self::LONGEST_WAIT)
-    })
+    let due: Duration = self
+      .layers
+      .get_due()
+      .map_or(Duration::MAX, |due| due.saturating_duration_since(Instant::now()));
+
+    if self.startup.is_shown() {
+      due
+    } else {
+      due.min(Self::HIDDEN_WAIT)
+    }
   }
 
   /// Applies what changed in the settings since the last frame, by group: the view draws with its groups' from this

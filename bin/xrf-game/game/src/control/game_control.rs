@@ -244,7 +244,7 @@ impl GameLayer<GameLayerContext<'_>> for GameControl {
     Ok(())
   }
 
-  /// When the next played input falls due, none while none waits; a request arriving wakes nothing.
+  /// When the next played input falls due, none while none waits; a request arriving wakes the main thread itself.
   fn get_due(&self) -> Option<Instant> {
     self.inputs.front().map(|input| input.due)
   }

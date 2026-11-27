@@ -46,6 +46,8 @@ ended at. `GameLoop::start` takes a `LoopSession`, which by default is live and 
 - `witness`, a `LoopWitness` called on the loop's thread: the commands each tick is about to take, then the stepper
   as the step left it. It reads and never steers. A recorder is one, and so is a replay's check; the game writes both,
   since only it can serialize its commands and compare its state.
+- `waker`, a standard `Waker` the loop's thread wakes as it publishes each tick's frame, the step's events queued
+  before it, and as it stops, so whoever presents the loop rests between its own work rather than looking for them.
 
 Pausing and snapshots change no tick, so neither is logged.
 

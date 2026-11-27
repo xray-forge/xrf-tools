@@ -1,5 +1,6 @@
 use std::sync::Arc;
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{self, Receiver, TryRecvError};
+use std::task::Waker;
 use std::thread;
 
 use rayon::ThreadPool;
@@ -23,7 +24,8 @@ pub(crate) struct GameOpening {
 }
 
 impl GameOpening {
-  /// Starts opening what `request` asks, reading on `pool`, each stage reported to `progress`.
+  /// Starts opening what `request` asks, reading on `pool`, each stage reported to `progress`, the main thread woken
+  /// through `waker` to each thing it tells.
   ///
   /// # Errors
   ///
@@ -32,12 +34,22 @@ impl GameOpening {
     request: GameLoadRequest,
     pool: Arc<ThreadPool>,
     progress: Arc<GameLoadProgress>,
+    waker: Waker,
   ) -> XrfResult<Self> {
     let (sender, events) = mpsc::channel::<GameOpened>();
 
     thread::Builder::new()
       .name(String::from("xrf-game-open"))
-      .spawn(move || Self::open(&request, &pool, &progress, &sender))?;
+      .spawn(move || {
+        let tell = |opened: GameOpened| {
+          // A main thread that stopped waiting has let the load go.
+          if sender.send(opened).is_ok() {
+            waker.wake_by_ref();
+          }
+        };
+
+        Self::open(&request, &pool, &progress, &tell);
+      })?;
 
     Ok(Self { events })
   }
@@ -65,7 +77,8 @@ impl GameOpening {
     }
   }
 
-  fn open(request: &GameLoadRequest, pool: &ThreadPool, progress: &GameLoadProgress, sender: &Sender<GameOpened>) {
+  /// Opens what `request` asks and tells each thing opened through `tell`, the session last.
+  fn open(request: &GameLoadRequest, pool: &ThreadPool, progress: &GameLoadProgress, tell: &dyn Fn(GameOpened)) {
     let session: XrfResult<GameSession> = progress
       .run(GameLoadStage::Tree, || GameTree::mount(&request.tree))
       .and_then(|tree| {
@@ -82,13 +95,12 @@ impl GameOpening {
           .and_then(|search| GameLoadingPicture::read(&search, &request.level, seed));
 
         if let Some(picture) = picture {
-          let _ = sender.send(GameOpened::Picture(picture));
+          tell(GameOpened::Picture(picture));
         }
 
         GameSession::open(request, tree, pool, progress)
       });
 
-    // A main thread that stopped waiting has let the load go.
-    let _ = sender.send(GameOpened::Session(Box::new(session)));
+    tell(GameOpened::Session(Box::new(session)));
   }
 }

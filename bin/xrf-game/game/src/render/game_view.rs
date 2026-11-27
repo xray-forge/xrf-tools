@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::task::Waker;
 use std::time::Duration;
 
 use xrf_cache::AppCache;
@@ -96,8 +97,14 @@ impl GameView {
   }
 
   /// Draws the view into `window` through the `host` it presents to, with the view's features and upscaling from
-  /// `settings`.
-  pub fn attach(&self, host: Arc<dyn RenderWindowHost>, window: &PlatformWindow, settings: &GameSettings) {
+  /// `settings`; `waker` wakes the main thread as the level shown first stands ready.
+  pub fn attach(
+    &self,
+    host: Arc<dyn RenderWindowHost>,
+    window: &PlatformWindow,
+    settings: &GameSettings,
+    waker: Waker,
+  ) {
     self.queue.send(RenderCommand::Attach {
       id: Self::VIEWPORT,
       host,
@@ -106,6 +113,7 @@ impl GameView {
         load: Arc::clone(&self.load),
         drawn: Arc::clone(&self.drawn),
         frame: Arc::clone(&self.frame),
+        waker,
       }),
     });
     self.lock_world().attach(Self::VIEWPORT, Box::new(GameWorldSink));

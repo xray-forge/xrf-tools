@@ -57,7 +57,7 @@ pub struct GameSession {
   /// The tree's own controls, which presentation lays the player's bindings over.
   pub controls: GameControls,
   /// Where the loop over the state takes its commands and who watches it step: live and unwatched, unless the
-  /// request records the session or replays one.
+  /// request records the session or replays one. Whom it wakes is set by whoever starts the loop.
   pub loop_session: LoopSession<GameState>,
 }
 
@@ -160,6 +160,7 @@ impl GameSession {
       Some(GameRecordingRequest::Record(file)) => LoopSession {
         replay: None,
         witness: Some(Box::new(GameRecorder::create(file, &GameRecordingHeader::of(request))?)),
+        waker: None,
       },
       Some(GameRecordingRequest::Replay(file)) => GameReplay::read(file)?.into_session(),
     })

@@ -1,9 +1,9 @@
-use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{Ipv4Addr, TcpStream};
 use std::path::PathBuf;
-use std::thread;
+use std::task::Waker;
 use std::time::{Duration, Instant};
+use std::{fs, thread};
 
 use serde_json::json;
 
@@ -58,7 +58,7 @@ fn attach_once(attach: GameAttach) -> bool {
 #[test]
 fn a_bridge_attaches_by_the_token_written_beside_the_game_and_a_stranger_does_not() {
   let directory: PathBuf = create_directory("token");
-  let endpoint: GameEndpoint = GameEndpoint::listen(&directory, "zaton").expect("listening");
+  let endpoint: GameEndpoint = GameEndpoint::listen(&directory, "zaton", Waker::noop().clone()).expect("listening");
   let file: PathBuf = directory.join(GameAttach::FILE_NAME);
   let attach: GameAttach = serde_json::from_slice(&fs::read(&file).expect("the attach file")).expect("read");
 
