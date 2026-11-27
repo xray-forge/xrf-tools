@@ -10,11 +10,12 @@ use crate::scene::host::audio_asset_source::AudioAssetSource;
 use crate::scene::render::bank::banked_sound::BankedSound;
 use crate::scene::render::bank::sound_key::SoundKey;
 
-/// The sounds the scenes play, by their source's scope and reference, read and decoded off the control thread: on a
-/// loader thread of its own, or in the call that asks for them in an offline session. A sound up to
-/// [`Self::DECODED_SECONDS`] long is decoded once and shared by every voice playing it; a longer one is streamed from
-/// its bytes. Past its byte budget the bank lets go of the sounds no emitter holds, the least recently asked first; one
-/// asked for again is read again.
+/// The sounds the scenes play, by their source's scope and reference and the version of the file, read and decoded off
+/// the control thread: on a loader thread of its own, or in the call that asks for them in an offline session. A sound
+/// up to [`Self::DECODED_SECONDS`] long is decoded once and shared by every voice playing it; a longer one is streamed
+/// from its bytes. A file whose version moved, edited or come since it was refused as missing, is read again; the
+/// older read stays for the emitters holding it. Past its byte budget the bank lets go of the sounds no emitter holds,
+/// the least recently asked first; one asked for again is read again.
 pub(crate) struct SoundBank {
   sounds: HashMap<SoundKey, BankEntry>,
   loader: SoundLoader,
@@ -110,7 +111,8 @@ impl SoundBank {
     self.size
   }
 
-  /// The sound `reference` of `assets`, whose scope is `scope`, asked for the first time it is named.
+  /// The sound `reference` of `assets`, whose scope is `scope`, asked for the first time it is named in the version its
+  /// file has now.
   pub(crate) fn get(
     &mut self,
     scope: &Arc<str>,
@@ -120,6 +122,7 @@ impl SoundBank {
     let key: SoundKey = SoundKey {
       scope: Arc::clone(scope),
       reference: Arc::clone(reference),
+      version: assets.get_sound_version(reference),
     };
 
     self.asks += 1;

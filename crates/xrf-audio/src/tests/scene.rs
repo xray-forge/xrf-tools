@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use xrf_audio_scene::{AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox, AudioSceneRules};
@@ -531,4 +531,70 @@ fn lets_go_of_unheld_sounds_past_the_banks_budget() {
   // `a` is held by its emitter, so `b`, unheld and the oldest asked, went for `c`.
   assert_eq!(bank.get_size(), one * 2);
   assert!(matches!(held, BankedSound::Decoded(_)));
+}
+
+/// A single sound's file, which a test makes come, change or go, each time under a new version.
+struct ChangingSound(Mutex<(Option<Arc<[u8]>>, u64)>);
+
+impl ChangingSound {
+  fn place(&self, bytes: Option<Arc<[u8]>>) {
+    let mut file = self.0.lock().expect("the file is not poisoned");
+
+    *file = (bytes, file.1 + 1);
+  }
+}
+
+impl AudioAssetSource for ChangingSound {
+  fn get_sound_scope(&self) -> &str {
+    "changing"
+  }
+
+  fn get_sound_version(&self, _: &str) -> Option<u64> {
+    Some(self.0.lock().expect("the file is not poisoned").1)
+  }
+
+  fn read_sound(&self, _: &str) -> xrf_error::XrfResult<Option<Vec<u8>>> {
+    Ok(
+      self
+        .0
+        .lock()
+        .expect("the file is not poisoned")
+        .0
+        .as_deref()
+        .map(<[u8]>::to_vec),
+    )
+  }
+}
+
+#[test]
+fn reads_a_sound_again_once_its_file_comes_or_changes() {
+  let file: Arc<ChangingSound> = Arc::new(ChangingSound(Mutex::new((None, 0))));
+  let assets: Arc<dyn AudioAssetSource> = Arc::<ChangingSound>::clone(&file);
+  let (scope, reference): (Arc<str>, Arc<str>) = (Arc::from("changing"), Arc::from("a"));
+  let mut bank: SoundBank = SoundBank::inline();
+  let frames = |sound: BankedSound| match sound {
+    BankedSound::Decoded(sound) => sound.get_frames_count(),
+    other => panic!("a decoded sound, not {other:?}"),
+  };
+
+  assert!(matches!(bank.get(&scope, &assets, &reference), BankedSound::Refused(_)));
+
+  file.place(Some(crate::tests::fixtures::tone(1.0)));
+  assert_eq!(
+    frames(bank.get(&scope, &assets, &reference)),
+    RATE as usize,
+    "the file come since it was refused"
+  );
+  assert_eq!(
+    frames(bank.get(&scope, &assets, &reference)),
+    RATE as usize,
+    "the same version, served as read"
+  );
+
+  file.place(Some(crate::tests::fixtures::tone(2.0)));
+  assert_eq!(
+    frames(bank.get(&scope, &assets, &reference)),
+    RATE as usize * 2,
+    "the file edited"
+  );
 }
