@@ -73,22 +73,22 @@ impl LevelSoundEmitters {
     Self { statics, zones }
   }
 
-  /// Each emitter's helper: spheres at its sound's minimum and maximum distance, skipped for an unnamed emitter or a
-  /// missing sound file.
+  /// Each emitter's helper: spheres at its sound's minimum and maximum distance, carried along a torrid zone's motion as
+  /// its sound is, skipped for an unnamed emitter or a missing sound file.
   pub(crate) fn to_helpers(&self) -> Vec<RenderHelperObject> {
     let statics = self
       .statics
       .iter()
-      .map(|sound| (sound.object, sound.position, &sound.sound));
+      .map(|sound| (sound.object, sound.position, &sound.sound, None));
     let zones = self.zones.iter().flat_map(|zone| {
       [&zone.idle, &zone.disabled]
         .into_iter()
         .flatten()
-        .map(|sound| (zone.object, zone.position, sound))
+        .map(|sound| (zone.object, zone.position, sound, zone.motion.as_ref()))
     });
     let mut helpers: Vec<RenderHelperObject> = Vec::new();
 
-    for (object, [x, y, z], sound) in statics.chain(zones) {
+    for (object, [x, y, z], sound, motion) in statics.chain(zones) {
       let (Some(object), Some(info)) = (object, sound.info) else {
         continue;
       };
@@ -107,6 +107,7 @@ impl LevelSoundEmitters {
             radius,
           })
           .collect(),
+        motion: motion.cloned(),
       });
     }
 

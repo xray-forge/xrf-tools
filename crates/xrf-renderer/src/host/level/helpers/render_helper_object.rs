@@ -15,4 +15,7 @@ pub struct RenderHelperObject {
   /// Its `XFORM` in renderer space, column by column.
   pub transform: [f32; 16],
   pub shapes: Vec<RenderHelperShape>,
+  /// The object motion carrying it, by name, which stands it each frame where the motion has its object, its own axes
+  /// kept: a torrid zone's. None for one that stands where `transform` puts it.
+  pub motion: Option<String>,
 }

@@ -192,6 +192,7 @@ impl SceneHelperRead<'_> {
         draw_distance: entry.draw_distance,
         transform,
         shapes,
+        motion: None,
       });
     }
 

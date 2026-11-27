@@ -27,12 +27,15 @@ use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox
 
 /// What a view draws of its scene's helpers: the wires and icons its options keep, and the spawned models they mark.
 ///
-/// The selected, hovered and sounding objects are built apart and drawn over the rest, so hovering or a sound starting
-/// rebuilds a handful of wires rather than every helper.
+/// The selected, hovered and sounding objects are built apart and drawn over the rest, and the objects a motion carries
+/// apart from those that stand, so hovering, a sound starting or a fireball moving rebuilds a handful of wires rather
+/// than every helper.
 #[derive(Default)]
 pub(crate) struct HelpersFeature {
-  /// Every kept object's wires and icons, none singled out.
+  /// Every kept standing object's wires and icons, none singled out.
   every: Option<HelperBuild>,
+  /// Every kept carried object's wires and icons, none singled out.
+  moving: Option<HelperBuild>,
   /// The selected, hovered and sounding objects' wires, boxes and icons, never dimmed behind what is drawn; the
   /// selected and hovered never fade.
   singled: Option<HelperBuild>,
@@ -43,9 +46,9 @@ pub(crate) struct HelpersFeature {
 }
 
 impl HelpersFeature {
-  /// Builds the wires, icons and marks again where the scene's helpers, the objects standing in its scene or the view's
-  /// options moved since: the objects of the kinds switched on and not hidden, none while helpers are off, every kept
-  /// object's apart from the singled out ones'.
+  /// Builds the wires, icons and marks again where the scene's helpers, the objects standing in its scene, the carried
+  /// objects' places or the view's options moved since: the objects of the kinds switched on and not hidden, none while
+  /// helpers are off, the standing and the carried kept objects' apart from each other and from the singled out ones'.
   pub(crate) fn set(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
     let HelperSources {
       helpers,
@@ -65,7 +68,10 @@ impl HelpersFeature {
       ));
     }
 
-    if HelperBuild::is_current(self.every.as_ref(), sources, HelperPart::Every) {
+    let is_moving_current: bool = HelperBuild::is_current(self.moving.as_ref(), sources, HelperPart::Moving);
+    let is_every_current: bool = HelperBuild::is_current(self.every.as_ref(), sources, HelperPart::Every);
+
+    if is_moving_current && is_every_current {
       return;
     }
 
@@ -74,6 +80,19 @@ impl HelpersFeature {
       hovered: None,
       ..options.clone()
     };
+
+    if !is_moving_current {
+      self.moving = Some(HelperBuild::new(
+        device,
+        HelperBuildKey::of(sources, unsingled.clone(), &[]),
+        HelperBuild::build(helpers, &unsingled, &[], HelperPart::Moving, boxes),
+      ));
+    }
+
+    if is_every_current {
+      return;
+    }
+
     let marks: Vec<[u32; 2]> = Self::list_marks(helpers, &unsingled, |object| statics.get_object_place(object));
     let geometry: HelperGeometry = HelperBuild::build(helpers, &unsingled, &[], HelperPart::Every, boxes);
 
@@ -86,10 +105,11 @@ impl HelpersFeature {
     self.marks = (!marks.is_empty()).then(|| HelperMarks::new(device, &marks, marks_layout));
   }
 
-  /// The wires and icons to draw: every kept object's, then the singled out ones' over them.
+  /// The wires and icons to draw: every kept standing object's, the carried ones', then the singled out ones' over them.
   pub(crate) fn get_draws(&self) -> HelperDraws<'_> {
     HelperDraws {
       every: HelperBuild::get_draws(self.every.as_ref()),
+      moving: HelperBuild::get_draws(self.moving.as_ref()),
       singled: HelperBuild::get_draws(self.singled.as_ref()),
     }
   }
@@ -167,7 +187,8 @@ impl HelpersFeature {
   }
 
   /// The objects of `helpers` that `options` draws in `part`: kinds switched on and not hidden, none while helpers are
-  /// off; the singled out part keeps only those selected, hovered or `sounding`.
+  /// off; the every-object part keeps those a motion does not carry, the moving part those it does, and the singled
+  /// out part only those selected, hovered or `sounding`.
   fn list_kept<'a>(
     helpers: &'a LevelHelpers,
     options: &'a RenderHelperOptions,
@@ -179,7 +200,11 @@ impl HelpersFeature {
         && object.kind < u32::BITS
         && options.kinds & (1 << object.kind) != 0
         && options.hidden.binary_search(&object.id).is_err()
-        && (part == HelperPart::Every || Self::get_singled(object, options, sounding) > 0.0)
+        && match part {
+          HelperPart::Every => !object.is_carried,
+          HelperPart::Moving => object.is_carried,
+          HelperPart::Singled => Self::get_singled(object, options, sounding) > 0.0,
+        }
     })
   }
 
@@ -251,7 +276,7 @@ impl HelpersFeature {
       .collect()
   }
 
-  /// The models `options` marks of `helpers`, those standing at a place in the scene (`places`,
+  /// The models `options` marks of `helpers`, carried or not, those standing at a place in the scene (`places`,
   /// `StaticScene::get_object_place`): each place and its colour packed as `unpack4x8unorm` reads it, by place
   /// ascending, as `fs_helper_mark` searches them.
   pub(crate) fn list_marks(
@@ -260,6 +285,7 @@ impl HelpersFeature {
     places: impl Fn(u32) -> Option<u32>,
   ) -> Vec<[u32; 2]> {
     let mut marks: Vec<[u32; 2]> = Self::list_kept(helpers, options, &[], HelperPart::Every)
+      .chain(Self::list_kept(helpers, options, &[], HelperPart::Moving))
       .filter_map(|object: &LevelHelperObject| {
         let [r, g, b] = object
           .color
@@ -285,6 +311,8 @@ impl ViewFeature for HelpersFeature {
 struct HelperBuildKey {
   /// The scene's helper set's version.
   version: u64,
+  /// How many frames had moved the set's carried objects.
+  moved: u64,
   /// The scene's spawned objects, by how many were added and removed so far.
   contents: usize,
   options: RenderHelperOptions,
@@ -296,20 +324,26 @@ impl HelperBuildKey {
   fn of(sources: HelperSources<'_>, options: RenderHelperOptions, sounding: &[u32]) -> Self {
     Self {
       version: sources.helpers.version,
+      moved: sources.helpers.moved,
       contents: sources.statics.get_contents(),
       options,
       sounding: sounding.to_vec(),
     }
   }
 
-  /// Whether `part` built from it matches `sources`, copying nothing; the every-object part ignores the selection,
-  /// hovering and sounds.
+  /// Whether `part` built from it matches `sources`, copying nothing; the every-object and moving parts ignore the
+  /// selection, hovering and sounds, and the every-object part the carried objects moving.
   fn is_of(&self, sources: HelperSources<'_>, part: HelperPart) -> bool {
+    let is_unsingled = || Self::is_unsingled_of(&self.options, sources.options) && self.sounding.is_empty();
+
     self.version == sources.helpers.version
       && self.contents == sources.statics.get_contents()
       && match part {
-        HelperPart::Singled => self.options == *sources.options && self.sounding == sources.sounding,
-        HelperPart::Every => Self::is_unsingled_of(&self.options, sources.options) && self.sounding.is_empty(),
+        HelperPart::Singled => {
+          self.moved == sources.helpers.moved && self.options == *sources.options && self.sounding == sources.sounding
+        }
+        HelperPart::Moving => self.moved == sources.helpers.moved && is_unsingled(),
+        HelperPart::Every => is_unsingled(),
       }
   }
 
@@ -429,7 +463,7 @@ impl HelperLook {
   /// How `object` draws in `part`.
   fn of(object: &LevelHelperObject, options: &RenderHelperOptions, sounding: &[u32], part: HelperPart) -> Self {
     let singled: f32 = match part {
-      HelperPart::Every => 0.0,
+      HelperPart::Every | HelperPart::Moving => 0.0,
       HelperPart::Singled => HelpersFeature::get_singled(object, options, sounding),
     };
     let is_picked: bool = part == HelperPart::Singled && HelpersFeature::get_singled(object, options, &[]) > 0.0;

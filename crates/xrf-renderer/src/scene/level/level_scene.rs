@@ -250,6 +250,7 @@ impl LevelScene {
     self.camera_hemi = camera_hemi;
     self.sounding = sounding;
     self.lights.begin_frame(&motions);
+    self.helpers.follow(&motions);
     self.statics.prepare_draws(device, queue, encoder);
   }
 

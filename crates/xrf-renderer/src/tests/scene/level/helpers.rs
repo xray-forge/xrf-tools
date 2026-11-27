@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use xrf_math::glam::{Mat4, Vec3};
 
 use crate::contract::overlay::render_helper_icon::RenderHelperIcon;
@@ -6,6 +8,7 @@ use crate::feature::page::helpers_feature::HelpersFeature;
 use crate::host::level::helpers::render_helper_object::RenderHelperObject;
 use crate::host::level::helpers::render_helper_shape::RenderHelperShape;
 use crate::host::level::helpers::render_level_helpers::RenderLevelHelpers;
+use crate::host::world::render_motion_pose::RenderMotionPose;
 use crate::scene::level::page::helpers::gpu::helper_icon_instance::HelperIconInstance;
 use crate::scene::level::page::helpers::gpu::helper_vertex::HelperVertex;
 use crate::scene::level::page::helpers::level_helpers::LevelHelpers;
@@ -20,6 +23,7 @@ fn new_object(id: u32, kind: u32, at: Vec3, shapes: Vec<RenderHelperShape>) -> R
     draw_distance: 100.0,
     transform: Mat4::from_translation(at).to_cols_array(),
     shapes,
+    motion: None,
   }
 }
 
@@ -279,6 +283,113 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
       .iter()
       .all(|it| Vec3::from_array(it.position).cmple(Vec3::ONE).all())
   );
+}
+
+// A helper a motion carries stands where the motion has its object, renderer space mirroring the engine's z, its shapes
+// as they were; a frame that moves nothing, or a motion not posed yet, leaves it and the count of moves alone. It draws
+// in the moving part alone, so moving rebuilds none of the standing helpers.
+#[test]
+fn stands_a_carried_helper_where_its_motion_has_its_object_drawn_apart() {
+  let mut helpers: LevelHelpers = LevelHelpers::new(
+    RenderLevelHelpers {
+      objects: vec![
+        RenderHelperObject {
+          motion: Some(String::from("fireball.anm")),
+          ..new_object(
+            7,
+            10,
+            Vec3::new(10.0, 0.0, 0.0),
+            vec![
+              RenderHelperShape::Sphere {
+                center: [0.0; 3],
+                radius: 2.0,
+              },
+              RenderHelperShape::Icon {
+                center: [0.0, 1.0, 0.0],
+                icon: RenderHelperIcon::Sound,
+              },
+            ],
+          )
+        },
+        // A second sound of the same object, as a campfire's: both ride the motion.
+        RenderHelperObject {
+          motion: Some(String::from("fireball.anm")),
+          ..new_object(
+            7,
+            10,
+            Vec3::new(10.0, 0.0, 0.0),
+            vec![RenderHelperShape::Sphere {
+              center: [0.0; 3],
+              radius: 2.0,
+            }],
+          )
+        },
+        RenderHelperObject {
+          motion: Some(String::from("unposed.anm")),
+          ..new_object(8, 10, Vec3::new(-5.0, 0.0, 0.0), Vec::new())
+        },
+        new_object(
+          3,
+          10,
+          Vec3::ZERO,
+          vec![RenderHelperShape::Sphere {
+            center: [0.0; 3],
+            radius: 1.0,
+          }],
+        ),
+      ],
+    },
+    1,
+  );
+  let pose = |at: Vec3| RenderMotionPose {
+    transform: Mat4::from_translation(at),
+    velocity: Vec3::ZERO,
+  };
+  let motions: HashMap<String, RenderMotionPose> =
+    HashMap::from([(String::from("fireball.anm"), pose(Vec3::new(1.0, 2.0, 3.0)))]);
+  let place: Vec3 = Vec3::new(1.0, 2.0, -3.0);
+
+  helpers.follow(&motions);
+
+  let fireballs: Vec<_> = helpers.objects.iter().filter(|it| it.id == 7).cloned().collect();
+
+  assert_eq!(helpers.moved, 1);
+  assert_eq!(fireballs.len(), 2);
+
+  for fireball in &fireballs {
+    assert_eq!(fireball.place, place);
+    assert!(
+      helpers.segments[fireball.segments.clone()]
+        .iter()
+        .flatten()
+        .all(|end| (end.distance(place) - 2.0).abs() < 1e-4)
+    );
+  }
+
+  assert_eq!(
+    fireballs
+      .iter()
+      .flat_map(|it| helpers.icons[it.icons.clone()].iter().map(|icon| icon.center))
+      .collect::<Vec<Vec3>>(),
+    vec![place + Vec3::Y]
+  );
+  assert_eq!(helpers.find(8).map(|it| it.place), Some(Vec3::new(-5.0, 0.0, 0.0)));
+
+  helpers.follow(&motions);
+  assert_eq!(helpers.moved, 1);
+
+  let ids = |part: HelperPart| -> Vec<u32> {
+    let mut ids: Vec<u32> = HelpersFeature::list_vertices(&helpers, &options(1 << 10), &[], part, no_boxes)
+      .iter()
+      .map(|it| it.object)
+      .collect();
+
+    ids.dedup();
+    ids
+  };
+
+  assert_eq!(ids(HelperPart::Every), vec![3]);
+  assert_eq!(ids(HelperPart::Moving), vec![7]);
 }
 
 // An icon stands where its object stands it and draws as its object's wires would, by its cell of the atlas.

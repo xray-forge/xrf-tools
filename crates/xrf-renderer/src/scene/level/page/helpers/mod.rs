@@ -3,6 +3,7 @@
 
 pub(crate) mod gpu;
 pub(crate) mod level_helper_icon;
+pub(crate) mod level_helper_motion;
 pub(crate) mod level_helper_object;
 pub(crate) mod level_helpers;
 pub(crate) mod view;

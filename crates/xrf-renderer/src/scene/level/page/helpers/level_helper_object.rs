@@ -18,4 +18,6 @@ pub(crate) struct LevelHelperObject {
   pub icons: Range<usize>,
   /// The spawned object whose drawn model it marks, by its index among the level's spawned objects.
   pub model: Option<u32>,
+  /// Whether an object motion carries it, which a view draws apart from the rest as it moves.
+  pub is_carried: bool,
 }

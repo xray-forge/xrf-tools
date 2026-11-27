@@ -63,6 +63,7 @@ impl From<&LevelObjectsDescription> for RenderLevelHelpers {
             draw_distance: entry.draw_distance,
             transform: object.transform.to_matrix(),
             shapes,
+            motion: None,
           })
         })
         .collect(),

@@ -156,7 +156,7 @@ impl PickFeature {
     &self,
     pipelines: PipelineSource<'_>,
     kind: HelperPickKind,
-    buffers: [Option<&'a HelperBuffer>; 2],
+    buffers: [Option<&'a HelperBuffer>; 3],
   ) -> Option<HelperPick<'a>> {
     let buffers: Vec<&'a HelperBuffer> = buffers.into_iter().flatten().collect();
 

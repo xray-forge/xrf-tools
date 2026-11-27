@@ -94,4 +94,21 @@ fn draws_each_emitters_spheres_at_its_place_named_as_its_object() {
   assert_eq!(spheres(&helpers[3]), [0.5, 10.0]);
   assert_eq!(helpers[0].transform[12..15], [1.0, 2.0, -3.0]);
   assert_eq!(helpers[1].transform[12..15], [10.0, 1.0, -5.0]);
+  assert!(helpers.iter().all(|helper| helper.motion.is_none()));
+}
+
+// A torrid zone's spheres ride its motion, as its sound does.
+#[test]
+fn carries_a_torrid_zones_spheres_along_its_motion() {
+  let emitters: LevelSoundEmitters = LevelSoundEmitters {
+    statics: Vec::new(),
+    zones: vec![WorldZoneSound {
+      motion: Some(String::from("camera_effects\\fireball.anm")),
+      ..zone(Some(4), Some(found("anomaly\\fire", 1.0, 20.0)), None)
+    }],
+  };
+  let helpers: Vec<RenderHelperObject> = emitters.to_helpers();
+
+  assert_eq!(helpers.len(), 1);
+  assert_eq!(helpers[0].motion.as_deref(), Some("camera_effects\\fireball.anm"));
 }
