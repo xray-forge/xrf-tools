@@ -68,7 +68,27 @@ impl GameSettings {
       Value::String(text) => text.clone(),
       Value::Array(items) => items.iter().map(Self::format_value).collect::<Vec<String>>().join(", "),
       Value::Null => String::from(Self::UNSET),
+      Value::Number(number) if number.is_f64() => number.as_f64().map_or_else(String::new, Self::format_fraction),
       other => other.to_string(),
+    }
+  }
+
+  /// A fraction as it was typed: the settings hold `f32`s, which reading them as JSON widens (`0.7` to
+  /// `0.699999988079071`), so one an `f32` holds exactly is written as the shortest text that reads back to it, a
+  /// whole one with its `.0`.
+  fn format_fraction(value: f64) -> String {
+    let narrow: f32 = value as f32;
+
+    if f64::from(narrow) != value {
+      return value.to_string();
+    }
+
+    let text: String = narrow.to_string();
+
+    if text.contains(['.', 'e', 'E']) || !narrow.is_finite() {
+      text
+    } else {
+      format!("{text}.0")
     }
   }
 

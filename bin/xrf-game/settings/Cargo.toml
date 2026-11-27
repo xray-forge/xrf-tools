@@ -14,6 +14,7 @@ path = "src/lib.rs"
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+xrf-error = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-renderer = { workspace = true }
 

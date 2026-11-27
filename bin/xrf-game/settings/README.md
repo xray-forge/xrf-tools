@@ -43,6 +43,14 @@ the rest still applies. Once merged, the settings are held to the bounds the ren
 (`hold_to_bounds`: `view.grass.radius = 120.5` reads back as a whole number), so they read as they are drawn with;
 `get_view_options` gives the view's options they draw with.
 
+## Saving
+
+`GameSettings::save_changes(files, changes)` writes changes made while the game runs into the settings file, the first
+of `files` that exists, else the first, made where missing. It reads the file's own settings and applies the changes
+over them, so what a run was started with for itself (`--preset`, `--set`) is never saved, then writes the file whole
+through a staged write: `[settings] preset`, and each setting that differs from that preset in its group's section
+(`create_settings_ltx`). The console saves its changes this way with `save`, and as the game quits.
+
 ## Paths
 
 `GameSettings::get_entries` lists every setting as the file writes it (`GameSettingEntry`: the dotted path in snake

@@ -1,3 +1,6 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+
 use crate::console_answer::ConsoleAnswer;
 use crate::console_choice::ConsoleChoice;
 use crate::console_command::ConsoleCommand;
@@ -44,16 +47,47 @@ impl ConsoleContext for Counter {
 }
 
 fn create_registry() -> ConsoleRegistry<Counter> {
-  ConsoleRegistry::default().with(ConsoleCommand {
-    name: "bump",
-    usage: "[times]",
-    help: "counts up",
-    run: |counter: &mut Counter, argument: Option<&str>| {
+  ConsoleRegistry::default().with(ConsoleCommand::new(
+    "bump",
+    "[times]",
+    "counts up",
+    |counter: &mut Counter, argument: Option<&str>| {
       counter.bumped += argument.and_then(|times| times.parse().ok()).unwrap_or(1);
 
       ConsoleAnswer::succeed(vec![format!("bumped {}", counter.bumped)])
     },
-  })
+  ))
+}
+
+#[test]
+fn registers_a_command_that_carries_its_own_state_and_overrides_a_builtin() {
+  let mut registry: ConsoleRegistry<Counter> = create_registry();
+  let mut counter: Counter = Counter::default();
+  // What a script's command would hold: something of its own, here how often it ran.
+  let calls: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
+  let counted: Arc<AtomicU32> = Arc::clone(&calls);
+
+  registry.register(ConsoleCommand::new(
+    "ping",
+    "",
+    "answers pong",
+    move |_: &mut Counter, _| {
+      counted.fetch_add(1, Ordering::Relaxed);
+
+      ConsoleAnswer::succeed(vec![String::from("pong")])
+    },
+  ));
+
+  assert_eq!(registry.execute(&mut counter, "ping").lines, vec!["pong"]);
+  assert_eq!(calls.load(Ordering::Relaxed), 1);
+
+  let replaced = registry.register(ConsoleCommand::new("help", "", "a mod's help", |_: &mut Counter, _| {
+    ConsoleAnswer::succeed(vec![String::from("the mod's own help")])
+  }));
+
+  assert!(replaced.is_none(), "help is no registered command, so none is replaced");
+  assert_eq!(registry.execute(&mut counter, "help").lines, vec!["the mod's own help"]);
+  assert_eq!(registry.complete(&counter, "he").choices[0].hint, "a mod's help");
 }
 
 #[test]

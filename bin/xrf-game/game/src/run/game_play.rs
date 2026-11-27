@@ -135,8 +135,8 @@ impl GamePlay<'_> {
     for effect in self.console.take_effects() {
       match effect {
         GameConsoleEffect::ApplySettings => self.view.apply_settings(self.console.get_settings()),
-        GameConsoleEffect::Movement(command) => {
-          self.send(GameCommand::Movement(command));
+        GameConsoleEffect::Command(command) => {
+          self.send(command);
         }
         GameConsoleEffect::Quit => self.is_quitting = true,
       }

@@ -8,6 +8,7 @@ pub(crate) mod game_settings_bounds;
 pub(crate) mod game_settings_load;
 pub(crate) mod game_settings_merge;
 pub(crate) mod game_settings_paths;
+pub(crate) mod game_settings_save;
 pub(crate) mod game_window_mode;
 pub(crate) mod game_window_settings;
 #[cfg(test)]

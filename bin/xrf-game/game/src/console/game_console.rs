@@ -1,50 +1,60 @@
-use xrf_game_console::{ConsoleAnswer, ConsoleCommand, ConsoleCompletion, ConsoleRegistry};
-use xrf_game_movement::MovementCommand;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use xrf_game_console::{ConsoleAnswer, ConsoleCompletion, ConsoleRegistry};
 use xrf_game_settings::GameSettings;
 
+use crate::console::game_console_commands::GameConsoleCommands;
 use crate::console::game_console_effect::GameConsoleEffect;
 use crate::console::game_console_state::GameConsoleState;
 
 /// The game's console: its commands, and the state they run against, the settings its variables are. The developer
-/// layer's drawer and the bridge enter lines alike; what a line asks of the running game is taken as effects.
+/// layer's drawer and the bridge enter lines alike; what a line asks of the running game is taken as effects. Settings
+/// changed through it are saved by `save`, and as the game quits, as X-Ray saves its console's on exit.
+///
+/// Its commands are registered in its registry (`ConsoleRegistry::register`), the hook point where a script will add a
+/// command or override one; the game's own are [`GameConsoleCommands`].
 pub(crate) struct GameConsole {
   registry: ConsoleRegistry<GameConsoleState>,
   state: GameConsoleState,
 }
 
 impl GameConsole {
-  /// The console over `settings` as the game started with them.
-  pub(crate) fn new(settings: GameSettings) -> Self {
-    let registry: ConsoleRegistry<GameConsoleState> = ConsoleRegistry::default()
-      .with(ConsoleCommand {
-        name: "quit",
-        usage: "",
-        help: "quits the game",
-        run: |state: &mut GameConsoleState, _: Option<&str>| {
-          state.effects.push(GameConsoleEffect::Quit);
+  /// The console over `settings` as the game started with them, with the game's own commands, saving its changes to
+  /// the first of `files` that exists, else the first.
+  pub(crate) fn new(settings: GameSettings, files: Vec<PathBuf>) -> Self {
+    let mut registry: ConsoleRegistry<GameConsoleState> = ConsoleRegistry::default();
 
-          ConsoleAnswer::succeed(vec![String::from("Quitting")])
-        },
-      })
-      .with(ConsoleCommand {
-        name: "noclip",
-        usage: "",
-        help: "switches between walking and flying through everything",
-        run: |state: &mut GameConsoleState, _: Option<&str>| {
-          state
-            .effects
-            .push(GameConsoleEffect::Movement(MovementCommand::ToggleMode));
-
-          ConsoleAnswer::succeed(vec![String::from("Movement switched")])
-        },
-      });
+    for command in GameConsoleCommands::create() {
+      registry.register(command);
+    }
 
     Self {
       registry,
       state: GameConsoleState {
         settings,
+        files,
+        unsaved: BTreeMap::new(),
         effects: Vec::new(),
       },
+    }
+  }
+
+  /// Saves the settings changed through the console and not saved yet, as the game quits, logging what it did; nothing
+  /// where none changed.
+  pub(crate) fn save_on_quit(&mut self) {
+    if self.state.unsaved.is_empty() {
+      return;
+    }
+
+    let answer: ConsoleAnswer = self.state.save();
+
+    for line in &answer.lines {
+      if answer.is_failed {
+        log::error!("{line}");
+      } else {
+        log::info!("{line}");
+      }
     }
   }
 

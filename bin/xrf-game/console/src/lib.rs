@@ -13,7 +13,7 @@ mod tests;
 
 pub use crate::console_answer::ConsoleAnswer;
 pub use crate::console_choice::ConsoleChoice;
-pub use crate::console_command::ConsoleCommand;
+pub use crate::console_command::{ConsoleCommand, ConsoleRun};
 pub use crate::console_completion::ConsoleCompletion;
 pub use crate::console_context::ConsoleContext;
 pub use crate::console_line::ConsoleLine;

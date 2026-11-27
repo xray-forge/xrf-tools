@@ -54,7 +54,7 @@ impl GameSettings {
   }
 
   /// What the settings file at `path` holds; nothing, said so, where it cannot be read.
-  fn read_settings_file(path: &Path) -> GameSettingsFile {
+  pub(crate) fn read_settings_file(path: &Path) -> GameSettingsFile {
     match Ltx::read_from_file_standard(path) {
       Ok(ltx) => {
         log::info!("Settings read from '{}'", path.display());

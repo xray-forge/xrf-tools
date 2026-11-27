@@ -8981,6 +8981,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "xrf-error",
  "xrf-ltx",
  "xrf-renderer",
 ]

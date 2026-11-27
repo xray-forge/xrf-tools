@@ -94,14 +94,14 @@ impl GameRun {
       )),
     );
 
-    GamePlay {
+    let mut play: GamePlay<'_> = GamePlay {
       window: &mut window,
       view: &view,
       commands: game_loop.get_sender(),
       bindings: GameBindings::default(),
       feed: Arc::clone(game_loop.get_feed()),
       developer: GameDeveloper::default(),
-      console: GameConsole::new(settings.clone()),
+      console: GameConsole::new(settings.clone(), directories.get_settings_files()),
       log,
       footsteps,
       #[cfg(feature = "mcp")]
@@ -111,8 +111,12 @@ impl GameRun {
         .transpose()?,
       is_quitting: false,
       show_by: Some(Instant::now() + GamePlay::SHOW_WAIT),
-    }
-    .run(&mut platform);
+    };
+
+    play.run(&mut platform);
+    // However play ended, what the console changed is kept for the next run.
+    play.console.save_on_quit();
+    drop(play);
 
     // Stopped in the order the window's drop needs: the loop, the view, then the window.
     drop(game_loop);

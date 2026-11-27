@@ -11,8 +11,11 @@ use crate::console_variable::ConsoleVariable;
 /// The console's commands over a context `C` that owns its variables, run by the line typed, as X-Ray's console runs
 /// them: a command's name and what follows it, a variable's name alone to show it, or with a value to set it. `help`
 /// and `list` are its own.
+///
+/// `register` is its hook point: any system, and later a script, adds a command there, and one registered under a name
+/// already taken, `help` and `list` included, overrides it.
 pub struct ConsoleRegistry<C> {
-  commands: BTreeMap<&'static str, ConsoleCommand<C>>,
+  commands: BTreeMap<String, ConsoleCommand<C>>,
 }
 
 impl<C> Default for ConsoleRegistry<C> {
@@ -33,20 +36,29 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
   /// How many variables an unknown name suggests.
   const SUGGESTED: usize = 5;
 
-  /// The registry with `command` added, replacing one of its name.
+  /// Adds `command`, overriding one registered under its name before, answering it.
+  pub fn register(&mut self, command: ConsoleCommand<C>) -> Option<ConsoleCommand<C>> {
+    self.commands.insert(command.name.clone(), command)
+  }
+
+  /// The registry with `command` added, as [`Self::register`] adds it.
   #[must_use]
   pub fn with(mut self, command: ConsoleCommand<C>) -> Self {
-    self.commands.insert(command.name, command);
+    self.register(command);
 
     self
   }
 
-  /// Runs the line `text` against `context`. A blank line answers nothing; a name that is neither a command nor a
-  /// variable fails, suggesting variables whose name holds it.
+  /// Runs the line `text` against `context`: a registered command first, then `help` and `list`, then a variable. A
+  /// blank line answers nothing; a name that is none of them fails, suggesting variables whose name holds it.
   pub fn execute(&self, context: &mut C, text: &str) -> ConsoleAnswer {
     let Some(line) = ConsoleLine::parse(text) else {
       return ConsoleAnswer::default();
     };
+
+    if let Some(command) = self.commands.get(line.name) {
+      return (command.run)(context, line.argument);
+    }
 
     if line.name == Self::HELP {
       return ConsoleAnswer::succeed(self.describe());
@@ -54,10 +66,6 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
 
     if line.name == Self::LIST {
       return Self::list(context, line.argument.unwrap_or_default());
-    }
-
-    if let Some(command) = self.commands.get(line.name) {
-      return (command.run)(context, line.argument);
     }
 
     let variables: Vec<ConsoleVariable> = context.list_variables();
@@ -102,12 +110,14 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
     }
 
     let variables: Vec<ConsoleVariable> = context.list_variables();
-    let names: Vec<&str> = [Self::HELP, Self::LIST]
-      .into_iter()
-      .chain(self.commands.keys().copied())
+    let mut names: Vec<&str> = self
+      .list_builtins()
+      .chain(self.commands.keys().map(String::as_str))
       .chain(variables.iter().map(|variable| variable.name.as_str()))
       .filter(|name| name.starts_with(typed))
       .collect();
+
+    names.sort_unstable();
     let Some(first) = names.first() else {
       return unchanged();
     };
@@ -166,19 +176,30 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
     }
 
     match self.commands.get(name) {
-      Some(command) if command.usage.is_empty() => String::from(command.help),
+      Some(command) if command.usage.is_empty() => command.help.clone(),
       Some(command) => format!("{} - {}", command.usage, command.help),
       None if name == Self::HELP => String::from("the commands"),
       None => String::from("[part] - the variables"),
     }
   }
 
+  /// `help` and `list`, those no registered command overrides.
+  fn list_builtins(&self) -> impl Iterator<Item = &str> {
+    [Self::HELP, Self::LIST]
+      .into_iter()
+      .filter(|name| !self.commands.contains_key(*name))
+  }
+
   /// `help`'s lines: every command with how it is written and what it does, then how variables are used.
   fn describe(&self) -> Vec<String> {
-    let mut lines: Vec<String> = vec![
-      format!("{} - this list", Self::HELP),
-      format!("{} [part] - the variables, those whose name holds part", Self::LIST),
-    ];
+    let builtins = self.list_builtins().map(|name| {
+      if name == Self::HELP {
+        format!("{} - this list", Self::HELP)
+      } else {
+        format!("{} [part] - the variables, those whose name holds part", Self::LIST)
+      }
+    });
+    let mut lines: Vec<String> = builtins.collect();
 
     lines.extend(self.commands.values().map(|command| {
       if command.usage.is_empty() {

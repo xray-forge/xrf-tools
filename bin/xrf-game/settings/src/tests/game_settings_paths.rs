@@ -24,6 +24,21 @@ fn takes_back_every_value_it_lists_unchanged() {
 }
 
 #[test]
+fn writes_a_fraction_as_it_was_typed_not_widened() {
+  let settings: GameSettings = GameSettings::default()
+    .with_setting("upscaling.sharpening", "0.7")
+    .expect("a sharpening");
+  let entry: GameSettingEntry = settings
+    .get_entries()
+    .into_iter()
+    .find(|entry| entry.path == "upscaling.sharpening")
+    .expect("listed");
+
+  assert_eq!(entry.value, "0.7");
+  assert_eq!(settings.with_setting(&entry.path, &entry.value).as_ref(), Ok(&settings));
+}
+
+#[test]
 fn holds_a_value_set_to_the_renderers_bounds() {
   let settings: GameSettings = GameSettings::default()
     .with_setting("render.texture_lod", "9")
