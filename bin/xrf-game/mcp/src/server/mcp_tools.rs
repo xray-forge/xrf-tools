@@ -80,6 +80,17 @@ impl McpTools {
         }
       },
       {
+        "name": "game_console",
+        "description": "Run a line in the game's console, as typed into its drawer, and answer its lines. `help` lists \
+          the commands, `list <part>` the variables (the settings, by dotted path); a variable alone shows it, with a \
+          value sets it, as `view.shadows.resolution 2048`. A refused line is an error.",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "line": { "type": "string", "description": "The line, as `noclip` or `list shadows`" } },
+          "required": ["line"]
+        }
+      },
+      {
         "name": "game_capture",
         "description": "Read the window's next frame back to a PNG file and answer its path.",
         "inputSchema": { "type": "object", "properties": {} }
@@ -112,6 +123,8 @@ impl McpTools {
         bridge.ask(GameRequestKind::Pose { position, target })
       }),
       "game_input" => Self::read_inputs(arguments).and_then(|inputs| bridge.ask(GameRequestKind::Input { inputs })),
+      "game_console" => Self::read_text(arguments, "line")
+        .and_then(|line| bridge.ask(GameRequestKind::Console { line: line.to_owned() })),
       "game_capture" => bridge.ask(GameRequestKind::Capture),
       "game_log" => bridge.read_log(
         arguments

@@ -9,8 +9,8 @@ use xrf_game_developer::DeveloperFrame;
 use xrf_game_platform::{PlatformSize, PlatformWindow};
 use xrf_game_settings::GameSettings;
 use xrf_renderer::{
-  RenderCapture, RenderCommand, RenderFrameReport, RenderQueue, RenderRect, RenderViewOptions, RenderViewOutput,
-  RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
+  RenderCapture, RenderCommand, RenderFrameReport, RenderQueue, RenderRect, RenderViewportId, RenderViewportLayout,
+  RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
 };
 use xrf_renderer_host::DiskCacheStore;
 use xrf_world::{World, WorldLevelSource, WorldSoundCue, WorldViewFeed};
@@ -83,18 +83,25 @@ impl GameView {
       }),
     });
     self.lock_world().attach(Self::VIEWPORT, Box::new(GameWorldSink));
+    self.send_options(settings);
+    self.fit(window);
+  }
+
+  /// Draws with `settings` from the next frame: what every frame draws with, and the view's features and upscaling. The
+  /// window's own settings apply only as it opens.
+  pub fn apply_settings(&self, settings: &GameSettings) {
+    self.queue.send(RenderCommand::Settings {
+      settings: settings.render,
+    });
+    self.send_options(settings);
+  }
+
+  /// The view's features and upscaling from `settings`.
+  fn send_options(&self, settings: &GameSettings) {
     self.queue.send(RenderCommand::Options {
       id: Self::VIEWPORT,
-      options: Box::new(RenderViewOptions {
-        features: settings.view.clone(),
-        output: RenderViewOutput {
-          upscaling: settings.upscaling,
-          ..RenderViewOutput::default()
-        },
-        ..RenderViewOptions::default()
-      }),
+      options: Box::new(settings.get_view_options()),
     });
-    self.fit(window);
   }
 
   /// Fits the view to `window` as it stands: its drawable size in device pixels, and how many of them a logical pixel

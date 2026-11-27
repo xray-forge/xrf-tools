@@ -6,6 +6,7 @@ pub(crate) mod log_filter;
 pub(crate) mod log_setup;
 pub(crate) mod log_sink;
 pub(crate) mod process_start;
+pub(crate) mod tail;
 #[cfg(test)]
 mod tests;
 
@@ -16,3 +17,4 @@ pub use crate::line::log_timestamp::LogTimestamp;
 pub use crate::log_filter::LogFilter;
 pub use crate::log_setup::LogSetup;
 pub use crate::process_start::ProcessStart;
+pub use crate::tail::log_tail::LogTail;

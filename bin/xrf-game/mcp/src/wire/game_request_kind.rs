@@ -12,6 +12,8 @@ pub enum GameRequestKind {
   Pose { position: [f32; 3], target: [f32; 3] },
   /// Plays `inputs` into the game in order, after any played before; answered once the last is delivered.
   Input { inputs: Vec<GameInput> },
+  /// Runs `line` in the game's console, as typed into its drawer, answered with the console's lines.
+  Console { line: String },
   /// Reads the window's next frame back and writes it to a PNG file, answered with its path.
   Capture,
   /// Quits the game as its close button does.

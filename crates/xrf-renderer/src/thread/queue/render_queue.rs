@@ -6,7 +6,6 @@ use std::time::Duration;
 use crate::context::library_versions::describe_libraries;
 use crate::contract::settings::gpu::render_libraries::RenderLibraries;
 use crate::contract::settings::render_settings::RenderSettings;
-use crate::contract::settings::schema::render_setting_schema::RenderSettingSchema;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::world::render_world::RenderWorld;

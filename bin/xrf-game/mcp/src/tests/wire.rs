@@ -23,6 +23,12 @@ fn reads_a_request_line_with_its_kinds_arguments_beside_its_id() {
     GameRequest::parse(r#"{"id":"4","kind":"status"}"#).map(|request| request.kind),
     Some(GameRequestKind::Status)
   );
+  assert_eq!(
+    GameRequest::parse(r#"{"id":"8","kind":"console","line":"list shadows"}"#).map(|request| request.kind),
+    Some(GameRequestKind::Console {
+      line: String::from("list shadows"),
+    })
+  );
   assert_eq!(GameRequest::parse(r#"{"id":"5","kind":"dance"}"#), None);
   assert_eq!(GameRequest::parse("not json"), None);
 }

@@ -30,6 +30,7 @@ impl AppLogSetup {
       application: Self::LOG_NAME,
       version: String::from(version),
       directories: AppDirectories::for_identifier(identifier).get_logs_directories(),
+      tail: None,
     };
 
     match setup.install(&filter) {

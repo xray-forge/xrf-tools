@@ -6,8 +6,10 @@ under its own name.
 
 ## Starting
 
-`LogSetup { application, version, directories }.install(&filter)` installs the process's logger once, before anything
-logs, and answers the run (`LogRun`), none where no directory took its log. `LogFilter::from_environment()` reads
+`LogSetup { application, version, directories, tail }.install(&filter)` installs the process's logger once, before
+anything logs, and answers the run (`LogRun`), none where no directory took its log. A `LogTail` given as `tail` also
+keeps the records it passes, at its level or above, as short lines (`LEVEL message`) an application's own viewer takes,
+as the game's console does; it holds a bounded number not yet taken, the oldest let go first. `LogFilter::from_environment()` reads
 `RUST_LOG`, else the build's default level (debug in a debug build, info in a release one) with naga and wgpu held to
 warnings, whose debug lines run to millions a shader compile and stall the render thread; a host reading its own
 records apart from the logger, as the app's UI log does, filters them by the same `LogFilter`.

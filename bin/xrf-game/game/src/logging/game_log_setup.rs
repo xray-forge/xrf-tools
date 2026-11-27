@@ -1,28 +1,40 @@
-use xrf_logging::{LogFilter, LogSetup};
+use std::sync::Arc;
+
+use log::Level;
+use xrf_logging::{LogFilter, LogSetup, LogTail};
 
 use crate::directories::game_directories::GameDirectories;
 
 /// How the game starts logging: the process's logger, writing to the console and to this run's
-/// `xrf-game.<UTC start>.<process>.log` beside the desktop app's logs.
+/// `xrf-game.<UTC start>.<process>.log` beside the desktop app's logs, its records from information up kept for the
+/// game's console.
 pub struct GameLogSetup;
 
 impl GameLogSetup {
   /// What the game's log files are named by.
   pub const LOG_NAME: &'static str = "xrf-game";
 
-  /// Installs the process's logger, filtered by `RUST_LOG` else the build's default level.
+  /// How many records the console's tail holds before it is next taken: a console's worth, the oldest let go.
+  const TAIL_LINES: usize = 200;
+
+  /// Installs the process's logger, filtered by `RUST_LOG` else the build's default level, and answers the tail the
+  /// console takes its records from.
   ///
   /// # Panics
   ///
   /// Where the process already has a logger: call it once, before anything logs.
-  pub fn install(directories: &GameDirectories, version: &str) {
+  pub fn install(directories: &GameDirectories, version: &str) -> Arc<LogTail> {
+    let tail: Arc<LogTail> = Arc::new(LogTail::new(Level::Info, Self::TAIL_LINES));
     let setup: LogSetup = LogSetup {
       application: Self::LOG_NAME,
       version: String::from(version),
       directories: directories.get_logs_directories(),
+      tail: Some(Arc::clone(&tail)),
     };
 
     // The logger holds its own handle to the log; the run itself only makes companion files, which the game has none of.
     let _ = setup.install(&LogFilter::from_environment());
+
+    tail
   }
 }

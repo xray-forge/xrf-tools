@@ -5,6 +5,7 @@ use xrf_renderer_derive::RenderSettingSchema;
 use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::contract::settings::render_graph_settings::RenderGraphSettings;
+use crate::contract::settings::schema::render_setting_schema::RenderSettingSchema;
 use crate::contract::view::render_texture_filtering::RenderTextureFiltering;
 
 /// GPU milliseconds a frame gives the work drawn once in so many frames that may wait, unless the settings say
@@ -59,5 +60,13 @@ impl Default for RenderSettings {
       texture_filtering: RenderTextureFiltering::default(),
       texture_lod: 0,
     }
+  }
+}
+
+impl RenderSettings {
+  /// Hold every setting to the bounds its schema describes, as the renderer holds what it is sent, so a host shows the
+  /// value that is drawn with.
+  pub fn hold_to_bounds(&mut self) {
+    RenderSettingSchema::hold_to_bounds(self);
   }
 }

@@ -36,6 +36,21 @@ impl GameDeveloper {
     self.layer.is_open()
   }
 
+  /// The lines entered into the console since the last take, in order.
+  pub(crate) fn take_entered(&mut self) -> Vec<String> {
+    self.layer.get_console_mut().take_entered()
+  }
+
+  /// Adds `lines` at the bottom of the console, shown at the next build.
+  pub(crate) fn push_lines(&mut self, lines: impl IntoIterator<Item = String>) {
+    let console = self.layer.get_console_mut();
+
+    for line in lines {
+      console.push(line);
+      self.is_changed = true;
+    }
+  }
+
   /// Takes a platform event in `view`, answering whether the layer kept it from the game.
   pub(crate) fn take(&mut self, event: &PlatformEvent, view: DeveloperView) -> bool {
     let is_taken: bool = self.layer.take(event, view);

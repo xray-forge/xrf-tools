@@ -37,6 +37,7 @@ xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-gamemtl = { workspace = true }
 xrf-game-alife = { workspace = true }
+xrf-game-console = { workspace = true }
 xrf-game-developer = { workspace = true }
 xrf-game-graph = { workspace = true }
 xrf-game-loop = { workspace = true }

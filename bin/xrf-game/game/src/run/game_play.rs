@@ -4,13 +4,17 @@ use std::time::Duration;
 #[cfg(feature = "mcp")]
 use std::time::Instant;
 
+use xrf_game_console::ConsoleAnswer;
 use xrf_game_developer::DeveloperView;
 use xrf_game_loop::{LoopFeed, LoopFrame};
 use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
 use xrf_game_platform::{
   Platform, PlatformEvent, PlatformEventKind, PlatformScancode, PlatformSize, PlatformWindow, PlatformWindowCommand,
 };
+use xrf_logging::LogTail;
 
+use crate::console::game_console::GameConsole;
+use crate::console::game_console_effect::GameConsoleEffect;
 #[cfg(feature = "mcp")]
 use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
@@ -21,9 +25,9 @@ use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
 
 /// The game while it is played: the platform's events read through the developer layer and the bindings into the
-/// loop's commands, the view fit to the window, the player's footsteps played from the loop's latest frame, the
-/// developer layer drawn over it, and the control endpoint's requests answered between frames, until the player or an
-/// agent quits.
+/// loop's commands, the view fit to the window, the console's lines run and the log's records shown in it, the
+/// player's footsteps played from the loop's latest frame, the developer layer drawn over it, and the control
+/// endpoint's requests answered between frames, until the player, a console line or an agent quits.
 pub(crate) struct GamePlay<'a> {
   pub window: &'a mut PlatformWindow,
   pub view: &'a GameView,
@@ -32,10 +36,15 @@ pub(crate) struct GamePlay<'a> {
   /// What the loop publishes, which the developer layer's readout and the control endpoint's status read.
   pub feed: Arc<LoopFeed<GameFrame>>,
   pub developer: GameDeveloper,
+  pub console: GameConsole,
+  /// The log's records the console shows, taken as they come.
+  pub log: Arc<LogTail>,
   pub footsteps: GameFootsteps,
   /// The control endpoint, where the game was started with `--mcp`.
   #[cfg(feature = "mcp")]
   pub control: Option<GameControl>,
+  /// Whether a console line asked the game to quit.
+  pub is_quitting: bool,
 }
 
 impl GamePlay<'_> {
@@ -62,6 +71,16 @@ impl GamePlay<'_> {
         return;
       }
 
+      for line in self.developer.take_entered() {
+        self.run_console(&line);
+      }
+
+      self.developer.push_lines(self.log.take());
+
+      if self.is_quitting {
+        return;
+      }
+
       let view: DeveloperView = self.get_developer_view();
       let latest: Option<LoopFrame<GameFrame>> = self.feed.get_latest();
 
@@ -74,15 +93,42 @@ impl GamePlay<'_> {
 
       self.developer.send(self.view, view, latest);
 
+      // The endpoint is taken out while it serves, since a console request runs a line through play.
       #[cfg(feature = "mcp")]
-      if let Some(control) = &self.control
-        && !control.serve(self)
-      {
-        return;
+      if let Some(control) = self.control.take() {
+        let is_playing: bool = control.serve(self);
+
+        self.control = Some(control);
+
+        if !is_playing || self.is_quitting {
+          return;
+        }
       }
 
       std::thread::sleep(Self::POLL_WAIT);
     }
+  }
+
+  /// Runs the console line `text`, as the drawer or the bridge enters it: shown in the drawer with its answer, then
+  /// what it asks of the game applied.
+  pub(crate) fn run_console(&mut self, text: &str) -> ConsoleAnswer {
+    let answer: ConsoleAnswer = self.console.execute(text);
+
+    self
+      .developer
+      .push_lines(std::iter::once(format!("> {text}")).chain(answer.lines.iter().cloned()));
+
+    for effect in self.console.take_effects() {
+      match effect {
+        GameConsoleEffect::ApplySettings => self.view.apply_settings(self.console.get_settings()),
+        GameConsoleEffect::Movement(command) => {
+          self.send(GameCommand::Movement(command));
+        }
+        GameConsoleEffect::Quit => self.is_quitting = true,
+      }
+    }
+
+    answer
   }
 
   /// Sends a command to the loop, answering whether it still takes them.

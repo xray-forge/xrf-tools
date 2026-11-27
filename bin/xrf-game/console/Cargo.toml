@@ -1,0 +1,16 @@
+[package]
+name = "xrf-game-console"
+version = "0.1.0"
+publish = false
+description = "XRF game: the console's command and variable registry, run from the developer layer and the bridge"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+
+[lints]
+workspace = true

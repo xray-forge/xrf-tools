@@ -4,6 +4,9 @@ use crate::game_setting_override::GameSettingOverride;
 use crate::game_settings::GameSettings;
 
 impl GameSettings {
+  /// How an optional setting left unset is written.
+  pub(crate) const UNSET: &'static str = "none";
+
   /// These settings with `overrides` applied in order, each as the type these settings hold at its path: a list
   /// replaced whole, a value spelled as the file or the argument writes it. One that names nothing these settings hold,
   /// or whose value is not one the setting takes, is logged and left out, so a mistyped line never stops the game.
@@ -27,11 +30,15 @@ impl GameSettings {
       }
     }
 
-    serde_json::from_value(tree).unwrap_or(self)
+    let mut merged: Self = serde_json::from_value(tree).unwrap_or(self);
+
+    merged.hold_to_bounds();
+
+    merged
   }
 
   /// `tree` with `over` applied, checked by reading the whole settings back from it; why not where it cannot be.
-  fn apply(tree: &Value, over: &GameSettingOverride) -> Result<Value, String> {
+  pub(crate) fn apply(tree: &Value, over: &GameSettingOverride) -> Result<Value, String> {
     let segments: Vec<String> = over.path.split('.').map(Self::format_camel_case).collect();
     let (leaf, groups) = segments.split_last().ok_or("an empty path names nothing")?;
     let mut candidates: Vec<String> = vec![over.value.clone()];
@@ -45,10 +52,7 @@ impl GameSettings {
 
     for value in candidates {
       let mut next: Value = tree.clone();
-      let group: &mut Map<String, Value> = Self::find_group(&mut next, groups)?;
-      let slot: &mut Value = group
-        .get_mut(leaf.as_str())
-        .ok_or_else(|| format!("the settings hold no '{leaf}' there"))?;
+      let slot: &mut Value = Self::find_slot(&mut next, groups, leaf)?;
 
       *slot = Self::parse_like(slot, &value)?;
 
@@ -58,7 +62,25 @@ impl GameSettings {
       }
     }
 
+    // `none` leaves an optional setting unset, where no variant or text of that name was taken above.
+    if over.value.eq_ignore_ascii_case(Self::UNSET) {
+      let mut next: Value = tree.clone();
+
+      *Self::find_slot(&mut next, groups, leaf)? = Value::Null;
+
+      if serde_json::from_value::<Self>(next.clone()).is_ok() {
+        return Ok(next);
+      }
+    }
+
     Err(reason)
+  }
+
+  /// The value `leaf` names in the group `groups` names under `tree`'s root.
+  fn find_slot<'a>(tree: &'a mut Value, groups: &[String], leaf: &str) -> Result<&'a mut Value, String> {
+    Self::find_group(tree, groups)?
+      .get_mut(leaf)
+      .ok_or_else(|| format!("the settings hold no '{leaf}' there"))
   }
 
   /// The group `groups` names under `tree`'s root.

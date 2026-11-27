@@ -8,6 +8,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use image::{ImageFormat, RgbaImage};
 use serde_json::{Value, json};
 use xrf_error::{XrfError, XrfResult};
+use xrf_game_console::ConsoleAnswer;
 use xrf_game_loop::LoopFrame;
 use xrf_game_mcp::{GameEndpoint, GameEvent, GameInput, GameRequest, GameRequestKind, GameResponse};
 use xrf_game_movement::{MovementCamera, MovementCommand};
@@ -24,8 +25,8 @@ use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
 
 /// The game's answers to the control endpoint: where it stands, the camera stood where asked, input played as the
-/// window would deliver it, the window's frame written to a file, and a quit. Requests are taken between frames on the
-/// main thread.
+/// window would deliver it, a console line run as the drawer runs it, the window's frame written to a file, and a quit.
+/// Requests are taken between frames on the main thread.
 pub(crate) struct GameControl {
   endpoint: GameEndpoint,
   level: String,
@@ -78,7 +79,7 @@ impl GameControl {
 
   /// Tells the bridge the level is ready once it first stands ready, answers input requests whose input is all
   /// delivered, then answers every request waiting, answering whether the game plays on: a quit ends it.
-  pub(crate) fn serve(&self, play: &GamePlay<'_>) -> bool {
+  pub(crate) fn serve(&self, play: &mut GamePlay<'_>) -> bool {
     if !self.is_announced.get() && play.view.is_ready() {
       self.is_announced.set(true);
       self.endpoint.announce(&GameEvent::Ready {
@@ -116,8 +117,17 @@ impl GameControl {
     true
   }
 
-  fn answer(&self, play: &GamePlay<'_>, kind: GameRequestKind) -> XrfResult<Value> {
+  fn answer(&self, play: &mut GamePlay<'_>, kind: GameRequestKind) -> XrfResult<Value> {
     match kind {
+      GameRequestKind::Console { line } => {
+        let answer: ConsoleAnswer = play.run_console(&line);
+
+        if answer.is_failed {
+          return Err(XrfError::new_invalid_error(answer.lines.join("\n")));
+        }
+
+        Ok(json!({ "lines": answer.lines }))
+      }
       GameRequestKind::Status => self.describe(play),
       GameRequestKind::Pose { position, target } => {
         let camera: MovementCamera = MovementCamera::looking_at(Vec3::from(position), Vec3::from(target));

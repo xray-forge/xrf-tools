@@ -1,13 +1,17 @@
 use std::fs::File;
 use std::panic;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use env_logger::{Builder, Target};
+use env_logger::{Builder, Logger, Target};
+use log::{LevelFilter, SetLoggerError};
 
 use crate::file::log_run::LogRun;
 use crate::line::log_layout::LogLayout;
 use crate::log_filter::LogFilter;
 use crate::log_sink::LogSink;
+use crate::tail::log_tail::LogTail;
+use crate::tail::log_tee::LogTee;
 
 /// How a process starts logging: its logger, writing to the console and to this run's log file, panics included.
 pub struct LogSetup {
@@ -16,6 +20,9 @@ pub struct LogSetup {
   pub version: String,
   /// Where the run's log may be made, best first.
   pub directories: Vec<PathBuf>,
+  /// Where the application's own viewer takes the records it shows, beside the console and the file; none for one
+  /// that shows none.
+  pub tail: Option<Arc<LogTail>>,
 }
 
 impl LogSetup {
@@ -32,18 +39,19 @@ impl LogSetup {
       application,
       version,
       directories,
+      tail,
     } = self;
 
     match LogRun::open(application, &directories) {
       Ok(run) => match run.log.file.try_clone() {
         Ok(file) => {
-          Self::start(filter, Some(file));
+          Self::start(filter, Some(file), tail);
           log::info!("{application} {version} logging to '{}'", run.log.path.display());
 
           Some(run)
         }
         Err(error) => {
-          Self::start(filter, None);
+          Self::start(filter, None, tail);
           log::warn!(
             "{application} {version} logging to the console alone, '{}' not writable: {error}",
             run.log.path.display()
@@ -53,7 +61,7 @@ impl LogSetup {
         }
       },
       Err(refusals) => {
-        Self::start(filter, None);
+        Self::start(filter, None, tail);
         log::warn!("{application} {version} logging to the console alone, no log file opening: {refusals}");
 
         None
@@ -62,15 +70,26 @@ impl LogSetup {
   }
 
   /// Installs the process's logger, filtered by `filter`, writing to the console and to `file` where the run has one,
-  /// and has it log panics.
-  fn start(filter: &LogFilter, file: Option<File>) {
-    let mut logger: Builder = env_logger::builder();
+  /// each record also kept by `tail` where there is one, and has it log panics.
+  fn start(filter: &LogFilter, file: Option<File>, tail: Option<Arc<LogTail>>) {
+    let mut builder: Builder = env_logger::builder();
 
-    filter.configure(&mut logger);
-    LogLayout::configure(&mut logger);
-    logger.target(Target::Pipe(Box::new(LogSink::new(file))));
-    logger.init();
+    filter.configure(&mut builder);
+    LogLayout::configure(&mut builder);
+    builder.target(Target::Pipe(Box::new(LogSink::new(file))));
 
+    let logger: Logger = builder.build();
+    let level: LevelFilter = logger.filter();
+    let installed: Result<(), SetLoggerError> = match tail {
+      Some(tail) => log::set_boxed_logger(Box::new(LogTee { logger, tail })),
+      None => log::set_boxed_logger(Box::new(logger)),
+    };
+
+    if let Err(error) = installed {
+      panic!("the process already has a logger: {error}");
+    }
+
+    log::set_max_level(level);
     Self::log_panics();
   }
 

@@ -36,14 +36,14 @@ fn changes_a_number_a_flag_and_a_variant_over_the_preset() {
     over("view.shadows.resolution", "2048"),
     over("view.grass.is_shadowed", "off"),
     over("view.display_transform", "pbr_neutral"),
-    over("view.grass.radius", "120.5"),
+    over("view.grass.radius", "120"),
     over("window.mode", "windowed"),
   ]);
 
   assert_eq!(settings.view.shadows.resolution, 2048);
   assert!(!settings.view.grass.is_shadowed);
   assert_eq!(settings.view.display_transform, RenderDisplayTransform::PbrNeutral);
-  assert!((settings.view.grass.radius - 120.5).abs() < 1e-6);
+  assert!((settings.view.grass.radius - 120.0).abs() < 1e-6);
   assert_eq!(settings.window.mode, GameWindowMode::Windowed);
 }
 

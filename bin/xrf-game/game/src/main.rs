@@ -1,11 +1,12 @@
 #![doc = include_str!("../README.md")]
 
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use clap::Parser;
 use xrf_game::{GameArguments, GameDirectories, GameLogSetup, GameRun};
 use xrf_game_settings::GameSettings;
-use xrf_logging::ProcessStart;
+use xrf_logging::{LogTail, ProcessStart};
 
 fn main() -> ExitCode {
   ProcessStart::stamp();
@@ -13,7 +14,7 @@ fn main() -> ExitCode {
   let arguments: GameArguments = GameArguments::parse();
   let directories: GameDirectories = GameDirectories::for_game();
 
-  GameLogSetup::install(&directories, env!("CARGO_PKG_VERSION"));
+  let log: Arc<LogTail> = GameLogSetup::install(&directories, env!("CARGO_PKG_VERSION"));
 
   let settings: GameSettings = GameSettings::load(&directories.get_settings_files(), arguments.preset, &arguments.sets);
 
@@ -27,7 +28,7 @@ fn main() -> ExitCode {
     settings.view.shadows.resolution
   );
 
-  match GameRun::run(&arguments, &settings, &directories) {
+  match GameRun::run(&arguments, &settings, &directories, log) {
     Ok(()) => {
       log::info!("Exiting after {:.1?}", ProcessStart::get_uptime());
 

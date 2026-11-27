@@ -35,9 +35,10 @@ Rules:
 ## The bridge's tools
 
 `game_start` (a tree's `root` and a `level`, more arguments optional; waits until the game says it is ready),
-`game_status`, `game_pose`, `game_input`, `game_capture`, `game_log` and `game_quit`. `game_log` reads the newest
-`xrf-game.*.log` from disk (`GameLogs`), so a game that hung or crashed still has its log read. The input ending quits
-a game still running. It answers `initialize`, `ping`, `tools/list` and `tools/call` as the engine's own server does
+`game_status`, `game_pose`, `game_input`, `game_console` (a line run in the game's console as typed into its drawer,
+answered with its lines, a refused line an error), `game_capture`, `game_log` and `game_quit`. `game_log` reads the
+newest `xrf-game.*.log` from disk (`GameLogs`), so a game that hung or crashed still has its log read. The input ending
+quits a game still running. It answers `initialize`, `ping`, `tools/list` and `tools/call` as the engine's own server does
 (`xrf-engine/cli/mcp/McpStdioServer.ts`), with no async runtime.
 
 ## Checks

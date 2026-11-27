@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
 
-/// The console: the last lines it was given and what is typed into it. It knows no commands yet: a line entered is
-/// echoed and answered as unknown, until the console's command registry exists.
+/// The console's drawer: the last lines it was given, what is typed into it, and the lines entered, which the game
+/// takes to run (`take_entered`) and answers by pushing lines back.
 #[derive(Debug, Default)]
 pub struct DeveloperConsole {
   lines: VecDeque<String>,
   input: String,
+  entered: Vec<String>,
 }
 
 impl DeveloperConsole {
@@ -24,6 +25,11 @@ impl DeveloperConsole {
   /// The lines it holds, oldest first.
   pub fn get_lines(&self) -> impl Iterator<Item = &str> {
     self.lines.iter().map(String::as_str)
+  }
+
+  /// The lines entered since the last take, in order, for the game to run.
+  pub fn take_entered(&mut self) -> Vec<String> {
+    std::mem::take(&mut self.entered)
   }
 
   /// Draws it into `ui`: its lines in a scroll held to the bottom, then the field typed into, which a press of Enter
@@ -51,8 +57,7 @@ impl DeveloperConsole {
       let entered: String = std::mem::take(&mut self.input);
 
       if !entered.trim().is_empty() {
-        self.push(format!("> {entered}"));
-        self.push(format!("Unknown command: {}", entered.trim()));
+        self.entered.push(entered);
       }
     }
 

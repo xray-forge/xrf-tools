@@ -31,8 +31,9 @@ pub struct RenderViewOptions {
 
 impl RenderViewOptions {
   /// Hold the features and the output the settings set to the bounds their schema describes; what the view shows, how
-  /// it shades and its staging are its own.
-  pub(crate) fn hold_to_bounds(&mut self) {
+  /// it shades and its staging are its own. The renderer holds what it is sent; a host holds its own copy to show the
+  /// value that is drawn with.
+  pub fn hold_to_bounds(&mut self) {
     self.features.hold_to_bounds();
     self.output.hold_to_bounds();
   }

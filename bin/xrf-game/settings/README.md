@@ -1,7 +1,7 @@
 # xrf-game-settings
 
 What the game draws with and how its window opens: its presets, its settings file, and the changes a run is started
-with. The game binary loads them; the console and the developer layer will read and edit the same settings.
+with. The game binary loads them; its console reads and sets the same settings while it runs.
 
 ## The settings
 
@@ -37,8 +37,18 @@ height = 900
 
 Each value is read as the type the preset holds at its key: a flag (`true`, `on`, `yes`, `1` and their opposites), a
 number, a variant as the renderer names it (`pbr_neutral` or `pbrNeutral`), or a list, comma-separated, which replaces
-the preset's whole. A change is kept only where the whole settings still read back with it: a key the settings hold no
-setting for, or a value the setting does not take, is logged and left out, and the rest still applies.
+the preset's whole. `none` leaves an optional setting unset. A change is kept only where the whole settings still read
+back with it: a key the settings hold no setting for, or a value the setting does not take, is logged and left out, and
+the rest still applies. Once merged, the settings are held to the bounds the renderer holds them to as it takes them
+(`hold_to_bounds`: `view.grass.radius = 120.5` reads back as a whole number), so they read as they are drawn with;
+`get_view_options` gives the view's options they draw with.
+
+## Paths
+
+`GameSettings::get_entries` lists every setting as the file writes it (`GameSettingEntry`: the dotted path in snake
+case and the value as text), and `with_setting(path, value)` sets one the same way, held to its bounds, answering why
+not where it cannot.
+Every value listed sets back unchanged. The console's variables are these entries.
 
 ## Checks
 

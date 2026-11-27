@@ -1,0 +1,1 @@
+mod console_registry;

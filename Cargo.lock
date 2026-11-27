@@ -8857,6 +8857,7 @@ dependencies = [
  "xrf-engine-target",
  "xrf-error",
  "xrf-game-alife",
+ "xrf-game-console",
  "xrf-game-developer",
  "xrf-game-graph",
  "xrf-game-loop",
@@ -8898,6 +8899,10 @@ dependencies = [
  "xrf-math",
  "xrf-spawn",
 ]
+
+[[package]]
+name = "xrf-game-console"
+version = "0.1.0"
 
 [[package]]
 name = "xrf-game-developer"

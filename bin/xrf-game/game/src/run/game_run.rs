@@ -11,11 +11,13 @@ use xrf_game_platform::{
 };
 use xrf_game_settings::{GameSettings, GameWindowMode};
 use xrf_job::ExecutionRequest;
+use xrf_logging::LogTail;
 use xrf_renderer::RenderWorkers;
 use xrf_renderer_host::HostedWindow;
 use xrf_world::WorldFedCamera;
 
 use crate::arguments::game_arguments::GameArguments;
+use crate::console::game_console::GameConsole;
 #[cfg(feature = "mcp")]
 use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
@@ -33,13 +35,18 @@ use crate::state::game_view_feed::GameViewFeed;
 pub struct GameRun;
 
 impl GameRun {
-  /// Plays the level `arguments` name until the player or an agent quits.
+  /// Plays the level `arguments` name until the player or an agent quits, its console showing `log`'s records.
   ///
   /// # Errors
   ///
   /// Returns why the game cannot start: an endpoint not built, a session that cannot open (`GameSession::open`), or a
   /// window, renderer, loop or endpoint that cannot start.
-  pub fn run(arguments: &GameArguments, settings: &GameSettings, directories: &GameDirectories) -> XrfResult<()> {
+  pub fn run(
+    arguments: &GameArguments,
+    settings: &GameSettings,
+    directories: &GameDirectories,
+    log: Arc<LogTail>,
+  ) -> XrfResult<()> {
     if cfg!(not(feature = "mcp")) && arguments.mcp {
       return Err(XrfError::new_not_implemented_error(
         "this build has no control endpoint; build with the mcp feature",
@@ -98,12 +105,15 @@ impl GameRun {
       bindings: GameBindings::default(),
       feed: Arc::clone(game_loop.get_feed()),
       developer: GameDeveloper::default(),
+      console: GameConsole::new(settings.clone()),
+      log,
       footsteps,
       #[cfg(feature = "mcp")]
       control: arguments
         .mcp
         .then(|| GameControl::start(&level_name, directories.get_captures_directory()))
         .transpose()?,
+      is_quitting: false,
     }
     .run(&mut platform);
 
