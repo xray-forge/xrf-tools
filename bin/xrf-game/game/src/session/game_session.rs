@@ -7,6 +7,7 @@ use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
 use xrf_game_movement::{FlyMode, Movement, MovementMode, WalkMode};
 use xrf_game_objects::ObjectRegistry;
 use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
+use xrf_gamemtl::GameMtlFile;
 use xrf_level::LevelCformGeometry;
 use xrf_level_source::{LevelAudio, LevelRenderSource};
 use xrf_physics::{PhysicsLevel, PhysicsWorld};
@@ -19,6 +20,7 @@ use crate::level::game_level::GameLevel;
 use crate::level::game_spawn::GameSpawn;
 use crate::level::game_tree::GameTree;
 use crate::session::game_start::GameStart;
+use crate::sound::game_footsteps::GameFootsteps;
 use crate::sound::game_sound::GameSound;
 use crate::state::game_state::GameState;
 
@@ -32,6 +34,8 @@ pub struct GameSession {
   pub source: Arc<dyn WorldLevelSource>,
   /// A new game's state, which the loop takes.
   pub state: GameState,
+  /// The player's footsteps, which presentation plays from the loop's frames.
+  pub footsteps: GameFootsteps,
 }
 
 impl GameSession {
@@ -66,6 +70,8 @@ impl GameSession {
 
     log::info!("New game seed {seed}; --seed {seed} starts the same game");
 
+    // The level's physics and the player's footsteps both read the game materials.
+    let materials: GameMtlFile = tree.read_materials()?;
     // The level, the new game and the level's physics read different files and share nothing until the state is put
     // together.
     let (level, (start, physics)): (XrfResult<GameLevel>, (XrfResult<GameStart>, XrfResult<PhysicsWorld>)) = pool.join(
@@ -73,7 +79,7 @@ impl GameSession {
       || {
         pool.join(
           || Self::read_start(&tree, &level_name, seed),
-          || Self::read_physics(&tree, &level_name),
+          || Self::read_physics(&tree, &level_name, &materials),
         )
       },
     );
@@ -94,6 +100,7 @@ impl GameSession {
       movement: Movement::new(level.get_start_camera(), mode),
       alife: start.alife,
     };
+    let footsteps: GameFootsteps = GameFootsteps::of_materials(&materials, start.step_volume, seed);
 
     log::info!("Level '{level_name}' opened in {:.1?}", started.elapsed());
 
@@ -101,6 +108,7 @@ impl GameSession {
       level_name,
       source,
       state,
+      footsteps,
     })
   }
 
@@ -198,15 +206,16 @@ impl GameSession {
     Ok(GameStart {
       objects,
       alife: Alife::new(settings, data, level),
+      step_volume: configs.read_step_volume(),
     })
   }
 
-  /// The physics world of the level `level_name`: its collision form as one mesh, which takes a second or two for a
-  /// large level, so it is built beside the rest of the level.
-  fn read_physics(tree: &GameTree, level_name: &str) -> XrfResult<PhysicsWorld> {
+  /// The physics world of the level `level_name`: its collision form, a mesh for each of its game `materials`, which
+  /// takes a second or two for a large level, so it is built beside the rest of the level.
+  fn read_physics(tree: &GameTree, level_name: &str, materials: &GameMtlFile) -> XrfResult<PhysicsWorld> {
     let started: Instant = Instant::now();
     let collision: LevelCformGeometry = tree.read_collision(level_name)?;
-    let level: PhysicsLevel = PhysicsLevel::of_cform(&collision, &tree.read_materials()?)?;
+    let level: PhysicsLevel = PhysicsLevel::of_cform(&collision, materials)?;
     let world: PhysicsWorld = PhysicsWorld::with_level(&level)?;
 
     log::info!(

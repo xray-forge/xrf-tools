@@ -71,6 +71,8 @@ One viewport is heard at a time, from its camera; every other scene plays on sil
 
 - The source's `read_sounds` gives the level's static sounds and music tracks, and `open_sound` the `WorldSoundSink`
   the scene's sound frames go to; a source that opens none is not heard.
+- `play_sound(viewport, cue)` plays a host's one-off sound in the viewport's scene (`WorldSoundCue`: a reference the
+  source's `read_sound` finds, its kind, where, 2D or not, how loud), as the game plays the player's footsteps.
 - `has_sound` tells whether a viewport's scene plays sound, `report_sound` reports it, and `command_music` steers its
   music.
 

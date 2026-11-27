@@ -13,7 +13,7 @@ use xrf_renderer::{
   RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
 };
 use xrf_renderer_host::DiskCacheStore;
-use xrf_world::{World, WorldLevelSource, WorldViewFeed};
+use xrf_world::{World, WorldLevelSource, WorldSoundCue, WorldViewFeed};
 
 use crate::render::game_bundle::GameBundle;
 use crate::render::game_render_sink::GameRenderSink;
@@ -153,6 +153,11 @@ impl GameView {
 
     world.show_level(Self::VIEWPORT, Some(level));
     world.set_view_feed(Self::VIEWPORT, feed);
+  }
+
+  /// Plays `cue` in the shown level, at its next sound frame.
+  pub fn play_sound(&self, cue: WorldSoundCue) {
+    self.lock_world().play_sound(Self::VIEWPORT, cue);
   }
 
   /// Takes the view out of the window and stops the renderer, in the order the window's drop needs: detached, the

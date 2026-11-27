@@ -8875,6 +8875,7 @@ dependencies = [
  "xrf-ltx-project",
  "xrf-math",
  "xrf-physics",
+ "xrf-random",
  "xrf-renderer",
  "xrf-renderer-host",
  "xrf-session",

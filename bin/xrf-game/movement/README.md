@@ -20,6 +20,11 @@ physics world (`xrf-physics`), which its context (`MovementContext`) hands it ea
   is held to a tenth of it (`PHMovementControl.cpp`), reached at that acceleration on the ground and barely steered in
   the air (`air_control_param`). Up jumps at `jump_speed`; the eye stands `camera_height_factor` up the box. The actor
   is put in the physics world the first time walking steps (`WalkState`) and taken out when flight steps.
+- Down crouches (`WalkStance`): to `ph_box1`'s height, or `ph_box2`'s with accel held, slowed by `crouch_coef`, on the
+  ground only and only where the shorter capsule fits; letting go stands up once the standing one fits. Crouched, the
+  actor neither jumps nor sprints, and the eye eases to the box's height.
+- `Movement::get_footing` reports what the walking actor stands on after each step (`MovementFooting`: its feet, the
+  ground's game material, its `WalkPace` and speed), which the game plays its footsteps by.
 
 It depends on the loop and the physics world, never on another system.
 

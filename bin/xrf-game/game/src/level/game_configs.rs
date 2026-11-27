@@ -18,6 +18,9 @@ impl GameConfigs {
   /// The config holding `[alife]`.
   const ALIFE_FILE: &'static str = "alife.ltx";
 
+  const HUD_SOUND_SECTION: &'static str = "hud_sound";
+  const STEP_VOLUME_KEY: &'static str = "hud_step_sound_vol_k";
+
   /// The configs' `[alife]`, a mod's overrides applied as the dialect applies them; Call of Pripyat's where the tree
   /// holds none or it does not read.
   pub fn read_alife_settings(&self) -> AlifeSettings {
@@ -31,6 +34,30 @@ impl GameConfigs {
 
         AlifeSettings::default()
       }
+    }
+  }
+
+  /// How loud the player's own steps play against their power, `system.ltx`'s `[hud_sound] hud_step_sound_vol_k`, as
+  /// `InitHudSoundSettings` reads it: 1 where the configs set none.
+  pub fn read_step_volume(&self) -> f32 {
+    let value: Option<&str> = self
+      .system
+      .ltx
+      .section(Self::HUD_SOUND_SECTION)
+      .and_then(|section| section.get(Self::STEP_VOLUME_KEY));
+
+    match value.map(|value| value.trim().parse::<f32>()) {
+      Some(Ok(volume)) => volume,
+      Some(Err(_)) => {
+        log::warn!(
+          "[{}] {} is no number; steps play at full volume",
+          Self::HUD_SOUND_SECTION,
+          Self::STEP_VOLUME_KEY
+        );
+
+        1.0
+      }
+      None => 1.0,
     }
   }
 

@@ -4,15 +4,17 @@ The game's physics: [Jolt](https://github.com/jrouwe/JoltPhysics) through `oxijo
 so nothing else names the engine. The choice and its alternatives are in xrf-agents'
 `reports/20261127152002-design-options-xrf-game-physics.md`.
 
-- `PhysicsLevel` is a level's collision as the engine collides with it: its `level.cform` as one static mesh, X-Ray's
-  clockwise faces turned, the faces of passable game materials left out (bushes; `flPassable` unless also
-  `flActorObstacle`, as X-Ray's physics treats them). Building it takes a second or two for a large level, so it is
-  built off the game loop.
+- `PhysicsLevel` is a level's collision as the engine collides with it: its `level.cform` as a static compound of one
+  mesh a game material, each child carrying the material's id, X-Ray's clockwise faces turned, the faces of passable
+  game materials left out (bushes; `flPassable` unless also `flActorObstacle`, as X-Ray's physics treats them).
+  Building it takes a second or two for a large level, so it is built off the game loop.
 - `PhysicsWorld` holds the level and the actors walking it, stepped by the game loop's fixed step, under X-Ray's gravity
   of twice Earth's (`default_world_gravity`).
 - An actor is Jolt's `CharacterVirtual`, an upright capsule shaped by `PhysicsActorSettings` (X-Ray's standing box,
   mass, 45° slope limit and climb): `move_actor` moves it at a velocity, sliding along walls, walking up steps and
-  sticking to the floor going down, and answers where it stands (`PhysicsActorState`, `PhysicsGround`). On a level's
+  sticking to the floor going down, and answers where it stands (`PhysicsActorState`, `PhysicsGround`, and the
+  ground's game material). `reshape_actor` changes its height in place, refused where the new capsule would not fit,
+  as crouching and standing up need. On a level's
   triangles its round bottom rides about 0.25 m over a ledge beyond its step-up, so a 0.3 m step-up climbs what X-Ray's
   0.5 m climb does.
 

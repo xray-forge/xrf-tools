@@ -57,6 +57,7 @@ impl LoopState for GameState {
   fn get_frame(&self) -> GameFrame {
     GameFrame {
       camera: *self.movement.get_camera(),
+      footing: self.movement.get_footing(),
       objects: u32::try_from(self.objects.get_records().len()).unwrap_or(u32::MAX),
       online: u32::try_from(self.objects.get_online().len()).unwrap_or(u32::MAX),
       squads: u32::try_from(self.objects.get_groups().len()).unwrap_or(u32::MAX),

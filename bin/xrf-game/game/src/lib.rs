@@ -29,6 +29,7 @@ pub use crate::render::game_bundle::GameBundle;
 pub use crate::render::game_view::GameView;
 pub use crate::run::game_run::GameRun;
 pub use crate::session::game_session::GameSession;
+pub use crate::sound::game_footsteps::GameFootsteps;
 pub use crate::sound::game_sound::GameSound;
 pub use crate::state::game_command::GameCommand;
 pub use crate::state::game_frame::GameFrame;

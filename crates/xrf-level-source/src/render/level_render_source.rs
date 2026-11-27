@@ -18,7 +18,7 @@ use xrf_renderer_host::{ResolvedTexture, TextureResolver};
 use xrf_session::SessionSnapshot;
 use xrf_vfs::{XraySearch, XrayVfsHost};
 use xrf_visual::{HemiEstimator, LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
-use xrf_world::{WorldLevelSounds, WorldLevelSource, WorldLevelWeather, WorldSoundSink};
+use xrf_world::{WorldLevelSounds, WorldLevelSource, WorldLevelWeather, WorldSound, WorldSoundSink};
 
 use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
@@ -327,6 +327,17 @@ impl WorldLevelSource for LevelRenderSource {
 
   fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
     LevelWorldSounds::read(&self.level, &self.search()?)
+  }
+
+  fn read_sound(&self, reference: &str) -> WorldSound {
+    match self.search() {
+      Ok(search) => LevelSoundFilesPart::with_files(&self.level, &search, |files| files.get(reference)),
+      Err(error) => {
+        log::warn!("The sound '{reference}' cannot be read: {error}");
+
+        WorldSound::new(reference, None)
+      }
+    }
   }
 
   /// A scene on the audio's control thread, its sounds read from the roots the level opened in and shaped by its

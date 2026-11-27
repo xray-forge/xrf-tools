@@ -8,11 +8,14 @@ use crate::camera::movement_camera::MovementCamera;
 use crate::camera::movement_heading::MovementHeading;
 use crate::input::movement_action::MovementAction;
 use crate::input::movement_input_state::MovementInputState;
+use crate::mode::movement_footing::MovementFooting;
+use crate::mode::walk_pace::WalkPace;
+use crate::mode::walk_stance::WalkStance;
 use crate::mode::walk_state::WalkState;
 
 /// On foot, as X-Ray's actor moves: the mouse turns the view as in flight; forward, back and sideways run along the
-/// ground unless accel is held, which walks; a toggled sprint runs faster forward; up jumps; the physics world keeps
-/// the actor on the level.
+/// ground unless accel is held, which walks; a toggled sprint runs faster forward; up jumps; down crouches, low with
+/// accel held; the physics world keeps the actor on the level.
 ///
 /// Speeds follow X-Ray's: the control acceleration is `walk_accel` times the pace's factors
 /// (`Actor_Movement.cpp`, `g_cl_CheckControls`), and the actor's speed is held to a tenth of it
@@ -29,33 +32,44 @@ pub struct WalkMode {
   pub walk_back: f32,
   /// What sprinting multiplies a forward run by: `sprint_koef`.
   pub sprint: f32,
+  /// What crouching multiplies it by: `crouch_coef`.
+  pub crouch: f32,
   /// How much of the acceleration steers the actor in the air: `air_control_param`.
   pub air_control: f32,
   /// Metres a second up a jump starts at: `jump_speed`.
   pub jump_speed: f32,
   /// Radians a count of the mouse turns by.
   pub sensitivity: f32,
-  /// How high the eye stands above the feet, metres: `camera_height_factor` times the box's height less X-Ray's 5 cm
+  /// The actor's height crouched, metres: `ph_box1`.
+  pub crouch_height: f32,
+  /// The actor's height crouched low, metres: `ph_box2`.
+  pub low_height: f32,
+  /// Where the eye stands up the actor's box: `camera_height_factor`, of the box's height less X-Ray's 5 cm
   /// (`ActorCameras.cpp`).
-  pub eye_height: f32,
+  pub eye_factor: f32,
+  /// Metres a second the eye moves at to a new stance's height.
+  pub eye_speed: f32,
   pub actor: PhysicsActorSettings,
 }
 
 impl Default for WalkMode {
   fn default() -> Self {
-    let actor: PhysicsActorSettings = PhysicsActorSettings::default();
-
     Self {
       walk_accel: 11.5,
       run: 2.41,
       run_back: 1.33,
       walk_back: 0.61,
       sprint: 2.08,
+      crouch: 0.45,
       air_control: 0.02,
       jump_speed: 6.85,
       sensitivity: 0.0025,
-      eye_height: 0.92 * (actor.height - 0.05),
-      actor,
+      crouch_height: 1.34,
+      low_height: 0.44,
+      eye_factor: 0.92,
+      // Ours: X-Ray's camera follows the box's height through its own effectors.
+      eye_speed: 3.0,
+      actor: PhysicsActorSettings::default(),
     }
   }
 }
@@ -63,6 +77,23 @@ impl Default for WalkMode {
 impl WalkMode {
   /// What X-Ray holds the actor's speed to: a tenth of its control acceleration.
   const SPEED_PER_ACCELERATION: f32 = 0.1;
+
+  /// What X-Ray takes off a box's height before it places the eye (`cammera_into_collision_shift`).
+  const EYE_SHIFT: f32 = 0.05;
+
+  /// How high the eye stands over the feet in `stance`.
+  pub fn get_eye_height(&self, stance: WalkStance) -> f32 {
+    self.eye_factor * (self.get_height(stance) - Self::EYE_SHIFT)
+  }
+
+  /// The actor's height in `stance`.
+  pub fn get_height(&self, stance: WalkStance) -> f32 {
+    match stance {
+      WalkStance::Standing => self.actor.height,
+      WalkStance::Crouching => self.crouch_height,
+      WalkStance::CrouchingLow => self.low_height,
+    }
+  }
 
   /// Turns `camera` by the mouse's counts since the last step, then moves the actor by what is held for `step` in
   /// `physics`, putting one there at the camera's feet first where `state` holds none; the camera ends at its eye.
@@ -84,10 +115,12 @@ impl WalkMode {
     let actor: PhysicsActorId = match state.actor {
       Some(actor) => actor,
       None => {
-        let actor: PhysicsActorId = physics.create_actor(&self.actor, camera.position - Vec3::Y * self.eye_height)?;
+        let eye: f32 = self.get_eye_height(WalkStance::Standing);
+        let actor: PhysicsActorId = physics.create_actor(&self.actor, camera.position - Vec3::Y * eye)?;
 
         *state = WalkState {
           actor: Some(actor),
+          eye,
           ..WalkState::default()
         };
 
@@ -96,7 +129,10 @@ impl WalkMode {
     };
     let seconds: f32 = step.as_secs_f32();
     let before: PhysicsActorState = physics.get_actor(actor)?;
-    let acceleration: f32 = self.get_acceleration(input);
+
+    self.change_stance(input, state, physics, actor, before.ground)?;
+
+    let acceleration: f32 = self.get_acceleration(input, state.stance);
     // Along the ground, whatever the pitch: yaw turns `+z` towards `+x`, so the right of a heading is its forward
     // turned a quarter further.
     let (sin, cos): (f32, f32) = heading.yaw.sin_cos();
@@ -117,10 +153,10 @@ impl WalkMode {
 
     state.ground_velocity += change.clamp_length_max(most);
     // A jump leaves the ground rising, which the engine may still count as standing for a tick: standing resets the
-    // fall only while it is not rising.
+    // fall only while it is not rising. A crouched actor does not jump.
     state.fall = match before.ground {
       PhysicsGround::Standing if state.fall <= 0.0 => {
-        if input.is_held(MovementAction::Up) {
+        if input.is_held(MovementAction::Up) && state.stance == WalkStance::Standing {
           self.jump_speed
         } else {
           0.0
@@ -130,18 +166,54 @@ impl WalkMode {
     };
 
     let after: PhysicsActorState = physics.move_actor(actor, state.ground_velocity + Vec3::Y * state.fall, seconds)?;
+    let eye: f32 = self.get_eye_height(state.stance);
 
-    *camera = MovementCamera::facing(after.feet + Vec3::Y * self.eye_height, heading);
+    state.eye += (eye - state.eye).clamp(-self.eye_speed * seconds, self.eye_speed * seconds);
+    state.footing = Some(MovementFooting {
+      feet: after.feet,
+      ground_material: after.ground_material,
+      pace: self.get_pace(input, state.stance),
+      speed: state.ground_velocity.length(),
+    });
+    *camera = MovementCamera::facing(after.feet + Vec3::Y * state.eye, heading);
+
+    Ok(())
+  }
+
+  /// Crouches, crouches low or stands as down and accel ask, as X-Ray's actor does: down crouches only on the ground,
+  /// low with accel held; any stance changes only where the actor's new box has room.
+  fn change_stance(
+    &self,
+    input: &MovementInputState,
+    state: &mut WalkState,
+    physics: &mut PhysicsWorld,
+    actor: PhysicsActorId,
+    ground: PhysicsGround,
+  ) -> XrfResult {
+    let wanted: WalkStance = if !input.is_held(MovementAction::Down) {
+      WalkStance::Standing
+    } else if input.is_held(MovementAction::Accel) {
+      WalkStance::CrouchingLow
+    } else {
+      WalkStance::Crouching
+    };
+    let is_allowed: bool = wanted == WalkStance::Standing || ground == PhysicsGround::Standing;
+
+    if wanted != state.stance && is_allowed && physics.reshape_actor(actor, self.get_height(wanted))? {
+      state.stance = wanted;
+    }
 
     Ok(())
   }
 
   /// The control acceleration of what is held, as X-Ray scales `walk_accel`: running unless accel is held, the back
-  /// factors going backwards, and sprinting forward while it is toggled on, which stopping or going back turns off.
-  fn get_acceleration(&self, input: &mut MovementInputState) -> f32 {
+  /// factors going backwards, the crouch factor crouched, and sprinting forward while it is toggled on, which stopping,
+  /// going back or crouching turns off.
+  fn get_acceleration(&self, input: &mut MovementInputState, stance: WalkStance) -> f32 {
     let forward: f32 = input.get_axis(MovementAction::Forward, MovementAction::Back);
+    let is_crouched: bool = stance != WalkStance::Standing;
 
-    if forward <= 0.0 {
+    if forward <= 0.0 || is_crouched {
       input.stop_sprinting();
     }
 
@@ -156,8 +228,21 @@ impl WalkMode {
     } else {
       1.0
     };
+    let crouch: f32 = if is_crouched { self.crouch } else { 1.0 };
     let sprint: f32 = if input.is_sprinting() { self.sprint } else { 1.0 };
 
-    self.walk_accel * pace * sprint
+    self.walk_accel * pace * crouch * sprint
+  }
+
+  fn get_pace(&self, input: &MovementInputState, stance: WalkStance) -> WalkPace {
+    if stance != WalkStance::Standing {
+      WalkPace::Crouch
+    } else if input.is_sprinting() {
+      WalkPace::Sprint
+    } else if input.is_held(MovementAction::Accel) {
+      WalkPace::Walk
+    } else {
+      WalkPace::Run
+    }
   }
 }

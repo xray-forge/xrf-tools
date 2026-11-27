@@ -11,6 +11,7 @@ use xrf_visual::{HemiEstimator, LightsDescription, SectorPackage};
 
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
 use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
+use crate::host::sound::world_sound::WorldSound;
 use crate::host::world_level_weather::WorldLevelWeather;
 
 /// An open level as the world plays it: the application reads its parts on demand, on the renderer's loader threads,
@@ -146,6 +147,12 @@ pub trait WorldLevelSource: RenderLevelSource {
   /// Returns an error when the level's sounds cannot be read.
   fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
     Ok(WorldLevelSounds::default())
+  }
+
+  /// The sound `reference` names (`sounds\` relative, no extension), its file read for what the engine reads of it, as
+  /// a host's own cue plays it; without info where the file is missing or the source plays no sounds.
+  fn read_sound(&self, reference: &str) -> WorldSound {
+    WorldSound::new(reference, None)
   }
 
   /// Where the scene's sound frames go, asked once as its level starts playing; none for a source that is not heard.

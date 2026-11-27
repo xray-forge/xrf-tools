@@ -16,6 +16,7 @@ use xrf_visual::{HemiEstimator, LightsDescription, SectorPackage};
 use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
 use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
+use crate::host::sound::world_sound::WorldSound;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
@@ -173,6 +174,11 @@ impl WorldLevelSource for TestLevelSource {
 
   fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
     Ok(self.sounds.clone())
+  }
+
+  /// Every sound a cue names is found, a second long.
+  fn read_sound(&self, reference: &str) -> WorldSound {
+    crate::tests::sound::found(reference, 1)
   }
 
   fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {

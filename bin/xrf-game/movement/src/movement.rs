@@ -2,6 +2,7 @@ use xrf_game_loop::{LoopSystem, LoopTime};
 
 use crate::camera::movement_camera::MovementCamera;
 use crate::input::movement_input_state::MovementInputState;
+use crate::mode::movement_footing::MovementFooting;
 use crate::mode::movement_mode::MovementMode;
 use crate::mode::walk_state::WalkState;
 use crate::movement_command::MovementCommand;
@@ -43,6 +44,11 @@ impl Movement {
   pub fn get_walk(&self) -> &WalkState {
     &self.walk
   }
+
+  /// What the walking actor stood on and how it moved at the last step; none in flight.
+  pub fn get_footing(&self) -> Option<MovementFooting> {
+    self.walk.footing
+  }
 }
 
 impl LoopSystem for Movement {
@@ -61,11 +67,13 @@ impl LoopSystem for Movement {
   fn step(&mut self, time: &LoopTime, MovementContext { physics }: MovementContext<'_>) {
     match &self.mode {
       MovementMode::Fly(fly) => {
-        if let Some(actor) = self.walk.actor.take()
+        if let Some(actor) = self.walk.actor
           && let Err(error) = physics.remove_actor(actor)
         {
           log::error!("The actor did not leave the physics world: {error}");
         }
+
+        self.walk = WalkState::default();
 
         fly.step(&mut self.camera, &mut self.input, time.step);
       }

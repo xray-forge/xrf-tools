@@ -5,7 +5,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use xrf_game_developer::DeveloperView;
-use xrf_game_loop::LoopFeed;
+use xrf_game_loop::{LoopFeed, LoopFrame};
 use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
 use xrf_game_platform::{
   Platform, PlatformEvent, PlatformEventKind, PlatformScancode, PlatformSize, PlatformWindow, PlatformWindowCommand,
@@ -16,12 +16,14 @@ use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
 use crate::input::game_bindings::GameBindings;
 use crate::render::game_view::GameView;
+use crate::sound::game_footsteps::GameFootsteps;
 use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
 
 /// The game while it is played: the platform's events read through the developer layer and the bindings into the
-/// loop's commands, the view fit to the window, the developer layer drawn over it, and the control endpoint's requests
-/// answered between frames, until the player or an agent quits.
+/// loop's commands, the view fit to the window, the player's footsteps played from the loop's latest frame, the
+/// developer layer drawn over it, and the control endpoint's requests answered between frames, until the player or an
+/// agent quits.
 pub(crate) struct GamePlay<'a> {
   pub window: &'a mut PlatformWindow,
   pub view: &'a GameView,
@@ -30,6 +32,7 @@ pub(crate) struct GamePlay<'a> {
   /// What the loop publishes, which the developer layer's readout and the control endpoint's status read.
   pub feed: Arc<LoopFeed<GameFrame>>,
   pub developer: GameDeveloper,
+  pub footsteps: GameFootsteps,
   /// The control endpoint, where the game was started with `--mcp`.
   #[cfg(feature = "mcp")]
   pub control: Option<GameControl>,
@@ -60,8 +63,16 @@ impl GamePlay<'_> {
       }
 
       let view: DeveloperView = self.get_developer_view();
+      let latest: Option<LoopFrame<GameFrame>> = self.feed.get_latest();
 
-      self.developer.send(self.view, view, self.feed.get_latest());
+      if let Some(step) = self
+        .footsteps
+        .hear(latest.as_ref().and_then(|frame| frame.state.footing.as_ref()))
+      {
+        self.view.play_sound(step);
+      }
+
+      self.developer.send(self.view, view, latest);
 
       #[cfg(feature = "mcp")]
       if let Some(control) = &self.control

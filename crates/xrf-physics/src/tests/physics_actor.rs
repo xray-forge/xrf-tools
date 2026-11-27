@@ -228,6 +228,66 @@ fn actor_walks_through_bushes_but_not_walls_or_actor_obstacles() {
 }
 
 #[test]
+fn names_the_material_the_actor_stands_on() {
+  const MUD: u16 = 5;
+  const CONCRETE: u16 = 9;
+
+  let mut world: PhysicsWorld = Form::default()
+    .made_of(MUD)
+    .add_floor()
+    .made_of(CONCRETE)
+    .add_platform(0.3)
+    .build();
+  let actor: PhysicsActorId = world
+    .create_actor(&PhysicsActorSettings::default(), Vec3::ZERO)
+    .expect("the actor");
+
+  assert_eq!(walk(&mut world, actor, Vec3::ZERO, 10).ground_material, Some(MUD));
+  assert_eq!(
+    walk(&mut world, actor, Vec3::new(2.0, 0.0, 0.0), 200).ground_material,
+    Some(CONCRETE)
+  );
+}
+
+#[test]
+fn crouches_under_a_ceiling_and_stands_only_where_there_is_room() {
+  let mut world: PhysicsWorld = Form::default()
+    .add_floor()
+    .add_quad(
+      [
+        Vec3::new(2.0, 1.5, -5.0),
+        Vec3::new(2.0, 1.5, 5.0),
+        Vec3::new(12.0, 1.5, 5.0),
+        Vec3::new(12.0, 1.5, -5.0),
+      ],
+      Vec3::NEG_Y,
+    )
+    .build();
+  let actor: PhysicsActorId = world
+    .create_actor(&PhysicsActorSettings::default(), Vec3::ZERO)
+    .expect("the actor");
+
+  // Standing, the 1.5 m ceiling stops it; crouched to `ph_box1`'s 1.34 m, it goes under.
+  assert!(walk(&mut world, actor, Vec3::new(3.0, 0.0, 0.0), 100).feet.x < 2.0);
+  assert!(world.reshape_actor(actor, 1.34).expect("a crouch"));
+  assert!(walk(&mut world, actor, Vec3::new(3.0, 0.0, 0.0), 100).feet.x > 4.0);
+  assert!(!world.reshape_actor(actor, 1.8).expect("no room to stand"));
+
+  // Out the far side it stands up again, its feet where they were.
+  let crouched: PhysicsActorState = walk(&mut world, actor, Vec3::new(3.0, 0.0, 0.0), 300);
+
+  assert!(crouched.feet.x > 12.5, "{:?}", crouched.feet);
+  assert!(world.reshape_actor(actor, 1.8).expect("room to stand"));
+  assert!(
+    world
+      .get_actor(actor)
+      .expect("the actor")
+      .feet
+      .abs_diff_eq(crouched.feet, 1e-3)
+  );
+}
+
+#[test]
 fn finds_the_ground_below_a_point() {
   let world: PhysicsWorld = Form::default().add_floor().add_platform(0.5).build();
 

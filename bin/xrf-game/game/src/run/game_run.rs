@@ -51,6 +51,7 @@ impl GameRun {
       level_name,
       source,
       state,
+      footsteps,
     } = GameSession::open(arguments, &pool)?;
     let mut platform: Platform = Platform::start().map_err(Self::create_platform_error)?;
     let mut window: PlatformWindow = platform
@@ -97,6 +98,7 @@ impl GameRun {
       bindings: GameBindings::default(),
       feed: Arc::clone(game_loop.get_feed()),
       developer: GameDeveloper::default(),
+      footsteps,
       #[cfg(feature = "mcp")]
       control: arguments
         .mcp

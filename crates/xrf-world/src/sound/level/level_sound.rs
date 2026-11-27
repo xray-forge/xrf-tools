@@ -14,6 +14,7 @@ use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
 use crate::host::sound::world_sound::WorldSound;
+use crate::host::sound::world_sound_cue::WorldSoundCue;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::loading::loader_once::LoaderOnce;
@@ -53,6 +54,10 @@ pub(crate) struct LevelSound {
   listener: AudioListener,
   is_audible: bool,
   game_time: u32,
+  /// The host's cues asked since the last frame, which it plays at its clock.
+  cues: Vec<WorldSoundCue>,
+  /// Each cue's sound by its reference, read from the level's source once.
+  cue_sounds: HashMap<String, WorldSound>,
 }
 
 struct LevelSounds {
@@ -90,7 +95,20 @@ impl LevelSound {
       listener: AudioListener::default(),
       is_audible: false,
       game_time: 0,
+      cues: Vec::new(),
+      cue_sounds: HashMap::new(),
     }
+  }
+
+  /// Plays `cue` on the next frame, its sound read from `source` the first time it is asked for.
+  pub(crate) fn play_cue(&mut self, source: &Arc<dyn WorldLevelSource>, cue: WorldSoundCue) {
+    if !self.cue_sounds.contains_key(&cue.reference) {
+      self
+        .cue_sounds
+        .insert(cue.reference.clone(), source.read_sound(&cue.reference));
+    }
+
+    self.cues.push(cue);
   }
 
   /// Reads the level's own sounds again from `source`, a next source of the same level whose spawn or helpers changed.
@@ -163,6 +181,7 @@ impl LevelSound {
       self.play_effect(engine, effect, now);
     }
 
+    self.play_cues(engine, now);
     self.emitters.retire(now);
     self.send(drive, engine);
   }
@@ -339,6 +358,24 @@ impl LevelSound {
             strike.position.to_array(),
             struck + strike.get_delay(),
           )
+        },
+      );
+    }
+  }
+
+  /// Starts the host's cues asked since the last frame at `now`; one whose file is missing plays nothing.
+  fn play_cues(&mut self, engine: XrayEngine, now: Duration) {
+    for cue in std::mem::take(&mut self.cues) {
+      let Some(sound) = self.cue_sounds.get(&cue.reference) else {
+        continue;
+      };
+
+      self.emitters.play(
+        engine,
+        SoundPlay {
+          is_2d: cue.is_2d,
+          volume: cue.volume,
+          ..SoundPlay::new(sound, cue.kind, cue.position, now)
         },
       );
     }

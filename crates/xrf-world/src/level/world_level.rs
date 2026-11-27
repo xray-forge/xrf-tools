@@ -12,6 +12,7 @@ use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
 use crate::contract::sound::report::world_sound_report::WorldSoundReport;
 use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::weather::world_ambient_report::WorldAmbientReport;
+use crate::host::sound::world_sound_cue::WorldSoundCue;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::ambient::started_effect::StartedEffect;
@@ -213,6 +214,13 @@ impl WorldLevel {
       // The level objects whose sounds play at this frame, by the ids their helpers carry, ascending.
       sounding: self.sound.list_sounding(),
     }
+  }
+
+  /// Plays the host's `cue` with the level's sound on its next frame.
+  pub(crate) fn play_cue(&mut self, cue: WorldSoundCue) {
+    let source: Arc<dyn WorldLevelSource> = Arc::clone(self.get_source());
+
+    self.sound.play_cue(&source, cue);
   }
 
   /// Does what a viewer asks of the level's music, answering whether it could.

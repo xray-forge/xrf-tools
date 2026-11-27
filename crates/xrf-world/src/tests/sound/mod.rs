@@ -3,6 +3,7 @@ mod heard_room;
 mod level_music;
 mod level_sound;
 mod rain_sound;
+mod sound_cues;
 mod sound_outlet;
 mod static_sounds;
 mod zone_sounds;

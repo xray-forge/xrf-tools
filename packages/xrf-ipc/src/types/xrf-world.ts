@@ -272,6 +272,8 @@ export enum EWorldSoundKind {
   ANOMALY = "anomaly",
   /** A campfire's idle sound while lit, or its `disabled_sound` while out. */
   CAMPFIRE = "campfire",
+  /** A step of a host's actor, from its material pair with the ground (`StepSounds`). */
+  FOOTSTEP = "footstep",
 }
 
 /** Every `EWorldSoundKind` as the spelling it crosses IPC as, for a value no member has narrowed. */

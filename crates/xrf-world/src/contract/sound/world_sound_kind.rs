@@ -23,6 +23,8 @@ pub enum WorldSoundKind {
   Anomaly,
   /// A campfire's idle sound while lit, or its `disabled_sound` while out.
   Campfire,
+  /// A step of a host's actor, from its material pair with the ground (`StepSounds`).
+  Footstep,
 }
 
 impl WorldSoundKind {
@@ -31,7 +33,7 @@ impl WorldSoundKind {
     match self {
       Self::Music => WorldSoundCategory::Music,
       Self::Static | Self::Channel | Self::AmbientEffect | Self::Rain | Self::Thunder => WorldSoundCategory::Ambience,
-      Self::Anomaly | Self::Campfire => WorldSoundCategory::World,
+      Self::Anomaly | Self::Campfire | Self::Footstep => WorldSoundCategory::World,
     }
   }
 }
