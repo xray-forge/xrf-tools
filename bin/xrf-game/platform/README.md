@@ -24,8 +24,9 @@ p99 on Windows).
 
 Another thread ends the wait through a `PlatformWaker`, which pushes a user event the wait returns on and appends
 nothing for. It may be made before the platform starts and handed to threads that start first; `Platform::attach`
-takes it, a wake asked before then ends the first wait, and wakes between two waits count as one. `to_waker` gives the
-standard library's `Waker` for crates that know nothing of the platform. Each event is stamped with when it happened on SDL's clock (`PlatformEvent::at`):
+takes it, a wake asked before then ends the first wait, and wakes asked while one's event still waits in the queue
+count as that one: the wait settles the waker as it takes each such event, never before, so no wake is skipped for an
+event already taken. `to_waker` gives the standard library's `Waker` for crates that know nothing of the platform. Each event is stamped with when it happened on SDL's clock (`PlatformEvent::at`):
 
 | Kind                        | What it carries                                                                      |
 | --------------------------- | ------------------------------------------------------------------------------------ |

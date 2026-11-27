@@ -139,13 +139,16 @@ impl Platform {
   pub fn wait(&mut self, timeout: Duration, events: &mut Vec<PlatformEvent>) {
     let first: Option<Event> = self.pump.wait_event_timeout_ms(Self::get_wait_milliseconds(timeout));
 
-    // Before the caller looks at what threads brought: one bringing more from here asks for a wake of its own.
-    if let Some(waker) = &self.waker {
-      waker.settle();
-    }
-
     for event in first.into_iter().chain(self.pump.poll_iter()) {
       match &event {
+        // A wake's event, the only user event pushed: settled as it is taken and never before, since one pushed
+        // while this pass still reads the queue is taken by it too, and a waker told too early that nothing waits
+        // would skip every wake after it.
+        Event::User { .. } => {
+          if let Some(waker) = &self.waker {
+            waker.settle();
+          }
+        }
         Event::GamepadAdded { which, .. } => match self.gamepads.open(*which) {
           Ok(gamepad) => {
             log::info!("Gamepad {which} connected: {}", gamepad.name().unwrap_or_default());
