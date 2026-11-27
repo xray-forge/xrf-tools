@@ -6,7 +6,8 @@ use crate::contract::sound::world_sound_kind::WorldSoundKind;
 pub struct WorldSoundCue {
   pub reference: String,
   pub kind: WorldSoundKind,
-  /// In engine space; unread for a sound played 2D.
+  /// In engine space; for a sound played 2D, from the listener as it faces instead (right along `x`, ahead along
+  /// `z`), which pans a one-channel sound: nought plays it centred.
   pub position: [f32; 3],
   /// Whether it plays from the listener, as X-Ray plays the actor's own steps in first person (`sm_2D`).
   pub is_2d: bool,

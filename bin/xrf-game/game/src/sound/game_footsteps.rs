@@ -75,7 +75,8 @@ impl GameFootsteps {
     Some(WorldSoundCue {
       reference,
       kind: WorldSoundKind::Footstep,
-      position: step.feet.to_array(),
+      // A 2D sound's place is from the listener, not in the level: at the listener itself the step plays centred.
+      position: [0.0; 3],
       is_2d: true,
       volume: Self::get_power(step.pace) * self.volume,
     })

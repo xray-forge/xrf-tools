@@ -47,7 +47,9 @@ fn plays_each_step_from_the_listener_never_the_same_sound_twice_running() {
       .all(|step| step.is_2d && step.kind == WorldSoundKind::Footstep)
   );
   assert!((steps[0].volume - 0.9 * 0.21).abs() < 1e-6);
-  assert_eq!(steps[3].position, [3.0, 0.0, 0.0]);
+  // At the listener wherever the feet stand in the level: a 2D sound's place is from the listener, so the feet's own
+  // would pan the step by where on the level the player is.
+  assert!(steps.iter().all(|step| step.position == [0.0; 3]));
   assert!(steps.windows(2).all(|pair| pair[0].reference != pair[1].reference));
   assert!(
     steps
