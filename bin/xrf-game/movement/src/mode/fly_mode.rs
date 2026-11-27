@@ -12,7 +12,7 @@ use crate::input::movement_input_state::MovementInputState;
 pub struct FlyMode {
   /// Metres a second.
   pub speed: f32,
-  /// What the speed is multiplied by while the fast action is held.
+  /// What the speed is multiplied by while the accel action is held.
   pub boost: f32,
   /// Radians a count of the mouse turns by.
   pub sensitivity: f32,
@@ -46,7 +46,7 @@ impl FlyMode {
     }
 
     let speed: f32 = self.speed
-      * if input.is_held(MovementAction::Fast) {
+      * if input.is_held(MovementAction::Accel) {
         self.boost
       } else {
         1.0

@@ -41,13 +41,25 @@ fn reads_a_bound_key_by_its_place_and_skips_its_repeats() {
   assert_eq!(
     bindings.read(&key(225, false, false)),
     movement(MovementInputKind::Action {
-      action: MovementAction::Fast,
+      action: MovementAction::Accel,
       is_pressed: false,
     })
   );
   assert_eq!(bindings.read(&key(26, true, true)), None);
   // F12 is bound to nothing.
   assert_eq!(bindings.read(&key(69, true, false)), None);
+}
+
+#[test]
+fn reads_the_noclip_key_as_a_mode_toggle_on_its_press_alone() {
+  let bindings: GameBindings = GameBindings::default();
+
+  assert_eq!(
+    bindings.read(&key(17, true, false)),
+    Some(GameCommand::Movement(MovementCommand::ToggleMode))
+  );
+  assert_eq!(bindings.read(&key(17, true, true)), None);
+  assert_eq!(bindings.read(&key(17, false, false)), None);
 }
 
 #[test]

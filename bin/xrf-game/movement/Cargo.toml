@@ -11,8 +11,15 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+log = { workspace = true }
+xrf-error = { workspace = true }
 xrf-game-loop = { workspace = true }
 xrf-math = { workspace = true }
+xrf-physics = { workspace = true }
+
+[dev-dependencies]
+xrf-gamemtl = { workspace = true }
+xrf-level = { workspace = true }
 
 [lints]
 workspace = true

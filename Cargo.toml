@@ -45,6 +45,7 @@ members = [
   "crates/xrf-gamedata",
   "crates/xrf-gamemtl",
   "crates/xrf-geometry",
+  "crates/xrf-physics",
   "crates/xrf-ini",
   "crates/xrf-ipc",
   "crates/xrf-ipc-derive",
@@ -193,6 +194,7 @@ xrf-ipc-derive = { path = "crates/xrf-ipc-derive" }
 xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
 xrf-job = { path = "crates/xrf-job" }
 xrf-level = { path = "crates/xrf-level" }
+xrf-physics = { path = "crates/xrf-physics" }
 xrf-level-compiler = { path = "crates/xrf-level-compiler" }
 xrf-level-source = { path = "crates/xrf-level-source" }
 xrf-light-anim = { path = "crates/xrf-light-anim" }

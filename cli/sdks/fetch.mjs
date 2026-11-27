@@ -8,8 +8,8 @@ import * as process from "node:process";
 /**
  * Fetches the SDKs the native features build against into `.sdks/`, where `.cargo/config.toml` points the builds. Each
  * is pinned to a commit and checked out sparsely, only the headers and libraries a build reads. Pinned archives add
- * Steam Audio on every platform, and libclang, DXC and SDL3 on Windows; elsewhere `.sdks/libclang` links the system's
- * one.
+ * Steam Audio on every platform, and libclang, DXC, SDL3 and Jolt on Windows; elsewhere `.sdks/libclang` links the
+ * system's one.
  */
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const SDKS_ROOT = path.join(REPOSITORY_ROOT, ".sdks");
@@ -280,6 +280,36 @@ const ARCHIVED_TOOLS = [
       ],
     },
   },
+  {
+    // Jolt Physics 5.6.0 through joltc, as `oxijolt-sys` 1.6.0's release builds them for Visual C++ (its prebuilt list,
+    // `prebuilt.txt`, pins this archive's hash): the static libraries with the debug renderer, the headers, and the
+    // manifest its build script checks against its features. `JOLTC_LIB_DIR` (`.cargo/config.toml`) points the build
+    // here, so it neither downloads nor runs CMake. Built with AVX2 and FMA, so it needs a CPU with them. It moves in
+    // step with `oxijolt`'s version in `crates/xrf-physics`.
+    name: "jolt",
+    url:
+      "https://github.com/pockerhead/oxijolt/releases/download/v1.6.0/" +
+      "oxijolt-sys-1.6.0-x86_64-pc-windows-msvc-debug-renderer.tar.gz",
+    hash: "a44f7421a7540a0ff8464ed8ca91e695006ae761b006ea0da2fcb00abf23d7c2",
+    files: {
+      win32: [
+        ["lib/Jolt.lib", "824ac6a9f759f0b09676baff733fb758461cc585044bc234cb82f9241b9d279b"],
+        ["lib/joltc.lib", "70bc9f329904f7215a87d03a961eb7823bc0cbafa99ab74d5f7f68111447b9ee"],
+        ["include/joltc.h", "c96b072e1c5f1baa40658a70ac604468525ba2adb79a33b926f948bcaebe1db9"],
+        ["include/joltc_ext.h", "ff01db494338e8c658ec06e8ec4fd4928ea36c4dde799295a0a5d4ee6ab477ec"],
+        ["oxijolt-sys-manifest.txt", "e38a58a89488c2c7aa66aff15bc542489ee25a3540ba00da4cbffd8e07deae37"],
+        ["PROVENANCE.txt", "cb3defbd29bbf3daac071c9ba9d2b95e74197821f4879b61dddf958861c65ac6"],
+        ["LICENSE-MIT", "99c484fc2089a910258d328ce3081fd8801252d1a31562b72713b9c8dcc290df"],
+        ["LICENSE-APACHE", "e03ba41d7fab20700769fe4118bab50d800cb74f990353a05d2f5fff1c228363"],
+        ["licenses/joltc-LICENSE", "34feedb17b9792e6044c302c60fe9d9394f2b5a49f535c77f72f401e8f4c93e3"],
+        ["licenses/JoltPhysics-LICENSE", "8d1c7e0303333dfdafcc6583c620eb163e9c6c53c7cebcb53db78eaa9807e76c"],
+      ].map(([file, hash]) => ({
+        member: `oxijolt-sys-1.6.0-x86_64-pc-windows-msvc-debug-renderer/${file}`,
+        file,
+        hash,
+      })),
+    },
+  },
 ];
 
 /**
@@ -386,9 +416,8 @@ async function fetchArchived(tool) {
         scratch,
         files.map((file) => file.member)
       );
-      fs.mkdirSync(dir, { recursive: true });
-
       for (const file of files) {
+        fs.mkdirSync(path.dirname(path.join(dir, file.file)), { recursive: true });
         fs.copyFileSync(path.join(scratch, file.member), path.join(dir, file.file));
       }
     } finally {

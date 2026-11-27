@@ -35,6 +35,7 @@ xrf-directories = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
+xrf-gamemtl = { workspace = true }
 xrf-game-alife = { workspace = true }
 xrf-game-developer = { workspace = true }
 xrf-game-graph = { workspace = true }
@@ -46,11 +47,13 @@ xrf-game-platform = { workspace = true }
 xrf-game-settings = { workspace = true }
 xrf-game-simulation = { workspace = true }
 xrf-job = { workspace = true }
+xrf-level = { workspace = true }
 xrf-level-source = { workspace = true }
 xrf-logging = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-project = { workspace = true }
 xrf-math = { workspace = true }
+xrf-physics = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-renderer-host = { workspace = true }
 xrf-session = { workspace = true }

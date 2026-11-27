@@ -7,4 +7,6 @@ pub enum MovementCommand {
   Input(MovementInput),
   /// Stands the camera where it is told, as the control endpoint's pose does.
   SetCamera(MovementCamera),
+  /// Walks after flight and flies after walking, as an engine's noclip does.
+  ToggleMode,
 }

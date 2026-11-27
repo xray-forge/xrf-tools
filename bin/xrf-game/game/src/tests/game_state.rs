@@ -9,6 +9,7 @@ use xrf_game_movement::{
 };
 use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
 use xrf_math::glam::Vec3;
+use xrf_physics::PhysicsWorld;
 use xrf_spawn::ClsId;
 use xrf_world::{WorldFedCamera, WorldFedView, WorldViewFeed};
 
@@ -50,9 +51,17 @@ fn state() -> GameState {
 
   GameState {
     objects,
+    physics: PhysicsWorld::new().expect("a world"),
     movement: Movement::new(MovementCamera::default(), MovementMode::default()),
     alife: Alife::new(AlifeSettings::default(), AlifeData::default(), Some(LEVEL)),
   }
+}
+
+/// What a replay of a recorded session ends with.
+struct Replay {
+  frames: Vec<LoopFrame<GameFrame>>,
+  objects: ObjectRegistry,
+  movement: Movement,
 }
 
 fn stepper() -> LoopStepper<GameState> {
@@ -157,8 +166,9 @@ fn switches_objects_online_around_the_actor_as_it_flies() {
 }
 
 /// The replay tripwire: a recorded session of flying and looking over a field of objects steps the whole composed state
-/// to the same frames and the same state every time. A system reading the wall clock, a hash map's order or an unseeded
-/// random number breaks it.
+/// to the same frames, objects and movement every time. A system reading the wall clock, a hash map's order or an
+/// unseeded random number breaks it. The physics world is compared through what it moves, which no engine compares
+/// whole.
 #[test]
 fn steps_a_recorded_session_to_the_same_frames_and_state_every_time() {
   let session: Vec<Vec<GameCommand>> = (0..1_000_u64)
@@ -174,14 +184,14 @@ fn steps_a_recorded_session_to_the_same_frames_and_state_every_time() {
       200 => vec![input(
         tick * 10,
         MovementInputKind::Action {
-          action: MovementAction::Fast,
+          action: MovementAction::Accel,
           is_pressed: tick % 500 == 200,
         },
       )],
       _ => Vec::new(),
     })
     .collect();
-  let replay = || -> (Vec<LoopFrame<GameFrame>>, GameState) {
+  let replay = || -> Replay {
     let mut stepper: LoopStepper<GameState> = stepper();
     let frames: Vec<LoopFrame<GameFrame>> = session
       .iter()
@@ -191,13 +201,19 @@ fn steps_a_recorded_session_to_the_same_frames_and_state_every_time() {
       })
       .collect();
 
-    (frames, stepper.get_state().clone())
+    Replay {
+      frames,
+      objects: stepper.get_state().objects.clone(),
+      movement: stepper.get_state().movement.clone(),
+    }
   };
-  let (first_frames, first_state) = replay();
-  let (second_frames, second_state) = replay();
+  let first: Replay = replay();
+  let second: Replay = replay();
+  let first_frames: &[LoopFrame<GameFrame>] = &first.frames;
 
-  assert_eq!(first_frames, second_frames);
-  assert!(first_state == second_state);
+  assert_eq!(first.frames, second.frames);
+  assert!(first.objects == second.objects);
+  assert_eq!(first.movement, second.movement);
   assert!(
     first_frames
       .iter()

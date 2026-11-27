@@ -41,3 +41,4 @@ VULKAN_SDK = { value = ".sdks/vulkan-headers", relative = true }
 LIBCLANG_PATH = { value = ".sdks/libclang", relative = true }
 STEAMAUDIO_LIB_DIR = { value = ".sdks/steam-audio", relative = true }
 SDL3_LIB_DIR = { value = ".sdks/sdl3", relative = true }
+JOLTC_LIB_DIR = { value = ".sdks/jolt", relative = true }

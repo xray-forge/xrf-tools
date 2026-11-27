@@ -884,6 +884,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 
 [[package]]
+name = "cmake"
+version = "0.1.58"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0f78a02292a74a88ac736019ab962ece0bc380e3f977bf72e376c5d78ff0678"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4050,6 +4059,25 @@ checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "oxijolt"
+version = "1.6.0+jolt-5.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b3fdc26c5669aa620ba2f620211d9f441df4fdaa9348c82efe025dd7fbc8b3a"
+dependencies = [
+ "oxijolt-sys",
+]
+
+[[package]]
+name = "oxijolt-sys"
+version = "1.6.0+jolt-5.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fa134ca843d82f8c1bef1b60e036452010ffc7bda2e728176d7391dc937d891"
+dependencies = [
+ "anyhow",
+ "cmake",
 ]
 
 [[package]]
@@ -8838,12 +8866,15 @@ dependencies = [
  "xrf-game-platform",
  "xrf-game-settings",
  "xrf-game-simulation",
+ "xrf-gamemtl",
  "xrf-job",
+ "xrf-level",
  "xrf-level-source",
  "xrf-logging",
  "xrf-ltx",
  "xrf-ltx-project",
  "xrf-math",
+ "xrf-physics",
  "xrf-renderer",
  "xrf-renderer-host",
  "xrf-session",
@@ -8909,8 +8940,13 @@ dependencies = [
 name = "xrf-game-movement"
 version = "0.1.0"
 dependencies = [
+ "log",
+ "xrf-error",
  "xrf-game-loop",
+ "xrf-gamemtl",
+ "xrf-level",
  "xrf-math",
+ "xrf-physics",
 ]
 
 [[package]]
@@ -9371,6 +9407,18 @@ dependencies = [
  "xrf-math",
  "xrf-test-utils",
  "xrf-utils",
+]
+
+[[package]]
+name = "xrf-physics"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "oxijolt",
+ "xrf-error",
+ "xrf-gamemtl",
+ "xrf-level",
+ "xrf-math",
 ]
 
 [[package]]

@@ -1,0 +1,25 @@
+[package]
+name = "xrf-physics"
+version = "0.1.0"
+publish = false
+description = "XRF physics: Jolt through oxijolt behind the workspace's own types, its native library fetched into .sdks"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Without its `prebuilt` feature, so the build never downloads: `.cargo/config.toml` points `JOLTC_LIB_DIR` at the
+# library `cargo make fetch-sdks` places in `.sdks/jolt`, which the build script takes first. `debug-renderer` matches
+# that library, whose manifest the build script checks.
+oxijolt = { version = "=1.6.0", default-features = false, features = ["debug-renderer"] }
+log = { workspace = true }
+xrf-error = { workspace = true }
+xrf-gamemtl = { workspace = true }
+xrf-level = { workspace = true }
+xrf-math = { workspace = true }
+
+[lints]
+workspace = true

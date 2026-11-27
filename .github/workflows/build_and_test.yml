@@ -270,9 +270,9 @@ jobs:
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      # The game's crates link SDL, which `cli/sdks/fetch.mjs` fetches for Windows only.
+      # The game's crates link SDL, and `xrf-physics` links Jolt, which `cli/sdks/fetch.mjs` fetches for Windows only.
       - name: Run workspace tests on default features
-        run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*' --exclude 'xrf-game*'
+        run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*' --exclude 'xrf-game*' --exclude xrf-physics
 
       - name: Run CLI tests
         run: cargo test --verbose -p xrf-cli --bins --locked
@@ -281,7 +281,7 @@ jobs:
         run: cargo test --verbose --workspace --test ui --locked
 
       - name: Run documentation examples
-        run: cargo test --verbose --workspace --doc --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*' --exclude 'xrf-game*'
+        run: cargo test --verbose --workspace --doc --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*' --exclude 'xrf-game*' --exclude xrf-physics
 
       - name: Discard trybuild scratch crates
         run: rm -rf target/tests

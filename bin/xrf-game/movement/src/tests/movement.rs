@@ -7,8 +7,11 @@ use crate::camera::movement_camera::MovementCamera;
 use crate::input::movement_action::MovementAction;
 use crate::input::movement_input::MovementInput;
 use crate::input::movement_input_kind::MovementInputKind;
+use xrf_physics::PhysicsWorld;
+
 use crate::movement::Movement;
 use crate::movement_command::MovementCommand;
+use crate::movement_context::MovementContext;
 
 fn input(milliseconds: u64, kind: MovementInputKind) -> MovementCommand {
   MovementCommand::Input(MovementInput {
@@ -26,7 +29,7 @@ fn holds_what_the_player_pressed_until_released() {
   let mut movement: Movement = Movement::default();
 
   movement.apply(press(1, MovementAction::Forward, true));
-  movement.apply(press(2, MovementAction::Fast, true));
+  movement.apply(press(2, MovementAction::Accel, true));
 
   assert_eq!(
     movement
@@ -34,7 +37,7 @@ fn holds_what_the_player_pressed_until_released() {
       .get_axis(MovementAction::Forward, MovementAction::Back),
     1.0
   );
-  assert!(movement.get_input().is_held(MovementAction::Fast));
+  assert!(movement.get_input().is_held(MovementAction::Accel));
 
   movement.apply(press(3, MovementAction::Back, true));
   assert_eq!(
@@ -46,7 +49,7 @@ fn holds_what_the_player_pressed_until_released() {
 
   movement.apply(input(4, MovementInputKind::ReleaseAll));
   assert!(!movement.get_input().is_held(MovementAction::Forward));
-  assert!(!movement.get_input().is_held(MovementAction::Fast));
+  assert!(!movement.get_input().is_held(MovementAction::Accel));
 }
 
 #[test]
@@ -68,7 +71,12 @@ fn stands_the_camera_where_a_command_puts_it_and_keeps_it_through_a_step() {
   let camera: MovementCamera = MovementCamera::looking_at(Vec3::new(5.0, 1.0, 2.0), Vec3::ZERO);
 
   movement.apply(MovementCommand::SetCamera(camera));
-  movement.step(&LoopTime::new(Duration::from_millis(10), GameClock::default()), ());
+  movement.step(
+    &LoopTime::new(Duration::from_millis(10), GameClock::default()),
+    MovementContext {
+      physics: &mut PhysicsWorld::new().expect("a world"),
+    },
+  );
 
   assert!(movement.get_camera().position.abs_diff_eq(camera.position, 1e-5));
   assert!(

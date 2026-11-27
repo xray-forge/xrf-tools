@@ -6,6 +6,6 @@ pub enum GameModeArgument {
   /// A free camera through everything.
   #[default]
   Fly,
-  /// On foot, on a physics engine: not built yet.
+  /// On foot, the actor walking the level's collision on the physics engine.
   Walk,
 }

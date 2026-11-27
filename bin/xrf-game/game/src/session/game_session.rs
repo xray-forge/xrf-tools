@@ -4,10 +4,12 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
-use xrf_game_movement::{FlyMode, Movement, MovementMode};
+use xrf_game_movement::{FlyMode, Movement, MovementMode, WalkMode};
 use xrf_game_objects::ObjectRegistry;
 use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
+use xrf_level::LevelCformGeometry;
 use xrf_level_source::{LevelAudio, LevelRenderSource};
+use xrf_physics::{PhysicsLevel, PhysicsWorld};
 use xrf_world::WorldLevelSource;
 
 use crate::arguments::game_arguments::GameArguments;
@@ -40,12 +42,6 @@ impl GameSession {
   /// Returns why it cannot: no tree or level named (with the levels the tree has), a mode not built yet, or a tree,
   /// level or spawn that does not read.
   pub fn open(arguments: &GameArguments, pool: &ThreadPool) -> XrfResult<Self> {
-    if arguments.mode == GameModeArgument::Walk {
-      return Err(XrfError::new_not_implemented_error(
-        "walk mode comes with the physics engine; start with --mode fly",
-      ));
-    }
-
     let Some(root) = &arguments.root else {
       return Err(XrfError::new_invalid_error(
         "name the game tree to play with --root <path> and its level with --level <name>",
@@ -70,20 +66,32 @@ impl GameSession {
 
     log::info!("New game seed {seed}; --seed {seed} starts the same game");
 
-    // The level and the new game read different files and share nothing until the state is put together.
-    let (level, start): (XrfResult<GameLevel>, XrfResult<GameStart>) = pool.join(
+    // The level, the new game and the level's physics read different files and share nothing until the state is put
+    // together.
+    let (level, (start, physics)): (XrfResult<GameLevel>, (XrfResult<GameStart>, XrfResult<PhysicsWorld>)) = pool.join(
       || GameLevel::open(&tree, &level_name, pool),
-      || Self::read_start(&tree, &level_name, seed),
+      || {
+        pool.join(
+          || Self::read_start(&tree, &level_name, seed),
+          || Self::read_physics(&tree, &level_name),
+        )
+      },
     );
     let level: GameLevel = level?;
     let start: GameStart = start?;
+    let physics: PhysicsWorld = physics?;
+    let mode: MovementMode = match arguments.mode {
+      GameModeArgument::Fly => MovementMode::Fly(FlyMode::default()),
+      GameModeArgument::Walk => MovementMode::Walk(WalkMode::default()),
+    };
     let audio: LevelAudio = GameSound::start()?;
     let source: Arc<dyn WorldLevelSource> = Arc::new(
       pool.install(|| LevelRenderSource::new(Arc::clone(level.get_snapshot()), Arc::clone(tree.get_host()), audio)),
     );
     let state: GameState = GameState {
       objects: start.objects,
-      movement: Movement::new(level.get_start_camera(), MovementMode::Fly(FlyMode::default())),
+      physics,
+      movement: Movement::new(level.get_start_camera(), mode),
       alife: start.alife,
     };
 
@@ -191,6 +199,25 @@ impl GameSession {
       objects,
       alife: Alife::new(settings, data, level),
     })
+  }
+
+  /// The physics world of the level `level_name`: its collision form as one mesh, which takes a second or two for a
+  /// large level, so it is built beside the rest of the level.
+  fn read_physics(tree: &GameTree, level_name: &str) -> XrfResult<PhysicsWorld> {
+    let started: Instant = Instant::now();
+    let collision: LevelCformGeometry = tree.read_collision(level_name)?;
+    let level: PhysicsLevel = PhysicsLevel::of_cform(&collision, &tree.read_materials()?)?;
+    let world: PhysicsWorld = PhysicsWorld::with_level(&level)?;
+
+    log::info!(
+      "Physics: '{level_name}' has {} faces, {} passable left out, {} too thin dropped, built in {:.1?}",
+      collision.get_faces().len(),
+      level.get_passable(),
+      level.get_dropped(),
+      started.elapsed()
+    );
+
+    Ok(world)
   }
 
   /// What A-Life reads: the spawn's graph and patrols, the simulation's configs, read from `configs` for the smart

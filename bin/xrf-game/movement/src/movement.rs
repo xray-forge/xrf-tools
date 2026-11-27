@@ -3,15 +3,18 @@ use xrf_game_loop::{LoopSystem, LoopTime};
 use crate::camera::movement_camera::MovementCamera;
 use crate::input::movement_input_state::MovementInputState;
 use crate::mode::movement_mode::MovementMode;
+use crate::mode::walk_state::WalkState;
 use crate::movement_command::MovementCommand;
+use crate::movement_context::MovementContext;
 
-/// The player's movement: the camera, what they hold and how far they looked, and the mode that turns that into motion
-/// each step.
+/// The player's movement: the camera, what they hold and how far they looked, the mode that turns that into motion each
+/// step, and what walking keeps between steps (its actor in the physics world).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Movement {
   camera: MovementCamera,
   input: MovementInputState,
   mode: MovementMode,
+  walk: WalkState,
 }
 
 impl Movement {
@@ -21,6 +24,7 @@ impl Movement {
       camera,
       input: MovementInputState::default(),
       mode,
+      walk: WalkState::default(),
     }
   }
 
@@ -35,23 +39,41 @@ impl Movement {
   pub fn get_mode(&self) -> &MovementMode {
     &self.mode
   }
+
+  pub fn get_walk(&self) -> &WalkState {
+    &self.walk
+  }
 }
 
 impl LoopSystem for Movement {
   type Command = MovementCommand;
-  /// Movement needs nothing of the rest of the game yet: walking will be handed the physics world.
-  type Context<'a> = ();
+  type Context<'a> = MovementContext<'a>;
 
   fn apply(&mut self, command: MovementCommand) {
     match command {
       MovementCommand::Input(input) => self.input.apply(input.kind),
       MovementCommand::SetCamera(camera) => self.camera = camera,
+      MovementCommand::ToggleMode => self.mode = self.mode.toggled(),
     }
   }
 
-  fn step(&mut self, time: &LoopTime, (): ()) {
+  /// Flying lets go of the actor walking left in the physics world; walking puts one there where it has none.
+  fn step(&mut self, time: &LoopTime, MovementContext { physics }: MovementContext<'_>) {
     match &self.mode {
-      MovementMode::Fly(fly) => fly.step(&mut self.camera, &mut self.input, time.step),
+      MovementMode::Fly(fly) => {
+        if let Some(actor) = self.walk.actor.take()
+          && let Err(error) = physics.remove_actor(actor)
+        {
+          log::error!("The actor did not leave the physics world: {error}");
+        }
+
+        fly.step(&mut self.camera, &mut self.input, time.step);
+      }
+      MovementMode::Walk(walk) => {
+        if let Err(error) = walk.step(&mut self.camera, &mut self.input, &mut self.walk, physics, time.step) {
+          log::error!("The actor did not walk: {error}");
+        }
+      }
     }
   }
 }

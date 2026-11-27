@@ -7,18 +7,22 @@ pub enum MovementAction {
   Right,
   Up,
   Down,
-  Fast,
+  /// Call of Pripyat's `accel`: on foot the actor runs unless it is held, which walks; in flight it boosts.
+  Accel,
+  /// Call of Pripyat's `sprint_toggle`: each press turns sprinting on or off, as `g_sprint_toggle on` plays it.
+  Sprint,
 }
 
 impl MovementAction {
-  pub const ALL: [Self; 7] = [
+  pub const ALL: [Self; 8] = [
     Self::Forward,
     Self::Back,
     Self::Left,
     Self::Right,
     Self::Up,
     Self::Down,
-    Self::Fast,
+    Self::Accel,
+    Self::Sprint,
   ];
 
   /// Its place in [`Self::ALL`].

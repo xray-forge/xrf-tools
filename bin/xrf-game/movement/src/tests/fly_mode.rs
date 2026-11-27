@@ -42,7 +42,7 @@ fn flies_where_it_looks_at_its_speed_and_faster_with_the_boost() {
   assert_near(camera.position, Vec3::new(1.0, 1.0, 0.0).normalize() * 10.0);
 
   let mut camera: MovementCamera = MovementCamera::default();
-  let mut input: MovementInputState = holding(&[MovementAction::Back, MovementAction::Fast]);
+  let mut input: MovementInputState = holding(&[MovementAction::Back, MovementAction::Accel]);
 
   fly(&mut camera, &mut input, Duration::from_millis(500));
   assert_near(camera.position, Vec3::new(0.0, 0.0, -20.0));

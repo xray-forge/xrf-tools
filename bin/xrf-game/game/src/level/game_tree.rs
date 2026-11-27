@@ -6,7 +6,9 @@ use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineChoice, XrayEngineDetector, XrayEngineResolution};
 use xrf_error::XrfResult;
 use xrf_game_graph::{GameGraph, GamePatrols};
-use xrf_level_source::LevelEntry;
+use xrf_gamemtl::GameMtlFile;
+use xrf_level::{LevelCformFile, LevelCformGeometry};
+use xrf_level_source::{LevelEntry, LevelSource};
 use xrf_ltx::LtxDialect;
 use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_spawn::{SpawnFile, SpawnPatrolsChunk};
@@ -109,6 +111,28 @@ impl GameTree {
       Some(Self::CONFIGS_DIRECTORY),
       LtxProjectOptions::default().with_dialect(self.get_dialect()),
     )?)
+  }
+
+  /// The collision form of the level `name` (`levels\<name>\level.cform`), which the physics world collides with.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the form cannot be read: the level has none, or it does not parse.
+  pub fn read_collision(&self, name: &str) -> XrfResult<LevelCformGeometry> {
+    LevelCformFile::read_geometry_from_bytes(self.search()?.read(&format!(
+      "{}\\{name}\\{}",
+      LevelSource::LEVELS_DIRECTORY,
+      LevelCformFile::FILE_NAME
+    ))?)
+  }
+
+  /// Its game material library (`gamemtl.xr`), which the level's faces name their materials in.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the library cannot be read: the tree has none, or it does not parse.
+  pub fn read_materials(&self) -> XrfResult<GameMtlFile> {
+    GameMtlFile::read_from_bytes(self.search()?.read(GameMtlFile::FILE_NAME)?)
   }
 
   /// The names of the levels it holds geometry for, in order.
