@@ -11,7 +11,8 @@ use crate::switch::alife_switch_report::AlifeSwitchReport;
 /// within the online distance of the actor, an online one offline beyond the offline distance (the gap between them
 /// keeps an object at the edge from flapping); an object that may not go offline (a restrictor, a breakable, a climable,
 /// a smart cover, a dead creature, an empty ammo box) goes online wherever it stands, one that may not go online stays
-/// offline; what an object holds goes with it.
+/// offline; what an object holds goes with it; a squad goes by its nearest member and takes its members with it, a
+/// squad with none staying as it is (`CSE_ALifeOnlineOfflineGroup`).
 ///
 /// Not carried over: X-Ray builds the whole client object as it switches one online (`Process_spawn`, on the main
 /// thread), which stalls a frame when many come at once. Here going online is a row in the registry's online table;
@@ -34,13 +35,32 @@ impl AlifeSwitch {
     let mut going_offline: Vec<ObjectId> = Vec::new();
 
     for (id, record) in objects.get_records().iter() {
-      if record.level != Some(level) || record.parent.is_some() {
+      // What an object holds, and a squad's member, switches with its holder or squad.
+      if record.level != Some(level) || record.parent.is_some() || objects.get_members().contains(id) {
         continue;
       }
 
+      let distance: f32 = match record.switching {
+        // A squad stands as near as its nearest member: online when any is within the online distance, offline when
+        // all are beyond the offline one (`CSE_ALifeOnlineOfflineGroup::try_switch_online`, `try_switch_offline`).
+        ObjectSwitching::Group => {
+          let members: &[ObjectId] = objects.get_group_members(id);
+
+          if members.is_empty() {
+            continue;
+          }
+
+          members
+            .iter()
+            .filter_map(|member| objects.get_records().get(*member))
+            .map(|member| actor.distance(member.position))
+            .fold(f32::INFINITY, f32::min)
+        }
+        _ => actor.distance(record.position),
+      };
+
       report.swept += 1;
 
-      let distance: f32 = actor.distance(record.position);
       let decision: Option<bool> = Self::decide(
         record.switching,
         objects.is_online(id),
@@ -81,11 +101,15 @@ impl AlifeSwitch {
     is_beyond_offline: bool,
   ) -> Option<bool> {
     match (switching, is_online) {
-      (ObjectSwitching::Never | ObjectSwitching::Group, _) => None,
+      (ObjectSwitching::Never, _) => None,
       (ObjectSwitching::AlwaysOnline, online) => (!online).then_some(true),
       (ObjectSwitching::AlwaysOffline, online) => online.then_some(false),
-      (ObjectSwitching::ByDistance, false) => (!may_go_offline || is_within_online).then_some(true),
-      (ObjectSwitching::ByDistance, true) => (may_go_offline && is_beyond_offline).then_some(false),
+      (ObjectSwitching::ByDistance | ObjectSwitching::Group, false) => {
+        (!may_go_offline || is_within_online).then_some(true)
+      }
+      (ObjectSwitching::ByDistance | ObjectSwitching::Group, true) => {
+        (may_go_offline && is_beyond_offline).then_some(false)
+      }
     }
   }
 }

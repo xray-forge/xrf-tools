@@ -17,6 +17,32 @@ fn sweep(objects: &mut ObjectRegistry, actor_x: f32) -> AlifeSwitchReport {
 }
 
 #[test]
+fn switches_a_squad_by_its_nearest_member_with_all_its_members() {
+  // The squad's own record stands far off; its members at 100 m and 300 m.
+  let mut objects: ObjectRegistry = registry(vec![
+    object(5_000.0, ObjectSwitching::Group),
+    object(100.0, ObjectSwitching::ByDistance),
+    object(300.0, ObjectSwitching::ByDistance),
+    object(4_000.0, ObjectSwitching::Group),
+  ]);
+
+  objects.join_group(ObjectId(0), ObjectId(1));
+  objects.join_group(ObjectId(0), ObjectId(2));
+
+  let report: AlifeSwitchReport = sweep(&mut objects, 0.0);
+
+  // Members are weighed through their squad, an empty squad not at all.
+  assert_eq!(report.swept, 1);
+  assert_eq!(report.went_online, 1);
+  assert!(objects.is_online(ObjectId(0)) && objects.is_online(ObjectId(1)) && objects.is_online(ObjectId(2)));
+  assert!(!objects.is_online(ObjectId(3)));
+
+  // 150 m back: the nearer member is 250 m away, beyond the offline distance, the other 450 m.
+  sweep(&mut objects, -150.0);
+  assert!(objects.get_online().is_empty());
+}
+
+#[test]
 fn goes_online_within_135_metres_and_offline_beyond_165_keeping_either_state_between() {
   let mut objects: ObjectRegistry = registry(vec![
     object(134.0, ObjectSwitching::ByDistance),

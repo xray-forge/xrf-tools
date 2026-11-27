@@ -1,10 +1,12 @@
+use xrf_spawn::ClsId;
+
 use crate::config::simulation_config::SimulationConfig;
 use crate::smart::smart_spawn::SmartSpawn;
 use crate::tests::config_source::ConfigSource;
 
 const SYSTEM: &str = concat!(
-  "[stalker_novice]\nfaction = stalker\nnpc_random = sim_stalker, sim_stalker\nnpc_in_squad = 2, 3\n",
-  "[bandit_novice]\nfaction = bandit\nnpc = sim_bandit, missing_bandit\n",
+  "[stalker_novice]\nclass = ON_OFF_S\nfaction = stalker\nnpc_random = sim_stalker, sim_stalker\nnpc_in_squad = 2, 3\n",
+  "[bandit_novice]\nclass = ON_OFF_S\nfaction = bandit\nnpc = sim_bandit, missing_bandit\n",
   "[sim_stalker]\nclass = AI_STL_S\n",
   "[sim_bandit]\nclass = AI_STL_S\n",
 );
@@ -128,6 +130,9 @@ fn reads_smarts_from_custom_data_or_their_cfg_and_keeps_what_does_not_read_as_is
   // Squads come from the respawns as well as the start; members and sections it lacks are issues.
   assert!(config.get_squad("bandit_novice").is_some());
   assert!(config.get_squad("absent_squad").is_none());
+  assert_eq!(config.get_class("bandit_novice"), Some(&ClsId::OnOffS));
+  assert_eq!(config.get_class("sim_bandit"), Some(&ClsId::AiStlS));
+  assert_eq!(config.get_class("missing_bandit"), None);
 
   let issues: String = config.get_issues().join("\n");
 
@@ -135,6 +140,25 @@ fn reads_smarts_from_custom_data_or_their_cfg_and_keeps_what_does_not_read_as_is
   assert!(issues.contains("[absent_squad]"), "{issues}");
   assert!(issues.contains("[missing_bandit]"), "{issues}");
   assert!(issues.contains("[bad]"), "{issues}");
+}
+
+#[test]
+fn names_the_condition_functions_its_condlists_call_once() {
+  let mut smarts: Vec<SmartSpawn> = smarts();
+
+  smarts[0].custom_data = String::from("[smart_terrain]\nmax_population = {=surge_started} 0, {!is_night} 1, 2\n");
+
+  let config: SimulationConfig = SimulationConfig::read(&source("[start_position_zaton]\n"), &levels(), &smarts);
+  let issue: &String = config
+    .get_issues()
+    .iter()
+    .find(|issue| issue.contains("condition functions"))
+    .expect("the functions are named");
+
+  assert!(
+    issue.contains("2 condition functions") && issue.contains("is_night, surge_started"),
+    "{issue}"
+  );
 }
 
 #[test]

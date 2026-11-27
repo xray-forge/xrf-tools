@@ -5,11 +5,11 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineChoice, XrayEngineDetector, XrayEngineResolution};
 use xrf_error::XrfResult;
-use xrf_game_graph::GameGraph;
+use xrf_game_graph::{GameGraph, GamePatrols};
 use xrf_level_source::LevelEntry;
 use xrf_ltx::LtxDialect;
 use xrf_ltx_project::{LtxProject, LtxProjectOptions};
-use xrf_spawn::SpawnFile;
+use xrf_spawn::{SpawnFile, SpawnPatrolsChunk};
 use xrf_vfs::{XrayAssetType, XrayCachePolicy, XrayMountMode, XrayRoots, XraySearch, XrayVfs, XrayVfsHost};
 
 use crate::level::game_configs::GameConfigs;
@@ -91,6 +91,9 @@ impl GameTree {
     Ok(GameSpawn {
       placed: SpawnFile::read_objects_from_chunks(&chunks)?,
       graph: GameGraph::of_spawn(&SpawnFile::read_graphs_from_chunks(&chunks)?)?,
+      patrols: GamePatrols::of_spawn(
+        &ChunkReader::find_required_by_id(&chunks, SpawnPatrolsChunk::CHUNK_ID)?.read_xr::<SpawnPatrolsChunk>()?,
+      ),
     })
   }
 

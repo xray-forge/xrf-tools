@@ -26,6 +26,10 @@ pub struct GameArguments {
   /// The preset to start from in place of the settings file's.
   #[arg(long)]
   pub preset: Option<GamePreset>,
+  /// The new game's seed, every random draw of the simulation keyed by it, so the same seed starts the same game; a
+  /// new one each run without it, logged so a run can be repeated.
+  #[arg(long)]
+  pub seed: Option<u64>,
   /// One setting for this run, its dotted path and value, as `view.shadows.resolution=4096`; repeated for several,
   /// applied over the settings file in order and never written back.
   #[arg(long = "set", value_name = "PATH=VALUE")]

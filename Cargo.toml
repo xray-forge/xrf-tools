@@ -210,6 +210,7 @@ xrf-pack = { path = "crates/xrf-pack" }
 xrf-particles = { path = "crates/xrf-particles" }
 xrf-ppe = { path = "crates/xrf-ppe" }
 xrf-profiler = { path = "crates/xrf-profiler" }
+xrf-random = { path = "crates/xrf-random" }
 xrf-rawdata = { path = "crates/xrf-rawdata" }
 xrf-renderer-core = { path = "crates/xrf-renderer-core" }
 xrf-renderer-derive = { path = "crates/xrf-renderer-derive" }

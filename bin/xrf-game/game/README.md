@@ -33,10 +33,13 @@ Call of Pripyat binds them (`GameBindings`); Escape or the window's close quits.
 `.sdks` or beside the executable, dry without it), what the world shows, and a new game's `GameState`: every object of
 the tree's `all.spawn` in the object registry (`xrf-game-objects`), the player's movement at the level's start, and
 A-Life (`xrf-game-alife`) by the tree's `[alife]`, which switches the level's objects online around the actor. The
-spawn is read once for both its objects and its game graph (`GameTree::read_spawn`, `GameSpawn`); every config the
-game reads, `[alife]` and the simulation's, comes through `GameConfigs`, the tree's `configs` in its dialect (a DLTX
-mod's overrides applied) with `system.ltx` resolved, and the simulation's issues are logged. That new game (`GameStart`)
-is read beside the level on the session's pool: Anomaly's `zaton` opens in about 0.65 s.
+spawn is read once for its objects, its game graph and its patrols (`GameTree::read_spawn`, `GameSpawn`); every config
+the game reads, `[alife]` and the simulation's, comes through `GameConfigs`, the tree's `configs` in its dialect (a
+DLTX mod's overrides applied) with `system.ltx` resolved, and the simulation's issues are logged. The simulation's
+start squads are then created with their members (`xrf-game-simulation`'s `SimulationStart`), every draw keyed by the
+game's seed: `--seed` names one, or a new one is made from the clock and logged, so a run can be repeated. That new
+game (`GameStart`) is read beside the level on the session's pool: Anomaly's `zaton` opens in about 0.7 s with 393
+squads of 937 members across its levels (seed 7).
 `GameRun` is the shell around it: the window through `xrf-game-platform`, the view (`GameView`: the render queue with
 the game's pipeline cache, its world, the viewport filling the window), and the game loop stepping the session's state.
 The world draws the loop's camera and day through `GameViewFeed`. `GamePlay` then reads each platform event through the bindings into the

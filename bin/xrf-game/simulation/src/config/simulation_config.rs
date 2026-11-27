@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{CondlistCondition, Ltx, Section};
+use xrf_spawn::ClsId;
 
 use crate::config::config_text::ConfigText;
 use crate::config::simulation_config_source::SimulationConfigSource;
@@ -22,6 +23,8 @@ pub struct SimulationConfig {
   props: BTreeMap<String, SimulationProps>,
   smarts: BTreeMap<String, SmartConfig>,
   start: Vec<StartSquad>,
+  /// The class of every squad and member section the squads name, as `class` reads in `system.ltx`.
+  classes: BTreeMap<String, ClsId>,
   issues: Vec<String>,
 }
 
@@ -56,11 +59,53 @@ impl SimulationConfig {
     }
 
     config.read_squads(source.get_system());
+    config.report_functions();
     config
+  }
+
+  /// Adds one issue naming the condition functions its condlists call, which the game does not implement yet and
+  /// which answer false (`SimulationFacts::pick`), so a respawn count or a target that differs from X-Ray's is traced.
+  fn report_functions(&mut self) {
+    let condlists = self
+      .smarts
+      .values()
+      .flat_map(|smart| {
+        std::iter::once(&smart.max_population).chain(smart.respawns.iter().map(|respawn| &respawn.count))
+      })
+      .chain(
+        self
+          .squads
+          .values()
+          .flat_map(|squad| std::iter::once(&squad.spawn_point).chain(&squad.target)),
+      )
+      .chain(self.props.values().map(|props| &props.available));
+    let functions: BTreeSet<&str> = condlists
+      .flat_map(|condlist| &condlist.branches)
+      .flat_map(|branch| &branch.conditions)
+      .filter_map(|condition| match condition {
+        CondlistCondition::Function { name, .. } => Some(name.as_str()),
+        _ => None,
+      })
+      .collect();
+
+    if !functions.is_empty() {
+      let names: Vec<&str> = functions.into_iter().collect();
+
+      self.issues.push(format!(
+        "Condlists call {} condition functions the game does not implement yet, which answer false: {}",
+        names.len(),
+        names.join(", ")
+      ));
+    }
   }
 
   pub fn get_squad(&self, section: &str) -> Option<&SquadDescription> {
     self.squads.get(section)
+  }
+
+  /// The class of a squad or member section the squads name.
+  pub fn get_class(&self, section: &str) -> Option<&ClsId> {
+    self.classes.get(section)
   }
 
   /// Every squad section a new game or a respawn names, by section.
@@ -236,19 +281,48 @@ impl SimulationConfig {
         continue;
       };
 
-      match SquadDescription::read(&name, section) {
-        Ok(squad) => {
-          for member in squad.members.iter().chain(&squad.random_members) {
-            if system.section(member).is_none() {
-              self.issues.push(format!(
-                "Squad [{name}] names member [{member}], which system.ltx lacks"
-              ));
-            }
-          }
-
-          self.squads.insert(name, squad);
+      let squad: SquadDescription = match SquadDescription::read(&name, section) {
+        Ok(squad) => squad,
+        Err(issue) => {
+          self.issues.push(format!("Squad [{name}] {issue}"));
+          continue;
         }
-        Err(issue) => self.issues.push(format!("Squad [{name}] {issue}")),
+      };
+
+      if !self.read_class(system, &name) {
+        continue;
+      }
+
+      for member in squad.members.iter().chain(&squad.random_members) {
+        if !self.classes.contains_key(member) && !self.read_class(system, member) {
+          self
+            .issues
+            .push(format!("Squad [{name}] names member [{member}], which has no class"));
+        }
+      }
+
+      self.squads.insert(name, squad);
+    }
+  }
+
+  /// Reads the class of `section` (its `class`, as `F_entity_Create` builds an object of it), answering whether it has
+  /// one the game knows; an issue where it does not.
+  fn read_class(&mut self, system: &Ltx, section: &str) -> bool {
+    let class: Option<&str> = system.section(section).and_then(|section| section.get("class"));
+
+    match class.and_then(ClsId::from_class_name) {
+      Some(class) => {
+        self.classes.insert(String::from(section), class);
+
+        true
+      }
+      None => {
+        self.issues.push(match class {
+          Some(class) => format!("[{section}] is of class {class}, which the game does not know"),
+          None => format!("[{section}] is not in system.ltx or names no class"),
+        });
+
+        false
       }
     }
   }

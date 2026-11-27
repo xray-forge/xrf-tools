@@ -2,8 +2,9 @@
 
 A-Life, a system of the game loop (`xrf-game-loop`'s `LoopSystem`): which objects are online near the actor, and which
 offline objects take their turn to live on. Its context (`AlifeContext`) is the object registry (`xrf-game-objects`) and where
-the actor stands; it reaches nothing else. What it reads and never changes (`AlifeData`: the game graph of
-`xrf-game-graph`, the simulation's configs of `xrf-game-simulation`) is read once a session and shared.
+the actor stands; it reaches nothing else. What it reads and never changes during a game (`AlifeData`: the game graph
+and patrols of `xrf-game-graph`, the simulation's configs of `xrf-game-simulation`, the game's seed) is read once at
+its start and shared.
 
 Parity is with what the player sees of X-Ray's A-Life, not with its code: its rules are kept where they shape play, its
 stalls and faults are not. Each part is a module of its own, measured and replaced alone.
@@ -26,14 +27,16 @@ level that nothing holds, in id order, once an update:
 - an object that may not go offline goes online wherever it stands: a space restrictor (zones, smart terrains, level
   changers), a breakable, a climable, a smart cover, a dead creature, an empty ammo box; one that may not go online
   stays offline (`ObjectSwitching`, `ObjectRegistry::may_go_offline`);
-- what an object holds goes with it (`ObjectRegistry::bring_online`, `take_offline`).
+- what an object holds goes with it (`ObjectRegistry::bring_online`, `take_offline`);
+- a squad stands as near as its nearest member: it goes online when any member is within the online distance, offline
+  when all are beyond the offline one, its members with it; a member is never weighed on its own, and a squad with no
+  member stays as it is (`CSE_ALifeOnlineOfflineGroup::try_switch_online`, `try_switch_offline`).
 
 Not carried over: X-Ray builds the whole client object as it switches one online (`Process_spawn`, on the main thread),
 the stall players know from many objects arriving at once. Going online here is a row in the registry's online table,
 and what an online object needs is the business of the systems reading it, off this step.
 
-Not yet: squads switch as a group from their members (`CSE_ALifeOnlineOfflineGroup`), and objects on other levels go
-offline at a level change; both are left alone for now.
+Not yet: objects on other levels go offline at a level change, which waits for the game to change level.
 
 ## The schedule
 
@@ -43,8 +46,9 @@ for Call of Pripyat, 20 for Anomaly):
 
 - the objects it may update have a row in the registry's schedule table, from their class: stalkers and monsters,
   smart terrains (and Clear Sky's factions), squads (`ObjectScheduleKind`);
-- one needs updating while it is offline, and a creature while A-Life steers it and it is alive, a smart terrain while
-  A-Life steers it, a squad always (`ObjectRegistry::needs_update`, X-Ray's `need_update`);
+- one needs updating while it is offline and no squad's member, and a creature while A-Life steers it and it is alive,
+  a smart terrain while A-Life steers it, a squad always (`ObjectRegistry::needs_update`, X-Ray's `need_update`; a
+  squad is updated for its members, as `register_member` takes them off the schedule);
 - the walk runs in id order from where the last update stopped, wraps round once at most, and never takes an object
   twice in an update; each object taken is stamped with the tick, so what it does offline can read how long it waited.
 
@@ -56,7 +60,7 @@ the loop's thread, the same every run. No wall-time budget either: X-Ray's `proc
 the plan's decision 24 keeps every step on tick time.
 
 Not yet: nothing acts on an update (graph movement, a squad's or a smart terrain's choices come as modules that run
-on each object taken), and a squad's members are not left to it, since no squad has members until squads are built.
+on each object taken).
 
 ## The update
 

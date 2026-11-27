@@ -1,12 +1,12 @@
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
 use xrf_game_movement::{FlyMode, Movement, MovementMode};
 use xrf_game_objects::ObjectRegistry;
-use xrf_game_simulation::{SimulationConfig, SmartSpawn};
+use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
 use xrf_level_source::{LevelAudio, LevelRenderSource};
 use xrf_world::WorldLevelSource;
 
@@ -66,10 +66,14 @@ impl GameSession {
       )));
     };
     let started: Instant = Instant::now();
+    let seed: u64 = arguments.seed.unwrap_or_else(Self::create_seed);
+
+    log::info!("New game seed {seed}; --seed {seed} starts the same game");
+
     // The level and the new game read different files and share nothing until the state is put together.
     let (level, start): (XrfResult<GameLevel>, XrfResult<GameStart>) = pool.join(
       || GameLevel::open(&tree, &level_name, pool),
-      || Self::read_start(&tree, &level_name),
+      || Self::read_start(&tree, &level_name, seed),
     );
     let level: GameLevel = level?;
     let start: GameStart = start?;
@@ -95,12 +99,31 @@ impl GameSession {
   /// How many lines of issues the simulation's configs log before counting the rest.
   const LOGGED_ISSUES: usize = 10;
 
-  /// What a new game starts with beside the player: the spawn's objects, and A-Life by the tree's `[alife]` over the
-  /// spawn's graph and the simulation's configs, the actor on the level named `level_name`.
-  fn read_start(tree: &GameTree, level_name: &str) -> XrfResult<GameStart> {
+  /// A seed for a run that names none: the wall clock's nanoseconds, the one place a new game reads it.
+  fn create_seed() -> u64 {
+    SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .map_or(0, |since| since.as_nanos() as u64)
+  }
+
+  /// Logs up to [`Self::LOGGED_ISSUES`] of `issues` under `subject`, and how many more there are.
+  fn log_issues(subject: &str, issues: &[String]) {
+    for issue in issues.iter().take(Self::LOGGED_ISSUES) {
+      log::warn!("{subject}: {issue}");
+    }
+
+    if issues.len() > Self::LOGGED_ISSUES {
+      log::warn!("{subject}: {} more issues", issues.len() - Self::LOGGED_ISSUES);
+    }
+  }
+
+  /// What a new game starts with beside the player: the spawn's objects and the simulation's start squads, and A-Life
+  /// by the tree's `[alife]` over the spawn's graph and the simulation's configs, the actor on the level named
+  /// `level_name`, every draw keyed by `seed`.
+  fn read_start(tree: &GameTree, level_name: &str, seed: u64) -> XrfResult<GameStart> {
     let started: Instant = Instant::now();
     let spawn: GameSpawn = tree.read_spawn()?;
-    let objects: ObjectRegistry = ObjectRegistry::of_spawn(&spawn.placed);
+    let mut objects: ObjectRegistry = ObjectRegistry::of_spawn(&spawn.placed);
     let level: Option<u8> = spawn.graph.find_level(level_name).map(|level| level.id);
     let on_level: usize = level.map_or(0, |level| objects.count_on_level(level));
 
@@ -133,15 +156,46 @@ impl GameSession {
       settings.get_update_interval()
     );
 
+    let data: AlifeData = Self::read_alife_data(&configs, spawn, seed);
+    let created: Instant = Instant::now();
+    let report: SimulationStartReport = SimulationStart {
+      config: &data.simulation,
+      graph: &data.graph,
+      patrols: &data.patrols,
+      seed,
+    }
+    .create(&mut objects);
+    let on_level: usize = level.map_or(0, |level| {
+      objects
+        .get_groups()
+        .iter()
+        .filter(|(id, _)| {
+          objects
+            .get_records()
+            .get(*id)
+            .is_some_and(|record| record.level == Some(level))
+        })
+        .count()
+    });
+
+    log::info!(
+      "New game starts {} squads of {} members, {on_level} squads on '{level_name}', {} issues, in {:.1?}",
+      report.squads,
+      report.members,
+      report.issues.len(),
+      created.elapsed()
+    );
+    Self::log_issues("Start", &report.issues);
+
     Ok(GameStart {
       objects,
-      alife: Alife::new(settings, Self::read_alife_data(&configs, spawn), level),
+      alife: Alife::new(settings, data, level),
     })
   }
 
-  /// What A-Life reads: the spawn's graph and the simulation's configs, read from `configs` for the smart terrains the
-  /// spawn places.
-  fn read_alife_data(configs: &GameConfigs, spawn: GameSpawn) -> AlifeData {
+  /// What A-Life reads: the spawn's graph and patrols, the simulation's configs, read from `configs` for the smart
+  /// terrains the spawn places, and the game's `seed`.
+  fn read_alife_data(configs: &GameConfigs, spawn: GameSpawn, seed: u64) -> AlifeData {
     let started: Instant = Instant::now();
     let levels: Vec<String> = spawn
       .graph
@@ -163,20 +217,13 @@ impl GameSession {
       started.elapsed()
     );
 
-    for issue in simulation.get_issues().iter().take(Self::LOGGED_ISSUES) {
-      log::warn!("Simulation: {issue}");
-    }
-
-    if simulation.get_issues().len() > Self::LOGGED_ISSUES {
-      log::warn!(
-        "Simulation: {} more issues",
-        simulation.get_issues().len() - Self::LOGGED_ISSUES
-      );
-    }
+    Self::log_issues("Simulation", simulation.get_issues());
 
     AlifeData {
       graph: Arc::new(spawn.graph),
+      patrols: Arc::new(spawn.patrols),
       simulation: Arc::new(simulation),
+      seed,
     }
   }
 }

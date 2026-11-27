@@ -129,6 +129,55 @@ fn lets_neither_a_dead_creature_nor_an_empty_ammo_box_go_offline() {
 }
 
 #[test]
+fn creates_objects_past_every_id_handed_out() {
+  let mut registry: ObjectRegistry = ObjectRegistry::of_spawn(&SpawnPlacedObjects {
+    levels: Vec::new(),
+    objects: Vec::new(),
+    total: 0,
+    skipped: Vec::new(),
+  });
+
+  assert_eq!(registry.create(record(108, None)), Some(ObjectId(0)));
+  assert_eq!(registry.create(record(108, None)), Some(ObjectId(1)));
+  assert_eq!(registry.get_records().len(), 2);
+  assert!(!registry.is_online(ObjectId(1)));
+
+  // An object put at an id moves creation past it.
+  registry.insert(ObjectId(40), record(108, None));
+  assert_eq!(registry.create(record(108, None)), Some(ObjectId(41)));
+}
+
+#[test]
+fn switches_a_squad_with_its_members_and_keeps_members_off_the_schedule() {
+  let mut registry: ObjectRegistry = ObjectRegistry::default();
+
+  scheduled(&mut registry, 0, ObjectScheduleKind::Group, true, None);
+  scheduled(&mut registry, 1, ObjectScheduleKind::Creature, true, Some(1.0));
+  scheduled(&mut registry, 2, ObjectScheduleKind::Creature, true, Some(1.0));
+  registry.insert(ObjectId(3), record(108, Some(ObjectId(2))));
+  registry.join_group(ObjectId(0), ObjectId(1));
+  registry.join_group(ObjectId(0), ObjectId(2));
+
+  assert_eq!(registry.get_group_members(ObjectId(0)), [ObjectId(1), ObjectId(2)]);
+  assert_eq!(
+    registry.get_members().get(ObjectId(2)).map(|member| member.group),
+    Some(ObjectId(0))
+  );
+  // The squad is updated for its members.
+  assert!(registry.needs_update(ObjectId(0)));
+  assert!(!registry.needs_update(ObjectId(1)));
+
+  registry.bring_online(ObjectId(0), 5);
+
+  // Members and what they hold go with the squad.
+  assert_eq!(registry.get_online().len(), 4);
+
+  registry.take_offline(ObjectId(0));
+
+  assert!(registry.get_online().is_empty());
+}
+
+#[test]
 fn needs_updating_offline_by_kind_control_and_health() {
   let mut registry: ObjectRegistry = ObjectRegistry::default();
 

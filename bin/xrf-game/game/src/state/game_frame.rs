@@ -8,6 +8,9 @@ pub struct GameFrame {
   /// How many objects the game holds, and how many of them are online.
   pub objects: u32,
   pub online: u32,
+  /// How many squads the game holds, and how many members they have.
+  pub squads: u32,
+  pub members: u32,
 }
 
 impl LoopBlend for GameFrame {
@@ -19,6 +22,8 @@ impl LoopBlend for GameFrame {
       camera: self.camera.blend(&next.camera, alpha),
       objects: counts.objects,
       online: counts.online,
+      squads: counts.squads,
+      members: counts.members,
     }
   }
 }

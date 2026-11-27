@@ -31,6 +31,12 @@ pub struct ObjectRecord {
 }
 
 impl ObjectRecord {
+  /// The name X-Ray gives an object created during a game (`CALifeSimulatorBase::spawn_item`'s `name_replace`): its
+  /// section and its id, padded to four digits.
+  pub fn name_created(section: &str, id: ObjectId) -> String {
+    format!("{section}{:04}", id.0)
+  }
+
   /// The record of a spawned object, standing on graph level `level` and held by `parent`, which the registry resolves
   /// from the spawn's ids.
   pub fn of_spawn(object: &AlifeObject, level: Option<u8>, parent: Option<ObjectId>) -> Self {

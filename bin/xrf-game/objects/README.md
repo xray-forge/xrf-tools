@@ -15,10 +15,15 @@ not a system. The game's state owns it and hands each system the tables it reads
   on every record: the creatures (`ObjectCreature`, health), the ammo (`ObjectAmmo`, rounds) and the schedule
   (`ObjectSchedule`, what A-Life may update offline: its kind, whether A-Life steers it, its last update's tick).
   `may_go_offline` reads them (a dead creature or an empty box stays online), and so does `needs_update` (whether A-Life
-  updates an object offline now, X-Ray's `need_update`).
+  updates an object offline now, X-Ray's `need_update`; never a squad's member, which its squad is updated for).
+- Squads: the groups table (`ObjectGroup`, a squad's members, the commander first, and its assigned smart terrain) and
+  the members table (`ObjectMember`, the squad each member belongs to), joined by `join_group`.
 - The online table (`ObjectOnline`, who is online since which tick) and the children index (what each object holds).
-  `bring_online` and `take_offline` move an object with everything it holds, as X-Ray's `add_online` and
-  `add_offline` move children.
+  `bring_online` and `take_offline` move an object with everything it holds and a squad with its members, as X-Ray's
+  `add_online` moves children and a squad's `switch_online` its members.
+- `create` makes an object during a game, offline, under the next id never handed out, as X-Ray's generator hands
+  them out before reusing a freed one (`CID_Generator`); `ObjectRecord::name_created` names it as X-Ray does, its
+  section and its id padded to four digits. Freed ids are not reused yet: nothing is released yet.
 - `ObjectRegistry::of_spawn` builds a new game's registry from `xrf-spawn`'s `SpawnPlacedObjects`: every readable
   object of `all.spawn`; the levels a record's level id names are the game graph's (`xrf-game-graph`), which owns
   them. A spawn packet's own id is not the object's:

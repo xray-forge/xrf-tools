@@ -15,6 +15,10 @@ read it share one copy.
 
 The cross tables, which map each level's nodes to vertices, are not kept: nothing offline needs them.
 
+`GamePatrols::of_spawn` reads the spawn's patrol paths by name (`CPatrolPathStorage`), each a list of
+`GamePatrolPoint`s (position, level node, game vertex): the points scripts send objects to, such as where a story squad
+spawns. Their links are not kept: nothing offline walks a patrol yet.
+
 ## Checks
 
 Run `cargo test --locked -p xrf-game-graph` from the repository root.

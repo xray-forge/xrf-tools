@@ -107,6 +107,8 @@ impl GameControl {
       "timeOfDay": format!("{:02}:{:02}", minutes / 60, minutes % 60),
       "objects": frame.state.objects,
       "online": frame.state.online,
+      "squads": frame.state.squads,
+      "members": frame.state.members,
       "camera": {
         "position": camera.position.to_array(),
         "forward": camera.get_forward().to_array(),

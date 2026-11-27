@@ -26,13 +26,19 @@ impl ObjectSwitching {
   /// `flSwitchOffline`.
   const FLAG_OFFLINE: u32 = 1 << 2;
 
+  /// The flags an object created during a game holds: every one set, as `CSE_ALifeObject`'s constructor sets them.
+  pub const CREATED_FLAGS: u32 = u32::MAX;
+
   /// How a spawned object switches, from its class and flags.
   pub fn of_spawn(object: &AlifeObject) -> Self {
-    let Some(placed) = object.inherited.get_abstract() else {
-      return Self::Never;
-    };
-    let class: AlifeClass = object.inherited.get_class();
+    match object.inherited.get_abstract() {
+      Some(placed) => Self::of_class(object.inherited.get_class(), placed.flags),
+      None => Self::Never,
+    }
+  }
 
+  /// How an object of `class` with `flags` switches.
+  pub fn of_class(class: AlifeClass, flags: u32) -> Self {
     match class {
       AlifeClass::SimSquadScripted => return Self::Group,
       // `CSE_SmartCover` answers online yes and offline no, flags aside.
@@ -40,8 +46,8 @@ impl ObjectSwitching {
       _ => {}
     }
 
-    let can_online: bool = placed.flags & Self::FLAG_ONLINE != 0;
-    let can_offline: bool = placed.flags & Self::FLAG_OFFLINE != 0 && !Self::refuses_offline(class);
+    let can_online: bool = flags & Self::FLAG_ONLINE != 0;
+    let can_offline: bool = flags & Self::FLAG_OFFLINE != 0 && !Self::refuses_offline(class);
 
     match (can_online, can_offline) {
       (false, _) => Self::AlwaysOffline,

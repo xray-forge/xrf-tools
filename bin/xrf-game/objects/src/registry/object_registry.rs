@@ -6,6 +6,8 @@ use crate::id::id_map::IdMap;
 use crate::id::object_id::ObjectId;
 use crate::record::object_ammo::ObjectAmmo;
 use crate::record::object_creature::ObjectCreature;
+use crate::record::object_group::ObjectGroup;
+use crate::record::object_member::ObjectMember;
 use crate::record::object_online::ObjectOnline;
 use crate::record::object_record::ObjectRecord;
 use crate::record::object_schedule::ObjectSchedule;
@@ -14,16 +16,22 @@ use crate::record::object_schedule_kind::ObjectScheduleKind;
 /// The game's objects, X-Ray's object registry as id-keyed tables: the one store systems share. It is data, not a
 /// system: the game's state owns it and hands a system the tables it reads or writes as that system's context, so the
 /// compiler sees who writes what. Beside the records, every object's, stand the concern tables, each holding rows for
-/// the objects it concerns (creatures, ammo, the schedule), the online table (who is online) and the children index
-/// (what each object holds); a system needing more of some objects adds a table, never a field to every record.
+/// the objects it concerns (creatures, ammo, the schedule, squads and their members), the online table (who is online)
+/// and the children index (what each object holds); a system needing more of some objects adds a table, never a field
+/// to every record.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ObjectRegistry {
   records: IdMap<ObjectRecord>,
   creatures: IdMap<ObjectCreature>,
   ammo: IdMap<ObjectAmmo>,
   schedules: IdMap<ObjectSchedule>,
+  groups: IdMap<ObjectGroup>,
+  members: IdMap<ObjectMember>,
   online: IdMap<ObjectOnline>,
   children: IdMap<Vec<ObjectId>>,
+  /// The id the next object created takes: past every id handed out, as X-Ray's generator hands out ids never used
+  /// before reusing a freed one (`CID_Generator::tfGetID`, `xrGame/id_generator.h`).
+  next: u16,
 }
 
 impl ObjectRegistry {
@@ -96,7 +104,8 @@ impl ObjectRegistry {
     &mut self.schedules
   }
 
-  /// Whether A-Life updates `id` offline now: it has a schedule row, it is offline, and by its kind a creature is under
+  /// Whether A-Life updates `id` offline now: it has a schedule row, it is offline, it is no squad's member (its squad
+  /// is updated for it, as `register_member` takes a member off the schedule), and by its kind a creature is under
   /// direct control and alive, a smart zone under direct control, a group always (`need_update` of
   /// `CSE_ALifeSchedulable`, `CSE_ALifeMonsterAbstract` and `CSE_ALifeOnlineOfflineGroup`). Read from the tables each
   /// time rather than kept as a list beside them, so it cannot fall out of step with them as X-Ray's schedule registry
@@ -106,7 +115,7 @@ impl ObjectRegistry {
       return false;
     };
 
-    if self.is_online(id) {
+    if self.is_online(id) || self.members.contains(id) {
       return false;
     }
 
@@ -148,8 +157,10 @@ impl ObjectRegistry {
       && self.ammo.get(id).is_none_or(|ammo| ammo.rounds != 0)
   }
 
-  /// Puts `record` at `id`, offline, under its parent's children.
+  /// Puts `record` at `id`, offline, under its parent's children; an object created after takes an id past it.
   pub fn insert(&mut self, id: ObjectId, record: ObjectRecord) {
+    self.next = self.next.max(id.0.saturating_add(1));
+
     if let Some(parent) = record.parent {
       match self.children.get_mut(parent) {
         Some(children) => children.push(id),
@@ -184,8 +195,14 @@ impl ObjectRegistry {
     self.children.get(id).map_or(&[], Vec::as_slice)
   }
 
-  /// Brings `id` online at `tick` with everything it holds, as X-Ray's `add_online` brings an object's children
-  /// (`CSE_ALifeDynamicObject::add_online`). One already online keeps its tick.
+  /// The objects that go online and offline with `id`: what it holds, and a squad's members.
+  fn get_followers(&self, id: ObjectId) -> impl Iterator<Item = ObjectId> + '_ {
+    self.get_children(id).iter().chain(self.get_group_members(id)).copied()
+  }
+
+  /// Brings `id` online at `tick` with everything it holds and, for a squad, its members, as X-Ray's `add_online`
+  /// brings an object's children (`CSE_ALifeDynamicObject::add_online`) and a squad's `switch_online` its members
+  /// (`CSE_ALifeOnlineOfflineGroup::switch_online`). One already online keeps its tick.
   pub fn bring_online(&mut self, id: ObjectId, tick: u64) {
     let mut pending: Vec<ObjectId> = vec![id];
 
@@ -194,18 +211,73 @@ impl ObjectRegistry {
         self.online.insert(id, ObjectOnline { since: tick });
       }
 
-      pending.extend_from_slice(self.get_children(id));
+      let followers: Vec<ObjectId> = self.get_followers(id).collect();
+
+      pending.extend(followers);
     }
   }
 
-  /// Takes `id` offline with everything it holds.
+  /// Takes `id` offline with everything it holds and, for a squad, its members.
   pub fn take_offline(&mut self, id: ObjectId) {
     let mut pending: Vec<ObjectId> = vec![id];
 
     while let Some(id) = pending.pop() {
       self.online.remove(id);
-      pending.extend_from_slice(self.get_children(id));
+
+      let followers: Vec<ObjectId> = self.get_followers(id).collect();
+
+      pending.extend(followers);
     }
+  }
+
+  /// Creates `record` as a new object, offline, under the id X-Ray's generator would hand it: past every id handed out
+  /// before. None once the sixteen-bit id space is spent, as X-Ray's `Not enough IDs` aborts; freed ids are not reused
+  /// yet, since no object is released yet.
+  pub fn create(&mut self, record: ObjectRecord) -> Option<ObjectId> {
+    let id: ObjectId = ObjectId::of(self.next)?;
+
+    self.next += 1;
+    self.insert(id, record);
+
+    Some(id)
+  }
+
+  /// The groups table: a row for each squad.
+  pub fn get_groups(&self) -> &IdMap<ObjectGroup> {
+    &self.groups
+  }
+
+  pub fn get_groups_mut(&mut self) -> &mut IdMap<ObjectGroup> {
+    &mut self.groups
+  }
+
+  /// The members table: a row for each squad member, naming its squad.
+  pub fn get_members(&self) -> &IdMap<ObjectMember> {
+    &self.members
+  }
+
+  /// The members of squad `id`, the commander first; none for an object that is no squad.
+  pub fn get_group_members(&self, id: ObjectId) -> &[ObjectId] {
+    self.groups.get(id).map_or(&[], |group| group.members.as_slice())
+  }
+
+  /// Makes `member` a member of squad `group`, last of its members (`CSE_ALifeOnlineOfflineGroup::register_member`);
+  /// the squad's row is made, assigned to no smart, if it has none.
+  pub fn join_group(&mut self, group: ObjectId, member: ObjectId) {
+    match self.groups.get_mut(group) {
+      Some(row) => row.members.push(member),
+      None => {
+        self.groups.insert(
+          group,
+          ObjectGroup {
+            members: vec![member],
+            smart: None,
+          },
+        );
+      }
+    }
+
+    self.members.insert(member, ObjectMember { group });
   }
 
   /// How many objects stand on the level `level` names.

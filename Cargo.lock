@@ -8745,7 +8745,11 @@ name = "xrf-game-simulation"
 version = "0.1.0"
 dependencies = [
  "xrf-error",
+ "xrf-game-graph",
+ "xrf-game-objects",
  "xrf-ltx",
+ "xrf-math",
+ "xrf-random",
  "xrf-spawn",
 ]
 
