@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use xrf_cache::AppCache;
 use xrf_directories::DataDirectories;
 
 /// Where the game writes: its own files under `appdata/xrf-game/` beside its executable when that directory accepts
@@ -17,6 +18,9 @@ impl GameDirectories {
 
   /// The settings file within the game's own data.
   pub const SETTINGS_FILE: &'static str = "settings.ltx";
+
+  /// The folder within the game's own data its caches are kept in, the renderer's pipeline cache among them.
+  pub const CACHE_DIRECTORY: &'static str = "cache";
 
   /// The game's directories, its local data directory the system's own for its identifier.
   pub fn for_game() -> Self {
@@ -44,6 +48,16 @@ impl GameDirectories {
   /// Where the game's logs are kept, best first, shared with the desktop app's.
   pub fn get_logs_directories(&self) -> Vec<PathBuf> {
     self.data.get_logs_directories()
+  }
+
+  /// The game's caches over the `cache` folder of its best own directory, and nothing else: a tidy removes files within
+  /// it. None where the game has no own directory.
+  pub fn get_cache(&self) -> Option<AppCache> {
+    self
+      .get_own_directories()
+      .into_iter()
+      .next()
+      .map(|directory| AppCache::new(directory.join(Self::CACHE_DIRECTORY)))
   }
 
   /// Where the settings file may be, best first: the first that exists is read.

@@ -1,0 +1,117 @@
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
+
+use xrf_cache::AppCache;
+use xrf_game_platform::{PlatformSize, PlatformWindow};
+use xrf_game_settings::GameSettings;
+use xrf_renderer::{
+  RenderCommand, RenderQueue, RenderRect, RenderViewOptions, RenderViewOutput, RenderViewportId, RenderViewportLayout,
+  RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
+};
+use xrf_renderer_host::DiskCacheStore;
+use xrf_world::{World, WorldLevelSource, WorldViewFeed};
+
+use crate::render::game_bundle::GameBundle;
+use crate::render::game_render_sink::GameRenderSink;
+use crate::render::game_world_sink::GameWorldSink;
+
+/// The game's one view of the world: the render queue and the world it draws, and the viewport filling the window.
+pub struct GameView {
+  queue: RenderQueue,
+  world: Arc<Mutex<World>>,
+}
+
+impl GameView {
+  /// The viewport that fills the game's window.
+  pub const VIEWPORT: RenderViewportId = RenderViewportId(1);
+
+  /// How long stopping waits on the render thread at each turn.
+  const STOP_WAIT: Duration = Duration::from_secs(5);
+
+  /// The renderer and its world over `workers`, drawn as `settings` set it; the pipeline cache kept in `cache`.
+  pub fn start(workers: RenderWorkers, settings: &GameSettings, cache: Option<&AppCache>) -> Self {
+    let world: Arc<Mutex<World>> = Arc::new(Mutex::new(World::new(workers.clone())));
+    let mut queue: RenderQueue = RenderQueue::new(
+      workers,
+      Arc::new(GameBundle::locate()),
+      Arc::clone(&world) as Arc<Mutex<dyn RenderWorld>>,
+    );
+
+    if let Some(cache) = cache {
+      queue = queue.with_cache_store(Arc::new(DiskCacheStore::new(cache)));
+    }
+
+    queue.send(RenderCommand::Settings {
+      settings: settings.render,
+    });
+
+    Self { queue, world }
+  }
+
+  /// Draws the view into `window` through the `host` it presents to, with the view's features and upscaling from
+  /// `settings`.
+  pub fn attach(&self, host: Arc<dyn RenderWindowHost>, window: &PlatformWindow, settings: &GameSettings) {
+    self.queue.send(RenderCommand::Attach {
+      id: Self::VIEWPORT,
+      host,
+      sink: Box::new(GameRenderSink),
+    });
+    self.lock_world().attach(Self::VIEWPORT, Box::new(GameWorldSink));
+    self.queue.send(RenderCommand::Options {
+      id: Self::VIEWPORT,
+      options: Box::new(RenderViewOptions {
+        features: settings.view.clone(),
+        output: RenderViewOutput {
+          upscaling: settings.upscaling,
+          ..RenderViewOutput::default()
+        },
+        ..RenderViewOptions::default()
+      }),
+    });
+    self.fit(window);
+  }
+
+  /// Fits the view to `window` as it stands: its drawable size in device pixels, and how many of them a logical pixel
+  /// spans.
+  pub fn fit(&self, window: &PlatformWindow) {
+    let PlatformSize { width, height } = window.get_size();
+
+    self.queue.send(RenderCommand::Layout {
+      id: Self::VIEWPORT,
+      layout: RenderViewportLayout {
+        rect: RenderRect {
+          x: 0,
+          y: 0,
+          width,
+          height,
+        },
+        scale: window.get_scale(),
+        ..RenderViewportLayout::default()
+      },
+    });
+  }
+
+  /// Shows `level`, its camera and the game's day given by `feed`.
+  pub fn show(&self, level: Arc<dyn WorldLevelSource>, feed: Arc<dyn WorldViewFeed>) {
+    let mut world: MutexGuard<'_, World> = self.lock_world();
+
+    world.show_level(Self::VIEWPORT, Some(level));
+    world.set_view_feed(Self::VIEWPORT, feed);
+  }
+
+  /// Takes the view out of the window and stops the renderer, in the order the window's drop needs: detached, the
+  /// detach handled, the render thread stopped. The window may be dropped after.
+  pub fn stop(self) {
+    self.queue.send(RenderCommand::Detach { id: Self::VIEWPORT });
+    self.lock_world().detach(Self::VIEWPORT);
+
+    let handled: RenderWait = self.queue.wait_handled(Self::STOP_WAIT);
+    let stopped: RenderWait = self.queue.stop(Self::STOP_WAIT);
+
+    log::info!("Renderer stopped: detach {handled:?}, thread {stopped:?}");
+  }
+
+  fn lock_world(&self) -> MutexGuard<'_, World> {
+    self.world.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+}

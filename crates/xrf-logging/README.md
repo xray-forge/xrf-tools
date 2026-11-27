@@ -8,7 +8,8 @@ under its own name.
 
 `LogSetup { application, version, directories }.install(&filter)` installs the process's logger once, before anything
 logs, and answers the run (`LogRun`), none where no directory took its log. `LogFilter::from_environment()` reads
-`RUST_LOG`, else the build's default level (debug in a debug build, info in a release one); a host reading its own
+`RUST_LOG`, else the build's default level (debug in a debug build, info in a release one) with naga and wgpu held to
+warnings, whose debug lines run to millions a shader compile and stall the render thread; a host reading its own
 records apart from the logger, as the app's UI log does, filters them by the same `LogFilter`.
 
 ## Runs and their files

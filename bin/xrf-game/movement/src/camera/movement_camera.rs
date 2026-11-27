@@ -1,5 +1,7 @@
 use xrf_game_loop::LoopBlend;
-use xrf_math::glam::{EulerRot, Quat, Vec3};
+use xrf_math::glam::{Quat, Vec3};
+
+use crate::camera::movement_heading::MovementHeading;
 
 /// Where the game's camera stands and how it is turned, in the engine's space: unturned, it looks along `+z` with `+y`
 /// up, as X-Ray's camera does.
@@ -19,18 +21,18 @@ impl Default for MovementCamera {
 }
 
 impl MovementCamera {
+  /// A camera at `position` facing `heading`.
+  pub fn facing(position: Vec3, heading: MovementHeading) -> Self {
+    Self {
+      position,
+      rotation: heading.get_rotation(),
+    }
+  }
+
   /// A camera at `position` looking at `target`, level: turned and pitched, never rolled. One looking at where it stands
   /// faces `+z`.
   pub fn looking_at(position: Vec3, target: Vec3) -> Self {
-    let direction: Vec3 = (target - position).normalize_or(Vec3::Z);
-    // Turning about `y` carries `+z` to `(sin yaw, 0, cos yaw)`; pitching about `x` lowers it by `sin pitch`.
-    let yaw: f32 = direction.x.atan2(direction.z);
-    let pitch: f32 = -direction.y.clamp(-1.0, 1.0).asin();
-
-    Self {
-      position,
-      rotation: Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0),
-    }
+    Self::facing(position, MovementHeading::of(target - position))
   }
 
   /// Where it looks, a unit vector.
@@ -41,6 +43,16 @@ impl MovementCamera {
   /// Its up, a unit vector.
   pub fn get_up(&self) -> Vec3 {
     self.rotation * Vec3::Y
+  }
+
+  /// Its right, a unit vector.
+  pub fn get_right(&self) -> Vec3 {
+    self.rotation * Vec3::X
+  }
+
+  /// The way it faces, read back from its rotation.
+  pub fn get_heading(&self) -> MovementHeading {
+    MovementHeading::of(self.get_forward())
   }
 }
 

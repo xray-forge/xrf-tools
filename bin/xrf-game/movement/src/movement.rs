@@ -2,22 +2,25 @@ use xrf_game_loop::{LoopSystem, LoopTime};
 
 use crate::camera::movement_camera::MovementCamera;
 use crate::input::movement_input_state::MovementInputState;
+use crate::mode::movement_mode::MovementMode;
 use crate::movement_command::MovementCommand;
 
-/// The player's movement: the camera, and what they hold and how far they looked, which a movement mode (fly now,
-/// walk on physics later) turns into motion each step.
+/// The player's movement: the camera, what they hold and how far they looked, and the mode that turns that into motion
+/// each step.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Movement {
   camera: MovementCamera,
   input: MovementInputState,
+  mode: MovementMode,
 }
 
 impl Movement {
-  /// Movement with its camera standing at `camera`.
-  pub fn new(camera: MovementCamera) -> Self {
+  /// Movement in `mode`, its camera standing at `camera`.
+  pub fn new(camera: MovementCamera, mode: MovementMode) -> Self {
     Self {
       camera,
       input: MovementInputState::default(),
+      mode,
     }
   }
 
@@ -27,6 +30,10 @@ impl Movement {
 
   pub fn get_input(&self) -> &MovementInputState {
     &self.input
+  }
+
+  pub fn get_mode(&self) -> &MovementMode {
+    &self.mode
   }
 }
 
@@ -40,6 +47,9 @@ impl LoopSystem for Movement {
     }
   }
 
-  // No movement mode moves the camera yet: fly mode is the first.
-  fn step(&mut self, _: &LoopTime) {}
+  fn step(&mut self, time: &LoopTime) {
+    match &self.mode {
+      MovementMode::Fly(fly) => fly.step(&mut self.camera, &mut self.input, time.step),
+    }
+  }
 }

@@ -10,9 +10,8 @@ use uuid::Uuid;
 #[serde(transparent)]
 pub struct SessionId(Uuid);
 
-#[cfg(any(test, feature = "fixtures"))]
 impl SessionId {
-  /// A fresh id, as a caller allocates one before it opens.
+  /// A fresh id, as a caller allocates one before it opens: a native host's own, where the app's page sends its.
   pub fn generate() -> Self {
     Self(Uuid::new_v4())
   }

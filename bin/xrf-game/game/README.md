@@ -1,26 +1,46 @@
 # xrf-game
 
-The native game binary. It starts as the earliest prototype: today it logs and resolves its settings, and the window,
-the level and the first movement mode come next. Its library holds how this program is put together (arguments,
-directories, logging), kept apart from `main` so it is tested; what it draws with is
+The native game binary, at its earliest prototype: it opens a level of an X-Ray game tree in a window and flies the
+player's camera over it. Its library holds how this program is put together, kept apart from `main` so it is tested:
+arguments, directories, logging, the key bindings, the tree and level it opens, the view it draws, the game's systems
+composed into the loop's state, and the run that ties them. What it draws with is
 [xrf-game-settings](../settings/README.md)'.
 
 ## Running
 
 ```powershell
-cargo run -p xrf-game -- --preset high --set view.shadows.resolution=2048 --set window.mode=windowed
+cargo run --profile dev-optimized -p xrf-game -- --root C:\Games\anomaly --level zaton
 ```
 
-- `--preset <name>` starts from a preset in place of the settings file's.
-- `--set <path>=<value>`, repeated, changes one setting for this run, over the settings file, never written back.
+- `--root <path>` names the game tree: an installation with its archives (Anomaly), a folder of volumes, or loose
+  `gamedata`, mounted and its engine detected as the tools do (`GameTree`). Without `--level` the game lists the
+  tree's levels and exits.
+- `--level <name>` names the level by its folder under `levels` (`GameLevel`). The camera starts at the level's start:
+  an arrival or the actor's eye under open sky, nearest its centre.
+- `--mode fly` (the default) flies a free camera; `walk` comes with the physics engine and refuses to start for now.
+- `--preset <name>` starts from a preset in place of the settings file's; `--set <path>=<value>`, repeated, changes
+  one setting for this run, over the settings file, never written back.
+
+The cursor is grabbed for mouse look. W, S, A and D fly, Space rises, Left Ctrl sinks, Left Shift flies faster, as
+Call of Pripyat binds them (`GameBindings`); Escape or the window's close quits.
+
+## The run
+
+`GameRun` opens the tree and level, starts the sound (`GameSound`: Steam Audio from `.sdks` or beside the executable,
+dry without it), the window through `xrf-game-platform`, the view (`GameView`: the render queue with the game's pipeline
+cache, its world, the viewport filling the window), and the game loop with the player's movement. The world draws the
+loop's camera and day through `GameViewFeed`. Each platform event goes through the bindings into the loop's commands.
+On quit it stops the loop, detaches and stops the view, then drops the window.
 
 ## Files
 
 - Its own files sit under `appdata/xrf-game/` beside the executable when that directory accepts files, else in its
-  local data directory (`com.xrf.game`): `settings.ltx` among them (`GameDirectories`).
+  local data directory (`com.xrf.game`): `settings.ltx`, and `cache/` with the renderer's pipeline cache
+  (`GameDirectories`).
 - Its logs are `xrf-game.<UTC start>.<process>.log` in the `appdata/logs/` it shares with the desktop app, through
   [xrf-logging](../../../crates/xrf-logging/README.md) (`GameLogSetup`).
 
 ## Checks
 
-Run `cargo test --locked -p xrf-game` from the repository root.
+Run `cargo test --locked -p xrf-game` from the repository root. Opening a level, drawing it and shutting down are
+checked by running the game on a tree.

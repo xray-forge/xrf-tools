@@ -169,6 +169,7 @@ xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
 xrf-game-loop = { path = "bin/xrf-game/loop" }
 xrf-game-movement = { path = "bin/xrf-game/movement" }
+xrf-game-platform = { path = "bin/xrf-game/platform" }
 xrf-game-settings = { path = "bin/xrf-game/settings" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
 xrf-gamemtl = { path = "crates/xrf-gamemtl" }

@@ -18,11 +18,22 @@ impl LogFilter {
     false => LevelFilter::Info,
   };
 
+  /// Dependencies held to warnings where no directive is given: the GPU stack logs at debug for every shader it
+  /// compiles, naga each overload it weighs, millions of lines that slow the render thread and bury the log. A
+  /// `RUST_LOG` directive naming one brings it back.
+  const QUIET_TARGETS: [&'static str; 4] = ["naga", "wgpu", "wgpu_core", "wgpu_hal"];
+
   /// The rules `RUST_LOG` sets.
   pub fn from_environment() -> Self {
     Self {
       directives: EnvFlags::RUST_LOG.read_text(),
     }
+  }
+
+  /// The default rules, as with no `RUST_LOG`.
+  #[cfg(any(test, feature = "fixtures"))]
+  pub fn without_directives() -> Self {
+    Self { directives: None }
   }
 
   /// The rules `directives` set, spelled as `RUST_LOG` spells them.
@@ -33,24 +44,41 @@ impl LogFilter {
     }
   }
 
-  /// Filters the backend's `logger` by the directives, else at [`Self::DEFAULT_LEVEL`].
+  /// Filters the backend's `logger` by the directives, else at [`Self::DEFAULT_LEVEL`] with
+  /// [`Self::QUIET_TARGETS`] at warnings.
   pub fn configure(&self, logger: &mut Builder) {
     match &self.directives {
-      Some(directives) => logger.parse_filters(directives),
-      None => logger.filter_level(Self::DEFAULT_LEVEL),
-    };
+      Some(directives) => {
+        logger.parse_filters(directives);
+      }
+      None => {
+        logger.filter_level(Self::DEFAULT_LEVEL);
+
+        for target in Self::QUIET_TARGETS {
+          logger.filter_module(target, LevelFilter::Warn);
+        }
+      }
+    }
   }
 
-  /// The filter the directives make, else one at [`Self::DEFAULT_LEVEL`], deciding as the backend's logger does
+  /// The filter the directives make, else the default one, deciding as the backend's logger does
   /// ([`Self::configure`]). It only answers whether a record passes, so a log written apart from the process's logger
   /// follows the same rules.
   pub fn build_filter(&self) -> Filter {
     let mut filter: env_filter::Builder = env_filter::Builder::new();
 
     match &self.directives {
-      Some(directives) => filter.parse(directives),
-      None => filter.filter_level(Self::DEFAULT_LEVEL),
-    };
+      Some(directives) => {
+        filter.parse(directives);
+      }
+      None => {
+        filter.filter_level(Self::DEFAULT_LEVEL);
+
+        for target in Self::QUIET_TARGETS {
+          filter.filter_module(target, LevelFilter::Warn);
+        }
+      }
+    }
 
     filter.build()
   }

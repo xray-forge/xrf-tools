@@ -1,10 +1,24 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use xrf_game_settings::GamePreset;
 
-/// What the game is started with: the settings for this run over its settings file.
+use crate::arguments::game_mode_argument::GameModeArgument;
+
+/// What the game is started with: the game tree and level to play, how the player moves, and the settings for this run
+/// over its settings file.
 #[derive(Clone, Debug, Default, Parser)]
 #[command(name = "xrf-game", version, about = "The XRF game")]
 pub struct GameArguments {
+  /// The X-Ray game tree to play: its root folder, unpacked `gamedata` or packed archives, as the tools mount it.
+  #[arg(long)]
+  pub root: Option<PathBuf>,
+  /// The level to open, by its name in the tree (`zaton`); without one the game lists the levels it found and exits.
+  #[arg(long)]
+  pub level: Option<String>,
+  /// How the player moves.
+  #[arg(long, value_enum, default_value_t)]
+  pub mode: GameModeArgument,
   /// The preset to start from in place of the settings file's.
   #[arg(long)]
   pub preset: Option<GamePreset>,

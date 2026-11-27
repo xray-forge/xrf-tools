@@ -18,7 +18,7 @@ xrf-vfs = { workspace = true }
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
 typescript-bindings = ["specta", "xrf-vfs/typescript-bindings"]
-# Test helpers a host's tests build on: a fresh id, and the inputs a part was built from.
+# Test helpers a host's tests build on: the inputs a part was built from.
 fixtures = []
 
 [lints]

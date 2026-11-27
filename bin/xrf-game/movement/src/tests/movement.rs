@@ -70,5 +70,11 @@ fn stands_the_camera_where_a_command_puts_it_and_keeps_it_through_a_step() {
   movement.apply(MovementCommand::SetCamera(camera));
   movement.step(&LoopTime::new(Duration::from_millis(10), GameClock::default()));
 
-  assert_eq!(*movement.get_camera(), camera);
+  assert!(movement.get_camera().position.abs_diff_eq(camera.position, 1e-5));
+  assert!(
+    movement
+      .get_camera()
+      .get_forward()
+      .abs_diff_eq(camera.get_forward(), 1e-5)
+  );
 }

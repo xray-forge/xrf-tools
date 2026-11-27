@@ -35,7 +35,8 @@ on a thread of its own (`IS_POOLED`, for a build that fans out over a pool whose
 ## Features
 
 - `typescript-bindings` derives the Specta types of `SessionId` and `SessionSnapshot` for generated mirrors.
-- `fixtures` adds test helpers: `SessionId::generate` and the parts' recorded inputs.
+- `fixtures` adds test helpers: the parts' recorded inputs. `SessionId::generate` is always there, for a native host
+  allocating its own ids.
 
 ## Checks
 
