@@ -1,12 +1,14 @@
 use std::panic::{self, AssertUnwindSafe};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock};
 
 use tauri::ipc::Channel;
 use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::XrfResult;
+use xrf_utils::{StagedFile, format_path};
 use xrf_vfs::{
-  XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayChangeSet, XrayRevision, XrayRoots, XraySearch, XrayTransaction,
-  XrayVfs, XrayVfsHost,
+  XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayChangeSet, XrayInputRecord, XrayRevision, XrayRoots, XraySearch,
+  XrayTransaction, XrayVfs, XrayVfsHost,
 };
 
 use crate::assets::change::{AssetChangeOrder, AssetChangeTicket};
@@ -158,6 +160,44 @@ impl AssetMountState {
     }
 
     Ok(changes)
+  }
+
+  /// Publishes files their writers staged beside their targets on disk, the one way the application writes a file it
+  /// names by path: those a writable loose mount holds as one commit, all or none, which moves every followed session
+  /// and is heard as any commit, refused when what `expected` recorded moved; then the rest, outside every mount, each by
+  /// its own rename, since no snapshot reads them. Answers every file written, the mounted ones first.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, with no mounted file written, when the commit is refused or fails; a file outside every mount
+  /// that cannot be moved into place is reported, and those after it are not written.
+  pub fn write_files(&self, files: Vec<StagedFile>, expected: Option<&XrayInputRecord>) -> TauriResult<Vec<PathBuf>> {
+    let search: XraySearch = self.search_writable();
+    let (mounted, loose): (Vec<StagedFile>, Vec<StagedFile>) =
+      files.into_iter().partition(|file| search.holds_file(file.get_target()));
+    let mut written: Vec<PathBuf> = mounted.iter().map(|file| file.get_target().to_path_buf()).collect();
+
+    if !mounted.is_empty() {
+      let transaction: XrayTransaction = mounted
+        .into_iter()
+        .fold(XrayTransaction::new(&search), XrayTransaction::with_staged_file_write);
+
+      self.commit(&match expected {
+        Some(expected) => transaction.with_expected(expected),
+        None => transaction,
+      })?;
+    }
+
+    for file in loose {
+      let target: PathBuf = file.get_target().to_path_buf();
+
+      file
+        .publish()
+        .map_err(|error| format!("Cannot write '{}': {error}", format_path(&target)))?;
+      written.push(target);
+    }
+
+    Ok(written)
   }
 
   /// Runs a change through the host and, where it moved the project revision, takes the change's place in the order

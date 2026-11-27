@@ -5,7 +5,6 @@ use xrf_app_core::assets::{AssetMountState, FileStamp};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_thm::{ThmFile, ThmFormat};
 use xrf_utils::{StagedFile, error_to_string, format_path};
-use xrf_vfs::{XraySearch, XrayTransaction};
 
 use crate::edit::{TextureDescriptorSave, TextureSaveOutcome, TextureWrite};
 
@@ -82,30 +81,23 @@ impl TextureSaver {
     save.form.to_bytes(existing, synced_format)
   }
 
-  /// Moves every prepared file into place, answering what landed: the files a mount holds as one commit, so the cache,
-  /// sessions and pages follow them as any save, then the rest one by one, since no snapshot reads a file outside every
-  /// mount.
+  /// Stages every prepared file beside its target and publishes them through `assets`, answering what landed.
   fn publish(assets: &AssetMountState, prepared: Vec<PreparedFile>) -> TauriResult<Vec<String>> {
-    let written: Vec<String> = prepared.iter().map(|file| file.path.display().to_string()).collect();
-    let search: XraySearch = assets.search_writable();
-    let (mounted, loose): (Vec<PreparedFile>, Vec<PreparedFile>) =
-      prepared.into_iter().partition(|file| search.holds_file(&file.path));
+    let staged: Vec<StagedFile> = prepared
+      .into_iter()
+      .map(|file| {
+        StagedFile::name_sibling(&file.path, "staged")
+          .and_then(|staged| StagedFile::stage(&file.path, &staged, &file.bytes))
+          .map_err(|error| format!("Cannot write '{}': {error}", format_path(&file.path)))
+      })
+      .collect::<TauriResult<_>>()?;
 
-    if !mounted.is_empty() {
-      assets.commit(
-        &mounted
-          .into_iter()
-          .fold(XrayTransaction::new(&search), |transaction, file| {
-            transaction.with_file_write(file.path, file.bytes)
-          }),
-      )?;
-    }
-
-    for file in loose {
-      StagedFile::write(&file.path, &file.bytes)
-        .map_err(|error| format!("Cannot write '{}': {error}", format_path(&file.path)))?;
-    }
-
-    Ok(written)
+    Ok(
+      assets
+        .write_files(staged, None)?
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect(),
+    )
   }
 }
