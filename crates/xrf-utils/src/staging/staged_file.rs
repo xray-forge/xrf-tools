@@ -93,6 +93,42 @@ impl StagedFile {
     })
   }
 
+  /// Stages a file a writer already wrote elsewhere on `target`'s volume, moving it beside `target` under a
+  /// [`Self::name_sibling`] name and syncing it there, as [`Self::stage`] leaves its own: for a writer that builds a
+  /// whole tree in a folder of its own and publishes it file by file. A replacement inherits `target`'s permissions.
+  ///
+  /// # Errors
+  ///
+  /// Returns an IO error, with `written` where it was, when it cannot be moved; or, with nothing left staged, when it
+  /// cannot be synced or given `target`'s permissions.
+  pub fn adopt(target: &Path, written: &Path) -> IoResult<Self> {
+    let staged: PathBuf = Self::name_sibling(target, "staged")?;
+
+    fs::rename(written, &staged)?;
+
+    let result: IoResult<()> = (|| -> IoResult<()> {
+      let file: File = OpenOptions::new().write(true).open(&staged)?;
+
+      if let Ok(metadata) = fs::metadata(target) {
+        file.set_permissions(metadata.permissions())?;
+      }
+
+      file.sync_all()
+    })();
+
+    if let Err(error) = result {
+      let _ = fs::remove_file(&staged);
+
+      return Err(error);
+    }
+
+    Ok(Self {
+      target: target.to_path_buf(),
+      staged,
+      is_published: false,
+    })
+  }
+
   /// A unique hidden sibling of `path` for `purpose` (`tmp`, `staged`, `replaced`), named `.<name>.xrf-<purpose>-…` so a
   /// leftover says which file it belonged to and [`Self::is_sibling`] knows it.
   ///

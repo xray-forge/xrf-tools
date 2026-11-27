@@ -4,6 +4,7 @@ use serde::Serialize;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobKind, JobPhase, JobRegistry, JobResource, JobStart};
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
@@ -37,15 +38,18 @@ impl SpawnConversion {
     self,
     execution: &ExecutionState,
     registry: &Arc<JobRegistry>,
+    assets: &AssetMountState,
     request: SpawnConvertRequest,
     job_id: Uuid,
     progress: Channel<JobProgress>,
   ) -> TauriResult<SpawnConversionResult> {
+    let assets: AssetMountState = assets.clone();
+
     registry
       .run(
         execution,
         self.start(&request, job_id, progress),
-        move |job| self.convert(&request, &job),
+        move |job| self.convert(&request, &job, &assets),
         |result| result.outcome,
       )
       .await
@@ -63,9 +67,15 @@ impl SpawnConversion {
       .with_progress(progress)
   }
 
-  /// Reads the source and writes the destination, giving up only before writing begins: the writers cannot stop
-  /// safely partway through. Unforced, a destination already there is refused before the source is read.
-  pub(crate) fn convert(self, request: &SpawnConvertRequest, job: &JobHandle) -> TauriResult<SpawnConversionResult> {
+  /// Reads the source and writes the destination through `assets`, giving up only before writing begins: the writers
+  /// cannot stop safely partway through. Unforced, a destination already there is refused before the source is read.
+  /// The output is written beside the destination and published whole, a commit where a mount holds it.
+  pub(crate) fn convert(
+    self,
+    request: &SpawnConvertRequest,
+    job: &JobHandle,
+    assets: &AssetMountState,
+  ) -> TauriResult<SpawnConversionResult> {
     let mut result: SpawnConversionResult = SpawnConversionResult {
       operation: self,
       destination: request.destination.clone(),
@@ -101,11 +111,10 @@ impl SpawnConversion {
 
     job.set_detail(Some(request.destination.display().to_string()));
 
-    match self {
-      Self::Pack => file.write_to_path(&request.destination),
-      Self::Unpack => file.export_to_path(&request.destination),
-    }
-    .map_err(error_to_string)?;
+    assets.write_staged(&request.destination, |staging| match self {
+      Self::Pack => file.write_to_path(&staging),
+      Self::Unpack => file.export_to_path(&staging),
+    })?;
 
     result.outcome = JobOutcome::Completed;
 

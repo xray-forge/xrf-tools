@@ -5,6 +5,7 @@ use std::sync::Arc;
 use serde_json::json;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use uuid::Uuid;
+use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
@@ -66,7 +67,7 @@ fn cancellation_before_reading_preserves_existing_output() {
   for operation in [SpawnConversion::Pack, SpawnConversion::Unpack] {
     assert_eq!(
       operation
-        .convert(&request, &job)
+        .convert(&request, &job, &AssetMountState::new())
         .expect("cancelled before missing source is read")
         .outcome,
       JobOutcome::Cancelled
@@ -87,6 +88,7 @@ fn failure_is_retained_and_releases_the_conversion_lease() {
     let outcome = tauri::async_runtime::block_on(operation.run(
       &execution,
       &registry,
+      &AssetMountState::new(),
       request.clone(),
       id,
       Channel::new(|_| Ok(())),
@@ -116,9 +118,11 @@ fn conversions_round_trip_and_retain_the_output() {
 
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
   let execution: ExecutionState = ExecutionState::new(ExecutionRequest::Auto).expect("execution pool");
+  let assets: AssetMountState = AssetMountState::new();
   let unpacked = tauri::async_runtime::block_on(SpawnConversion::Unpack.run(
     &execution,
     &registry,
+    &assets,
     request.clone(),
     Uuid::new_v4(),
     Channel::new(|_| Ok(())),
@@ -127,6 +131,7 @@ fn conversions_round_trip_and_retain_the_output() {
   let packed = tauri::async_runtime::block_on(SpawnConversion::Pack.run(
     &execution,
     &registry,
+    &assets,
     SpawnConvertRequest {
       source: unpacked.destination,
       destination: request.source.with_extension("repacked"),
@@ -165,9 +170,11 @@ fn an_output_already_there_is_refused_before_reading_unless_forced() {
     ..request.clone()
   };
 
+  let assets: AssetMountState = AssetMountState::new();
+
   for operation in [SpawnConversion::Pack, SpawnConversion::Unpack] {
     let error: String = operation
-      .convert(&refused, &JobHandle::inert())
+      .convert(&refused, &JobHandle::inert(), &assets)
       .expect_err("unforced, an output already there is refused");
 
     assert!(error.contains("force it to replace them"), "{operation:?}: {error}");
@@ -183,6 +190,7 @@ fn an_output_already_there_is_refused_before_reading_unless_forced() {
         ..request
       },
       &JobHandle::inert(),
+      &assets,
     )
     .expect("forced, the output is written over");
 
@@ -221,8 +229,15 @@ fn cancellation_during_reading_stops_before_output_but_writing_finishes() {
 
         Ok(())
       });
-      let result = tauri::async_runtime::block_on(operation.run(&execution, &registry, request.clone(), id, progress))
-        .expect("conversion result");
+      let result = tauri::async_runtime::block_on(operation.run(
+        &execution,
+        &registry,
+        &AssetMountState::new(),
+        request.clone(),
+        id,
+        progress,
+      ))
+      .expect("conversion result");
 
       assert_eq!(result.outcome == JobOutcome::Cancelled, phase == "read");
       assert_eq!(request.destination.exists(), phase == "write");

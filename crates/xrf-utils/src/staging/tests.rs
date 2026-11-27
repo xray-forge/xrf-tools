@@ -123,6 +123,28 @@ fn names_a_sibling_after_its_target_and_knows_it_again() -> IoResult<()> {
   Ok(())
 }
 
+#[test]
+fn adopts_a_file_written_elsewhere_beside_its_target() -> IoResult<()> {
+  let directory: PathBuf = get_test_directory("adopted")?;
+  let path: PathBuf = directory.join("config.json");
+  let written: PathBuf = directory.join("written.tmp");
+
+  fs::write(&path, b"{\"previous\":true}")?;
+  fs::write(&written, b"{\"current\":true}")?;
+
+  let staged: StagedFile = StagedFile::adopt(&path, &written)?;
+
+  assert!(!written.exists(), "the written file moved beside its target");
+  assert_eq!(fs::read(&path)?, b"{\"previous\":true}", "nothing is published yet");
+
+  staged.publish()?;
+
+  assert_eq!(fs::read(&path)?, b"{\"current\":true}");
+  assert_eq!(list_names(&directory)?, vec![String::from("config.json")]);
+
+  Ok(())
+}
+
 #[cfg(feature = "staging-faults")]
 #[test]
 fn keeps_the_previous_file_when_the_staged_write_fails() -> IoResult<()> {

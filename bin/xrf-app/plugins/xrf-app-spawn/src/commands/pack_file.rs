@@ -4,6 +4,7 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
 use xrf_job::JobProgress;
@@ -18,11 +19,12 @@ use crate::request::SpawnConvertRequest;
 pub(crate) async fn spawn_pack_file(
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
+  assets: State<'_, AssetMountState>,
   request: SpawnConvertRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<SpawnConversionResult> {
   SpawnConversion::Pack
-    .run(&execution, &registry, request, job_id, progress)
+    .run(&execution, &registry, &assets, request, job_id, progress)
     .await
 }

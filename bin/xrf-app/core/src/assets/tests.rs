@@ -164,6 +164,71 @@ fn refuses_a_write_whose_reads_moved_and_leaves_nothing_staged() {
 }
 
 #[test]
+fn writes_a_streamed_file_where_its_writer_names_it() {
+  let (assets, root, _) = mounted_tree("write_staged_file", &["configs/system.ltx"]);
+  let target: PathBuf = root.join("configs/system.ltx");
+
+  let written: Vec<PathBuf> = assets
+    .write_staged(&target, |staging| {
+      assert_ne!(staging, target, "the writer writes beside the target");
+
+      Ok(fs::write(staging, b"streamed")?)
+    })
+    .expect("the file is written");
+
+  assert_eq!(written, std::slice::from_ref(&target));
+  assert_eq!(fs::read(&target).expect("the file reads"), b"streamed");
+  assert_eq!(list_names(&root.join("configs")), ["system.ltx"]);
+}
+
+#[test]
+fn writes_a_streamed_tree_into_a_mount_as_one_commit() {
+  let (assets, root, _) = mounted_tree("write_staged_tree", &["spawns/all/header"]);
+  let destination: PathBuf = root.join("spawns/all");
+  let before: XrayRevision = assets.get_vfs().get_revision();
+
+  let written: Vec<PathBuf> = assets
+    .write_staged(&destination, |staging| {
+      fs::create_dir_all(staging.join("graphs"))?;
+      fs::write(staging.join("header"), b"header")?;
+
+      Ok(fs::write(staging.join("graphs/level"), b"level")?)
+    })
+    .expect("the tree is written");
+
+  assert_eq!(written, [destination.join("graphs/level"), destination.join("header")]);
+  assert_eq!(
+    assets.get_vfs().get_revision(),
+    before.next(),
+    "the whole tree is one commit"
+  );
+  assert_eq!(
+    fs::read(destination.join("header")).expect("the header reads"),
+    b"header"
+  );
+  assert_eq!(list_names(&destination), ["graphs", "header"]);
+  assert_eq!(list_names(&root.join("spawns")), ["all"], "nothing staged is left");
+}
+
+#[test]
+fn a_failed_streamed_write_publishes_nothing_and_leaves_nothing() {
+  let (assets, root, _) = mounted_tree("write_staged_failed", &["configs/system.ltx"]);
+  let target: PathBuf = root.join("configs/system.ltx");
+
+  let error: String = assets
+    .write_staged(&target, |staging| {
+      fs::write(staging, b"partial")?;
+
+      Err(std::io::Error::other("the writer gave up").into())
+    })
+    .expect_err("the writer failed");
+
+  assert!(error.contains("the writer gave up"), "{error}");
+  assert_eq!(fs::read(&target).expect("the file reads"), b"payload");
+  assert_eq!(list_names(&root.join("configs")), ["system.ltx"]);
+}
+
+#[test]
 fn a_stamp_is_the_size_and_the_modification_time_together() {
   // Both, because a rewrite that happens to land on the same length is exactly the change a size alone would miss.
   let stamp: FileStamp = FileStamp {
