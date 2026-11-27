@@ -10,6 +10,7 @@ pub(crate) mod readout;
 mod tests;
 
 pub use crate::console::developer_console::DeveloperConsole;
+pub use crate::console::developer_suggestion::DeveloperSuggestion;
 pub use crate::layer::developer_frame::DeveloperFrame;
 pub use crate::layer::developer_layer::DeveloperLayer;
 pub use crate::layer::developer_view::DeveloperView;

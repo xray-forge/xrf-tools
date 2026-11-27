@@ -1,11 +1,9 @@
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
-use std::time::Duration;
-#[cfg(feature = "mcp")]
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use xrf_game_console::{ConsoleAnswer, ConsoleCompletion};
-use xrf_game_developer::DeveloperView;
+use xrf_game_console::{ConsoleAnswer, ConsoleChoice};
+use xrf_game_developer::{DeveloperSuggestion, DeveloperView};
 use xrf_game_loop::{LoopFeed, LoopFrame};
 use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
 use xrf_game_platform::{
@@ -45,14 +43,17 @@ pub(crate) struct GamePlay<'a> {
   pub control: Option<GameControl>,
   /// Whether a console line asked the game to quit.
   pub is_quitting: bool,
+  /// When the window, opened hidden, is shown at the latest should no frame be drawn before; none once it is shown.
+  pub show_by: Option<Instant>,
 }
 
 impl GamePlay<'_> {
   /// The key that quits until the game has a menu: Escape's place.
   const QUIT_KEY: PlatformScancode = PlatformScancode(41);
 
-  /// The most characters a row of completion choices runs to.
-  const CHOICES_WIDTH: usize = 120;
+  /// How long the window stays hidden waiting for the first frame: past it, it shows whatever it holds, so a renderer
+  /// that never draws still leaves a window to close.
+  pub(crate) const SHOW_WAIT: Duration = Duration::from_secs(30);
 
   /// How long the main thread waits between reads of the platform's events.
   const POLL_WAIT: Duration = Duration::from_millis(1);
@@ -62,6 +63,7 @@ impl GamePlay<'_> {
     let mut events: Vec<PlatformEvent> = Vec::new();
 
     loop {
+      self.show_when_drawn();
       events.clear();
       platform.poll(&mut events);
 
@@ -79,7 +81,12 @@ impl GamePlay<'_> {
       }
 
       if let Some(line) = self.developer.take_completing() {
-        self.complete_console(&line);
+        self.developer.complete(self.console.complete(&line).line);
+      }
+
+      // After a completion, so the line it left is suggested from at once.
+      if let Some(line) = self.developer.take_typed() {
+        self.suggest_console(&line);
       }
 
       self.developer.push_lines(self.log.take());
@@ -138,29 +145,52 @@ impl GamePlay<'_> {
     answer
   }
 
-  /// Completes the drawer's line `text` as Tab asks, listing the choices left a few to a line, as consoles list them.
-  fn complete_console(&mut self, text: &str) {
-    let ConsoleCompletion { line, choices } = self.console.complete(text);
-    let mut rows: Vec<String> = Vec::new();
+  /// Shows the window, opened hidden, once the renderer drew its first frame or the wait ran out, and takes the cursor
+  /// for the view, which a hidden window cannot.
+  fn show_when_drawn(&mut self) {
+    let Some(show_by) = self.show_by else {
+      return;
+    };
 
-    for choice in choices {
-      match rows.last_mut() {
-        Some(row) if row.len() + choice.len() + 2 <= Self::CHOICES_WIDTH => {
-          row.push_str("  ");
-          row.push_str(&choice);
-        }
-        _ => rows.push(choice),
+    if !self.view.is_drawn() && Instant::now() < show_by {
+      return;
+    }
+
+    self.show_by = None;
+
+    for command in [
+      PlatformWindowCommand::Show,
+      PlatformWindowCommand::GrabCursor {
+        is_grabbed: !self.developer.is_open(),
+      },
+    ] {
+      if let Err(error) = self.window.apply(command) {
+        log::warn!("The window did not take {command:?}: {error}");
       }
     }
 
-    // The line the choices answer heads them.
-    if !rows.is_empty() {
-      self
-        .developer
-        .push_lines(std::iter::once(format!("> {text}")).chain(rows));
-    }
+    log::info!(
+      "Window shown {}",
+      if self.view.is_drawn() {
+        "with the first frame drawn"
+      } else {
+        "before any frame was drawn"
+      }
+    );
+  }
 
-    self.developer.complete(line);
+  /// Suggests what the drawer's line `text` may become: the console's choices with their hints, none for a line past
+  /// its name.
+  fn suggest_console(&mut self, text: &str) {
+    let suggestions: Vec<DeveloperSuggestion> = self
+      .console
+      .complete(text)
+      .choices
+      .into_iter()
+      .map(|ConsoleChoice { name, hint }| DeveloperSuggestion { text: name, hint })
+      .collect();
+
+    self.developer.suggest(suggestions);
   }
 
   /// Sends a command to the loop, answering whether it still takes them.

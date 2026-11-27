@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::console_answer::ConsoleAnswer;
+use crate::console_choice::ConsoleChoice;
 use crate::console_command::ConsoleCommand;
 use crate::console_completion::ConsoleCompletion;
 use crate::console_context::ConsoleContext;
@@ -87,16 +88,17 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
   }
 
   /// Completes the name `line` starts, as Tab does: to the longest start every command and variable it may still be
-  /// share, then a space once one is left; where several are left, the choices, each to its next dot. A line already
-  /// past its name, or one no name starts, is left as it is.
+  /// share, then a space once one is left; and every choice left, each to its next dot and hinted, as a suggestion
+  /// list shows them. A line already past its name, or one no name starts, is left as it is with no choice.
   pub fn complete(&self, context: &C, line: &str) -> ConsoleCompletion {
     let typed: &str = line.trim_start();
+    let unchanged = || ConsoleCompletion {
+      line: line.to_owned(),
+      choices: Vec::new(),
+    };
 
-    if typed.contains(char::is_whitespace) {
-      return ConsoleCompletion {
-        line: line.to_owned(),
-        choices: Vec::new(),
-      };
+    if typed.is_empty() || typed.contains(char::is_whitespace) {
+      return unchanged();
     }
 
     let variables: Vec<ConsoleVariable> = context.list_variables();
@@ -107,19 +109,8 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
       .filter(|name| name.starts_with(typed))
       .collect();
     let Some(first) = names.first() else {
-      return ConsoleCompletion {
-        line: line.to_owned(),
-        choices: Vec::new(),
-      };
+      return unchanged();
     };
-
-    if names.len() == 1 {
-      return ConsoleCompletion {
-        line: format!("{first} "),
-        choices: Vec::new(),
-      };
-    }
-
     let mut shared: usize = names.iter().fold(first.len(), |shared, name| {
       first
         .bytes()
@@ -134,20 +125,51 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
       shared -= 1;
     }
 
-    let mut choices: Vec<String> = names
+    // Each name to its next dot past what they share: the group it opens, or the name itself.
+    let mut grouped: Vec<&str> = names
       .iter()
       .map(|name| match name[shared..].find('.') {
-        Some(dot) => String::from(&name[..=shared + dot]),
-        None => String::from(*name),
+        Some(dot) => &name[..=shared + dot],
+        None => name,
       })
       .collect();
 
-    choices.sort();
-    choices.dedup();
+    grouped.sort_unstable();
+    grouped.dedup();
 
-    ConsoleCompletion {
-      line: String::from(&first[..shared]),
-      choices,
+    let choices: Vec<ConsoleChoice> = grouped
+      .iter()
+      .map(|name| ConsoleChoice {
+        name: String::from(*name),
+        hint: self.describe_choice(name, &names, &variables),
+      })
+      .collect();
+    let line: String = if names.len() == 1 {
+      format!("{first} ")
+    } else {
+      String::from(&first[..shared])
+    };
+
+    ConsoleCompletion { line, choices }
+  }
+
+  /// The hint beside the choice `name`: how many of `names` a group holds, a variable's value, or a command's use.
+  fn describe_choice(&self, name: &str, names: &[&str], variables: &[ConsoleVariable]) -> String {
+    if name.ends_with('.') {
+      let count: usize = names.iter().filter(|other| other.starts_with(name)).count();
+
+      return format!("{count} {}", if count == 1 { "variable" } else { "variables" });
+    }
+
+    if let Some(variable) = variables.iter().find(|variable| variable.name == name) {
+      return format!("= {}", variable.value);
+    }
+
+    match self.commands.get(name) {
+      Some(command) if command.usage.is_empty() => String::from(command.help),
+      Some(command) => format!("{} - {}", command.usage, command.help),
+      None if name == Self::HELP => String::from("the commands"),
+      None => String::from("[part] - the variables"),
     }
   }
 

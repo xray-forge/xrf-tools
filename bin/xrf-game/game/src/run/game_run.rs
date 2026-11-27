@@ -6,8 +6,7 @@ use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_loop::{GameClock, GameLoop, LoopClock, LoopStepper};
 use xrf_game_platform::{
-  Platform, PlatformSize, PlatformWindow, PlatformWindowCommand, PlatformWindowHandle, PlatformWindowMode,
-  PlatformWindowRequest,
+  Platform, PlatformSize, PlatformWindow, PlatformWindowHandle, PlatformWindowMode, PlatformWindowRequest,
 };
 use xrf_game_settings::{GameSettings, GameWindowMode};
 use xrf_job::ExecutionRequest;
@@ -94,9 +93,6 @@ impl GameRun {
         WorldFedCamera::default(),
       )),
     );
-    window
-      .apply(PlatformWindowCommand::GrabCursor { is_grabbed: true })
-      .map_err(Self::create_platform_error)?;
 
     GamePlay {
       window: &mut window,
@@ -114,6 +110,7 @@ impl GameRun {
         .then(|| GameControl::start(&level_name, directories.get_captures_directory()))
         .transpose()?,
       is_quitting: false,
+      show_by: Some(Instant::now() + GamePlay::SHOW_WAIT),
     }
     .run(&mut platform);
 

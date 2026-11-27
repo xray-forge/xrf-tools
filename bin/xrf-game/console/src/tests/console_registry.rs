@@ -1,4 +1,5 @@
 use crate::console_answer::ConsoleAnswer;
+use crate::console_choice::ConsoleChoice;
 use crate::console_command::ConsoleCommand;
 use crate::console_completion::ConsoleCompletion;
 use crate::console_context::ConsoleContext;
@@ -107,12 +108,16 @@ fn completes_a_name_as_far_as_it_is_shared_then_a_group_at_a_time() {
   let registry: ConsoleRegistry<Counter> = create_registry();
   let counter: Counter = Counter::default();
   let complete = |line: &str| registry.complete(&counter, line);
+  let choice = |name: &str, hint: &str| ConsoleChoice {
+    name: String::from(name),
+    hint: String::from(hint),
+  };
 
   assert_eq!(
     complete("bu"),
     ConsoleCompletion {
       line: String::from("bump "),
-      choices: Vec::new(),
+      choices: vec![choice("bump", "[times] - counts up")],
     }
   );
   assert_eq!(
@@ -120,13 +125,14 @@ fn completes_a_name_as_far_as_it_is_shared_then_a_group_at_a_time() {
     ConsoleCompletion {
       line: String::from("view.shadows."),
       choices: vec![
-        String::from("view.shadows.resolution"),
-        String::from("view.shadows.steps")
+        choice("view.shadows.resolution", "= 0"),
+        choice("view.shadows.steps", "= 0")
       ],
     }
   );
   assert_eq!(complete("view.shadows.r").line, "view.shadows.resolution ");
-  assert_eq!(complete("").choices, vec!["bump", "help", "list", "view."]);
+  assert_eq!(complete("l").choices, vec![choice("list", "[part] - the variables")]);
+  assert!(complete("").choices.is_empty());
   assert_eq!(
     complete("zzz"),
     ConsoleCompletion {

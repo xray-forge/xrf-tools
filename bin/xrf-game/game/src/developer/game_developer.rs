@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use xrf_game_developer::{DeveloperFrame, DeveloperLayer, DeveloperReadout, DeveloperView};
+use xrf_game_developer::{DeveloperFrame, DeveloperLayer, DeveloperReadout, DeveloperSuggestion, DeveloperView};
 use xrf_game_loop::LoopFrame;
 use xrf_game_movement::{MovementCamera, MovementHeading};
 use xrf_game_platform::PlatformEvent;
@@ -39,6 +39,17 @@ impl GameDeveloper {
   /// The lines entered into the console since the last take, in order.
   pub(crate) fn take_entered(&mut self) -> Vec<String> {
     self.layer.get_console_mut().take_entered()
+  }
+
+  /// The line being typed, where it changed since the last take.
+  pub(crate) fn take_typed(&mut self) -> Option<String> {
+    self.layer.get_console_mut().take_typed()
+  }
+
+  /// Lists `suggestions` under the console's field.
+  pub(crate) fn suggest(&mut self, suggestions: Vec<DeveloperSuggestion>) {
+    self.layer.get_console_mut().suggest(suggestions);
+    self.is_changed = true;
   }
 
   /// The line Tab asked to complete since the last take.

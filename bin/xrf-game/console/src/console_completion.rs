@@ -1,9 +1,11 @@
-/// What Tab makes of a line being typed: the line completed as far as the names it can still be agree, and the choices
-/// left where they part, each taken to its next dot, so a dotted path is completed a group at a time.
+use crate::console_choice::ConsoleChoice;
+
+/// What a line being typed may become: the line completed as far as the names it can still be agree, as Tab completes
+/// it, and every choice left, each taken to its next dot, so a dotted path is offered a group at a time.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ConsoleCompletion {
-  /// The line completed, with a space after a name that is complete, so its value follows.
+  /// The line completed, with a space after a name that is whole, so its value follows.
   pub line: String,
-  /// The choices left, none where one name or none is left.
-  pub choices: Vec<String>,
+  /// The choices left in name order, one where the line names one whole; none past the name or where none fits.
+  pub choices: Vec<ConsoleChoice>,
 }

@@ -59,7 +59,8 @@ impl Platform {
     })
   }
 
-  /// Opens the game's window, centred on the main display and shown.
+  /// Opens the game's window, centred on the main display and hidden until `PlatformWindowCommand::Show`: the
+  /// renderer takes seconds to draw its first frame, and a window shown before then shows whatever the system paints.
   ///
   /// # Errors
   ///
@@ -71,6 +72,7 @@ impl Platform {
       .resizable()
       .high_pixel_density()
       .position_centered()
+      .hidden()
       .build()
       .map_err(|error| format!("The window cannot be opened: {error}"))?;
     let mut window: PlatformWindow = PlatformWindow::new(window, self.context.mouse(), self.video.text_input());

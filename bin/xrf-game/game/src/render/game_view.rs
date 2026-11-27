@@ -25,6 +25,8 @@ pub struct GameView {
   world: Arc<Mutex<World>>,
   /// Whether the level shown stood ready, as the renderer reported it.
   ready: Arc<AtomicBool>,
+  /// Whether the renderer drew a frame of the view yet.
+  drawn: Arc<AtomicBool>,
   /// The latest frame report not yet taken.
   frame: Arc<Mutex<Option<Box<RenderFrameReport>>>>,
 }
@@ -57,8 +59,14 @@ impl GameView {
       queue,
       world,
       ready: Arc::new(AtomicBool::new(false)),
+      drawn: Arc::new(AtomicBool::new(false)),
       frame: Arc::new(Mutex::new(None)),
     }
+  }
+
+  /// Whether the renderer drew a frame of the view yet, which the window waits for before it shows.
+  pub fn is_drawn(&self) -> bool {
+    self.drawn.load(Ordering::Acquire)
   }
 
   /// The frame report the renderer sent since the last taken, none where it sent none.
@@ -79,6 +87,7 @@ impl GameView {
       host,
       sink: Box::new(GameRenderSink {
         ready: Arc::clone(&self.ready),
+        drawn: Arc::clone(&self.drawn),
         frame: Arc::clone(&self.frame),
       }),
     });

@@ -8,9 +8,10 @@ types.
   that runs it) over a context `C`, the program's own state. `execute(context, line)` runs a line
   (`ConsoleLine`: a name, then what follows it): a command by its name; a variable's name alone shows it, with a value
   sets it; `help` lists the commands and `list [part]` the variables. An unknown name fails, suggesting variables
-  whose name holds it. `complete(context, line)` is Tab's: the name typed completed as far as every name it may
-  still be shares, a space after one that is whole, and the choices left (`ConsoleCompletion`), each to its next dot,
-  so `vi` completes to `view.` and lists `view.shadows.`, `view.grass.` and the rest.
+  whose name holds it. `complete(context, line)` gives what a line may become (`ConsoleCompletion`): the name typed
+  completed as far as every name it may still be shares, a space after one that is whole, as Tab completes it, and the
+  choices left (`ConsoleChoice`), each to its next dot with a hint, as a suggestion list shows them: `view.s` offers
+  `view.shadows.` (16 variables), `view.sun_shafts.` and `view.sun_tint` (= 0.0).
 - `ConsoleContext` is what the context gives the registry: its variables (`ConsoleVariable`, a name and a value as
   text) and how one is set. The game's variables are its settings, by their dotted paths.
 - `ConsoleAnswer` is what a line answers: the lines shown, and whether it failed, which the bridge reports as an error.

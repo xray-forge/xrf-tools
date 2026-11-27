@@ -54,6 +54,12 @@ impl PlatformWindow {
   /// Returns why SDL refused it.
   pub fn apply(&mut self, command: PlatformWindowCommand) -> Result<(), String> {
     match command {
+      PlatformWindowCommand::Show => {
+        self.window.show();
+        self.window.raise();
+
+        Ok(())
+      }
       PlatformWindowCommand::SetMode { mode } => self
         .window
         .set_fullscreen(mode == PlatformWindowMode::Fullscreen)

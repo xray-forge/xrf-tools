@@ -4,6 +4,8 @@ use crate::window::platform_window_mode::PlatformWindowMode;
 /// What the game tells its window to do.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlatformWindowCommand {
+  /// Shows the window, opened hidden, and raises it.
+  Show,
   SetMode {
     mode: PlatformWindowMode,
   },
