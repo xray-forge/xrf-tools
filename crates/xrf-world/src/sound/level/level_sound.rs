@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
 
 use xrf_audio_scene::{AudioListener, AudioSceneFrame, AudioSceneRules};
@@ -14,7 +15,7 @@ use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
 use crate::host::sound::world_sound::WorldSound;
-use crate::host::sound::world_sound_cue::WorldSoundCue;
+use crate::host::sound::world_sound_cues::WorldSoundCues;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::loading::loader_once::LoaderOnce;
@@ -22,6 +23,7 @@ use crate::sound::emitters::sound_emitters::SoundEmitters;
 use crate::sound::emitters::sound_outlet::SoundOutlet;
 use crate::sound::emitters::sound_play::SoundPlay;
 use crate::sound::level::effect_sound::EffectSound;
+use crate::sound::level::queued_cue::QueuedCue;
 use crate::sound::level::sound_drive::SoundDrive;
 use crate::sound::schedule::level_music::LevelMusic;
 use crate::sound::schedule::static_sounds::StaticSounds;
@@ -55,9 +57,9 @@ pub(crate) struct LevelSound {
   is_audible: bool,
   game_time: u32,
   /// The host's cues asked since the last frame, which it plays at its clock.
-  cues: Vec<WorldSoundCue>,
-  /// Each cue's sound by its reference, read from the level's source once.
-  cue_sounds: HashMap<String, WorldSound>,
+  cues: Receiver<QueuedCue>,
+  /// Where the host's cues are queued, handed to each place they are played from.
+  cue_queue: Sender<QueuedCue>,
 }
 
 struct LevelSounds {
@@ -81,6 +83,8 @@ impl LevelSounds {
 
 impl LevelSound {
   pub(crate) fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
+    let (cue_queue, cues) = mpsc::channel::<QueuedCue>();
+
     Self {
       pending: Self::read_sounds(source, workers),
       read: None,
@@ -95,20 +99,15 @@ impl LevelSound {
       listener: AudioListener::default(),
       is_audible: false,
       game_time: 0,
-      cues: Vec::new(),
-      cue_sounds: HashMap::new(),
+      cues,
+      cue_queue,
     }
   }
 
-  /// Plays `cue` on the next frame, its sound read from `source` the first time it is asked for.
-  pub(crate) fn play_cue(&mut self, source: &Arc<dyn WorldLevelSource>, cue: WorldSoundCue) {
-    if !self.cue_sounds.contains_key(&cue.reference) {
-      self
-        .cue_sounds
-        .insert(cue.reference.clone(), source.read_sound(&cue.reference));
-    }
-
-    self.cues.push(cue);
+  /// A place for the host to play its cues from, each started on the frame after it is played, its sound read from
+  /// `source` where it is played from.
+  pub(crate) fn open_cues(&self, source: &Arc<dyn WorldLevelSource>) -> WorldSoundCues {
+    WorldSoundCues::new(Arc::clone(source), self.cue_queue.clone())
   }
 
   /// Reads the level's own sounds again from `source`, a next source of the same level whose spawn or helpers changed.
@@ -365,17 +364,13 @@ impl LevelSound {
 
   /// Starts the host's cues asked since the last frame at `now`; one whose file is missing plays nothing.
   fn play_cues(&mut self, engine: XrayEngine, now: Duration) {
-    for cue in std::mem::take(&mut self.cues) {
-      let Some(sound) = self.cue_sounds.get(&cue.reference) else {
-        continue;
-      };
-
+    for QueuedCue { cue, sound } in self.cues.try_iter() {
       self.emitters.play(
         engine,
         SoundPlay {
           is_2d: cue.is_2d,
           volume: cue.volume,
-          ..SoundPlay::new(sound, cue.kind, cue.position, now)
+          ..SoundPlay::new(&sound, cue.kind, cue.position, now)
         },
       );
     }

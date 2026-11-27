@@ -20,7 +20,7 @@ use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_play::WorldWeatherPlay;
 use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::contract::world_toggles::WorldToggles;
-use crate::host::sound::world_sound_cue::WorldSoundCue;
+use crate::host::sound::world_sound_cues::WorldSoundCues;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_view_feed::WorldViewFeed;
@@ -341,13 +341,10 @@ impl World {
     }
   }
 
-  /// Plays `cue` with the sound of the level a viewport shows, on its next frame; nothing while it shows none.
-  pub fn play_sound(&mut self, viewport: RenderViewportId, cue: WorldSoundCue) {
-    let scene: Option<RenderSceneId> = self.viewports.get(&viewport).and_then(|world| world.scene);
-
-    if let Some(scene) = scene.and_then(|id| self.scenes.get_mut(&id)) {
-      scene.level.play_cue(cue);
-    }
+  /// A place for the host to play its one-off sounds from in the level a viewport shows, none while it shows none.
+  /// Opened once a level, it is played into from the host's own thread without the world.
+  pub fn open_sound_cues(&self, viewport: RenderViewportId) -> Option<WorldSoundCues> {
+    self.get_scene(viewport).map(|scene| scene.level.open_sound_cues())
   }
 
   /// The scene a viewport shows.

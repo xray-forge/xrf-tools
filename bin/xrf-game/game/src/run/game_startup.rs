@@ -4,9 +4,10 @@ use xrf_game_platform::{PlatformWindow, PlatformWindowCommand};
 use xrf_logging::ProcessStart;
 
 use crate::render::game_view::GameView;
+use crate::run::game_cursor::GameCursor;
 
 /// How the game's window first shows, so nothing half built is ever seen: opened hidden, it shows once a frame drawn
-/// after the developer layer was first sent, the loading view over it, is presented, or once its wait runs out, so a
+/// after a layer was first sent to the view, the loading view over it, is presented, or once its wait runs out, so a
 /// renderer that never draws still leaves a window to close.
 pub(crate) struct GameStartup {
   /// When play began, which the wait counts from; the log counts from launch.
@@ -29,22 +30,16 @@ impl GameStartup {
     }
   }
 
-  /// Shows `window` once a frame drawn after the layer was first `sent` is presented, or once the wait ran out, and
-  /// takes the cursor for the view unless the console has it, which a hidden window cannot.
-  pub(crate) fn show_when_covered(
-    &mut self,
-    window: &mut PlatformWindow,
-    view: &GameView,
-    sent: bool,
-    is_console_open: bool,
-  ) {
+  /// Shows `window` once a frame of `view` drawn after a layer was first sent to it is presented, or once the wait ran
+  /// out, and takes the cursor for the view unless a layer holds it (`cursor`), which a hidden window cannot.
+  pub(crate) fn show_when_covered(&mut self, window: &mut PlatformWindow, view: &GameView, cursor: GameCursor) {
     if self.is_shown {
       return;
     }
 
     let drawn: u64 = view.count_drawn();
 
-    if sent && self.covered_from.is_none() {
+    if view.is_layered() && self.covered_from.is_none() {
       self.covered_from = Some(drawn);
     }
 
@@ -57,16 +52,11 @@ impl GameStartup {
 
     self.is_shown = true;
 
-    for command in [
-      PlatformWindowCommand::Show,
-      PlatformWindowCommand::GrabCursor {
-        is_grabbed: !is_console_open,
-      },
-    ] {
-      if let Err(error) = window.apply(command) {
-        log::warn!("The window did not take {command:?}: {error}");
-      }
+    if let Err(error) = window.apply(PlatformWindowCommand::Show) {
+      log::warn!("The window did not show: {error}");
     }
+
+    cursor.hand(window);
 
     log::info!(
       "Window shown {:.1?} after launch{}",

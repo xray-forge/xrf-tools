@@ -13,7 +13,7 @@ use xrf_renderer::{
   RenderViewportLayout, RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
 };
 use xrf_renderer_host::DiskCacheStore;
-use xrf_world::{World, WorldLevelSource, WorldSoundCue, WorldViewFeed};
+use xrf_world::{World, WorldLevelSource, WorldSoundCues, WorldViewFeed};
 
 use crate::render::game_bundle::GameBundle;
 use crate::render::game_render_sink::GameRenderSink;
@@ -31,6 +31,8 @@ pub struct GameView {
   drawn: Arc<AtomicU64>,
   /// The latest frame report not yet taken.
   frame: Arc<Mutex<Option<Box<RenderFrameReport>>>>,
+  /// Whether a layer was sent to draw over the view yet.
+  is_layered: AtomicBool,
 }
 
 impl GameView {
@@ -64,7 +66,13 @@ impl GameView {
       load: Arc::new(Mutex::new(None)),
       drawn: Arc::new(AtomicU64::new(0)),
       frame: Arc::new(Mutex::new(None)),
+      is_layered: AtomicBool::new(false),
     }
+  }
+
+  /// Whether a layer was sent to draw over the view yet, so the frames drawn from then on are covered by it.
+  pub fn is_layered(&self) -> bool {
+    self.is_layered.load(Ordering::Acquire)
   }
 
   /// How many frames of the view the renderer drew so far.
@@ -170,19 +178,17 @@ impl GameView {
       id: Self::VIEWPORT,
       layer,
     });
+    self.is_layered.store(true, Ordering::Release);
   }
 
-  /// Shows `level`, its camera and the game's day given by `feed`.
-  pub fn show(&self, level: Arc<dyn WorldLevelSource>, feed: Arc<dyn WorldViewFeed>) {
+  /// Shows `level`, its camera and the game's day given by `feed`, and answers where the game plays its one-off sounds
+  /// in it, which it plays into without the world from then on; none where the view was detached.
+  pub fn show(&self, level: Arc<dyn WorldLevelSource>, feed: Arc<dyn WorldViewFeed>) -> Option<WorldSoundCues> {
     let mut world: MutexGuard<'_, World> = self.lock_world();
 
     world.show_level(Self::VIEWPORT, Some(level));
     world.set_view_feed(Self::VIEWPORT, feed);
-  }
-
-  /// Plays `cue` in the shown level, at its next sound frame.
-  pub fn play_sound(&self, cue: WorldSoundCue) {
-    self.lock_world().play_sound(Self::VIEWPORT, cue);
+    world.open_sound_cues(Self::VIEWPORT)
   }
 
   /// Takes the view out of the window and stops the renderer, in the order the window's drop needs: detached, the

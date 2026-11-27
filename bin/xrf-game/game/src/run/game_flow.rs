@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use rayon::ThreadPool;
 use xrf_error::XrfResult;
-use xrf_game_developer::DeveloperLoading;
+use xrf_game_developer::{DeveloperLoading, DeveloperPicture};
 use xrf_game_settings::GameInputSettings;
 
-use crate::developer::game_developer::GameDeveloper;
 use crate::input::game_look::GameLook;
 use crate::load::game_load_progress::GameLoadProgress;
 use crate::load::game_loading::GameLoading;
@@ -26,6 +25,10 @@ pub(crate) struct GameFlow {
   running: Option<GameRunning>,
   /// Which way the player looks, which presentation turns and the view draws, whichever game runs.
   look: Arc<GameLook>,
+  /// The load's view as it stood when the flow last moved on, none once the load gave way.
+  loading_view: Option<DeveloperLoading>,
+  /// The load's picture, from its arrival until the layer drawing the loading view takes it.
+  loading_picture: Option<DeveloperPicture>,
 }
 
 impl GameFlow {
@@ -45,7 +48,19 @@ impl GameFlow {
       opening: Some(GameOpening::start(request.clone(), pool, progress)?),
       running: None,
       look: Arc::new(GameLook::default()),
+      loading_view: None,
+      loading_picture: None,
     })
+  }
+
+  /// The load's view to draw this frame, none while no load covers the level.
+  pub(crate) fn get_loading_view(&self) -> Option<&DeveloperLoading> {
+    self.loading_view.as_ref()
+  }
+
+  /// The picture the loading view shows, once after it arrived.
+  pub(crate) fn take_loading_picture(&mut self) -> Option<DeveloperPicture> {
+    self.loading_picture.take()
   }
 
   pub(crate) fn get_look(&self) -> &Arc<GameLook> {
@@ -77,24 +92,19 @@ impl GameFlow {
     self.running.as_mut()
   }
 
-  /// Moves the load on and answers its view to draw: what the opening told taken (its picture to `developer`, its
-  /// game started and shown in `view`, its keys bound with `input`'s), the renderer's stages followed; once every stage
-  /// ended, the game is played.
+  /// Moves the load on a frame: what the opening told taken (its picture kept for the loading view, its game started
+  /// and shown in `view`, its keys bound with `input`'s), the renderer's stages followed and the load's view kept to
+  /// draw; once every stage ended, the game is played.
   ///
   /// # Errors
   ///
   /// Returns why the game did not open, or its loop did not start.
-  pub(crate) fn advance(
-    &mut self,
-    view: &GameView,
-    developer: &mut GameDeveloper,
-    input: &GameInputSettings,
-  ) -> XrfResult<Option<DeveloperLoading>> {
+  pub(crate) fn advance(&mut self, view: &GameView, input: &GameInputSettings) -> XrfResult<()> {
     let opened: Vec<GameOpened> = self.opening.as_ref().map(GameOpening::take).unwrap_or_default();
 
     for event in opened {
       match event {
-        GameOpened::Picture(picture) => developer.set_loading_picture(&picture),
+        GameOpened::Picture(picture) => self.loading_picture = Some(picture),
         GameOpened::Session(session) => {
           self.opening = None;
           self.running = Some(GameRunning::start((*session)?, view, &self.look, input)?);
@@ -102,16 +112,13 @@ impl GameFlow {
       }
     }
 
-    let Some(loading) = &mut self.loading else {
-      return Ok(None);
-    };
-    let shown: Option<DeveloperLoading> = loading.update(view);
+    self.loading_view = self.loading.as_mut().and_then(|loading| loading.update(view));
 
     // Done, or its wait ran out: the view gives way, to the game, or to none until a slow game opens.
-    if shown.is_none() {
+    if self.loading_view.is_none() {
       self.loading = None;
     }
 
-    Ok(shown)
+    Ok(())
   }
 }

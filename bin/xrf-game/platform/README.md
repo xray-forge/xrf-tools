@@ -16,8 +16,11 @@ checkout's `.sdks/sdl3`, which `cargo make fetch-sdks` fills. The build script p
 
 ## Events
 
-`Platform::poll(&mut events)` appends every waiting event, each stamped with when it happened on SDL's clock
-(`PlatformEvent::at`):
+`Platform::wait(timeout, &mut events)` waits for an event until the timeout has passed and appends every waiting
+event, so the main thread rests until there is input or its own next work is due; a zero timeout only reads. SDL waits
+whole milliseconds and a millisecond short of what it is asked (asked one, it returns at once), so the platform asks
+it for one more: a wait ends up to about a millisecond late, never early (asked 4 ms, 4.4 ms at the median and 5.5 at
+p99 on Windows). Each event is stamped with when it happened on SDL's clock (`PlatformEvent::at`):
 
 | Kind                        | What it carries                                                                      |
 | --------------------------- | ------------------------------------------------------------------------------------ |

@@ -84,14 +84,31 @@ impl Platform {
     Ok(window)
   }
 
+  /// The whole milliseconds SDL is asked to wait so that it waits `timeout` at least. SDL waits the whole milliseconds
+  /// left of what it was asked once it has looked at its queue, so a millisecond short: asked one, it returns at once,
+  /// and a caller waiting out the last of a millisecond would spin.
+  pub(crate) fn get_wait_milliseconds(timeout: Duration) -> u32 {
+    if timeout.is_zero() {
+      return 0;
+    }
+
+    u32::try_from(timeout.as_nanos().div_ceil(1_000_000))
+      .unwrap_or(u32::MAX)
+      .saturating_add(1)
+  }
+
   /// Now on the clock events are stamped with, to the millisecond: the time since SDL started.
   pub fn get_time(&self) -> Duration {
     Duration::from_millis(sdl3::timer::ticks())
   }
 
-  /// Appends every event waiting to `events`, oldest first, opening each gamepad as it is connected.
-  pub fn poll(&mut self, events: &mut Vec<PlatformEvent>) {
-    for event in self.pump.poll_iter() {
+  /// Waits for an event until `timeout` has passed, to SDL's whole milliseconds, then appends every event waiting to
+  /// `events`, oldest first, opening each gamepad as it is connected. An event waiting already ends the wait at once,
+  /// and so does one arriving meanwhile; no timeout reads what waits without waiting.
+  pub fn wait(&mut self, timeout: Duration, events: &mut Vec<PlatformEvent>) {
+    let first: Option<Event> = self.pump.wait_event_timeout_ms(Self::get_wait_milliseconds(timeout));
+
+    for event in first.into_iter().chain(self.pump.poll_iter()) {
       match &event {
         Event::GamepadAdded { which, .. } => match self.gamepads.open(*which) {
           Ok(gamepad) => {

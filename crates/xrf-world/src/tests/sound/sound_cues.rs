@@ -3,12 +3,13 @@ use std::time::{Duration, Instant};
 
 use xrf_audio_scene::{AudioBus, AudioSceneEmitter, AudioSceneFrame};
 use xrf_math::glam::Vec3;
-use xrf_renderer::{RenderSceneId, RenderWorkers};
+use xrf_renderer::{RenderSceneId, RenderViewportId, RenderWorkers};
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::sink::world_sound_frame::WorldSoundFrame;
 use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 use crate::host::sound::world_sound_cue::WorldSoundCue;
+use crate::host::sound::world_sound_cues::WorldSoundCues;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::campfire::Campfire;
 use crate::level::effects::level_campfires::LevelCampfires;
@@ -16,8 +17,9 @@ use crate::sound::level::level_sound::LevelSound;
 use crate::sound::level::sound_drive::SoundDrive;
 use crate::sound::schedule::zone_states::ZoneStates;
 use crate::sound::weather::rain_frame::RainFrame;
-use crate::tests::fixtures::TestLevelSource;
+use crate::tests::fixtures::{SilentSink, TestLevelSource};
 use crate::tests::test_workers::create_workers;
+use crate::world::World;
 
 #[derive(Clone, Default)]
 struct KeepingSink {
@@ -66,6 +68,34 @@ fn advance(sound: &mut LevelSound, zones: &mut NoZones, opened: Instant, now: Du
   sound.advance(now, None, &drive, None, zones);
 }
 
+fn step() -> WorldSoundCue {
+  WorldSoundCue {
+    reference: String::from("material\\dirt\\step\\dirt1"),
+    kind: WorldSoundKind::Footstep,
+    position: [1.0, 2.0, 3.0],
+    is_2d: true,
+    volume: 0.5,
+  }
+}
+
+#[test]
+fn opens_cues_only_for_a_viewport_showing_a_level_and_takes_them_after_it_is_let_go() {
+  let mut world: World = World::new(create_workers());
+  let viewport: RenderViewportId = RenderViewportId(1);
+
+  world.attach(viewport, Box::new(SilentSink));
+
+  assert!(world.open_sound_cues(viewport).is_none());
+
+  world.show_level(viewport, Some(Arc::new(TestLevelSource::default())));
+
+  let mut cues: WorldSoundCues = world.open_sound_cues(viewport).expect("the level's cues");
+
+  world.show_level(viewport, None);
+  // The level is gone: the cue has nowhere to play, and playing it is no fault.
+  cues.play(step());
+}
+
 #[test]
 fn plays_a_hosts_cue_once_from_the_listener_on_the_world_bus() {
   let sink: KeepingSink = KeepingSink::default();
@@ -79,16 +109,12 @@ fn plays_a_hosts_cue_once_from_the_listener_on_the_world_bus() {
   let mut zones: NoZones = NoZones(LevelCampfires::default());
   let opened: Instant = Instant::now();
 
-  sound.play_cue(
-    &source,
-    WorldSoundCue {
-      reference: String::from("material\\dirt\\step\\dirt1"),
-      kind: WorldSoundKind::Footstep,
-      position: [1.0, 2.0, 3.0],
-      is_2d: true,
-      volume: 0.5,
-    },
-  );
+  let mut cues: WorldSoundCues = sound.open_cues(&source);
+
+  // Played from a thread of the host's own, which holds nothing of the level's but its cues.
+  std::thread::spawn(move || cues.play(step()))
+    .join()
+    .expect("the cue played");
   advance(&mut sound, &mut zones, opened, Duration::from_millis(100));
 
   let frames = sent.lock().unwrap();

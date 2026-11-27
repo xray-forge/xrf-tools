@@ -77,17 +77,39 @@ loop is sent the heading whole once a frame it changed (`MovementCommand::Face`)
 the median, 11 at p90, against 12 and 19 when the loop turned the view a tick at a time and the view blended a tick
 behind (Zaton, 2026-11-27). The day blends a tick behind.
 
-Play owns the settings store (`xrf-game-settings`' `GameSettingsStore`) outright and lends it to the console
-(`GameConsole`) a line at a time; the bridge's lines run through the console. `GamePlay` applies what changed once a
-frame, by group: the view's
-groups to the renderer, the input group to the running game, which owns its keys (its tree's controls with the
-player's bindings over them) and binds them again; the run saves what changed as it quits.
+The main thread plays through a chain of presentation layers (`GameLayers`, each a `GameLayer`), topmost first, over
+what they share (`GameLayerContext`: the window, the view, the settings, the console, the flow), which play owns and
+lends each layer in turn, so no layer holds another:
 
-`GamePlay` reads each platform event through the bindings into the loop's movement commands (the player held while
-loading) and, with `--mcp` or `--listen`, answers the control endpoint between frames (`GameControl`): `ready` once the
-renderer reports the level ready, then `status`, `pose` (a camera command to the loop, the look faced with it),
-`capture` (the window's next frame to `appdata/xrf-game/captures/`) and `quit`. A loop that faulted or stopped ends the
-run with its reason. On quit it stops the loop, detaches and stops the view, then drops the window.
+- `GameControl`, with `--mcp` or `--listen`: the control endpoint. It feeds the input an agent plays to every layer as
+  the window's own, and once a frame answers its requests: `ready` once the renderer reports the level ready, then
+  `status`, `pose` (a camera command to the loop, the look faced with it), `console`, `capture` (the window's next
+  frame to `appdata/xrf-game/captures/`) and `quit`.
+- `GameDeveloper`: the console's drawer, the log's records in it, the frame and camera readouts, and the load's view.
+- `GamePlayerLayer`: the game itself. The mouse turns the look, the keys bound become the loop's movement commands (the
+  player held while loading), and each frame the loop is checked for still stepping and what its steps told is played.
+
+A frame of `GamePlay` waits for the platform's events until a layer's next work is due (`GameLayer::get_due`) and 4 ms
+at most, since what other threads bring ends no wait; offers each event down the chain until a layer keeps it
+(`GameInputFate`); moves the flow and then every layer on, from the top; and has them draw, from the bottom. A layer
+that seizes the keyboard and the mouse, as the console does opening, makes the layers under it let go of what they
+hold and frees the cursor (`GameCursor`) until it yields them. What no layer keeps is the window's own: its close, its
+resize, and Escape, which quits until a menu takes it. A new layer, a HUD or a menu, is its type and a `push` where
+`GameRun` builds the chain.
+
+The context owns the settings store (`xrf-game-settings`' `GameSettingsStore`) outright and lends it to the console
+(`GameConsole`) a line at a time, whichever layer enters the line, the drawer or the bridge. `GamePlay` applies what
+changed once a frame, by group: the view's groups to the renderer, the input group to the running game, which owns
+its keys (its tree's controls with the player's bindings over them) and binds them again; the run saves what changed
+as it quits.
+
+The game's one-off sounds, the player's footsteps, reach the level's sound over a channel opened as the level is
+shown (`xrf-world`'s `WorldSoundCues`): the main thread reads a sound's file the first time it is played and queues
+the cue, and the world starts it at its next frame, so playing one never takes the world's lock, which the render
+thread holds while it runs the world for a frame (about 65 µs a frame on Zaton, 0.3 ms at most).
+
+A loop that faulted or stopped ends the run with its reason. On quit it stops the loop, detaches and stops the view,
+then drops the window.
 
 ## Recording and replaying
 

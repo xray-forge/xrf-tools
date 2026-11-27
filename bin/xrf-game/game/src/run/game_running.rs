@@ -9,7 +9,7 @@ use xrf_game_loop::{GameLoop, LoopClock, LoopFrame, LoopStatus, LoopStepper};
 use xrf_game_movement::{MovementCommand, MovementEvent, MovementHeading};
 use xrf_game_platform::PlatformEvent;
 use xrf_game_settings::GameInputSettings;
-use xrf_world::WorldFedCamera;
+use xrf_world::{WorldFedCamera, WorldSoundCues};
 
 use crate::host::game_host::GameHost;
 use crate::input::game_bindings::GameBindings;
@@ -31,6 +31,8 @@ pub(crate) struct GameRunning {
   game_loop: GameLoop<GameState>,
   commands: Sender<GameCommand>,
   footsteps: GameFootsteps,
+  /// Where the game's one-off sounds play in the level shown, without the world; none where the view shows no level.
+  cues: Option<WorldSoundCues>,
   /// The tree's own controls, which the player's bindings are laid over.
   controls: GameControls,
   bindings: GameBindings,
@@ -69,7 +71,7 @@ impl GameRunning {
     let game_loop: GameLoop<GameState> =
       GameLoop::start(LoopStepper::new(clock.get_step(), state), clock, loop_session)?;
 
-    view.show(
+    let cues: Option<WorldSoundCues> = view.show(
       source,
       Arc::new(GameViewFeed::new(
         Arc::clone(game_loop.get_feed()),
@@ -82,6 +84,7 @@ impl GameRunning {
       commands: game_loop.get_sender(),
       game_loop,
       footsteps,
+      cues,
       bindings: GameBindings::new(&controls, input),
       controls,
       host,
@@ -150,14 +153,16 @@ impl GameRunning {
     }
   }
 
-  /// Plays what the loop's steps told since last taken, in order: each footstep's sound in `view`. An object switching
-  /// shows nothing yet, as nothing draws the objects.
-  pub(crate) fn play_events(&mut self, view: &GameView) {
+  /// Plays what the loop's steps told since last taken, in order: each footstep's sound queued for the level's sound.
+  /// An object switching shows nothing yet, as nothing draws the objects.
+  pub(crate) fn play_events(&mut self) {
     for told in self.game_loop.get_events().take() {
       match told.event {
         GameEvent::Movement(MovementEvent::Step(step)) => {
-          if let Some(sound) = self.footsteps.hear(&step) {
-            view.play_sound(sound);
+          if let Some(sound) = self.footsteps.hear(&step)
+            && let Some(cues) = &mut self.cues
+          {
+            cues.play(sound);
           }
         }
         GameEvent::Alife(_) => {}

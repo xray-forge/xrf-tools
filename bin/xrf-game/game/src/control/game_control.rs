@@ -1,4 +1,3 @@
-use std::cell::{Cell, RefCell, RefMut};
 use std::collections::VecDeque;
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -20,27 +19,29 @@ use crate::control::game_input_steps::GameInputSteps;
 use crate::control::game_status::GameStatus;
 use crate::control::scheduled_input::ScheduledInput;
 use crate::control::waiting_answer::WaitingAnswer;
-use crate::run::game_play::GamePlay;
+use crate::layer::game_layer::GameLayer;
+use crate::layer::game_layer_context::GameLayerContext;
 use crate::run::game_running::GameRunning;
 use crate::state::game_command::GameCommand;
 
-/// The game's answers to the control endpoint: where it stands, the camera stood where asked, input played as the
-/// window would deliver it, a console line run as the drawer runs it, the window's frame written to a file, and a quit.
-/// Requests are taken between frames on the main thread.
+/// The game's answers to the control endpoint, as the topmost presentation layer: where it stands, the camera stood
+/// where asked, input played as the window would deliver it (fed to every layer with the window's own), a console line
+/// run as the drawer runs it, the window's frame written to a file, and a quit. Requests are taken once a frame on the
+/// main thread.
 pub(crate) struct GameControl {
   endpoint: GameEndpoint,
   level: String,
   captures: Option<PathBuf>,
   /// Whether the bridge was told the level stood ready.
-  is_announced: Cell<bool>,
+  is_announced: bool,
   /// Input played and not yet delivered, in the order it falls due.
-  inputs: RefCell<VecDeque<ScheduledInput>>,
+  inputs: VecDeque<ScheduledInput>,
   /// Input requests answered once their last input is delivered, in the order they came.
-  waiting: RefCell<VecDeque<WaitingAnswer>>,
+  waiting: VecDeque<WaitingAnswer>,
   /// When input was last delivered up to.
-  delivered: Cell<Option<Instant>>,
+  delivered: Option<Instant>,
   /// When the input played so far runs out, its last wait included; the next request's input starts there.
-  scheduled_until: Cell<Option<Instant>>,
+  scheduled_until: Option<Instant>,
 }
 
 impl GameControl {
@@ -56,31 +57,19 @@ impl GameControl {
       endpoint,
       level: level.to_owned(),
       captures,
-      is_announced: Cell::new(false),
-      inputs: RefCell::new(VecDeque::new()),
-      waiting: RefCell::new(VecDeque::new()),
-      delivered: Cell::new(None),
-      scheduled_until: Cell::new(None),
+      is_announced: false,
+      inputs: VecDeque::new(),
+      waiting: VecDeque::new(),
+      delivered: None,
+      scheduled_until: None,
     }
-  }
-
-  /// Appends the played input due by `now` to `events`, stamped `at` on the platform's clock, for the game to take as
-  /// it takes the window's.
-  pub(crate) fn take_inputs(&self, now: Instant, at: Duration, events: &mut Vec<PlatformEvent>) {
-    let mut inputs: RefMut<'_, VecDeque<ScheduledInput>> = self.inputs.borrow_mut();
-
-    while let Some(input) = inputs.pop_front_if(|input| input.due <= now) {
-      events.push(PlatformEvent { at, kind: input.kind });
-    }
-
-    self.delivered.set(Some(now));
   }
 
   /// Tells the bridge the level is ready once it first stands ready, answers input requests whose input is all
-  /// delivered, then answers every request waiting, answering whether the game plays on: a quit ends it.
-  pub(crate) fn serve(&self, play: &mut GamePlay<'_>) -> bool {
-    if !self.is_announced.get() && play.view.is_ready() {
-      self.is_announced.set(true);
+  /// delivered, then answers every request waiting; a quit ends play and leaves the requests after it.
+  fn serve(&mut self, context: &mut GameLayerContext<'_>) {
+    if !self.is_announced && context.view.is_ready() {
+      self.is_announced = true;
       self.endpoint.announce(&GameEvent::Ready {
         level: self.level.clone(),
       });
@@ -93,8 +82,9 @@ impl GameControl {
         self
           .endpoint
           .answer(&GameResponse::succeed(&id, json!({ "quitting": true })));
+        context.quit();
 
-        return false;
+        return;
       }
 
       if let GameRequestKind::Input { inputs } = kind {
@@ -107,7 +97,7 @@ impl GameControl {
 
       // A refused line is answered in the console's own words, as the drawer shows it.
       if let GameRequestKind::Console { line } = kind {
-        let answer: ConsoleAnswer = play.run_console(&line);
+        let answer: ConsoleAnswer = context.run_console(&line);
 
         self.endpoint.answer(&if answer.is_failed {
           GameResponse::fail(&id, answer.lines.join("\n"))
@@ -118,63 +108,60 @@ impl GameControl {
         continue;
       }
 
-      let response: GameResponse = match self.answer(play, kind) {
+      let response: GameResponse = match self.answer(context, kind) {
         Ok(result) => GameResponse::succeed(&id, result),
         Err(error) => GameResponse::fail(&id, error.to_string()),
       };
 
       self.endpoint.answer(&response);
     }
-
-    true
   }
 
-  fn answer(&self, play: &GamePlay<'_>, kind: GameRequestKind) -> XrfResult<Value> {
+  fn answer(&self, context: &GameLayerContext<'_>, kind: GameRequestKind) -> XrfResult<Value> {
     match kind {
-      GameRequestKind::Status => self.describe(play),
+      GameRequestKind::Status => self.describe(context),
       GameRequestKind::Pose { position, target } => {
         let camera: MovementCamera = MovementCamera::looking_at(Vec3::from(position), Vec3::from(target));
 
         // The look faces the pose's way, which the simulation is told with the camera.
-        play.flow.get_look().face(camera.get_heading());
+        context.flow.get_look().face(camera.get_heading());
 
-        if !play.send(GameCommand::Movement(MovementCommand::SetCamera(camera))) {
+        if !context.send(GameCommand::Movement(MovementCommand::SetCamera(camera))) {
           return Err(XrfError::new_invalid_error("the game loop stopped"));
         }
 
         Ok(json!({ "position": position, "target": target }))
       }
-      GameRequestKind::Capture => self.capture(play.view.capture()),
+      GameRequestKind::Capture => self.capture(context.view.capture()),
       GameRequestKind::Input { .. } | GameRequestKind::Console { .. } | GameRequestKind::Quit => Ok(Value::Null),
     }
   }
 
   /// Plays `inputs` once those played before have run out, their waits included, the request `id` answered once its
   /// own have.
-  fn schedule(&self, id: String, inputs: Vec<GameInput>) -> XrfResult<()> {
+  fn schedule(&mut self, id: String, inputs: Vec<GameInput>) -> XrfResult<()> {
     let now: Instant = Instant::now();
-    let mut due: Instant = self.scheduled_until.get().map_or(now, |until| until.max(now));
+    let mut due: Instant = self.scheduled_until.map_or(now, |until| until.max(now));
     let scheduled: Vec<ScheduledInput> = GameInputSteps::read(inputs, &mut due)?;
 
-    self.scheduled_until.set(Some(due));
-    self.waiting.borrow_mut().push_back(WaitingAnswer {
+    self.scheduled_until = Some(due);
+    self.waiting.push_back(WaitingAnswer {
       id,
       due,
       events: scheduled.len(),
     });
-    self.inputs.borrow_mut().extend(scheduled);
+    self.inputs.extend(scheduled);
 
     Ok(())
   }
 
   /// Answers the input requests whose last input was delivered.
-  fn answer_delivered(&self) {
-    let Some(delivered) = self.delivered.get() else {
+  fn answer_delivered(&mut self) {
+    let Some(delivered) = self.delivered else {
       return;
     };
-    let mut waiting: RefMut<'_, VecDeque<WaitingAnswer>> = self.waiting.borrow_mut();
 
-    while let Some(answer) = waiting.pop_front_if(|answer| answer.due <= delivered) {
+    while let Some(answer) = self.waiting.pop_front_if(|answer| answer.due <= delivered) {
       self.endpoint.answer(&GameResponse::succeed(
         &answer.id,
         json!({ "delivered": answer.events }),
@@ -183,8 +170,8 @@ impl GameControl {
   }
 
   /// Where the game stands, read from its state between two of the loop's ticks.
-  fn describe(&self, play: &GamePlay<'_>) -> XrfResult<Value> {
-    let running: &GameRunning = play
+  fn describe(&self, context: &GameLayerContext<'_>) -> XrfResult<Value> {
+    let running: &GameRunning = context
       .flow
       .get_running()
       .ok_or_else(|| XrfError::new_not_found_error("the game is still opening; no loop runs yet"))?;
@@ -236,5 +223,29 @@ impl GameControl {
     StagedFile::write_creating_directories(&path, &png)?;
 
     Ok(json!({ "path": path.display().to_string(), "width": width, "height": height }))
+  }
+}
+
+impl GameLayer<GameLayerContext<'_>> for GameControl {
+  /// Appends the played input that fell due, for every layer to be offered as the window's own.
+  fn feed(&mut self, at: Duration, events: &mut Vec<PlatformEvent>) {
+    let now: Instant = Instant::now();
+
+    while let Some(input) = self.inputs.pop_front_if(|input| input.due <= now) {
+      events.push(PlatformEvent { at, kind: input.kind });
+    }
+
+    self.delivered = Some(now);
+  }
+
+  fn update(&mut self, context: &mut GameLayerContext<'_>) -> XrfResult<()> {
+    self.serve(context);
+
+    Ok(())
+  }
+
+  /// When the next played input falls due, none while none waits; a request arriving wakes nothing.
+  fn get_due(&self) -> Option<Instant> {
+    self.inputs.front().map(|input| input.due)
   }
 }

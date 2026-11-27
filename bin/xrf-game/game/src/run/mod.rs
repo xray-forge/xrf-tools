@@ -1,3 +1,4 @@
+pub(crate) mod game_cursor;
 pub(crate) mod game_flow;
 pub(crate) mod game_flow_stage;
 pub(crate) mod game_play;

@@ -1,287 +1,148 @@
-use std::sync::Arc;
-use std::time::Duration;
-#[cfg(feature = "mcp")]
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
-use xrf_game_console::{ConsoleAnswer, ConsoleChoice};
-use xrf_game_developer::{DeveloperLoading, DeveloperSuggestion, DeveloperView};
-use xrf_game_loop::LoopFrame;
-use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
-use xrf_game_platform::{
-  Platform, PlatformEvent, PlatformEventKind, PlatformScancode, PlatformSize, PlatformWindow, PlatformWindowCommand,
-};
-use xrf_game_settings::{GameSettingsChanges, GameSettingsGroup, GameSettingsStore};
-use xrf_logging::LogTail;
+use xrf_game_platform::{Platform, PlatformEvent, PlatformEventKind, PlatformScancode};
+use xrf_game_settings::{GameSettingsChanges, GameSettingsGroup};
 
-use crate::console::game_console::GameConsole;
-use crate::console::game_console_effect::GameConsoleEffect;
-#[cfg(feature = "mcp")]
-use crate::control::game_control::GameControl;
-use crate::developer::game_developer::GameDeveloper;
-use crate::render::game_view::GameView;
-use crate::run::game_flow::GameFlow;
-use crate::run::game_flow_stage::GameFlowStage;
-use crate::run::game_running::GameRunning;
+use crate::layer::game_layer_context::GameLayerContext;
+use crate::layer::game_layers::GameLayers;
+use crate::run::game_cursor::GameCursor;
 use crate::run::game_startup::GameStartup;
-use crate::state::game_command::GameCommand;
-use crate::state::game_frame::GameFrame;
 
-/// The main thread from the window's opening to the game's end: the platform's events read through the developer layer
-/// and the bindings into the loop's commands, the mouse turning the look the next drawn frame faces (sent to the loop
-/// once a frame it changed), the view fit to the window, the console's lines run and the log's records shown in it, the
-/// flow moved on (a load's view drawn while it runs, then the game played), what the loop's steps told played (the
-/// player's footsteps), the developer layer drawn over it, and the control endpoint's requests answered between frames,
-/// until the player, a console line or an agent quits, or the loop stops stepping.
+/// The main thread from the window's opening to the game's end, as a chain of presentation layers over what they
+/// share. Each frame it waits for the platform's events until a layer's next work is due, offers each event down the
+/// chain (what no layer keeps is the window's own: its close, its resize, the quit key), moves the flow on (a load's
+/// view while it runs, then the game played) and every layer after it, and has them draw, until the player, a console
+/// line or an agent quits, or the loop stops stepping.
 pub(crate) struct GamePlay<'a> {
-  pub window: &'a mut PlatformWindow,
-  pub view: &'a GameView,
-  /// The settings the run plays with, play's own: lent to the console for each line (and the bridge's, which run
-  /// through it), what changed applied once a frame.
-  pub settings: GameSettingsStore,
-  pub developer: GameDeveloper,
-  pub console: GameConsole,
-  /// The log's records the console shows, taken as they come.
-  pub log: Arc<LogTail>,
-  /// The control endpoint, where the game was started with `--mcp` or `--listen`.
-  #[cfg(feature = "mcp")]
-  pub control: Option<GameControl>,
-  /// Whether a console line asked the game to quit.
-  pub is_quitting: bool,
+  /// What every layer acts on: the window, the view, the settings, the console, the flow.
+  context: GameLayerContext<'a>,
+  /// The layers, topmost first.
+  layers: GameLayers<GameLayerContext<'a>>,
   /// How the hidden window first shows.
-  pub startup: GameStartup,
-  /// The load running and the game played.
-  pub flow: GameFlow,
+  startup: GameStartup,
 }
 
-impl GamePlay<'_> {
+impl<'a> GamePlay<'a> {
   /// The key that quits until the game has a menu: Escape's place.
   const QUIT_KEY: PlatformScancode = PlatformScancode(41);
 
-  /// How long the main thread waits between reads of the platform's events.
-  const POLL_WAIT: Duration = Duration::from_millis(1);
+  /// The longest the main thread waits for the platform's events. What other threads bring it (the loop's events and
+  /// frames, the load's news, an agent's requests) ends no wait, so it looks for them this often at least.
+  const LONGEST_WAIT: Duration = Duration::from_millis(4);
+
+  /// Play of `layers` over `context`, the window still hidden.
+  pub(crate) fn new(context: GameLayerContext<'a>, layers: GameLayers<GameLayerContext<'a>>) -> Self {
+    Self {
+      context,
+      layers,
+      startup: GameStartup::new(),
+    }
+  }
+
+  /// What every layer acts on, as play leaves it.
+  pub(crate) fn get_context_mut(&mut self) -> &mut GameLayerContext<'a> {
+    &mut self.context
+  }
 
   /// Plays until the player or an agent quits.
   ///
   /// # Errors
   ///
-  /// Returns why the game being loaded did not open, or its loop did not start.
+  /// Returns why the game being loaded did not open, or its loop did not start or stopped stepping.
   pub(crate) fn run(&mut self, platform: &mut Platform) -> XrfResult<()> {
     let mut events: Vec<PlatformEvent> = Vec::new();
 
     loop {
       self.apply_settings();
       self.startup.show_when_covered(
-        self.window,
-        self.view,
-        self.developer.has_sent(),
-        self.developer.is_open(),
+        self.context.window,
+        self.context.view,
+        GameCursor::of_seized(self.layers.is_seized()),
       );
       events.clear();
-      platform.poll(&mut events);
+      platform.wait(self.get_wait(), &mut events);
+      self.layers.feed(platform.get_time(), &mut events);
 
-      #[cfg(feature = "mcp")]
-      if let Some(control) = &self.control {
-        control.take_inputs(Instant::now(), platform.get_time(), &mut events);
+      for event in &events {
+        self.take_event(event);
       }
 
-      if !events.iter().all(|event| self.take_event(event)) {
+      if self.context.is_quitting() {
         return Ok(());
-      }
-
-      self.flow.follow_replay();
-
-      // The view already faces the look the render thread reads; the simulation is sent it whole, once a frame.
-      if let Some(heading) = self.flow.get_look().take_changed() {
-        self.send(GameCommand::Movement(MovementCommand::Face(heading)));
-      }
-
-      for line in self.developer.take_entered() {
-        self.run_console(&line);
-      }
-
-      if let Some(line) = self.developer.take_completing() {
-        self
-          .developer
-          .complete(self.console.complete(&mut self.settings, &line).line);
-      }
-
-      // After a completion, so the line it left is suggested from at once.
-      if let Some(line) = self.developer.take_typed() {
-        self.suggest_console(&line);
-      }
-
-      self.developer.push_lines(self.log.take());
-
-      if self.is_quitting {
-        return Ok(());
-      }
-
-      let view: DeveloperView = self.get_developer_view();
-      let loading: Option<DeveloperLoading> =
-        self
-          .flow
-          .advance(self.view, &mut self.developer, &self.settings.get().input)?;
-      let latest: Option<Arc<LoopFrame<GameFrame>>> = self.flow.get_running().and_then(GameRunning::get_latest);
-
-      if let Some(running) = self.flow.get_running_mut() {
-        running.check()?;
-        running.play_events(self.view);
       }
 
       self
-        .developer
-        .send(self.view, view, latest.as_deref(), loading.as_ref());
+        .context
+        .flow
+        .advance(self.context.view, &self.context.settings.get().input)?;
+      self.layers.update(&mut self.context)?;
+      self.layers.draw(&mut self.context);
 
-      // The endpoint is taken out while it serves, since a console request runs a line through play.
-      #[cfg(feature = "mcp")]
-      if let Some(control) = self.control.take() {
-        let is_playing: bool = control.serve(self);
-
-        self.control = Some(control);
-
-        if !is_playing || self.is_quitting {
-          return Ok(());
-        }
+      if self.context.is_quitting() {
+        return Ok(());
       }
-
-      std::thread::sleep(Self::POLL_WAIT);
     }
   }
 
-  /// Runs the console line `text`, as the drawer or the bridge enters it: shown in the drawer with its answer, then
-  /// what it asks of the game applied.
-  pub(crate) fn run_console(&mut self, text: &str) -> ConsoleAnswer {
-    let answer: ConsoleAnswer = self.console.execute(&mut self.settings, text);
-
-    self
-      .developer
-      .push_lines(std::iter::once(format!("> {text}")).chain(answer.lines.iter().cloned()));
-
-    for effect in self.console.take_effects() {
-      match effect {
-        GameConsoleEffect::Movement(command) => {
-          self.send(GameCommand::Movement(command));
-        }
-        GameConsoleEffect::Quit => self.is_quitting = true,
-      }
-    }
-
-    answer
+  /// How long the wait for the platform's events may last: until the first layer's next work is due, and no longer
+  /// than what other threads bring may wait.
+  fn get_wait(&self) -> Duration {
+    self.layers.get_due().map_or(Self::LONGEST_WAIT, |due| {
+      due.saturating_duration_since(Instant::now()).min(Self::LONGEST_WAIT)
+    })
   }
 
   /// Applies what changed in the settings since the last frame, by group: the view draws with its groups' from this
   /// frame, the running game binds its keys again with the input group's; the window's wait for the next start.
   fn apply_settings(&mut self) {
-    let changes: GameSettingsChanges = self.settings.take_changes();
+    let changes: GameSettingsChanges = self.context.settings.take_changes();
 
     if changes.has_any(&[
       GameSettingsGroup::Render,
       GameSettingsGroup::View,
       GameSettingsGroup::Upscaling,
     ]) {
-      self.view.apply_settings(self.settings.get());
+      self.context.view.apply_settings(self.context.settings.get());
     }
 
     if changes.has(GameSettingsGroup::Input)
-      && let Some(running) = self.flow.get_running_mut()
+      && let Some(running) = self.context.flow.get_running_mut()
     {
-      running.rebind(&self.settings.get().input);
+      running.rebind(&self.context.settings.get().input);
     }
   }
 
-  /// Suggests what the drawer's line `text` may become: the console's choices with their hints, none for a line past
-  /// its name.
-  fn suggest_console(&mut self, text: &str) {
-    let suggestions: Vec<DeveloperSuggestion> = self
-      .console
-      .complete(&mut self.settings, text)
-      .choices
-      .into_iter()
-      .map(|ConsoleChoice { name, hint }| DeveloperSuggestion { text: name, hint })
-      .collect();
-
-    self.developer.suggest(suggestions);
-  }
-
-  /// Sends a command to the game's loop, answering whether one took it: none while the game opens.
-  pub(crate) fn send(&self, command: GameCommand) -> bool {
-    let Some(running) = self.flow.get_running() else {
-      log::warn!("No game runs yet to take {command:?}");
-
-      return false;
-    };
-
-    running.send(command)
-  }
-
-  /// Takes one platform event, answering whether the game plays on.
-  fn take_event(&mut self, event: &PlatformEvent) -> bool {
-    let was_open: bool = self.developer.is_open();
-
-    if self.developer.take(event, self.get_developer_view()) {
-      return self.developer.is_open() == was_open || self.toggle_developer(event);
-    }
-
+  /// Takes one platform event: the window's own first (its close ends play, its resize fits the view), then down the
+  /// chain, the cursor handed over as a layer seizes the keyboard and the mouse or gives them back; the quit key ends
+  /// play where no layer kept it.
+  fn take_event(&mut self, event: &PlatformEvent) {
     match &event.kind {
-      PlatformEventKind::Quit
-      | PlatformEventKind::Key {
-        scancode: Self::QUIT_KEY,
-        is_down: true,
-        ..
-      } => false,
-      PlatformEventKind::Resized { .. } => {
-        self.view.fit(self.window);
-
-        true
-      }
-      // The player is held while the loading view covers the level.
-      _ if self.flow.get_stage() == GameFlowStage::Loading => true,
-      // The mouse turns the look at once, which the next drawn frame faces.
-      PlatformEventKind::MouseMoved { dx, dy, .. } => {
-        let sensitivity: f32 = self.settings.get().input.sensitivity;
-
-        self.flow.get_look().turn(*dx, *dy, sensitivity);
-
-        true
-      }
-      _ => self
-        .flow
-        .get_running()
-        .and_then(|running| running.read_input(event))
-        .is_none_or(|command| self.send(GameCommand::Movement(command))),
-    }
-  }
-
-  /// Hands the keyboard and mouse to the console as it opens, back to the game as it closes; held actions are let go,
-  /// since their releases go to the console. Answers whether the game plays on.
-  fn toggle_developer(&mut self, event: &PlatformEvent) -> bool {
-    let is_open: bool = self.developer.is_open();
-
-    for command in [
-      PlatformWindowCommand::GrabCursor { is_grabbed: !is_open },
-      PlatformWindowCommand::AcceptText { is_accepting: is_open },
-    ] {
-      if let Err(error) = self.window.apply(command) {
-        log::warn!("The window did not take {command:?}: {error}");
-      }
+      PlatformEventKind::Quit => return self.context.quit(),
+      PlatformEventKind::Resized { .. } => return self.context.view.fit(self.context.window),
+      _ => {}
     }
 
-    self.send(GameCommand::Movement(MovementCommand::Input(MovementInput {
-      at: event.at,
-      kind: MovementInputKind::ReleaseAll,
-    })))
-  }
+    let was_seized: bool = self.layers.is_seized();
+    let is_kept: bool = self.layers.take_event(event, &mut self.context);
 
-  /// The window as the developer layer draws over it this frame.
-  fn get_developer_view(&self) -> DeveloperView {
-    let PlatformSize { width, height } = self.window.get_size();
+    let is_seized: bool = self.layers.is_seized();
 
-    DeveloperView {
-      width,
-      height,
-      scale: self.window.get_scale(),
-      pixel_density: self.window.get_pixel_density(),
+    if is_seized != was_seized {
+      GameCursor::of_seized(is_seized).hand(self.context.window);
+    }
+
+    if !is_kept
+      && matches!(
+        event.kind,
+        PlatformEventKind::Key {
+          scancode: Self::QUIT_KEY,
+          is_down: true,
+          ..
+        }
+      )
+    {
+      self.context.quit();
     }
   }
 }

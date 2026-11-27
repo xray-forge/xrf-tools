@@ -54,6 +54,7 @@ pub use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 pub use crate::host::sound::world_sound::WorldSound;
 pub use crate::host::sound::world_sound_channel::WorldSoundChannel;
 pub use crate::host::sound::world_sound_cue::WorldSoundCue;
+pub use crate::host::sound::world_sound_cues::WorldSoundCues;
 pub use crate::host::sound::world_sound_info::WorldSoundInfo;
 pub use crate::host::world_ambient::WorldAmbient;
 pub use crate::host::world_ambient_effect::WorldAmbientEffect;
