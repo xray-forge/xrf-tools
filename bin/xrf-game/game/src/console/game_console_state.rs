@@ -1,6 +1,4 @@
-use std::cell::{RefCell, RefMut};
 use std::path::Path;
-use std::rc::Rc;
 
 use xrf_game_console::{ConsoleAnswer, ConsoleContext, ConsoleVariable};
 use xrf_game_settings::{GameSettingEntry, GameSettingsStore};
@@ -10,14 +8,14 @@ use crate::input::game_action::GameAction;
 use crate::input::game_bindings::GameBindings;
 use crate::input::game_key_names::GameKeyNames;
 
-/// What the game's console runs against: the settings store, a client of it as the options menu will be, whose
-/// settings are the console's variables, and what the lines run since play last took them ask of the game.
-pub(crate) struct GameConsoleState {
-  pub(crate) settings: Rc<RefCell<GameSettingsStore>>,
-  pub(crate) effects: Vec<GameConsoleEffect>,
+/// What one line of the game's console runs against, borrowed for that line: the settings store play owns, whose
+/// settings are the console's variables, and where the line's asks of the game go.
+pub(crate) struct GameConsoleState<'a> {
+  pub(crate) settings: &'a mut GameSettingsStore,
+  pub(crate) effects: &'a mut Vec<GameConsoleEffect>,
 }
 
-impl GameConsoleState {
+impl GameConsoleState<'_> {
   /// The settings group the window opens by, which it reads only as it opens.
   const WINDOW_GROUP: &'static str = "window.";
 
@@ -63,7 +61,6 @@ impl GameConsoleState {
       None => {
         let shown: Option<String> = self
           .settings
-          .borrow()
           .get_entries()
           .into_iter()
           .find(|entry| entry.path == path)
@@ -80,10 +77,9 @@ impl GameConsoleState {
   /// Saves the settings changed since the last save into the settings file, answering where; nothing to save is said
   /// so.
   pub(crate) fn save(&mut self) -> ConsoleAnswer {
-    let mut settings: RefMut<'_, GameSettingsStore> = self.settings.borrow_mut();
-    let count: usize = settings.count_unsaved();
+    let count: usize = self.settings.count_unsaved();
 
-    match settings.save() {
+    match self.settings.save() {
       Ok(None) => ConsoleAnswer::succeed(vec![String::from("No setting changed since the last save")]),
       Ok(Some(file)) => ConsoleAnswer::succeed(vec![Self::describe_saved(count, &file)]),
       Err(error) => ConsoleAnswer::fail(format!("The settings were not saved: {error}")),
@@ -100,11 +96,10 @@ impl GameConsoleState {
   }
 }
 
-impl ConsoleContext for GameConsoleState {
+impl ConsoleContext for GameConsoleState<'_> {
   fn list_variables(&self) -> Vec<ConsoleVariable> {
     self
       .settings
-      .borrow()
       .get_entries()
       .into_iter()
       .map(|GameSettingEntry { path, value }| ConsoleVariable { name: path, value })
@@ -113,7 +108,7 @@ impl ConsoleContext for GameConsoleState {
 
   /// Sets the setting at the path `name` in the store, answering it as it now reads, held to the renderer's bounds.
   fn set_variable(&mut self, name: &str, value: &str) -> ConsoleAnswer {
-    let entry: GameSettingEntry = match self.settings.borrow_mut().set(name, value) {
+    let entry: GameSettingEntry = match self.settings.set(name, value) {
       Ok(entry) => entry,
       Err(reason) => return ConsoleAnswer::fail(format!("{name} left as it is: {reason}")),
     };

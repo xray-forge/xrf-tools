@@ -5,20 +5,21 @@ use crate::console_choice::ConsoleChoice;
 use crate::console_command::ConsoleCommand;
 use crate::console_completion::ConsoleCompletion;
 use crate::console_context::ConsoleContext;
+use crate::console_family::ConsoleFamily;
 use crate::console_line::ConsoleLine;
 use crate::console_variable::ConsoleVariable;
 
-/// The console's commands over a context `C` that owns its variables, run by the line typed, as X-Ray's console runs
-/// them: a command's name and what follows it, a variable's name alone to show it, or with a value to set it. `help`
-/// and `list` are its own.
+/// The console's commands over the contexts of a family `F`, run by the line typed, as X-Ray's console runs them: a
+/// command's name and what follows it, a variable's name alone to show it, or with a value to set it. `help` and `list`
+/// are its own. It keeps no context: each line is run against one borrowed for that line, which owns the variables.
 ///
 /// `register` is its hook point: any system, and later a script, adds a command there, and one registered under a name
 /// already taken, `help` and `list` included, overrides it.
-pub struct ConsoleRegistry<C> {
-  commands: BTreeMap<String, ConsoleCommand<C>>,
+pub struct ConsoleRegistry<F: ConsoleFamily> {
+  commands: BTreeMap<String, ConsoleCommand<F>>,
 }
 
-impl<C> Default for ConsoleRegistry<C> {
+impl<F: ConsoleFamily> Default for ConsoleRegistry<F> {
   fn default() -> Self {
     Self {
       commands: BTreeMap::new(),
@@ -26,7 +27,7 @@ impl<C> Default for ConsoleRegistry<C> {
   }
 }
 
-impl<C: ConsoleContext> ConsoleRegistry<C> {
+impl<F: ConsoleFamily> ConsoleRegistry<F> {
   /// Lists the commands and how variables are used.
   pub const HELP: &'static str = "help";
 
@@ -37,13 +38,13 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
   const SUGGESTED: usize = 5;
 
   /// Adds `command`, overriding one registered under its name before, answering it.
-  pub fn register(&mut self, command: ConsoleCommand<C>) -> Option<ConsoleCommand<C>> {
+  pub fn register(&mut self, command: ConsoleCommand<F>) -> Option<ConsoleCommand<F>> {
     self.commands.insert(command.name.clone(), command)
   }
 
   /// The registry with `command` added, as [`Self::register`] adds it.
   #[must_use]
-  pub fn with(mut self, command: ConsoleCommand<C>) -> Self {
+  pub fn with(mut self, command: ConsoleCommand<F>) -> Self {
     self.register(command);
 
     self
@@ -51,7 +52,7 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
 
   /// Runs the line `text` against `context`: a registered command first, then `help` and `list`, then a variable. A
   /// blank line answers nothing; a name that is none of them fails, suggesting variables whose name holds it.
-  pub fn execute(&self, context: &mut C, text: &str) -> ConsoleAnswer {
+  pub fn execute(&self, context: &mut F::Context<'_>, text: &str) -> ConsoleAnswer {
     let Some(line) = ConsoleLine::parse(text) else {
       return ConsoleAnswer::default();
     };
@@ -98,7 +99,7 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
   /// Completes the name `line` starts, as Tab does: to the longest start every command and variable it may still be
   /// share, then a space once one is left; and every choice left, each to its next dot and hinted, as a suggestion
   /// list shows them. A line already past its name, or one no name starts, is left as it is with no choice.
-  pub fn complete(&self, context: &C, line: &str) -> ConsoleCompletion {
+  pub fn complete(&self, context: &F::Context<'_>, line: &str) -> ConsoleCompletion {
     let typed: &str = line.trim_start();
     let unchanged = || ConsoleCompletion {
       line: line.to_owned(),
@@ -214,7 +215,7 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
   }
 
   /// `list`'s lines: the variables whose name holds `part`, every one for none.
-  fn list(context: &C, part: &str) -> ConsoleAnswer {
+  fn list(context: &F::Context<'_>, part: &str) -> ConsoleAnswer {
     let lines: Vec<String> = context
       .list_variables()
       .iter()

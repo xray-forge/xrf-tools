@@ -1,5 +1,3 @@
-use std::cell::{Ref, RefCell};
-use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 #[cfg(feature = "mcp")]
@@ -38,9 +36,9 @@ use crate::state::game_frame::GameFrame;
 pub(crate) struct GamePlay<'a> {
   pub window: &'a mut PlatformWindow,
   pub view: &'a GameView,
-  /// The settings the run plays with, which every client (the console, the bridge through it) changes; play applies
-  /// what changed once a frame.
-  pub settings: Rc<RefCell<GameSettingsStore>>,
+  /// The settings the run plays with, play's own: lent to the console for each line (and the bridge's, which run
+  /// through it), what changed applied once a frame.
+  pub settings: GameSettingsStore,
   pub developer: GameDeveloper,
   pub console: GameConsole,
   /// The log's records the console shows, taken as they come.
@@ -101,7 +99,9 @@ impl GamePlay<'_> {
       }
 
       if let Some(line) = self.developer.take_completing() {
-        self.developer.complete(self.console.complete(&line).line);
+        self
+          .developer
+          .complete(self.console.complete(&mut self.settings, &line).line);
       }
 
       // After a completion, so the line it left is suggested from at once.
@@ -119,7 +119,7 @@ impl GamePlay<'_> {
       let loading: Option<DeveloperLoading> =
         self
           .flow
-          .advance(self.view, &mut self.developer, &self.settings.borrow().get().input)?;
+          .advance(self.view, &mut self.developer, &self.settings.get().input)?;
       let latest: Option<Arc<LoopFrame<GameFrame>>> = self.flow.get_running().and_then(GameRunning::get_latest);
 
       if let Some(running) = self.flow.get_running_mut() {
@@ -150,7 +150,7 @@ impl GamePlay<'_> {
   /// Runs the console line `text`, as the drawer or the bridge enters it: shown in the drawer with its answer, then
   /// what it asks of the game applied.
   pub(crate) fn run_console(&mut self, text: &str) -> ConsoleAnswer {
-    let answer: ConsoleAnswer = self.console.execute(text);
+    let answer: ConsoleAnswer = self.console.execute(&mut self.settings, text);
 
     self
       .developer
@@ -171,21 +171,20 @@ impl GamePlay<'_> {
   /// Applies what changed in the settings since the last frame, by group: the view draws with its groups' from this
   /// frame, the running game binds its keys again with the input group's; the window's wait for the next start.
   fn apply_settings(&mut self) {
-    let changes: GameSettingsChanges = self.settings.borrow_mut().take_changes();
-    let settings: Ref<'_, GameSettingsStore> = self.settings.borrow();
+    let changes: GameSettingsChanges = self.settings.take_changes();
 
     if changes.has_any(&[
       GameSettingsGroup::Render,
       GameSettingsGroup::View,
       GameSettingsGroup::Upscaling,
     ]) {
-      self.view.apply_settings(settings.get());
+      self.view.apply_settings(self.settings.get());
     }
 
     if changes.has(GameSettingsGroup::Input)
       && let Some(running) = self.flow.get_running_mut()
     {
-      running.rebind(&settings.get().input);
+      running.rebind(&self.settings.get().input);
     }
   }
 
@@ -194,7 +193,7 @@ impl GamePlay<'_> {
   fn suggest_console(&mut self, text: &str) {
     let suggestions: Vec<DeveloperSuggestion> = self
       .console
-      .complete(text)
+      .complete(&mut self.settings, text)
       .choices
       .into_iter()
       .map(|ConsoleChoice { name, hint }| DeveloperSuggestion { text: name, hint })
@@ -238,7 +237,7 @@ impl GamePlay<'_> {
       _ if self.flow.get_stage() == GameFlowStage::Loading => true,
       // The mouse turns the look at once, which the next drawn frame faces.
       PlatformEventKind::MouseMoved { dx, dy, .. } => {
-        let sensitivity: f32 = self.settings.borrow().get().input.sensitivity;
+        let sensitivity: f32 = self.settings.get().input.sensitivity;
 
         self.flow.get_look().turn(*dx, *dy, sensitivity);
 

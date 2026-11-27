@@ -75,8 +75,9 @@ loop is sent the heading whole once a frame it changed (`MovementCommand::Face`)
 the median, 11 at p90, against 12 and 19 when the loop turned the view a tick at a time and the view blended a tick
 behind (Zaton, 2026-11-27). The day blends a tick behind.
 
-The run owns the settings store (`xrf-game-settings`' `GameSettingsStore`); the console (`GameConsole`) is its client,
-and the bridge's lines run through the console. `GamePlay` applies what changed once a frame, by group: the view's
+Play owns the settings store (`xrf-game-settings`' `GameSettingsStore`) outright and lends it to the console
+(`GameConsole`) a line at a time; the bridge's lines run through the console. `GamePlay` applies what changed once a
+frame, by group: the view's
 groups to the renderer, the input group to the running game, which owns its keys (its tree's controls with the
 player's bindings over them) and binds them again; the run saves what changed as it quits.
 

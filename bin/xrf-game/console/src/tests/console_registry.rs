@@ -6,6 +6,7 @@ use crate::console_choice::ConsoleChoice;
 use crate::console_command::ConsoleCommand;
 use crate::console_completion::ConsoleCompletion;
 use crate::console_context::ConsoleContext;
+use crate::console_family::ConsoleFamily;
 use crate::console_line::ConsoleLine;
 use crate::console_registry::ConsoleRegistry;
 use crate::console_variable::ConsoleVariable;
@@ -44,6 +45,11 @@ impl ConsoleContext for Counter {
 
     ConsoleAnswer::succeed(vec![format!("{name} = {number}")])
   }
+}
+
+/// The counter owns its variables, so it is its own family.
+impl ConsoleFamily for Counter {
+  type Context<'a> = Self;
 }
 
 fn create_registry() -> ConsoleRegistry<Counter> {

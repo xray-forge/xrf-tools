@@ -8,10 +8,10 @@ use crate::game_settings::GameSettings;
 use crate::game_settings_changes::GameSettingsChanges;
 use crate::game_settings_group::GameSettingsGroup;
 
-/// The settings the game runs with, and the one place they change: the shell owns it for the run, and every client
-/// (the console, and the bridge through it; later the options menu) sets a setting here, never on a copy of its own.
-/// What changed is kept by group until the shell takes it and applies it to the parts that read that group; what changed
-/// since the last save is kept to write to the settings file.
+/// The settings the game runs with, and the one place they change: the shell owns it for the run and lends it to each
+/// client in turn (the console a line at a time, and the bridge through it; later the options menu), which sets a
+/// setting here, never on a copy of its own. What changed is kept by group until the shell takes it and applies it to
+/// the parts that read that group; what changed since the last save is kept to write to the settings file.
 #[derive(Clone, Debug)]
 pub struct GameSettingsStore {
   settings: GameSettings,

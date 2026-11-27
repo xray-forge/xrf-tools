@@ -48,8 +48,8 @@ the rest still applies. Once merged, the settings are held to the bounds the ren
 
 ## The store
 
-`GameSettingsStore` holds the settings the game runs with, the one place they change: the run owns it and every client
-sets a setting there (`set`, answering the setting as it now reads). It keeps what changed by group
+`GameSettingsStore` holds the settings the game runs with, the one place they change: the game's play owns it and lends
+it to each client in turn, which sets a setting there (`set`, answering the setting as it now reads). It keeps what changed by group
 (`GameSettingsGroup`: render, view, upscaling, window, input) until the game takes it (`take_changes`) and applies each
 group to the part that reads it, and what changed since the last save to write (`save`).
 

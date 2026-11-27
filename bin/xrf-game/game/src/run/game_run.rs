@@ -1,7 +1,5 @@
-use std::cell::RefCell;
 #[cfg(feature = "mcp")]
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 
 use rayon::ThreadPool;
@@ -60,19 +58,15 @@ impl GameRun {
     progress.begin(GameLoadStage::Renderer);
 
     let mut shell: GameShell = GameShell::start(&request.level, settings, directories, &pool)?;
-    // The shell owns the run's settings; the console and, through it, the bridge are its clients.
-    let store: Rc<RefCell<GameSettingsStore>> = Rc::new(RefCell::new(GameSettingsStore::new(
-      settings.clone(),
-      directories.get_settings_files(),
-    )));
     // The flow, and with it the game's loop, is stopped before the shell is, however play ends.
     let played: XrfResult<()> = (|| {
       let mut play: GamePlay<'_> = GamePlay {
         window: &mut shell.window,
         view: &shell.view,
-        settings: Rc::clone(&store),
+        // Play owns the run's settings; the console and, through it, the bridge borrow them a line at a time.
+        settings: GameSettingsStore::new(settings.clone(), directories.get_settings_files()),
         developer: GameDeveloper::default(),
-        console: GameConsole::new(Rc::clone(&store)),
+        console: GameConsole::default(),
         log,
         #[cfg(feature = "mcp")]
         control: Self::start_control(arguments, &request.level, directories)?,
@@ -80,11 +74,14 @@ impl GameRun {
         startup: GameStartup::new(),
         flow,
       };
-      play.run(&mut shell.platform)
-    })();
+      let played: XrfResult<()> = play.run(&mut shell.platform);
 
-    // However play ended, what was changed while it ran is kept for the next run, as X-Ray saves its console's on exit.
-    Self::save_settings(&mut store.borrow_mut());
+      // However play ended, what was changed while it ran is kept for the next run, as X-Ray saves its console's on
+      // exit.
+      Self::save_settings(&mut play.settings);
+
+      played
+    })();
 
     shell.stop();
 
