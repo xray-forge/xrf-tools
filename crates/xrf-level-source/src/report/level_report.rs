@@ -306,7 +306,11 @@ impl LevelReport {
       source.get_label(),
       xrf_utils::format_duration(started.elapsed()),
       lights.lights.len(),
-      lights.lights.iter().filter(|light| light.is_detector_hidden).count(),
+      lights
+        .lights
+        .iter()
+        .filter(|light| light.source.is_detector_hidden())
+        .count(),
       lights.animators.len(),
       lights.projectors.len()
     );

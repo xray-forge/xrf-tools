@@ -38,9 +38,6 @@ fn light(kind: LightKind, x: f32) -> LightDescription {
     animator_scale: 0.0,
     is_shadowed: true,
     source: LightSource::Lamp,
-    motion: None,
-    zone_sphere: None,
-    is_detector_hidden: false,
     volumetric: None,
   }
 }

@@ -5,7 +5,7 @@ use xrf_light_anim::{LightAnimItem, LightAnimKey};
 use xrf_math::Vector3d;
 use xrf_math::glam::{Vec3, Vec4};
 use xrf_visual::{
-  LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind, LightSource, LightVolumetric,
+  LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind, LightMotion, LightSource, LightVolumetric,
 };
 
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
@@ -54,9 +54,6 @@ fn point() -> LightDescription {
     animator_scale: 0.0,
     is_shadowed: false,
     source: LightSource::Lamp,
-    motion: None,
-    zone_sphere: None,
-    is_detector_hidden: false,
     volumetric: None,
   }
 }
@@ -294,9 +291,30 @@ fn light_bulb_takes_its_sources_size() {
 
   assert_eq!(of(LightSource::Lamp), 0.05);
   assert_eq!(of(LightSource::Level), 0.05);
-  assert_eq!(of(LightSource::Artefact), 0.15);
+  assert_eq!(
+    of(LightSource::Artefact {
+      is_detector_hidden: true
+    }),
+    0.15
+  );
   assert_eq!(of(LightSource::Campfire { id: 7 }), 0.25);
-  assert_eq!(of(LightSource::Zone), 0.5);
+  assert_eq!(
+    of(LightSource::Zone {
+      motion: None,
+      sphere: None
+    }),
+    0.5
+  );
+  assert_eq!(
+    of(LightSource::Zone {
+      motion: Some(LightMotion {
+        name: String::from("fireball.anm"),
+        height: 0.7,
+      }),
+      sphere: None,
+    }),
+    0.5
+  );
 }
 
 #[test]

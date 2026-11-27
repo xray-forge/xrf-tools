@@ -142,7 +142,7 @@ impl LevelLights {
     self.shadows.forget_lights();
 
     for light in lights.lights {
-      let is_moving: bool = light.motion.is_some();
+      let is_moving: bool = light.source.get_motion().is_some();
 
       if light.source.get_campfire().is_some() {
         self.fires.push(Vec2::new(light.position.x, light.position.z));
@@ -254,7 +254,7 @@ impl LevelLights {
       .lights
       .iter()
       .filter(|(_, light)| settings.is_level_lights || light.source != LightSource::Level)
-      .filter(|(_, light)| gates.is_detector_hidden_lit || !light.is_detector_hidden)
+      .filter(|(_, light)| gates.is_detector_hidden_lit || !light.source.is_detector_hidden())
       .filter_map(|(handle, light)| {
         // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
         let share: f32 = light
@@ -267,7 +267,7 @@ impl LevelLights {
         }
 
         // A torrid zone's idle light: out while the camera stands far from its zone (`o_switch_2_slow`).
-        if let Some(sphere) = &light.zone_sphere {
+        if let Some(sphere) = light.source.get_zone_sphere() {
           let at: [f32; 3] = [light.position.x, light.position.y, light.position.z];
 
           if sphere.get_distance(at, eye.to_array()) > ZONE_FAST_DISTANCE {
@@ -315,7 +315,11 @@ impl LevelLights {
   /// one whose motion is still read stays where its zone spawned.
   fn move_lights(&mut self, motions: &HashMap<String, RenderMotionPose>) {
     for handle in &self.moving {
-      let Some(motion) = self.lights.get(*handle).and_then(|light| light.motion.clone()) else {
+      let Some(motion) = self
+        .lights
+        .get(*handle)
+        .and_then(|light| light.source.get_motion().cloned())
+      else {
         continue;
       };
       let Some(pose) = motions.get(&motion.name) else {

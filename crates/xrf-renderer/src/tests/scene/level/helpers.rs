@@ -390,6 +390,20 @@ fn stands_a_carried_helper_where_its_motion_has_its_object_drawn_apart() {
 
   assert_eq!(ids(HelperPart::Every), vec![3]);
   assert_eq!(ids(HelperPart::Moving), vec![7]);
+
+  // Only a part keeping a carried object is built again as it moves: none with its kind off, or singling out none.
+  let carrying =
+    |options: &RenderHelperOptions, part: HelperPart| HelpersFeature::is_carrying(&helpers, options, &[], part);
+  let selecting: RenderHelperOptions = RenderHelperOptions {
+    selected: vec![7],
+    ..options(1 << 10)
+  };
+
+  assert!(carrying(&options(1 << 10), HelperPart::Moving));
+  assert!(!carrying(&options(1 << 11), HelperPart::Moving));
+  assert!(!carrying(&options(1 << 10), HelperPart::Every));
+  assert!(!carrying(&options(1 << 10), HelperPart::Singled));
+  assert!(carrying(&selecting, HelperPart::Singled));
 }
 
 // An icon stands where its object stands it and draws as its object's wires would, by its cell of the atlas.

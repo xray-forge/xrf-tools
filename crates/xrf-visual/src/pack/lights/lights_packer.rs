@@ -121,9 +121,6 @@ impl<'a> LightsPacker<'a> {
         animator_scale: 0.0,
         is_shadowed: true,
         source: LightSource::Level,
-        motion: None,
-        zone_sphere: None,
-        is_detector_hidden: false,
         volumetric: None,
       });
     }
@@ -191,9 +188,6 @@ impl<'a> LightsPacker<'a> {
         .and_then(|it| it.get_bool("shadow"))
         .unwrap_or_else(|| lamp.casts_shadow()),
       source: LightSource::Lamp,
-      motion: None,
-      zone_sphere: None,
-      is_detector_hidden: false,
       volumetric: Some(LightVolumetric {
         is_asked: lamp.is_volumetric(),
         quality: lamp.volumetric_quality,
@@ -218,9 +212,6 @@ impl<'a> LightsPacker<'a> {
         animator_scale: lamp.main_brightness / 255.0 * lamp.ambient_power,
         is_shadowed: section.and_then(|it| it.get_bool("ambient_shadow")).unwrap_or(false),
         source: LightSource::Lamp,
-        motion: None,
-        zone_sphere: None,
-        is_detector_hidden: false,
         // Monolith sets the ambient light's shafts by the section's `ambient_volumetric`, which its forcing overrides;
         // OpenXRay never asks for them. Neither sets its values, which keep the light's own.
         volumetric: Some(LightVolumetric {
@@ -290,19 +281,22 @@ impl<'a> LightsPacker<'a> {
       animator: Some(animator),
       animator_scale: 1.0 / 255.0,
       is_shadowed,
+      // A `Z_CFIRE` section makes the client object a `CZoneCampfire`, which no motion carries, whatever its spawn.
       source: if section.get("class").and_then(ClsId::from_class_name) == Some(ClsId::ZCFire) {
         LightSource::Campfire { id: object.header.id }
       } else {
-        LightSource::Zone
+        LightSource::Zone {
+          motion: torrid.and_then(|zone| zone.motion.get_name()).map(|name| LightMotion {
+            name: name.to_owned(),
+            height,
+          }),
+          sphere: torrid
+            .and_then(|zone| {
+              ZoneSphere::of_custom_zone(&zone.base, (&object.header.position, &object.header.direction))
+            })
+            .map(|sphere| sphere.to_renderer_space(height)),
+        }
       },
-      zone_sphere: torrid
-        .and_then(|zone| ZoneSphere::of_custom_zone(&zone.base, (&object.header.position, &object.header.direction)))
-        .map(|sphere| sphere.to_renderer_space(height)),
-      motion: torrid.and_then(|zone| zone.motion.get_name()).map(|name| LightMotion {
-        name: name.to_owned(),
-        height,
-      }),
-      is_detector_hidden: false,
       volumetric,
     });
   }
@@ -366,10 +360,9 @@ impl<'a> LightsPacker<'a> {
       animator: None,
       animator_scale: 0.0,
       is_shadowed: section.get_bool("idle_light_shadow").unwrap_or(false),
-      source: LightSource::Artefact,
-      motion: None,
-      zone_sphere: None,
-      is_detector_hidden: AlifeObjectItemArtefact::is_detector_hidden(section),
+      source: LightSource::Artefact {
+        is_detector_hidden: AlifeObjectItemArtefact::is_detector_hidden(section),
+      },
       // OpenXRay never sets an artefact's shafts; Monolith reads `idle_light_volumetric`, which no shipped artefact sets.
       volumetric: None,
     });

@@ -208,6 +208,17 @@ impl HelpersFeature {
     })
   }
 
+  /// Whether `part` keeps an object of `helpers` a motion carries, whose moving builds it again; none while every
+  /// carried object's kind is off, which is how the sound emitters start.
+  pub(crate) fn is_carrying(
+    helpers: &LevelHelpers,
+    options: &RenderHelperOptions,
+    sounding: &[u32],
+    part: HelperPart,
+  ) -> bool {
+    Self::list_kept(helpers, options, sounding, part).any(|object| object.is_carried)
+  }
+
   /// How `object` is singled out: [`HelperVertex::SELECTED`], [`HelperVertex::HOVERED`], [`HelperVertex::SOUNDING`]
   /// or nought.
   fn get_singled(object: &LevelHelperObject, options: &RenderHelperOptions, sounding: &[u32]) -> f32 {
@@ -331,19 +342,17 @@ impl HelperBuildKey {
     }
   }
 
-  /// Whether `part` built from it matches `sources`, copying nothing; the every-object and moving parts ignore the
-  /// selection, hovering and sounds, and the every-object part the carried objects moving.
-  fn is_of(&self, sources: HelperSources<'_>, part: HelperPart) -> bool {
-    let is_unsingled = || Self::is_unsingled_of(&self.options, sources.options) && self.sounding.is_empty();
-
+  /// Whether `part` built from it matches `sources`, copying nothing: a build `is_carrying` no object ignores the
+  /// carried objects moving, and the every-object and moving parts ignore the selection, hovering and sounds.
+  fn is_of(&self, sources: HelperSources<'_>, part: HelperPart, is_carrying: bool) -> bool {
     self.version == sources.helpers.version
       && self.contents == sources.statics.get_contents()
+      && (!is_carrying || self.moved == sources.helpers.moved)
       && match part {
-        HelperPart::Singled => {
-          self.moved == sources.helpers.moved && self.options == *sources.options && self.sounding == sources.sounding
+        HelperPart::Singled => self.options == *sources.options && self.sounding == sources.sounding,
+        HelperPart::Every | HelperPart::Moving => {
+          Self::is_unsingled_of(&self.options, sources.options) && self.sounding.is_empty()
         }
-        HelperPart::Moving => self.moved == sources.helpers.moved && is_unsingled(),
-        HelperPart::Every => is_unsingled(),
       }
   }
 
@@ -371,9 +380,11 @@ impl HelperBuildKey {
   }
 }
 
-/// One part of a view's helpers as built: what it was built from, and its wires' and icons' buffers.
+/// One part of a view's helpers as built: what it was built from, whether it holds an object a motion carries, and its
+/// wires' and icons' buffers.
 struct HelperBuild {
   key: HelperBuildKey,
+  is_carrying: bool,
   wires: Option<HelperBuffer>,
   icons: Option<HelperBuffer>,
 }
@@ -383,12 +394,13 @@ impl HelperBuild {
   fn new(device: &wgpu::Device, key: HelperBuildKey, geometry: HelperGeometry) -> Self {
     Self {
       key,
+      is_carrying: geometry.is_carrying,
       wires: HelperBuffer::new(device, "helper wires", &geometry.wires),
       icons: HelperBuffer::new(device, "helper icons", &geometry.icons),
     }
   }
 
-  /// `part`'s wire ends, boxes included, and icons.
+  /// `part`'s wire ends, boxes included, and icons, and whether they hold an object a motion carries.
   fn build(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
@@ -399,12 +411,13 @@ impl HelperBuild {
     HelperGeometry {
       wires: HelpersFeature::list_vertices(helpers, options, sounding, part, boxes),
       icons: HelpersFeature::list_icons(helpers, options, sounding, part),
+      is_carrying: HelpersFeature::is_carrying(helpers, options, sounding, part),
     }
   }
 
   /// Whether `built` stands for `part` of what `sources` hold now.
   fn is_current(built: Option<&Self>, sources: HelperSources<'_>, part: HelperPart) -> bool {
-    built.is_some_and(|built| built.key.is_of(sources, part))
+    built.is_some_and(|built| built.key.is_of(sources, part, built.is_carrying))
   }
 
   /// What `built` draws, nothing where it was never built.
@@ -416,10 +429,12 @@ impl HelperBuild {
   }
 }
 
-/// One part's helpers before they are uploaded: its wires' ends, two a segment, and its icons, an instance each.
+/// One part's helpers before they are uploaded: its wires' ends, two a segment, and its icons, an instance each, and
+/// whether it holds an object a motion carries, which has it built again as that moves.
 struct HelperGeometry {
   wires: Vec<HelperVertex>,
   icons: Vec<HelperIconInstance>,
+  is_carrying: bool,
 }
 
 /// The marked models' places and colours, bound for the helper marks pass; the bind group keeps the buffer alive.

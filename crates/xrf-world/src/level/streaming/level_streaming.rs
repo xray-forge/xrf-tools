@@ -235,7 +235,7 @@ impl LevelStreaming {
       self.light_motions = lights
         .lights
         .iter()
-        .filter_map(|light| light.motion.as_ref().map(|motion| motion.name.clone()))
+        .filter_map(|light| light.source.get_motion().map(|motion| motion.name.clone()))
         .collect();
       updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Lights(lights)));
     }

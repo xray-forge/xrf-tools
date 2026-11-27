@@ -15,8 +15,8 @@ const ARTEFACT_RADIUS: f32 = 0.15;
 pub(crate) fn get_bulb_radius(light: &LightDescription) -> f32 {
   match light.source {
     LightSource::Lamp | LightSource::Level => LAMP_RADIUS,
-    LightSource::Zone => ZONE_RADIUS,
+    LightSource::Zone { .. } => ZONE_RADIUS,
     LightSource::Campfire { .. } => CAMPFIRE_RADIUS,
-    LightSource::Artefact => ARTEFACT_RADIUS,
+    LightSource::Artefact { .. } => ARTEFACT_RADIUS,
   }
 }

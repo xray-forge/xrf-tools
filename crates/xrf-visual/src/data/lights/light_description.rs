@@ -1,10 +1,8 @@
 use xrf_math::Vector3d;
 
 use crate::data::lights::light_kind::LightKind;
-use crate::data::lights::light_motion::LightMotion;
 use crate::data::lights::light_source::LightSource;
 use crate::data::lights::light_volumetric::LightVolumetric;
-use crate::data::lights::zone_sphere::ZoneSphere;
 
 /// One light of a level, in renderer space, as the engine would light with it.
 #[derive(Clone, Debug, PartialEq)]
@@ -32,16 +30,9 @@ pub struct LightDescription {
   pub animator_scale: f32,
   /// Whether it casts shadows, which also has it fade and drop out with distance as the engine's shadowed lights do.
   pub is_shadowed: bool,
-  /// What gives it: a lamp, the level file, a zone, a campfire or an artefact.
+  /// What gives it, with what only that source has: a lamp, the level file, a zone with its motion and sphere, a
+  /// campfire, or an artefact hidden or not.
   pub source: LightSource,
-  /// The motion carrying its zone, which moves it each frame: a torrid zone's idle light. None for a light that stands.
-  pub motion: Option<LightMotion>,
-  /// Its zone's sphere in renderer space, offset from the light: a torrid zone's idle light, which goes out while the
-  /// camera stands far from it (`o_switch_2_slow`, `CTorridZone::light_in_slow_mode`). None for one always on.
-  pub zone_sphere: Option<ZoneSphere>,
-  /// Whether its artefact lies hidden until a detector reveals it, and its light with it: lit only while a view shows
-  /// those artefacts.
-  pub is_detector_hidden: bool,
   /// What its owner sets of its shafts; None for a light whose owner never does (the level file's own lights, a zone's
   /// idle light that does not ask for them), which even Monolith's forcing leaves without.
   pub volumetric: Option<LightVolumetric>,

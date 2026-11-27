@@ -376,6 +376,12 @@ idle_light_range = 8
 idle_light_anim = koster_00
 idle_light_height = 0.7
 
+[fireball]
+idle_light = on
+idle_light_range = 8
+idle_light_anim = koster_00
+idle_light_height = 0.7
+
 [zone_quiet]
 idle_light = off
 idle_light_range = 8
@@ -483,9 +489,8 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   assert_eq!(fire.animator_scale, 1.0 / 255.0);
   // `idle_light_shadow` is on unless the section says otherwise.
   assert!(fire.is_shadowed);
-  // A `Z_CFIRE` section's light switches with its campfire.
+  // A `Z_CFIRE` section's light switches with its campfire, which no motion carries.
   assert_eq!(fire.source, LightSource::Campfire { id: 7 });
-  assert_eq!(fire.motion, None);
 }
 
 /// A torrid zone with one shape, spawned with custom data.
@@ -520,13 +525,13 @@ fn torrid(shape: Shape, custom_data: &str) -> AlifeObjectTorridZone {
 }
 
 // A torrid zone's light rides its motion, standing the section's height over where the motion has the zone, and
-// carries its zone's sphere, offset from the light in renderer space, to go out by.
+// carries its zone's sphere, offset from the light in renderer space, to go out by. A campfire's section makes the
+// engine's object a campfire, which no motion carries, whatever its spawn.
 #[test]
 fn carries_a_torrid_zones_light_along_its_motion() {
   let ltx: Ltx = sections();
   let animations: LightAnimFile = animations();
   let mut packer: LightsPacker<'_> = LightsPacker::new(Some(&animations)).with_sections(&ltx);
-  let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
   // A sphere a metre along the zone's own +z, which its quarter turn stands along the engine's -x.
   let torrid: AlifeObjectTorridZone = torrid(
     Shape::Sphere(Sphere {
@@ -536,24 +541,32 @@ fn carries_a_torrid_zones_light_along_its_motion() {
     "",
   );
 
-  zone.header.section = String::from("campfire");
-  packer.add_zone(&zone, Some(&torrid));
+  for section in ["fireball", "campfire"] {
+    let mut zone: AlifeObject = object(section, lamp(FLAG_R2, 0));
+
+    zone.header.id = 7;
+    zone.header.section = String::from(section);
+    packer.add_zone(&zone, Some(&torrid));
+  }
 
   let description: LightsDescription = packer.pack();
-  let light: &LightDescription = &description.lights[0];
+  let [fireball, campfire] = description.lights.as_slice() else {
+    panic!("expected the two zones' lights, got {:?}", description.lights)
+  };
 
   assert_eq!(
-    light.motion,
-    Some(LightMotion {
+    fireball.source.get_motion(),
+    Some(&LightMotion {
       name: String::from("camera_effects\\fireball.anm"),
       height: 0.7,
     })
   );
 
-  let sphere: &ZoneSphere = light.zone_sphere.as_ref().unwrap();
+  let sphere: &ZoneSphere = fireball.source.get_zone_sphere().unwrap();
 
   assert_close(&sphere.offset, vector(-1.0, -0.7, 0.0));
   assert_eq!(sphere.radius, 3.0);
+  assert_eq!(campfire.source, LightSource::Campfire { id: 7 });
 }
 
 // A zone its custom data keeps always fast never puts its light out.
@@ -562,7 +575,7 @@ fn keeps_an_always_fast_torrid_zones_light_on() {
   let ltx: Ltx = sections();
   let animations: LightAnimFile = animations();
   let mut packer: LightsPacker<'_> = LightsPacker::new(Some(&animations)).with_sections(&ltx);
-  let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
+  let mut zone: AlifeObject = object("fireball", lamp(FLAG_R2, 0));
   let torrid: AlifeObjectTorridZone = torrid(
     Shape::Sphere(Sphere {
       center: vector(0.0, 0.0, 0.0),
@@ -571,10 +584,13 @@ fn keeps_an_always_fast_torrid_zones_light_on() {
     "[fast_mode]\nalways_fast = true\n",
   );
 
-  zone.header.section = String::from("campfire");
+  zone.header.section = String::from("fireball");
   packer.add_zone(&zone, Some(&torrid));
 
-  assert_eq!(packer.pack().lights[0].zone_sphere, None);
+  let description: LightsDescription = packer.pack();
+
+  assert_eq!(description.lights[0].source.get_zone_sphere(), None);
+  assert!(description.lights[0].source.get_motion().is_some());
 }
 
 // The engine refuses a zone whose animation `LALib` lacks, and a level read without `lanims.xr` lacks every one.
@@ -744,7 +760,13 @@ fn sets_a_zones_shafts_only_where_its_section_asks() {
 
   assert_eq!(fire.volumetric, None);
   // A zone of any class but `Z_CFIRE` gives a zone's light, which no campfire switches.
-  assert_eq!(volumetric.source, LightSource::Zone);
+  assert_eq!(
+    volumetric.source,
+    LightSource::Zone {
+      motion: None,
+      sphere: None
+    }
+  );
   assert_eq!(
     volumetric.volumetric,
     Some(LightVolumetric {
@@ -814,14 +836,14 @@ fn lights_each_artefact_its_section_lights_at_its_origin_without_its_visual() {
   assert_eq!(lit.range_jitter, 0.0);
   assert_eq!(lit.animator, None);
   assert!(!lit.is_shadowed);
-  assert_eq!(lit.source, LightSource::Artefact);
+  assert!(matches!(lit.source, LightSource::Artefact { .. }));
   assert_eq!(lit.volumetric, None);
   assert_close(&junk.position, vector(20.0, 2.0, -5.0));
   assert_eq!(junk.color, [0.4, 0.4, 0.4]);
   assert!(junk.is_shadowed);
   // A controlled artefact of rank 1 lies hidden until a detector reveals it; one of rank 0 never hides.
-  assert!(lit.is_detector_hidden);
-  assert!(!junk.is_detector_hidden);
+  assert!(lit.source.is_detector_hidden());
+  assert!(!junk.source.is_detector_hidden());
 }
 
 // Lit from its middle, its visual's root bone, rather than the origin its model stands on: carried with the object's
