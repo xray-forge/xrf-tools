@@ -21,6 +21,9 @@ use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
 use crate::directories::game_directories::GameDirectories;
 use crate::input::game_bindings::GameBindings;
+use crate::load::game_load_progress::GameLoadProgress;
+use crate::load::game_load_stage::GameLoadStage;
+use crate::load::game_loading::GameLoading;
 use crate::run::game_play::GamePlay;
 use crate::run::game_shell::GameShell;
 use crate::run::game_startup::GameStartup;
@@ -53,10 +56,14 @@ impl GameRun {
     }
 
     let pool: Arc<ThreadPool> = Arc::new(ExecutionRequest::Auto.resolve().build_pool()?);
+    let progress: Arc<GameLoadProgress> = Arc::new(GameLoadProgress::new(&GameLoadStage::LAUNCH));
     // The session reads the level on the pool while the main thread starts the shell, which needs no level: the
     // renderer's own start no longer waits for the level's.
     let (session, shell): (XrfResult<GameSession>, XrfResult<GameShell>) = thread::scope(|scope| {
-      let opening = scope.spawn(|| GameSession::open(arguments, &pool));
+      let opening = scope.spawn(|| GameSession::open(arguments, &pool, &progress));
+
+      progress.begin(GameLoadStage::Renderer);
+
       let shell: XrfResult<GameShell> = GameShell::start(
         arguments.level.as_deref().unwrap_or_default(),
         settings,
@@ -71,21 +78,22 @@ impl GameRun {
     });
     let mut shell: GameShell = shell?;
     let played: XrfResult<()> =
-      session.and_then(|session| Self::play(arguments, settings, directories, log, session, &mut shell));
+      session.and_then(|session| Self::play(arguments, settings, directories, log, session, progress, &mut shell));
 
     shell.stop();
 
     played
   }
 
-  /// Steps `session`'s state on the game loop and plays it in `shell` until the player or an agent quits; the loop is
-  /// stopped before the shell is.
+  /// Steps `session`'s state on the game loop and plays it in `shell` until the player or an agent quits, the launch's
+  /// `progress` shown until its level is loaded; the loop is stopped before the shell is.
   fn play(
     arguments: &GameArguments,
     settings: &GameSettings,
     directories: &GameDirectories,
     log: Arc<LogTail>,
     session: GameSession,
+    progress: Arc<GameLoadProgress>,
     shell: &mut GameShell,
   ) -> XrfResult<()> {
     let GameSession {
@@ -120,7 +128,8 @@ impl GameRun {
       #[cfg(feature = "mcp")]
       control: Self::start_control(arguments, &level_name, directories)?,
       is_quitting: false,
-      startup: GameStartup::new(&level_name),
+      startup: GameStartup::new(),
+      loading: Some(GameLoading::new(&level_name, progress)),
     };
 
     if let Some(picture) = &loading_picture {

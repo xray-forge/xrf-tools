@@ -17,6 +17,7 @@ use crate::console::game_console_effect::GameConsoleEffect;
 use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
 use crate::input::game_bindings::GameBindings;
+use crate::load::game_loading::GameLoading;
 use crate::render::game_view::GameView;
 use crate::run::game_startup::GameStartup;
 use crate::sound::game_footsteps::GameFootsteps;
@@ -44,8 +45,10 @@ pub(crate) struct GamePlay<'a> {
   pub control: Option<GameControl>,
   /// Whether a console line asked the game to quit.
   pub is_quitting: bool,
-  /// How the game comes up: the hidden window shown, the loading view over the level until it is ready.
+  /// How the hidden window first shows.
   pub startup: GameStartup,
+  /// The load running, its view over the level; none once it is done.
+  pub loading: Option<GameLoading>,
 }
 
 impl GamePlay<'_> {
@@ -107,7 +110,11 @@ impl GamePlay<'_> {
         self.view.play_sound(step);
       }
 
-      let loading: Option<DeveloperLoading> = self.startup.describe_loading(self.view);
+      let loading: Option<DeveloperLoading> = self.loading.as_mut().and_then(|loading| loading.update(self.view));
+
+      if loading.is_none() {
+        self.loading = None;
+      }
 
       self.developer.send(self.view, view, latest, loading.as_ref());
 
@@ -195,7 +202,7 @@ impl GamePlay<'_> {
         true
       }
       // The player is held while the loading view covers the level.
-      _ if self.startup.is_loading() => true,
+      _ if self.loading.is_some() => true,
       _ => self.bindings.read(event).is_none_or(|command| self.send(command)),
     }
   }

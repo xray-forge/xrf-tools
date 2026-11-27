@@ -10,6 +10,7 @@ pub(crate) mod developer;
 pub(crate) mod directories;
 pub(crate) mod input;
 pub(crate) mod level;
+pub(crate) mod load;
 pub(crate) mod logging;
 pub(crate) mod render;
 pub(crate) mod run;

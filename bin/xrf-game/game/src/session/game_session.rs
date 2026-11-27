@@ -21,6 +21,8 @@ use crate::level::game_level::GameLevel;
 use crate::level::game_loading_picture::GameLoadingPicture;
 use crate::level::game_spawn::GameSpawn;
 use crate::level::game_tree::GameTree;
+use crate::load::game_load_progress::GameLoadProgress;
+use crate::load::game_load_stage::GameLoadStage;
 use crate::session::game_start::GameStart;
 use crate::sound::game_footsteps::GameFootsteps;
 use crate::sound::game_sound::GameSound;
@@ -43,19 +45,20 @@ pub struct GameSession {
 }
 
 impl GameSession {
-  /// Opens the tree and level `arguments` name and builds a new game on it, reading on `pool`.
+  /// Opens the tree and level `arguments` name and builds a new game on it, reading on `pool`, each stage reported to
+  /// `progress` as it begins and ends.
   ///
   /// # Errors
   ///
   /// Returns why it cannot: no tree or level named (with the levels the tree has), a mode not built yet, or a tree,
   /// level or spawn that does not read.
-  pub fn open(arguments: &GameArguments, pool: &ThreadPool) -> XrfResult<Self> {
+  pub(crate) fn open(arguments: &GameArguments, pool: &ThreadPool, progress: &GameLoadProgress) -> XrfResult<Self> {
     let Some(root) = &arguments.root else {
       return Err(XrfError::new_invalid_error(
         "name the game tree to play with --root <path> and its level with --level <name>",
       ));
     };
-    let tree: GameTree = GameTree::mount(root)?;
+    let tree: GameTree = progress.run(GameLoadStage::Tree, || GameTree::mount(root))?;
 
     log::info!(
       "Game tree {} mounted, engine {:?}",
@@ -79,11 +82,15 @@ impl GameSession {
     // The level, the new game and the level's physics read different files and share nothing until the state is put
     // together.
     let (level, (start, physics)): (XrfResult<GameLevel>, (XrfResult<GameStart>, XrfResult<PhysicsWorld>)) = pool.join(
-      || GameLevel::open(&tree, &level_name, pool),
+      || progress.run(GameLoadStage::Level, || GameLevel::open(&tree, &level_name, pool)),
       || {
         pool.join(
-          || Self::read_start(&tree, &level_name, seed),
-          || Self::read_physics(&tree, &level_name, &materials),
+          || progress.run(GameLoadStage::Game, || Self::read_start(&tree, &level_name, seed)),
+          || {
+            progress.run(GameLoadStage::Physics, || {
+              Self::read_physics(&tree, &level_name, &materials)
+            })
+          },
         )
       },
     );
