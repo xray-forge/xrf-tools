@@ -1,0 +1,18 @@
+[package]
+name = "xrf-game-hooks"
+version = "0.1.0"
+publish = false
+description = "XRF game: the hook registry systems fill with their own behaviour and scripts override by name"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+xrf-error = { workspace = true }
+xrf-game-objects = { workspace = true }
+
+[lints]
+workspace = true

@@ -37,8 +37,10 @@ replaced by a constant.
 `SimulationFacts::pick` judges a condlist as `xr_logic.pick_section_from_condlist` does: the first branch whose
 conditions all hold gives its result. An info portion holds by the facts' set (empty in a new game); a probability
 (`~50`) holds while one draw, made at the pick's first probability and shared by every later one, is at most it, as
-X-Ray draws `math.random(100)` once a pick; a condition function answers false, none being implemented yet. A branch's
-effects are not run.
+X-Ray draws `math.random(100)` once a pick; a condition function is the hook registry's entry
+`xr_conditions.<name>` (`SimulationFunctions`, `xrf-game-hooks`), called with the parameters written after its name,
+as X-Ray's scripts look it up in their `xr_conditions` table. The game implements none yet, so one nobody registered
+answers false, where X-Ray aborts. A branch's effects are not run.
 
 ## The start
 
@@ -51,7 +53,8 @@ effects are not run.
   drawn twice as often; each member is created at the spawn point, alive, under A-Life's control, and joins the squad,
   which then stands where its first member does.
 
-Ids go out as X-Ray hands them: the squad, its members, the next squad. Every draw is `xrf-random`'s at the game's seed
+Ids go out as the registry hands them (`ObjectRegistry::create`): the squad, its members, the next squad; each is
+placed, grouped and given its rows through the registry's methods. Every draw is `xrf-random`'s at the game's seed
 and the squad's id (domains `simulation.squad.spawn_point`, `simulation.squad.members`), so a seed starts the same game
 whatever else draws. Fixed from vanilla: a spawn point naming a patrol the spawn lacks puts the squad at its smart,
 logged, where vanilla aborts. Not yet: a member's character profile, rank and inventory (`spawn_supplies`), its team

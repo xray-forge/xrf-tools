@@ -41,6 +41,7 @@ xrf-game-alife = { workspace = true }
 xrf-game-console = { workspace = true }
 xrf-game-developer = { workspace = true }
 xrf-game-graph = { workspace = true }
+xrf-game-hooks = { workspace = true }
 xrf-game-loop = { workspace = true }
 xrf-game-mcp = { workspace = true, optional = true }
 xrf-game-movement = { workspace = true }

@@ -6,6 +6,11 @@ use xrf_spawn::ClsId;
 pub(crate) const LEVEL: u8 = 108;
 pub(crate) const OTHER_LEVEL: u8 = 118;
 
+/// The id of the first object of slot `index`.
+pub(crate) fn id(index: u32) -> ObjectId {
+  ObjectId::of_index(index)
+}
+
 /// An object at `x` metres along `+x` from the origin, where the actor stands.
 pub(crate) fn object(x: f32, switching: ObjectSwitching) -> ObjectRecord {
   ObjectRecord {
@@ -14,20 +19,18 @@ pub(crate) fn object(x: f32, switching: ObjectSwitching) -> ObjectRecord {
     class: ClsId::AiStlS,
     position: Vec3::new(x, 0.0, 0.0),
     direction: Vec3::Z,
-    level: Some(LEVEL),
     game_vertex: Some(0),
     level_vertex: Some(0),
-    parent: None,
     story_id: None,
     spawn_id: 0,
     switching,
   }
 }
 
-/// Gives `id` a schedule row A-Life steers, of a group, which needs updating whenever it is offline.
-pub(crate) fn schedule(registry: &mut ObjectRegistry, id: u16) {
-  registry.get_schedules_mut().insert(
-    ObjectId(id),
+/// Gives object `index` a schedule row A-Life steers, of a group, which needs updating whenever it is offline.
+pub(crate) fn schedule(registry: &mut ObjectRegistry, index: u32) {
+  registry.set_schedule(
+    id(index),
     ObjectSchedule {
       kind: ObjectScheduleKind::Group,
       direct_control: true,
@@ -36,12 +39,12 @@ pub(crate) fn schedule(registry: &mut ObjectRegistry, id: u16) {
   );
 }
 
-/// A registry holding `records`, by their place.
+/// A registry holding `records` on the tests' level, by their place.
 pub(crate) fn registry(records: Vec<ObjectRecord>) -> ObjectRegistry {
   let mut registry: ObjectRegistry = ObjectRegistry::default();
 
-  for (id, record) in (0..).map(ObjectId).zip(records) {
-    registry.insert(id, record);
+  for record in records {
+    registry.create(record, Some(LEVEL));
   }
 
   registry

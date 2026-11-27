@@ -1,11 +1,15 @@
 use std::convert::Infallible;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
+use xrf_game_hooks::EventBuffer;
 use xrf_game_loop::{LoopSystem, LoopTime};
 
 use crate::alife_context::AlifeContext;
 use crate::alife_data::AlifeData;
+use crate::events::alife_event::AlifeEvent;
+use crate::hooks::alife_hooks::{AlifeHooks, AlifeListener};
 use crate::schedule::alife_schedule::AlifeSchedule;
 use crate::schedule::alife_schedule_report::AlifeScheduleReport;
 use crate::settings::alife_settings::AlifeSettings;
@@ -79,9 +83,21 @@ impl LoopSystem for Alife {
     // The wall clock is read for the log alone, and only where a line is written: nothing of the state depends on it.
     let started: Option<Instant> = (time.tick == 0 || log::log_enabled!(log::Level::Debug)).then(Instant::now);
 
+    // Read before anything is written, so a missing hook faults the step whole rather than half told.
+    let on_switched: Arc<AlifeListener> = context.hooks.get(&AlifeHooks::ON_SWITCHED)?;
+    let mut told: EventBuffer<AlifeEvent> = EventBuffer::default();
+
     // While the actor is on no level the graph holds, the switch rests and offline life goes on.
     self.last_switch = match context.level {
-      Some(level) => AlifeSwitch::sweep(context.objects, level, context.actor, &self.settings, time.tick),
+      Some(level) => AlifeSwitch::sweep(
+        context.objects,
+        context.hooks,
+        &mut told,
+        level,
+        context.actor,
+        &self.settings,
+        time.tick,
+      )?,
       None => AlifeSwitchReport::default(),
     };
     self.last_schedule = self.schedule.update(
@@ -89,6 +105,12 @@ impl LoopSystem for Alife {
       usize::try_from(self.settings.objects_per_update).unwrap_or(usize::MAX),
       time.tick,
     );
+
+    // Told once the update's writes are done, in id order: to the event hook, then out to the game.
+    for event in told.drain() {
+      on_switched(context.objects, &event);
+      context.events.push(event);
+    }
 
     let switch: AlifeSwitchReport = self.last_switch;
 

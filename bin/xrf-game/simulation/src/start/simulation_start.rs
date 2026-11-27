@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 
 use xrf_game_graph::{GameGraph, GamePatrols, GameVertexId};
+use xrf_game_hooks::HookRegistry;
 use xrf_game_objects::{
-  ObjectCreature, ObjectGroup, ObjectId, ObjectRecord, ObjectRegistry, ObjectSchedule, ObjectScheduleKind,
+  ObjectCreature, ObjectId, ObjectPlace, ObjectRecord, ObjectRegistry, ObjectSchedule, ObjectScheduleKind,
   ObjectSwitching,
 };
 use xrf_math::glam::Vec3;
@@ -21,11 +22,12 @@ use crate::start::simulation_start_report::SimulationStartReport;
 ///
 /// Every draw comes from the game's seed at the squad's id, so a start is the same for the same seed whatever else
 /// draws. Fixed from vanilla: a spawn point naming a patrol the spawn lacks puts the squad at its smart, logged, where
-/// vanilla's `patrol(name)` aborts.
+/// vanilla's `patrol(name)` aborts. The condition functions its condlists call are the hook registry's.
 pub struct SimulationStart<'a> {
   pub config: &'a SimulationConfig,
   pub graph: &'a GameGraph,
   pub patrols: &'a GamePatrols,
+  pub hooks: &'a HookRegistry,
   pub seed: u64,
 }
 
@@ -91,13 +93,7 @@ impl SimulationStart<'_> {
       .create_object(objects, section, class, smart_place)
       .ok_or_else(|| String::from("found no free id"))?;
     // A squad is a squad from its creation, assigned to the smart it is made at, whatever members it comes to have.
-    objects.get_groups_mut().insert(
-      id,
-      ObjectGroup {
-        members: Vec::new(),
-        smart: Some(smart),
-      },
-    );
+    objects.form_group(id, Some(smart));
 
     let place: SimulationPlace = match self.pick_spawn_point(squad, id) {
       Some(name) if name != Self::SPAWN_POINT_SELF => match self.find_patrol_point(name) {
@@ -123,7 +119,7 @@ impl SimulationStart<'_> {
         continue;
       };
 
-      objects.get_creatures_mut().insert(
+      objects.set_creature(
         member_id,
         ObjectCreature {
           health: Self::CREATED_HEALTH,
@@ -137,7 +133,7 @@ impl SimulationStart<'_> {
       report.issues.push(format!("Squad [{section}] created no member"));
     } else {
       // The squad stands where its first member does (`register_member`).
-      Self::move_to(objects, id, place, self.graph);
+      objects.move_to(id, self.place_of(place));
     }
 
     report.squads += 1;
@@ -155,27 +151,28 @@ impl SimulationStart<'_> {
   ) -> Option<ObjectId> {
     let alife_class: AlifeClass = AlifeClass::from_cls_id(class);
     let kind: Option<ObjectScheduleKind> = ObjectScheduleKind::of_class(alife_class.clone());
-    let id: ObjectId = objects.create(ObjectRecord {
-      section: String::from(section),
-      name: String::new(),
-      class: class.clone(),
-      position: place.position,
-      direction: Vec3::ZERO,
-      level: self.graph.get_vertex(place.game_vertex).map(|vertex| vertex.level),
-      game_vertex: Some(place.game_vertex.0),
-      level_vertex: Some(place.level_vertex),
-      parent: None,
-      story_id: None,
-      spawn_id: u16::MAX,
-      switching: ObjectSwitching::of_class(alife_class, ObjectSwitching::CREATED_FLAGS),
-    })?;
+    let id: ObjectId = objects.create(
+      ObjectRecord {
+        section: String::from(section),
+        name: String::new(),
+        class: class.clone(),
+        position: place.position,
+        direction: Vec3::ZERO,
+        game_vertex: Some(place.game_vertex.0),
+        level_vertex: Some(place.level_vertex),
+        story_id: None,
+        spawn_id: u16::MAX,
+        switching: ObjectSwitching::of_class(alife_class, ObjectSwitching::CREATED_FLAGS),
+      },
+      self.find_level(place),
+    )?;
 
     if let Some(record) = objects.get_records_mut().get_mut(id) {
       record.name = ObjectRecord::name_created(section, id);
     }
 
     if let Some(kind) = kind {
-      objects.get_schedules_mut().insert(
+      objects.set_schedule(
         id,
         ObjectSchedule {
           kind,
@@ -192,7 +189,7 @@ impl SimulationStart<'_> {
   fn pick_spawn_point<'a>(&self, squad: &'a SquadDescription, id: ObjectId) -> Option<&'a str> {
     let mut random: RandomStream = RandomStream::new(self.seed, Self::address(Self::SPAWN_POINT_DOMAIN, id));
 
-    SimulationFacts::default().pick(&squad.spawn_point, &mut random)
+    SimulationFacts::default().pick(&squad.spawn_point, self.hooks, &mut random)
   }
 
   /// The members squad `id` is made of: each fixed member once, then `npc_in_squad` drawn from its random members, a
@@ -238,13 +235,18 @@ impl SimulationStart<'_> {
     })
   }
 
-  /// Moves object `id` to `place`.
-  fn move_to(objects: &mut ObjectRegistry, id: ObjectId, place: SimulationPlace, graph: &GameGraph) {
-    if let Some(record) = objects.get_records_mut().get_mut(id) {
-      record.position = place.position;
-      record.level = graph.get_vertex(place.game_vertex).map(|vertex| vertex.level);
-      record.game_vertex = Some(place.game_vertex.0);
-      record.level_vertex = Some(place.level_vertex);
+  /// The graph level `place` is on, by its game vertex.
+  fn find_level(&self, place: SimulationPlace) -> Option<u8> {
+    self.graph.get_vertex(place.game_vertex).map(|vertex| vertex.level)
+  }
+
+  /// Where `place` stands, as the registry places an object.
+  fn place_of(&self, place: SimulationPlace) -> ObjectPlace {
+    ObjectPlace {
+      position: place.position,
+      level: self.find_level(place),
+      game_vertex: Some(place.game_vertex.0),
+      level_vertex: Some(place.level_vertex),
     }
   }
 
@@ -252,7 +254,7 @@ impl SimulationStart<'_> {
   fn address(domain: u64, id: ObjectId) -> RandomAddress {
     RandomAddress {
       domain,
-      entity: u64::from(id.0),
+      entity: id.get_raw(),
       step: 0,
     }
   }

@@ -33,7 +33,9 @@ walking and flight, as an engine's noclip does. Escape or the window's close qui
 What the game holds lives as long as one of three things. The host, for the whole run: the shell (`GameShell`: the
 window and the renderer) and `GameHost` (the tree, its configs read once and kept, its game materials, the audio
 server). The game, what a save holds: `GameProgress` (the seed, the game's own time `GameTime`, the object registry,
-A-Life, the player's object) and the player's movement. The level, built again for each: `GameLevelState` (the physics
+A-Life, the player's object), the player's movement, and the hook registry its systems act through
+(`xrf-game-hooks`, every point registered with its system's own behaviour at the game's start, which a script will
+override by name). The level, built again for each: `GameLevelState` (the physics
 world, the game graph's level) and what the world shows of it. `GameCommand::ReplaceLevel` hands the loop a level built
 beside it in whole; the game goes on over it.
 
@@ -59,8 +61,8 @@ queue with the game's pipeline cache, its world, the viewport filling the window
 stepping the session's state.
 
 What the loop publishes (`GameFrame`) is the player's camera and velocity, the game's day and every online object's
-pose, in id order; what happens once is an event (`GameEvent`, the player's steps now), queued and played in order
-(`GameFootsteps`); what a tool asks is read from the state between ticks (the control endpoint's status). The look is
+pose, in id order; what happens once is an event (`GameEvent`: the player's steps, played in order by
+`GameFootsteps`, and the objects A-Life switches, which nothing shows yet), queued in order; what a tool asks is read from the state between ticks (the control endpoint's status). The look is
 presentation's (plan decision 26, `GameLook`): the mouse turns it on the main thread at once, the world's view reads it
 at each render frame's start (`GameViewFeed`), its position the latest tick's carried forward by its velocity, and the
 loop is sent the heading whole once a frame it changed (`MovementCommand::Face`). A look reaches the view in 5.7 ms at

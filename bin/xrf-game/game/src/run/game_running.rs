@@ -112,7 +112,8 @@ impl GameRunning {
     }
   }
 
-  /// Plays what the loop's steps told since last taken, in order: each footstep's sound in `view`.
+  /// Plays what the loop's steps told since last taken, in order: each footstep's sound in `view`. An object switching
+  /// shows nothing yet, as nothing draws the objects.
   pub(crate) fn play_events(&mut self, view: &GameView) {
     for told in self.game_loop.get_events().take() {
       match told.event {
@@ -121,6 +122,7 @@ impl GameRunning {
             view.play_sound(sound);
           }
         }
+        GameEvent::Alife(_) => {}
       }
     }
   }

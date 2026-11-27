@@ -14,6 +14,7 @@ pub use crate::record::object_creature::ObjectCreature;
 pub use crate::record::object_group::ObjectGroup;
 pub use crate::record::object_member::ObjectMember;
 pub use crate::record::object_online::ObjectOnline;
+pub use crate::record::object_place::ObjectPlace;
 pub use crate::record::object_record::ObjectRecord;
 pub use crate::record::object_schedule::ObjectSchedule;
 pub use crate::record::object_schedule_kind::ObjectScheduleKind;

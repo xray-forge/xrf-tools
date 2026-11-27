@@ -1,11 +1,14 @@
 use std::collections::BTreeSet;
 
+use xrf_game_hooks::HookRegistry;
 use xrf_ltx::{Condlist, CondlistBranch, CondlistCondition};
 use xrf_random::RandomStream;
 
+use crate::facts::simulation_functions::SimulationFunctions;
+
 /// What the simulation's condlists are judged against (`xr_logic.pick_section_from_condlist`): the info portions the
-/// actor has, none in a new game. A condition function (`=name(...)`, `!name(...)`) answers false, as none is
-/// implemented yet; the configs log which their condlists call.
+/// actor has, none in a new game. A condition function (`=name(...)`, `!name(...)`) is the one registered by its name
+/// in the hook registry (`SimulationFunctions`).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SimulationFacts {
   pub infos: BTreeSet<String>,
@@ -13,20 +16,27 @@ pub struct SimulationFacts {
 
 impl SimulationFacts {
   /// The result of the first branch of `condlist` whose conditions all hold, none where no branch's do or the branch
-  /// that holds names none. A probability (`~50`) holds while one draw from `random`, made at the first probability of
-  /// the pick and shared by every later one, is at most it, as `pick_section_from_condlist` draws `math.random(100)`
-  /// once. A branch's effects (`%...%`) are not run.
-  pub fn pick<'a>(&self, condlist: &'a Condlist, random: &mut RandomStream) -> Option<&'a str> {
+  /// that holds names none. A condition function is called from `hooks` with its parameters, one no one registered
+  /// answering false. A probability (`~50`) holds while one draw from `random`, made at the first probability of the
+  /// pick and shared by every later one, is at most it, as `pick_section_from_condlist` draws `math.random(100)` once.
+  /// A branch's effects (`%...%`) are not run.
+  pub fn pick<'a>(&self, condlist: &'a Condlist, hooks: &HookRegistry, random: &mut RandomStream) -> Option<&'a str> {
     let mut draw: Option<u64> = None;
 
     condlist
       .branches
       .iter()
-      .find(|branch| self.holds(branch, random, &mut draw))
+      .find(|branch| self.holds(branch, hooks, random, &mut draw))
       .and_then(|branch| branch.result.as_deref())
   }
 
-  fn holds(&self, branch: &CondlistBranch, random: &mut RandomStream, draw: &mut Option<u64>) -> bool {
+  fn holds(
+    &self,
+    branch: &CondlistBranch,
+    hooks: &HookRegistry,
+    random: &mut RandomStream,
+    draw: &mut Option<u64>,
+  ) -> bool {
     branch.conditions.iter().all(|condition| match condition {
       CondlistCondition::InfoPortion { name, required, .. } => self.infos.contains(name) == *required,
       CondlistCondition::Probability { value, .. } => {
@@ -34,7 +44,17 @@ impl SimulationFacts {
 
         *value >= rolled as f64
       }
-      CondlistCondition::Function { expected, .. } => !*expected,
+      CondlistCondition::Function {
+        expected,
+        name,
+        parameters,
+        ..
+      } => {
+        let holds: bool = SimulationFunctions::find_condition(hooks, name)
+          .is_some_and(|condition| condition(self, parameters.as_deref().unwrap_or_default()));
+
+        holds == *expected
+      }
     })
   }
 }

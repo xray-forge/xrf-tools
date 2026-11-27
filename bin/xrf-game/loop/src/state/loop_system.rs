@@ -6,7 +6,7 @@ use crate::clock::loop_time::LoopTime;
 /// in a fixed order.
 ///
 /// A system owns its state and reaches nothing else by itself: what it needs of the rest of the game (the object
-/// registry's tables, another system's published values, where it tells its events, the hook bus) is its
+/// registry's tables, another system's published values, where it tells its events, the hook registry) is its
 /// [`Self::Context`], which the game's state hands it each step. The dependencies are in its signature, never looked
 /// up, so the borrow checker proves two systems never write the same data, and a system is tested by building its
 /// context alone.

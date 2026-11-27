@@ -15,7 +15,7 @@ session checks (`src/tests/loop_stepper.rs`).
   its order, tells its `Event`s, and publishes a `Frame` presentation reads.
 - `LoopSystem` is one part of the state and its rules (movement, A-Life). It owns its state and reaches nothing else by
   itself: what it needs of the rest (the registry's tables, another system's values, where it tells its events, the
-  hook bus) is its `Context`, which the root hands it each step (`()` for none). Dependencies are injected as typed
+  hook registry) is its `Context`, which the root hands it each step (`()` for none). Dependencies are injected as typed
   parameters, never looked up from a container, so they show in the signature and the borrow checker proves two
   systems never write the same data; a system is tested by building its context alone (`src/tests/test_state.rs`).
 - A step answers a fault rather than logging it and stepping on half applied: the loop then stops, logs the fault once

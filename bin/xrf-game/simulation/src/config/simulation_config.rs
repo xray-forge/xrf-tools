@@ -64,7 +64,8 @@ impl SimulationConfig {
   }
 
   /// Adds one issue naming the condition functions its condlists call, which the game does not implement yet and
-  /// which answer false (`SimulationFacts::pick`), so a respawn count or a target that differs from X-Ray's is traced.
+  /// which answer false unless a script registers them (`SimulationFunctions`), so a respawn count or a target that
+  /// differs from X-Ray's is traced.
   fn report_functions(&mut self) {
     let condlists = self
       .smarts

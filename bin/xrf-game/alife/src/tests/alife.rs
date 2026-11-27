@@ -1,14 +1,20 @@
 use std::time::Duration;
 
+use std::sync::{Arc, Mutex};
+
+use xrf_game_hooks::HookRegistry;
 use xrf_game_loop::{LoopSystem, LoopTime};
-use xrf_game_objects::{ObjectId, ObjectRegistry, ObjectSwitching};
+use xrf_game_objects::{ObjectRegistry, ObjectSwitching};
 use xrf_math::glam::Vec3;
 
 use crate::alife::Alife;
 use crate::alife_context::AlifeContext;
 use crate::alife_data::AlifeData;
+use crate::events::alife_event::AlifeEvent;
+use crate::hooks::alife_hooks::{AlifeHooks, AlifeListener};
 use crate::settings::alife_settings::AlifeSettings;
-use crate::tests::fixtures::{LEVEL, object, registry, schedule};
+use crate::switch::alife_switch_direction::AlifeSwitchDirection;
+use crate::tests::fixtures::{LEVEL, id, object, registry, schedule};
 
 /// What a run of A-Life's steps is given: the ticks it runs, the level the actor is on and where it stands.
 struct Run {
@@ -32,7 +38,21 @@ impl Run {
 
 /// Steps A-Life `run.ticks` ticks of 10 ms from tick `run.from`, answering the ticks a sweep ran at.
 fn run(alife: &mut Alife, objects: &mut ObjectRegistry, run: Run) -> Vec<u64> {
+  let hooks: HookRegistry = AlifeHooks::of_defaults().expect("A-Life's hooks");
+
+  run_with(alife, objects, &hooks, run).swept
+}
+
+/// What a run did: the ticks a sweep ran at, and what A-Life told, in order.
+struct Ran {
+  swept: Vec<u64>,
+  told: Vec<AlifeEvent>,
+}
+
+/// Steps A-Life as `run` does through `hooks`.
+fn run_with(alife: &mut Alife, objects: &mut ObjectRegistry, hooks: &HookRegistry, run: Run) -> Ran {
   let mut swept: Vec<u64> = Vec::new();
+  let mut told: Vec<AlifeEvent> = Vec::new();
 
   for tick in run.from..run.from + run.ticks {
     let time: LoopTime = LoopTime {
@@ -46,8 +66,10 @@ fn run(alife: &mut Alife, objects: &mut ObjectRegistry, run: Run) -> Vec<u64> {
         &time,
         AlifeContext {
           objects,
+          hooks,
           level: run.level,
           actor: Vec3::new(run.actor_x, 0.0, 0.0),
+          events: &mut told,
         },
       )
       .expect("A-Life steps");
@@ -57,7 +79,7 @@ fn run(alife: &mut Alife, objects: &mut ObjectRegistry, run: Run) -> Vec<u64> {
     }
   }
 
-  swept
+  Ran { swept, told }
 }
 
 #[test]
@@ -66,14 +88,14 @@ fn sweeps_at_the_first_step_then_once_an_update_interval() {
   let mut alife: Alife = Alife::new(AlifeSettings::default(), AlifeData::default());
 
   assert_eq!(run(&mut alife, &mut objects, Run::on_level(0, 1, 0.0)), vec![0]);
-  assert!(objects.is_online(ObjectId(0)));
+  assert!(objects.is_online(id(0)));
 
   // The actor walks away at once, but the object stays online until the next update, 265 ms later: 27 ticks of 10 ms.
   run(&mut alife, &mut objects, Run::on_level(1, 26, 1_000.0));
-  assert!(objects.is_online(ObjectId(0)));
+  assert!(objects.is_online(id(0)));
 
   run(&mut alife, &mut objects, Run::on_level(27, 1, 1_000.0));
-  assert!(!objects.is_online(ObjectId(0)));
+  assert!(!objects.is_online(id(0)));
 }
 
 #[test]
@@ -85,15 +107,15 @@ fn updates_offline_objects_once_an_update_interval_after_the_sweep() {
   };
   let mut alife: Alife = Alife::new(settings, AlifeData::default());
 
-  for id in 0..4 {
-    schedule(&mut objects, id);
+  for index in 0..4 {
+    schedule(&mut objects, index);
   }
 
   // Updates at ticks 0, 27 and 54: one object each, in id order.
   run(&mut alife, &mut objects, Run::on_level(0, 60, 0.0));
 
   let stamps: Vec<Option<u64>> = (0..4)
-    .map(|id| objects.get_schedules().get(ObjectId(id)).and_then(|row| row.updated))
+    .map(|index| objects.get_schedules().get(id(index)).and_then(|row| row.updated))
     .collect();
 
   assert_eq!(stamps, vec![Some(0), Some(27), Some(54), None]);
@@ -119,7 +141,7 @@ fn rests_the_switch_while_the_actor_is_on_no_level_the_graph_holds_but_not_offli
   assert!(
     objects
       .get_schedules()
-      .get(ObjectId(0))
+      .get(id(0))
       .is_some_and(|row| row.updated.is_some())
   );
 }
@@ -138,8 +160,41 @@ fn sweeps_whichever_level_each_step_names() {
       ..Run::on_level(0, 1, 0.0)
     },
   );
-  assert!(!objects.is_online(ObjectId(0)));
+  assert!(!objects.is_online(id(0)));
 
   run(&mut alife, &mut objects, Run::on_level(1, 27, 0.0));
-  assert!(objects.is_online(ObjectId(0)));
+  assert!(objects.is_online(id(0)));
+}
+
+#[test]
+fn tells_its_event_hook_then_the_game_each_switch_once_the_update_is_done() {
+  let mut objects: ObjectRegistry = registry(vec![
+    object(10.0, ObjectSwitching::ByDistance),
+    object(20.0, ObjectSwitching::ByDistance),
+  ]);
+  let mut alife: Alife = Alife::new(AlifeSettings::default(), AlifeData::default());
+  let mut hooks: HookRegistry = AlifeHooks::of_defaults().expect("A-Life's hooks");
+  let heard: Arc<Mutex<Vec<usize>>> = Arc::new(Mutex::new(Vec::new()));
+  let listener: Arc<Mutex<Vec<usize>>> = Arc::clone(&heard);
+
+  // The listener reads the registry as the update left it: both online by the first event it hears.
+  hooks
+    .replace(
+      AlifeHooks::ON_SWITCHED.name,
+      Arc::new(move |objects: &ObjectRegistry, _: &AlifeEvent| {
+        if let Ok(mut heard) = listener.lock() {
+          heard.push(objects.get_online().len());
+        }
+      }) as Arc<AlifeListener>,
+    )
+    .expect("the default to replace");
+
+  let ran = run_with(&mut alife, &mut objects, &hooks, Run::on_level(0, 1, 0.0));
+  let online = |index: u32| AlifeEvent::Switched {
+    id: id(index),
+    direction: AlifeSwitchDirection::Online,
+  };
+
+  assert_eq!(ran.told, vec![online(0), online(1)]);
+  assert_eq!(heard.lock().map(|heard| heard.clone()).ok(), Some(vec![2, 2]));
 }

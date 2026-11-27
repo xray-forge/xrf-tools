@@ -1,5 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_game_alife::AlifeContext;
+use xrf_game_alife::{AlifeContext, AlifeEvent};
+use xrf_game_hooks::HookRegistry;
 use xrf_game_loop::{LoopState, LoopSystem, LoopTime};
 use xrf_game_movement::{Movement, MovementContext, MovementEvent};
 use xrf_game_objects::{ObjectRecord, ObjectRegistry};
@@ -14,14 +15,16 @@ use crate::state::game_progress::GameProgress;
 
 /// The game's systems put together, the composition root the game loop steps: each command goes to its system, the
 /// systems step in this order, and each is handed what it needs of the rest from here, as its context, never looking it
-/// up. What it holds lives as long as one of two things: the game (`progress`, what a save holds, and the player's
-/// `movement`) or the level played (`level`, replaced whole when the game moves to another). Adding a system is a field
-/// in the lifetime it shares, a command route, and a line in the step below that builds its context.
+/// up. What it holds lives as long as one of two things: the game (`progress`, what a save holds, the player's
+/// `movement`, and the `hooks` its systems act through) or the level played (`level`, replaced whole when the game
+/// moves to another). Adding a system is a field in the lifetime it shares, a command route, its hook points
+/// registered at the game's start, and a line in the step below that builds its context.
 #[derive(Debug)]
 pub struct GameState {
   pub progress: GameProgress,
   pub level: GameLevelState,
   pub movement: Movement,
+  pub hooks: HookRegistry,
 }
 
 impl LoopState for GameState {
@@ -46,7 +49,7 @@ impl LoopState for GameState {
 
   /// Movement first, walking the player in the level's physics world and writing its record, then the world's bodies,
   /// then the game's time, then A-Life, which weighs where the player stands after this tick's move. What each system
-  /// tells goes to `events`, routed as the game's.
+  /// tells goes to `events`, routed as the game's, A-Life's once its own hooks heard it.
   fn step(&mut self, time: &LoopTime, events: &mut Vec<GameEvent>) -> XrfResult<()> {
     let GameProgress {
       objects,
@@ -58,7 +61,7 @@ impl LoopState for GameState {
     let record: &mut ObjectRecord = objects
       .get_records_mut()
       .get_mut(*player)
-      .ok_or_else(|| XrfError::new_unexpected_error(format!("the game holds no record of its player {}", player.0)))?;
+      .ok_or_else(|| XrfError::new_unexpected_error(format!("the game holds no record of its player {player}")))?;
     let mut movement_events: Vec<MovementEvent> = Vec::new();
 
     self.movement.step(
@@ -74,15 +77,21 @@ impl LoopState for GameState {
     game_time.advance(time.step);
 
     let actor: Vec3 = record.position;
+    let mut alife_events: Vec<AlifeEvent> = Vec::new();
 
     alife.step(
       time,
       AlifeContext {
         objects,
+        hooks: &self.hooks,
         level: self.level.graph_level,
         actor,
+        events: &mut alife_events,
       },
-    )
+    )?;
+    events.extend(alife_events.into_iter().map(GameEvent::Alife));
+
+    Ok(())
   }
 
   fn get_frame(&self) -> GameFrame {

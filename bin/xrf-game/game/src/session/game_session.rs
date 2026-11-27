@@ -3,7 +3,8 @@ use std::time::Instant;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
-use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
+use xrf_game_alife::{Alife, AlifeData, AlifeHooks, AlifeSettings};
+use xrf_game_hooks::HookRegistry;
 use xrf_game_movement::{FlyMode, Movement, MovementModes};
 use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
 use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
@@ -112,6 +113,7 @@ impl GameSession {
         physics,
         graph_level: start.graph_level,
       },
+      hooks: start.hooks,
       movement: Movement::new(
         level.get_start_camera(),
         request.mode,
@@ -184,11 +186,17 @@ impl GameSession {
     );
 
     let data: AlifeData = Self::read_alife_data(&configs, spawn);
+    // Every hook point the game's systems declare, each holding its system's own behaviour until a script replaces it.
+    let mut hooks: HookRegistry = HookRegistry::default();
+
+    AlifeHooks::register(&mut hooks)?;
+
     let created: Instant = Instant::now();
     let report: SimulationStartReport = SimulationStart {
       config: &data.simulation,
       graph: &data.graph,
       patrols: &data.patrols,
+      hooks: &hooks,
       seed,
     }
     .create(&mut objects);
@@ -196,12 +204,7 @@ impl GameSession {
       objects
         .get_groups()
         .iter()
-        .filter(|(id, _)| {
-          objects
-            .get_records()
-            .get(*id)
-            .is_some_and(|record| record.level == Some(level))
-        })
+        .filter(|(id, _)| objects.get_level(*id) == Some(level))
         .count()
     });
 
@@ -218,6 +221,7 @@ impl GameSession {
       objects,
       player,
       alife: Alife::new(settings, data),
+      hooks,
       graph_level,
       player_config: configs.read_player_config(),
       configs,
@@ -241,20 +245,21 @@ impl GameSession {
     log::warn!("The spawn holds no actor; the game makes one for the player");
 
     objects
-      .create(ObjectRecord {
-        section: String::from("actor"),
-        name: String::from("actor"),
-        class: ClsId::SActor,
-        position: Vec3::ZERO,
-        direction: Vec3::ZERO,
-        level: None,
-        game_vertex: None,
-        level_vertex: None,
-        parent: None,
-        story_id: None,
-        spawn_id: u16::MAX,
-        switching: ObjectSwitching::ByDistance,
-      })
+      .create(
+        ObjectRecord {
+          section: String::from("actor"),
+          name: String::from("actor"),
+          class: ClsId::SActor,
+          position: Vec3::ZERO,
+          direction: Vec3::ZERO,
+          game_vertex: None,
+          level_vertex: None,
+          story_id: None,
+          spawn_id: u16::MAX,
+          switching: ObjectSwitching::ByDistance,
+        },
+        None,
+      )
       .ok_or_else(|| XrfError::new_unexpected_error("no object id is left for the player"))
   }
 

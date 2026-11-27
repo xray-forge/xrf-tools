@@ -3,6 +3,7 @@ pub(crate) mod object_creature;
 pub(crate) mod object_group;
 pub(crate) mod object_member;
 pub(crate) mod object_online;
+pub(crate) mod object_place;
 pub(crate) mod object_record;
 pub(crate) mod object_schedule;
 pub(crate) mod object_schedule_kind;

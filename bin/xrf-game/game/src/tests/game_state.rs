@@ -2,7 +2,7 @@ use std::f32::consts::FRAC_PI_2;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
+use xrf_game_alife::{Alife, AlifeData, AlifeHooks, AlifeSettings};
 use xrf_game_loop::{GameLoop, LoopClock, LoopFeed, LoopFrame, LoopRead, LoopStepper};
 use xrf_game_movement::Movement;
 use xrf_game_movement::{
@@ -29,8 +29,13 @@ use crate::time::game_time::GameTime;
 /// The level the tests' objects stand on.
 const LEVEL: u8 = 108;
 
+/// How many stalkers stand in the field.
+const STALKERS: u16 = 50;
+
 /// The player's object, past the field of stalkers.
-const PLAYER: ObjectId = ObjectId(50);
+fn player_id() -> ObjectId {
+  ObjectId::of_index(u32::from(STALKERS))
+}
 
 /// Longer than any of these waits should take, so a broken contract fails rather than hangs.
 const WAIT: Duration = Duration::from_secs(10);
@@ -46,10 +51,8 @@ fn record(name: String, class: ClsId, position: Vec3, spawn_id: u16) -> ObjectRe
     class,
     position,
     direction: Vec3::Z,
-    level: Some(LEVEL),
     game_vertex: Some(0),
     level_vertex: Some(0),
-    parent: None,
     story_id: None,
     spawn_id,
     switching: ObjectSwitching::ByDistance,
@@ -60,19 +63,24 @@ fn record(name: String, class: ClsId, position: Vec3, spawn_id: u16) -> ObjectRe
 fn state() -> GameState {
   let mut objects: ObjectRegistry = ObjectRegistry::default();
 
-  for index in 0..50_u16 {
-    objects.insert(
-      ObjectId(index),
+  for index in 0..STALKERS {
+    objects.create(
       record(
         format!("stalker_{index}"),
         ClsId::AiStlS,
         Vec3::new(0.0, 0.0, f32::from(index) * 20.0),
         index,
       ),
+      Some(LEVEL),
     );
   }
 
-  objects.insert(PLAYER, record(String::from("actor"), ClsId::SActor, Vec3::ZERO, 50));
+  let player: Option<ObjectId> = objects.create(
+    record(String::from("actor"), ClsId::SActor, Vec3::ZERO, STALKERS),
+    Some(LEVEL),
+  );
+
+  assert_eq!(player, Some(player_id()));
 
   GameState {
     progress: GameProgress {
@@ -80,7 +88,7 @@ fn state() -> GameState {
       time: GameTime::new(GameClock::default()),
       objects,
       alife: Alife::new(AlifeSettings::default(), AlifeData::default()),
-      player: PLAYER,
+      player: player_id(),
     },
     level: GameLevelState {
       physics: PhysicsWorld::new().expect("a world"),
@@ -91,6 +99,7 @@ fn state() -> GameState {
       MovementMode::default(),
       MovementModes::default(),
     ),
+    hooks: AlifeHooks::of_defaults().expect("A-Life's hooks"),
   }
 }
 
@@ -267,7 +276,13 @@ fn switches_objects_online_around_the_player_as_it_flies_and_writes_its_record()
   stepper.step([]).expect("a step");
 
   // Within 135 m of the origin: the objects at 0 to 120 m, and the player, posed in id order.
-  let poses: Vec<u16> = stepper.get_frame().state.poses.iter().map(|pose| pose.id.0).collect();
+  let poses: Vec<u32> = stepper
+    .get_frame()
+    .state
+    .poses
+    .iter()
+    .map(|pose| pose.id.get_index())
+    .collect();
 
   assert_eq!(poses, vec![0, 1, 2, 3, 4, 5, 6, 50]);
 
@@ -280,8 +295,17 @@ fn switches_objects_online_around_the_player_as_it_flies_and_writes_its_record()
 
   let camera_z: f32 = stepper.get_frame().state.camera.position.z;
   let progress: &GameProgress = &stepper.get_state().progress;
-  let online: Vec<u16> = progress.objects.get_online().iter().map(|(id, _)| id.0).collect();
-  let player: &ObjectRecord = progress.objects.get_records().get(PLAYER).expect("the player's record");
+  let online: Vec<u32> = progress
+    .objects
+    .get_online()
+    .iter()
+    .map(|(id, _)| id.get_index())
+    .collect();
+  let player: &ObjectRecord = progress
+    .objects
+    .get_records()
+    .get(player_id())
+    .expect("the player's record");
 
   // About 300 m along: those within 135 m are online, those beyond 165 m behind are not.
   assert!((camera_z - 300.0).abs() < 1.0, "{camera_z}");

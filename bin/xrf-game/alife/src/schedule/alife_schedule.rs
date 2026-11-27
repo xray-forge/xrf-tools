@@ -23,7 +23,9 @@ pub struct AlifeSchedule {
 impl Default for AlifeSchedule {
   /// A new game's, whose walk starts at the first id as X-Ray's starts at its registry's first object.
   fn default() -> Self {
-    Self { next: ObjectId(0) }
+    Self {
+      next: ObjectId::of_index(0),
+    }
   }
 }
 
@@ -62,9 +64,9 @@ impl AlifeSchedule {
       .take(count)
       .collect();
 
-    // Past the last id the walk starts again at the first, as it wraps round anyway.
+    // Past the last slot the walk starts again at the first, as it wraps round anyway.
     if let Some(last) = due.last() {
-      self.next = ObjectId(last.0.wrapping_add(1));
+      self.next = ObjectId::of_index(last.get_index().wrapping_add(1));
     }
 
     due

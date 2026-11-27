@@ -1,14 +1,22 @@
+use std::sync::Arc;
+
+use xrf_game_hooks::{HookKind, HookRegistry};
 use xrf_ltx::Condlist;
 use xrf_random::{RandomAddress, RandomStream};
 
 use crate::facts::simulation_facts::SimulationFacts;
+use crate::facts::simulation_functions::{SimulationCondition, SimulationFunctions};
 
-fn pick(facts: &SimulationFacts, condlist: &str) -> Option<String> {
+fn pick_with(facts: &SimulationFacts, hooks: &HookRegistry, condlist: &str) -> Option<String> {
   let condlist: Condlist = Condlist::parse(condlist).expect("parses");
 
   facts
-    .pick(&condlist, &mut RandomStream::new(1, RandomAddress::default()))
+    .pick(&condlist, hooks, &mut RandomStream::new(1, RandomAddress::default()))
     .map(String::from)
+}
+
+fn pick(facts: &SimulationFacts, condlist: &str) -> Option<String> {
+  pick_with(facts, &HookRegistry::default(), condlist)
 }
 
 #[test]
@@ -26,7 +34,7 @@ fn picks_the_first_branch_whose_info_portions_hold() {
 }
 
 #[test]
-fn answers_false_for_a_function_and_none_where_nothing_holds() {
+fn answers_false_for_a_function_no_one_registered_and_none_where_nothing_holds() {
   let facts: SimulationFacts = SimulationFacts::default();
 
   assert_eq!(pick(&facts, "{=surge_started} surge, calm").as_deref(), Some("calm"));
@@ -36,13 +44,45 @@ fn answers_false_for_a_function_and_none_where_nothing_holds() {
 }
 
 #[test]
+fn calls_the_condition_registered_by_its_name_with_its_parameters() {
+  let facts: SimulationFacts = SimulationFacts::default();
+  let mut hooks: HookRegistry = HookRegistry::default();
+
+  hooks
+    .register_named(
+      &SimulationFunctions::get_condition_hook("is_faction"),
+      HookKind::Condition,
+      Arc::new(|_: &SimulationFacts, parameters: &[String]| parameters == ["stalker"]) as Arc<SimulationCondition>,
+    )
+    .expect("a new condition");
+
+  assert_eq!(
+    pick_with(&facts, &hooks, "{=is_faction(stalker)} loner, other").as_deref(),
+    Some("loner")
+  );
+  assert_eq!(
+    pick_with(&facts, &hooks, "{=is_faction(bandit)} loner, other").as_deref(),
+    Some("other")
+  );
+  assert_eq!(
+    pick_with(&facts, &hooks, "{!is_faction(bandit)} not_bandit, other").as_deref(),
+    Some("not_bandit")
+  );
+}
+
+#[test]
 fn draws_one_number_for_every_probability_of_a_pick() {
   let facts: SimulationFacts = SimulationFacts::default();
+  let hooks: HookRegistry = HookRegistry::default();
   let condlist: Condlist = Condlist::parse("{~30} low, {~60} middle, high").expect("parses");
   let mut counts: [u32; 3] = [0; 3];
 
   for seed in 0..3_000 {
-    match facts.pick(&condlist, &mut RandomStream::new(seed, RandomAddress::default())) {
+    match facts.pick(
+      &condlist,
+      &hooks,
+      &mut RandomStream::new(seed, RandomAddress::default()),
+    ) {
       Some("low") => counts[0] += 1,
       Some("middle") => counts[1] += 1,
       _ => counts[2] += 1,

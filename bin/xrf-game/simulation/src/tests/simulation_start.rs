@@ -1,4 +1,5 @@
 use xrf_game_graph::{GameGraph, GamePatrols};
+use xrf_game_hooks::HookRegistry;
 use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectScheduleKind, ObjectSwitching};
 use xrf_math::glam::Vec3;
 use xrf_spawn::ClsId;
@@ -23,10 +24,8 @@ fn smart(name: &str, x: f32) -> ObjectRecord {
     class: ClsId::SmrtTrrn,
     position: Vec3::new(x, 0.0, 0.0),
     direction: Vec3::Z,
-    level: Some(1),
     game_vertex: Some(3),
     level_vertex: Some(9),
-    parent: None,
     story_id: None,
     spawn_id: 0,
     switching: ObjectSwitching::AlwaysOnline,
@@ -66,13 +65,14 @@ struct Started {
 fn start(config: &SimulationConfig, seed: u64) -> Started {
   let mut objects: ObjectRegistry = ObjectRegistry::default();
 
-  objects.insert(ObjectId(0), smart("zat_base", 10.0));
-  objects.insert(ObjectId(1), smart("zat_sim_1", 50.0));
+  objects.create(smart("zat_base", 10.0), Some(1));
+  objects.create(smart("zat_sim_1", 50.0), Some(1));
 
   let report: SimulationStartReport = SimulationStart {
     config,
     graph: &GameGraph::default(),
     patrols: &GamePatrols::default(),
+    hooks: &HookRegistry::default(),
     seed,
   }
   .create(&mut objects);
@@ -84,15 +84,15 @@ fn start(config: &SimulationConfig, seed: u64) -> Started {
 fn creates_each_start_squad_then_its_members_at_its_smart_and_assigns_it() {
   let config: SimulationConfig = config("[start_position_zaton]\nstalker_novice = zat_sim_1\n");
   let Started { objects, report } = start(&config, 7);
-  let members: Vec<ObjectId> = objects.get_group_members(ObjectId(2)).to_vec();
+  let members: Vec<ObjectId> = objects.get_group_members(ObjectId::of_index(2)).to_vec();
 
   assert_eq!(report.squads, 1);
   assert!((2..=3).contains(&members.len()), "{members:?}");
   assert_eq!(report.members, members.len());
   // The squad takes the next id, its members the ones after.
-  assert_eq!(members[0], ObjectId(3));
+  assert_eq!(members[0], ObjectId::of_index(3));
 
-  let squad: &ObjectRecord = objects.get_records().get(ObjectId(2)).expect("the squad");
+  let squad: &ObjectRecord = objects.get_records().get(ObjectId::of_index(2)).expect("the squad");
 
   assert_eq!(squad.name, "stalker_novice0002");
   assert_eq!(squad.class, ClsId::OnOffS);
@@ -100,11 +100,14 @@ fn creates_each_start_squad_then_its_members_at_its_smart_and_assigns_it() {
   assert_eq!(squad.position, Vec3::new(50.0, 0.0, 0.0));
   assert_eq!(squad.game_vertex, Some(3));
   assert_eq!(
-    objects.get_groups().get(ObjectId(2)).and_then(|group| group.smart),
-    Some(ObjectId(1))
+    objects
+      .get_groups()
+      .get(ObjectId::of_index(2))
+      .and_then(|group| group.smart),
+    Some(ObjectId::of_index(1))
   );
   assert_eq!(
-    objects.get_schedules().get(ObjectId(2)).map(|row| row.kind),
+    objects.get_schedules().get(ObjectId::of_index(2)).map(|row| row.kind),
     Some(ObjectScheduleKind::Group)
   );
 
@@ -117,7 +120,7 @@ fn creates_each_start_squad_then_its_members_at_its_smart_and_assigns_it() {
     assert_eq!(objects.get_creatures().get(member).map(|row| row.health), Some(1.0));
     assert_eq!(
       objects.get_members().get(member).map(|row| row.group),
-      Some(ObjectId(2))
+      Some(ObjectId::of_index(2))
     );
     assert!(!objects.needs_update(member));
   }
@@ -144,14 +147,17 @@ fn creates_fixed_members_once_and_puts_a_squad_spawning_at_a_missing_patrol_at_i
   let config: SimulationConfig = config("[start_position_zaton]\nstory_squad = zat_base\n");
   let Started { objects, report } = start(&config, 1);
   let members: Vec<String> = objects
-    .get_group_members(ObjectId(2))
+    .get_group_members(ObjectId::of_index(2))
     .iter()
     .filter_map(|id| objects.get_records().get(*id).map(|record| record.section.clone()))
     .collect();
 
   assert_eq!(members, vec!["boss", "sim_a"]);
   assert_eq!(
-    objects.get_records().get(ObjectId(3)).map(|record| record.position),
+    objects
+      .get_records()
+      .get(ObjectId::of_index(3))
+      .map(|record| record.position),
     Some(Vec3::new(10.0, 0.0, 0.0))
   );
   assert!(
@@ -169,6 +175,7 @@ fn reports_a_start_squad_whose_smart_the_spawn_lacks() {
     config: &config,
     graph: &GameGraph::default(),
     patrols: &GamePatrols::default(),
+    hooks: &HookRegistry::default(),
     seed: 0,
   }
   .create(&mut objects);

@@ -8861,6 +8861,7 @@ dependencies = [
  "xrf-game-console",
  "xrf-game-developer",
  "xrf-game-graph",
+ "xrf-game-hooks",
  "xrf-game-loop",
  "xrf-game-mcp",
  "xrf-game-movement",
@@ -8894,6 +8895,7 @@ dependencies = [
  "log",
  "xrf-error",
  "xrf-game-graph",
+ "xrf-game-hooks",
  "xrf-game-loop",
  "xrf-game-objects",
  "xrf-game-simulation",
@@ -8923,6 +8925,14 @@ dependencies = [
  "xrf-error",
  "xrf-math",
  "xrf-spawn",
+]
+
+[[package]]
+name = "xrf-game-hooks"
+version = "0.1.0"
+dependencies = [
+ "xrf-error",
+ "xrf-game-objects",
 ]
 
 [[package]]
@@ -8998,6 +9008,7 @@ version = "0.1.0"
 dependencies = [
  "xrf-error",
  "xrf-game-graph",
+ "xrf-game-hooks",
  "xrf-game-objects",
  "xrf-ltx",
  "xrf-math",

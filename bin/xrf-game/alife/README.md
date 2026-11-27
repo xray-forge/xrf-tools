@@ -2,8 +2,8 @@
 
 A-Life, a system of the game loop (`xrf-game-loop`'s `LoopSystem`): which objects are online near the actor, and which
 offline objects take their turn to live on. It lives as long as the game. Its context (`AlifeContext`) is the object
-registry (`xrf-game-objects`), the graph level played now, and where the actor stands; it reaches nothing else, so a
-level the game moves to is swept from the next step. What it reads and never changes during a game (`AlifeData`: the
+registry (`xrf-game-objects`), the hook registry (`xrf-game-hooks`), the graph level played now, where the actor
+stands, and where its events go; it reaches nothing else, so a level the game moves to is swept from the next step. What it reads and never changes during a game (`AlifeData`: the
 game graph and patrols of `xrf-game-graph`, the simulation's configs of `xrf-game-simulation`) is read once at its start
 and shared; the seed its draws are keyed by is the game's.
 
@@ -21,17 +21,23 @@ microseconds, with seconds, so it never limits anything.
 ## The switch
 
 `AlifeSwitch::sweep` (`CALifeSwitchManager`, `xrGame/alife_switch_manager.cpp`) weighs every object of the current
-level that nothing holds, in id order, once an update:
+level that nothing holds, in id order (the registry's level index), once an update:
 
 - an offline object goes online within the online distance of the actor, an online one offline beyond the offline
   distance; between them it stays as it is, so an object at the edge does not flap;
-- an object that may not go offline goes online wherever it stands: a space restrictor (zones, smart terrains, level
-  changers), a breakable, a climable, a smart cover, a dead creature, an empty ammo box; one that may not go online
-  stays offline (`ObjectSwitching`, `ObjectRegistry::may_go_offline`);
+- an object that may go online but not offline goes online wherever it stands: a space restrictor (zones, smart
+  terrains, level changers), a breakable, a climable, a smart cover, a dead creature, an empty ammo box; one that may
+  go offline but not online goes offline, one that may do neither stays as it is (`switch_object`);
 - what an object holds goes with it (`ObjectRegistry::bring_online`, `take_offline`);
 - a squad stands as near as its nearest member: it goes online when any member is within the online distance, offline
   when all are beyond the offline one, its members with it; a member is never weighed on its own, and a squad with no
   member stays as it is (`CSE_ALifeOnlineOfflineGroup::try_switch_online`, `try_switch_offline`).
+
+Whether an object may go online or offline is asked of the hook registry, never decided past it: `AlifeHooks` registers
+`alife.can_switch_online` (by default, by `ObjectSwitching`) and `alife.can_switch_offline` (by `ObjectSwitching` and
+`ObjectRegistry::may_go_offline`), which a script replaces or wraps by name. Each object that switches, with what goes
+with it, is an `AlifeEvent`, held in an `EventBuffer` and told once the update's writes are done, in id order: to
+`alife.on_switched` (by default nothing), then out through the context to the game.
 
 Not carried over: X-Ray builds the whole client object as it switches one online (`Process_spawn`, on the main thread),
 the stall players know from many objects arriving at once. Going online here is a row in the registry's online table,
