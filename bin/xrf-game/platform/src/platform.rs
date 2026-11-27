@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use sdl3::event::Event;
 use sdl3::gamepad::Gamepad;
@@ -79,6 +80,11 @@ impl Platform {
     }
 
     Ok(window)
+  }
+
+  /// Now on the clock events are stamped with, to the millisecond: the time since SDL started.
+  pub fn get_time(&self) -> Duration {
+    Duration::from_millis(sdl3::timer::ticks())
   }
 
   /// Appends every event waiting to `events`, oldest first, opening each gamepad as it is connected.

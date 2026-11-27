@@ -16,7 +16,11 @@ Each line is one JSON object (`wire`):
 
 - A request (`GameRequest`): an id and its `kind`, with the kind's arguments beside them:
   `{"id":"3","kind":"pose","position":[1,2,3],"target":[1,2,4]}`. Kinds (`GameRequestKind`): `status`, `pose`,
-  `capture`, `quit`.
+  `input`, `capture`, `quit`.
+- `input` carries steps (`GameInput`, each named by its `type`): `press`, `down` and `up` a key by SDL's scancode name
+  (`W`, `Grave`, `Return`, `Left Shift`), `text`, `move`, `click`, `wheel`, and `wait`. The game delivers them to its
+  play loop as the window's own events, after any played before, and answers once the last has run out, its last wait
+  included. Waits total 20 s at most, under the bridge's 30 s wait for an answer.
 - An answer (`GameResponse`): the request's id, `ok`, and a `result` or an `error`.
 - An event the game sends unasked (`GameEvent`): `{"event":"ready","level":"zaton"}` once the renderer reports the
   level ready, every sector, particle and texture settled, so a capture after it shows the whole level.
@@ -31,7 +35,7 @@ Rules:
 ## The bridge's tools
 
 `game_start` (a tree's `root` and a `level`, more arguments optional; waits until the game says it is ready),
-`game_status`, `game_pose`, `game_capture`, `game_log` and `game_quit`. `game_log` reads the newest
+`game_status`, `game_pose`, `game_input`, `game_capture`, `game_log` and `game_quit`. `game_log` reads the newest
 `xrf-game.*.log` from disk (`GameLogs`), so a game that hung or crashed still has its log read. The input ending quits
 a game still running. It answers `initialize`, `ping`, `tools/list` and `tools/call` as the engine's own server does
 (`xrf-engine/cli/mcp/McpStdioServer.ts`), with no async runtime.

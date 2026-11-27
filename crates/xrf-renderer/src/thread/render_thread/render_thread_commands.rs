@@ -111,6 +111,16 @@ impl RenderThread {
           viewport.set_overlays(overlays, scene);
         }
       }
+      RenderCommand::Layer { id, layer } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.get_layer_mut().set(layer);
+        }
+      }
+      RenderCommand::LayerTextures { id, textures } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.get_layer_mut().change_textures(textures);
+        }
+      }
       RenderCommand::Selection { id, selection } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.select(selection);

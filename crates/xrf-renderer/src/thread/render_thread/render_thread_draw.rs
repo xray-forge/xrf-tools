@@ -34,6 +34,7 @@ use crate::thread::running_gpu::RunningGpu;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::thread::views::readied_views::ReadiedViews;
 use crate::thread::views::scene_recorder::SceneRecorder;
+use crate::viewport::layer::viewport_layer::ViewportLayer;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::composed_overlays::ComposedOverlays;
 use crate::window::composed_view::ComposedView;
@@ -141,6 +142,8 @@ impl RenderThread {
             key: *key,
             target,
             is_shown: false,
+            width: 0,
+            height: 0,
             is_copyable: window.is_copyable(),
             drawn,
             clear: wgpu::Color::TRANSPARENT,
@@ -189,10 +192,31 @@ impl RenderThread {
           .inspect(|()| self.frame_failures.succeed("The page's backdrop cannot be drawn"))
           .is_ok();
 
+      // Each viewport's layer, its host's own interface, drawn over the whole window.
+      for viewport in self.viewports.values_mut().filter(|it| it.get_window() == *key) {
+        match gpu.layer.prepare(
+          &gpu.context.device,
+          &gpu.context.queue,
+          &mut *encoder,
+          PipelineSource {
+            cache: &gpu.pipelines,
+            device: &gpu.context.device,
+            shaders: &self.shaders,
+          },
+          format,
+          viewport.get_layer_mut(),
+        ) {
+          Ok(()) => self.frame_failures.succeed("A window's layer cannot be drawn"),
+          Err(error) => self.frame_failures.fail("A window's layer cannot be drawn", &error),
+        }
+      }
+
       windows.push(WindowFrame {
         key: *key,
         target,
         is_shown: true,
+        width,
+        height,
         is_copyable: window.is_copyable(),
         drawn,
         clear: backdrop.get_clear(),
@@ -531,17 +555,26 @@ impl RenderThread {
         .get(&window.key)
         .and_then(RenderWindow::get_backdrop)
         .filter(|_| window.is_backdrop_painted);
+      let layers: Vec<&ViewportLayer> = self
+        .viewports
+        .values()
+        .filter(|viewport| viewport.get_window() == window.key)
+        .map(RenderViewport::get_layer)
+        .filter(|layer| layer.is_drawn())
+        .collect();
 
       window.declare(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         target,
         backdrop,
         composed,
+        layers,
         WindowPasses {
           backdrop: &gpu.backdrop,
           present: &gpu.present,
           overlay: &gpu.overlay,
           grid,
+          layer: &gpu.layer,
         },
         captures
           .iter()

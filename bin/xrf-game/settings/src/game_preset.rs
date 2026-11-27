@@ -65,8 +65,9 @@ impl GamePreset {
     view.ambient_occlusion.gtao.steps = 3;
     view.ambient_occlusion.rtao.rays = 2;
     view.ambient_occlusion.vbao.steps = 8;
-    // The resolve the cut-outs' hashed alpha and the jitter are for.
-    view.antialiasing = RenderAntialiasing::Taa;
+    // The temporal resolve the cut-outs' hashed alpha and the jitter are for: DLSS at the window's size, which a GPU
+    // or build without it resolves with FSR.
+    view.antialiasing = RenderAntialiasing::Dlss;
     // The sky's bands smoothed in its own textures, which leaves the rest of the frame as drawn.
     view.debanding.mode = RenderDebandingMode::Enhanced;
     view.enhanced_bloom.mode = RenderBloomMode::Enhanced;

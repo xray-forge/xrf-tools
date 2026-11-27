@@ -8,6 +8,7 @@ use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::readback::frame_capture::FrameCapture;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::pass::window::overlay_draw::OverlayDraw;
+use crate::viewport::layer::viewport_layer::ViewportLayer;
 use crate::window::composed_overlays::ComposedOverlays;
 use crate::window::composed_view::ComposedView;
 use crate::window::display_target::DisplayTarget;
@@ -25,6 +26,9 @@ pub(crate) struct WindowFrame {
   /// Whether it shows anything this frame: one minimised or sized to nothing draws only its viewports' captures, which
   /// draw into textures of their own, and takes no image.
   pub is_shown: bool,
+  /// Its size in device pixels this frame, none where it shows nothing.
+  pub width: u32,
+  pub height: u32,
   /// Whether its image may be copied out of (`RenderWindow::is_copyable`), which a capture of what it shows needs.
   pub is_copyable: bool,
   pub drawn: Vec<WindowViewport>,
@@ -55,22 +59,30 @@ impl WindowFrame {
   }
 
   /// Declares the window's composition into `target`: the page's backdrop, each viewport's picture or its grid cropped
-  /// to what the window shows, its overlays, then the `captures` of its viewports copied out of it.
+  /// to what the window shows, its overlays, its viewports' `layers` over all of it, then the `captures` of its
+  /// viewports copied out of it.
+  #[expect(
+    clippy::too_many_arguments,
+    reason = "the parts of one window's composition, each from its own owner"
+  )]
   pub(crate) fn declare<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     target: &'a wgpu::TextureView,
     backdrop: Option<&'a WindowBackdrop>,
     composed: Vec<ComposedView<'a>>,
+    layers: Vec<&'a ViewportLayer>,
     WindowPasses {
       backdrop: backdrop_pass,
       present,
       overlay,
       grid,
+      layer: layer_pass,
     }: WindowPasses<'a>,
     captures: impl IntoIterator<Item = &'a FrameCapture>,
   ) {
     let format: wgpu::TextureFormat = self.target.format;
+    let (width, height): (u32, u32) = (self.width, self.height);
 
     graph.begin_group("window");
 
@@ -138,6 +150,10 @@ impl WindowFrame {
             },
           );
         }
+      }
+
+      for layer in &layers {
+        layer_pass.draw(context.get_pass(), format, width, height, layer);
       }
     });
 

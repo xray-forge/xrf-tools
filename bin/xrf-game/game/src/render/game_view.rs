@@ -5,11 +5,12 @@ use std::time::Duration;
 
 use xrf_cache::AppCache;
 use xrf_error::XrfResult;
+use xrf_game_developer::DeveloperFrame;
 use xrf_game_platform::{PlatformSize, PlatformWindow};
 use xrf_game_settings::GameSettings;
 use xrf_renderer::{
-  RenderCapture, RenderCommand, RenderQueue, RenderRect, RenderViewOptions, RenderViewOutput, RenderViewportId,
-  RenderViewportLayout, RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
+  RenderCapture, RenderCommand, RenderFrameReport, RenderQueue, RenderRect, RenderViewOptions, RenderViewOutput,
+  RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
 };
 use xrf_renderer_host::DiskCacheStore;
 use xrf_world::{World, WorldLevelSource, WorldViewFeed};
@@ -24,6 +25,8 @@ pub struct GameView {
   world: Arc<Mutex<World>>,
   /// Whether the level shown stood ready, as the renderer reported it.
   ready: Arc<AtomicBool>,
+  /// The latest frame report not yet taken.
+  frame: Arc<Mutex<Option<Box<RenderFrameReport>>>>,
 }
 
 impl GameView {
@@ -54,7 +57,13 @@ impl GameView {
       queue,
       world,
       ready: Arc::new(AtomicBool::new(false)),
+      frame: Arc::new(Mutex::new(None)),
     }
+  }
+
+  /// The frame report the renderer sent since the last taken, none where it sent none.
+  pub fn take_frame_report(&self) -> Option<Box<RenderFrameReport>> {
+    self.frame.lock().unwrap_or_else(PoisonError::into_inner).take()
   }
 
   /// Whether the level shown stood ready: every sector, particle and texture settled.
@@ -70,6 +79,7 @@ impl GameView {
       host,
       sink: Box::new(GameRenderSink {
         ready: Arc::clone(&self.ready),
+        frame: Arc::clone(&self.frame),
       }),
     });
     self.lock_world().attach(Self::VIEWPORT, Box::new(GameWorldSink));
@@ -118,6 +128,23 @@ impl GameView {
     });
 
     answer
+  }
+
+  /// Draws the developer layer's `frame` over the view from the next frame on, its texture changes applied first.
+  pub fn draw_layer(&self, frame: DeveloperFrame) {
+    let DeveloperFrame { textures, layer } = frame;
+
+    if !textures.set.is_empty() || !textures.free.is_empty() {
+      self.queue.send(RenderCommand::LayerTextures {
+        id: Self::VIEWPORT,
+        textures,
+      });
+    }
+
+    self.queue.send(RenderCommand::Layer {
+      id: Self::VIEWPORT,
+      layer,
+    });
   }
 
   /// Shows `level`, its camera and the game's day given by `feed`.

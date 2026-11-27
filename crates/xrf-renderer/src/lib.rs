@@ -101,6 +101,12 @@ pub use crate::contract::feature::weather::render_volumetric_settings::RenderVol
 pub use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 pub use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode;
 pub use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
+pub use crate::contract::layer::render_layer::RenderLayer;
+pub use crate::contract::layer::render_layer_mesh::RenderLayerMesh;
+pub use crate::contract::layer::render_layer_texture::RenderLayerTexture;
+pub use crate::contract::layer::render_layer_texture_id::RenderLayerTextureId;
+pub use crate::contract::layer::render_layer_textures::RenderLayerTextures;
+pub use crate::contract::layer::render_layer_vertex::RenderLayerVertex;
 pub use crate::contract::overlay::render_helper_icon::{RENDER_HELPER_ICONS, RenderHelperIcon, RenderHelperIconEntry};
 pub use crate::contract::overlay::render_helper_options::RenderHelperOptions;
 pub use crate::contract::overlay::render_overlay::RenderOverlay;

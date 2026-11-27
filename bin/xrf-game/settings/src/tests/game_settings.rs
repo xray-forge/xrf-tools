@@ -23,7 +23,7 @@ fn high() -> GameSettings {
 fn starts_the_high_preset_from_the_renderers_defaults() {
   let settings: GameSettings = high();
 
-  assert_eq!(settings.view.antialiasing, RenderAntialiasing::Taa);
+  assert_eq!(settings.view.antialiasing, RenderAntialiasing::Dlss);
   assert_eq!(settings.view.shadows.resolution, 4096);
   // What the preset leaves alone stays the renderer's own.
   assert_eq!(settings.view.bloom, RenderViewFeatures::default().bloom);
@@ -66,7 +66,7 @@ fn leaves_out_what_names_nothing_or_takes_no_such_value_and_keeps_the_rest() {
     over("view.shadows.resolution", "1024"),
   ]);
 
-  assert_eq!(settings.view.antialiasing, RenderAntialiasing::Taa);
+  assert_eq!(settings.view.antialiasing, RenderAntialiasing::Dlss);
   assert_eq!(settings.view.shadows.resolution, 1024);
 }
 

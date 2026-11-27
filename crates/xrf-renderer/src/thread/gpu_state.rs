@@ -22,6 +22,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::pass::window::backdrop_pass::BackdropPass;
 use crate::pass::window::grid_pass::GridPass;
+use crate::pass::window::layer_pass::LayerPass;
 use crate::pass::window::overlay_pass::OverlayPass;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
@@ -55,6 +56,8 @@ pub(crate) struct GpuState {
   /// The page's backdrop under every window's viewports.
   pub backdrop: BackdropPass,
   pub overlay: OverlayPass,
+  /// A native host's own interface over everything else of a window.
+  pub layer: LayerPass,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
   /// Why a format's grid pass failed to build; retried only after a shader reload.
@@ -131,6 +134,7 @@ impl GpuState {
         present: PresentPass::new(source, &view),
         backdrop: BackdropPass::new(source),
         overlay: OverlayPass::new(&queue, source, &view, bundle),
+        layer: LayerPass::new(source),
         weather_textures: WeatherTextureCache::new(&device, &queue, workers),
         windows: HashMap::new(),
         grids: HashMap::new(),
@@ -260,5 +264,6 @@ impl GpuState {
     self.present.refresh(source);
     self.backdrop.refresh(source);
     self.overlay.refresh(source);
+    self.layer.refresh(source);
   }
 }

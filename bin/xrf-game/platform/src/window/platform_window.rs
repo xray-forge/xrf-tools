@@ -42,6 +42,11 @@ impl PlatformWindow {
     self.window.display_scale()
   }
 
+  /// Device pixels per unit of the window's own coordinates, which mouse positions come in.
+  pub fn get_pixel_density(&self) -> f32 {
+    self.window.pixel_density()
+  }
+
   /// Does what `command` asks.
   ///
   /// # Errors

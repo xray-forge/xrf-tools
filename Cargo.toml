@@ -6,6 +6,7 @@ members = [
   "bin/xrf-app/plugins/*",
   "bin/xrf-cli",
   "bin/xrf-game/alife",
+  "bin/xrf-game/developer",
   "bin/xrf-game/game",
   "bin/xrf-game/graph",
   "bin/xrf-game/loop",
@@ -174,6 +175,7 @@ xrf-env-flags = { path = "crates/xrf-env-flags" }
 xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
 xrf-game-alife = { path = "bin/xrf-game/alife" }
+xrf-game-developer = { path = "bin/xrf-game/developer" }
 xrf-game-graph = { path = "bin/xrf-game/graph" }
 xrf-game-loop = { path = "bin/xrf-game/loop" }
 xrf-game-mcp = { path = "bin/xrf-game/mcp" }

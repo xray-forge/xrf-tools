@@ -1,0 +1,20 @@
+[package]
+name = "xrf-game-developer"
+version = "0.1.0"
+publish = false
+description = "XRF game: the developer layer, egui's core drawn through the renderer's layer pass"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Its built-in fonts alone: without them every glyph draws as a box.
+egui = { version = "0.37.0", default-features = false, features = ["default_fonts"] }
+xrf-game-platform = { workspace = true }
+xrf-renderer = { workspace = true }
+
+[lints]
+workspace = true

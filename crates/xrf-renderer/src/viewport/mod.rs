@@ -1,4 +1,5 @@
 pub(crate) mod capture;
+pub(crate) mod layer;
 pub(crate) mod pick;
 pub(crate) mod render_viewport;
 pub(crate) mod reported_graph;

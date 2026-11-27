@@ -12,6 +12,8 @@ use crate::contract::capture::render_capture::RenderCapture;
 use crate::contract::capture::render_cube_capture::RenderCubeCapture;
 use crate::contract::capture::render_map_capture::RenderMapCapture;
 use crate::contract::capture::render_screenshot::RenderScreenshot;
+use crate::contract::layer::render_layer::RenderLayer;
+use crate::contract::layer::render_layer_textures::RenderLayerTextures;
 use crate::contract::overlay::render_overlay::RenderOverlay;
 use crate::contract::overlay::render_selection::RenderSelection;
 use crate::contract::report::frame::render_frame_report::RenderFrameReport;
@@ -62,6 +64,16 @@ pub enum RenderCommand {
     id: RenderViewportId,
     overlays: Vec<RenderOverlay>,
     scene: Option<RenderSceneId>,
+  },
+  /// Replaces the layer drawn over a viewport's window, over every viewport and overlay of it.
+  Layer {
+    id: RenderViewportId,
+    layer: RenderLayer,
+  },
+  /// Changes the textures a viewport's layer samples; applied in the order sent, none ever skipped.
+  LayerTextures {
+    id: RenderViewportId,
+    textures: RenderLayerTextures,
   },
   /// Marks what of a viewport's level is selected, or nothing for `None`.
   Selection {

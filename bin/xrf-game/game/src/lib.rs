@@ -5,6 +5,7 @@
 pub(crate) mod arguments;
 #[cfg(feature = "mcp")]
 pub(crate) mod control;
+pub(crate) mod developer;
 pub(crate) mod directories;
 pub(crate) mod input;
 pub(crate) mod level;

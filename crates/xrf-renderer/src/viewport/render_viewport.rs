@@ -42,6 +42,7 @@ use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_reports::ViewReports;
 use crate::viewport::capture::capture_in_flight::CaptureInFlight;
 use crate::viewport::capture::pending_screenshot::PendingScreenshot;
+use crate::viewport::layer::viewport_layer::ViewportLayer;
 use crate::viewport::pick::drawn_pick::DrawnPick;
 use crate::viewport::pick::pending_pick::PendingPick;
 use crate::viewport::pick::pick_in_flight::PickInFlight;
@@ -64,6 +65,8 @@ pub(crate) struct RenderViewport {
   overlays: ViewportOverlays,
   /// What of its level is selected, marked as it draws.
   selection: Option<RenderSelection>,
+  /// The layer its host draws over its window, and what of it is on the GPU.
+  layer: ViewportLayer,
   /// The scene it shows and its view of it, made once a GPU is there; a scene of models alone keeps showing the one it
   /// replaces while its successor loads.
   shown: Option<ShownView>,
@@ -132,6 +135,15 @@ impl RenderViewport {
 
   pub(crate) fn set_options(&mut self, options: RenderViewOptions) {
     self.options = options;
+  }
+
+  /// The layer its host draws over its window.
+  pub(crate) fn get_layer(&self) -> &ViewportLayer {
+    &self.layer
+  }
+
+  pub(crate) fn get_layer_mut(&mut self) -> &mut ViewportLayer {
+    &mut self.layer
   }
 
   /// Sets its overlays, at once without a `scene`, else from the first frame showing `scene`.
@@ -514,6 +526,7 @@ impl RenderViewport {
       options: RenderViewOptions::default(),
       overlays: ViewportOverlays::default(),
       selection: None,
+      layer: ViewportLayer::default(),
       shown: None,
       world: RenderViewFrame::default(),
       captures: Vec::new(),

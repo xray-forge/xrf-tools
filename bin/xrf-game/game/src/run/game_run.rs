@@ -18,6 +18,7 @@ use xrf_world::WorldFedCamera;
 use crate::arguments::game_arguments::GameArguments;
 #[cfg(feature = "mcp")]
 use crate::control::game_control::GameControl;
+use crate::developer::game_developer::GameDeveloper;
 use crate::directories::game_directories::GameDirectories;
 use crate::input::game_bindings::GameBindings;
 use crate::render::game_view::GameView;
@@ -90,12 +91,12 @@ impl GameRun {
       .map_err(Self::create_platform_error)?;
 
     GamePlay {
-      window: &window,
+      window: &mut window,
       view: &view,
       commands: game_loop.get_sender(),
       bindings: GameBindings::default(),
-      #[cfg(feature = "mcp")]
       feed: Arc::clone(game_loop.get_feed()),
+      developer: GameDeveloper::default(),
       #[cfg(feature = "mcp")]
       control: arguments
         .mcp

@@ -52,6 +52,7 @@ fn lists_its_tools_and_answers_a_notification_with_nothing() {
       "game_start",
       "game_status",
       "game_pose",
+      "game_input",
       "game_capture",
       "game_log",
       "game_quit"

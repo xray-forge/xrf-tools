@@ -2,6 +2,7 @@ use serde_json::json;
 
 use crate::bridge::game_line::GameLine;
 use crate::wire::game_event::GameEvent;
+use crate::wire::game_input::GameInput;
 use crate::wire::game_request::GameRequest;
 use crate::wire::game_request_kind::GameRequestKind;
 use crate::wire::game_response::GameResponse;
@@ -24,6 +25,43 @@ fn reads_a_request_line_with_its_kinds_arguments_beside_its_id() {
   );
   assert_eq!(GameRequest::parse(r#"{"id":"5","kind":"dance"}"#), None);
   assert_eq!(GameRequest::parse("not json"), None);
+}
+
+#[test]
+fn reads_input_steps_by_type_with_optional_fields_defaulted() {
+  assert_eq!(
+    GameRequest::parse(
+      r#"{"id":"6","kind":"input","inputs":[{"type":"press","key":"Grave"},{"type":"wait","ms":100},
+      {"type":"text","text":"help"},{"type":"move","dx":5,"dy":-2},{"type":"click","x":10,"y":20}]}"#
+    )
+    .map(|request| request.kind),
+    Some(GameRequestKind::Input {
+      inputs: vec![
+        GameInput::Press {
+          key: String::from("Grave")
+        },
+        GameInput::Wait { ms: 100 },
+        GameInput::Text {
+          text: String::from("help")
+        },
+        GameInput::Move {
+          dx: 5.0,
+          dy: -2.0,
+          x: 0.0,
+          y: 0.0
+        },
+        GameInput::Click {
+          x: 10.0,
+          y: 20.0,
+          button: None
+        },
+      ]
+    })
+  );
+  assert_eq!(
+    GameRequest::parse(r#"{"id":"7","kind":"input","inputs":[{"type":"jump"}]}"#),
+    None
+  );
 }
 
 #[test]

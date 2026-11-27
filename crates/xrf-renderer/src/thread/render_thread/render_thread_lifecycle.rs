@@ -116,6 +116,7 @@ impl RenderThread {
     // Captures are released before `hide`, which would report the viewport as showing another scene.
     for viewport in self.viewports.values_mut() {
       viewport.forget_binding();
+      viewport.get_layer_mut().release_gpu();
       viewport.release_captures();
       viewport.hide();
     }

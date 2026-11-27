@@ -2,6 +2,7 @@ use serde_json::{Value, json};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::bridge::game_bridge::GameBridge;
+use crate::wire::game_input::GameInput;
 use crate::wire::game_request_kind::GameRequestKind;
 
 /// The bridge's tools: their names, what an agent reads of each, the arguments they take, and the bridge call each
@@ -46,6 +47,39 @@ impl McpTools {
         }
       },
       {
+        "name": "game_input",
+        "description": "Play keyboard and mouse input into the game, as the window would deliver it, and answer once \
+          the last step is delivered. Steps run in order, after any played before: press, down and up a key by SDL's \
+          name (`W`, `Grave` opens the console, `Return`, `Escape`, `Space`, `Left Shift`, `Up`); text typed while \
+          the console is open; move (`dx`, `dy` turn the camera); click at `x`, `y`; wheel; wait `ms`. Hold a key \
+          with down, wait, up; wait about 100 ms after opening the console before typing. Waits total at most 20 s.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "inputs": {
+              "type": "array",
+              "description": "The steps, in order",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["press", "down", "up", "text", "move", "click", "wheel", "wait"] },
+                  "key": { "type": "string", "description": "SDL's name for the key: press, down, up" },
+                  "text": { "type": "string", "description": "What to type: text" },
+                  "dx": { "type": "number", "description": "Mouse movement: move" },
+                  "dy": { "type": "number", "description": "Mouse movement: move; wheel lines: wheel" },
+                  "x": { "type": "number", "description": "Cursor position in window coordinates: move, click" },
+                  "y": { "type": "number", "description": "Cursor position in window coordinates: move, click" },
+                  "button": { "type": "string", "enum": ["left", "right", "middle"], "description": "click" },
+                  "ms": { "type": "integer", "minimum": 0, "description": "How long: wait" }
+                },
+                "required": ["type"]
+              }
+            }
+          },
+          "required": ["inputs"]
+        }
+      },
+      {
         "name": "game_capture",
         "description": "Read the window's next frame back to a PNG file and answer its path.",
         "inputSchema": { "type": "object", "properties": {} }
@@ -77,6 +111,7 @@ impl McpTools {
 
         bridge.ask(GameRequestKind::Pose { position, target })
       }),
+      "game_input" => Self::read_inputs(arguments).and_then(|inputs| bridge.ask(GameRequestKind::Input { inputs })),
       "game_capture" => bridge.ask(GameRequestKind::Capture),
       "game_log" => bridge.read_log(
         arguments
@@ -102,6 +137,15 @@ impl McpTools {
       Self::read_text(arguments, "level")?,
       &extra,
     )
+  }
+
+  fn read_inputs(arguments: &Value) -> XrfResult<Vec<GameInput>> {
+    let inputs: &Value = arguments
+      .get("inputs")
+      .ok_or_else(|| XrfError::new_invalid_error("'inputs' must be a list of steps"))?;
+
+    serde_json::from_value(inputs.clone())
+      .map_err(|error| XrfError::new_invalid_error(format!("'inputs' is not a list of steps: {error}")))
   }
 
   fn read_text<'a>(arguments: &'a Value, name: &str) -> XrfResult<&'a str> {
