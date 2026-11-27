@@ -4,6 +4,7 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobStart};
 use xrf_app_render::TextureReloads;
@@ -26,7 +27,9 @@ pub(crate) async fn textures_build_from_source(
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
   reloads: State<'_, TextureReloads>,
+  assets: State<'_, AssetMountState>,
 ) -> TauriResult<TextureBuildOutcome> {
+  let assets: AssetMountState = assets.inner().clone();
   let start: JobStart = JobStart::new(job_id, TEXTURES_JOB_BUILD)
     .with_request(&request)
     .with_exclusion_group(TEXTURE_ENCODE_GROUP)
@@ -48,13 +51,13 @@ pub(crate) async fn textures_build_from_source(
           quality: request.quality.to_quality(),
         };
 
-        TextureBuildOutcome::build(&job, &options)
+        TextureBuildOutcome::build(&job, &options, &assets)
       },
       |outcome| outcome.outcome,
     )
     .await?;
 
-  // Every viewport drawing what was written draws it as written, a bump's companion with it.
+  // A file outside every watched root is drawn as written only once asked for; the watcher reloads the rest.
   let written: Vec<&String> = std::iter::once(&outcome.destination)
     .chain(outcome.companion.as_ref())
     .collect();

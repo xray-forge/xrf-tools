@@ -1,10 +1,11 @@
 use serde::Serialize;
 use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetMountState;
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_texture::{BuildTextureOptions, BuildTextureProcessor, BuildTextureResult, GenerateBumpResult};
 use xrf_utils::{error_to_string, format_portable_path};
 
-use crate::edit::TextureBuildOmissionReport;
+use crate::edit::{TextureBuildOmissionReport, TextureStagedWriter};
 
 /// What a rebuilt texture came to.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -31,14 +32,15 @@ pub(crate) struct TextureBuildOutcome {
 }
 
 impl TextureBuildOutcome {
-  /// Builds the texture `options` describe, unless the run was already asked to stop.
+  /// Builds the texture `options` describe and publishes it through `assets`, a bump descriptor's pair as one write,
+  /// unless the run was already asked to stop.
   ///
   /// # Errors
   ///
-  /// Returns an error when the texture cannot be encoded or written.
-  pub(crate) fn build(job: &JobHandle, options: &BuildTextureOptions) -> TauriResult<Self> {
-    // Read before the encode rather than after it. `BuildTextureProcessor::build` writes the file it encodes, so a
-    // check on the far side would be reporting a stop for a run that had already published its result.
+  /// Returns an error when the texture cannot be encoded, staged or published.
+  pub(crate) fn build(job: &JobHandle, options: &BuildTextureOptions, assets: &AssetMountState) -> TauriResult<Self> {
+    // Read before the encode rather than after it: the build stages what it encodes for publishing, so a check on the
+    // far side would be reporting a stop for a run whose result was already on its way.
     if job.is_cancelled() {
       return Ok(Self {
         outcome: JobOutcome::Cancelled,
@@ -53,7 +55,10 @@ impl TextureBuildOutcome {
       });
     }
 
-    let built: BuildTextureResult = BuildTextureProcessor::build(options).map_err(error_to_string)?;
+    let mut writer: TextureStagedWriter = TextureStagedWriter::default();
+    let built: BuildTextureResult = BuildTextureProcessor::build_into(options, &mut writer).map_err(error_to_string)?;
+
+    writer.publish(assets)?;
 
     log::info!(
       "Built texture {}x{} with {} levels, {} recipe fields left out",

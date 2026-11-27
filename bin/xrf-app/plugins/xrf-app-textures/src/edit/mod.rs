@@ -17,7 +17,7 @@ pub(crate) use request::{
   TextureDescriptorSave, TextureEncodingSave, TextureSaveAsTarget, TexturesBuildRequest, TexturesMakeBumpRequest,
   TexturesPlanSaveAsRequest, TexturesSaveAsRequest, TexturesSaveRequest,
 };
-pub(crate) use save::{TextureSaver, TextureWrite};
+pub(crate) use save::{TextureSaver, TextureStagedWriter, TextureWrite};
 pub(crate) use save_as::{
   TextureReferenceField, TextureReferenceRename, TextureSaveAsBump, TextureSaveAsFile, TextureSaveAsPlan,
   TextureSaveAsRole, TextureSaveAsWriter,

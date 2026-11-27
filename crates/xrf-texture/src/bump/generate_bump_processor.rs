@@ -14,6 +14,7 @@ use crate::bump::generate_bump_options::GenerateBumpOptions;
 use crate::bump::generate_bump_result::GenerateBumpResult;
 use crate::bump::grey_plane::GreyPlane;
 use crate::job_phases::TEXTURE_PHASE_GENERATE_BUMP;
+use crate::output::{TextureDiskWriter, TextureFileWriter};
 
 /// Suffix a texture's own bump takes, which is how the shipped bumps and the SDK's authors name them.
 const BUMP_SUFFIX: &str = "_bump";
@@ -49,10 +50,22 @@ impl GenerateBumpProcessor {
   ///
   /// # Errors
   ///
-  /// Returns an error when the height holds no texel, a normal map or gloss mask differs from it in size, or either
-  /// half cannot be encoded or written. A gloss too dark to use is reported by
-  /// [`GenerateBumpResult::is_gloss_too_dark`], not refused.
+  /// As [`Self::generate_into`].
   pub fn generate(options: &GenerateBumpOptions) -> XrfResult<GenerateBumpResult> {
+    Self::generate_into(options, &mut TextureDiskWriter)
+  }
+
+  /// Generates the pair and hands both halves to `writer`, the bump first; a cancelled run hands it neither.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the height holds no texel, a normal map or gloss mask differs from it in size, either half
+  /// cannot be encoded, or `writer` refuses one. A gloss too dark to use is reported by
+  /// [`GenerateBumpResult::is_gloss_too_dark`], not refused.
+  pub fn generate_into(
+    options: &GenerateBumpOptions,
+    writer: &mut dyn TextureFileWriter,
+  ) -> XrfResult<GenerateBumpResult> {
     if options.height.width() == 0 || options.height.height() == 0 {
       return Err(XrfError::new_texture_processing_error(format!(
         "A {} by {} height picture holds no texel to derive a bump from",
@@ -139,8 +152,8 @@ impl GenerateBumpProcessor {
 
     options.job.set_detail(Some(String::from("Writing the pair")));
 
-    encoded_bump.write_to_path(&bump_path)?;
-    encoded_companion.write_to_path(&companion_path)?;
+    writer.write(&bump_path, &encoded_bump)?;
+    writer.write(&companion_path, &encoded_companion)?;
 
     steps.advance();
     options.job.set_detail(None);

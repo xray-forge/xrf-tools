@@ -4,15 +4,16 @@ use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobStart};
 use xrf_app_render::TextureReloads;
 use xrf_dds::DdsMipFilter;
 use xrf_job::JobProgress;
-use xrf_texture::GenerateBumpProcessor;
+use xrf_texture::{GenerateBumpProcessor, GenerateBumpResult};
 use xrf_utils::error_to_string;
 
-use crate::edit::{TextureMakeBumpOutcome, TexturesMakeBumpRequest};
+use crate::edit::{TextureMakeBumpOutcome, TextureStagedWriter, TexturesMakeBumpRequest};
 use crate::ipc::textures::TEXTURES_JOB_MAKE_BUMP;
 use crate::lease::TEXTURE_ENCODE_GROUP;
 
@@ -26,9 +27,11 @@ pub(crate) async fn textures_make_bump(
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
   reloads: State<'_, TextureReloads>,
+  assets: State<'_, AssetMountState>,
 ) -> TauriResult<TextureMakeBumpOutcome> {
   log::info!("Generating bump pair for: {}", request.destination);
 
+  let assets: AssetMountState = assets.inner().clone();
   let mip_filter: DdsMipFilter = request.to_mip_filter()?;
   let start: JobStart = JobStart::new(job_id, TEXTURES_JOB_MAKE_BUMP)
     .with_request(&request)
@@ -41,15 +44,21 @@ pub(crate) async fn textures_make_bump(
       &execution,
       start,
       move |job| {
-        GenerateBumpProcessor::generate(&request.to_options(job, mip_filter)?)
-          .map_err(error_to_string)
-          .map(|result| TextureMakeBumpOutcome::of(&result))
+        let mut writer: TextureStagedWriter = TextureStagedWriter::default();
+        let result: GenerateBumpResult =
+          GenerateBumpProcessor::generate_into(&request.to_options(job, mip_filter)?, &mut writer)
+            .map_err(error_to_string)?;
+
+        // Both halves as one write, so the pair lands whole or not at all; a stopped run staged neither.
+        writer.publish(&assets)?;
+
+        TauriResult::Ok(TextureMakeBumpOutcome::of(&result))
       },
       |outcome| outcome.outcome,
     )
     .await?;
 
-  // Every viewport drawing what was written draws it as written.
+  // A file outside every watched root is drawn as written only once asked for; the watcher reloads the rest.
   reloads.reload_written(&[&outcome.bump, &outcome.companion]);
 
   Ok(outcome)

@@ -245,9 +245,18 @@ impl DdsFile {
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut bytes: Vec<u8> = Vec::new();
 
-    self.dds.write(&mut bytes).map_texture_processing_err()?;
+    self.write_to(&mut bytes)?;
 
     Ok(bytes)
+  }
+
+  /// Writes the whole file, header and payload, into `out` as it goes, for a writer that stages it without a copy.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `out` refuses a write.
+  pub fn write_to(&self, out: &mut impl Write) -> XrfResult {
+    self.dds.write(out).map_texture_processing_err()
   }
 
   /// Whether the renderer the engine ships with will load this texture.

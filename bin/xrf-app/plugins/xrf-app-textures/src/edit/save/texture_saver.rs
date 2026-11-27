@@ -4,9 +4,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, FileStamp};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_thm::{ThmFile, ThmFormat};
-use xrf_utils::{StagedFile, error_to_string, format_path};
+use xrf_utils::error_to_string;
 
-use crate::edit::{TextureDescriptorSave, TextureSaveOutcome, TextureWrite};
+use crate::edit::{TextureDescriptorSave, TextureSaveOutcome, TextureStagedWriter, TextureWrite};
 
 /// One file the save has built and not yet published.
 struct PreparedFile {
@@ -81,23 +81,14 @@ impl TextureSaver {
     save.form.to_bytes(existing, synced_format)
   }
 
-  /// Stages every prepared file beside its target and publishes them through `assets`, answering what landed.
+  /// Stages every prepared file beside its target and publishes them through `assets` together, answering what landed.
   fn publish(assets: &AssetMountState, prepared: Vec<PreparedFile>) -> TauriResult<Vec<String>> {
-    let staged: Vec<StagedFile> = prepared
-      .into_iter()
-      .map(|file| {
-        StagedFile::name_sibling(&file.path, "staged")
-          .and_then(|staged| StagedFile::stage(&file.path, &staged, &file.bytes))
-          .map_err(|error| format!("Cannot write '{}': {error}", format_path(&file.path)))
-      })
-      .collect::<TauriResult<_>>()?;
+    let mut writer: TextureStagedWriter = TextureStagedWriter::default();
 
-    Ok(
-      assets
-        .write_files(staged, None)?
-        .iter()
-        .map(|path| path.display().to_string())
-        .collect(),
-    )
+    for file in prepared {
+      writer.stage_bytes(&file.path, &file.bytes).map_err(error_to_string)?;
+    }
+
+    writer.publish(assets)
   }
 }

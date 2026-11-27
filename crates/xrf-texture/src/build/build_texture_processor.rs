@@ -9,6 +9,7 @@ use crate::build::recipe::build_texture_bump_pair::BuildTextureBumpPair;
 use crate::build::recipe::build_texture_layout::BuildTextureLayout;
 use crate::build::recipe::build_texture_recipe::BuildTextureRecipe;
 use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
+use crate::output::{TextureDiskWriter, TextureFileWriter};
 
 /// Rebuilds a texture from a source image, the way its descriptor says to.
 ///
@@ -18,18 +19,30 @@ use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor,
 pub struct BuildTextureProcessor {}
 
 impl BuildTextureProcessor {
-  /// Builds the texture and writes it, answering what it did and what it left out.
+  /// Builds the texture and writes it at its destination, answering what it did and what it left out.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::build_into`].
+  pub fn build(options: &BuildTextureOptions) -> XrfResult<BuildTextureResult> {
+    Self::build_into(options, &mut TextureDiskWriter)
+  }
+
+  /// Builds the texture and hands each file it makes to `writer`, the texture or a bump descriptor's pair.
   ///
   /// # Errors
   ///
   /// Returns an error when the descriptor is one [`BuildTextureRecipe::of`] refuses, when the source has no pixels or
-  /// is not the shape its layout and mip chain need, or when the encoded texture cannot be written. A recipe field that
+  /// is not the shape its layout and mip chain need, or when `writer` refuses the encoded texture. A recipe field that
   /// is merely not implemented is reported in the result instead; see [`crate::BuildTextureOmission`].
-  pub fn build(options: &BuildTextureOptions) -> XrfResult<BuildTextureResult> {
+  pub fn build_into(
+    options: &BuildTextureOptions,
+    writer: &mut dyn TextureFileWriter,
+  ) -> XrfResult<BuildTextureResult> {
     let recipe: BuildTextureRecipe = BuildTextureRecipe::of(&options.descriptor)?;
 
     if let BuildTextureLayout::BumpPair(pair) = &recipe.layout {
-      return Self::build_bump_pair(options, pair);
+      return Self::build_bump_pair(options, pair, writer);
     }
 
     if options.normal_map.is_some() {
@@ -53,7 +66,7 @@ impl BuildTextureProcessor {
       BuildTextureLayout::Planar | BuildTextureLayout::BumpPair(_) => encoding.encode(&faces[0])?,
     };
 
-    encoded.write_to_path(&options.destination)?;
+    writer.write(&options.destination, &encoded)?;
 
     Ok(BuildTextureResult {
       destination: options.destination.clone(),
@@ -71,9 +84,13 @@ impl BuildTextureProcessor {
   /// # Errors
   ///
   /// Returns an error when the descriptor names an external normal map the build was not given, or was given one it
-  /// does not name, when that map is one [`crate::BuildTextureNormalMap::accept`] refuses, or when either half cannot be
-  /// written.
-  fn build_bump_pair(options: &BuildTextureOptions, pair: &BuildTextureBumpPair) -> XrfResult<BuildTextureResult> {
+  /// does not name, when that map is one [`crate::BuildTextureNormalMap::accept`] refuses, or when `writer` refuses
+  /// either half.
+  fn build_bump_pair(
+    options: &BuildTextureOptions,
+    pair: &BuildTextureBumpPair,
+    writer: &mut dyn TextureFileWriter,
+  ) -> XrfResult<BuildTextureResult> {
     let source: &RgbaImage = &options.source;
     let normal_map: Option<RgbaImage> = match (&pair.normal_map, &options.normal_map) {
       (Some(name), Some(normal_map)) => Some(normal_map.accept(name, source.dimensions())?.clone()),
@@ -89,17 +106,20 @@ impl BuildTextureProcessor {
       }
       (None, None) => None,
     };
-    let generated: GenerateBumpResult = GenerateBumpProcessor::generate(&GenerateBumpOptions {
-      job: JobHandle::inert(),
-      bump: BuildTextureBumpPair::bump_of(&options.destination),
-      height: source.clone(),
-      gloss: GenerateBumpGloss::HeightAlpha,
-      normal_map,
-      virtual_height: pair.virtual_height,
-      mip_filter: BuildTextureBumpPair::MIP_FILTER,
-      format: BuildTextureBumpPair::FORMAT,
-      quality: options.quality,
-    })?;
+    let generated: GenerateBumpResult = GenerateBumpProcessor::generate_into(
+      &GenerateBumpOptions {
+        job: JobHandle::inert(),
+        bump: BuildTextureBumpPair::bump_of(&options.destination),
+        height: source.clone(),
+        gloss: GenerateBumpGloss::HeightAlpha,
+        normal_map,
+        virtual_height: pair.virtual_height,
+        mip_filter: BuildTextureBumpPair::MIP_FILTER,
+        format: BuildTextureBumpPair::FORMAT,
+        quality: options.quality,
+      },
+      writer,
+    )?;
 
     Ok(BuildTextureResult {
       destination: generated.bump.clone(),
