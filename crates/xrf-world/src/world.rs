@@ -22,6 +22,7 @@ use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::contract::world_toggles::WorldToggles;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
+use crate::host::world_view_feed::WorldViewFeed;
 use crate::level::level_drive::LevelDrive;
 use crate::level::world_level::WorldLevel;
 use crate::sound::level::heard_room::HeardRoom;
@@ -145,6 +146,15 @@ impl World {
   pub fn set_camera(&mut self, viewport: RenderViewportId, camera: WorldCamera) {
     if let Some(world) = self.viewports.get_mut(&viewport) {
       world.camera.describe(camera);
+    }
+  }
+
+  /// Hands a viewport's camera, and its weather's clock where the host runs the day, to the host's feed, read once a
+  /// frame from the next on; a camera described with [`Self::set_camera`] takes it back. The host's own channel, never
+  /// the page's contract.
+  pub fn set_view_feed(&mut self, viewport: RenderViewportId, feed: Arc<dyn WorldViewFeed>) {
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.camera.feed(feed);
     }
   }
 

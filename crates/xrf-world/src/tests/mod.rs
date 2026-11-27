@@ -5,4 +5,5 @@ mod scene_reload;
 mod scenes;
 pub(crate) mod sound;
 pub(crate) mod test_workers;
+mod view_feed;
 mod weather;

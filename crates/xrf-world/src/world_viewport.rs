@@ -96,7 +96,9 @@ impl WorldViewport {
     } = input;
 
     self.burst = burst;
-    self.camera.update(delta, height);
+    self.camera.update(now, delta, height);
+    // A host running the game's day drives the weather's clock; the world's own cameras leave it to the viewport.
+    self.weather.follow_clock(self.camera.get_clock());
 
     // The weather is weighed where the camera stands, in engine space; a fade waits for the skies it fades into.
     let position: Vec3 = self.camera.get_pose().position.into();

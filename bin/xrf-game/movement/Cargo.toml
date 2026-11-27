@@ -1,0 +1,18 @@
+[package]
+name = "xrf-game-movement"
+version = "0.1.0"
+publish = false
+description = "XRF game: movement, the camera and the player's look"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+xrf-game-loop = { workspace = true }
+xrf-math = { workspace = true }
+
+[lints]
+workspace = true

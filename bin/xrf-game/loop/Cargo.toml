@@ -1,0 +1,18 @@
+[package]
+name = "xrf-game-loop"
+version = "0.1.0"
+publish = false
+description = "XRF game: the game loop, stepping the game state at a fixed rate on its own thread"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+log = { workspace = true }
+xrf-error = { workspace = true }
+
+[lints]
+workspace = true

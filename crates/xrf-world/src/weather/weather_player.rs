@@ -11,6 +11,7 @@ use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_effect_report::WorldWeatherEffectReport;
 use crate::contract::weather::world_weather_report::WorldWeatherReport;
 use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
+use crate::host::world_fed_clock::WorldFedClock;
 use crate::weather::fade::fade_skies::FadeSkies;
 use crate::weather::fade::weather_fader::WeatherFader;
 use crate::weather::played_weather::PlayedWeather;
@@ -24,8 +25,15 @@ use crate::weather::weather_lighting::WeatherLighting;
 /// Seconds from midnight to noon.
 const NOON: f32 = 12.0 * 60.0 * 60.0;
 
+/// Seconds in a day.
+const DAY: f32 = 24.0 * 60.0 * 60.0;
+
 /// The longest real step the clock takes at once, so a view shown again after a while does not skip hours.
 const LONGEST_STEP: Duration = Duration::from_secs(1);
+
+/// The furthest the host's clock runs this one on in a frame, in game seconds; further, as after a sleep or a skip of
+/// hours, it is a seek.
+const LONGEST_FOLLOW: f32 = 60.0 * 60.0;
 
 /// Metres the view moves before the modifiers are weighed again.
 const VIEW_STEP: f32 = 0.5;
@@ -35,6 +43,8 @@ const VIEW_STEP: f32 = 0.5;
 pub(crate) struct WeatherPlayer {
   weather: Option<PlayedWeather>,
   control: WorldWeatherControl,
+  /// The host's clock it follows this frame, in place of its own.
+  followed: Option<WorldFedClock>,
   /// Seconds since midnight.
   time: f32,
   effect: Option<PlayingEffect>,
@@ -65,6 +75,7 @@ impl Default for WeatherPlayer {
     Self {
       weather: None,
       control: WorldWeatherControl::default(),
+      followed: None,
       time: NOON,
       effect: None,
       view: [0.0; 3],
@@ -149,12 +160,36 @@ impl WeatherPlayer {
     self.is_changed = true;
   }
 
-  /// Game seconds the clock runs a real second: its factor, or zero while it is paused.
+  /// Game seconds the clock runs a real second: the host's rate while it runs the day, else the factor, zero while it
+  /// is paused.
   pub(crate) fn get_clock_rate(&self) -> f32 {
-    if self.control.is_paused {
+    if let Some(clock) = self.followed {
+      clock.rate
+    } else if self.control.is_paused {
       0.0
     } else {
       self.control.factor
+    }
+  }
+
+  /// Follows the host's clock, or runs its own again for none. A step forward runs the clock on as its own would,
+  /// effects with it; a step back, or forward past [`LONGEST_FOLLOW`], is a seek.
+  pub(crate) fn follow_clock(&mut self, clock: Option<WorldFedClock>) {
+    self.followed = clock;
+
+    let Some(clock) = clock else {
+      return;
+    };
+    let ahead: f32 = (clock.time - self.time).rem_euclid(DAY);
+
+    if ahead == 0.0 {
+      return;
+    }
+
+    if ahead <= LONGEST_FOLLOW {
+      self.run(ahead);
+    } else {
+      self.seek(clock.time);
     }
   }
 
@@ -227,7 +262,7 @@ impl WeatherPlayer {
     let control: WorldWeatherControl = self.control;
     let has_modifiers: bool = !weather.level.modifiers.is_empty();
 
-    if !control.is_paused && control.factor > 0.0 && !step.is_zero() {
+    if self.followed.is_none() && !control.is_paused && control.factor > 0.0 && !step.is_zero() {
       self.run(step.as_secs_f32() * control.factor);
     }
 

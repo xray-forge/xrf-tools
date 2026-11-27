@@ -9,6 +9,7 @@ use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_play::WorldWeatherPlay;
 use crate::contract::weather::world_weather_report::WorldWeatherReport;
 use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
+use crate::host::world_fed_clock::WorldFedClock;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::weather::played_weather::PlayedWeather;
@@ -123,6 +124,10 @@ impl ViewportWeather {
 
   pub(crate) fn seek(&mut self, time: f32) {
     self.player.seek(time);
+  }
+
+  pub(crate) fn follow_clock(&mut self, clock: Option<WorldFedClock>) {
+    self.player.follow_clock(clock);
   }
 
   pub(crate) fn play_effect(&mut self, name: Option<&str>) {

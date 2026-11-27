@@ -8626,8 +8626,28 @@ dependencies = [
  "clap",
  "log",
  "xrf-directories",
+ "xrf-game-loop",
+ "xrf-game-movement",
  "xrf-game-settings",
  "xrf-logging",
+ "xrf-math",
+ "xrf-world",
+]
+
+[[package]]
+name = "xrf-game-loop"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "xrf-error",
+]
+
+[[package]]
+name = "xrf-game-movement"
+version = "0.1.0"
+dependencies = [
+ "xrf-game-loop",
+ "xrf-math",
 ]
 
 [[package]]
