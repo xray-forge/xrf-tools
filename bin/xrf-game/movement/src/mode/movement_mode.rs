@@ -1,27 +1,19 @@
-use crate::mode::fly_mode::FlyMode;
-use crate::mode::walk_mode::WalkMode;
-
-/// How the player moves: what turns their input into motion each step.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// Which way the player moves; how each moves is the movement's [`crate::MovementModes`].
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum MovementMode {
   /// A free camera through everything.
-  Fly(FlyMode),
+  #[default]
+  Fly,
   /// On foot, on the physics world.
-  Walk(WalkMode),
+  Walk,
 }
 
 impl MovementMode {
-  /// The other mode, as it starts: walking after flight, flight after walking, the noclip toggle.
-  pub fn toggled(&self) -> Self {
+  /// The other mode: walking after flight, flight after walking, the noclip toggle.
+  pub fn toggled(self) -> Self {
     match self {
-      Self::Fly(_) => Self::Walk(WalkMode::default()),
-      Self::Walk(_) => Self::Fly(FlyMode::default()),
+      Self::Fly => Self::Walk,
+      Self::Walk => Self::Fly,
     }
-  }
-}
-
-impl Default for MovementMode {
-  fn default() -> Self {
-    Self::Fly(FlyMode::default())
   }
 }

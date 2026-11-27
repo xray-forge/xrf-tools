@@ -30,10 +30,14 @@ pub struct WalkMode {
   pub run_back: f32,
   /// What walking backwards multiplies it by: `walk_back_coef`.
   pub walk_back: f32,
-  /// What sprinting multiplies a forward run by: `sprint_koef`.
+  /// What sprinting multiplies a run by: `sprint_koef`.
   pub sprint: f32,
   /// What crouching multiplies it by: `crouch_coef`.
   pub crouch: f32,
+  /// What going sideways standing multiplies it by, walking and running: `walk_strafe_coef` and `run_strafe_coef`, 1
+  /// where the configs set none, as Call of Pripyat's and Anomaly's do not.
+  pub walk_strafe: f32,
+  pub run_strafe: f32,
   /// How much of the acceleration steers the actor in the air: `air_control_param`.
   pub air_control: f32,
   /// Metres a second up a jump starts at: `jump_speed`.
@@ -61,6 +65,8 @@ impl Default for WalkMode {
       walk_back: 0.61,
       sprint: 2.08,
       crouch: 0.45,
+      walk_strafe: 1.0,
+      run_strafe: 1.0,
       air_control: 0.02,
       jump_speed: 6.85,
       sensitivity: 0.0025,
@@ -77,6 +83,11 @@ impl Default for WalkMode {
 impl WalkMode {
   /// What X-Ray holds the actor's speed to: a tenth of its control acceleration.
   const SPEED_PER_ACCELERATION: f32 = 0.1;
+
+  /// Metres a second the actor keeps on the ground at `factor` times `walk_accel`: a walk at 1, a run at `run`.
+  pub fn get_speed(&self, factor: f32) -> f32 {
+    self.walk_accel * factor * Self::SPEED_PER_ACCELERATION
+  }
 
   /// What X-Ray takes off a box's height before it places the eye (`cammera_into_collision_shift`).
   const EYE_SHIFT: f32 = 0.05;
@@ -206,18 +217,20 @@ impl WalkMode {
     Ok(())
   }
 
-  /// The control acceleration of what is held, as X-Ray scales `walk_accel`: running unless accel is held, the back
-  /// factors going backwards, the crouch factor crouched, and sprinting forward while it is toggled on, which stopping,
-  /// going back or crouching turns off.
+  /// The control acceleration of what is held, as X-Ray scales `walk_accel` (`g_cl_CheckControls`): running unless
+  /// accel is held, the back factors going backwards, the crouch factor crouched, the strafe factors sideways standing,
+  /// and the sprint factor while sprinting. The sprint toggle holds while forward or a side is held and the actor runs
+  /// standing, and drops otherwise; sideways alone it adds nothing until forward is held again.
   fn get_acceleration(&self, input: &mut MovementInputState, stance: WalkStance) -> f32 {
     let forward: f32 = input.get_axis(MovementAction::Forward, MovementAction::Back);
+    let side: f32 = input.get_axis(MovementAction::Right, MovementAction::Left);
     let is_crouched: bool = stance != WalkStance::Standing;
+    let is_running: bool = !input.is_held(MovementAction::Accel);
 
-    if forward <= 0.0 || is_crouched {
+    if !(forward > 0.0 || side != 0.0) || is_crouched || !is_running {
       input.stop_sprinting();
     }
 
-    let is_running: bool = !input.is_held(MovementAction::Accel);
     let is_backwards: bool = forward < 0.0;
     let pace: f32 = if is_running && is_backwards {
       self.run_back
@@ -229,15 +242,28 @@ impl WalkMode {
       1.0
     };
     let crouch: f32 = if is_crouched { self.crouch } else { 1.0 };
-    let sprint: f32 = if input.is_sprinting() { self.sprint } else { 1.0 };
+    let sprint: f32 = if Self::is_sprinting(input) { self.sprint } else { 1.0 };
+    let strafe: f32 = if side == 0.0 || is_crouched {
+      1.0
+    } else if is_running {
+      self.run_strafe
+    } else {
+      self.walk_strafe
+    };
 
-    self.walk_accel * pace * crouch * sprint
+    self.walk_accel * pace * crouch * sprint * strafe
+  }
+
+  /// Whether the sprint factor applies: toggled on and going forward or back, as X-Ray clears it for a frame of
+  /// sideways alone (`Actor_Movement.cpp`, opposite keys).
+  fn is_sprinting(input: &MovementInputState) -> bool {
+    input.is_sprinting() && input.get_axis(MovementAction::Forward, MovementAction::Back) != 0.0
   }
 
   fn get_pace(&self, input: &MovementInputState, stance: WalkStance) -> WalkPace {
     if stance != WalkStance::Standing {
       WalkPace::Crouch
-    } else if input.is_sprinting() {
+    } else if Self::is_sprinting(input) {
       WalkPace::Sprint
     } else if input.is_held(MovementAction::Accel) {
       WalkPace::Walk

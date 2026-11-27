@@ -19,6 +19,7 @@ pub use crate::input::movement_input_state::MovementInputState;
 pub use crate::mode::fly_mode::FlyMode;
 pub use crate::mode::movement_footing::MovementFooting;
 pub use crate::mode::movement_mode::MovementMode;
+pub use crate::mode::movement_modes::MovementModes;
 pub use crate::mode::walk_mode::WalkMode;
 pub use crate::mode::walk_pace::WalkPace;
 pub use crate::mode::walk_stance::WalkStance;

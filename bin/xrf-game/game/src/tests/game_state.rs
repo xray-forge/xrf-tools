@@ -5,7 +5,7 @@ use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
 use xrf_game_loop::{GameClock, LoopFeed, LoopFrame, LoopStepper, LoopTime};
 use xrf_game_movement::Movement;
 use xrf_game_movement::{
-  MovementAction, MovementCamera, MovementCommand, MovementInput, MovementInputKind, MovementMode,
+  MovementAction, MovementCamera, MovementCommand, MovementInput, MovementInputKind, MovementMode, MovementModes,
 };
 use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
 use xrf_math::glam::Vec3;
@@ -52,7 +52,11 @@ fn state() -> GameState {
   GameState {
     objects,
     physics: PhysicsWorld::new().expect("a world"),
-    movement: Movement::new(MovementCamera::default(), MovementMode::default()),
+    movement: Movement::new(
+      MovementCamera::default(),
+      MovementMode::default(),
+      MovementModes::default(),
+    ),
     alife: Alife::new(AlifeSettings::default(), AlifeData::default(), Some(LEVEL)),
   }
 }

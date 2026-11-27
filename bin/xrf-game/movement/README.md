@@ -15,10 +15,15 @@ physics world (`xrf-physics`), which its context (`MovementContext`) hands it ea
 - `FlyMode` is a spectator's free camera through everything: the mouse's counts turn it (right turns right, down looks
   down) at `sensitivity` radians a count; forward and back fly where it looks, sideways along its right, up and down
   straight up and down; `speed` metres a second, times `boost` while accel is held, diagonals no faster.
-- `WalkMode` moves the actor as X-Ray's does, from Anomaly's `[actor]`: the control acceleration is `walk_accel` times
-  the pace's factors (running unless accel is held, the back factors going backwards, a forward sprint), and the speed
-  is held to a tenth of it (`PHMovementControl.cpp`), reached at that acceleration on the ground and barely steered in
-  the air (`air_control_param`). Up jumps at `jump_speed`; the eye stands `camera_height_factor` up the box. The actor
+- `WalkMode` moves the actor as X-Ray's does, read from the tree's own `[actor]` (`WalkMode::read_ltx`; a key it
+  lacks keeps Anomaly's, logged), so Call of Pripyat's actor runs at 3.8 m/s and Anomaly's at 2.77: the control
+  acceleration is `walk_accel` times the pace's factors (running unless accel is held, the back factors going
+  backwards, the strafe factors sideways standing, the sprint factor), and the speed is held to a tenth of it
+  (`PHMovementControl.cpp`), reached at that acceleration on the ground and barely steered in the air
+  (`air_control_param`). Sprint holds while forward or a side is held and the actor runs standing, as X-Ray's
+  (`Actor_Movement.cpp`), adding nothing sideways alone.
+- `MovementMode` is which mode the player moves in and `MovementModes` how each moves, kept whichever is in use, so
+  the noclip toggle never loses what was read for walking. Up jumps at `jump_speed`; the eye stands `camera_height_factor` up the box. The actor
   is put in the physics world the first time walking steps (`WalkState`) and taken out when flight steps.
 - Down crouches (`WalkStance`): to `ph_box1`'s height, or `ph_box2`'s with accel held, slowed by `crouch_coef`, on the
   ground only and only where the shorter capsule fits; letting go stands up once the standing one fits. Crouched, the

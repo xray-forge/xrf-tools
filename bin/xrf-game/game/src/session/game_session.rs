@@ -4,7 +4,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
-use xrf_game_movement::{FlyMode, Movement, MovementMode, WalkMode};
+use xrf_game_movement::{FlyMode, Movement, MovementMode, MovementModes};
 use xrf_game_objects::ObjectRegistry;
 use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
 use xrf_gamemtl::GameMtlFile;
@@ -87,8 +87,12 @@ impl GameSession {
     let start: GameStart = start?;
     let physics: PhysicsWorld = physics?;
     let mode: MovementMode = match arguments.mode {
-      GameModeArgument::Fly => MovementMode::Fly(FlyMode::default()),
-      GameModeArgument::Walk => MovementMode::Walk(WalkMode::default()),
+      GameModeArgument::Fly => MovementMode::Fly,
+      GameModeArgument::Walk => MovementMode::Walk,
+    };
+    let modes: MovementModes = MovementModes {
+      fly: FlyMode::default(),
+      walk: start.player.walk,
     };
     let audio: LevelAudio = GameSound::start()?;
     let source: Arc<dyn WorldLevelSource> = Arc::new(
@@ -97,10 +101,10 @@ impl GameSession {
     let state: GameState = GameState {
       objects: start.objects,
       physics,
-      movement: Movement::new(level.get_start_camera(), mode),
+      movement: Movement::new(level.get_start_camera(), mode, modes),
       alife: start.alife,
     };
-    let footsteps: GameFootsteps = GameFootsteps::of_materials(&materials, start.step_volume, seed);
+    let footsteps: GameFootsteps = GameFootsteps::of_materials(&materials, start.player.step_volume, seed);
 
     log::info!("Level '{level_name}' opened in {:.1?}", started.elapsed());
 
@@ -206,7 +210,7 @@ impl GameSession {
     Ok(GameStart {
       objects,
       alife: Alife::new(settings, data, level),
-      step_volume: configs.read_step_volume(),
+      player: configs.read_player_config(),
     })
   }
 

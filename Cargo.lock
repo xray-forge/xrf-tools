@@ -8952,6 +8952,7 @@ dependencies = [
  "xrf-game-loop",
  "xrf-gamemtl",
  "xrf-level",
+ "xrf-ltx",
  "xrf-math",
  "xrf-physics",
 ]

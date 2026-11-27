@@ -2,10 +2,13 @@ use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_alife::AlifeSettings;
+use xrf_game_movement::WalkMode;
 use xrf_game_simulation::SimulationConfigSource;
 use xrf_ltx::{Ltx, LtxResolution};
 use xrf_ltx_project::LtxProject;
 use xrf_vfs::XrayLogicalPath;
+
+use crate::level::game_player_config::GamePlayerConfig;
 
 /// The tree's configs as the game reads them: `configs\system.ltx` resolved once, and any other config resolved on
 /// request, both in the tree's dialect, loose or archived alike.
@@ -37,27 +40,32 @@ impl GameConfigs {
     }
   }
 
-  /// How loud the player's own steps play against their power, `system.ltx`'s `[hud_sound] hud_step_sound_vol_k`, as
+  /// What `system.ltx` sets for the player: how they walk, from `[actor]`, and how loud their own steps play.
+  pub(crate) fn read_player_config(&self) -> GamePlayerConfig {
+    GamePlayerConfig {
+      walk: WalkMode::read_ltx(&self.system.ltx),
+      step_volume: self.read_step_volume(),
+    }
+  }
+
+  /// How loud the player's own steps play against their power, `[hud_sound] hud_step_sound_vol_k`, as
   /// `InitHudSoundSettings` reads it: 1 where the configs set none.
-  pub fn read_step_volume(&self) -> f32 {
-    let value: Option<&str> = self
+  fn read_step_volume(&self) -> f32 {
+    let read: XrfResult<Option<f32>> = self
       .system
       .ltx
       .section(Self::HUD_SOUND_SECTION)
-      .and_then(|section| section.get(Self::STEP_VOLUME_KEY));
+      .map_or(Ok(None), |section| {
+        section.read_optional_field::<f32>(Self::STEP_VOLUME_KEY)
+      });
 
-    match value.map(|value| value.trim().parse::<f32>()) {
-      Some(Ok(volume)) => volume,
-      Some(Err(_)) => {
-        log::warn!(
-          "[{}] {} is no number; steps play at full volume",
-          Self::HUD_SOUND_SECTION,
-          Self::STEP_VOLUME_KEY
-        );
+    match read {
+      Ok(volume) => volume.unwrap_or(1.0),
+      Err(error) => {
+        log::warn!("Steps play at full volume: {error}");
 
         1.0
       }
-      None => 1.0,
     }
   }
 

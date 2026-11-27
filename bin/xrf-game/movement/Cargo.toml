@@ -14,6 +14,7 @@ path = "src/lib.rs"
 log = { workspace = true }
 xrf-error = { workspace = true }
 xrf-game-loop = { workspace = true }
+xrf-ltx = { workspace = true }
 xrf-math = { workspace = true }
 xrf-physics = { workspace = true }
 
