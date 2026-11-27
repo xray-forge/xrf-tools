@@ -39,6 +39,8 @@ impl Movement {
 
 impl LoopSystem for Movement {
   type Command = MovementCommand;
+  /// Movement needs nothing of the rest of the game yet: walking will be handed the physics world.
+  type Context<'a> = ();
 
   fn apply(&mut self, command: MovementCommand) {
     match command {
@@ -47,7 +49,7 @@ impl LoopSystem for Movement {
     }
   }
 
-  fn step(&mut self, time: &LoopTime) {
+  fn step(&mut self, time: &LoopTime, (): ()) {
     match &self.mode {
       MovementMode::Fly(fly) => fly.step(&mut self.camera, &mut self.input, time.step),
     }

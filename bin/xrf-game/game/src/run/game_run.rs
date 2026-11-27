@@ -1,16 +1,15 @@
 use std::io::ErrorKind;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::mpsc::Sender;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_loop::{GameClock, GameLoop, LoopClock, LoopStepper};
 use xrf_game_movement::{FlyMode, Movement, MovementMode};
 use xrf_game_platform::{
-  Platform, PlatformEvent, PlatformEventKind, PlatformScancode, PlatformSize, PlatformWindow, PlatformWindowCommand,
-  PlatformWindowHandle, PlatformWindowMode, PlatformWindowRequest,
+  Platform, PlatformSize, PlatformWindow, PlatformWindowCommand, PlatformWindowHandle, PlatformWindowMode,
+  PlatformWindowRequest,
 };
 use xrf_game_settings::{GameSettings, GameWindowMode};
 use xrf_job::ExecutionRequest;
@@ -21,13 +20,15 @@ use xrf_world::{WorldFedCamera, WorldLevelSource};
 
 use crate::arguments::game_arguments::GameArguments;
 use crate::arguments::game_mode_argument::GameModeArgument;
+#[cfg(feature = "mcp")]
+use crate::control::game_control::GameControl;
 use crate::directories::game_directories::GameDirectories;
 use crate::input::game_bindings::GameBindings;
 use crate::level::game_level::GameLevel;
 use crate::level::game_tree::GameTree;
 use crate::render::game_view::GameView;
+use crate::run::game_play::GamePlay;
 use crate::sound::game_sound::GameSound;
-use crate::state::game_command::GameCommand;
 use crate::state::game_state::GameState;
 use crate::state::game_view_feed::GameViewFeed;
 
@@ -36,19 +37,19 @@ use crate::state::game_view_feed::GameViewFeed;
 pub struct GameRun;
 
 impl GameRun {
-  /// The key that quits until the game has a menu: Escape's place.
-  const QUIT_KEY: PlatformScancode = PlatformScancode(41);
-
-  /// How long the main thread waits between reads of the platform's events.
-  const POLL_WAIT: Duration = Duration::from_millis(1);
-
-  /// Plays the level `arguments` name until the player quits.
+  /// Plays the level `arguments` name until the player or an agent quits.
   ///
   /// # Errors
   ///
-  /// Returns why the game cannot start: no tree or level named (with the levels the tree has), a mode not built yet, a
-  /// tree or level that does not read, or a window or renderer that cannot start.
+  /// Returns why the game cannot start: no tree or level named (with the levels the tree has), a mode or endpoint not
+  /// built, a tree or level that does not read, or a window, renderer or endpoint that cannot start.
   pub fn run(arguments: &GameArguments, settings: &GameSettings, directories: &GameDirectories) -> XrfResult<()> {
+    if cfg!(not(feature = "mcp")) && arguments.mcp {
+      return Err(XrfError::new_not_implemented_error(
+        "this build has no control endpoint; build with the mcp feature",
+      ));
+    }
+
     if arguments.mode == GameModeArgument::Walk {
       return Err(XrfError::new_not_implemented_error(
         "walk mode comes with the physics engine; start with --mode fly",
@@ -117,7 +118,20 @@ impl GameRun {
       .apply(PlatformWindowCommand::GrabCursor { is_grabbed: true })
       .map_err(Self::create_platform_error)?;
 
-    Self::play(&mut platform, &window, &view, &game_loop.get_sender());
+    GamePlay {
+      window: &window,
+      view: &view,
+      commands: game_loop.get_sender(),
+      bindings: GameBindings::default(),
+      #[cfg(feature = "mcp")]
+      feed: Arc::clone(game_loop.get_feed()),
+      #[cfg(feature = "mcp")]
+      control: arguments
+        .mcp
+        .then(|| GameControl::start(name, directories.get_captures_directory()))
+        .transpose()?,
+    }
+    .run(&mut platform);
 
     // Stopped in the order the window's drop needs: the loop, the view, then the window.
     drop(game_loop);
@@ -126,41 +140,6 @@ impl GameRun {
     drop(window);
 
     Ok(())
-  }
-
-  /// Reads the platform's events into the loop's commands until the player quits, fitting the view as the window is
-  /// resized.
-  fn play(platform: &mut Platform, window: &PlatformWindow, view: &GameView, commands: &Sender<GameCommand>) {
-    let bindings: GameBindings = GameBindings::default();
-    let mut events: Vec<PlatformEvent> = Vec::new();
-
-    loop {
-      events.clear();
-      platform.poll(&mut events);
-
-      for event in &events {
-        match &event.kind {
-          PlatformEventKind::Quit
-          | PlatformEventKind::Key {
-            scancode: Self::QUIT_KEY,
-            is_down: true,
-            ..
-          } => return,
-          PlatformEventKind::Resized { .. } => view.fit(window),
-          _ => {
-            if let Some(command) = bindings.read(event)
-              && commands.send(command).is_err()
-            {
-              log::error!("The game loop stopped taking commands");
-
-              return;
-            }
-          }
-        }
-      }
-
-      std::thread::sleep(Self::POLL_WAIT);
-    }
   }
 
   fn mount(root: &Path) -> XrfResult<GameTree> {

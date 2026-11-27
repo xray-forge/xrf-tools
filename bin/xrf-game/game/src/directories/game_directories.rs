@@ -22,6 +22,9 @@ impl GameDirectories {
   /// The folder within the game's own data its caches are kept in, the renderer's pipeline cache among them.
   pub const CACHE_DIRECTORY: &'static str = "cache";
 
+  /// The folder within the game's own data captures are written to.
+  pub const CAPTURES_DIRECTORY: &'static str = "captures";
+
   /// The game's directories, its local data directory the system's own for its identifier.
   pub fn for_game() -> Self {
     Self {
@@ -58,6 +61,16 @@ impl GameDirectories {
       .into_iter()
       .next()
       .map(|directory| AppCache::new(directory.join(Self::CACHE_DIRECTORY)))
+  }
+
+  /// Where captures the control endpoint asks for are written, in the game's best own directory; none where it has
+  /// none.
+  pub fn get_captures_directory(&self) -> Option<PathBuf> {
+    self
+      .get_own_directories()
+      .into_iter()
+      .next()
+      .map(|directory| directory.join(Self::CAPTURES_DIRECTORY))
   }
 
   /// Where the settings file may be, best first: the first that exists is read.

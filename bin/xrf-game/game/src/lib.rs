@@ -3,6 +3,8 @@
 //! What the game draws with is `xrf-game-settings`'.
 
 pub(crate) mod arguments;
+#[cfg(feature = "mcp")]
+pub(crate) mod control;
 pub(crate) mod directories;
 pub(crate) mod input;
 pub(crate) mod level;

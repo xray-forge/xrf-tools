@@ -20,6 +20,9 @@ cargo run --profile dev-optimized -p xrf-game -- --root C:\Games\anomaly --level
 - `--mode fly` (the default) flies a free camera; `walk` comes with the physics engine and refuses to start for now.
 - `--preset <name>` starts from a preset in place of the settings file's; `--set <path>=<value>`, repeated, changes
   one setting for this run, over the settings file, never written back.
+- `--mcp` turns the control endpoint on: requests on standard input, answers on standard output, as the MCP bridge
+  ([xrf-game-mcp](../mcp/README.md)) starts the game. Its input ending quits the game. Built only with the `mcp`
+  feature (on by default); without `--mcp` the game reads no input.
 
 The cursor is grabbed for mouse look. W, S, A and D fly, Space rises, Left Ctrl sinks, Left Shift flies faster, as
 Call of Pripyat binds them (`GameBindings`); Escape or the window's close quits.
@@ -29,8 +32,11 @@ Call of Pripyat binds them (`GameBindings`); Escape or the window's close quits.
 `GameRun` opens the tree and level, starts the sound (`GameSound`: Steam Audio from `.sdks` or beside the executable,
 dry without it), the window through `xrf-game-platform`, the view (`GameView`: the render queue with the game's pipeline
 cache, its world, the viewport filling the window), and the game loop with the player's movement. The world draws the
-loop's camera and day through `GameViewFeed`. Each platform event goes through the bindings into the loop's commands.
-On quit it stops the loop, detaches and stops the view, then drops the window.
+loop's camera and day through `GameViewFeed`. `GamePlay` then reads each platform event through the bindings into the
+loop's commands and, with `--mcp`, answers the control endpoint between frames (`GameControl`): `ready` once the
+renderer reports the level ready, then `status`, `pose` (a camera command to the loop), `capture` (the window's next
+frame to `appdata/xrf-game/captures/`) and `quit`. On quit it stops the loop, detaches and stops the view, then drops
+the window.
 
 ## Files
 

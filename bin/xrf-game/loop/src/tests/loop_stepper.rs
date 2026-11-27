@@ -30,9 +30,10 @@ fn applies_the_commands_in_order_before_the_step_from_its_tick() {
   stepper.step([TestCommand::SetSpeed(2.0), TestCommand::Add(1.0)]);
   stepper.step([TestCommand::SetSpeed(0.5)]);
 
-  assert_eq!(stepper.get_state().value, 3.5);
+  // The system moved by the speed its root handed it each step.
+  assert_eq!(stepper.get_state().counter.value, 3.5);
   // A step reads the tick it steps from.
-  assert_eq!(stepper.get_state().ticks, vec![0, 1]);
+  assert_eq!(stepper.get_state().counter.ticks, vec![0, 1]);
   assert_eq!(stepper.get_frame().tick, 2);
   assert_eq!(stepper.get_frame().state, TestFrame(3.5));
 }

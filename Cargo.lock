@@ -8624,8 +8624,10 @@ name = "xrf-game"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "image",
  "log",
  "rayon",
+ "serde_json",
  "xrf-audio",
  "xrf-cache",
  "xrf-directories",
@@ -8633,6 +8635,7 @@ dependencies = [
  "xrf-engine-target",
  "xrf-error",
  "xrf-game-loop",
+ "xrf-game-mcp",
  "xrf-game-movement",
  "xrf-game-platform",
  "xrf-game-settings",
@@ -8644,6 +8647,7 @@ dependencies = [
  "xrf-renderer",
  "xrf-renderer-host",
  "xrf-session",
+ "xrf-utils",
  "xrf-vfs",
  "xrf-world",
 ]
@@ -8653,6 +8657,17 @@ name = "xrf-game-loop"
 version = "0.1.0"
 dependencies = [
  "log",
+ "xrf-error",
+]
+
+[[package]]
+name = "xrf-game-mcp"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "xrf-directories",
  "xrf-error",
 ]
 

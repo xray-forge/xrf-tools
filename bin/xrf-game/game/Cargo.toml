@@ -14,9 +14,16 @@ path = "src/lib.rs"
 name = "xrf-game"
 path = "src/main.rs"
 
+[features]
+default = ["mcp"]
+# The control endpoint agents drive the game through, started only by `--mcp`.
+mcp = ["dep:image", "dep:serde_json", "dep:xrf-game-mcp", "dep:xrf-utils"]
+
 [dependencies]
 clap = { version = "4.6.6", features = ["derive"] }
+image = { workspace = true, features = ["png"], optional = true }
 log = { workspace = true }
+serde_json = { workspace = true, optional = true }
 rayon = "1.12.0"
 xrf-audio = { workspace = true, features = ["steam-audio"] }
 xrf-cache = { workspace = true }
@@ -25,6 +32,7 @@ xrf-dltx = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-game-loop = { workspace = true }
+xrf-game-mcp = { workspace = true, optional = true }
 xrf-game-movement = { workspace = true }
 xrf-game-platform = { workspace = true }
 xrf-game-settings = { workspace = true }
@@ -36,6 +44,7 @@ xrf-math = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-renderer-host = { workspace = true }
 xrf-session = { workspace = true }
+xrf-utils = { workspace = true, optional = true }
 xrf-vfs = { workspace = true }
 xrf-world = { workspace = true }
 

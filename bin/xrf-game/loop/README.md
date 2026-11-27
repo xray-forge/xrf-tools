@@ -10,12 +10,14 @@ knows no gameplay: the game puts its systems together into one `LoopState`, and 
 tick's time. It has no clock of its own: the same commands step the same state to the same frames, which a recorded
 session checks (`src/tests/loop_stepper.rs`).
 
-- `LoopState` is the whole state as the game composes it: itself a `LoopSystem`, whose `Command` is every change from
-  outside (the player, the console, an agent), routing each command to its system and stepping its systems in its
-  order, with a `Frame` presentation reads.
-- `LoopSystem` is one part of the state and its rules (movement now; the objects and ALife later). A system depends on
-  the loop, and on the state systems share through the object registry once there is one, never on another system, so
-  each can be measured, replaced and improved alone.
+- `LoopState` is the composition root: the whole state as the game puts its systems together, whose `Command` is every
+  change from outside (the player, the console, an agent). It routes each command to its system, steps its systems in
+  its order, and publishes a `Frame` presentation reads.
+- `LoopSystem` is one part of the state and its rules (movement now; the objects and ALife later). It owns its state and
+  reaches nothing else by itself: what it needs of the rest (the registry's tables, another system's values, the hook
+  bus) is its `Context`, which the root hands it each step (`()` for none). Dependencies are injected as typed
+  parameters, never looked up from a container, so they show in the signature and the borrow checker proves two
+  systems never write the same data; a system is tested by building its context alone (`src/tests/test_state.rs`).
 - The game's day runs by `GameClock`, `[alife]`'s `start_time` and `time_factor` (Call of Pripyat's 9:00 and 10 by
   default): game seconds pass by ticks, never by the wall clock.
 

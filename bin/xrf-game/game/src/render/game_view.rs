@@ -1,12 +1,15 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use xrf_cache::AppCache;
+use xrf_error::XrfResult;
 use xrf_game_platform::{PlatformSize, PlatformWindow};
 use xrf_game_settings::GameSettings;
 use xrf_renderer::{
-  RenderCommand, RenderQueue, RenderRect, RenderViewOptions, RenderViewOutput, RenderViewportId, RenderViewportLayout,
-  RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
+  RenderCapture, RenderCommand, RenderQueue, RenderRect, RenderViewOptions, RenderViewOutput, RenderViewportId,
+  RenderViewportLayout, RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
 };
 use xrf_renderer_host::DiskCacheStore;
 use xrf_world::{World, WorldLevelSource, WorldViewFeed};
@@ -19,6 +22,8 @@ use crate::render::game_world_sink::GameWorldSink;
 pub struct GameView {
   queue: RenderQueue,
   world: Arc<Mutex<World>>,
+  /// Whether the level shown stood ready, as the renderer reported it.
+  ready: Arc<AtomicBool>,
 }
 
 impl GameView {
@@ -45,7 +50,16 @@ impl GameView {
       settings: settings.render,
     });
 
-    Self { queue, world }
+    Self {
+      queue,
+      world,
+      ready: Arc::new(AtomicBool::new(false)),
+    }
+  }
+
+  /// Whether the level shown stood ready: every sector, particle and texture settled.
+  pub fn is_ready(&self) -> bool {
+    self.ready.load(Ordering::Acquire)
   }
 
   /// Draws the view into `window` through the `host` it presents to, with the view's features and upscaling from
@@ -54,7 +68,9 @@ impl GameView {
     self.queue.send(RenderCommand::Attach {
       id: Self::VIEWPORT,
       host,
-      sink: Box::new(GameRenderSink),
+      sink: Box::new(GameRenderSink {
+        ready: Arc::clone(&self.ready),
+      }),
     });
     self.lock_world().attach(Self::VIEWPORT, Box::new(GameWorldSink));
     self.queue.send(RenderCommand::Options {
@@ -89,6 +105,19 @@ impl GameView {
         ..RenderViewportLayout::default()
       },
     });
+  }
+
+  /// Asks for the window's next finished frame read back, answered on the receiver; none comes while the window draws
+  /// nothing.
+  pub fn capture(&self) -> Receiver<XrfResult<RenderCapture>> {
+    let (reply, answer) = mpsc::channel();
+
+    self.queue.send(RenderCommand::Capture {
+      id: Self::VIEWPORT,
+      reply,
+    });
+
+    answer
   }
 
   /// Shows `level`, its camera and the game's day given by `feed`.

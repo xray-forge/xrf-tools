@@ -16,6 +16,10 @@ pub struct GameArguments {
   /// The level to open, by its name in the tree (`zaton`); without one the game lists the levels it found and exits.
   #[arg(long)]
   pub level: Option<String>,
+  /// Takes the control endpoint's requests on standard input and answers on standard output, as the MCP bridge
+  /// (`xrf-game-mcp`) starts the game; its input ending quits the game.
+  #[arg(long)]
+  pub mcp: bool,
   /// How the player moves.
   #[arg(long, value_enum, default_value_t)]
   pub mode: GameModeArgument,

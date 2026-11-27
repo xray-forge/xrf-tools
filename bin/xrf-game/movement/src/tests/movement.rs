@@ -68,7 +68,7 @@ fn stands_the_camera_where_a_command_puts_it_and_keeps_it_through_a_step() {
   let camera: MovementCamera = MovementCamera::looking_at(Vec3::new(5.0, 1.0, 2.0), Vec3::ZERO);
 
   movement.apply(MovementCommand::SetCamera(camera));
-  movement.step(&LoopTime::new(Duration::from_millis(10), GameClock::default()));
+  movement.step(&LoopTime::new(Duration::from_millis(10), GameClock::default()), ());
 
   assert!(movement.get_camera().position.abs_diff_eq(camera.position, 1e-5));
   assert!(
