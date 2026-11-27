@@ -51,10 +51,21 @@ impl StagedFile {
   ///
   /// Returns an IO error, with nothing left at `staged`, when it cannot be created, written or synced.
   pub fn stage(target: &Path, staged: &Path, contents: &[u8]) -> IoResult<Self> {
+    Self::stage_with(target, staged, |file| file.write_all(contents))
+  }
+
+  /// Stages what `write` streams into the open file at `staged`, a name from [`Self::name_sibling`], then syncs it, as
+  /// [`Self::stage`] does with bytes held whole: for a writer too large to hold its file in memory.
+  ///
+  /// # Errors
+  ///
+  /// Returns an IO error, with nothing left at `staged`, when it cannot be created, `write` fails, or it cannot be
+  /// synced.
+  pub fn stage_with(target: &Path, staged: &Path, write: impl FnOnce(&mut File) -> IoResult<()>) -> IoResult<Self> {
     let result: IoResult<()> = (|| -> IoResult<()> {
       let mut staged_file: File = OpenOptions::new().write(true).create_new(true).open(staged)?;
 
-      staged_file.write_all(contents)?;
+      write(&mut staged_file)?;
 
       #[cfg(feature = "staging-faults")]
       if let Some(error) = StagingFaults::take_write_failure() {

@@ -1,8 +1,10 @@
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::StagedFile;
 
-use crate::change::transaction::{XrayTransactionTarget, XrayTransactionWrite};
+use crate::change::transaction::{XrayTransactionTarget, XrayTransactionWrite, XrayWriteContent};
 use crate::input::XrayInputRecord;
 use crate::path::XrayLogicalPath;
 use crate::search::{XrayLookupScope, XraySearch, XraySearchKey};
@@ -38,7 +40,7 @@ impl XrayTransaction {
   pub fn with_write(self, path: &str, bytes: impl Into<Vec<u8>>) -> XrfResult<Self> {
     Ok(self.with(
       XrayTransactionTarget::Path(XrayLogicalPath::new(path)?),
-      Some(bytes.into()),
+      Some(XrayWriteContent::Bytes(bytes.into())),
     ))
   }
 
@@ -46,7 +48,23 @@ impl XrayTransaction {
   /// whichever copy of its logical path the search answers with: for a writer that names files on disk. Refused at
   /// commit where no such mount holds it ([`XraySearch::holds_file`]).
   pub fn with_file_write(self, file: impl Into<PathBuf>, bytes: impl Into<Vec<u8>>) -> Self {
-    self.with(XrayTransactionTarget::File(file.into()), Some(bytes.into()))
+    self.with(
+      XrayTransactionTarget::File(file.into()),
+      Some(XrayWriteContent::Bytes(bytes.into())),
+    )
+  }
+
+  /// Writes the file `staged` stands beside with what its writer streamed into it, as [`Self::with_file_write`] writes
+  /// bytes, for a file too large to hold in memory. The writer stages it under [`StagedFile::name_sibling`] in the
+  /// target's directory, which it creates where missing; the commit refuses any other place. The first commit that
+  /// tries the transaction spends it: published when the commit lands, removed when it fails.
+  pub fn with_staged_file_write(self, staged: StagedFile) -> Self {
+    let target: PathBuf = staged.get_target().to_path_buf();
+
+    self.with(
+      XrayTransactionTarget::File(target),
+      Some(XrayWriteContent::Staged(Arc::new(Mutex::new(Some(staged))))),
+    )
   }
 
   /// Deletes the loose file a logical path resolves to, replacing an earlier write of it in this transaction.
@@ -107,10 +125,10 @@ impl XrayTransaction {
     }
   }
 
-  fn with(mut self, target: XrayTransactionTarget, bytes: Option<Vec<u8>>) -> Self {
+  fn with(mut self, target: XrayTransactionTarget, content: Option<XrayWriteContent>) -> Self {
     match self.writes.iter_mut().find(|write| write.target == target) {
-      Some(write) => write.bytes = bytes,
-      None => self.writes.push(XrayTransactionWrite { target, bytes }),
+      Some(write) => write.content = content,
+      None => self.writes.push(XrayTransactionWrite { target, content }),
     }
 
     self

@@ -1,10 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
 use crate::change::disk::{XrayDiskJournal, XrayJournalEntry, XraySwappedFile};
+use crate::change::transaction::XrayWriteContent;
 
 /// Files a commit replaces, creates or deletes on disk together: every new content staged and synced beside its
 /// target, a journal written beside the first target naming every file, then every target swapped, each replaced or
@@ -19,15 +21,17 @@ pub(crate) struct XrayDiskSwap {
 }
 
 impl XrayDiskSwap {
-  /// Stages `bytes` beside `target`, creating the directories above it, or, for `None`, marks `target` to be deleted.
+  /// Stages `content` beside `target`, creating the directories above it, or takes the file its writer staged there;
+  /// for `None`, marks `target` to be deleted.
   ///
   /// # Errors
   ///
-  /// Returns an error when a directory or the staged file cannot be created, written or synced. What was staged
-  /// before, and the directories made for it, are removed when the swap is dropped.
-  pub(crate) fn stage(&mut self, target: PathBuf, bytes: Option<&[u8]>) -> XrfResult<()> {
-    let staged: Option<StagedFile> = match bytes {
-      Some(bytes) => {
+  /// Returns an error when a directory or the staged file cannot be created, written or synced, or when a staged write
+  /// was spent by an earlier commit or stands beside another file. What was staged before, the directories made for it
+  /// and a staged write taken here are removed when the swap is dropped.
+  pub(crate) fn stage(&mut self, target: PathBuf, content: Option<&XrayWriteContent>) -> XrfResult<()> {
+    let staged: Option<StagedFile> = match content {
+      Some(XrayWriteContent::Bytes(bytes)) => {
         self.create_directories_above(&target)?;
 
         Some(
@@ -36,6 +40,7 @@ impl XrayDiskSwap {
           })?,
         )
       }
+      Some(XrayWriteContent::Staged(slot)) => Some(Self::take_staged(&target, slot)?),
       None => None,
     };
     let backup: Option<PathBuf> = target
@@ -84,6 +89,44 @@ impl XrayDiskSwap {
     self.directories.clear();
 
     Ok(())
+  }
+
+  /// The file a writer staged for `target`, taken out of its transaction so no other commit publishes it.
+  fn take_staged(target: &Path, slot: &Mutex<Option<StagedFile>>) -> XrfResult<StagedFile> {
+    // A panicked commit leaves the slot whole: it holds the staged file or nothing.
+    let staged: StagedFile = slot
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .take()
+      .ok_or_else(|| {
+        XrfError::new_asset_error(format!(
+          "cannot write '{}': its staged write was spent by an earlier commit",
+          format_path(target)
+        ))
+      })?;
+
+    if staged.get_target() != target {
+      return Err(XrfError::new_asset_error(format!(
+        "cannot write '{}': its staged write stands beside '{}'",
+        format_path(target),
+        format_path(staged.get_target())
+      )));
+    }
+
+    // Swapped by one rename within the target's directory, and left over after a crash under a name the directory index
+    // skips and the journal settles: anything else could cross volumes or be indexed as an asset.
+    let is_sibling: bool = staged.get_staged_path().parent() == target.parent()
+      && staged.get_staged_path().file_name().is_some_and(StagedFile::is_sibling);
+
+    if !is_sibling {
+      return Err(XrfError::new_asset_error(format!(
+        "cannot write '{}': its staged write '{}' is not a sibling named by StagedFile::name_sibling",
+        format_path(target),
+        format_path(staged.get_staged_path())
+      )));
+    }
+
+    Ok(staged)
   }
 
   /// Creates the directories above `target` that are not there, remembering each for a failed commit to remove.

@@ -1,9 +1,12 @@
 //! Changing what a snapshot holds: a transaction committed to disk, or changes already there applied.
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use xrf_utils::StagedFile;
 
 use crate::asset::XrayAsset;
 use crate::change::{XrayChange, XrayChangeKind, XrayChangeSet, XrayTransaction};
@@ -689,6 +692,138 @@ fn refuses_a_file_no_writable_mount_holds_writing_nothing() {
     b"commit_file_refused"
   );
   assert!(!outside.exists());
+}
+
+/// What a writer streams beside `target` in two pieces, staged for a transaction.
+fn stream_beside(target: &Path, first: &str, second: &str) -> StagedFile {
+  StagedFile::stage_with(
+    target,
+    &StagedFile::name_sibling(target, "staged").expect("the target sits in a directory"),
+    |file| {
+      file.write_all(first.as_bytes())?;
+      file.write_all(second.as_bytes())
+    },
+  )
+  .expect("the writer streams beside the target")
+}
+
+#[test]
+fn publishes_a_file_its_writer_streamed_beside_the_target() {
+  let root: PathBuf = directory("commit_staged", &["configs/system.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let id: XrayMountId = vfs.mount_directory("", &root).expect("the tree mounts");
+  let before: XraySearch = search(vfs);
+  let target: PathBuf = root.join("configs/system.ltx");
+
+  let (after, changes): (XraySearch, XrayChangeSet) = commit(
+    &before,
+    XrayTransaction::new(&before)
+      .with_staged_file_write(stream_beside(&target, "stream", "ed"))
+      .with_file_write(root.join("configs/new.ltx"), "new"),
+  );
+
+  assert_eq!(text(&after, SYSTEM_LTX), "streamed");
+  assert_eq!(
+    changes.get_changes(),
+    &[
+      XrayChange::modified(id, SYSTEM_LTX).unwrap(),
+      XrayChange::created(id, "configs\\new.ltx").unwrap()
+    ]
+  );
+  assert_ne!(after.get_vfs().get_revision(), before.get_vfs().get_revision());
+  assert_eq!(
+    list_names(&root.join("configs")),
+    ["new.ltx", "system.ltx"],
+    "nothing staged is left beside the files"
+  );
+}
+
+#[test]
+fn a_failed_commit_removes_a_streamed_write_and_spends_it() {
+  let root: PathBuf = directory("commit_staged_failed", &["configs/system.ltx"]);
+  let outside: PathBuf = root.with_file_name("commit_staged_failed_outside").join("a.ltx");
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &root).expect("the tree mounts");
+
+  let before: XraySearch = search(vfs);
+  let transaction: XrayTransaction = XrayTransaction::new(&before)
+    .with_staged_file_write(stream_beside(&root.join("configs/system.ltx"), "stream", "ed"))
+    .with_file_write(&outside, "outside");
+  // A clone shares the staged write, so the one commit that tries either spends it for both.
+  let copy: XrayTransaction = transaction.clone();
+
+  assert!(
+    before.get_vfs().commit(&transaction).is_err(),
+    "no writable mount holds the outside file"
+  );
+  assert_eq!(text(&before, SYSTEM_LTX), "commit_staged_failed");
+  assert_eq!(list_names(&root.join("configs")), ["system.ltx"]);
+
+  let error: String = before
+    .get_vfs()
+    .commit(&copy)
+    .expect_err("the staged write is spent")
+    .to_string();
+
+  assert!(error.contains("spent"), "{error}");
+}
+
+// Staged under a plain name, a crash would leave it where the directory index reads it as an asset.
+#[test]
+fn refuses_a_streamed_write_not_staged_as_a_sibling() {
+  let root: PathBuf = directory("commit_staged_misplaced", &["configs/system.ltx"]);
+  let target: PathBuf = root.join("configs/system.ltx");
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &root).expect("the tree mounts");
+
+  let before: XraySearch = search(vfs);
+  let staged: StagedFile = StagedFile::stage(&target, &root.join("configs/next.ltx"), b"streamed")
+    .expect("the writer stages under a plain name");
+  let error: String = before
+    .get_vfs()
+    .commit(&XrayTransaction::new(&before).with_staged_file_write(staged))
+    .expect_err("a plain name is not a sibling")
+    .to_string();
+
+  assert!(error.contains("not a sibling"), "{error}");
+  assert_eq!(text(&before, SYSTEM_LTX), "commit_staged_misplaced");
+  assert_eq!(list_names(&root.join("configs")), ["system.ltx"]);
+}
+
+#[test]
+fn refuses_a_streamed_write_whose_reads_moved_and_leaves_nothing_staged() {
+  let root: PathBuf = directory("commit_staged_stale", &["configs/system.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &root).expect("the tree mounts");
+
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let before: XraySearch = search(vfs).with_recording(&record);
+
+  before.read(SYSTEM_LTX).expect("the author reads the file");
+
+  let (after, _) = commit(
+    &before,
+    XrayTransaction::new(&before)
+      .with_write(SYSTEM_LTX, "someone else")
+      .unwrap(),
+  );
+  let refused = after.get_vfs().commit(
+    &XrayTransaction::new(&before)
+      .with_staged_file_write(stream_beside(&root.join("configs/system.ltx"), "the ", "author"))
+      .with_expected(&record),
+  );
+
+  assert!(
+    refused
+      .expect_err("what the author read moved")
+      .to_string()
+      .contains("stale")
+  );
+  assert_eq!(text(&after, SYSTEM_LTX), "someone else");
+  assert_eq!(list_names(&root.join("configs")), ["system.ltx"]);
 }
 
 // Two changes branched from one snapshot take revisions of their own from the lineage, so a value parsed in one is

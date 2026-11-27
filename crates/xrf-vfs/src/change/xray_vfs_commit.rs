@@ -32,14 +32,14 @@ impl XrayVfs {
     for write in transaction.get_writes() {
       let (placed, target): (Vec<XrayChange>, PathBuf) = match &write.target {
         XrayTransactionTarget::Path(path) => {
-          let (change, target) = self.place_write(transaction, path.as_str(), write.bytes.is_some())?;
+          let (change, target) = self.place_write(transaction, path.as_str(), write.content.is_some())?;
 
           (vec![change], target)
         }
         XrayTransactionTarget::File(file) => self.place_file_write(transaction.get_scopes(), file)?,
       };
 
-      swap.stage(target, write.bytes.as_deref())?;
+      swap.stage(target, write.content.as_ref())?;
       changes.extend(placed);
     }
 
