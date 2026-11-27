@@ -5,6 +5,8 @@ use crate::id::object_id::ObjectId;
 use crate::record::object_ammo::ObjectAmmo;
 use crate::record::object_creature::ObjectCreature;
 use crate::record::object_record::ObjectRecord;
+use crate::record::object_schedule::ObjectSchedule;
+use crate::record::object_schedule_kind::ObjectScheduleKind;
 use crate::record::object_switching::ObjectSwitching;
 use crate::registry::object_registry::ObjectRegistry;
 
@@ -22,6 +24,31 @@ pub(crate) fn record(level: u8, parent: Option<ObjectId>) -> ObjectRecord {
     story_id: None,
     spawn_id: 0,
     switching: ObjectSwitching::ByDistance,
+  }
+}
+
+/// Puts an object at `id` with a schedule row of `kind`, and a creature row of `health` if given.
+fn scheduled(
+  registry: &mut ObjectRegistry,
+  id: u16,
+  kind: ObjectScheduleKind,
+  direct_control: bool,
+  health: Option<f32>,
+) {
+  registry.insert(ObjectId(id), record(108, None));
+  registry.get_schedules_mut().insert(
+    ObjectId(id),
+    ObjectSchedule {
+      kind,
+      direct_control,
+      updated: None,
+    },
+  );
+
+  if let Some(health) = health {
+    registry
+      .get_creatures_mut()
+      .insert(ObjectId(id), ObjectCreature { health });
   }
 }
 
@@ -100,4 +127,25 @@ fn lets_neither_a_dead_creature_nor_an_empty_ammo_box_go_offline() {
   assert!(!registry.may_go_offline(ObjectId(2)));
   assert!(registry.may_go_offline(ObjectId(3)));
   assert!(!registry.may_go_offline(ObjectId(4)));
+}
+
+#[test]
+fn needs_updating_offline_by_kind_control_and_health() {
+  let mut registry: ObjectRegistry = ObjectRegistry::default();
+
+  scheduled(&mut registry, 0, ObjectScheduleKind::Creature, true, Some(0.7));
+  scheduled(&mut registry, 1, ObjectScheduleKind::Creature, true, Some(0.000_05));
+  scheduled(&mut registry, 2, ObjectScheduleKind::Creature, false, Some(0.7));
+  scheduled(&mut registry, 3, ObjectScheduleKind::SmartZone, true, None);
+  scheduled(&mut registry, 4, ObjectScheduleKind::SmartZone, false, None);
+  scheduled(&mut registry, 5, ObjectScheduleKind::Group, false, None);
+  scheduled(&mut registry, 6, ObjectScheduleKind::Creature, true, Some(0.7));
+  registry.insert(ObjectId(7), record(108, None));
+  registry.bring_online(ObjectId(6), 0);
+
+  let needs: Vec<bool> = (0..8).map(|id| registry.needs_update(ObjectId(id))).collect();
+
+  // A living creature A-Life steers, a smart zone it steers and any group do; one barely alive, one a script steers,
+  // an online one and one with no schedule row do not.
+  assert_eq!(needs, vec![true, false, false, true, false, true, false, false]);
 }

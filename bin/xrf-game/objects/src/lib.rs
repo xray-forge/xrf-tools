@@ -14,5 +14,7 @@ pub use crate::record::object_creature::ObjectCreature;
 pub use crate::record::object_level::ObjectLevel;
 pub use crate::record::object_online::ObjectOnline;
 pub use crate::record::object_record::ObjectRecord;
+pub use crate::record::object_schedule::ObjectSchedule;
+pub use crate::record::object_schedule_kind::ObjectScheduleKind;
 pub use crate::record::object_switching::ObjectSwitching;
 pub use crate::registry::object_registry::ObjectRegistry;

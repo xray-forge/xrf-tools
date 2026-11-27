@@ -41,6 +41,23 @@ fn takes_a_value_out_and_counts_what_is_left() {
 }
 
 #[test]
+fn iterates_from_an_id_on_whether_or_not_it_holds_one() {
+  let mut table: IdMap<u32> = IdMap::default();
+
+  for id in [2, 5, 9] {
+    table.insert(ObjectId(id), u32::from(id));
+  }
+
+  let ids = |from: u16| table.iter_from(ObjectId(from)).map(|(id, _)| id.0).collect::<Vec<_>>();
+
+  assert_eq!(ids(0), vec![2, 5, 9]);
+  assert_eq!(ids(5), vec![5, 9]);
+  assert_eq!(ids(6), vec![9]);
+  assert_eq!(ids(10), Vec::<u16>::new());
+  assert_eq!(ids(ObjectId::NONE), Vec::<u16>::new());
+}
+
+#[test]
 fn reads_xrays_none_as_no_id() {
   assert_eq!(ObjectId::of(0xffff), None);
   assert_eq!(ObjectId::of(0), Some(ObjectId(0)));

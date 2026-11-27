@@ -76,6 +76,18 @@ impl<T> IdMap<T> {
     })
   }
 
+  /// Every value from `id` on with its id, in id order, `id`'s own first if it holds one: where a walk that stopped
+  /// takes up again.
+  pub fn iter_from(&self, id: ObjectId) -> impl Iterator<Item = (ObjectId, &T)> {
+    let start: usize = id.get_index().min(self.slots.len());
+
+    self.slots[start..].iter().zip(start..).filter_map(|(slot, index)| {
+      let value: &T = slot.as_ref()?;
+
+      Some((ObjectId(u16::try_from(index).ok()?), value))
+    })
+  }
+
   /// Every value with its id, in id order, to change.
   pub fn iter_mut(&mut self) -> impl Iterator<Item = (ObjectId, &mut T)> {
     self.slots.iter_mut().enumerate().filter_map(|(index, slot)| {

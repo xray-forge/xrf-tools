@@ -1,4 +1,4 @@
-use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
+use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSchedule, ObjectScheduleKind, ObjectSwitching};
 use xrf_math::glam::Vec3;
 use xrf_spawn::ClsId;
 
@@ -22,6 +22,18 @@ pub(crate) fn object(x: f32, switching: ObjectSwitching) -> ObjectRecord {
     spawn_id: 0,
     switching,
   }
+}
+
+/// Gives `id` a schedule row A-Life steers, of a group, which needs updating whenever it is offline.
+pub(crate) fn schedule(registry: &mut ObjectRegistry, id: u16) {
+  registry.get_schedules_mut().insert(
+    ObjectId(id),
+    ObjectSchedule {
+      kind: ObjectScheduleKind::Group,
+      direct_control: true,
+      updated: None,
+    },
+  );
 }
 
 /// A registry holding `records`, by their place.

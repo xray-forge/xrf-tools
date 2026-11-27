@@ -9,23 +9,30 @@ use crate::record::object_creature::ObjectCreature;
 use crate::record::object_level::ObjectLevel;
 use crate::record::object_online::ObjectOnline;
 use crate::record::object_record::ObjectRecord;
+use crate::record::object_schedule::ObjectSchedule;
+use crate::record::object_schedule_kind::ObjectScheduleKind;
 
 /// The game's objects, X-Ray's object registry as id-keyed tables: the one store systems share. It is data, not a
 /// system: the game's state owns it and hands a system the tables it reads or writes as that system's context, so the
 /// compiler sees who writes what. Beside the records, every object's, stand the concern tables, each holding rows for
-/// the objects it concerns (creatures, ammo), the online table (who is online) and the children index (what each object
-/// holds); a system needing more of some objects adds a table, never a field to every record.
+/// the objects it concerns (creatures, ammo, the schedule), the online table (who is online) and the children index
+/// (what each object holds); a system needing more of some objects adds a table, never a field to every record.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ObjectRegistry {
   levels: Vec<ObjectLevel>,
   records: IdMap<ObjectRecord>,
   creatures: IdMap<ObjectCreature>,
   ammo: IdMap<ObjectAmmo>,
+  schedules: IdMap<ObjectSchedule>,
   online: IdMap<ObjectOnline>,
   children: IdMap<Vec<ObjectId>>,
 }
 
 impl ObjectRegistry {
+  /// The health a creature needs above to be updated offline (`EPS_L`, which `CSE_ALifeMonsterAbstract::need_update`
+  /// compares it with); going offline needs only more than none.
+  const UPDATED_HEALTH: f32 = 0.0001;
+
   /// A new game's objects: every object the spawn places, given ids in the spawn's order as a new game creates them
   /// (a spawn packet's own id is not the object's: X-Ray hands ids out as it creates each, `xrServer::PerformIDgen`),
   /// with the game graph's levels, all offline. A parent is found by its spawn id; objects past the sixteen-bit id space
@@ -70,9 +77,62 @@ impl ObjectRegistry {
           },
         );
       }
+
+      if let Some(kind) = ObjectScheduleKind::of_class(object.object.inherited.get_class()) {
+        let direct_control: bool = object
+          .object
+          .inherited
+          .get_abstract()
+          .is_some_and(|placed| placed.direct_control != 0);
+
+        registry.schedules.insert(
+          *id,
+          ObjectSchedule {
+            kind,
+            direct_control,
+            updated: None,
+          },
+        );
+      }
     }
 
     registry
+  }
+
+  /// The schedule table: a row for each object A-Life may update offline (stalkers, monsters, smart terrains, squads).
+  pub fn get_schedules(&self) -> &IdMap<ObjectSchedule> {
+    &self.schedules
+  }
+
+  pub fn get_schedules_mut(&mut self) -> &mut IdMap<ObjectSchedule> {
+    &mut self.schedules
+  }
+
+  /// Whether A-Life updates `id` offline now: it has a schedule row, it is offline, and by its kind a creature is under
+  /// direct control and alive, a smart zone under direct control, a group always (`need_update` of
+  /// `CSE_ALifeSchedulable`, `CSE_ALifeMonsterAbstract` and `CSE_ALifeOnlineOfflineGroup`). Read from the tables each
+  /// time rather than kept as a list beside them, so it cannot fall out of step with them as X-Ray's schedule registry
+  /// does (Anomaly's engine silences the asserts that catch it).
+  pub fn needs_update(&self, id: ObjectId) -> bool {
+    let Some(schedule) = self.schedules.get(id) else {
+      return false;
+    };
+
+    if self.is_online(id) {
+      return false;
+    }
+
+    match schedule.kind {
+      ObjectScheduleKind::Group => true,
+      ObjectScheduleKind::SmartZone => schedule.direct_control,
+      ObjectScheduleKind::Creature => {
+        schedule.direct_control
+          && self
+            .creatures
+            .get(id)
+            .is_some_and(|creature| creature.health > Self::UPDATED_HEALTH)
+      }
+    }
   }
 
   /// The creatures table: a row for each stalker, monster and the actor.

@@ -1,7 +1,7 @@
 # xrf-game-alife
 
-A-Life, a system of the game loop (`xrf-game-loop`'s `LoopSystem`): which objects are online near the actor, and,
-later, how offline objects live on. Its context (`AlifeContext`) is the object registry (`xrf-game-objects`) and where
+A-Life, a system of the game loop (`xrf-game-loop`'s `LoopSystem`): which objects are online near the actor, and which
+offline objects take their turn to live on. Its context (`AlifeContext`) is the object registry (`xrf-game-objects`) and where
 the actor stands; it reaches nothing else.
 
 Parity is with what the player sees of X-Ray's A-Life, not with its code: its rules are kept where they shape play, its
@@ -34,7 +34,34 @@ and what an online object needs is the business of the systems reading it, off t
 Not yet: squads switch as a group from their members (`CSE_ALifeOnlineOfflineGroup`), and objects on other levels go
 offline at a level change; both are left alone for now.
 
-`Alife` runs the sweep at its first step, then once an update interval of simulated time.
+## The schedule
+
+`AlifeSchedule::update` (`CALifeScheduleRegistry`, `xrGame/alife_schedule_registry.h`, walked by
+`CSafeMapIterator::update`) updates offline objects of every level, a fixed number an update (`objects_per_update`: 10
+for Call of Pripyat, 20 for Anomaly):
+
+- the objects it may update have a row in the registry's schedule table, from their class: stalkers and monsters,
+  smart terrains (and Clear Sky's factions), squads (`ObjectScheduleKind`);
+- one needs updating while it is offline, and a creature while A-Life steers it and it is alive, a smart terrain while
+  A-Life steers it, a squad always (`ObjectRegistry::needs_update`, X-Ray's `need_update`);
+- the walk runs in id order from where the last update stopped, wraps round once at most, and never takes an object
+  twice in an update; each object taken is stamped with the tick, so what it does offline can read how long it waited.
+
+With many objects each waits its turn, so an offline squad moves at X-Ray's cadence. Not carried over: X-Ray keeps who
+needs updating as a list beside the objects, added to and taken from as they switch, die or join a squad, which falls
+out of step with them (Anomaly's engine silences the asserts that catch it); here it is read from the tables as the
+walk reaches each object. X-Ray's `mtALife` runs the update on another thread beside the scripts; here it is a step of
+the loop's thread, the same every run. No wall-time budget either: X-Ray's `process_time` never limits the walk, and
+the plan's decision 24 keeps every step on tick time.
+
+Not yet: nothing acts on an update (graph movement, a squad's or a smart terrain's choices come as modules that run
+on each object taken), and a squad's members are not left to it, since no squad has members until squads are built.
+
+## The update
+
+`Alife` updates at its first step, then once an update interval of simulated time: the switch sweeps the current level,
+then the schedule runs, as `CALifeUpdateManager::update` orders them. With the actor on no level the graph holds, the
+switch rests and the schedule runs on.
 
 ## Checks
 
