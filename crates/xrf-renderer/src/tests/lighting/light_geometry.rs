@@ -4,12 +4,15 @@ use xrf_engine_target::XrayEngine;
 use xrf_light_anim::{LightAnimItem, LightAnimKey};
 use xrf_math::Vector3d;
 use xrf_math::glam::{Vec3, Vec4};
-use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind, LightVolumetric};
+use xrf_visual::{
+  LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind, LightSource, LightVolumetric,
+};
 
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
 use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
 use crate::lighting::lamp::light_animation::{get_animated_color, get_interpolated_color};
 use crate::lighting::lamp::light_basis::LightBasis;
+use crate::lighting::lamp::light_bulb::get_bulb_radius;
 use crate::lighting::lamp::light_shadow_size::get_light_shadow_tile_size;
 use crate::scene::level::lights::level_lights::LevelLights;
 use crate::tests::support::test_time::at;
@@ -50,8 +53,7 @@ fn point() -> LightDescription {
     animator: None,
     animator_scale: 0.0,
     is_shadowed: false,
-    is_level: false,
-    campfire: None,
+    source: LightSource::Lamp,
     motion: None,
     zone_sphere: None,
     is_detector_hidden: false,
@@ -282,6 +284,19 @@ fn light_intensity_averages_the_colours_mean_and_luminance() {
     LightBasis::get_light_intensity(Vec3::Y),
     f32::midpoint(1.0 / 3.0, 0.7154)
   ));
+}
+
+// A light leaves from what gives it: a lamp's or the level file's bulb, an artefact, a campfire's bed or an anomaly's
+// glow, a plain zone's as much as a torrid one's.
+#[test]
+fn light_bulb_takes_its_sources_size() {
+  let of = |source: LightSource| get_bulb_radius(&LightDescription { source, ..point() });
+
+  assert_eq!(of(LightSource::Lamp), 0.05);
+  assert_eq!(of(LightSource::Level), 0.05);
+  assert_eq!(of(LightSource::Artefact), 0.15);
+  assert_eq!(of(LightSource::Campfire { id: 7 }), 0.25);
+  assert_eq!(of(LightSource::Zone), 0.5);
 }
 
 #[test]

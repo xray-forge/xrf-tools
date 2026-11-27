@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use xrf_math::glam::{Vec3, Vec4};
 use xrf_math::{Vector3d, glam};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
-use xrf_visual::{LightDescription, LightKind};
+use xrf_visual::{LightDescription, LightKind, LightSource};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
@@ -37,8 +37,7 @@ fn light(kind: LightKind, x: f32) -> LightDescription {
     animator: None,
     animator_scale: 0.0,
     is_shadowed: true,
-    is_level: false,
-    campfire: None,
+    source: LightSource::Lamp,
     motion: None,
     zone_sphere: None,
     is_detector_hidden: false,

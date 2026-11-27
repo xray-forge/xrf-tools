@@ -15,6 +15,7 @@ use xrf_spawn::{
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
+use crate::data::lights::light_source::LightSource;
 use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::lights_description::LightsDescription;
 use crate::data::lights::zone_sphere::ZoneSphere;
@@ -164,7 +165,7 @@ fn places_a_spot_on_its_bone_turned_with_the_object_into_renderer_space() {
   assert_eq!(light.cone, 2.0);
   assert_eq!(light.near, 0.1);
   assert!(light.is_shadowed);
-  assert!(!light.is_level);
+  assert_eq!(light.source, LightSource::Lamp);
   // No projector of its own: the engine's default.
   assert_eq!(light.projector, Some(0));
   assert_eq!(description.projectors, vec![String::from("lights\\lights_spot01")]);
@@ -203,6 +204,7 @@ fn adds_the_ambient_point_on_its_own_bone_at_the_ambient_power_unshadowed() {
   assert_eq!(ambient.range, 3.0);
   assert_eq!(ambient.color, main.color.map(|channel| channel * 0.25));
   assert!(!ambient.is_shadowed);
+  assert_eq!(ambient.source, LightSource::Lamp);
   assert_eq!(ambient.animator_scale, main.animator_scale * 0.25);
 }
 
@@ -359,7 +361,7 @@ fn keeps_the_level_files_point_lights_and_leaves_its_sun() {
   assert_eq!(only.color, [0.5, 0.25, 1.0]);
   assert_eq!(only.range, 12.0);
   assert!(only.is_shadowed);
-  assert!(only.is_level);
+  assert_eq!(only.source, LightSource::Level);
   // The level's own lights never set their shafts, so not even Monolith's forcing gives them any.
   assert_eq!(only.volumetric, None);
 }
@@ -482,7 +484,7 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   // `idle_light_shadow` is on unless the section says otherwise.
   assert!(fire.is_shadowed);
   // A `Z_CFIRE` section's light switches with its campfire.
-  assert_eq!(fire.campfire, Some(7));
+  assert_eq!(fire.source, LightSource::Campfire { id: 7 });
   assert_eq!(fire.motion, None);
 }
 
@@ -741,6 +743,8 @@ fn sets_a_zones_shafts_only_where_its_section_asks() {
   };
 
   assert_eq!(fire.volumetric, None);
+  // A zone of any class but `Z_CFIRE` gives a zone's light, which no campfire switches.
+  assert_eq!(volumetric.source, LightSource::Zone);
   assert_eq!(
     volumetric.volumetric,
     Some(LightVolumetric {
@@ -810,7 +814,7 @@ fn lights_each_artefact_its_section_lights_at_its_origin_without_its_visual() {
   assert_eq!(lit.range_jitter, 0.0);
   assert_eq!(lit.animator, None);
   assert!(!lit.is_shadowed);
-  assert!(!lit.is_level);
+  assert_eq!(lit.source, LightSource::Artefact);
   assert_eq!(lit.volumetric, None);
   assert_close(&junk.position, vector(20.0, 2.0, -5.0));
   assert_eq!(junk.color, [0.4, 0.4, 0.4]);

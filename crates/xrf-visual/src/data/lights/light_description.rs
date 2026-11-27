@@ -2,6 +2,7 @@ use xrf_math::Vector3d;
 
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
+use crate::data::lights::light_source::LightSource;
 use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::zone_sphere::ZoneSphere;
 
@@ -31,11 +32,8 @@ pub struct LightDescription {
   pub animator_scale: f32,
   /// Whether it casts shadows, which also has it fade and drop out with distance as the engine's shadowed lights do.
   pub is_shadowed: bool,
-  /// Whether it is one of the level file's own lights, which the engine draws only with `r2_allow_r1_lights`.
-  pub is_level: bool,
-  /// The spawned campfire (`CZoneCampfire`) whose switching fades it, by the object's id: its idle light. None for any
-  /// other light.
-  pub campfire: Option<u16>,
+  /// What gives it: a lamp, the level file, a zone, a campfire or an artefact.
+  pub source: LightSource,
   /// The motion carrying its zone, which moves it each frame: a torrid zone's idle light. None for a light that stands.
   pub motion: Option<LightMotion>,
   /// Its zone's sphere in renderer space, offset from the light: a torrid zone's idle light, which goes out while the

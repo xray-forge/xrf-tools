@@ -13,6 +13,7 @@ use crate::data::lights::light_animator_description::LightAnimatorDescription;
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
+use crate::data::lights::light_source::LightSource;
 use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::lights_description::LightsDescription;
 use crate::data::lights::zone_sphere::ZoneSphere;
@@ -119,8 +120,7 @@ impl<'a> LightsPacker<'a> {
         animator: None,
         animator_scale: 0.0,
         is_shadowed: true,
-        is_level: true,
-        campfire: None,
+        source: LightSource::Level,
         motion: None,
         zone_sphere: None,
         is_detector_hidden: false,
@@ -190,8 +190,7 @@ impl<'a> LightsPacker<'a> {
       is_shadowed: section
         .and_then(|it| it.get_bool("shadow"))
         .unwrap_or_else(|| lamp.casts_shadow()),
-      is_level: false,
-      campfire: None,
+      source: LightSource::Lamp,
       motion: None,
       zone_sphere: None,
       is_detector_hidden: false,
@@ -218,8 +217,7 @@ impl<'a> LightsPacker<'a> {
         animator,
         animator_scale: lamp.main_brightness / 255.0 * lamp.ambient_power,
         is_shadowed: section.and_then(|it| it.get_bool("ambient_shadow")).unwrap_or(false),
-        is_level: false,
-        campfire: None,
+        source: LightSource::Lamp,
         motion: None,
         zone_sphere: None,
         is_detector_hidden: false,
@@ -292,9 +290,11 @@ impl<'a> LightsPacker<'a> {
       animator: Some(animator),
       animator_scale: 1.0 / 255.0,
       is_shadowed,
-      is_level: false,
-      campfire: (section.get("class").and_then(ClsId::from_class_name) == Some(ClsId::ZCFire))
-        .then_some(object.header.id),
+      source: if section.get("class").and_then(ClsId::from_class_name) == Some(ClsId::ZCFire) {
+        LightSource::Campfire { id: object.header.id }
+      } else {
+        LightSource::Zone
+      },
       zone_sphere: torrid
         .and_then(|zone| ZoneSphere::of_custom_zone(&zone.base, (&object.header.position, &object.header.direction)))
         .map(|sphere| sphere.to_renderer_space(height)),
@@ -366,8 +366,7 @@ impl<'a> LightsPacker<'a> {
       animator: None,
       animator_scale: 0.0,
       is_shadowed: section.get_bool("idle_light_shadow").unwrap_or(false),
-      is_level: false,
-      campfire: None,
+      source: LightSource::Artefact,
       motion: None,
       zone_sphere: None,
       is_detector_hidden: AlifeObjectItemArtefact::is_detector_hidden(section),

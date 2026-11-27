@@ -4,7 +4,7 @@ use std::sync::Arc;
 use xrf_math::glam::{Vec2, Vec3, Vec4};
 use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{GraphDeclaration, ProxyHandle, ProxyStore};
-use xrf_visual::{LightAnimatorDescription, LightDescription, LightVolumetric, LightsDescription};
+use xrf_visual::{LightAnimatorDescription, LightDescription, LightSource, LightVolumetric, LightsDescription};
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
@@ -144,7 +144,7 @@ impl LevelLights {
     for light in lights.lights {
       let is_moving: bool = light.motion.is_some();
 
-      if light.campfire.is_some() {
+      if light.source.get_campfire().is_some() {
         self.fires.push(Vec2::new(light.position.x, light.position.z));
       }
 
@@ -253,12 +253,13 @@ impl LevelLights {
     self
       .lights
       .iter()
-      .filter(|(_, light)| settings.is_level_lights || !light.is_level)
+      .filter(|(_, light)| settings.is_level_lights || light.source != LightSource::Level)
       .filter(|(_, light)| gates.is_detector_hidden_lit || !light.is_detector_hidden)
       .filter_map(|(handle, light)| {
         // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
         let share: f32 = light
-          .campfire
+          .source
+          .get_campfire()
           .map_or(1.0, |id| gates.campfire_shares.get(&id).copied().unwrap_or(1.0));
 
         if share <= 0.0 {

@@ -227,7 +227,11 @@ impl LevelStreaming {
     }
 
     if let Some(lights) = self.lights.take() {
-      self.light_campfires = lights.lights.iter().filter_map(|light| light.campfire).collect();
+      self.light_campfires = lights
+        .lights
+        .iter()
+        .filter_map(|light| light.source.get_campfire())
+        .collect();
       self.light_motions = lights
         .lights
         .iter()
