@@ -1,7 +1,9 @@
+use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
 use crate::clock::loop_clock::LoopClock;
+use crate::feed::loop_status::LoopStatus;
 use crate::loop_stepper::LoopStepper;
 use crate::tests::test_state::{TestCommand, TestFrame, TestState};
 use crate::thread::game_loop::GameLoop;
@@ -52,11 +54,68 @@ fn steps_on_its_thread_and_takes_commands_until_dropped() {
   }
 
   let sender = thread.get_sender();
+  let feed = Arc::clone(thread.get_feed());
 
   drop(thread);
 
-  // Stopped, it takes no more.
+  // Stopped, it takes no more, and says it stopped.
   assert!(sender.send(TestCommand::Add(1.0)).is_err());
+  assert_eq!(feed.get_status(), LoopStatus::Stopped);
+}
+
+#[test]
+fn queues_every_steps_events_in_tick_order() {
+  let thread: GameLoop<TestState> = start();
+
+  thread
+    .get_sender()
+    .send(TestCommand::SetSpeed(1.0))
+    .expect("the thread takes commands");
+  wait_past(&thread, 20);
+
+  let events = thread.get_events().take();
+  let ticks: Vec<u64> = events.iter().map(|event| event.tick).collect();
+
+  // One a step, none skipped however rarely they are taken: the value rises by one each tick after the speed is set.
+  assert!(ticks.len() >= 20);
+  assert!(ticks.windows(2).all(|pair| pair[1] == pair[0] + 1), "{ticks:?}");
+  assert!(events.windows(2).all(|pair| pair[1].event - pair[0].event <= 1.0));
+}
+
+#[test]
+fn stops_on_a_steps_fault_and_says_why() {
+  let thread: GameLoop<TestState> = start();
+
+  wait_past(&thread, 2);
+  thread
+    .get_sender()
+    .send(TestCommand::Fail)
+    .expect("the thread takes commands");
+
+  let deadline: Instant = Instant::now() + WAIT;
+
+  let status: LoopStatus = loop {
+    let status: LoopStatus = thread.get_feed().get_status();
+
+    if status != LoopStatus::Running {
+      break status;
+    }
+
+    assert!(Instant::now() < deadline, "the loop never faulted");
+    std::thread::sleep(Duration::from_millis(1));
+  };
+
+  assert!(
+    matches!(&status, LoopStatus::Faulted { message, .. } if message.contains("told to fail")),
+    "{status:?}"
+  );
+  // It steps no further, so no command reaches it.
+  assert!(
+    thread
+      .snapshot(|stepper| stepper.get_time().tick)
+      .recv_timeout(WAIT)
+      .is_err()
+  );
 }
 
 #[test]

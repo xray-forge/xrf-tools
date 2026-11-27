@@ -11,8 +11,12 @@ mod tests;
 
 pub use crate::clock::loop_clock::LoopClock;
 pub use crate::clock::loop_time::LoopTime;
+pub use crate::feed::loop_event::LoopEvent;
+pub use crate::feed::loop_events::LoopEvents;
 pub use crate::feed::loop_feed::LoopFeed;
 pub use crate::feed::loop_frame::LoopFrame;
+pub use crate::feed::loop_read::LoopRead;
+pub use crate::feed::loop_status::LoopStatus;
 pub use crate::loop_stepper::LoopStepper;
 pub use crate::state::loop_blend::LoopBlend;
 pub use crate::state::loop_state::LoopState;

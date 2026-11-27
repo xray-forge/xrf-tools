@@ -102,7 +102,7 @@ impl GameDeveloper {
     &mut self,
     game_view: &GameView,
     view: DeveloperView,
-    latest: Option<LoopFrame<GameFrame>>,
+    latest: Option<&LoopFrame<GameFrame>>,
     loading: Option<&DeveloperLoading>,
   ) {
     let now: Instant = Instant::now();

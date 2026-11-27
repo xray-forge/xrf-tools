@@ -41,14 +41,16 @@ fn run(alife: &mut Alife, objects: &mut ObjectRegistry, run: Run) -> Vec<u64> {
     };
     let before = *alife.get_last_switch();
 
-    alife.step(
-      &time,
-      AlifeContext {
-        objects,
-        level: run.level,
-        actor: Vec3::new(run.actor_x, 0.0, 0.0),
-      },
-    );
+    alife
+      .step(
+        &time,
+        AlifeContext {
+          objects,
+          level: run.level,
+          actor: Vec3::new(run.actor_x, 0.0, 0.0),
+        },
+      )
+      .expect("A-Life steps");
 
     if tick == 0 || *alife.get_last_switch() != before {
       swept.push(tick);

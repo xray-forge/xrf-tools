@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 pub(crate) mod camera;
+pub(crate) mod event;
 pub(crate) mod input;
 pub(crate) mod mode;
 pub(crate) mod movement;
@@ -12,6 +13,8 @@ mod tests;
 
 pub use crate::camera::movement_camera::MovementCamera;
 pub use crate::camera::movement_heading::MovementHeading;
+pub use crate::event::movement_event::MovementEvent;
+pub use crate::event::movement_step::MovementStep;
 pub use crate::input::movement_action::MovementAction;
 pub use crate::input::movement_input::MovementInput;
 pub use crate::input::movement_input_kind::MovementInputKind;
@@ -24,6 +27,7 @@ pub use crate::mode::walk_mode::WalkMode;
 pub use crate::mode::walk_pace::WalkPace;
 pub use crate::mode::walk_stance::WalkStance;
 pub use crate::mode::walk_state::WalkState;
+pub use crate::mode::walk_strides::WalkStrides;
 pub use crate::movement::Movement;
 pub use crate::movement_command::MovementCommand;
 pub use crate::movement_context::MovementContext;

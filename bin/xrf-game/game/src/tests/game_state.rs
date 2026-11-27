@@ -1,11 +1,13 @@
+use std::f32::consts::FRAC_PI_2;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
-use xrf_game_loop::{GameLoop, LoopClock, LoopFeed, LoopFrame, LoopStepper};
+use xrf_game_loop::{GameLoop, LoopClock, LoopFeed, LoopFrame, LoopRead, LoopStepper};
 use xrf_game_movement::Movement;
 use xrf_game_movement::{
-  MovementAction, MovementCamera, MovementCommand, MovementInput, MovementInputKind, MovementMode, MovementModes,
+  MovementAction, MovementCamera, MovementCommand, MovementHeading, MovementInput, MovementInputKind, MovementMode,
+  MovementModes,
 };
 use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
 use xrf_math::glam::Vec3;
@@ -13,6 +15,7 @@ use xrf_physics::PhysicsWorld;
 use xrf_spawn::ClsId;
 use xrf_world::{WorldFedCamera, WorldFedView, WorldViewFeed};
 
+use crate::input::game_look::GameLook;
 use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
 use crate::state::game_level_entry::GameLevelEntry;
@@ -124,7 +127,9 @@ fn routes_a_command_to_its_system_and_publishes_the_camera() {
   let mut stepper: LoopStepper<GameState> = stepper();
   let camera: MovementCamera = MovementCamera::looking_at(Vec3::new(1.0, 2.0, 3.0), Vec3::new(1.0, 2.0, 9.0));
 
-  stepper.step([GameCommand::Movement(MovementCommand::SetCamera(camera))]);
+  stepper
+    .step([GameCommand::Movement(MovementCommand::SetCamera(camera))])
+    .expect("a step");
 
   assert_eq!(stepper.get_frame().state.camera, camera);
   assert_eq!(*stepper.get_state().movement.get_camera(), camera);
@@ -136,7 +141,7 @@ fn runs_the_games_own_time_by_its_ticks() {
   let start: f32 = stepper.get_frame().state.time_of_day;
 
   for _ in 0..100 {
-    stepper.step([]);
+    stepper.step([]).expect("a step");
   }
 
   // A simulated second at ten game seconds a second.
@@ -145,13 +150,14 @@ fn runs_the_games_own_time_by_its_ticks() {
 }
 
 #[test]
-fn feeds_the_world_the_loops_camera_through_its_lens_and_the_games_day() {
+fn feeds_the_world_the_latest_tick_facing_the_look_through_its_lens_and_the_games_day() {
   let feed: Arc<LoopFeed<GameFrame>> = Arc::new(LoopFeed::default());
+  let look: Arc<GameLook> = Arc::new(GameLook::default());
   let lens: WorldFedCamera = WorldFedCamera {
     field_of_view: 75.0,
     ..WorldFedCamera::default()
   };
-  let view: GameViewFeed = GameViewFeed::new(Arc::clone(&feed), lens);
+  let view: GameViewFeed = GameViewFeed::new(Arc::clone(&feed), Arc::clone(&look), lens);
   let now: Instant = Instant::now();
 
   // Before the loop's first frame, the lens alone and the viewport's own clock.
@@ -165,15 +171,22 @@ fn feeds_the_world_the_loops_camera_through_its_lens_and_the_games_day() {
 
   let mut stepper: LoopStepper<GameState> = stepper();
 
-  stepper.step([GameCommand::Movement(MovementCommand::SetCamera(
-    MovementCamera::looking_at(Vec3::new(4.0, 5.0, 6.0), Vec3::new(5.0, 5.0, 6.0)),
-  ))]);
+  stepper
+    .step([GameCommand::Movement(MovementCommand::SetCamera(
+      MovementCamera::looking_at(Vec3::new(4.0, 5.0, 6.0), Vec3::new(5.0, 5.0, 6.0)),
+    ))])
+    .expect("a step");
   feed.publish(now, stepper.get_frame());
+  // Presentation turned the look a quarter since: the view faces it at once, before any tick took it.
+  look.face(MovementHeading {
+    yaw: -FRAC_PI_2,
+    pitch: 0.0,
+  });
 
   let read: WorldFedView = view.read(now);
 
   assert_near(read.camera.position, Vec3::new(4.0, 5.0, 6.0));
-  assert_near(read.camera.forward, Vec3::X);
+  assert_near(read.camera.forward, -Vec3::X);
   assert_near(read.camera.up, Vec3::Y);
   assert_eq!(read.camera.field_of_view, 75.0);
 
@@ -184,40 +197,85 @@ fn feeds_the_world_the_loops_camera_through_its_lens_and_the_games_day() {
 }
 
 #[test]
+fn carries_the_players_view_forward_from_its_tick_by_how_fast_it_moved() {
+  let feed: Arc<LoopFeed<GameFrame>> = Arc::new(LoopFeed::default());
+  let view: GameViewFeed = GameViewFeed::new(
+    Arc::clone(&feed),
+    Arc::new(GameLook::default()),
+    WorldFedCamera::default(),
+  );
+  let mut stepper: LoopStepper<GameState> = stepper();
+  let at: Instant = Instant::now();
+
+  // Flying forward along `+z` at 10 m/s.
+  stepper.step([press_forward()]).expect("a step");
+  stepper.step([]).expect("a step");
+  feed.publish(at, stepper.get_frame());
+
+  let tick: Vec3 = stepper.get_frame().state.camera.position;
+  let read = |after: Duration| -> Vec3 {
+    let read: LoopRead<GameFrame> = feed.read(at + after).expect("a frame");
+
+    view.get_camera(&read, at + after).position
+  };
+
+  assert_near(read(Duration::ZERO), tick);
+  // 5 ms after its tick, 5 cm further on.
+  assert_near(read(Duration::from_millis(5)), tick + Vec3::new(0.0, 0.0, 0.05));
+  // A stalled loop holds the view 50 ms on rather than drifting away.
+  assert_near(read(Duration::from_secs(1)), tick + Vec3::new(0.0, 0.0, 0.5));
+}
+
+#[test]
 fn runs_the_day_forward_across_midnight_between_frames() {
   let frame = |time_of_day: f32| GameFrame {
     camera: MovementCamera::default(),
-    footing: None,
+    velocity: Vec3::ZERO,
     time_of_day,
     time_factor: 10.0,
-    objects: 0,
-    online: 0,
-    squads: 0,
-    members: 0,
+    poses: Vec::new(),
   };
-  let blended: GameFrame = xrf_game_loop::LoopBlend::blend(&frame(86_399.0), &frame(1.0), 0.5);
+  let time: f32 = frame(86_399.0).blend_time_of_day(&frame(1.0), 0.5);
 
-  assert!(
-    blended.time_of_day.abs() < 1e-2,
-    "{} is not midnight",
-    blended.time_of_day
-  );
+  assert!(time.abs() < 1e-2, "{time} is not midnight");
+}
+
+#[test]
+fn turns_the_look_as_the_mouse_moves_and_sends_it_once_a_change() {
+  let look: GameLook = GameLook::default();
+  let quarter: f32 = FRAC_PI_2 / GameLook::SENSITIVITY;
+
+  // Moved right turns right: a quarter turn faces `+x`.
+  look.turn(quarter, 0.0);
+  assert!(look.get().get_rotation().mul_vec3(Vec3::Z).abs_diff_eq(Vec3::X, 1e-4));
+  assert_eq!(look.take_changed(), Some(look.get()));
+  assert_eq!(look.take_changed(), None);
+
+  // Moved down looks down, held just short of straight down.
+  look.turn(0.0, quarter * 3.0);
+  assert!((look.get().pitch - MovementHeading::MOST_PITCH).abs() < 1e-4);
+
+  // Facing where the simulation was stood sends nothing back.
+  look.face(MovementHeading::default());
+  assert_eq!(look.take_changed(), None);
 }
 
 #[test]
 fn switches_objects_online_around_the_player_as_it_flies_and_writes_its_record() {
   let mut stepper: LoopStepper<GameState> = stepper();
 
-  stepper.step([]);
+  stepper.step([]).expect("a step");
 
-  // Within 135 m of the origin: the objects at 0 to 120 m, and the player.
-  assert_eq!(stepper.get_frame().state.online, 8);
+  // Within 135 m of the origin: the objects at 0 to 120 m, and the player, posed in id order.
+  let poses: Vec<u16> = stepper.get_frame().state.poses.iter().map(|pose| pose.id.0).collect();
+
+  assert_eq!(poses, vec![0, 1, 2, 3, 4, 5, 6, 50]);
 
   // Fly forward at 10 m/s for 30 s; A-Life sweeps every 265 ms on the way.
-  stepper.step([press_forward()]);
+  stepper.step([press_forward()]).expect("a step");
 
   for _ in 0..3_000 {
-    stepper.step([]);
+    stepper.step([]).expect("a step");
   }
 
   let camera_z: f32 = stepper.get_frame().state.camera.position.z;
@@ -250,7 +308,10 @@ fn steps_a_recorded_session_to_the_same_frames_and_state_every_time() {
           is_pressed: true,
         },
       )],
-      100 => vec![input(tick * 10, MovementInputKind::Look { dx: 120.0, dy: -15.0 })],
+      100 => vec![MovementCommand::Face(MovementHeading {
+        yaw: tick as f32 * 0.001,
+        pitch: -0.04,
+      })],
       200 => vec![input(
         tick * 10,
         MovementInputKind::Action {
@@ -266,7 +327,9 @@ fn steps_a_recorded_session_to_the_same_frames_and_state_every_time() {
     let frames: Vec<LoopFrame<GameFrame>> = session
       .iter()
       .map(|commands| {
-        stepper.step(commands.iter().copied().map(GameCommand::Movement));
+        stepper
+          .step(commands.iter().copied().map(GameCommand::Movement))
+          .expect("a step");
         stepper.get_frame()
       })
       .collect();
@@ -287,7 +350,7 @@ fn steps_a_recorded_session_to_the_same_frames_and_state_every_time() {
   assert!(
     first_frames
       .iter()
-      .any(|frame| frame.state.online != first_frames[0].state.online)
+      .any(|frame| frame.state.poses.len() != first_frames[0].state.poses.len())
   );
 }
 

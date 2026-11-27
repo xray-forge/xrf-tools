@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use xrf_error::XrfResult;
-use xrf_math::glam::{Vec2, Vec3};
+use xrf_math::glam::Vec3;
 use xrf_physics::{PhysicsActorId, PhysicsActorSettings, PhysicsActorState, PhysicsGround, PhysicsWorld};
 
 use crate::camera::movement_camera::MovementCamera;
@@ -13,7 +13,7 @@ use crate::mode::walk_pace::WalkPace;
 use crate::mode::walk_stance::WalkStance;
 use crate::mode::walk_state::WalkState;
 
-/// On foot, as X-Ray's actor moves: the mouse turns the view as in flight; forward, back and sideways run along the
+/// On foot, as X-Ray's actor moves: the view faces as presentation turned it; forward, back and sideways run along the
 /// ground unless accel is held, which walks; a toggled sprint runs faster forward; up jumps; down crouches, low with
 /// accel held; the physics world keeps the actor on the level.
 ///
@@ -42,8 +42,6 @@ pub struct WalkMode {
   pub air_control: f32,
   /// Metres a second up a jump starts at: `jump_speed`.
   pub jump_speed: f32,
-  /// Radians a count of the mouse turns by.
-  pub sensitivity: f32,
   /// The actor's height crouched, metres: `ph_box1`.
   pub crouch_height: f32,
   /// The actor's height crouched low, metres: `ph_box2`.
@@ -69,7 +67,6 @@ impl Default for WalkMode {
       run_strafe: 1.0,
       air_control: 0.02,
       jump_speed: 6.85,
-      sensitivity: 0.0025,
       crouch_height: 1.34,
       low_height: 0.44,
       eye_factor: 0.92,
@@ -106,8 +103,8 @@ impl WalkMode {
     }
   }
 
-  /// Turns `camera` by the mouse's counts since the last step, then moves the actor by what is held for `step` in
-  /// `physics`, putting one there at the camera's feet first where `state` holds none; the camera ends at its eye.
+  /// Moves the actor along where `camera` faces by what is held for `step` in `physics`, putting one there at the
+  /// camera's feet first where `state` holds none; the camera ends at its eye, facing as it did.
   ///
   /// # Errors
   ///
@@ -120,9 +117,7 @@ impl WalkMode {
     physics: &mut PhysicsWorld,
     step: Duration,
   ) -> XrfResult {
-    let look: Vec2 = input.take_look() * self.sensitivity;
-    // The mouse moved right turns right and moved down looks down.
-    let heading: MovementHeading = camera.get_heading().turned(look.x, look.y);
+    let heading: MovementHeading = camera.get_heading();
     let actor: PhysicsActorId = match state.actor {
       Some(actor) => actor,
       None => {

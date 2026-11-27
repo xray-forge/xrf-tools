@@ -93,12 +93,14 @@ impl LogSetup {
     Self::log_panics();
   }
 
-  /// Writes a panic to the log before the default hook reports it, which a release build without a console would lose.
+  /// Writes a panic to the log, flushed, before the default hook reports it: a release build without a console would
+  /// lose it, and one that aborts on panic stops before any later flush.
   fn log_panics() {
     let default = panic::take_hook();
 
     panic::set_hook(Box::new(move |info| {
       log::error!("Panicked: {info}");
+      log::logger().flush();
       default(info);
     }));
   }

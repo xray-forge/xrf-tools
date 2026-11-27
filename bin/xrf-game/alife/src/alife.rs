@@ -1,6 +1,7 @@
 use std::convert::Infallible;
 use std::time::{Duration, Instant};
 
+use xrf_error::XrfResult;
 use xrf_game_loop::{LoopSystem, LoopTime};
 
 use crate::alife_context::AlifeContext;
@@ -66,11 +67,11 @@ impl LoopSystem for Alife {
     match command {}
   }
 
-  fn step(&mut self, time: &LoopTime, context: AlifeContext<'_>) {
+  fn step(&mut self, time: &LoopTime, context: AlifeContext<'_>) -> XrfResult<()> {
     self.until_update = self.until_update.saturating_sub(time.step);
 
     if !self.until_update.is_zero() {
-      return;
+      return Ok(());
     }
 
     self.until_update = self.settings.get_update_interval();
@@ -118,5 +119,7 @@ impl LoopSystem for Alife {
         time.tick
       );
     }
+
+    Ok(())
   }
 }

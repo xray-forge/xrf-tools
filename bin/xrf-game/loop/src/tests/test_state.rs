@@ -1,5 +1,6 @@
+use xrf_error::{XrfError, XrfResult};
+
 use crate::clock::loop_time::LoopTime;
-use crate::state::loop_blend::LoopBlend;
 use crate::state::loop_state::LoopState;
 use crate::state::loop_system::LoopSystem;
 
@@ -11,11 +12,12 @@ pub(crate) struct TestState {
 }
 
 /// A system that adds the numbers it is sent and moves its value on by the speed it is handed, recording the ticks it
-/// saw.
+/// saw; told to fail, its next step faults.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct TestCounter {
   pub value: f32,
   pub ticks: Vec<u64>,
+  pub is_failing: bool,
 }
 
 /// A command to the test state.
@@ -23,17 +25,12 @@ pub(crate) struct TestCounter {
 pub(crate) enum TestCommand {
   Add(f32),
   SetSpeed(f32),
+  Fail,
 }
 
 /// The test state's value as published.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct TestFrame(pub f32);
-
-impl LoopBlend for TestFrame {
-  fn blend(&self, next: &Self, alpha: f32) -> Self {
-    Self(self.0 + (next.0 - self.0) * alpha)
-  }
-}
 
 impl LoopSystem for TestCounter {
   type Command = f32;
@@ -43,25 +40,37 @@ impl LoopSystem for TestCounter {
     self.value += value;
   }
 
-  fn step(&mut self, time: &LoopTime, speed: &f32) {
+  fn step(&mut self, time: &LoopTime, speed: &f32) -> XrfResult<()> {
+    if self.is_failing {
+      return Err(XrfError::new_unexpected_error("the counter was told to fail"));
+    }
+
     self.value += speed;
     self.ticks.push(time.tick);
+
+    Ok(())
   }
 }
 
 impl LoopState for TestState {
   type Command = TestCommand;
   type Frame = TestFrame;
+  /// The value each step left, told every step.
+  type Event = f32;
 
   fn apply(&mut self, command: TestCommand) {
     match command {
       TestCommand::Add(value) => self.counter.apply(value),
       TestCommand::SetSpeed(speed) => self.speed = speed,
+      TestCommand::Fail => self.counter.is_failing = true,
     }
   }
 
-  fn step(&mut self, time: &LoopTime) {
-    self.counter.step(time, &self.speed);
+  fn step(&mut self, time: &LoopTime, events: &mut Vec<f32>) -> XrfResult<()> {
+    self.counter.step(time, &self.speed)?;
+    events.push(self.counter.value);
+
+    Ok(())
   }
 
   fn get_frame(&self) -> TestFrame {

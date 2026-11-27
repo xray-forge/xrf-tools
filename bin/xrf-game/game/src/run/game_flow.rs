@@ -5,6 +5,7 @@ use xrf_error::XrfResult;
 use xrf_game_developer::DeveloperLoading;
 
 use crate::developer::game_developer::GameDeveloper;
+use crate::input::game_look::GameLook;
 use crate::load::game_load_progress::GameLoadProgress;
 use crate::load::game_loading::GameLoading;
 use crate::load::game_opened::GameOpened;
@@ -22,6 +23,8 @@ pub(crate) struct GameFlow {
   loading: Option<GameLoading>,
   opening: Option<GameOpening>,
   running: Option<GameRunning>,
+  /// Which way the player looks, which presentation turns and the view draws, whichever game runs.
+  look: Arc<GameLook>,
 }
 
 impl GameFlow {
@@ -40,7 +43,12 @@ impl GameFlow {
       loading: Some(GameLoading::new(&request.level, Arc::clone(&progress))),
       opening: Some(GameOpening::start(request.clone(), pool, progress)?),
       running: None,
+      look: Arc::new(GameLook::default()),
     })
+  }
+
+  pub(crate) fn get_look(&self) -> &Arc<GameLook> {
+    &self.look
   }
 
   pub(crate) fn get_stage(&self) -> GameFlowStage {
@@ -78,7 +86,7 @@ impl GameFlow {
         GameOpened::Picture(picture) => developer.set_loading_picture(&picture),
         GameOpened::Session(session) => {
           self.opening = None;
-          self.running = Some(GameRunning::start((*session)?, view)?);
+          self.running = Some(GameRunning::start((*session)?, view, &self.look)?);
         }
       }
     }

@@ -1,21 +1,19 @@
 use std::time::Duration;
 
-use xrf_math::glam::{Vec2, Vec3};
+use xrf_math::glam::Vec3;
 
 use crate::camera::movement_camera::MovementCamera;
 use crate::input::movement_action::MovementAction;
 use crate::input::movement_input_state::MovementInputState;
 
-/// A free camera, as a spectator flies: the mouse turns it, forward and back fly where it looks, sideways along its
-/// right, up and down straight up and down, through everything.
+/// A free camera, as a spectator flies: it faces as presentation turned it, forward and back fly where it looks,
+/// sideways along its right, up and down straight up and down, through everything.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FlyMode {
   /// Metres a second.
   pub speed: f32,
   /// What the speed is multiplied by while the accel action is held.
   pub boost: f32,
-  /// Radians a count of the mouse turns by.
-  pub sensitivity: f32,
 }
 
 impl Default for FlyMode {
@@ -23,19 +21,13 @@ impl Default for FlyMode {
     Self {
       speed: 10.0,
       boost: 4.0,
-      sensitivity: 0.0025,
     }
   }
 }
 
 impl FlyMode {
-  /// Turns `camera` by the mouse's counts since the last step, then flies it by what is held for `step`.
-  pub(crate) fn step(&self, camera: &mut MovementCamera, input: &mut MovementInputState, step: Duration) {
-    let look: Vec2 = input.take_look() * self.sensitivity;
-
-    // The mouse moved right turns right and moved down looks down.
-    *camera = MovementCamera::facing(camera.position, camera.get_heading().turned(look.x, look.y));
-
+  /// Flies `camera` where it faces by what is held for `step`.
+  pub(crate) fn step(&self, camera: &mut MovementCamera, input: &MovementInputState, step: Duration) {
     let forward: f32 = input.get_axis(MovementAction::Forward, MovementAction::Back);
     let strafe: f32 = input.get_axis(MovementAction::Right, MovementAction::Left);
     let rise: f32 = input.get_axis(MovementAction::Up, MovementAction::Down);

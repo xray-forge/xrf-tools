@@ -10,6 +10,9 @@ use xrf_math::glam::Vec3;
 use xrf_physics::{PhysicsLevel, PhysicsWorld};
 
 use crate::camera::movement_camera::MovementCamera;
+use crate::camera::movement_heading::MovementHeading;
+use crate::event::movement_event::MovementEvent;
+use crate::event::movement_step::MovementStep;
 use crate::input::movement_action::MovementAction;
 use crate::input::movement_input::MovementInput;
 use crate::input::movement_input_kind::MovementInputKind;
@@ -19,6 +22,7 @@ use crate::mode::movement_modes::MovementModes;
 use crate::mode::walk_mode::WalkMode;
 use crate::mode::walk_pace::WalkPace;
 use crate::mode::walk_stance::WalkStance;
+use crate::mode::walk_strides::WalkStrides;
 use crate::movement::Movement;
 use crate::movement_command::MovementCommand;
 use crate::movement_context::MovementContext;
@@ -59,20 +63,35 @@ fn press(action: MovementAction, is_pressed: bool) -> MovementCommand {
 
 /// Steps `movement` `ticks` ticks, answering the player's record as it ends.
 fn step(movement: &mut Movement, physics: &mut PhysicsWorld, ticks: usize) -> ObjectRecord {
+  stepped(movement, physics, ticks).player
+}
+
+/// What steps of walking end with: the player's record and the events told on the way.
+struct Stepped {
+  player: ObjectRecord,
+  events: Vec<MovementEvent>,
+}
+
+/// Steps `movement` `ticks` ticks, answering the player's record as it ends and every event told.
+fn stepped(movement: &mut Movement, physics: &mut PhysicsWorld, ticks: usize) -> Stepped {
   let time: LoopTime = LoopTime::new(Duration::from_millis(10));
   let mut player: ObjectRecord = player();
+  let mut events: Vec<MovementEvent> = Vec::new();
 
   for _ in 0..ticks {
-    movement.step(
-      &time,
-      MovementContext {
-        physics: &mut *physics,
-        player: &mut player,
-      },
-    );
+    movement
+      .step(
+        &time,
+        MovementContext {
+          physics: &mut *physics,
+          player: &mut player,
+          events: &mut events,
+        },
+      )
+      .expect("a step");
   }
 
-  player
+  Stepped { player, events }
 }
 
 /// The standing eye's height over the feet.
@@ -183,15 +202,40 @@ fn reports_the_ground_and_pace_it_walks_at() {
 }
 
 #[test]
+fn tells_a_step_each_stride_of_the_ground_walked_and_none_standing() {
+  let mut physics: PhysicsWorld = floor();
+  let mut movement: Movement = walking();
+
+  // Settled on the floor, standing still: no steps.
+  assert!(stepped(&mut movement, &mut physics, 50).events.is_empty());
+
+  movement.apply(press(MovementAction::Forward, true));
+
+  let ran: Stepped = stepped(&mut movement, &mut physics, 400);
+  let steps: Vec<MovementStep> = ran.events.iter().map(|MovementEvent::Step(step)| *step).collect();
+  let run: f32 = ran.player.position.z;
+
+  // Running 1 m strides on material 0: about one step a metre run, each where the feet stood.
+  assert!(
+    (steps.len() as f32 - run / WalkStrides::get_stride(WalkPace::Run)).abs() <= 1.0,
+    "{} steps over {run} m",
+    steps.len()
+  );
+  assert!(
+    steps
+      .iter()
+      .all(|step| step.ground_material == 0 && step.pace == WalkPace::Run)
+  );
+  assert!(steps.windows(2).all(|pair| pair[1].feet.z > pair[0].feet.z));
+}
+
+#[test]
 fn walks_along_the_ground_however_it_looks_with_the_eye_over_the_feet() {
   let mut physics: PhysicsWorld = floor();
   let mut movement: Movement = walking();
 
   // Looking down at the floor walks no slower along it.
-  movement.apply(MovementCommand::Input(MovementInput {
-    at: Duration::ZERO,
-    kind: MovementInputKind::Look { dx: 0.0, dy: 300.0 },
-  }));
+  movement.apply(MovementCommand::Face(MovementHeading { yaw: 0.0, pitch: 0.75 }));
   movement.apply(press(MovementAction::Forward, true));
   step(&mut movement, &mut physics, 200);
 

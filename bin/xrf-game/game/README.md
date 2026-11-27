@@ -56,12 +56,22 @@ takes the longest: Anomaly's `zaton` opens in about 1.9 s, 157,722 of its 2.5 mi
 of 937 members across its levels (seed 7).
 `GameRun` starts the load, then the shell: the window through `xrf-game-platform`, the view (`GameView`: the render
 queue with the game's pipeline cache, its world, the viewport filling the window), and once opened the game loop
-stepping the session's state. The world draws the loop's camera and day through `GameViewFeed`. `GamePlay` reads each
-platform event through the bindings into the loop's movement commands (the player held while loading) and, with
-`--mcp` or `--listen`, answers the control endpoint between frames (`GameControl`): `ready` once the
-renderer reports the level ready, then `status`, `pose` (a camera command to the loop), `capture` (the window's next
-frame to `appdata/xrf-game/captures/`) and `quit`. On quit it stops the loop, detaches and stops the view, then drops
-the window.
+stepping the session's state.
+
+What the loop publishes (`GameFrame`) is the player's camera and velocity, the game's day and every online object's
+pose, in id order; what happens once is an event (`GameEvent`, the player's steps now), queued and played in order
+(`GameFootsteps`); what a tool asks is read from the state between ticks (the control endpoint's status). The look is
+presentation's (plan decision 26, `GameLook`): the mouse turns it on the main thread at once, the world's view reads it
+at each render frame's start (`GameViewFeed`), its position the latest tick's carried forward by its velocity, and the
+loop is sent the heading whole once a frame it changed (`MovementCommand::Face`). A look reaches the view in 5.7 ms at
+the median, 11 at p90, against 12 and 19 when the loop turned the view a tick at a time and the view blended a tick
+behind (Zaton, 2026-11-27). The day blends a tick behind.
+
+`GamePlay` reads each platform event through the bindings into the loop's movement commands (the player held while
+loading) and, with `--mcp` or `--listen`, answers the control endpoint between frames (`GameControl`): `ready` once the
+renderer reports the level ready, then `status`, `pose` (a camera command to the loop, the look faced with it),
+`capture` (the window's next frame to `appdata/xrf-game/captures/`) and `quit`. A loop that faulted or stopped ends the
+run with its reason. On quit it stops the loop, detaches and stops the view, then drops the window.
 
 ## Files
 

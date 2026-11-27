@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use xrf_error::XrfResult;
+
 use crate::clock::loop_time::LoopTime;
 use crate::feed::loop_frame::LoopFrame;
 use crate::state::loop_state::LoopState;
@@ -29,14 +31,23 @@ impl<S: LoopState> LoopStepper<S> {
     &self.state
   }
 
-  /// Takes the commands that arrived since the last tick, in the order they arrived, and moves the state on a step.
-  pub fn step(&mut self, commands: impl IntoIterator<Item = S::Command>) {
+  /// Takes the commands that arrived since the last tick, in the order they arrived, and moves the state on a step,
+  /// answering what the step told presentation.
+  ///
+  /// # Errors
+  ///
+  /// Returns the fault the step met; the tick then stands where it was.
+  pub fn step(&mut self, commands: impl IntoIterator<Item = S::Command>) -> XrfResult<Vec<S::Event>> {
+    let mut events: Vec<S::Event> = Vec::new();
+
     for command in commands {
       self.state.apply(command);
     }
 
-    self.state.step(&self.time);
+    self.state.step(&self.time, &mut events)?;
     self.time = self.time.next();
+
+    Ok(events)
   }
 
   /// What presentation reads of the state as it stands.

@@ -9,7 +9,6 @@ use image::{ImageFormat, RgbaImage};
 use serde_json::{Value, json};
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_console::ConsoleAnswer;
-use xrf_game_loop::LoopFrame;
 use xrf_game_mcp::{GameEndpoint, GameEvent, GameInput, GameRequest, GameRequestKind, GameResponse};
 use xrf_game_movement::{MovementCamera, MovementCommand};
 use xrf_game_platform::PlatformEvent;
@@ -18,12 +17,12 @@ use xrf_renderer::RenderCapture;
 use xrf_utils::StagedFile;
 
 use crate::control::game_input_steps::GameInputSteps;
+use crate::control::game_status::GameStatus;
 use crate::control::scheduled_input::ScheduledInput;
 use crate::control::waiting_answer::WaitingAnswer;
 use crate::run::game_play::GamePlay;
 use crate::run::game_running::GameRunning;
 use crate::state::game_command::GameCommand;
-use crate::state::game_frame::GameFrame;
 
 /// The game's answers to the control endpoint: where it stands, the camera stood where asked, input played as the
 /// window would deliver it, a console line run as the drawer runs it, the window's frame written to a file, and a quit.
@@ -47,6 +46,9 @@ pub(crate) struct GameControl {
 impl GameControl {
   /// How long a capture waits for the next frame: a minimised window draws none.
   const CAPTURE_WAIT: Duration = Duration::from_secs(10);
+
+  /// How long a status waits for the loop to read it between two ticks.
+  const STATUS_WAIT: Duration = Duration::from_secs(1);
 
   /// Answers `endpoint`'s requests for the game showing `level`, writing captures to `captures`.
   pub(crate) fn new(endpoint: GameEndpoint, level: &str, captures: Option<PathBuf>) -> Self {
@@ -133,6 +135,9 @@ impl GameControl {
       GameRequestKind::Pose { position, target } => {
         let camera: MovementCamera = MovementCamera::looking_at(Vec3::from(position), Vec3::from(target));
 
+        // The look faces the pose's way, which the simulation is told with the camera.
+        play.flow.get_look().face(camera.get_heading());
+
         if !play.send(GameCommand::Movement(MovementCommand::SetCamera(camera))) {
           return Err(XrfError::new_invalid_error("the game loop stopped"));
         }
@@ -177,23 +182,27 @@ impl GameControl {
     }
   }
 
+  /// Where the game stands, read from its state between two of the loop's ticks.
   fn describe(&self, play: &GamePlay<'_>) -> XrfResult<Value> {
-    let frame: LoopFrame<GameFrame> = play
+    let running: &GameRunning = play
       .flow
       .get_running()
-      .and_then(GameRunning::get_latest)
-      .ok_or_else(|| XrfError::new_not_found_error("the game is still opening; its loop has published no frame yet"))?;
-    let camera: MovementCamera = frame.state.camera;
-    let minutes: u32 = (frame.state.time_of_day / 60.0) as u32;
+      .ok_or_else(|| XrfError::new_not_found_error("the game is still opening; no loop runs yet"))?;
+    let status: GameStatus = running
+      .snapshot(GameStatus::read)
+      .recv_timeout(Self::STATUS_WAIT)
+      .map_err(|_| XrfError::new_unexpected_error("the game loop did not answer its status"))?;
+    let camera: MovementCamera = status.camera;
+    let minutes: u32 = (status.time_of_day / 60.0) as u32;
 
     Ok(json!({
       "level": self.level,
-      "tick": frame.tick,
+      "tick": status.tick,
       "timeOfDay": format!("{:02}:{:02}", minutes / 60, minutes % 60),
-      "objects": frame.state.objects,
-      "online": frame.state.online,
-      "squads": frame.state.squads,
-      "members": frame.state.members,
+      "objects": status.objects,
+      "online": status.online,
+      "squads": status.squads,
+      "members": status.members,
       "camera": {
         "position": camera.position.to_array(),
         "forward": camera.get_forward().to_array(),

@@ -7,3 +7,4 @@ pub(crate) mod walk_mode_ltx;
 pub(crate) mod walk_pace;
 pub(crate) mod walk_stance;
 pub(crate) mod walk_state;
+pub(crate) mod walk_strides;

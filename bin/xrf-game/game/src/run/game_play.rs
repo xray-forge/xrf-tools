@@ -28,10 +28,11 @@ use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
 
 /// The main thread from the window's opening to the game's end: the platform's events read through the developer layer
-/// and the bindings into the loop's commands, the view fit to the window, the console's lines run and the log's records
-/// shown in it, the flow moved on (a load's view drawn while it runs, then the game played), the player's footsteps
-/// played from the loop's latest frame, the developer layer drawn over it, and the control endpoint's requests answered
-/// between frames, until the player, a console line or an agent quits.
+/// and the bindings into the loop's commands, the mouse turning the look the next drawn frame faces (sent to the loop
+/// once a frame it changed), the view fit to the window, the console's lines run and the log's records shown in it, the
+/// flow moved on (a load's view drawn while it runs, then the game played), what the loop's steps told played (the
+/// player's footsteps), the developer layer drawn over it, and the control endpoint's requests answered between frames,
+/// until the player, a console line or an agent quits, or the loop stops stepping.
 pub(crate) struct GamePlay<'a> {
   pub window: &'a mut PlatformWindow,
   pub view: &'a GameView,
@@ -85,6 +86,11 @@ impl GamePlay<'_> {
         return Ok(());
       }
 
+      // The view already faces the look the render thread reads; the simulation is sent it whole, once a frame.
+      if let Some(heading) = self.flow.get_look().take_changed() {
+        self.send(GameCommand::Movement(MovementCommand::Face(heading)));
+      }
+
       for line in self.developer.take_entered() {
         self.run_console(&line);
       }
@@ -106,13 +112,16 @@ impl GamePlay<'_> {
 
       let view: DeveloperView = self.get_developer_view();
       let loading: Option<DeveloperLoading> = self.flow.advance(self.view, &mut self.developer)?;
-      let latest: Option<LoopFrame<GameFrame>> = self.flow.get_running().and_then(GameRunning::get_latest);
+      let latest: Option<Arc<LoopFrame<GameFrame>>> = self.flow.get_running().and_then(GameRunning::get_latest);
 
       if let Some(running) = self.flow.get_running_mut() {
-        running.play_footsteps(self.view, latest.as_ref());
+        running.check()?;
+        running.play_events(self.view);
       }
 
-      self.developer.send(self.view, view, latest, loading.as_ref());
+      self
+        .developer
+        .send(self.view, view, latest.as_deref(), loading.as_ref());
 
       // The endpoint is taken out while it serves, since a console request runs a line through play.
       #[cfg(feature = "mcp")]
@@ -199,6 +208,12 @@ impl GamePlay<'_> {
       }
       // The player is held while the loading view covers the level.
       _ if self.flow.get_stage() == GameFlowStage::Loading => true,
+      // The mouse turns the look at once, which the next drawn frame faces.
+      PlatformEventKind::MouseMoved { dx, dy, .. } => {
+        self.flow.get_look().turn(*dx, *dy);
+
+        true
+      }
       _ => self
         .bindings
         .read(event)

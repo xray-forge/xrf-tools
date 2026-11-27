@@ -56,9 +56,10 @@ fn reads_the_noclip_key_as_a_mode_toggle_on_its_press_alone() {
 }
 
 #[test]
-fn reads_the_mouse_as_a_look_and_losing_focus_as_letting_go() {
+fn leaves_the_mouse_to_the_look_and_reads_losing_focus_as_letting_go() {
   let bindings: GameBindings = GameBindings::default();
 
+  // The mouse turns presentation's look, never a command.
   assert_eq!(
     bindings.read(&event(PlatformEventKind::MouseMoved {
       x: 10.0,
@@ -66,7 +67,7 @@ fn reads_the_mouse_as_a_look_and_losing_focus_as_letting_go() {
       dx: 3.0,
       dy: -2.0,
     })),
-    movement(MovementInputKind::Look { dx: 3.0, dy: -2.0 })
+    None
   );
   assert_eq!(
     bindings.read(&event(PlatformEventKind::Focused { is_focused: false })),

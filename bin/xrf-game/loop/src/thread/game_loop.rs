@@ -7,7 +7,9 @@ use std::time::{Duration, Instant};
 use xrf_error::XrfResult;
 
 use crate::clock::loop_clock::LoopClock;
+use crate::feed::loop_events::LoopEvents;
 use crate::feed::loop_feed::LoopFeed;
+use crate::feed::loop_status::LoopStatus;
 use crate::loop_stepper::LoopStepper;
 use crate::state::loop_state::LoopState;
 use crate::thread::loop_control::LoopControl;
@@ -20,12 +22,14 @@ const MOST_BEHIND: u64 = 25;
 const PAUSED_WAIT: Duration = Duration::from_millis(10);
 
 /// The game loop: the game state stepped on its own thread at its clock's rate. It sleeps to each tick's instant,
-/// takes what the game asked of the loop and the commands that arrived, steps, and publishes the frame. It may be
-/// paused, and read between two ticks paused or not. Dropping it stops the thread and waits for it.
+/// takes what the game asked of the loop and the commands that arrived, steps, publishes the frame and queues the
+/// step's events. It may be paused, and read between two ticks paused or not. A step's fault stops it, once logged, its
+/// status saying why. Dropping it stops the thread and waits for it.
 pub struct GameLoop<S: LoopState> {
   sender: Sender<S::Command>,
   control: Sender<LoopControl<S>>,
   feed: Arc<LoopFeed<S::Frame>>,
+  events: Arc<LoopEvents<S::Event>>,
   is_stopping: Arc<AtomicBool>,
   handle: Option<JoinHandle<()>>,
 }
@@ -40,12 +44,16 @@ impl<S: LoopState> GameLoop<S> {
     let (sender, receiver) = mpsc::channel::<S::Command>();
     let (control, controls) = mpsc::channel::<LoopControl<S>>();
     let feed: Arc<LoopFeed<S::Frame>> = Arc::new(LoopFeed::default());
+    let events: Arc<LoopEvents<S::Event>> = Arc::new(LoopEvents::default());
     let is_stopping: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
     feed.publish(clock.get_instant(stepper.get_time().tick), stepper.get_frame());
 
     let handle: JoinHandle<()> = thread::Builder::new().name(String::from("xrf-game-loop")).spawn({
-      let feed: Arc<LoopFeed<S::Frame>> = Arc::clone(&feed);
+      let outlets: LoopOutlets<S> = LoopOutlets {
+        feed: Arc::clone(&feed),
+        events: Arc::clone(&events),
+      };
       let is_stopping: Arc<AtomicBool> = Arc::clone(&is_stopping);
 
       move || {
@@ -54,7 +62,7 @@ impl<S: LoopState> GameLoop<S> {
           clock,
           is_paused: false,
         }
-        .run(&receiver, &controls, &feed, &is_stopping);
+        .run(&receiver, &controls, &outlets, &is_stopping);
       }
     })?;
 
@@ -64,6 +72,7 @@ impl<S: LoopState> GameLoop<S> {
       sender,
       control,
       feed,
+      events,
       is_stopping,
       handle: Some(handle),
     })
@@ -74,9 +83,14 @@ impl<S: LoopState> GameLoop<S> {
     self.sender.clone()
   }
 
-  /// The frames it publishes.
+  /// The frames it publishes and whether it still steps.
   pub fn get_feed(&self) -> &Arc<LoopFeed<S::Frame>> {
     &self.feed
+  }
+
+  /// The events its steps told, waiting to be taken.
+  pub fn get_events(&self) -> &Arc<LoopEvents<S::Event>> {
+    &self.events
   }
 
   /// Stops stepping before the next tick, until resumed; commands sent meanwhile wait for it.
@@ -119,6 +133,32 @@ impl<S: LoopState> Drop for GameLoop<S> {
   }
 }
 
+/// Where the loop's thread puts what it publishes: the frames and status, and the events.
+struct LoopOutlets<S: LoopState> {
+  feed: Arc<LoopFeed<S::Frame>>,
+  events: Arc<LoopEvents<S::Event>>,
+}
+
+/// Notes how the thread ended once it does, however it does: a panic is a fault, and anything else a stop, unless a
+/// fault was noted first.
+struct LoopEnding<'a, F> {
+  feed: &'a LoopFeed<F>,
+  tick: u64,
+}
+
+impl<F> Drop for LoopEnding<'_, F> {
+  fn drop(&mut self) {
+    self.feed.end(if thread::panicking() {
+      LoopStatus::Faulted {
+        tick: self.tick,
+        message: String::from("the game loop's thread panicked"),
+      }
+    } else {
+      LoopStatus::Stopped
+    });
+  }
+}
+
 /// What the loop's thread keeps between ticks.
 struct LoopThread<S: LoopState> {
   stepper: LoopStepper<S>,
@@ -131,9 +171,13 @@ impl<S: LoopState> LoopThread<S> {
     mut self,
     receiver: &Receiver<S::Command>,
     controls: &Receiver<LoopControl<S>>,
-    feed: &LoopFeed<S::Frame>,
+    outlets: &LoopOutlets<S>,
     is_stopping: &AtomicBool,
   ) {
+    let mut ending: LoopEnding<'_, S::Frame> = LoopEnding {
+      feed: &outlets.feed,
+      tick: self.stepper.get_time().tick,
+    };
     let mut commands: Vec<S::Command> = Vec::new();
 
     while !is_stopping.load(Ordering::Acquire) {
@@ -164,12 +208,29 @@ impl<S: LoopState> LoopThread<S> {
         continue;
       }
 
+      let from: u64 = self.stepper.get_time().tick;
+
       commands.extend(receiver.try_iter());
-      self.stepper.step(commands.drain(..));
+
+      match self.stepper.step(commands.drain(..)) {
+        Ok(events) => outlets.events.push(from, events),
+        Err(error) => {
+          log::error!("Game loop faulted at tick {from} and steps no further: {error}");
+          outlets.feed.end(LoopStatus::Faulted {
+            tick: from,
+            message: error.to_string(),
+          });
+
+          break;
+        }
+      }
 
       let tick: u64 = self.stepper.get_time().tick;
 
-      feed.publish(self.clock.get_instant(tick), self.stepper.get_frame());
+      ending.tick = tick;
+      outlets
+        .feed
+        .publish(self.clock.get_instant(tick), self.stepper.get_frame());
 
       let now: Instant = Instant::now();
       let behind: u64 = self.clock.get_tick_at(now).saturating_sub(tick);

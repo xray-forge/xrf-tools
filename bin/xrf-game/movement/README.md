@@ -1,20 +1,22 @@
 # xrf-game-movement
 
-The player's movement, a system of the game loop (`xrf-game-loop`'s `LoopSystem`): the camera, what the player holds
-and how far they looked, and the `MovementMode` that turns that into motion each step: flying, or walking on the
-physics world (`xrf-physics`), which its context (`MovementContext`) hands it each step.
+The player's movement, a system of the game loop (`xrf-game-loop`'s `LoopSystem`): the camera, which way presentation
+faces it, what the player holds, and the `MovementMode` that turns that into motion each step: flying, or walking on the
+physics world (`xrf-physics`), which its context (`MovementContext`) hands it each step with the player's record in the
+object registry and where it tells its events.
 
 - `MovementCamera` stands in the engine's space, looking along `+z` unturned as X-Ray's camera does; `looking_at` and
   `facing` turn and pitch it without roll (`MovementHeading`: yaw from `+z` towards `+x`, pitch down, held short of
   straight up or down), and it blends between ticks for presentation.
 - `MovementCommand` is what the system takes between steps: the player's input, already read through their bindings
-  (`MovementInput`: an action down or up, the mouse's raw counts, every action let go, stamped with the platform's
-  time), the camera's pose as the control endpoint sets it, and the noclip toggle between flying and walking.
-- `MovementInputState` holds the actions held, whether sprinting is toggled on (`Sprint` presses toggle it, as Call of
-  Pripyat's `g_sprint_toggle on` plays it), and the mouse's counts since a movement mode last took them.
-- `FlyMode` is a spectator's free camera through everything: the mouse's counts turn it (right turns right, down looks
-  down) at `sensitivity` radians a count; forward and back fly where it looks, sideways along its right, up and down
-  straight up and down; `speed` metres a second, times `boost` while accel is held, diagonals no faster.
+  (`MovementInput`: an action down or up, or every action let go, stamped with the platform's time); `Face`, the view's
+  heading as presentation turned it, absolute (plan decision 26: movement never integrates the mouse); the camera's
+  pose as the control endpoint sets it; and the noclip toggle between flying and walking.
+- `MovementInputState` holds the actions held and whether sprinting is toggled on (`Sprint` presses toggle it, as Call
+  of Pripyat's `g_sprint_toggle on` plays it).
+- Each step first faces the camera by the heading given, then moves it. `FlyMode` is a spectator's free camera through
+  everything: forward and back fly where it looks, sideways along its right, up and down straight up and down; `speed`
+  metres a second, times `boost` while accel is held, diagonals no faster.
 - `WalkMode` moves the actor as X-Ray's does, read from the tree's own `[actor]` (`WalkMode::read_ltx`; a key it
   lacks keeps Anomaly's, logged), so Call of Pripyat's actor runs at 3.8 m/s and Anomaly's at 2.77: the control
   acceleration is `walk_accel` times the pace's factors (running unless accel is held, the back factors going
@@ -23,15 +25,21 @@ physics world (`xrf-physics`), which its context (`MovementContext`) hands it ea
   (`air_control_param`). Sprint holds while forward or a side is held and the actor runs standing, as X-Ray's
   (`Actor_Movement.cpp`), adding nothing sideways alone.
 - `MovementMode` is which mode the player moves in and `MovementModes` how each moves, kept whichever is in use, so
-  the noclip toggle never loses what was read for walking. Up jumps at `jump_speed`; the eye stands `camera_height_factor` up the box. The actor
-  is put in the physics world the first time walking steps (`WalkState`) and taken out when flight steps.
+  the noclip toggle never loses what was read for walking. Up jumps at `jump_speed`; the eye stands
+  `camera_height_factor` up the box. The actor is put in the physics world the first time walking steps (`WalkState`)
+  and taken out when flight steps.
 - Down crouches (`WalkStance`): to `ph_box1`'s height, or `ph_box2`'s with accel held, slowed by `crouch_coef`, on the
   ground only and only where the shorter capsule fits; letting go stands up once the standing one fits. Crouched, the
   actor neither jumps nor sprints, and the eye eases to the box's height.
 - `Movement::get_footing` reports what the walking actor stands on after each step (`MovementFooting`: its feet, the
-  ground's game material, its `WalkPace` and speed), which the game plays its footsteps by.
+  ground's game material, its `WalkPace` and speed). `WalkStrides` counts the feet along the ground every tick and tells
+  a `MovementEvent::Step` each stride of the pace (a stand-in for X-Ray's leg animation cycle), which the game plays its
+  footsteps by; `get_velocity` is how fast the camera moved over the step, none after a pose, which presentation
+  carries the view forward by.
+- A step's fault (the physics world refusing the actor) is answered, not logged and stepped through: the loop stops on
+  it.
 
-It depends on the loop and the physics world, never on another system.
+It depends on the loop, the object registry's record type and the physics world, never on another system.
 
 ## Checks
 

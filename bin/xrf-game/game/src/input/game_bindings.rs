@@ -4,7 +4,7 @@ use xrf_game_movement::{MovementAction, MovementCommand, MovementInput, Movement
 use xrf_game_platform::{PlatformEvent, PlatformEventKind, PlatformScancode};
 
 /// Which key does what: the platform's events read into the game's commands. Keys are bound by their place on the
-/// keyboard, so the layout never moves them.
+/// keyboard, so the layout never moves them. The mouse turns presentation's look (`GameLook`), not a command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GameBindings {
   keys: HashMap<PlatformScancode, MovementAction>,
@@ -56,7 +56,6 @@ impl GameBindings {
         action: *self.keys.get(scancode)?,
         is_pressed: *is_down,
       },
-      PlatformEventKind::MouseMoved { dx, dy, .. } => MovementInputKind::Look { dx: *dx, dy: *dy },
       PlatformEventKind::Focused { is_focused: false } => MovementInputKind::ReleaseAll,
       _ => return None,
     };

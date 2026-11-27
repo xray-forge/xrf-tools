@@ -8892,6 +8892,7 @@ name = "xrf-game-alife"
 version = "0.1.0"
 dependencies = [
  "log",
+ "xrf-error",
  "xrf-game-graph",
  "xrf-game-loop",
  "xrf-game-objects",
