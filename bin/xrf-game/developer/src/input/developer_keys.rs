@@ -5,7 +5,7 @@ pub(crate) struct DeveloperKeys;
 
 impl DeveloperKeys {
   /// The key that opens and closes the console: the one left of `1`, as X-Ray's console key.
-  pub(crate) const CONSOLE: PlatformScancode = PlatformScancode(53);
+  pub(crate) const CONSOLE: PlatformScancode = PlatformScancode::GRAVE;
 
   /// The key that closes the open console, as it does X-Ray's.
   pub(crate) const CLOSE: PlatformScancode = PlatformScancode(41);

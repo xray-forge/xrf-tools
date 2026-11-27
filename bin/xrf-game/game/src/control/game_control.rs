@@ -106,6 +106,19 @@ impl GameControl {
         continue;
       }
 
+      // A refused line is answered in the console's own words, as the drawer shows it.
+      if let GameRequestKind::Console { line } = kind {
+        let answer: ConsoleAnswer = play.run_console(&line);
+
+        self.endpoint.answer(&if answer.is_failed {
+          GameResponse::fail(&id, answer.lines.join("\n"))
+        } else {
+          GameResponse::succeed(&id, json!({ "lines": answer.lines }))
+        });
+
+        continue;
+      }
+
       let response: GameResponse = match self.answer(play, kind) {
         Ok(result) => GameResponse::succeed(&id, result),
         Err(error) => GameResponse::fail(&id, error.to_string()),
@@ -117,17 +130,8 @@ impl GameControl {
     true
   }
 
-  fn answer(&self, play: &mut GamePlay<'_>, kind: GameRequestKind) -> XrfResult<Value> {
+  fn answer(&self, play: &GamePlay<'_>, kind: GameRequestKind) -> XrfResult<Value> {
     match kind {
-      GameRequestKind::Console { line } => {
-        let answer: ConsoleAnswer = play.run_console(&line);
-
-        if answer.is_failed {
-          return Err(XrfError::new_invalid_error(answer.lines.join("\n")));
-        }
-
-        Ok(json!({ "lines": answer.lines }))
-      }
       GameRequestKind::Status => self.describe(play),
       GameRequestKind::Pose { position, target } => {
         let camera: MovementCamera = MovementCamera::looking_at(Vec3::from(position), Vec3::from(target));
@@ -139,7 +143,7 @@ impl GameControl {
         Ok(json!({ "position": position, "target": target }))
       }
       GameRequestKind::Capture => self.capture(play.view.capture()),
-      GameRequestKind::Input { .. } | GameRequestKind::Quit => Ok(Value::Null),
+      GameRequestKind::Input { .. } | GameRequestKind::Console { .. } | GameRequestKind::Quit => Ok(Value::Null),
     }
   }
 

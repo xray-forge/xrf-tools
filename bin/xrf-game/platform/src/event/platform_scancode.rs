@@ -6,8 +6,16 @@ use sdl3::keyboard::Scancode;
 pub struct PlatformScancode(pub u16);
 
 impl PlatformScancode {
-  /// The key SDL names `name` (`W`, `Grave`, `Return`, `Left Shift`), ignoring case; none for a name SDL does not know.
+  /// The key left of 1, which opens the console.
+  pub const GRAVE: Self = Self(53);
+
+  /// The key SDL names `name` (`W`, `Return`, `Left Shift`, `` ` ``), ignoring case, or `Grave` for the key SDL names
+  /// only by its character; none for a name SDL does not know.
   pub fn from_name(name: &str) -> Option<Self> {
+    if name.trim().eq_ignore_ascii_case("grave") {
+      return Some(Self::GRAVE);
+    }
+
     Scancode::from_name(name).and_then(|scancode| u16::try_from(scancode as i32).ok().map(Self))
   }
 }

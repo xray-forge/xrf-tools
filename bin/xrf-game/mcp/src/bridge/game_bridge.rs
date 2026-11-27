@@ -1,4 +1,3 @@
-use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -87,10 +86,8 @@ impl GameBridge {
     match (response.ok, response.result) {
       (true, Some(result)) => Ok(serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string())),
       (true, None) => Ok(String::from("done")),
-      (false, _) => Err(XrfError::new_io_error(
-        response.error.unwrap_or_default(),
-        ErrorKind::Other,
-      )),
+      // The game refused the request, in its own words.
+      (false, _) => Err(XrfError::new_invalid_error(response.error.unwrap_or_default())),
     }
   }
 
