@@ -1,0 +1,25 @@
+[package]
+name = "xrf-game"
+version = "0.1.0"
+publish = false
+description = "XRF game: the native game binary"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "xrf-game"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6.6", features = ["derive"] }
+log = { workspace = true }
+xrf-directories = { workspace = true }
+xrf-game-settings = { workspace = true }
+xrf-logging = { workspace = true }
+
+[lints]
+workspace = true

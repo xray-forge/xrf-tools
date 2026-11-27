@@ -1,0 +1,21 @@
+[package]
+name = "xrf-game-settings"
+version = "0.1.0"
+publish = false
+description = "XRF game: its settings, presets and settings file"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+xrf-ltx = { workspace = true }
+xrf-renderer = { workspace = true }
+
+[lints]
+workspace = true

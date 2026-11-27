@@ -5,7 +5,9 @@ members = [
   "bin/xrf-app/core",
   "bin/xrf-app/plugins/*",
   "bin/xrf-cli",
+  "bin/xrf-game/game",
   "bin/xrf-game/platform",
+  "bin/xrf-game/settings",
   "crates/xrf-animation-envelope",
   "crates/xrf-anm",
   "crates/xrf-archive",
@@ -163,6 +165,7 @@ xrf-enum-derive = { path = "crates/xrf-enum-derive" }
 xrf-env-flags = { path = "crates/xrf-env-flags" }
 xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
+xrf-game-settings = { path = "bin/xrf-game/settings" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
 xrf-gamemtl = { path = "crates/xrf-gamemtl" }
 xrf-geometry = { path = "crates/xrf-geometry" }

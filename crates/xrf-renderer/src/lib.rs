@@ -73,10 +73,12 @@ pub use crate::contract::feature::lighting::model::render_light_level::RenderLig
 pub use crate::contract::feature::lighting::model::render_light_model::RenderLightModel;
 pub use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
 pub use crate::contract::feature::lighting::render_contact_shadow_mode::RenderContactShadowMode;
-pub use crate::contract::feature::lighting::render_contact_shadow_settings::RenderContactShadowSettings;
+pub use crate::contract::feature::lighting::render_contact_shadow_settings::{
+  RENDER_MAX_CONTACT_SHADOW_LIGHTS, RenderContactShadowSettings,
+};
 pub use crate::contract::feature::lighting::render_indirect_light_mode::RenderIndirectLightMode;
 pub use crate::contract::feature::lighting::render_indirect_light_settings::RenderIndirectLightSettings;
-pub use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
+pub use crate::contract::feature::lighting::render_shadow_settings::{RENDER_MAX_SHADOW_FILTER, RenderShadowSettings};
 pub use crate::contract::feature::scene::render_foliage_mode::RenderFoliageMode;
 pub use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
 pub use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;

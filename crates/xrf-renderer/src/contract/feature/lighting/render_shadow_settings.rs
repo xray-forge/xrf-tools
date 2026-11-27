@@ -9,7 +9,7 @@ pub(crate) const RENDER_MAX_SHADOW_CASCADES: usize = 4;
 
 /// Texels the sun's shadow filter reaches each way at most: the widest the sun's pass has a pipeline for.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub(crate) const RENDER_MAX_SHADOW_FILTER: u32 = 3;
+pub const RENDER_MAX_SHADOW_FILTER: u32 = 3;
 
 /// Metres a cascade is across at least, whatever a setting asks: a width of nought would cut it into texels of nought.
 pub(crate) const RENDER_MIN_SHADOW_CASCADE_WIDTH: f32 = 1.0;

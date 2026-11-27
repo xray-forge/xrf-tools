@@ -8620,6 +8620,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-game"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "log",
+ "xrf-directories",
+ "xrf-game-settings",
+ "xrf-logging",
+]
+
+[[package]]
 name = "xrf-game-platform"
 version = "0.1.0"
 dependencies = [
@@ -8628,6 +8639,17 @@ dependencies = [
  "windows",
  "xrf-renderer",
  "xrf-renderer-host",
+]
+
+[[package]]
+name = "xrf-game-settings"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "xrf-ltx",
+ "xrf-renderer",
 ]
 
 [[package]]
