@@ -8635,6 +8635,7 @@ dependencies = [
  "xrf-dltx",
  "xrf-engine-target",
  "xrf-error",
+ "xrf-game-alife",
  "xrf-game-loop",
  "xrf-game-mcp",
  "xrf-game-movement",
@@ -8653,6 +8654,18 @@ dependencies = [
  "xrf-utils",
  "xrf-vfs",
  "xrf-world",
+]
+
+[[package]]
+name = "xrf-game-alife"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "xrf-game-loop",
+ "xrf-game-objects",
+ "xrf-ltx",
+ "xrf-math",
+ "xrf-spawn",
 ]
 
 [[package]]

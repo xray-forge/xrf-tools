@@ -1,0 +1,24 @@
+[package]
+name = "xrf-game-alife"
+version = "0.1.0"
+publish = false
+description = "XRF game: A-Life, which objects are online near the actor and how offline ones live on"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+log = { workspace = true }
+xrf-game-loop = { workspace = true }
+xrf-game-objects = { workspace = true }
+xrf-ltx = { workspace = true }
+xrf-math = { workspace = true }
+
+[dev-dependencies]
+xrf-spawn = { workspace = true }
+
+[lints]
+workspace = true

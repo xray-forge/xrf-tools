@@ -339,6 +339,21 @@ impl AlifeObjectInherited {
     }
   }
 
+  /// The creature every living class inherits (`CSE_ALifeCreatureAbstract`), which carries its health; `None` for
+  /// anything else.
+  pub fn get_creature(&self) -> Option<&AlifeObjectCreature> {
+    match self {
+      Self::SeActor(object) => Some(&object.base.base),
+      Self::SeStalker(object) => Some(&object.base.base.base.base),
+      Self::SeMonster(object) => Some(&object.base.base.base),
+      Self::ClearSkySeActor(object) => Some(&object.base.base),
+      Self::ClearSkySeStalker(object) => Some(&object.base.base.base.base),
+      Self::ClearSkySeMonster(object) => Some(&object.base.base.base),
+      Self::CseAlifeCreatureCrow(object) | Self::CseAlifeCreaturePhantom(object) => Some(object),
+      _ => None,
+    }
+  }
+
   /// The abstract object [`Self::get_abstract`] reads, to change.
   pub fn get_abstract_mut(&mut self) -> Option<&mut AlifeObjectAbstract> {
     match self {

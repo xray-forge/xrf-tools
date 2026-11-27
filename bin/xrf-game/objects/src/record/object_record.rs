@@ -2,10 +2,12 @@ use xrf_math::glam::Vec3;
 use xrf_spawn::{AlifeObject, ClsId};
 
 use crate::id::object_id::ObjectId;
+use crate::record::object_switching::ObjectSwitching;
 
 /// What every object of the game is, whatever system moves it: its section and class, where it stands in the engine's
-/// space, on which level and graph vertices, what holds it, and its story id. The game's own record, read once from the
-/// spawn; the spawn's packet types stay at that edge.
+/// space, on which level and graph vertices, what holds it, its story and spawn ids, and how it switches. The game's own
+/// record, read once from the spawn; the spawn's packet types stay at that edge. What only some objects have (a
+/// creature's health, an ammo box's rounds) is a concern table of the registry's, never a field here.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ObjectRecord {
   /// The config section it is built from.
@@ -24,6 +26,8 @@ pub struct ObjectRecord {
   pub story_id: Option<u32>,
   /// Its entry in the spawn (`CSE_Abstract::m_tSpawnID`), which X-Ray's spawn registry keys spawns by.
   pub spawn_id: u16,
+  /// How it goes online and offline.
+  pub switching: ObjectSwitching,
 }
 
 impl ObjectRecord {
@@ -45,6 +49,7 @@ impl ObjectRecord {
       parent,
       story_id: placed.and_then(|placed| placed.get_story_id()),
       spawn_id: header.spawn_id,
+      switching: ObjectSwitching::of_spawn(object),
     }
   }
 }

@@ -5,16 +5,20 @@ use xrf_game_movement::MovementCamera;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GameFrame {
   pub camera: MovementCamera,
-  /// How many objects the game holds.
+  /// How many objects the game holds, and how many of them are online.
   pub objects: u32,
+  pub online: u32,
 }
 
 impl LoopBlend for GameFrame {
-  /// The camera blends; the count is the next frame's once past this one.
+  /// The camera blends; the counts are the next frame's once past this one.
   fn blend(&self, next: &Self, alpha: f32) -> Self {
+    let counts: &Self = if alpha > 0.0 { next } else { self };
+
     Self {
       camera: self.camera.blend(&next.camera, alpha),
-      objects: if alpha > 0.0 { next.objects } else { self.objects },
+      objects: counts.objects,
+      online: counts.online,
     }
   }
 }

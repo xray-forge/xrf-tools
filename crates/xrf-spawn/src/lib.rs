@@ -114,6 +114,7 @@ pub use crate::data::graph::graph_level_point::GraphLevelPoint;
 pub use crate::data::graph::graph_vertex::GraphVertex;
 pub use crate::data::graph::level_view::spawn_level_graph::SpawnLevelGraph;
 pub use crate::data::graph::level_view::spawn_level_graph_point::SpawnLevelGraphPoint;
+pub use crate::data::meta::alife_class::AlifeClass;
 pub use crate::data::meta::cls_id::ClsId;
 pub use crate::data::meta::spawn_section_classes::SpawnSectionClasses;
 pub use crate::data::patrols::patrol::Patrol;

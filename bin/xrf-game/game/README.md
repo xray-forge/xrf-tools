@@ -31,7 +31,8 @@ Call of Pripyat binds them (`GameBindings`); Escape or the window's close quits.
 
 `GameSession` opens what a run plays, before any window: the tree and level, the sound (`GameSound`: Steam Audio from
 `.sdks` or beside the executable, dry without it), what the world shows, and a new game's `GameState`: every object of
-the tree's `all.spawn` in the object registry (`xrf-game-objects`) and the player's movement at the level's start.
+the tree's `all.spawn` in the object registry (`xrf-game-objects`), the player's movement at the level's start, and
+A-Life (`xrf-game-alife`) by the tree's `[alife]`, which switches the level's objects online around the actor.
 `GameRun` is the shell around it: the window through `xrf-game-platform`, the view (`GameView`: the render queue with
 the game's pipeline cache, its world, the viewport filling the window), and the game loop stepping the session's state.
 The world draws the loop's camera and day through `GameViewFeed`. `GamePlay` then reads each platform event through the bindings into the

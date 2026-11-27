@@ -1,26 +1,35 @@
 use std::collections::BTreeMap;
 
-use xrf_spawn::{SpawnPlacedObject, SpawnPlacedObjects};
+use xrf_spawn::{AlifeObjectInherited, SpawnPlacedObject, SpawnPlacedObjects};
 
 use crate::id::id_map::IdMap;
 use crate::id::object_id::ObjectId;
+use crate::record::object_ammo::ObjectAmmo;
+use crate::record::object_creature::ObjectCreature;
 use crate::record::object_level::ObjectLevel;
+use crate::record::object_online::ObjectOnline;
 use crate::record::object_record::ObjectRecord;
 
 /// The game's objects, X-Ray's object registry as id-keyed tables: the one store systems share. It is data, not a
 /// system: the game's state owns it and hands a system the tables it reads or writes as that system's context, so the
-/// compiler sees who writes what. Tables a system adds (online state, schedules) sit beside the records, keyed alike.
+/// compiler sees who writes what. Beside the records, every object's, stand the concern tables, each holding rows for
+/// the objects it concerns (creatures, ammo), the online table (who is online) and the children index (what each object
+/// holds); a system needing more of some objects adds a table, never a field to every record.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ObjectRegistry {
   levels: Vec<ObjectLevel>,
   records: IdMap<ObjectRecord>,
+  creatures: IdMap<ObjectCreature>,
+  ammo: IdMap<ObjectAmmo>,
+  online: IdMap<ObjectOnline>,
+  children: IdMap<Vec<ObjectId>>,
 }
 
 impl ObjectRegistry {
   /// A new game's objects: every object the spawn places, given ids in the spawn's order as a new game creates them
   /// (a spawn packet's own id is not the object's: X-Ray hands ids out as it creates each, `xrServer::PerformIDgen`),
-  /// with the game graph's levels. A parent is found by its spawn id; objects past the sixteen-bit id space are left
-  /// out, as X-Ray could not create them either.
+  /// with the game graph's levels, all offline. A parent is found by its spawn id; objects past the sixteen-bit id space
+  /// are left out, as X-Ray could not create them either.
   pub fn of_spawn(placed: &SpawnPlacedObjects) -> Self {
     // Numbered once, so a parent's id and its record's id are the same number.
     let numbered: Vec<(ObjectId, &SpawnPlacedObject)> =
@@ -29,13 +38,7 @@ impl ObjectRegistry {
       .iter()
       .map(|(id, object)| (object.object.header.spawn_id, *id))
       .collect();
-    let mut records: IdMap<ObjectRecord> = IdMap::default();
-
-    for (id, object) in &numbered {
-      records.insert(*id, Self::create_record(object, &ids));
-    }
-
-    Self {
+    let mut registry: Self = Self {
       levels: placed
         .levels
         .iter()
@@ -44,8 +47,71 @@ impl ObjectRegistry {
           name: level.name.clone(),
         })
         .collect(),
-      records,
+      ..Self::default()
+    };
+
+    for (id, object) in &numbered {
+      registry.insert(*id, Self::create_record(object, &ids));
+
+      if let Some(creature) = object.object.inherited.get_creature() {
+        registry.creatures.insert(
+          *id,
+          ObjectCreature {
+            health: creature.health,
+          },
+        );
+      }
+
+      if let AlifeObjectInherited::CseAlifeItemAmmo(ammo) = &object.object.inherited {
+        registry.ammo.insert(
+          *id,
+          ObjectAmmo {
+            rounds: ammo.update_ammo_left,
+          },
+        );
+      }
     }
+
+    registry
+  }
+
+  /// The creatures table: a row for each stalker, monster and the actor.
+  pub fn get_creatures(&self) -> &IdMap<ObjectCreature> {
+    &self.creatures
+  }
+
+  pub fn get_creatures_mut(&mut self) -> &mut IdMap<ObjectCreature> {
+    &mut self.creatures
+  }
+
+  /// The ammo table: a row for each ammo box.
+  pub fn get_ammo(&self) -> &IdMap<ObjectAmmo> {
+    &self.ammo
+  }
+
+  pub fn get_ammo_mut(&mut self) -> &mut IdMap<ObjectAmmo> {
+    &mut self.ammo
+  }
+
+  /// Whether `id` may go offline as it stands, beyond its switching: neither a dead creature nor an empty ammo box
+  /// (`CSE_ALifeCreatureAbstract::can_switch_offline`, `CSE_ALifeItemAmmo::can_switch_offline`).
+  pub fn may_go_offline(&self, id: ObjectId) -> bool {
+    self.creatures.get(id).is_none_or(|creature| creature.health > 0.0)
+      && self.ammo.get(id).is_none_or(|ammo| ammo.rounds != 0)
+  }
+
+  /// Puts `record` at `id`, offline, under its parent's children.
+  pub fn insert(&mut self, id: ObjectId, record: ObjectRecord) {
+    if let Some(parent) = record.parent {
+      match self.children.get_mut(parent) {
+        Some(children) => children.push(id),
+        None => {
+          self.children.insert(parent, vec![id]);
+        }
+      }
+    }
+
+    self.records.insert(id, record);
   }
 
   pub fn get_levels(&self) -> &[ObjectLevel] {
@@ -67,6 +133,44 @@ impl ObjectRegistry {
 
   pub fn get_records_mut(&mut self) -> &mut IdMap<ObjectRecord> {
     &mut self.records
+  }
+
+  /// Who is online, by id.
+  pub fn get_online(&self) -> &IdMap<ObjectOnline> {
+    &self.online
+  }
+
+  pub fn is_online(&self, id: ObjectId) -> bool {
+    self.online.contains(id)
+  }
+
+  /// The objects `id` holds, in the order they were put under it.
+  pub fn get_children(&self, id: ObjectId) -> &[ObjectId] {
+    self.children.get(id).map_or(&[], Vec::as_slice)
+  }
+
+  /// Brings `id` online at `tick` with everything it holds, as X-Ray's `add_online` brings an object's children
+  /// (`CSE_ALifeDynamicObject::add_online`). One already online keeps its tick.
+  pub fn bring_online(&mut self, id: ObjectId, tick: u64) {
+    let mut pending: Vec<ObjectId> = vec![id];
+
+    while let Some(id) = pending.pop() {
+      if !self.online.contains(id) {
+        self.online.insert(id, ObjectOnline { since: tick });
+      }
+
+      pending.extend_from_slice(self.get_children(id));
+    }
+  }
+
+  /// Takes `id` offline with everything it holds.
+  pub fn take_offline(&mut self, id: ObjectId) {
+    let mut pending: Vec<ObjectId> = vec![id];
+
+    while let Some(id) = pending.pop() {
+      self.online.remove(id);
+      pending.extend_from_slice(self.get_children(id));
+    }
   }
 
   /// How many objects stand on the level `level` names.

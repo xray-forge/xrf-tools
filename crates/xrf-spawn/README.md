@@ -56,6 +56,9 @@ and level counts against the chunks. The game graph is most of a set's bytes, so
   section vanilla Call of Pripyat's configs declare (679) as its class's payload, and every one of Clear Sky's (458)
   but two multiplayer weapons. `LevelSpawnObject::read_alife_object_by` takes the configs' classes; `all.spawn` and LTX
   imports use the table.
+- `AlifeObjectInherited::get_class` names the server class (`AlifeClass`); `get_abstract` reaches the abstract object
+  every class but a graph point inherits (game vertex, flags, story id), `get_creature` the creature a living class
+  inherits (health).
 - Script fields at the end are read from the object's remaining bytes.
 - Stored values are kept as written, not normalized the way the engine's `STATE_Read` would. `LastSpawnTime` keeps its
   three states (`Absent`, `Unset`, `Set`) apart.

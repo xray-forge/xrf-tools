@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
+use xrf_game_alife::{Alife, AlifeSettings};
 use xrf_game_movement::{FlyMode, Movement, MovementMode};
 use xrf_game_objects::ObjectRegistry;
 use xrf_level_source::{LevelAudio, LevelRenderSource};
@@ -68,9 +69,20 @@ impl GameSession {
     let source: Arc<dyn WorldLevelSource> = Arc::new(
       pool.install(|| LevelRenderSource::new(Arc::clone(level.get_snapshot()), Arc::clone(tree.get_host()), audio)),
     );
+    let alife_settings: AlifeSettings = tree.read_alife_settings();
+
+    log::info!(
+      "A-Life switches objects online within {} m and offline beyond {} m, every {:?}",
+      alife_settings.get_online_distance(),
+      alife_settings.get_offline_distance(),
+      alife_settings.get_update_interval()
+    );
+
+    let alife: Alife = Alife::new(alife_settings, objects.find_level(&level_name));
     let state: GameState = GameState {
       objects,
       movement: Movement::new(level.get_start_camera(), MovementMode::Fly(FlyMode::default())),
+      alife,
     };
 
     log::info!("Level '{level_name}' opened in {:.1?}", started.elapsed());
