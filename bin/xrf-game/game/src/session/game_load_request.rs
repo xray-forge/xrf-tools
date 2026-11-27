@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use xrf_game_movement::MovementMode;
 
 use crate::session::game_load_source::GameLoadSource;
+use crate::session::game_recording_request::GameRecordingRequest;
 
 /// What a load is asked to open: the game tree, the level on it, the game played there, and how the player moves.
 /// Whoever asks (the command line now, a menu later) builds one; the load reads nothing else.
@@ -14,4 +15,6 @@ pub struct GameLoadRequest {
   pub level: String,
   pub game: GameLoadSource,
   pub mode: MovementMode,
+  /// The recording the session is written to or stepped from; none for a session played and not kept.
+  pub recording: Option<GameRecordingRequest>,
 }

@@ -20,6 +20,8 @@ cargo run --profile dev-optimized -p xrf-game -- --root C:\Games\anomaly --level
 - `--mode fly` (the default) flies a free camera; `walk` starts on foot, the actor walking the level's collision.
 - `--preset <name>` starts from a preset in place of the settings file's; `--set <path>=<value>`, repeated, changes
   one setting for this run, over the settings file, never written back.
+- `--record <file>` records the session to that file; `--replay <file>` steps a recorded session again on the same
+  tree, taking the level, seed and mode from the recording ([Recording and replaying](#recording-and-replaying)).
 - `--mcp` turns the control endpoint on: requests on standard input, answers on standard output, as the MCP bridge
   ([xrf-game-mcp](../mcp/README.md)) starts the game. Its input ending quits the game. Built only with the `mcp`
   feature (on by default); without `--mcp` the game reads no input.
@@ -86,6 +88,28 @@ loading) and, with `--mcp` or `--listen`, answers the control endpoint between f
 renderer reports the level ready, then `status`, `pose` (a camera command to the loop, the look faced with it),
 `capture` (the window's next frame to `appdata/xrf-game/captures/`) and `quit`. A loop that faulted or stopped ends the
 run with its reason. On quit it stops the loop, detaches and stops the view, then drops the window.
+
+## Recording and replaying
+
+A session is reproduced from what it started with and the commands its ticks took. `--record <file>` writes them as
+the loop steps (`GameRecorder`, a witness of the loop): one JSON value a line (`GameRecordingLine`), the header first
+(`GameRecordingHeader`: the format's version, the level, the seed, the mode, the tick rate), then each command with the
+tick that took it (`GameRecordedCommand`), a digest of the state every hundred ticks, and the tick the session stopped
+at. Lines reach the disk with each digest, and a recording cut short by a crash ends at its last line.
+
+`GameStateDigest` stands for the state between two ticks: the seed and time, every table of the object registry, what
+A-Life keeps between updates, the level's place on the game graph and the player's movement, hashed (FNV-1a) from the
+state's `Debug` text so a new field is covered without a line of its own. The physics world is covered through the
+player it moves.
+
+`--replay <file>` opens what the header says on the tree `--root` names (`GameReplay`), steps the recorded commands at
+their ticks with live input let go and the view facing where the session faced, and compares the state with each
+recorded digest (`GameReplayCheck`). The log says how it went: `The replay followed its recording to its end at tick
+N: all M state digests matched`, or an error naming the tick of the first digest that differed. From the recording's
+end the game takes input again, so a replay can be played on from.
+
+A recording is a debugging aid, not a save: one of another format version is refused, and a build whose steps changed
+parts from an older recording at the first digest. A level change is not recorded yet; a recording ends at one.
 
 ## Files
 

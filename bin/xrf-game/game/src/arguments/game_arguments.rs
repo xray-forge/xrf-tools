@@ -34,6 +34,14 @@ pub struct GameArguments {
   /// new one each run without it, logged so a run can be repeated.
   #[arg(long)]
   pub seed: Option<u64>,
+  /// Records the session to this file, made anew: every command with the tick that took it and a digest of the
+  /// game's state each simulated second, which `--replay` steps again.
+  #[arg(long, value_name = "FILE", conflicts_with = "replay")]
+  pub record: Option<PathBuf>,
+  /// Steps the session recorded in this file again, on the same tree, taking no input until its end and logging
+  /// whether the state followed the recording's digests; then plays on. The level, seed and mode are the recording's.
+  #[arg(long, value_name = "FILE")]
+  pub replay: Option<PathBuf>,
   /// One setting for this run, its dotted path and value, as `view.shadows.resolution=4096`; repeated for several,
   /// applied over the settings file in order and never written back.
   #[arg(long = "set", value_name = "PATH=VALUE")]

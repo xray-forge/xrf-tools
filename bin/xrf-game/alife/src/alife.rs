@@ -53,6 +53,16 @@ impl Alife {
     &self.data
   }
 
+  /// Simulated time left before the next update.
+  pub fn get_until_update(&self) -> Duration {
+    self.until_update
+  }
+
+  /// Where the offline schedule's walk stands.
+  pub fn get_schedule(&self) -> &AlifeSchedule {
+    &self.schedule
+  }
+
   pub fn get_last_switch(&self) -> &AlifeSwitchReport {
     &self.last_switch
   }

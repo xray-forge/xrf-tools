@@ -1,10 +1,11 @@
 use std::f32::consts::FRAC_PI_2;
 
+use serde::{Deserialize, Serialize};
 use xrf_math::glam::{EulerRot, Quat, Vec3};
 
 /// Which way a camera faces, as a turn and a pitch with no roll, in the engine's space: yaw turns from `+z` towards `+x`,
 /// pitch lowers the view, both in radians.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MovementHeading {
   pub yaw: f32,
   pub pitch: f32,

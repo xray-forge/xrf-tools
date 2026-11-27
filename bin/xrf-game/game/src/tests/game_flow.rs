@@ -23,6 +23,7 @@ fn request() -> GameLoadRequest {
     level: String::from("zaton"),
     game: GameLoadSource::New { seed: 7 },
     mode: MovementMode::Fly,
+    recording: None,
   }
 }
 

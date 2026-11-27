@@ -52,6 +52,14 @@ impl GameFlow {
     &self.look
   }
 
+  /// While the game replays a recorded session, faces the look where the session faced the player, so the view shows
+  /// what was recorded whatever the mouse does, and the player takes over at the replay's end facing as it left them.
+  pub(crate) fn follow_replay(&self) {
+    if let Some(heading) = self.running.as_ref().and_then(GameRunning::get_replayed_heading) {
+      self.look.face(heading);
+    }
+  }
+
   pub(crate) fn get_stage(&self) -> GameFlowStage {
     match (&self.loading, &self.running) {
       (Some(_), _) => GameFlowStage::Loading,

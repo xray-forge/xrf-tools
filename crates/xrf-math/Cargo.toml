@@ -9,7 +9,7 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-glam = { version = "0.34.1", features = ["bytemuck"] }
+glam = { version = "0.34.1", features = ["bytemuck", "serde"] }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-chunk = { workspace = true }

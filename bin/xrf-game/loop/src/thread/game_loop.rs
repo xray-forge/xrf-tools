@@ -11,6 +11,9 @@ use crate::feed::loop_events::LoopEvents;
 use crate::feed::loop_feed::LoopFeed;
 use crate::feed::loop_status::LoopStatus;
 use crate::loop_stepper::LoopStepper;
+use crate::record::loop_command_log::LoopCommandLog;
+use crate::record::loop_session::LoopSession;
+use crate::record::loop_witness::LoopWitness;
 use crate::state::loop_state::LoopState;
 use crate::thread::loop_control::LoopControl;
 
@@ -24,23 +27,29 @@ const PAUSED_WAIT: Duration = Duration::from_millis(10);
 /// The game loop: the game state stepped on its own thread at its clock's rate. It sleeps to each tick's instant,
 /// takes what the game asked of the loop and the commands that arrived, steps, publishes the frame and queues the
 /// step's events. It may be paused, and read between two ticks paused or not. A step's fault stops it, once logged, its
-/// status saying why. Dropping it stops the thread and waits for it.
+/// status saying why. Its session may replay a recorded one's commands at the ticks that took them, and be watched by
+/// a witness as it steps. Dropping it stops the thread and waits for it.
 pub struct GameLoop<S: LoopState> {
   sender: Sender<S::Command>,
   control: Sender<LoopControl<S>>,
   feed: Arc<LoopFeed<S::Frame>>,
   events: Arc<LoopEvents<S::Event>>,
+  /// The tick a replayed session ends at; none for a loop that takes live commands from its start.
+  replay_end: Option<u64>,
   is_stopping: Arc<AtomicBool>,
   handle: Option<JoinHandle<()>>,
 }
 
 impl<S: LoopState> GameLoop<S> {
-  /// Starts stepping `stepper` from the tick after its own, by `clock`, its present frame published at once.
+  /// Starts stepping `stepper` from the tick after its own, by `clock`, its present frame published at once; its
+  /// commands come and its steps are watched as `session` sets.
   ///
   /// # Errors
   ///
   /// Returns why the thread cannot be started.
-  pub fn start(stepper: LoopStepper<S>, clock: LoopClock) -> XrfResult<Self> {
+  pub fn start(stepper: LoopStepper<S>, clock: LoopClock, session: LoopSession<S>) -> XrfResult<Self> {
+    let LoopSession { replay, witness } = session;
+    let replay_end: Option<u64> = replay.as_ref().map(LoopCommandLog::get_end);
     let (sender, receiver) = mpsc::channel::<S::Command>();
     let (control, controls) = mpsc::channel::<LoopControl<S>>();
     let feed: Arc<LoopFeed<S::Frame>> = Arc::new(LoopFeed::default());
@@ -61,26 +70,41 @@ impl<S: LoopState> GameLoop<S> {
           stepper,
           clock,
           is_paused: false,
+          replay,
+          witness,
         }
         .run(&receiver, &controls, &outlets, &is_stopping);
       }
     })?;
 
-    log::info!("Game loop started at {:?} a tick", clock.get_step());
+    match replay_end {
+      Some(end) => log::info!(
+        "Game loop started at {:?} a tick, replaying a recorded session to tick {end}",
+        clock.get_step()
+      ),
+      None => log::info!("Game loop started at {:?} a tick", clock.get_step()),
+    }
 
     Ok(Self {
       sender,
       control,
       feed,
       events,
+      replay_end,
       is_stopping,
       handle: Some(handle),
     })
   }
 
-  /// A sender of commands, which the next tick takes; one sent after the thread stopped is dropped.
+  /// A sender of commands, which the next tick takes; one sent after the thread stopped is dropped, and so is one
+  /// that arrives while a recorded session is replayed.
   pub fn get_sender(&self) -> Sender<S::Command> {
     self.sender.clone()
+  }
+
+  /// The tick the session it replays ends at, from which it takes live commands; none where it replays nothing.
+  pub fn get_replay_end(&self) -> Option<u64> {
+    self.replay_end
   }
 
   /// The frames it publishes and whether it still steps.
@@ -164,6 +188,9 @@ struct LoopThread<S: LoopState> {
   stepper: LoopStepper<S>,
   clock: LoopClock,
   is_paused: bool,
+  /// The recorded session being stepped again, until its end.
+  replay: Option<LoopCommandLog<S::Command>>,
+  witness: Option<Box<dyn LoopWitness<S>>>,
 }
 
 impl<S: LoopState> LoopThread<S> {
@@ -210,7 +237,11 @@ impl<S: LoopState> LoopThread<S> {
 
       let from: u64 = self.stepper.get_time().tick;
 
-      commands.extend(receiver.try_iter());
+      self.gather(from, receiver, &mut commands);
+
+      if let Some(witness) = &mut self.witness {
+        witness.see_commands(from, &commands);
+      }
 
       match self.stepper.step(commands.drain(..)) {
         Ok(events) => outlets.events.push(from, events),
@@ -232,6 +263,10 @@ impl<S: LoopState> LoopThread<S> {
         .feed
         .publish(self.clock.get_instant(tick), self.stepper.get_frame());
 
+      if let Some(witness) = &mut self.witness {
+        witness.see_step(&self.stepper);
+      }
+
       let now: Instant = Instant::now();
       let behind: u64 = self.clock.get_tick_at(now).saturating_sub(tick);
 
@@ -242,6 +277,24 @@ impl<S: LoopState> LoopThread<S> {
     }
 
     log::info!("Game loop stopped at tick {}", self.stepper.get_time().tick);
+  }
+
+  /// Gathers the commands `tick` takes into `commands`: the live ones that arrived, or, while a recorded session is
+  /// replayed, the ones its log holds for the tick, the live ones let go.
+  fn gather(&mut self, tick: u64, receiver: &Receiver<S::Command>, commands: &mut Vec<S::Command>) {
+    if let Some(replay) = &mut self.replay {
+      if tick < replay.get_end() {
+        receiver.try_iter().for_each(drop);
+        commands.extend(replay.take_at(tick));
+
+        return;
+      }
+
+      log::info!("Game loop replayed its recorded session to tick {tick} and takes live commands from here");
+      self.replay = None;
+    }
+
+    commands.extend(receiver.try_iter());
   }
 
   fn take(&mut self, control: LoopControl<S>) {

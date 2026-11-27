@@ -12,6 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 log = { workspace = true }
+serde = { workspace = true }
 xrf-error = { workspace = true }
 xrf-game-config = { workspace = true }
 xrf-game-loop = { workspace = true }

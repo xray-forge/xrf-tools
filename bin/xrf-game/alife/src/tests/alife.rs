@@ -1,6 +1,5 @@
-use std::time::Duration;
-
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use xrf_game_hooks::HookRegistry;
 use xrf_game_loop::{LoopSystem, LoopTime};

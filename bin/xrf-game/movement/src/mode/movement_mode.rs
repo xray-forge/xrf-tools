@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 /// Which way the player moves; how each moves is the movement's [`crate::MovementModes`].
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MovementMode {
   /// A free camera through everything.
   #[default]

@@ -89,6 +89,8 @@ impl GamePlay<'_> {
         return Ok(());
       }
 
+      self.flow.follow_replay();
+
       // The view already faces the look the render thread reads; the simulation is sent it whole, once a frame.
       if let Some(heading) = self.flow.get_look().take_changed() {
         self.send(GameCommand::Movement(MovementCommand::Face(heading)));

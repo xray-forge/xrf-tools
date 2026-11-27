@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use xrf_game_loop::LoopBlend;
 use xrf_math::glam::{Quat, Vec3};
 
@@ -5,7 +6,7 @@ use crate::camera::movement_heading::MovementHeading;
 
 /// Where the game's camera stands and how it is turned, in the engine's space: unturned, it looks along `+z` with `+y`
 /// up, as X-Ray's camera does.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MovementCamera {
   pub position: Vec3,
   pub rotation: Quat,

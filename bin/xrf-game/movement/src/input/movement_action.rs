@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 /// What a held key or button asks of movement, whichever key the player bound to it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum MovementAction {
   Forward,
   Back,

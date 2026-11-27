@@ -5,10 +5,8 @@ use std::sync::mpsc::Sender;
 use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
-#[cfg(feature = "mcp")]
-use xrf_game_loop::LoopStepper;
-use xrf_game_loop::{GameLoop, LoopClock, LoopFrame, LoopStatus};
-use xrf_game_movement::{MovementCommand, MovementEvent};
+use xrf_game_loop::{GameLoop, LoopClock, LoopFrame, LoopStatus, LoopStepper};
+use xrf_game_movement::{MovementCommand, MovementEvent, MovementHeading};
 use xrf_game_platform::PlatformEvent;
 use xrf_game_settings::GameInputSettings;
 use xrf_world::WorldFedCamera;
@@ -62,12 +60,14 @@ impl GameRunning {
       state,
       footsteps,
       controls,
+      loop_session,
     } = session;
     let clock: LoopClock = LoopClock::new(Instant::now(), LoopClock::DEFAULT_TICK_RATE);
 
     look.face(state.movement.get_heading());
 
-    let game_loop: GameLoop<GameState> = GameLoop::start(LoopStepper::new(clock.get_step(), state), clock)?;
+    let game_loop: GameLoop<GameState> =
+      GameLoop::start(LoopStepper::new(clock.get_step(), state), clock, loop_session)?;
 
     view.show(
       source,
@@ -103,7 +103,19 @@ impl GameRunning {
     self.game_loop.get_feed().get_latest()
   }
 
-  /// Sends a command to the loop, answering whether it still takes them.
+  /// Where the session being replayed faces the player, for the look to follow; none once the replay ended, and for
+  /// a game that replays nothing, whose look is the player's own.
+  pub(crate) fn get_replayed_heading(&self) -> Option<MovementHeading> {
+    let end: u64 = self.game_loop.get_replay_end()?;
+
+    self
+      .get_latest()
+      .filter(|frame| frame.tick < end)
+      .map(|frame| frame.state.camera.get_heading())
+  }
+
+  /// Sends a command to the loop, answering whether it still takes them; while it replays a recorded session it lets
+  /// what it is sent go.
   pub(crate) fn send(&self, command: GameCommand) -> bool {
     if self.commands.send(command).is_err() {
       log::error!("The game loop stopped taking commands");

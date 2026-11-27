@@ -2,20 +2,15 @@ use std::f32::consts::FRAC_PI_2;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use xrf_game_alife::{Alife, AlifeData, AlifeHooks, AlifeSettings};
-use xrf_game_loop::{GameLoop, LoopClock, LoopFeed, LoopFrame, LoopRead, LoopStepper};
-use xrf_game_movement::Movement;
+use xrf_game_loop::{GameLoop, LoopClock, LoopFeed, LoopFrame, LoopRead, LoopSession, LoopStepper};
 use xrf_game_movement::{
-  MovementAction, MovementCamera, MovementCommand, MovementHeading, MovementInput, MovementInputKind, MovementMode,
-  MovementModes,
+  Movement, MovementAction, MovementCamera, MovementCommand, MovementHeading, MovementInput, MovementInputKind,
 };
-use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
+use xrf_game_objects::ObjectRecord;
+use xrf_game_settings::GameInputSettings;
 use xrf_math::glam::Vec3;
 use xrf_physics::PhysicsWorld;
-use xrf_spawn::ClsId;
 use xrf_world::{WorldFedCamera, WorldFedView, WorldViewFeed};
-
-use xrf_game_settings::GameInputSettings;
 
 use crate::input::game_look::GameLook;
 use crate::state::game_command::GameCommand;
@@ -25,84 +20,13 @@ use crate::state::game_level_state::GameLevelState;
 use crate::state::game_progress::GameProgress;
 use crate::state::game_state::GameState;
 use crate::state::game_view_feed::GameViewFeed;
-use crate::time::game_clock::GameClock;
-use crate::time::game_time::GameTime;
-
-/// The level the tests' objects stand on.
-const LEVEL: u8 = 108;
-
-/// How many stalkers stand in the field.
-const STALKERS: u16 = 50;
-
-/// The player's object, past the field of stalkers.
-fn player_id() -> ObjectId {
-  ObjectId::of_index(u32::from(STALKERS))
-}
+use crate::tests::fixtures::{LEVEL, player_id, state};
 
 /// Longer than any of these waits should take, so a broken contract fails rather than hangs.
 const WAIT: Duration = Duration::from_secs(10);
 
 fn assert_near(actual: Vec3, expected: Vec3) {
   assert!(actual.abs_diff_eq(expected, 1e-4), "{actual} is not {expected}");
-}
-
-fn record(name: String, class: ClsId, position: Vec3, spawn_id: u16) -> ObjectRecord {
-  ObjectRecord {
-    section: String::from("stalker"),
-    name,
-    class,
-    position,
-    direction: Vec3::Z,
-    game_vertex: Some(0),
-    level_vertex: Some(0),
-    story_id: None,
-    spawn_id,
-    switching: ObjectSwitching::ByDistance,
-  }
-}
-
-/// A new game on a field of objects every 20 m along `+z` on one level, the player at the origin looking along them.
-fn state() -> GameState {
-  let mut objects: ObjectRegistry = ObjectRegistry::default();
-
-  for index in 0..STALKERS {
-    objects.create(
-      record(
-        format!("stalker_{index}"),
-        ClsId::AiStlS,
-        Vec3::new(0.0, 0.0, f32::from(index) * 20.0),
-        index,
-      ),
-      Some(LEVEL),
-    );
-  }
-
-  let player: Option<ObjectId> = objects.create(
-    record(String::from("actor"), ClsId::SActor, Vec3::ZERO, STALKERS),
-    Some(LEVEL),
-  );
-
-  assert_eq!(player, Some(player_id()));
-
-  GameState {
-    progress: GameProgress {
-      seed: 7,
-      time: GameTime::new(GameClock::default()),
-      objects,
-      alife: Alife::new(AlifeSettings::default(), AlifeData::default()),
-      player: player_id(),
-    },
-    level: GameLevelState {
-      physics: PhysicsWorld::new().expect("a world"),
-      graph_level: Some(LEVEL),
-    },
-    movement: Movement::new(
-      MovementCamera::default(),
-      MovementMode::default(),
-      MovementModes::default(),
-    ),
-    hooks: AlifeHooks::of_defaults().expect("A-Life's hooks"),
-  }
 }
 
 /// What a replay of a recorded session ends with.
@@ -426,8 +350,12 @@ fn read_until(game_loop: &GameLoop<GameState>, done: impl Fn(&Seen) -> bool) -> 
 #[test]
 fn replaces_the_level_under_a_running_loop_keeping_the_game() {
   let clock: LoopClock = LoopClock::new(Instant::now(), LoopClock::DEFAULT_TICK_RATE);
-  let game_loop: GameLoop<GameState> =
-    GameLoop::start(LoopStepper::new(clock.get_step(), state()), clock).expect("the loop starts");
+  let game_loop: GameLoop<GameState> = GameLoop::start(
+    LoopStepper::new(clock.get_step(), state()),
+    clock,
+    LoopSession::default(),
+  )
+  .expect("the loop starts");
   let before: Seen = read_until(&game_loop, |seen| seen.tick > 5);
   let start: MovementCamera = MovementCamera::looking_at(Vec3::new(30.0, 4.0, -7.0), Vec3::new(30.0, 4.0, 1.0));
   // The next level, built beside the running loop as the pool builds one.

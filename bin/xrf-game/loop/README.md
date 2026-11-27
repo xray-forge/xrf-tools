@@ -34,6 +34,21 @@ time paused given up; `snapshot` reads the state between two ticks, paused or no
 a query, as the control endpoint's status, a level change or a save reads it. Dropping the loop stops its thread and
 waits for it.
 
+## Recording and replaying
+
+A session's outcome depends on the state it started from and the commands each tick took, and on nothing else, so a
+session is kept as a `LoopCommandLog`: each command with the tick that took it, in order, and the tick the session
+ended at. `GameLoop::start` takes a `LoopSession`, which by default is live and unwatched:
+
+- `replay`, a log to step again. Until its end each tick takes the log's commands for it and live commands are let
+  go; from its end the loop takes live commands, so a replay is played on from where it stopped. `get_replay_end`
+  says where that is.
+- `witness`, a `LoopWitness` called on the loop's thread: the commands each tick is about to take, then the stepper
+  as the step left it. It reads and never steers. A recorder is one, and so is a replay's check; the game writes both,
+  since only it can serialize its commands and compare its state.
+
+Pausing and snapshots change no tick, so neither is logged.
+
 ## What presentation reads
 
 - `LoopFeed` keeps the last two published `LoopFrame`s, shared (`Arc`) rather than copied, so a frame holds tables of

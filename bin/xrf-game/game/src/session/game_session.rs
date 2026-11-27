@@ -7,6 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_game_alife::{Alife, AlifeData, AlifeHooks};
 use xrf_game_config::ConfigIssues;
 use xrf_game_hooks::HookRegistry;
+use xrf_game_loop::LoopSession;
 use xrf_game_movement::{FlyMode, Movement, MovementModes};
 use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
 use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
@@ -27,8 +28,12 @@ use crate::input::game_controls::GameControls;
 use crate::level::game_level::GameLevel;
 use crate::load::game_load_progress::GameLoadProgress;
 use crate::load::game_load_stage::GameLoadStage;
+use crate::record::game_recorder::GameRecorder;
+use crate::record::game_recording_header::GameRecordingHeader;
+use crate::record::game_replay::GameReplay;
 use crate::session::game_load_request::GameLoadRequest;
 use crate::session::game_load_source::GameLoadSource;
+use crate::session::game_recording_request::GameRecordingRequest;
 use crate::session::game_spawn::GameSpawn;
 use crate::session::game_start::GameStart;
 use crate::sound::game_footsteps::GameFootsteps;
@@ -51,6 +56,9 @@ pub struct GameSession {
   pub footsteps: GameFootsteps,
   /// The tree's own controls, which presentation lays the player's bindings over.
   pub controls: GameControls,
+  /// Where the loop over the state takes its commands and who watches it step: live and unwatched, unless the
+  /// request records the session or replays one.
+  pub loop_session: LoopSession<GameState>,
 }
 
 impl GameSession {
@@ -73,6 +81,8 @@ impl GameSession {
     let GameLoadSource::New { seed } = request.game;
     let level_name: &str = &request.level;
     let started: Instant = Instant::now();
+    // First, so a recording that cannot be written or does not read stops the load before the level is read.
+    let loop_session: LoopSession<GameState> = Self::open_loop_session(request)?;
 
     log::info!("New game seed {seed}; --seed {seed} starts the same game");
 
@@ -138,6 +148,20 @@ impl GameSession {
       state,
       footsteps,
       controls: start.controls,
+      loop_session,
+    })
+  }
+
+  /// The loop session `request` asks for: one recorded to its file, one stepping its recording again with each digest
+  /// checked, or a live one nothing watches.
+  fn open_loop_session(request: &GameLoadRequest) -> XrfResult<LoopSession<GameState>> {
+    Ok(match &request.recording {
+      None => LoopSession::default(),
+      Some(GameRecordingRequest::Record(file)) => LoopSession {
+        replay: None,
+        witness: Some(Box::new(GameRecorder::create(file, &GameRecordingHeader::of(request))?)),
+      },
+      Some(GameRecordingRequest::Replay(file)) => GameReplay::read(file)?.into_session(),
     })
   }
 

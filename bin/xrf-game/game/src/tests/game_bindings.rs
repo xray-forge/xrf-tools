@@ -1,9 +1,8 @@
 use std::time::Duration;
 
+use xrf_game_config::ConfigIssues;
 use xrf_game_movement::{MovementAction, MovementCommand, MovementInput, MovementInputKind};
 use xrf_game_platform::{PlatformEvent, PlatformEventKind, PlatformScancode};
-
-use xrf_game_config::ConfigIssues;
 use xrf_game_settings::{GameInputSettings, GameSettings};
 
 use crate::input::game_action::GameAction;

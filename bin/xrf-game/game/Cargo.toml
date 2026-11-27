@@ -20,14 +20,15 @@ default = ["dlss", "mcp"]
 # with FSR instead.
 dlss = ["xrf-renderer/dlss"]
 # The control endpoint agents drive the game through, started only by `--mcp`.
-mcp = ["dep:image", "dep:serde_json", "dep:xrf-game-mcp", "dep:xrf-utils"]
+mcp = ["dep:image", "dep:xrf-game-mcp", "dep:xrf-utils"]
 
 [dependencies]
 clap = { version = "4.6.6", features = ["derive"] }
 image = { workspace = true, features = ["png"], optional = true }
 log = { workspace = true }
-serde_json = { workspace = true, optional = true }
 rayon = "1.12.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 xrf-audio = { workspace = true, features = ["steam-audio"] }
 xrf-cache = { workspace = true }
 xrf-chunk = { workspace = true }
