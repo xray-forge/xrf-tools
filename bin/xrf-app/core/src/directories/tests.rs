@@ -22,23 +22,6 @@ fn non_unicode_component() -> OsString {
 }
 
 #[test]
-fn keeps_its_files_beside_the_executable_first() {
-  assert_eq!(
-    AppDirectories::order_app_data_directories(Some(PathBuf::from("application")), Some(PathBuf::from("data"))),
-    vec![PathBuf::from("application").join("appdata"), PathBuf::from("data")]
-  );
-}
-
-#[test]
-fn falls_back_to_its_data_directory_where_the_executable_takes_no_files() {
-  assert_eq!(
-    AppDirectories::order_app_data_directories(None, Some(PathBuf::from("data"))),
-    vec![PathBuf::from("data")]
-  );
-  assert!(AppDirectories::order_app_data_directories(None, None).is_empty());
-}
-
-#[test]
 fn writes_tools_output_beside_the_executable_first() {
   assert_eq!(
     AppDirectories::order_output_directories(Some(PathBuf::from("application")), Some(PathBuf::from("data"))),
@@ -78,28 +61,5 @@ fn keeps_preferences_and_caches_where_it_keeps_its_logs() {
 
   assert_eq!(directories.get_preferences_file(), Some(own.join("preferences.json")));
   assert_eq!(directories.get_cache_root(), Some(own.join("cache")));
-}
-
-#[test]
-fn names_the_same_folders_to_every_command_asking_at_once() {
-  let directories: AppDirectories = AppDirectories::new(Some(PathBuf::from("data")));
-  let first: Vec<PathBuf> = directories.get_app_data_directories();
-  let answers: Vec<Vec<PathBuf>> = std::thread::scope(|scope| {
-    let asks: Vec<_> = (0..16)
-      .map(|_| {
-        scope.spawn(|| {
-          (0..32)
-            .map(|_| directories.get_app_data_directories())
-            .collect::<Vec<_>>()
-        })
-      })
-      .collect();
-
-    asks
-      .into_iter()
-      .flat_map(|ask| ask.join().expect("an ask to answer"))
-      .collect()
-  });
-
-  assert!(answers.iter().all(|answer| *answer == first));
+  assert_eq!(directories.get_logs_directories().first(), Some(&own.join("logs")));
 }

@@ -3,10 +3,8 @@ use std::io;
 use std::time::SystemTime;
 
 use log::{Level, Record};
+use xrf_logging::{LogFile, LogFilter, LogLayout, LogTimestamp};
 
-use crate::logging::file::LogFile;
-use crate::logging::line::{LogLayout, LogTimestamp};
-use crate::logging::log_filter::LogFilter;
 use crate::logging::ui::UiLogEntry;
 use crate::logging::ui::ui_log_filter::UiLogFilter;
 use crate::logging::ui::ui_log_writer::UiLogWriter;

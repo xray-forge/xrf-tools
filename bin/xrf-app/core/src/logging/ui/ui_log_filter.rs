@@ -1,7 +1,7 @@
 use env_filter::Filter;
 use log::{Level, Metadata, Record};
+use xrf_logging::LogFilter;
 
-use crate::logging::log_filter::LogFilter;
 use crate::logging::ui::UiLog;
 
 /// The backend's filter rules as the UI log asks them: whether a record is written, and the most verbose level any UI

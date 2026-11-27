@@ -7848,6 +7848,7 @@ dependencies = [
  "xrf-error",
  "xrf-ipc-typescript",
  "xrf-job",
+ "xrf-logging",
  "xrf-profiler",
  "xrf-renderer",
  "xrf-test-utils",
@@ -7938,14 +7939,12 @@ name = "xrf-app-core"
 version = "0.1.0"
 dependencies = [
  "bytes",
- "dirs",
  "env_filter",
  "env_logger",
  "getrandom 0.4.3",
  "http-body-util",
  "hyper",
  "hyper-util",
- "jiff",
  "log",
  "serde",
  "serde_json",
@@ -7959,11 +7958,13 @@ dependencies = [
  "windows",
  "xrf-cache",
  "xrf-dds",
+ "xrf-directories",
  "xrf-engine-target",
  "xrf-env-flags",
  "xrf-error",
  "xrf-ipc-typescript",
  "xrf-job",
+ "xrf-logging",
  "xrf-session",
  "xrf-test-utils",
  "xrf-utils",
@@ -8177,6 +8178,7 @@ dependencies = [
  "xrf-build-info",
  "xrf-cache",
  "xrf-env-flags",
+ "xrf-logging",
  "xrf-renderer",
  "xrf-renderer-host",
  "xrf-test-utils",
@@ -8449,6 +8451,13 @@ dependencies = [
  "xrf-utils",
  "xrf-vfs",
  "xrf-xml",
+]
+
+[[package]]
+name = "xrf-directories"
+version = "0.1.0"
+dependencies = [
+ "dirs",
 ]
 
 [[package]]
@@ -8848,6 +8857,20 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-logging"
+version = "0.1.0"
+dependencies = [
+ "env_filter",
+ "env_logger",
+ "jiff",
+ "log",
+ "xrf-env-flags",
  "xrf-error",
  "xrf-test-utils",
  "xrf-utils",

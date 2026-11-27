@@ -8,13 +8,14 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
-use xrf_app_core::logging::{LogSetup, ProcessStart, UiLog};
+use xrf_app_core::logging::{AppLogSetup, UiLog};
 use xrf_app_core::session::SessionScopes;
 use xrf_app_core::transport::TransportServer;
 use xrf_app_core::window::{WindowCloseApprovals, WindowHandles, WindowReveals};
 use xrf_app_system::StartupLog;
 use xrf_build_info::{BuildInfo, build_info};
 use xrf_job::ExecutionRequest;
+use xrf_logging::ProcessStart;
 
 use crate::application_failure::ApplicationFailure;
 use crate::application_foundation::ApplicationFoundation;
@@ -30,7 +31,7 @@ pub(crate) fn run() -> ExitCode {
   // Recorded by this binary's build script, so it describes the binary rather than whichever crate reads it.
   let build: BuildInfo = build_info!();
 
-  let ui_log: UiLog = LogSetup::install(&context.config().identifier, build.version);
+  let ui_log: UiLog = AppLogSetup::install(&context.config().identifier, build.version);
 
   StartupLog::write(&build);
 

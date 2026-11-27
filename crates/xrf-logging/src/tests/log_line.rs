@@ -6,7 +6,8 @@ use env_logger::{Builder, Logger, Target};
 use log::{Level, LevelFilter, Log, Record};
 use xrf_utils::wall_clock_millis;
 
-use crate::logging::line::{LogLayout, LogTimestamp};
+use crate::line::log_layout::LogLayout;
+use crate::line::log_timestamp::LogTimestamp;
 
 #[derive(Clone, Default)]
 struct SharedBuffer(Arc<Mutex<Vec<u8>>>);

@@ -21,6 +21,7 @@ xrf-app-render = { workspace = true }
 xrf-build-info = { workspace = true }
 xrf-cache = { workspace = true }
 xrf-env-flags = { workspace = true }
+xrf-logging = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-renderer-host = { workspace = true }
 xrf-utils = { workspace = true }

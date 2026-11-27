@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 
 use env_logger::{Builder, Logger};
 use log::{Level, Log, Metadata};
+use xrf_logging::LogFilter;
 use xrf_test_utils::GeneratedResources;
 
-use crate::logging::log_filter::LogFilter;
 use crate::logging::ui::ui_log_filter::UiLogFilter;
 use crate::logging::{UiLog, UiLogEntry};
 

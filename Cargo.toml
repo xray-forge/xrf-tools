@@ -18,6 +18,7 @@ members = [
   "crates/xrf-collections",
   "crates/xrf-dds",
   "crates/xrf-dialog",
+  "crates/xrf-directories",
   "crates/xrf-dlss",
   "crates/xrf-dltx",
   "crates/xrf-editable-level",
@@ -46,6 +47,7 @@ members = [
   "crates/xrf-ltx",
   "crates/xrf-ltx-inspect",
   "crates/xrf-ltx-project",
+  "crates/xrf-logging",
   "crates/xrf-lua",
   "crates/xrf-lzhuf",
   "crates/xrf-material",
@@ -147,6 +149,7 @@ xrf-chunk = { path = "crates/xrf-chunk" }
 xrf-collections = { path = "crates/xrf-collections" }
 xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
+xrf-directories = { path = "crates/xrf-directories" }
 xrf-dlss = { path = "crates/xrf-dlss" }
 xrf-dltx = { path = "crates/xrf-dltx" }
 xrf-editable-level = { path = "crates/xrf-editable-level" }
@@ -172,6 +175,7 @@ xrf-level = { path = "crates/xrf-level" }
 xrf-level-compiler = { path = "crates/xrf-level-compiler" }
 xrf-level-source = { path = "crates/xrf-level-source" }
 xrf-light-anim = { path = "crates/xrf-light-anim" }
+xrf-logging = { path = "crates/xrf-logging" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-ltx-inspect = { path = "crates/xrf-ltx-inspect" }
 xrf-ltx-project = { path = "crates/xrf-ltx-project" }

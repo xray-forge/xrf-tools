@@ -11,7 +11,7 @@ mod window;
 
 use std::process::ExitCode;
 
-use xrf_app_core::logging::ProcessStart;
+use xrf_logging::ProcessStart;
 
 fn main() -> ExitCode {
   xrf_profiler::start();

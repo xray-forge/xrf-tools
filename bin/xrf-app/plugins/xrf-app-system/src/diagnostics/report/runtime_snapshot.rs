@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use sysinfo::{Pid, System};
-use xrf_app_core::logging::ProcessStart;
+use xrf_logging::ProcessStart;
 use xrf_utils::duration_to_millis;
 
 use crate::diagnostics::report::{DescendantUsage, MachineUsage, ProcessUsage};

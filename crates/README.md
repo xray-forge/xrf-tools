@@ -105,12 +105,14 @@ README is also its crate's rustdoc page.
 | ---------------------------------------------- | ----------------------------------------------------------------- |
 | [xrf-build-info](xrf-build-info/README.md)     | Record and expose binary build provenance                         |
 | [xrf-cache](xrf-cache/README.md)               | Keep an application's caches on disk, tidied by age and size      |
+| [xrf-directories](xrf-directories/README.md)   | Place an application's own data and logs: `appdata`, else local   |
 | [xrf-enum-derive](xrf-enum-derive/README.md)   | Derive text and the variant list for fieldless enums              |
 | [xrf-env-flags](xrf-env-flags/README.md)       | Declare and read every environment variable the workspace honours |
 | [xrf-error](xrf-error/README.md)               | Share typed errors and results                                    |
 | [xrf-error-derive](xrf-error-derive/README.md) | Generate message-based error constructors                         |
 | [xrf-geometry](xrf-geometry/README.md)         | Trace rays and boxes against triangles as the engine's CDB does   |
 | [xrf-job](xrf-job/README.md)                   | Report progress, request cancellation, and plan worker limits     |
+| [xrf-logging](xrf-logging/README.md)           | Log to the console and a run's own files, under the app's name    |
 | [xrf-math](xrf-math/README.md)                 | Vectors, matrices and shapes in the engine's layout               |
 | [xrf-output](xrf-output/README.md)             | Route live messages and ordered worker output                     |
 | [xrf-profiler](xrf-profiler/README.md)         | Start the Tracy client a profiling build streams its zones to     |

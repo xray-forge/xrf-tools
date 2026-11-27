@@ -3,7 +3,7 @@ use std::io;
 use std::path::PathBuf;
 
 /// One open log file and its path, held on Windows without delete sharing.
-pub(crate) struct LogFile {
+pub struct LogFile {
   pub path: PathBuf,
   pub file: File,
 }
@@ -18,7 +18,7 @@ impl LogFile {
   /// # Errors
   ///
   /// Returns the filesystem's error where the file cannot be made.
-  pub(crate) fn create(path: PathBuf) -> io::Result<Self> {
+  pub fn create(path: PathBuf) -> io::Result<Self> {
     let mut options: OpenOptions = OpenOptions::new();
 
     options.write(true).create(true).truncate(true);

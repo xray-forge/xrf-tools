@@ -1,0 +1,28 @@
+[package]
+name = "xrf-logging"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+env_filter = { version = "2.0.0", default-features = false, features = ["std"] }
+env_logger = { workspace = true }
+jiff = { version = "0.2.35", default-features = false, features = ["std"] }
+log = { workspace = true }
+xrf-env-flags = { workspace = true }
+xrf-error = { workspace = true }
+xrf-utils = { workspace = true }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
+
+[features]
+# Log filters spelled as `RUST_LOG` spells them, for a dependent crate's tests. Nothing in a normal build turns this on.
+fixtures = []
+
+[lints]
+workspace = true

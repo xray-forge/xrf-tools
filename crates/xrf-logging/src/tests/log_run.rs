@@ -5,9 +5,12 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::logging::file::log_run_name::LogRunName;
-use crate::logging::file::{LogFile, LogRun};
+use crate::file::log_file::LogFile;
+use crate::file::log_run::LogRun;
+use crate::file::log_run_name::LogRunName;
 
+const APPLICATION: &str = "xrf-app";
+const COMPANION: &str = ".ui.log";
 const NEW_YEAR_2026: u64 = 1_767_225_600;
 
 fn fresh(case: &str) -> PathBuf {
@@ -19,17 +22,33 @@ fn fresh(case: &str) -> PathBuf {
 }
 
 fn run(second: u64, process: u32) -> LogRunName {
-  LogRunName::new(UNIX_EPOCH + Duration::from_secs(NEW_YEAR_2026 + second), process)
+  LogRunName::new(
+    APPLICATION,
+    UNIX_EPOCH + Duration::from_secs(NEW_YEAR_2026 + second),
+    process,
+  )
 }
 
-fn create_run(directory: &Path, name: &LogRunName) -> LogRun {
+fn create_run(directory: &Path, name: LogRunName) -> LogRun {
   LogRun::create_in(directory, name).expect("a run's log is made")
+}
+
+fn create_companion(run: &LogRun) -> LogFile {
+  run.create_companion(COMPANION).expect("a run's companion is made")
+}
+
+fn create_run_with_companion(directory: &Path, name: LogRunName) -> LogRun {
+  let run: LogRun = create_run(directory, name);
+
+  create_companion(&run);
+
+  run
 }
 
 fn list_runs(directory: &Path) -> Vec<LogRunName> {
   let mut runs: Vec<LogRunName> = list_names(directory)
     .iter()
-    .filter_map(|name| LogRunName::parse_log(name))
+    .filter_map(|name| LogRunName::parse_log(APPLICATION, name))
     .collect();
 
   runs.sort();
@@ -48,47 +67,51 @@ fn list_names(directory: &Path) -> Vec<String> {
 }
 
 #[test]
-fn names_a_run_by_its_utc_second_and_its_process() {
+fn names_a_run_by_its_application_its_utc_second_and_its_process() {
   let leap_day: SystemTime = UNIX_EPOCH + Duration::from_secs(1_709_210_096);
 
   assert_eq!(
-    LogRunName::new(leap_day, 4242).format_log(),
+    LogRunName::new(APPLICATION, leap_day, 4242).format_log(),
     "xrf-app.2024-02-29T12-34-56Z.4242.log"
   );
   assert_eq!(
-    LogRunName::new(leap_day + Duration::from_millis(999), 4242),
-    LogRunName::new(leap_day, 4242),
+    LogRunName::new(APPLICATION, leap_day + Duration::from_millis(999), 4242),
+    LogRunName::new(APPLICATION, leap_day, 4242),
     "a run is named to its second"
   );
   assert_eq!(
-    LogRunName::new(UNIX_EPOCH, 7).format_log(),
-    "xrf-app.1970-01-01T00-00-00Z.7.log"
+    LogRunName::new("xrf-game", UNIX_EPOCH, 7).format_log(),
+    "xrf-game.1970-01-01T00-00-00Z.7.log"
   );
   assert_eq!(run(0, 1).format_log(), "xrf-app.2026-01-01T00-00-00Z.1.log");
   assert_eq!(run(86_399, 1).format_log(), "xrf-app.2026-01-01T23-59-59Z.1.log");
-  assert_eq!(run(0, 1).format_ui_log(), "xrf-app.2026-01-01T00-00-00Z.1.ui.log");
+  assert_eq!(
+    run(0, 1).format_companion(COMPANION),
+    "xrf-app.2026-01-01T00-00-00Z.1.ui.log"
+  );
 }
 
 #[test]
 fn reads_a_run_back_from_its_logs_name() {
   for name in [run(0, 1), run(86_399, 4242), run(5, u32::MAX)] {
-    assert_eq!(LogRunName::parse_log(&name.format_log()), Some(name));
+    assert_eq!(LogRunName::parse_log(APPLICATION, &name.format_log()), Some(name));
   }
 
   // 2026-11-22, 325 days into the year, at 10:30:05.
   assert_eq!(
-    LogRunName::parse_log("xrf-app.2026-11-22T10-30-05Z.4242.log"),
+    LogRunName::parse_log(APPLICATION, "xrf-app.2026-11-22T10-30-05Z.4242.log"),
     Some(run(325 * 86_400 + 37_805, 4242))
   );
 }
 
 #[test]
-fn tells_a_runs_log_from_its_ui_log_and_the_single_logs_earlier_versions_wrote() {
-  assert!(LogRunName::parse_log("xrf-app.2026-11-22T10-30-05Z.4242.log").is_some());
-  assert!(LogRunName::parse_log("xrf-app.2026-11-22T10-30-05Z.4242.ui.log").is_none());
-  assert!(LogRunName::parse_log("xrf-app.log").is_none());
-  assert!(LogRunName::parse_log("xrf-app.previous.log").is_none());
-  assert!(LogRunName::parse_log("xrf-app.2026-11-22T10-30-05Z.4242.txt").is_none());
+fn tells_a_runs_log_from_its_companions_another_applications_and_the_single_logs_earlier_versions_wrote() {
+  assert!(LogRunName::parse_log(APPLICATION, "xrf-app.2026-11-22T10-30-05Z.4242.log").is_some());
+  assert!(LogRunName::parse_log(APPLICATION, "xrf-app.2026-11-22T10-30-05Z.4242.ui.log").is_none());
+  assert!(LogRunName::parse_log(APPLICATION, "xrf-game.2026-11-22T10-30-05Z.4242.log").is_none());
+  assert!(LogRunName::parse_log(APPLICATION, "xrf-app.log").is_none());
+  assert!(LogRunName::parse_log(APPLICATION, "xrf-app.previous.log").is_none());
+  assert!(LogRunName::parse_log(APPLICATION, "xrf-app.2026-11-22T10-30-05Z.4242.txt").is_none());
 }
 
 // Pruning removes files, so a name no run of this application would write is never taken for a run's.
@@ -102,21 +125,32 @@ fn takes_no_name_a_run_would_not_write_for_a_runs() {
     "xrf-app.2026-11-22T10:30:05Z.4242.log",
     "xrf-app.2026-11-22.4242.log",
     "xrf-app.2026-11-22T10-30-05Z.99999999999.log",
+    "xrf-appx.2026-11-22T10-30-05Z.4242.log",
   ] {
-    assert_eq!(LogRunName::parse_log(name), None, "'{name}'");
+    assert_eq!(LogRunName::parse_log(APPLICATION, name), None, "'{name}'");
   }
+}
+
+#[test]
+fn owns_its_log_and_companions_but_no_other_runs_files() {
+  let name: LogRunName = run(0, 42);
+
+  assert!(name.is_own_file("xrf-app.2026-01-01T00-00-00Z.42.log"));
+  assert!(name.is_own_file("xrf-app.2026-01-01T00-00-00Z.42.ui.log"));
+  assert!(!name.is_own_file("xrf-app.2026-01-01T00-00-00Z.420.log"));
+  assert!(!name.is_own_file("xrf-app.2026-01-01T00-00-00Z.42.ui.txt"));
 }
 
 // Nothing keeps a second instance from starting: none may move or replace the log of one still writing it.
 #[test]
 fn keeps_a_running_instances_log_through_two_later_instances() {
   let directory: PathBuf = fresh("overlapping_instances");
-  let mut first: LogRun = create_run(&directory, &run(0, 1));
+  let mut first: LogRun = create_run(&directory, run(0, 1));
 
   first.log.file.write_all(b"first start\n").expect("the first writes");
 
-  let second: LogRun = create_run(&directory, &run(1, 2));
-  let third: LogRun = create_run(&directory, &run(2, 3));
+  let second: LogRun = create_run(&directory, run(1, 2));
+  let third: LogRun = create_run(&directory, run(2, 3));
 
   first.log.file.write_all(b"first later\n").expect("the first writes on");
   first.log.file.flush().expect("the first flushes");
@@ -132,15 +166,20 @@ fn keeps_a_running_instances_log_through_two_later_instances() {
 }
 
 #[test]
-fn prunes_the_oldest_runs_beyond_what_it_keeps_and_leaves_the_single_logs() {
+fn prunes_the_oldest_runs_beyond_what_it_keeps_and_leaves_other_files() {
   let directory: PathBuf = fresh("pruned");
 
   fs::create_dir_all(&directory).expect("the logs folder is made");
   fs::write(directory.join("xrf-app.log"), "an earlier version's").expect("a single log");
   fs::write(directory.join("xrf-app.previous.log"), "an earlier version's").expect("a single log");
+  fs::write(
+    directory.join("xrf-game.2026-01-01T00-00-00Z.1.log"),
+    "another application's",
+  )
+  .expect("its log");
 
   for second in 0..LogRun::KEPT_RUNS as u64 + 2 {
-    create_run(&directory, &run(second, 1));
+    create_run(&directory, run(second, 1));
   }
 
   let runs: Vec<LogRunName> = list_runs(&directory);
@@ -149,43 +188,44 @@ fn prunes_the_oldest_runs_beyond_what_it_keeps_and_leaves_the_single_logs() {
   assert_eq!(runs[0], run(2, 1), "the two oldest pruned");
   assert!(directory.join("xrf-app.log").is_file());
   assert!(directory.join("xrf-app.previous.log").is_file());
+  assert!(directory.join("xrf-game.2026-01-01T00-00-00Z.1.log").is_file());
 }
 
 #[test]
-fn makes_a_runs_ui_log_beside_its_log_under_the_runs_name() {
-  let directory: PathBuf = fresh("ui_beside");
-  let LogRun { log, ui_log } = create_run(&directory, &run(0, 1));
-  let ui_log: LogFile = ui_log.expect("a run's UI log is made");
+fn makes_a_runs_companion_beside_its_log_under_the_runs_name() {
+  let directory: PathBuf = fresh("companion_beside");
+  let run_made: LogRun = create_run(&directory, run(0, 1));
+  let companion: LogFile = create_companion(&run_made);
 
-  assert_eq!(ui_log.path.parent(), log.path.parent());
+  assert_eq!(companion.path.parent(), run_made.log.path.parent());
   assert_eq!(
     list_names(&directory),
-    [run(0, 1).format_log(), run(0, 1).format_ui_log()]
+    [run(0, 1).format_log(), run(0, 1).format_companion(COMPANION)]
   );
 }
 
 #[test]
-fn counts_a_run_and_its_ui_log_as_one_run() {
-  let directory: PathBuf = fresh("ui_not_a_run");
+fn counts_a_run_and_its_companion_as_one_run() {
+  let directory: PathBuf = fresh("companion_not_a_run");
 
   for second in 0..LogRun::KEPT_RUNS as u64 {
-    create_run(&directory, &run(second, 1));
+    create_run_with_companion(&directory, run(second, 1));
   }
 
   assert_eq!(
     list_runs(&directory).len(),
     LogRun::KEPT_RUNS,
-    "no run pruned for its UI log"
+    "no run pruned for its companion"
   );
   assert_eq!(list_names(&directory).len(), 2 * LogRun::KEPT_RUNS);
 }
 
 #[test]
-fn prunes_a_runs_ui_log_with_its_log() {
-  let directory: PathBuf = fresh("ui_pruned");
+fn prunes_a_runs_companion_with_its_log() {
+  let directory: PathBuf = fresh("companion_pruned");
 
   for second in 0..LogRun::KEPT_RUNS as u64 + 2 {
-    create_run(&directory, &run(second, 1));
+    create_run_with_companion(&directory, run(second, 1));
   }
 
   let names: Vec<String> = list_names(&directory);
@@ -193,13 +233,16 @@ fn prunes_a_runs_ui_log_with_its_log() {
   assert_eq!(names.len(), 2 * LogRun::KEPT_RUNS);
 
   for pruned in [run(0, 1), run(1, 1)] {
-    assert!(!names.contains(&pruned.format_ui_log()), "the pruned run's UI log goes");
+    assert!(
+      !names.contains(&pruned.format_companion(COMPANION)),
+      "the pruned run's companion goes"
+    );
     assert!(!names.contains(&pruned.format_log()), "the pruned run's log goes");
   }
 
   assert!(
-    names.contains(&run(2, 1).format_ui_log()),
-    "a kept run keeps its UI log"
+    names.contains(&run(2, 1).format_companion(COMPANION)),
+    "a kept run keeps its companion"
   );
 }
 
@@ -208,27 +251,21 @@ fn prunes_a_runs_ui_log_with_its_log() {
 #[test]
 fn keeps_a_held_log_through_later_runs_pruning() {
   let directory: PathBuf = fresh("pruned_while_held");
-  let held: LogRun = create_run(&directory, &run(0, 1));
+  let held: LogRun = create_run(&directory, run(0, 1));
+  let held_companion: LogFile = create_companion(&held);
 
   for second in 1..LogRun::KEPT_RUNS as u64 + 2 {
-    create_run(&directory, &run(second, 2));
+    create_run_with_companion(&directory, run(second, 2));
   }
 
   assert!(held.log.path.is_file(), "the running instance's log stays");
-  assert!(
-    held
-      .ui_log
-      .expect("the running instance's UI log is made")
-      .path
-      .is_file(),
-    "the running instance's UI log stays"
-  );
+  assert!(held_companion.path.is_file(), "the running instance's companion stays");
   assert!(
     !directory.join(run(1, 2).format_log()).exists(),
     "an ended run's goes in its place"
   );
   assert!(
-    !directory.join(run(1, 2).format_ui_log()).exists(),
-    "and its UI log with it"
+    !directory.join(run(1, 2).format_companion(COMPANION)).exists(),
+    "and its companion with it"
   );
 }
