@@ -13,14 +13,12 @@ use crate::switch::alife_switch_report::AlifeSwitchReport;
 
 /// A-Life, a system of the game loop: every update interval (265 ms for Call of Pripyat, as X-Ray's scheduler spaces
 /// it), the switch sweeps the current level, then the schedule updates the next offline objects of every level, in
-/// that order as `CALifeUpdateManager::update` runs them.
+/// that order as `CALifeUpdateManager::update` runs them. It lives as long as the game: the level the actor is on comes
+/// with each step, so a level played after another sweeps there.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Alife {
   settings: AlifeSettings,
   data: AlifeData,
-  /// The graph level the actor is on, none while it is on none the graph holds; the switch rests then, offline life
-  /// goes on.
-  level: Option<u8>,
   /// Simulated time left before the next update; the first comes at the first step.
   until_update: Duration,
   schedule: AlifeSchedule,
@@ -30,12 +28,11 @@ pub struct Alife {
 }
 
 impl Alife {
-  /// A-Life by `settings` over `data`, the actor on graph level `level`.
-  pub fn new(settings: AlifeSettings, data: AlifeData, level: Option<u8>) -> Self {
+  /// A-Life by `settings` over `data`.
+  pub fn new(settings: AlifeSettings, data: AlifeData) -> Self {
     Self {
       settings,
       data,
-      level,
       until_update: Duration::ZERO,
       schedule: AlifeSchedule::default(),
       last_switch: AlifeSwitchReport::default(),
@@ -78,10 +75,11 @@ impl LoopSystem for Alife {
 
     self.until_update = self.settings.get_update_interval();
 
-    // The wall clock is read for the log alone: nothing of the state depends on it.
-    let started: Instant = Instant::now();
+    // The wall clock is read for the log alone, and only where a line is written: nothing of the state depends on it.
+    let started: Option<Instant> = (time.tick == 0 || log::log_enabled!(log::Level::Debug)).then(Instant::now);
 
-    self.last_switch = match self.level {
+    // While the actor is on no level the graph holds, the switch rests and offline life goes on.
+    self.last_switch = match context.level {
       Some(level) => AlifeSwitch::sweep(context.objects, level, context.actor, &self.settings, time.tick),
       None => AlifeSwitchReport::default(),
     };
@@ -93,8 +91,9 @@ impl LoopSystem for Alife {
 
     let switch: AlifeSwitchReport = self.last_switch;
 
+    let elapsed: Duration = started.map(|started| started.elapsed()).unwrap_or_default();
+
     if time.tick == 0 {
-      let elapsed: Duration = started.elapsed();
       // Counted for the log once: how many share the schedule sets how long each waits for its turn.
       let waiting: usize = context
         .objects
@@ -112,12 +111,11 @@ impl LoopSystem for Alife {
       );
     } else if switch.went_online + switch.went_offline > 0 {
       log::debug!(
-        "A-Life switched {} online and {} offline of {} at tick {} in {:.2?}",
+        "A-Life switched {} online and {} offline of {} at tick {} in {elapsed:.2?}",
         switch.went_online,
         switch.went_offline,
         switch.swept,
-        time.tick,
-        started.elapsed()
+        time.tick
       );
     }
   }

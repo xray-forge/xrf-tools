@@ -3,7 +3,6 @@ use xrf_game_movement::MovementCommand;
 
 use crate::console::game_console_effect::GameConsoleEffect;
 use crate::console::game_console_state::GameConsoleState;
-use crate::state::game_command::GameCommand;
 
 /// The game's own console commands. A command that changes a system sends that system's command through the game loop
 /// as an effect, so the console knows no system, and a system's command is added here beside the rest; a script's,
@@ -30,9 +29,9 @@ impl GameConsoleCommands {
         "",
         "switches between walking and flying through everything",
         |state: &mut GameConsoleState, _| {
-          state.effects.push(GameConsoleEffect::Command(GameCommand::Movement(
-            MovementCommand::ToggleMode,
-          )));
+          state
+            .effects
+            .push(GameConsoleEffect::Movement(MovementCommand::ToggleMode));
 
           ConsoleAnswer::succeed(vec![String::from("Movement switched")])
         },

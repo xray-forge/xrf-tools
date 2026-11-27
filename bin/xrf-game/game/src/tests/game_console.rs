@@ -7,7 +7,6 @@ use xrf_game_settings::{GamePreset, GameSettings};
 
 use crate::console::game_console::GameConsole;
 use crate::console::game_console_effect::GameConsoleEffect;
-use crate::state::game_command::GameCommand;
 
 #[test]
 fn sets_a_setting_by_its_path_and_asks_the_view_to_draw_with_it() {
@@ -92,7 +91,7 @@ fn switches_movement_and_quits_as_effects() {
   assert_eq!(
     console.take_effects(),
     vec![
-      GameConsoleEffect::Command(GameCommand::Movement(MovementCommand::ToggleMode)),
+      GameConsoleEffect::Movement(MovementCommand::ToggleMode),
       GameConsoleEffect::Quit
     ]
   );

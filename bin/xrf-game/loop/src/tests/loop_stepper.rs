@@ -1,26 +1,23 @@
 use std::time::Duration;
 
-use crate::clock::game_clock::GameClock;
 use crate::feed::loop_frame::LoopFrame;
 use crate::loop_stepper::LoopStepper;
 use crate::tests::test_state::{TestCommand, TestFrame, TestState};
 
 fn stepper() -> LoopStepper<TestState> {
-  LoopStepper::new(Duration::from_millis(10), GameClock::default(), TestState::default())
+  LoopStepper::new(Duration::from_millis(10), TestState::default())
 }
 
 #[test]
-fn moves_the_game_day_by_its_factor_each_tick() {
+fn counts_its_ticks_by_its_step() {
   let mut stepper: LoopStepper<TestState> = stepper();
-  let start: f32 = stepper.get_frame().time_of_day;
 
   for _ in 0..100 {
     stepper.step([]);
   }
 
   assert_eq!(stepper.get_time().tick, 100);
-  // A simulated second at ten game seconds a second.
-  assert!((stepper.get_frame().time_of_day - start - 10.0).abs() < 1e-3);
+  assert_eq!(stepper.get_time().step, Duration::from_millis(10));
 }
 
 #[test]

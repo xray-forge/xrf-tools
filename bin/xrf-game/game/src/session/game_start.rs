@@ -1,12 +1,17 @@
 use xrf_game_alife::Alife;
-use xrf_game_objects::ObjectRegistry;
+use xrf_game_objects::{ObjectId, ObjectRegistry};
 
-use crate::level::game_player_config::GamePlayerConfig;
+use crate::host::game_configs::GameConfigs;
+use crate::host::game_player_config::GamePlayerConfig;
 
 /// What a new game starts with, read from the tree's spawn and configs while the level opens: every object of the
-/// spawn, A-Life over the game graph and the simulation's configs, and what the configs set for the player.
+/// spawn and which is the player, A-Life over the game graph and the simulation's configs, the graph level the game
+/// starts on, what the configs set for the player, and the configs, which the run keeps.
 pub(crate) struct GameStart {
   pub(crate) objects: ObjectRegistry,
+  pub(crate) player: ObjectId,
   pub(crate) alife: Alife,
-  pub(crate) player: GamePlayerConfig,
+  pub(crate) graph_level: Option<u8>,
+  pub(crate) player_config: GamePlayerConfig,
+  pub(crate) configs: GameConfigs,
 }

@@ -21,6 +21,7 @@ use crate::control::game_input_steps::GameInputSteps;
 use crate::control::scheduled_input::ScheduledInput;
 use crate::control::waiting_answer::WaitingAnswer;
 use crate::run::game_play::GamePlay;
+use crate::run::game_running::GameRunning;
 use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
 
@@ -178,11 +179,12 @@ impl GameControl {
 
   fn describe(&self, play: &GamePlay<'_>) -> XrfResult<Value> {
     let frame: LoopFrame<GameFrame> = play
-      .feed
-      .get_latest()
-      .ok_or_else(|| XrfError::new_not_found_error("the game loop has published no frame yet"))?;
+      .flow
+      .get_running()
+      .and_then(GameRunning::get_latest)
+      .ok_or_else(|| XrfError::new_not_found_error("the game is still opening; its loop has published no frame yet"))?;
     let camera: MovementCamera = frame.state.camera;
-    let minutes: u32 = (frame.time_of_day / 60.0) as u32;
+    let minutes: u32 = (frame.state.time_of_day / 60.0) as u32;
 
     Ok(json!({
       "level": self.level,

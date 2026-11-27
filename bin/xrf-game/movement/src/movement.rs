@@ -1,4 +1,5 @@
 use xrf_game_loop::{LoopSystem, LoopTime};
+use xrf_math::glam::Vec3;
 
 use crate::camera::movement_camera::MovementCamera;
 use crate::input::movement_input_state::MovementInputState;
@@ -56,6 +57,21 @@ impl Movement {
   pub fn get_footing(&self) -> Option<MovementFooting> {
     self.walk.footing
   }
+
+  /// Where the player's feet stand: below the eye by its height while walking, at the camera in flight.
+  pub fn get_feet(&self) -> Vec3 {
+    match self.walk.actor {
+      Some(_) => self.camera.position - Vec3::Y * self.walk.eye,
+      None => self.camera.position,
+    }
+  }
+
+  /// Moves into another level's physics world, standing at `camera`: what walking kept of the level left (its actor
+  /// in that world) goes with it, and the next walking step puts the actor into the new world.
+  pub fn enter_level(&mut self, camera: MovementCamera) {
+    self.camera = camera;
+    self.walk = WalkState::default();
+  }
 }
 
 impl LoopSystem for Movement {
@@ -70,8 +86,9 @@ impl LoopSystem for Movement {
     }
   }
 
-  /// Flying lets go of the actor walking left in the physics world; walking puts one there where it has none.
-  fn step(&mut self, time: &LoopTime, MovementContext { physics }: MovementContext<'_>) {
+  /// Flying lets go of the actor walking left in the physics world; walking puts one there where it has none. The
+  /// player's record then stands where its feet do.
+  fn step(&mut self, time: &LoopTime, MovementContext { physics, player }: MovementContext<'_>) {
     match self.mode {
       MovementMode::Fly => {
         if let Some(actor) = self.walk.actor
@@ -93,5 +110,8 @@ impl LoopSystem for Movement {
         }
       }
     }
+
+    // todo: write the player's facing into its record, in the spawn's angles, once a save or a system reads it.
+    player.position = self.get_feet();
   }
 }

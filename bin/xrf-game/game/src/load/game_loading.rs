@@ -10,9 +10,9 @@ use crate::load::game_load_stage::GameLoadStage;
 use crate::render::game_view::GameView;
 
 /// One load of a level as play shows it: its progress, shared with whoever does its work, and the loading view over the
-/// level until every stage ended, the player's input held meanwhile. Play holds one while a load runs: the game's
-/// launch, and later a new game, a saved game loaded, or the player travelling to another level. The stages the view
-/// alone sees, the renderer's first frame and the level's streaming, are followed here.
+/// level until every stage ended, the player's input held meanwhile. The main thread's flow holds one while a load
+/// runs: the game's launch, and later a new game, a saved game loaded, or the player travelling to another level. The
+/// stages the view alone sees, the renderer's first frame and the level's streaming, are followed here.
 pub(crate) struct GameLoading {
   level: String,
   progress: Arc<GameLoadProgress>,

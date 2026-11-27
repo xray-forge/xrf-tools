@@ -9,7 +9,6 @@ pub(crate) mod thread;
 #[cfg(test)]
 mod tests;
 
-pub use crate::clock::game_clock::GameClock;
 pub use crate::clock::loop_clock::LoopClock;
 pub use crate::clock::loop_time::LoopTime;
 pub use crate::feed::loop_feed::LoopFeed;

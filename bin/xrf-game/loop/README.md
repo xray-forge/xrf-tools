@@ -5,7 +5,7 @@ knows no gameplay: the game puts its systems together into one `LoopState`, and 
 
 ## The step
 
-`LoopStepper` holds the state and its `LoopTime` (the tick, the step, the game day's clock, game seconds elapsed).
+`LoopStepper` holds the state and its `LoopTime` (the tick and the step).
 `step` gives the state the commands that arrived since the last tick, in the order they arrived, then steps it from the
 tick's time. It has no clock of its own: the same commands step the same state to the same frames, which a recorded
 session checks (`src/tests/loop_stepper.rs`).
@@ -18,20 +18,22 @@ session checks (`src/tests/loop_stepper.rs`).
   bus) is its `Context`, which the root hands it each step (`()` for none). Dependencies are injected as typed
   parameters, never looked up from a container, so they show in the signature and the borrow checker proves two
   systems never write the same data; a system is tested by building its context alone (`src/tests/test_state.rs`).
-- The game's day runs by `GameClock`, `[alife]`'s `start_time` and `time_factor` (Call of Pripyat's 9:00 and 10 by
-  default): game seconds pass by ticks, never by the wall clock.
+- Game time is the game's state, not the loop's: the loop counts ticks and hands each step its length, and the game
+  moves its own time by them, never by the wall clock, so a save keeps it and the game may set it.
 
 ## The thread
 
 `GameLoop::start` steps a `LoopStepper` by a `LoopClock`: tick `k` stands at `anchor + k × step`, 100 ticks a second
 by default (X-Ray's physics step). It sleeps to each tick's instant with `thread::sleep` rather than a timed receive,
 whose wait on Windows is coarser, takes the commands waiting, steps and publishes. Behind its clock by more than 25 ticks, the clock gives that time up rather than stepping
-through it at once. Dropping the loop stops its thread and waits for it.
+through it at once. `pause` stops it stepping before the next tick (commands wait meanwhile) and `resume` steps again
+from a step after now, the time paused given up; `snapshot` reads the state between two ticks, paused or not, its
+answer on a channel of its own, as a level change or a save reads it. Dropping the loop stops its thread and waits for
+it.
 
 ## What presentation reads
 
-`LoopFeed` keeps the last two published `LoopFrame`s: the tick, the time of day and its factor, and the state's own
-frame, which blends by `LoopBlend`. A frame is stamped with its tick's instant, not with when it was stepped.
+`LoopFeed` keeps the last two published `LoopFrame`s: the tick and the state's own frame, which blends by `LoopBlend`. A frame is stamped with its tick's instant, not with when it was stepped.
 `read(now)` answers the state one tick behind the latest, blended between the two, so motion stays even however late a
 step ran; the lock is held only to copy two frames.
 

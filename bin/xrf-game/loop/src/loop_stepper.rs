@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use crate::clock::game_clock::GameClock;
 use crate::clock::loop_time::LoopTime;
 use crate::feed::loop_frame::LoopFrame;
 use crate::state::loop_state::LoopState;
@@ -14,10 +13,10 @@ pub struct LoopStepper<S> {
 }
 
 impl<S: LoopState> LoopStepper<S> {
-  /// `state` at tick 0, stepping by `step`, its day run by `game_clock`.
-  pub fn new(step: Duration, game_clock: GameClock, state: S) -> Self {
+  /// `state` at tick 0, stepping by `step`.
+  pub fn new(step: Duration, state: S) -> Self {
     Self {
-      time: LoopTime::new(step, game_clock),
+      time: LoopTime::new(step),
       state,
     }
   }
@@ -44,8 +43,6 @@ impl<S: LoopState> LoopStepper<S> {
   pub fn get_frame(&self) -> LoopFrame<S::Frame> {
     LoopFrame {
       tick: self.time.tick,
-      time_of_day: self.time.get_time_of_day(),
-      time_factor: self.time.game_clock.factor,
       state: self.state.get_frame(),
     }
   }

@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use crate::clock::game_clock::GameClock;
 use crate::clock::loop_clock::LoopClock;
 
 #[test]
@@ -30,12 +29,4 @@ fn gives_up_the_time_it_fell_behind() {
 
   assert_eq!(clock.get_instant(40), now);
   assert_eq!(clock.get_tick_at(now), 40);
-}
-
-#[test]
-fn runs_the_day_from_its_start_across_midnight() {
-  let clock: GameClock = GameClock::default();
-
-  assert!((clock.get_time_of_day(0.0) - 9.0 * 3600.0).abs() < 1e-3);
-  assert!((clock.get_time_of_day(16.0 * 3600.0) - 3600.0).abs() < 1e-3);
 }

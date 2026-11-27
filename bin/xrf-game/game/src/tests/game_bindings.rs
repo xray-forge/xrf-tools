@@ -4,7 +4,6 @@ use xrf_game_movement::{MovementAction, MovementCommand, MovementInput, Movement
 use xrf_game_platform::{PlatformEvent, PlatformEventKind, PlatformScancode};
 
 use crate::input::game_bindings::GameBindings;
-use crate::state::game_command::GameCommand;
 
 const AT: Duration = Duration::from_millis(42);
 
@@ -20,11 +19,8 @@ fn key(scancode: u16, is_down: bool, is_repeat: bool) -> PlatformEvent {
   })
 }
 
-fn movement(kind: MovementInputKind) -> Option<GameCommand> {
-  Some(GameCommand::Movement(MovementCommand::Input(MovementInput {
-    at: AT,
-    kind,
-  })))
+fn movement(kind: MovementInputKind) -> Option<MovementCommand> {
+  Some(MovementCommand::Input(MovementInput { at: AT, kind }))
 }
 
 #[test]
@@ -54,10 +50,7 @@ fn reads_a_bound_key_by_its_place_and_skips_its_repeats() {
 fn reads_the_noclip_key_as_a_mode_toggle_on_its_press_alone() {
   let bindings: GameBindings = GameBindings::default();
 
-  assert_eq!(
-    bindings.read(&key(17, true, false)),
-    Some(GameCommand::Movement(MovementCommand::ToggleMode))
-  );
+  assert_eq!(bindings.read(&key(17, true, false)), Some(MovementCommand::ToggleMode));
   assert_eq!(bindings.read(&key(17, true, true)), None);
   assert_eq!(bindings.read(&key(17, false, false)), None);
 }

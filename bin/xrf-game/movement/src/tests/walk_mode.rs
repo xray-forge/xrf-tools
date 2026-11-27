@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use xrf_game_loop::{GameClock, LoopSystem, LoopTime};
+use xrf_game_loop::{LoopSystem, LoopTime};
+use xrf_game_objects::ObjectRecord;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformFace, LevelCformGeometry};
 use xrf_ltx::Ltx;
@@ -21,6 +22,7 @@ use crate::mode::walk_stance::WalkStance;
 use crate::movement::Movement;
 use crate::movement_command::MovementCommand;
 use crate::movement_context::MovementContext;
+use crate::tests::fixtures::player;
 
 /// A world holding a floor at `y = 0`, 40 m across, its two faces wound as X-Ray winds them: clockwise from above.
 fn floor() -> PhysicsWorld {
@@ -55,12 +57,22 @@ fn press(action: MovementAction, is_pressed: bool) -> MovementCommand {
   })
 }
 
-fn step(movement: &mut Movement, physics: &mut PhysicsWorld, ticks: usize) {
-  let time: LoopTime = LoopTime::new(Duration::from_millis(10), GameClock::default());
+/// Steps `movement` `ticks` ticks, answering the player's record as it ends.
+fn step(movement: &mut Movement, physics: &mut PhysicsWorld, ticks: usize) -> ObjectRecord {
+  let time: LoopTime = LoopTime::new(Duration::from_millis(10));
+  let mut player: ObjectRecord = player();
 
   for _ in 0..ticks {
-    movement.step(&time, MovementContext { physics: &mut *physics });
+    movement.step(
+      &time,
+      MovementContext {
+        physics: &mut *physics,
+        player: &mut player,
+      },
+    );
   }
+
+  player
 }
 
 /// The standing eye's height over the feet.
@@ -215,9 +227,13 @@ fn falls_to_the_floor_from_where_flight_left_it() {
   );
 
   movement.apply(MovementCommand::ToggleMode);
-  step(&mut movement, &mut physics, 300);
+
+  let player: ObjectRecord = step(&mut movement, &mut physics, 300);
 
   assert!((movement.get_camera().position.y - eye()).abs() < 0.05);
+  // The player's record stands where the feet do, on the floor, not at the eye.
+  assert!(player.position.y.abs() < 0.05, "{}", player.position);
+  assert!(player.position.abs_diff_eq(movement.get_feet(), 1e-5));
 }
 
 #[test]

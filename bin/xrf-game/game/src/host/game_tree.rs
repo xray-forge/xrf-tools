@@ -14,8 +14,8 @@ use xrf_ltx_project::{LtxProject, LtxProjectOptions};
 use xrf_spawn::{SpawnFile, SpawnPatrolsChunk};
 use xrf_vfs::{XrayAssetType, XrayCachePolicy, XrayMountMode, XrayRoots, XraySearch, XrayVfs, XrayVfsHost};
 
-use crate::level::game_configs::GameConfigs;
-use crate::level::game_spawn::GameSpawn;
+use crate::host::game_configs::GameConfigs;
+use crate::session::game_spawn::GameSpawn;
 
 /// The X-Ray game tree the game plays: its roots mounted as the tools mount them (an installation with its archives,
 /// a set of volumes, or loose files), the file system host every read goes through, and the engine it was made for.

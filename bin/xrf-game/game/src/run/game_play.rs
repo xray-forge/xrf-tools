@@ -1,10 +1,12 @@
 use std::sync::Arc;
-use std::sync::mpsc::Sender;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(feature = "mcp")]
+use std::time::Instant;
 
+use xrf_error::XrfResult;
 use xrf_game_console::{ConsoleAnswer, ConsoleChoice};
 use xrf_game_developer::{DeveloperLoading, DeveloperSuggestion, DeveloperView};
-use xrf_game_loop::{LoopFeed, LoopFrame};
+use xrf_game_loop::LoopFrame;
 use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
 use xrf_game_platform::{
   Platform, PlatformEvent, PlatformEventKind, PlatformScancode, PlatformSize, PlatformWindow, PlatformWindowCommand,
@@ -17,38 +19,36 @@ use crate::console::game_console_effect::GameConsoleEffect;
 use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
 use crate::input::game_bindings::GameBindings;
-use crate::load::game_loading::GameLoading;
 use crate::render::game_view::GameView;
+use crate::run::game_flow::GameFlow;
+use crate::run::game_flow_stage::GameFlowStage;
+use crate::run::game_running::GameRunning;
 use crate::run::game_startup::GameStartup;
-use crate::sound::game_footsteps::GameFootsteps;
 use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
 
-/// The game while it is played: the platform's events read through the developer layer and the bindings into the
-/// loop's commands, the view fit to the window, the console's lines run and the log's records shown in it, the
-/// player's footsteps played from the loop's latest frame, the developer layer drawn over it, and the control
-/// endpoint's requests answered between frames, until the player, a console line or an agent quits.
+/// The main thread from the window's opening to the game's end: the platform's events read through the developer layer
+/// and the bindings into the loop's commands, the view fit to the window, the console's lines run and the log's records
+/// shown in it, the flow moved on (a load's view drawn while it runs, then the game played), the player's footsteps
+/// played from the loop's latest frame, the developer layer drawn over it, and the control endpoint's requests answered
+/// between frames, until the player, a console line or an agent quits.
 pub(crate) struct GamePlay<'a> {
   pub window: &'a mut PlatformWindow,
   pub view: &'a GameView,
-  pub commands: Sender<GameCommand>,
   pub bindings: GameBindings,
-  /// What the loop publishes, which the developer layer's readout and the control endpoint's status read.
-  pub feed: Arc<LoopFeed<GameFrame>>,
   pub developer: GameDeveloper,
   pub console: GameConsole,
   /// The log's records the console shows, taken as they come.
   pub log: Arc<LogTail>,
-  pub footsteps: GameFootsteps,
-  /// The control endpoint, where the game was started with `--mcp`.
+  /// The control endpoint, where the game was started with `--mcp` or `--listen`.
   #[cfg(feature = "mcp")]
   pub control: Option<GameControl>,
   /// Whether a console line asked the game to quit.
   pub is_quitting: bool,
   /// How the hidden window first shows.
   pub startup: GameStartup,
-  /// The load running, its view over the level; none once it is done.
-  pub loading: Option<GameLoading>,
+  /// The load running and the game played.
+  pub flow: GameFlow,
 }
 
 impl GamePlay<'_> {
@@ -59,7 +59,11 @@ impl GamePlay<'_> {
   const POLL_WAIT: Duration = Duration::from_millis(1);
 
   /// Plays until the player or an agent quits.
-  pub(crate) fn run(&mut self, platform: &mut Platform) {
+  ///
+  /// # Errors
+  ///
+  /// Returns why the game being loaded did not open, or its loop did not start.
+  pub(crate) fn run(&mut self, platform: &mut Platform) -> XrfResult<()> {
     let mut events: Vec<PlatformEvent> = Vec::new();
 
     loop {
@@ -78,7 +82,7 @@ impl GamePlay<'_> {
       }
 
       if !events.iter().all(|event| self.take_event(event)) {
-        return;
+        return Ok(());
       }
 
       for line in self.developer.take_entered() {
@@ -97,23 +101,15 @@ impl GamePlay<'_> {
       self.developer.push_lines(self.log.take());
 
       if self.is_quitting {
-        return;
+        return Ok(());
       }
 
       let view: DeveloperView = self.get_developer_view();
-      let latest: Option<LoopFrame<GameFrame>> = self.feed.get_latest();
+      let loading: Option<DeveloperLoading> = self.flow.advance(self.view, &mut self.developer)?;
+      let latest: Option<LoopFrame<GameFrame>> = self.flow.get_running().and_then(GameRunning::get_latest);
 
-      if let Some(step) = self
-        .footsteps
-        .hear(latest.as_ref().and_then(|frame| frame.state.footing.as_ref()))
-      {
-        self.view.play_sound(step);
-      }
-
-      let loading: Option<DeveloperLoading> = self.loading.as_mut().and_then(|loading| loading.update(self.view));
-
-      if loading.is_none() {
-        self.loading = None;
+      if let Some(running) = self.flow.get_running_mut() {
+        running.play_footsteps(self.view, latest.as_ref());
       }
 
       self.developer.send(self.view, view, latest, loading.as_ref());
@@ -126,7 +122,7 @@ impl GamePlay<'_> {
         self.control = Some(control);
 
         if !is_playing || self.is_quitting {
-          return;
+          return Ok(());
         }
       }
 
@@ -146,8 +142,8 @@ impl GamePlay<'_> {
     for effect in self.console.take_effects() {
       match effect {
         GameConsoleEffect::ApplySettings => self.view.apply_settings(self.console.get_settings()),
-        GameConsoleEffect::Command(command) => {
-          self.send(command);
+        GameConsoleEffect::Movement(command) => {
+          self.send(GameCommand::Movement(command));
         }
         GameConsoleEffect::Quit => self.is_quitting = true,
       }
@@ -170,15 +166,15 @@ impl GamePlay<'_> {
     self.developer.suggest(suggestions);
   }
 
-  /// Sends a command to the loop, answering whether it still takes them.
+  /// Sends a command to the game's loop, answering whether one took it: none while the game opens.
   pub(crate) fn send(&self, command: GameCommand) -> bool {
-    if self.commands.send(command).is_err() {
-      log::error!("The game loop stopped taking commands");
+    let Some(running) = self.flow.get_running() else {
+      log::warn!("No game runs yet to take {command:?}");
 
       return false;
-    }
+    };
 
-    true
+    running.send(command)
   }
 
   /// Takes one platform event, answering whether the game plays on.
@@ -202,8 +198,11 @@ impl GamePlay<'_> {
         true
       }
       // The player is held while the loading view covers the level.
-      _ if self.loading.is_some() => true,
-      _ => self.bindings.read(event).is_none_or(|command| self.send(command)),
+      _ if self.flow.get_stage() == GameFlowStage::Loading => true,
+      _ => self
+        .bindings
+        .read(event)
+        .is_none_or(|command| self.send(GameCommand::Movement(command))),
     }
   }
 

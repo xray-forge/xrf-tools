@@ -8951,11 +8951,13 @@ dependencies = [
  "log",
  "xrf-error",
  "xrf-game-loop",
+ "xrf-game-objects",
  "xrf-gamemtl",
  "xrf-level",
  "xrf-ltx",
  "xrf-math",
  "xrf-physics",
+ "xrf-spawn",
 ]
 
 [[package]]

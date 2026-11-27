@@ -9,7 +9,7 @@ use xrf_renderer::EngineSpace;
 use xrf_session::{SessionDerived, SessionId, SessionSnapshot};
 use xrf_vfs::{XrayRevision, XraySearch};
 
-use crate::level::game_tree::GameTree;
+use crate::host::game_tree::GameTree;
 
 /// A level of the game tree, opened: what the world shows and where the player starts on it.
 pub struct GameLevel {

@@ -1,145 +1,135 @@
 use std::sync::Arc;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
-use xrf_game_developer::DeveloperPicture;
-use xrf_game_movement::{FlyMode, Movement, MovementMode, MovementModes};
-use xrf_game_objects::ObjectRegistry;
+use xrf_game_movement::{FlyMode, Movement, MovementModes};
+use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
 use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::LevelCformGeometry;
 use xrf_level_source::{LevelAudio, LevelRenderSource};
+use xrf_math::glam::Vec3;
 use xrf_physics::{PhysicsLevel, PhysicsWorld};
+use xrf_spawn::ClsId;
 use xrf_world::WorldLevelSource;
 
-use crate::arguments::game_arguments::GameArguments;
-use crate::arguments::game_mode_argument::GameModeArgument;
-use crate::level::game_configs::GameConfigs;
+use crate::host::game_configs::GameConfigs;
+use crate::host::game_host::GameHost;
+use crate::host::game_tree::GameTree;
 use crate::level::game_level::GameLevel;
-use crate::level::game_loading_picture::GameLoadingPicture;
-use crate::level::game_spawn::GameSpawn;
-use crate::level::game_tree::GameTree;
 use crate::load::game_load_progress::GameLoadProgress;
 use crate::load::game_load_stage::GameLoadStage;
+use crate::session::game_load_request::GameLoadRequest;
+use crate::session::game_load_source::GameLoadSource;
+use crate::session::game_spawn::GameSpawn;
 use crate::session::game_start::GameStart;
 use crate::sound::game_footsteps::GameFootsteps;
 use crate::sound::game_sound::GameSound;
+use crate::state::game_level_state::GameLevelState;
+use crate::state::game_progress::GameProgress;
 use crate::state::game_state::GameState;
+use crate::time::game_clock::GameClock;
+use crate::time::game_time::GameTime;
 
-/// What one run plays, opened from the game tree before any window: the level as the world shows it, and a new game's
-/// state (every object of the spawn, the player's movement at the level's start). It knows nothing of the window, the
-/// renderer's thread or the loop that will step the state.
+/// What a load opens from its request, before the loop steps anything: the host the run keeps (the tree, its configs
+/// and materials, the audio server), the level as the world shows it, and the game's state on it. It knows nothing of
+/// the window, the renderer's thread or the loop that will step the state.
 pub struct GameSession {
-  /// The level's name, as the tree names it.
-  pub level_name: String,
+  pub host: GameHost,
   /// The level as the world shows it.
   pub source: Arc<dyn WorldLevelSource>,
-  /// A new game's state, which the loop takes.
+  /// The game's state on the level, which the loop takes.
   pub state: GameState,
   /// The player's footsteps, which presentation plays from the loop's frames.
   pub footsteps: GameFootsteps,
-  /// The picture the level's loading view shows, as X-Ray picks its loading screen's; none where the tree has none.
-  pub loading_picture: Option<DeveloperPicture>,
 }
 
 impl GameSession {
-  /// Opens the tree and level `arguments` name and builds a new game on it, reading on `pool`, each stage reported to
-  /// `progress` as it begins and ends.
+  /// How many lines of issues the simulation's configs log before counting the rest.
+  const LOGGED_ISSUES: usize = 10;
+
+  /// Opens what `request` asks on `tree`, mounted already: the level, the game on it and the level's physics, read at
+  /// once on `pool`, each stage reported to `progress` as it begins and ends.
   ///
   /// # Errors
   ///
-  /// Returns why it cannot: no tree or level named (with the levels the tree has), a mode not built yet, or a tree,
-  /// level or spawn that does not read.
-  pub(crate) fn open(arguments: &GameArguments, pool: &ThreadPool, progress: &GameLoadProgress) -> XrfResult<Self> {
-    let Some(root) = &arguments.root else {
-      return Err(XrfError::new_invalid_error(
-        "name the game tree to play with --root <path> and its level with --level <name>",
-      ));
-    };
-    let tree: GameTree = progress.run(GameLoadStage::Tree, || GameTree::mount(root))?;
-
-    log::info!(
-      "Game tree {} mounted, engine {:?}",
-      root.display(),
-      tree.get_engine().engine
-    );
-
-    let Some(level_name) = arguments.level.clone() else {
-      return Err(XrfError::new_invalid_error(format!(
-        "name the level to play with --level <name>: the tree has {}",
-        tree.list_levels()?.join(", ")
-      )));
-    };
+  /// Returns why it cannot: a level the tree does not hold (with the levels it holds), or a level, spawn, config or
+  /// collision that does not read.
+  pub(crate) fn open(
+    request: &GameLoadRequest,
+    tree: GameTree,
+    pool: &ThreadPool,
+    progress: &GameLoadProgress,
+  ) -> XrfResult<Self> {
+    let GameLoadSource::New { seed } = request.game;
+    let level_name: &str = &request.level;
     let started: Instant = Instant::now();
-    let seed: u64 = arguments.seed.unwrap_or_else(Self::create_seed);
 
     log::info!("New game seed {seed}; --seed {seed} starts the same game");
 
     // The level's physics and the player's footsteps both read the game materials.
     let materials: GameMtlFile = tree.read_materials()?;
     // The level, the new game and the level's physics read different files and share nothing until the state is put
-    // together.
-    let (level, (start, physics)): (XrfResult<GameLevel>, (XrfResult<GameStart>, XrfResult<PhysicsWorld>)) = pool.join(
-      || progress.run(GameLoadStage::Level, || GameLevel::open(&tree, &level_name, pool)),
-      || {
-        pool.join(
-          || progress.run(GameLoadStage::Game, || Self::read_start(&tree, &level_name, seed)),
-          || {
-            progress.run(GameLoadStage::Physics, || {
-              Self::read_physics(&tree, &level_name, &materials)
-            })
-          },
-        )
-      },
-    );
-    let level: GameLevel = level?;
-    let start: GameStart = start?;
-    let physics: PhysicsWorld = physics?;
-    let mode: MovementMode = match arguments.mode {
-      GameModeArgument::Fly => MovementMode::Fly,
-      GameModeArgument::Walk => MovementMode::Walk,
-    };
-    let modes: MovementModes = MovementModes {
-      fly: FlyMode::default(),
-      walk: start.player.walk,
-    };
+    // together, so each reads on the pool at once.
+    let mut level: Option<XrfResult<GameLevel>> = None;
+    let mut start: Option<XrfResult<GameStart>> = None;
+    let mut physics: Option<XrfResult<PhysicsWorld>> = None;
+
+    pool.scope(|scope| {
+      scope.spawn(|_| level = Some(progress.run(GameLoadStage::Level, || GameLevel::open(&tree, level_name, pool))));
+      scope.spawn(|_| start = Some(progress.run(GameLoadStage::Game, || Self::read_start(&tree, level_name, seed))));
+      scope.spawn(|_| {
+        physics = Some(progress.run(GameLoadStage::Physics, || {
+          Self::read_physics(&tree, level_name, &materials)
+        }));
+      });
+    });
+
+    let unread = || XrfError::new_unexpected_error("a part of the level was not read");
+    let level: GameLevel = level.ok_or_else(unread)??;
+    let start: GameStart = start.ok_or_else(unread)??;
+    let physics: PhysicsWorld = physics.ok_or_else(unread)??;
     let audio: LevelAudio = GameSound::start()?;
-    let source: Arc<dyn WorldLevelSource> = Arc::new(
-      pool.install(|| LevelRenderSource::new(Arc::clone(level.get_snapshot()), Arc::clone(tree.get_host()), audio)),
-    );
+    let source: Arc<dyn WorldLevelSource> = Arc::new(pool.install(|| {
+      LevelRenderSource::new(
+        Arc::clone(level.get_snapshot()),
+        Arc::clone(tree.get_host()),
+        audio.clone(),
+      )
+    }));
+    let footsteps: GameFootsteps = GameFootsteps::of_materials(&materials, start.player_config.step_volume, seed);
     let state: GameState = GameState {
-      objects: start.objects,
-      physics,
-      movement: Movement::new(level.get_start_camera(), mode, modes),
-      alife: start.alife,
+      progress: GameProgress {
+        seed,
+        time: GameTime::new(GameClock::default()),
+        objects: start.objects,
+        alife: start.alife,
+        player: start.player,
+      },
+      level: GameLevelState {
+        physics,
+        graph_level: start.graph_level,
+      },
+      movement: Movement::new(
+        level.get_start_camera(),
+        request.mode,
+        MovementModes {
+          fly: FlyMode::default(),
+          walk: start.player_config.walk,
+        },
+      ),
     };
-    let footsteps: GameFootsteps = GameFootsteps::of_materials(&materials, start.player.step_volume, seed);
-    let loading_picture: Option<DeveloperPicture> = tree
-      .search()
-      .ok()
-      .and_then(|search| GameLoadingPicture::read(&search, &level_name, seed));
 
     log::info!("Level '{level_name}' opened in {:.1?}", started.elapsed());
 
     Ok(Self {
-      level_name,
+      host: GameHost::new(tree, start.configs, materials, audio),
       source,
       state,
       footsteps,
-      loading_picture,
     })
-  }
-
-  /// How many lines of issues the simulation's configs log before counting the rest.
-  const LOGGED_ISSUES: usize = 10;
-
-  /// A seed for a run that names none: the wall clock's nanoseconds, the one place a new game reads it.
-  fn create_seed() -> u64 {
-    SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .map_or(0, |since| since.as_nanos() as u64)
   }
 
   /// Logs up to [`Self::LOGGED_ISSUES`] of `issues` under `subject`, and how many more there are.
@@ -153,15 +143,15 @@ impl GameSession {
     }
   }
 
-  /// What a new game starts with beside the player: the spawn's objects and the simulation's start squads, and A-Life
-  /// by the tree's `[alife]` over the spawn's graph and the simulation's configs, the actor on the level named
-  /// `level_name`, every draw keyed by `seed`.
+  /// What a new game starts with beside the player's movement: the spawn's objects and the simulation's start squads,
+  /// the player's record among them, and A-Life by the tree's `[alife]` over the spawn's graph and the simulation's
+  /// configs, the game on the level named `level_name`, every draw keyed by `seed`.
   fn read_start(tree: &GameTree, level_name: &str, seed: u64) -> XrfResult<GameStart> {
     let started: Instant = Instant::now();
     let spawn: GameSpawn = tree.read_spawn()?;
     let mut objects: ObjectRegistry = ObjectRegistry::of_spawn(&spawn.placed);
-    let level: Option<u8> = spawn.graph.find_level(level_name).map(|level| level.id);
-    let on_level: usize = level.map_or(0, |level| objects.count_on_level(level));
+    let graph_level: Option<u8> = spawn.graph.find_level(level_name).map(|level| level.id);
+    let on_level: usize = graph_level.map_or(0, |level| objects.count_on_level(level));
 
     log::info!(
       "New game holds {} of the spawn's {} objects, {on_level} on '{level_name}', {} skipped, on a graph of {} vertices \
@@ -178,6 +168,7 @@ impl GameSession {
       log::warn!("Spawn object {} skipped: {}", skipped.index, skipped.reason);
     }
 
+    let player: ObjectId = Self::find_player(&mut objects)?;
     let opened: Instant = Instant::now();
     let configs: GameConfigs = tree.open_configs()?;
 
@@ -192,7 +183,7 @@ impl GameSession {
       settings.get_update_interval()
     );
 
-    let data: AlifeData = Self::read_alife_data(&configs, spawn, seed);
+    let data: AlifeData = Self::read_alife_data(&configs, spawn);
     let created: Instant = Instant::now();
     let report: SimulationStartReport = SimulationStart {
       config: &data.simulation,
@@ -201,7 +192,7 @@ impl GameSession {
       seed,
     }
     .create(&mut objects);
-    let on_level: usize = level.map_or(0, |level| {
+    let on_level: usize = graph_level.map_or(0, |level| {
       objects
         .get_groups()
         .iter()
@@ -225,9 +216,46 @@ impl GameSession {
 
     Ok(GameStart {
       objects,
-      alife: Alife::new(settings, data, level),
-      player: configs.read_player_config(),
+      player,
+      alife: Alife::new(settings, data),
+      graph_level,
+      player_config: configs.read_player_config(),
+      configs,
     })
+  }
+
+  /// The player's object: the spawn's actor, as X-Ray's new game spawns it, or one made where the spawn holds none.
+  ///
+  /// # Errors
+  ///
+  /// Returns why no actor can be made: the object id space is spent.
+  fn find_player(objects: &mut ObjectRegistry) -> XrfResult<ObjectId> {
+    if let Some((id, _)) = objects
+      .get_records()
+      .iter()
+      .find(|(_, record)| record.class == ClsId::SActor)
+    {
+      return Ok(id);
+    }
+
+    log::warn!("The spawn holds no actor; the game makes one for the player");
+
+    objects
+      .create(ObjectRecord {
+        section: String::from("actor"),
+        name: String::from("actor"),
+        class: ClsId::SActor,
+        position: Vec3::ZERO,
+        direction: Vec3::ZERO,
+        level: None,
+        game_vertex: None,
+        level_vertex: None,
+        parent: None,
+        story_id: None,
+        spawn_id: u16::MAX,
+        switching: ObjectSwitching::ByDistance,
+      })
+      .ok_or_else(|| XrfError::new_unexpected_error("no object id is left for the player"))
   }
 
   /// The physics world of the level `level_name`: its collision form, a mesh for each of its game `materials`, which
@@ -249,9 +277,9 @@ impl GameSession {
     Ok(world)
   }
 
-  /// What A-Life reads: the spawn's graph and patrols, the simulation's configs, read from `configs` for the smart
-  /// terrains the spawn places, and the game's `seed`.
-  fn read_alife_data(configs: &GameConfigs, spawn: GameSpawn, seed: u64) -> AlifeData {
+  /// What A-Life reads: the spawn's graph and patrols, and the simulation's configs, read from `configs` for the smart
+  /// terrains the spawn places.
+  fn read_alife_data(configs: &GameConfigs, spawn: GameSpawn) -> AlifeData {
     let started: Instant = Instant::now();
     let levels: Vec<String> = spawn
       .graph
@@ -279,7 +307,6 @@ impl GameSession {
       graph: Arc::new(spawn.graph),
       patrols: Arc::new(spawn.patrols),
       simulation: Arc::new(simulation),
-      seed,
     }
   }
 }

@@ -30,10 +30,21 @@ walking and flight, as an engine's noclip does. Escape or the window's close qui
 
 ## The run
 
-`GameSession` opens what a run plays, before any window: the tree and level, the sound (`GameSound`: Steam Audio from
-`.sdks` or beside the executable, dry without it), what the world shows, and a new game's `GameState`: every object of
-the tree's `all.spawn` in the object registry (`xrf-game-objects`), the player's movement at the level's start, and
-A-Life (`xrf-game-alife`) by the tree's `[alife]`, which switches the level's objects online around the actor. The
+What the game holds lives as long as one of three things. The host, for the whole run: the shell (`GameShell`: the
+window and the renderer) and `GameHost` (the tree, its configs read once and kept, its game materials, the audio
+server). The game, what a save holds: `GameProgress` (the seed, the game's own time `GameTime`, the object registry,
+A-Life, the player's object) and the player's movement. The level, built again for each: `GameLevelState` (the physics
+world, the game graph's level) and what the world shows of it. `GameCommand::ReplaceLevel` hands the loop a level built
+beside it in whole; the game goes on over it.
+
+The arguments build a `GameLoadRequest` (the tree, the level, a new game and its seed, how the player moves), and the
+load runs on a thread of its own (`GameOpening`) while the main thread starts the shell and draws the loading view:
+the flow (`GameFlow`) is Loading from the launch, the game starts under the view once opened, and is Playing once the
+level is streamed. `GameSession` opens what the load asks on the mounted tree: the level, the sound (`GameSound`:
+Steam Audio from `.sdks` or beside the executable, dry without it), what the world shows, and a new game's
+`GameState`: every object of the tree's `all.spawn` in the object registry (`xrf-game-objects`), the spawn's actor as
+the player's object, the player's movement at the level's start, and A-Life (`xrf-game-alife`) by the tree's
+`[alife]`, which switches the level's objects online around the player's feet. The
 spawn is read once for its objects, its game graph and its patrols (`GameTree::read_spawn`, `GameSpawn`); every config
 the game reads, `[alife]` and the simulation's, comes through `GameConfigs`, the tree's `configs` in its dialect (a
 DLTX mod's overrides applied) with `system.ltx` resolved, and the simulation's issues are logged. The simulation's
@@ -43,10 +54,11 @@ game (`GameStart`) is read beside the level on the session's pool, and so is the
 (`xrf-physics`): its `level.cform` as one mesh, the faces of passable game materials (`gamemtl.xr`) left out, which
 takes the longest: Anomaly's `zaton` opens in about 1.9 s, 157,722 of its 2.5 million faces passable, with 393 squads
 of 937 members across its levels (seed 7).
-`GameRun` is the shell around it: the window through `xrf-game-platform`, the view (`GameView`: the render queue with
-the game's pipeline cache, its world, the viewport filling the window), and the game loop stepping the session's state.
-The world draws the loop's camera and day through `GameViewFeed`. `GamePlay` then reads each platform event through the bindings into the
-loop's commands and, with `--mcp`, answers the control endpoint between frames (`GameControl`): `ready` once the
+`GameRun` starts the load, then the shell: the window through `xrf-game-platform`, the view (`GameView`: the render
+queue with the game's pipeline cache, its world, the viewport filling the window), and once opened the game loop
+stepping the session's state. The world draws the loop's camera and day through `GameViewFeed`. `GamePlay` reads each
+platform event through the bindings into the loop's movement commands (the player held while loading) and, with
+`--mcp` or `--listen`, answers the control endpoint between frames (`GameControl`): `ready` once the
 renderer reports the level ready, then `status`, `pose` (a camera command to the loop), `capture` (the window's next
 frame to `appdata/xrf-game/captures/`) and `quit`. On quit it stops the loop, detaches and stops the view, then drops
 the window.

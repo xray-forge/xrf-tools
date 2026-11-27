@@ -39,8 +39,8 @@ impl WorldViewFeed for GameViewFeed {
         ..self.lens
       },
       clock: Some(WorldFedClock {
-        time: frame.time_of_day,
-        rate: frame.time_factor,
+        time: frame.state.time_of_day,
+        rate: frame.state.time_factor,
       }),
     }
   }

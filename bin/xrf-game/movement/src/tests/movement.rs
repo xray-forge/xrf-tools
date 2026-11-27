@@ -1,17 +1,20 @@
 use std::time::Duration;
 
-use xrf_game_loop::{GameClock, LoopSystem, LoopTime};
+use xrf_game_loop::{LoopSystem, LoopTime};
+use xrf_game_objects::ObjectRecord;
 use xrf_math::glam::Vec3;
+use xrf_physics::PhysicsWorld;
 
 use crate::camera::movement_camera::MovementCamera;
 use crate::input::movement_action::MovementAction;
 use crate::input::movement_input::MovementInput;
 use crate::input::movement_input_kind::MovementInputKind;
-use xrf_physics::PhysicsWorld;
-
+use crate::mode::movement_mode::MovementMode;
+use crate::mode::movement_modes::MovementModes;
 use crate::movement::Movement;
 use crate::movement_command::MovementCommand;
 use crate::movement_context::MovementContext;
+use crate::tests::fixtures::player;
 
 fn input(milliseconds: u64, kind: MovementInputKind) -> MovementCommand {
   MovementCommand::Input(MovementInput {
@@ -70,11 +73,14 @@ fn stands_the_camera_where_a_command_puts_it_and_keeps_it_through_a_step() {
   let mut movement: Movement = Movement::default();
   let camera: MovementCamera = MovementCamera::looking_at(Vec3::new(5.0, 1.0, 2.0), Vec3::ZERO);
 
+  let mut player: ObjectRecord = player();
+
   movement.apply(MovementCommand::SetCamera(camera));
   movement.step(
-    &LoopTime::new(Duration::from_millis(10), GameClock::default()),
+    &LoopTime::new(Duration::from_millis(10)),
     MovementContext {
       physics: &mut PhysicsWorld::new().expect("a world"),
+      player: &mut player,
     },
   );
 
@@ -85,4 +91,33 @@ fn stands_the_camera_where_a_command_puts_it_and_keeps_it_through_a_step() {
       .get_forward()
       .abs_diff_eq(camera.get_forward(), 1e-5)
   );
+  // In flight the player is where the camera is.
+  assert!(player.position.abs_diff_eq(camera.position, 1e-5));
+}
+
+#[test]
+fn enters_another_level_at_its_start_leaving_the_walking_actor_behind() {
+  let mut physics: PhysicsWorld = PhysicsWorld::new().expect("a world");
+  let mut player: ObjectRecord = player();
+  let mut movement: Movement = Movement::new(
+    MovementCamera::looking_at(Vec3::new(0.0, 2.0, 0.0), Vec3::new(0.0, 2.0, 1.0)),
+    MovementMode::Walk,
+    MovementModes::default(),
+  );
+  let start: MovementCamera = MovementCamera::looking_at(Vec3::new(50.0, 3.0, 9.0), Vec3::new(51.0, 3.0, 9.0));
+
+  movement.step(
+    &LoopTime::new(Duration::from_millis(10)),
+    MovementContext {
+      physics: &mut physics,
+      player: &mut player,
+    },
+  );
+  assert!(movement.get_walk().actor.is_some());
+
+  movement.enter_level(start);
+
+  assert_eq!(*movement.get_camera(), start);
+  assert!(movement.get_walk().actor.is_none());
+  assert_eq!(movement.get_mode(), MovementMode::Walk);
 }

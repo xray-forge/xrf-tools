@@ -8,7 +8,7 @@ use xrf_ltx::{Ltx, LtxResolution};
 use xrf_ltx_project::LtxProject;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::level::game_player_config::GamePlayerConfig;
+use crate::host::game_player_config::GamePlayerConfig;
 
 /// The tree's configs as the game reads them: `configs\system.ltx` resolved once, and any other config resolved on
 /// request, both in the tree's dialect, loose or archived alike.

@@ -1,16 +1,41 @@
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
-use crate::clock::game_clock::GameClock;
 use crate::clock::loop_clock::LoopClock;
 use crate::loop_stepper::LoopStepper;
 use crate::tests::test_state::{TestCommand, TestFrame, TestState};
 use crate::thread::game_loop::GameLoop;
 
+/// Longer than any of these waits should take, so a broken contract fails rather than hangs.
+const WAIT: Duration = Duration::from_secs(5);
+
+fn start() -> GameLoop<TestState> {
+  let clock: LoopClock = LoopClock::new(Instant::now(), LoopClock::DEFAULT_TICK_RATE);
+  let stepper: LoopStepper<TestState> = LoopStepper::new(clock.get_step(), TestState::default());
+
+  GameLoop::start(stepper, clock).expect("the thread starts")
+}
+
+/// The tick the loop stands at, read between two of its ticks.
+fn read_tick(thread: &GameLoop<TestState>) -> u64 {
+  let answer: Receiver<u64> = thread.snapshot(|stepper| stepper.get_time().tick);
+
+  answer.recv_timeout(WAIT).expect("the loop answers a snapshot")
+}
+
+/// Waits until the loop passed `tick`.
+fn wait_past(thread: &GameLoop<TestState>, tick: u64) {
+  let deadline: Instant = Instant::now() + WAIT;
+
+  while read_tick(thread) <= tick {
+    assert!(Instant::now() < deadline, "the loop never passed tick {tick}");
+    std::thread::sleep(Duration::from_millis(1));
+  }
+}
+
 #[test]
 fn steps_on_its_thread_and_takes_commands_until_dropped() {
-  let clock: LoopClock = LoopClock::new(Instant::now(), LoopClock::DEFAULT_TICK_RATE);
-  let stepper: LoopStepper<TestState> = LoopStepper::new(clock.get_step(), GameClock::default(), TestState::default());
-  let thread: GameLoop<TestState> = GameLoop::start(stepper, clock).expect("the thread starts");
+  let thread: GameLoop<TestState> = start();
 
   assert_eq!(thread.get_feed().get_latest().map(|frame| frame.tick), Some(0));
 
@@ -19,7 +44,7 @@ fn steps_on_its_thread_and_takes_commands_until_dropped() {
     .send(TestCommand::Add(7.0))
     .expect("the thread takes commands");
 
-  let deadline: Instant = Instant::now() + Duration::from_secs(5);
+  let deadline: Instant = Instant::now() + WAIT;
 
   while thread.get_feed().get_latest().map(|frame| frame.state) != Some(TestFrame(7.0)) {
     assert!(Instant::now() < deadline, "the command never reached a published frame");
@@ -32,4 +57,58 @@ fn steps_on_its_thread_and_takes_commands_until_dropped() {
 
   // Stopped, it takes no more.
   assert!(sender.send(TestCommand::Add(1.0)).is_err());
+}
+
+#[test]
+fn holds_its_ticks_and_commands_while_paused_and_answers_snapshots_meanwhile() {
+  let thread: GameLoop<TestState> = start();
+
+  wait_past(&thread, 2);
+  thread.pause();
+
+  // The pause is taken at the next tick's start; from then the tick stands.
+  let paused: u64 = {
+    let deadline: Instant = Instant::now() + WAIT;
+    let mut last: u64 = read_tick(&thread);
+
+    loop {
+      std::thread::sleep(Duration::from_millis(30));
+
+      let now: u64 = read_tick(&thread);
+
+      if now == last {
+        break now;
+      }
+
+      assert!(Instant::now() < deadline, "the loop never paused");
+      last = now;
+    }
+  };
+
+  thread
+    .get_sender()
+    .send(TestCommand::Add(3.0))
+    .expect("the thread takes commands while paused");
+  std::thread::sleep(Duration::from_millis(30));
+
+  let value: f32 = thread
+    .snapshot(|stepper| stepper.get_state().counter.value)
+    .recv_timeout(WAIT)
+    .expect("a paused loop answers a snapshot");
+
+  assert_eq!(read_tick(&thread), paused);
+  assert_eq!(value, 0.0, "a command waits for the loop to step again");
+
+  thread.resume();
+  wait_past(&thread, paused);
+
+  let value: f32 = thread
+    .snapshot(|stepper| stepper.get_state().counter.value)
+    .recv_timeout(WAIT)
+    .expect("a running loop answers a snapshot");
+
+  assert_eq!(
+    value, 3.0,
+    "the waiting command was taken by the first tick after resuming"
+  );
 }
