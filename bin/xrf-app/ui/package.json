@@ -47,7 +47,7 @@
     "date-fns": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-router-dom": "^7.18.5"
+    "react-router-dom": "^7.18.6"
   },
   "jest": {
     "preset": "./cli/test/jest.config.cjs"

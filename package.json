@@ -22,8 +22,8 @@
   "devDependencies": {
     "@xrf/toolchain": "workspace:*",
     "eslint": "catalog:",
-    "knip": "^6.44.2",
-    "lint-staged": "^17.6.0",
+    "knip": "^6.46.1",
+    "lint-staged": "^17.6.1",
     "prettier": "catalog:"
   }
 }
