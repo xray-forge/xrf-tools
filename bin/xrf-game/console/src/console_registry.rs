@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::console_answer::ConsoleAnswer;
 use crate::console_command::ConsoleCommand;
+use crate::console_completion::ConsoleCompletion;
 use crate::console_context::ConsoleContext;
 use crate::console_line::ConsoleLine;
 use crate::console_variable::ConsoleVariable;
@@ -83,6 +84,71 @@ impl<C: ConsoleContext> ConsoleRegistry<C> {
         suggested.join(", ")
       )
     })
+  }
+
+  /// Completes the name `line` starts, as Tab does: to the longest start every command and variable it may still be
+  /// share, then a space once one is left; where several are left, the choices, each to its next dot. A line already
+  /// past its name, or one no name starts, is left as it is.
+  pub fn complete(&self, context: &C, line: &str) -> ConsoleCompletion {
+    let typed: &str = line.trim_start();
+
+    if typed.contains(char::is_whitespace) {
+      return ConsoleCompletion {
+        line: line.to_owned(),
+        choices: Vec::new(),
+      };
+    }
+
+    let variables: Vec<ConsoleVariable> = context.list_variables();
+    let names: Vec<&str> = [Self::HELP, Self::LIST]
+      .into_iter()
+      .chain(self.commands.keys().copied())
+      .chain(variables.iter().map(|variable| variable.name.as_str()))
+      .filter(|name| name.starts_with(typed))
+      .collect();
+    let Some(first) = names.first() else {
+      return ConsoleCompletion {
+        line: line.to_owned(),
+        choices: Vec::new(),
+      };
+    };
+
+    if names.len() == 1 {
+      return ConsoleCompletion {
+        line: format!("{first} "),
+        choices: Vec::new(),
+      };
+    }
+
+    let mut shared: usize = names.iter().fold(first.len(), |shared, name| {
+      first
+        .bytes()
+        .zip(name.bytes())
+        .take(shared)
+        .take_while(|(left, right)| left == right)
+        .count()
+    });
+
+    // The shared start is counted in bytes; a name of more than ASCII is cut on a whole character.
+    while !first.is_char_boundary(shared) {
+      shared -= 1;
+    }
+
+    let mut choices: Vec<String> = names
+      .iter()
+      .map(|name| match name[shared..].find('.') {
+        Some(dot) => String::from(&name[..=shared + dot]),
+        None => String::from(*name),
+      })
+      .collect();
+
+    choices.sort();
+    choices.dedup();
+
+    ConsoleCompletion {
+      line: String::from(&first[..shared]),
+      choices,
+    }
   }
 
   /// `help`'s lines: every command with how it is written and what it does, then how variables are used.

@@ -1,4 +1,4 @@
-use xrf_game_console::{ConsoleAnswer, ConsoleCommand, ConsoleRegistry};
+use xrf_game_console::{ConsoleAnswer, ConsoleCommand, ConsoleCompletion, ConsoleRegistry};
 use xrf_game_movement::MovementCommand;
 use xrf_game_settings::GameSettings;
 
@@ -51,6 +51,11 @@ impl GameConsole {
   /// Runs the line `text`.
   pub(crate) fn execute(&mut self, text: &str) -> ConsoleAnswer {
     self.registry.execute(&mut self.state, text)
+  }
+
+  /// Completes the name `line` starts, as Tab does.
+  pub(crate) fn complete(&self, line: &str) -> ConsoleCompletion {
+    self.registry.complete(&self.state, line)
   }
 
   /// What the lines run since the last take ask of the game, in order.

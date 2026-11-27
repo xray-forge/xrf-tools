@@ -41,6 +41,17 @@ impl GameDeveloper {
     self.layer.get_console_mut().take_entered()
   }
 
+  /// The line Tab asked to complete since the last take.
+  pub(crate) fn take_completing(&mut self) -> Option<String> {
+    self.layer.get_console_mut().take_completing()
+  }
+
+  /// Replaces the line being typed with `line`, as completed.
+  pub(crate) fn complete(&mut self, line: String) {
+    self.layer.get_console_mut().complete(line);
+    self.is_changed = true;
+  }
+
   /// Adds `lines` at the bottom of the console, shown at the next build.
   pub(crate) fn push_lines(&mut self, lines: impl IntoIterator<Item = String>) {
     let console = self.layer.get_console_mut();

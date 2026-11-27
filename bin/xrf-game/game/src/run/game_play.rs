@@ -4,7 +4,7 @@ use std::time::Duration;
 #[cfg(feature = "mcp")]
 use std::time::Instant;
 
-use xrf_game_console::ConsoleAnswer;
+use xrf_game_console::{ConsoleAnswer, ConsoleCompletion};
 use xrf_game_developer::DeveloperView;
 use xrf_game_loop::{LoopFeed, LoopFrame};
 use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
@@ -51,6 +51,9 @@ impl GamePlay<'_> {
   /// The key that quits until the game has a menu: Escape's place.
   const QUIT_KEY: PlatformScancode = PlatformScancode(41);
 
+  /// The most characters a row of completion choices runs to.
+  const CHOICES_WIDTH: usize = 120;
+
   /// How long the main thread waits between reads of the platform's events.
   const POLL_WAIT: Duration = Duration::from_millis(1);
 
@@ -73,6 +76,10 @@ impl GamePlay<'_> {
 
       for line in self.developer.take_entered() {
         self.run_console(&line);
+      }
+
+      if let Some(line) = self.developer.take_completing() {
+        self.complete_console(&line);
       }
 
       self.developer.push_lines(self.log.take());
@@ -129,6 +136,31 @@ impl GamePlay<'_> {
     }
 
     answer
+  }
+
+  /// Completes the drawer's line `text` as Tab asks, listing the choices left a few to a line, as consoles list them.
+  fn complete_console(&mut self, text: &str) {
+    let ConsoleCompletion { line, choices } = self.console.complete(text);
+    let mut rows: Vec<String> = Vec::new();
+
+    for choice in choices {
+      match rows.last_mut() {
+        Some(row) if row.len() + choice.len() + 2 <= Self::CHOICES_WIDTH => {
+          row.push_str("  ");
+          row.push_str(&choice);
+        }
+        _ => rows.push(choice),
+      }
+    }
+
+    // The line the choices answer heads them.
+    if !rows.is_empty() {
+      self
+        .developer
+        .push_lines(std::iter::once(format!("> {text}")).chain(rows));
+    }
+
+    self.developer.complete(line);
   }
 
   /// Sends a command to the loop, answering whether it still takes them.

@@ -13,6 +13,8 @@ the renderer's own `RenderLayer` types, which the renderer's layer pass draws at
   and mouse from the game, and the game frees the cursor and accepts text.
 - The drawer runs nothing itself: a line entered is handed to the game (`DeveloperConsole::take_entered`), which runs
   it through `xrf-game-console` and pushes the answer and the log's records back as lines; it keeps the last 200.
+  Tab hands the line to the game to complete (`take_completing`, answered by `complete`), the cursor left at its end;
+  Up and Down walk through the last 100 lines entered.
 - Mouse positions arrive in the window's coordinates and are turned into egui's points with the window's pixel density
   and scale.
 - Texture changes must reach the renderer before the layer that uses them, and none may be skipped.

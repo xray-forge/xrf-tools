@@ -1,5 +1,6 @@
 use crate::console_answer::ConsoleAnswer;
 use crate::console_command::ConsoleCommand;
+use crate::console_completion::ConsoleCompletion;
 use crate::console_context::ConsoleContext;
 use crate::console_line::ConsoleLine;
 use crate::console_registry::ConsoleRegistry;
@@ -99,6 +100,41 @@ fn shows_a_variable_alone_and_sets_it_with_a_value() {
     vec!["view.shadows.resolution = 2048"]
   );
   assert!(registry.execute(&mut counter, "view.shadows.resolution high").is_failed);
+}
+
+#[test]
+fn completes_a_name_as_far_as_it_is_shared_then_a_group_at_a_time() {
+  let registry: ConsoleRegistry<Counter> = create_registry();
+  let counter: Counter = Counter::default();
+  let complete = |line: &str| registry.complete(&counter, line);
+
+  assert_eq!(
+    complete("bu"),
+    ConsoleCompletion {
+      line: String::from("bump "),
+      choices: Vec::new(),
+    }
+  );
+  assert_eq!(
+    complete("v"),
+    ConsoleCompletion {
+      line: String::from("view.shadows."),
+      choices: vec![
+        String::from("view.shadows.resolution"),
+        String::from("view.shadows.steps")
+      ],
+    }
+  );
+  assert_eq!(complete("view.shadows.r").line, "view.shadows.resolution ");
+  assert_eq!(complete("").choices, vec!["bump", "help", "list", "view."]);
+  assert_eq!(
+    complete("zzz"),
+    ConsoleCompletion {
+      line: String::from("zzz"),
+      choices: Vec::new(),
+    }
+  );
+  assert_eq!(complete("bump 3").line, "bump 3");
 }
 
 #[test]
