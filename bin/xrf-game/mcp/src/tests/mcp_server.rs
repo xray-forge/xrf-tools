@@ -10,6 +10,7 @@ fn server() -> McpServer {
   McpServer::new(GameBridge::new(
     PathBuf::from("no-such-game.exe"),
     GameLogs::new(Vec::new()),
+    Vec::new(),
   ))
 }
 
@@ -50,6 +51,8 @@ fn lists_its_tools_and_answers_a_notification_with_nothing() {
     names,
     [
       "game_start",
+      "game_attach",
+      "game_detach",
       "game_status",
       "game_pose",
       "game_input",

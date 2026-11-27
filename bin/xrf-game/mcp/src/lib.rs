@@ -12,6 +12,7 @@ pub use crate::bridge::game_bridge::GameBridge;
 pub use crate::bridge::game_logs::GameLogs;
 pub use crate::endpoint::game_endpoint::GameEndpoint;
 pub use crate::server::mcp_server::McpServer;
+pub use crate::wire::game_attach::GameAttach;
 pub use crate::wire::game_event::GameEvent;
 pub use crate::wire::game_input::GameInput;
 pub use crate::wire::game_request::GameRequest;

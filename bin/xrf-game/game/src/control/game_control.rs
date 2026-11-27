@@ -47,14 +47,10 @@ impl GameControl {
   /// How long a capture waits for the next frame: a minimised window draws none.
   const CAPTURE_WAIT: Duration = Duration::from_secs(10);
 
-  /// Starts reading requests for the game showing `level`, writing captures to `captures`.
-  ///
-  /// # Errors
-  ///
-  /// Returns why the endpoint cannot start.
-  pub(crate) fn start(level: &str, captures: Option<PathBuf>) -> XrfResult<Self> {
-    Ok(Self {
-      endpoint: GameEndpoint::start()?,
+  /// Answers `endpoint`'s requests for the game showing `level`, writing captures to `captures`.
+  pub(crate) fn new(endpoint: GameEndpoint, level: &str, captures: Option<PathBuf>) -> Self {
+    Self {
+      endpoint,
       level: level.to_owned(),
       captures,
       is_announced: Cell::new(false),
@@ -62,7 +58,7 @@ impl GameControl {
       waiting: RefCell::new(VecDeque::new()),
       delivered: Cell::new(None),
       scheduled_until: Cell::new(None),
-    })
+    }
   }
 
   /// Appends the played input due by `now` to `events`, stamped `at` on the platform's clock, for the game to take as

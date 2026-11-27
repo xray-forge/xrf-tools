@@ -73,6 +73,11 @@ impl GameDirectories {
       .map(|directory| directory.join(Self::CAPTURES_DIRECTORY))
   }
 
+  /// Where a game listening for a bridge writes how to attach to it: its best own directory, none where it has none.
+  pub fn get_attach_directory(&self) -> Option<PathBuf> {
+    self.get_own_directories().into_iter().next()
+  }
+
   /// Where the settings file may be, best first: the first that exists is read.
   pub fn get_settings_files(&self) -> Vec<PathBuf> {
     self

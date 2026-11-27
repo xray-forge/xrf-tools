@@ -20,6 +20,10 @@ pub struct GameArguments {
   /// (`xrf-game-mcp`) starts the game; its input ending quits the game.
   #[arg(long)]
   pub mcp: bool,
+  /// Listens on a loopback port for the MCP bridge to attach to this game, started by hand, its `game_attach` tool
+  /// reading how from `attach.json` in the game's own folder; a bridge leaving quits nothing. Ignored with `--mcp`.
+  #[arg(long)]
+  pub listen: bool,
   /// How the player moves.
   #[arg(long, value_enum, default_value_t)]
   pub mode: GameModeArgument,

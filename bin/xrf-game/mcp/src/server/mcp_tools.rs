@@ -33,6 +33,18 @@ impl McpTools {
         }
       },
       {
+        "name": "game_attach",
+        "description": "Attach to a game the user started by hand with `--listen`, instead of starting one, and drive it \
+          with every other tool. Reads how from the game's attach.json; one game at a time.",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
+        "name": "game_detach",
+        "description": "Stop driving the game attached to, leaving it running; a game started by game_start is quit \
+          instead.",
+        "inputSchema": { "type": "object", "properties": {} }
+      },
+      {
         "name": "game_status",
         "description": "Where the running game stands: its level, tick, time of day and camera (engine space).",
         "inputSchema": { "type": "object", "properties": {} }
@@ -106,7 +118,8 @@ impl McpTools {
       },
       {
         "name": "game_quit",
-        "description": "Quit the running game and wait for it to exit.",
+        "description": "Quit the game driven: one started by game_start is waited for until it exits; an attached one \
+          is asked to quit, as its close button does. To leave an attached game running, use game_detach.",
         "inputSchema": { "type": "object", "properties": {} }
       }
     ])
@@ -116,6 +129,8 @@ impl McpTools {
   pub(crate) fn call(bridge: &mut GameBridge, name: &str, arguments: &Value) -> Option<XrfResult<String>> {
     Some(match name {
       "game_start" => Self::start(bridge, arguments),
+      "game_attach" => bridge.attach(),
+      "game_detach" => bridge.detach(),
       "game_status" => bridge.ask(GameRequestKind::Status),
       "game_pose" => Self::read_point(arguments, "position").and_then(|position| {
         let target: [f32; 3] = Self::read_point(arguments, "target")?;

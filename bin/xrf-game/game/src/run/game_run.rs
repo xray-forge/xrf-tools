@@ -1,10 +1,14 @@
 use std::io::ErrorKind;
+#[cfg(feature = "mcp")]
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_loop::{GameClock, GameLoop, LoopClock, LoopStepper};
+#[cfg(feature = "mcp")]
+use xrf_game_mcp::GameEndpoint;
 use xrf_game_platform::{
   Platform, PlatformSize, PlatformWindow, PlatformWindowHandle, PlatformWindowMode, PlatformWindowRequest,
 };
@@ -46,7 +50,7 @@ impl GameRun {
     directories: &GameDirectories,
     log: Arc<LogTail>,
   ) -> XrfResult<()> {
-    if cfg!(not(feature = "mcp")) && arguments.mcp {
+    if cfg!(not(feature = "mcp")) && (arguments.mcp || arguments.listen) {
       return Err(XrfError::new_not_implemented_error(
         "this build has no control endpoint; build with the mcp feature",
       ));
@@ -105,10 +109,7 @@ impl GameRun {
       log,
       footsteps,
       #[cfg(feature = "mcp")]
-      control: arguments
-        .mcp
-        .then(|| GameControl::start(&level_name, directories.get_captures_directory()))
-        .transpose()?,
+      control: Self::start_control(arguments, &level_name, directories)?,
       is_quitting: false,
       show_by: Some(Instant::now() + GamePlay::SHOW_WAIT),
     };
@@ -125,6 +126,33 @@ impl GameRun {
     drop(window);
 
     Ok(())
+  }
+
+  /// The control endpoint `arguments` ask for: on standard input for the bridge's child (`--mcp`), listening for a
+  /// bridge to attach to a game started by hand (`--listen`), or none.
+  #[cfg(feature = "mcp")]
+  fn start_control(
+    arguments: &GameArguments,
+    level_name: &str,
+    directories: &GameDirectories,
+  ) -> XrfResult<Option<GameControl>> {
+    let endpoint: GameEndpoint = if arguments.mcp {
+      GameEndpoint::start()?
+    } else if arguments.listen {
+      let directory: PathBuf = directories
+        .get_attach_directory()
+        .ok_or_else(|| XrfError::new_not_found_error("the game has no folder to write how to attach to it"))?;
+
+      GameEndpoint::listen(&directory, level_name)?
+    } else {
+      return Ok(None);
+    };
+
+    Ok(Some(GameControl::new(
+      endpoint,
+      level_name,
+      directories.get_captures_directory(),
+    )))
   }
 
   fn create_platform_error(message: String) -> XrfError {

@@ -1,3 +1,4 @@
+mod game_attach;
 mod game_endpoint;
 mod game_logs;
 mod mcp_server;
