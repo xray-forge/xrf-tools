@@ -32,9 +32,9 @@ use crate::scene::static_scene::static_scene::StaticScene;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::support::test_bundle::TestBundle;
 use crate::tests::support::test_context::create_test_context;
+use crate::tests::support::test_gpu::build_test_gpu;
 use crate::tests::support::test_source::EmptySource;
-use crate::tests::support::test_workers::create_workers;
-use crate::thread::gpu_state::GpuState;
+use crate::thread::gpu::gpu_state::GpuState;
 
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 192;
@@ -232,7 +232,7 @@ fn a_second_view_of_a_shared_scene_counts_its_own_cull_alone() {
     return;
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
-  let mut gpu: GpuState = GpuState::new(context, &shaders, &create_workers(), &TestBundle::checkout(), None).unwrap();
+  let mut gpu: GpuState = build_test_gpu(context, &shaders, &TestBundle::checkout()).unwrap();
   let scope: wgpu::ErrorScopeGuard = gpu.context.device.push_error_scope(wgpu::ErrorFilter::Validation);
   let source: Arc<dyn RenderAssetSource> = Arc::new(EmptySource);
   let mut scene: StaticScene = StaticScene::new(&gpu.context.device, &gpu.context.queue);

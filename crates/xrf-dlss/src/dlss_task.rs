@@ -59,6 +59,17 @@ impl DlssTask {
     self.is_launched
   }
 
+  /// Whether its start ended, so `get` answers without waiting.
+  pub fn is_started(&self) -> bool {
+    self.started.get().is_some()
+      || self
+        .start
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_ref()
+        .is_none_or(JoinHandle::is_finished)
+  }
+
   /// DLSS once it started, waiting for the start where it still runs; none where it did not start.
   pub fn get(&self) -> Option<&Dlss> {
     self.started.get_or_init(|| self.join()).as_ref()
@@ -91,6 +102,7 @@ mod tests {
     let starting: DlssTask = DlssTask::none();
 
     assert!(!starting.is_launched());
+    assert!(starting.is_started());
     assert!(starting.get().is_none());
   }
 
@@ -113,8 +125,10 @@ mod tests {
     });
 
     assert!(asked.is_launched());
+    assert!(!asked.is_started(), "the start still sleeps");
     assert!(asked.get().is_none(), "a start that found no DLSS answers none");
     assert!(ended.load(Ordering::Acquire), "asking waits for the start");
+    assert!(asked.is_started());
 
     let ended: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let dropped: DlssTask = DlssTask::launch({

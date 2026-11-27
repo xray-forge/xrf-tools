@@ -12,7 +12,7 @@ use crate::frame::timing::frame_phases::FramePhases;
 use crate::thread::copies::capture_copy::CaptureCopy;
 use crate::thread::copies::frame_copies::FrameCopies;
 use crate::thread::copies::record_copy::RecordCopy;
-use crate::thread::running_gpu::RunningGpu;
+use crate::thread::gpu::running_gpu::RunningGpu;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::thread::views::scene_recorder::SceneRecorder;
 use crate::viewport::render_viewport::RenderViewport;

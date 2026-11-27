@@ -24,12 +24,13 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::shader::shader_watcher::ShaderWatcher;
 use crate::thread::frame_failure_log::FrameFailureLog;
+use crate::thread::gpu::running_gpu::RunningGpu;
+use crate::thread::gpu::starting_gpu::StartingGpu;
 use crate::thread::queue::render_command::RenderCommand;
 use crate::thread::queue::render_hosts::RenderHosts;
 use crate::thread::queue::render_link::RenderLink;
 use crate::thread::queue::render_workers::RenderWorkers;
 use crate::thread::retry_backoff::RetryBackoff;
-use crate::thread::running_gpu::RunningGpu;
 use crate::thread::views::reopening_scenes::ReopeningScenes;
 use crate::viewport::render_viewport::RenderViewport;
 
@@ -38,6 +39,7 @@ mod render_thread_commands;
 mod render_thread_draw;
 mod render_thread_frame;
 mod render_thread_lifecycle;
+mod render_thread_starting;
 mod render_thread_submit;
 mod render_thread_views;
 
@@ -73,6 +75,8 @@ pub(crate) struct RenderThread {
   /// The world it draws, asked for each viewport's frame.
   world: Arc<Mutex<dyn RenderWorld>>,
   shaders: ShaderLibrary,
+  /// The GPU while its passes are built, which draws the windows' layers alone meanwhile; none once it runs.
+  starting: Option<StartingGpu>,
   /// The GPU and what the frames keep on it, while it runs.
   running: Option<RunningGpu>,
   /// What the last described frame's graph came to, and when it was described: as often as the viewports report.
@@ -142,6 +146,7 @@ impl RenderThread {
       world,
       store,
       shaders: ShaderLibrary::default(),
+      starting: None,
       running: None,
       graph_report: None,
       #[cfg(debug_assertions)]

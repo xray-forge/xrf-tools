@@ -22,7 +22,9 @@ use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
 use crate::contract::settings::gpu::render_gpu_description::RenderGpuDescription;
 
-/// The GPU the renderer draws with: one per process, owned by the render thread.
+/// The GPU the renderer draws with: one per process, owned by the render thread. A clone is another handle on the same
+/// device, which the passes are built through on a thread of their own while the render thread draws windows' layers.
+#[derive(Clone)]
 pub(crate) struct GpuContext {
   pub instance: wgpu::Instance,
   pub adapter: wgpu::Adapter,
@@ -35,7 +37,7 @@ pub(crate) struct GpuContext {
   pub gpu: RenderGpu,
   /// DLSS where the build and the GPU have it: an RTX GPU on Vulkan or D3D12. It starts in the background; the first
   /// frame asking for it waits for it.
-  pub dlss: DlssTask,
+  pub dlss: Arc<DlssTask>,
   lost: Arc<AtomicBool>,
 }
 
@@ -382,7 +384,7 @@ impl GpuContext {
       device,
       queue,
       backend,
-      dlss,
+      dlss: Arc::new(dlss),
       lost,
     })
   }

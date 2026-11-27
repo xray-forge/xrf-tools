@@ -59,6 +59,11 @@ impl ViewportLayer {
       .collect();
   }
 
+  /// Whether its host sent anything to draw: a layer of a mesh or more, uploaded or not.
+  pub(crate) fn is_sent(&self) -> bool {
+    !self.layer.meshes.is_empty()
+  }
+
   /// Whether it has anything to draw.
   pub(crate) fn is_drawn(&self) -> bool {
     !self.gpu.draws.is_empty()

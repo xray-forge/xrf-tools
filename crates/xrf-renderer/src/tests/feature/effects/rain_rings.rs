@@ -9,8 +9,8 @@ use crate::pass::view::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::support::test_bundle::TestBundle;
 use crate::tests::support::test_context::create_test_context;
-use crate::tests::support::test_workers::create_workers;
-use crate::thread::gpu_state::GpuState;
+use crate::tests::support::test_gpu::build_test_gpu;
+use crate::thread::gpu::gpu_state::GpuState;
 
 /// One texel of `format`, standing for a map the rain's parameters bind.
 fn create_texel(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::TextureView {
@@ -40,7 +40,7 @@ fn the_rings_draw_into_their_first_level_and_reduce_into_the_rest() {
     return;
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
-  let gpu: GpuState = GpuState::new(context, &shaders, &create_workers(), &TestBundle::checkout(), None).unwrap();
+  let gpu: GpuState = build_test_gpu(context, &shaders, &TestBundle::checkout()).unwrap();
   let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&gpu.context.device, &gpu.context.queue);
   let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
   let passes: LevelPasses<'_> = gpu.get_level_passes(&shaders);

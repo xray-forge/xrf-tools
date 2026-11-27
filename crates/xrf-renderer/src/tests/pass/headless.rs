@@ -11,8 +11,7 @@ use crate::pass::window::grid_pass::GridPass;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::support::test_bundle::TestBundle;
 use crate::tests::support::test_context::create_test_context;
-use crate::tests::support::test_workers::create_workers;
-use crate::thread::gpu_state::GpuState;
+use crate::tests::support::test_gpu::build_test_gpu;
 
 const SIZE: u32 = 64;
 
@@ -150,7 +149,7 @@ fn builds_every_pass() {
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
 
-  match GpuState::new(context, &shaders, &create_workers(), &TestBundle::checkout(), None) {
+  match build_test_gpu(context, &shaders, &TestBundle::checkout()) {
     Ok(gpu) => assert!(
       gpu.image.smaa.is_some(),
       "SMAA reads its lookup textures from the checkout's bundle"
@@ -167,13 +166,7 @@ fn builds_without_what_the_bundle_lacks() {
     return;
   };
 
-  match GpuState::new(
-    context,
-    &ShaderLibrary::default(),
-    &create_workers(),
-    &TestBundle::empty(),
-    None,
-  ) {
+  match build_test_gpu(context, &ShaderLibrary::default(), &TestBundle::empty()) {
     Ok(gpu) => assert!(gpu.image.smaa.is_none()),
     Err(error) => panic!("A missing bundled file failed the GPU: {error}"),
   }

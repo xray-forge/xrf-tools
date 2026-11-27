@@ -30,7 +30,7 @@ use crate::thread::copies::capture_copy::CaptureCopy;
 use crate::thread::copies::capture_retry::CaptureRetry;
 use crate::thread::copies::record_copy::RecordCopy;
 use crate::thread::copies::shot_copy::ShotCopy;
-use crate::thread::gpu_state::GpuState;
+use crate::thread::gpu::gpu_state::GpuState;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::viewport::capture::pending_screenshot::PendingScreenshot;
 use crate::viewport::render_viewport::RenderViewport;

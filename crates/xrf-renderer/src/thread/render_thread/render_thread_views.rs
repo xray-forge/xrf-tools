@@ -36,7 +36,7 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::static_scene::draw::static_selection::StaticSelection;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
-use crate::thread::gpu_state::GpuState;
+use crate::thread::gpu::gpu_state::GpuState;
 use crate::thread::views::prepared_view::PreparedView;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::thread::views::readied_views::ReadiedViews;

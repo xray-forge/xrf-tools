@@ -4,10 +4,11 @@ use xrf_renderer_core::GraphRuntime;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::timing::frame_span_timer::FrameSpanTimer;
 use crate::host::render_cache_store::RenderCacheStore;
-use crate::thread::gpu_state::GpuState;
+use crate::thread::gpu::gpu_state::GpuState;
+use crate::thread::gpu::window_surfaces::WindowSurfaces;
 
-/// The GPU while it runs: everything made on it, with what the frames keep between them on its device, all made and
-/// let go together.
+/// The GPU while it runs, once its passes are built (`StartingGpu::finish`): everything made on it, with what the
+/// frames keep between them on its device, all let go together.
 pub(crate) struct RunningGpu {
   /// What the frames' graphs keep between frames, their passes' GPU timer among them.
   pub runtime: GraphRuntime,
@@ -16,21 +17,13 @@ pub(crate) struct RunningGpu {
   /// The staging belt the frames' own writes go through, kept between frames; out while a frame's encoder holds it.
   pub belt: Option<StagingBelt>,
   pub gpu: GpuState,
+  /// The windows' swapchains and the layer pass, kept from the start.
+  pub surfaces: WindowSurfaces,
   /// Whether the driver's pipelines were kept once a level first stood ready, by then holding most it will make.
   pub is_level_cache_saved: bool,
 }
 
 impl RunningGpu {
-  pub(crate) fn new(gpu: GpuState) -> Self {
-    Self {
-      runtime: GraphRuntime::new(&gpu.context.device, &gpu.context.queue),
-      frame_span: FrameSpanTimer::new(&gpu.context.device, &gpu.context.queue),
-      belt: None,
-      gpu,
-      is_level_cache_saved: false,
-    }
-  }
-
   /// Opens a frame's encoder over the belt kept from the last frame, or a new one.
   pub(crate) fn begin_encoder(&mut self) -> FrameEncoder {
     let device: &wgpu::Device = &self.gpu.context.device;
@@ -47,6 +40,6 @@ impl RunningGpu {
       self.gpu.save_driver_cache(store);
     }
 
-    self.gpu.windows.clear();
+    self.surfaces.swapchains.clear();
   }
 }

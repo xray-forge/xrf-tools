@@ -2,12 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
-use xrf_dlss::Dlss;
 use xrf_renderer_core::{GraphOwner, GraphPassTime, GraphTaggedTime};
 
 use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
-use crate::context::gpu_requirements::can_trace;
-use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailability;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_upload::FrameUpload;
 use crate::frame::readback::gpu_memory::GpuMemory;
@@ -23,13 +20,14 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::scene::texture::texture_upload_pace::TextureUploadPace;
-use crate::thread::running_gpu::RunningGpu;
+use crate::thread::gpu::running_gpu::RunningGpu;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
 
 impl RenderThread {
-  /// Runs one frame and returns whether the windows were presented; without a GPU, a window or a graph nothing is.
+  /// Runs one frame and returns whether the windows were presented; without a GPU, a window or a graph nothing is, and
+  /// while the GPU's passes are built only the windows' layers are.
   ///
   /// The scenes take what the world posted even when no window can be drawn, so no post is lost.
   pub(super) fn frame(&mut self) -> bool {
@@ -44,14 +42,21 @@ impl RenderThread {
     let (clock, clock_delta): (Instant, Duration) = self.tick_clock(now);
     let scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = self.advance_world(clock, clock_delta);
 
-    if self.shader_watcher.take_changed() {
+    // A shader written while the passes are built is read once they are, so none is built from a library older than
+    // the one the rest are refreshed from.
+    if self.starting.is_none() && self.shader_watcher.take_changed() {
       let changed: Vec<&'static str> = self.shaders.reload();
 
       if !changed.is_empty()
-        && let Some(RunningGpu { gpu, .. }) = &mut self.running
+        && let Some(RunningGpu { gpu, surfaces, .. }) = &mut self.running
       {
         gpu.refresh(&self.shaders, &changed);
+        surfaces.refresh(gpu.get_pipeline_source(&self.shaders));
       }
+    }
+
+    if self.starting.is_some() {
+      return self.draw_starting();
     }
 
     let Some((mut encoder, span)) = self.begin_frame_work(delta) else {
@@ -242,7 +247,7 @@ impl RenderThread {
   /// models alone, or a level made again, once it can be drawn whole, the one before drawn until then, so a model
   /// swapped never leaves the viewport empty.
   fn show_asked_scenes(&mut self) {
-    let Some(RunningGpu { gpu, .. }) = &self.running else {
+    let Some(RunningGpu { gpu, surfaces, .. }) = &self.running else {
       return;
     };
 
@@ -272,7 +277,7 @@ impl RenderThread {
       // until it is configured again; the restarted level is the frame that does.
       if is_held
         && is_shown
-        && let Some(window) = gpu.windows.get(&viewport.get_window())
+        && let Some(window) = surfaces.swapchains.get(&viewport.get_window())
       {
         window.configure_again();
       }
@@ -353,26 +358,7 @@ impl RenderThread {
       return;
     };
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
-    let (dlss, ray_reconstruction): (RenderDlssAvailability, RenderDlssAvailability) =
-      match (Dlss::IS_BUILT, gpu.context.dlss.get()) {
-        (false, _) => (RenderDlssAvailability::Unbuilt, RenderDlssAvailability::Unbuilt),
-        (true, Some(dlss)) => (
-          RenderDlssAvailability::Available,
-          if dlss.has_ray_reconstruction() {
-            RenderDlssAvailability::Available
-          } else {
-            RenderDlssAvailability::Unsupported
-          },
-        ),
-        (true, None) => (RenderDlssAvailability::Unsupported, RenderDlssAvailability::Unsupported),
-      };
-    let device: ViewportDevice<'_> = ViewportDevice {
-      backend: gpu.context.backend,
-      adapter: gpu.context.adapter_name.as_str(),
-      has_ray_queries: can_trace(&gpu.context.device),
-      dlss,
-      ray_reconstruction,
-    };
+    let device: ViewportDevice<'_> = ViewportDevice::of(&gpu.context, gpu.context.dlss.get());
 
     // The windows' own passes belong to every viewport, so they go to each viewport reporting, not only the first.
     // Only a due report reads the allocator, which lists every allocation.

@@ -1,4 +1,5 @@
 use crate::contract::layer::render_layer::RenderLayer;
+use crate::contract::layer::render_layer_mesh::RenderLayerMesh;
 use crate::contract::layer::render_layer_texture::RenderLayerTexture;
 use crate::contract::layer::render_layer_texture_id::RenderLayerTextureId;
 use crate::contract::layer::render_layer_textures::RenderLayerTextures;
@@ -80,6 +81,20 @@ fn released_gpu_takes_every_image_and_the_layer_again() {
 
   assert!(layer.is_layer_changed);
   assert_eq!(layer.changed[&ATLAS], LayerRegion::new(0, 0, 8, 2));
+}
+
+#[test]
+fn layer_is_sent_once_it_holds_a_mesh() {
+  let mut layer: ViewportLayer = ViewportLayer::default();
+
+  change(&mut layer, vec![create_set(None, 1, 1, 0)], vec![]);
+  assert!(!layer.is_sent(), "a texture alone draws nothing");
+
+  layer.set(RenderLayer {
+    meshes: vec![RenderLayerMesh::default()],
+  });
+  assert!(layer.is_sent());
+  assert!(!layer.is_drawn(), "sent, it is drawn once uploaded");
 }
 
 #[test]

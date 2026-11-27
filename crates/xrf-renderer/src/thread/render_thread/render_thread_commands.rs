@@ -23,8 +23,8 @@ use crate::contract::viewport::render_pick::RenderPick;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::level::level_scene::LevelScene;
+use crate::thread::gpu::running_gpu::RunningGpu;
 use crate::thread::queue::render_command::RenderCommand;
-use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::capture::pending_screenshot::PendingScreenshot;
 use crate::viewport::pick::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
@@ -86,9 +86,9 @@ impl RenderThread {
 
         if is_backend_changed || is_gpu_changed {
           let preferred: RenderBackend = RenderBackend::get_preferred(RenderBackend::get_asked(settings.backend));
-          let is_restarted: bool = self.running.as_ref().is_some_and(|RunningGpu { gpu, .. }| {
-            (is_backend_changed && gpu.context.backend != preferred)
-              || (is_gpu_changed && settings.gpu.is_none_or(|asked| asked != gpu.context.gpu))
+          let is_restarted: bool = self.get_context().is_some_and(|context| {
+            (is_backend_changed && context.backend != preferred)
+              || (is_gpu_changed && settings.gpu.is_none_or(|asked| asked != context.gpu))
           });
 
           if is_restarted {
@@ -312,10 +312,9 @@ impl RenderThread {
   /// The pixels on a side of the GPU's largest texture, or what every GPU draws before one is there.
   fn get_most_texture(&self) -> u32 {
     self
-      .running
-      .as_ref()
-      .map_or(wgpu::Limits::default().max_texture_dimension_2d, |running| {
-        running.gpu.context.device.limits().max_texture_dimension_2d
+      .get_context()
+      .map_or(wgpu::Limits::default().max_texture_dimension_2d, |context| {
+        context.device.limits().max_texture_dimension_2d
       })
   }
 

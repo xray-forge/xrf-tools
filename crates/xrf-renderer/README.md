@@ -43,6 +43,9 @@ attached.
   that never draws never starts a GPU, and one whose viewports come and go holds it.
 - With no thread running, any command other than an attach or a hold does nothing, but `Settings` are kept for the next
   thread.
+- The GPU starts in two steps: its device, then its passes on a thread of their own, about three seconds. Meanwhile a
+  window whose viewport was sent a `Layer` (a native host's own interface, such as a game's loading view) is drawn
+  with that layer alone, its frames reported as any; scenes, captures and windows without a layer wait for the passes.
 
 Commands:
 

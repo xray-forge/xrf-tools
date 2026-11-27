@@ -14,7 +14,6 @@ use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawPara
 use crate::feature::tracing::tracing_passes::TracingPasses;
 use crate::feature::weather::sky::sky_bindings::SkyBindings;
 use crate::feature::weather::weather_passes::WeatherPasses;
-use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
@@ -22,20 +21,18 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::pass::window::backdrop_pass::BackdropPass;
 use crate::pass::window::grid_pass::GridPass;
-use crate::pass::window::layer_pass::LayerPass;
 use crate::pass::window::overlay_pass::OverlayPass;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::shader::shader_library::ShaderLibrary;
-use crate::thread::queue::render_workers::RenderWorkers;
-use crate::window::render_window::RenderWindow;
+use crate::thread::gpu::gpu_sources::GpuSources;
+use crate::thread::gpu::kept_pipelines::KeptPipelines;
 
-/// Everything made on the GPU, which goes as a whole when the GPU stops or is lost.
+/// Everything made on the GPU for its frames beyond the windows' own surfaces (`WindowSurfaces`), which goes as a whole
+/// when the GPU stops or is lost.
 pub(crate) struct GpuState {
   pub context: GpuContext,
   pub view_layout: wgpu::BindGroupLayout,
-  /// Each window's swapchain, by its host's key.
-  pub windows: HashMap<u64, RenderWindow>,
   /// Every texture any viewport's scene samples, uploaded once however many draw it.
   pub textures: TextureCache,
   /// The weather's skies and clouds, by reference, kept while any viewport asks for them.
@@ -56,8 +53,6 @@ pub(crate) struct GpuState {
   /// The page's backdrop under every window's viewports.
   pub backdrop: BackdropPass,
   pub overlay: OverlayPass,
-  /// A native host's own interface over everything else of a window.
-  pub layer: LayerPass,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
   /// Why a format's grid pass failed to build; retried only after a shader reload.
@@ -69,23 +64,24 @@ pub(crate) struct GpuState {
 }
 
 impl GpuState {
+  /// Builds every pass on `context`'s device, their pipelines made through `kept`, from `sources`.
+  ///
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub(crate) fn new(
-    context: GpuContext,
-    shaders: &ShaderLibrary,
-    workers: &RenderWorkers,
-    bundle: &dyn RenderBundle,
-    store: Option<&dyn RenderCacheStore>,
-  ) -> XrfResult<Self> {
+  pub(crate) fn new(context: GpuContext, kept: KeptPipelines, sources: GpuSources<'_>) -> XrfResult<Self> {
+    let GpuSources {
+      shaders,
+      workers,
+      bundle,
+      store,
+    } = sources;
+    let KeptPipelines {
+      cache: pipelines,
+      key: cache_key,
+      kept,
+    } = kept;
     let device: &wgpu::Device = &context.device;
-    // The driver's pipelines kept from the last run on this adapter and driver, where its backend keeps them.
-    let cache_key: Option<String> = store.and(wgpu::util::pipeline_cache_key(&context.adapter.get_info()));
-    let cached: Option<Vec<u8>> = store
-      .zip(cache_key.as_deref())
-      .and_then(|(store, key)| store.read_cached(key));
-    let pipelines: Arc<PipelineCache> = Arc::new(PipelineCache::with_driver_cache(device, cached.as_deref()));
     let view_layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
     let textures: TextureCache = TextureCache::new(device, &context.queue, workers);
     let sky: SkyBindings = SkyBindings::new(device);
@@ -134,9 +130,7 @@ impl GpuState {
         present: PresentPass::new(source, &view),
         backdrop: BackdropPass::new(source),
         overlay: OverlayPass::new(&queue, source, &view, bundle),
-        layer: LayerPass::new(source),
         weather_textures: WeatherTextureCache::new(&device, &queue, workers),
-        windows: HashMap::new(),
         grids: HashMap::new(),
         grid_failures: HashMap::new(),
         pipelines,
@@ -154,7 +148,7 @@ impl GpuState {
       .warm(&state.image.enhanced_bloom.describe_pipelines())?;
 
     state.driver_cache_key = cache_key;
-    state.driver_cache_kept = cached.map_or(0, |cached| cached.len());
+    state.driver_cache_kept = kept;
     state.save_driver_cache(store);
 
     Ok(state)
@@ -264,6 +258,5 @@ impl GpuState {
     self.present.refresh(source);
     self.backdrop.refresh(source);
     self.overlay.refresh(source);
-    self.layer.refresh(source);
   }
 }

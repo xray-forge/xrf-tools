@@ -5,16 +5,18 @@ use std::time::{Duration, Instant};
 use wgpu::util::StagingBelt;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphDeclaration, GraphOwner, GraphReport,
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphDeclaration, GraphOwner, GraphReport, PipelineCache,
 };
 
 use super::RenderThread;
 use crate::capture::record::record_shot::RecordShot;
+use crate::context::gpu_context::GpuContext;
 use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::feature::image::present::present_parameters::PresentParameters;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::frame_upload::FrameUpload;
 #[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
@@ -22,15 +24,17 @@ use crate::frame::timing::frame_phases::FramePhases;
 use crate::frame::timing::frame_statistics::FrameStatistics;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::window::backdrop_uniform::BackdropUniform;
+use crate::pass::window::layer_pass::LayerPass;
 use crate::pass::window::overlay_parameters::OverlayParameters;
 use crate::scene::level::view::scene_output::SceneOutput;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::thread::copies::capture_copy::CaptureCopy;
 use crate::thread::copies::capture_retry::CaptureRetry;
 use crate::thread::copies::frame_copies::FrameCopies;
-use crate::thread::gpu_state::GpuState;
+use crate::thread::gpu::gpu_state::GpuState;
+use crate::thread::gpu::running_gpu::RunningGpu;
+use crate::thread::gpu::window_surfaces::WindowSurfaces;
 use crate::thread::retry_backoff::RetryBackoff;
-use crate::thread::running_gpu::RunningGpu;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::thread::views::readied_views::ReadiedViews;
 use crate::thread::views::scene_recorder::SceneRecorder;
@@ -46,56 +50,123 @@ use crate::window::window_passes::WindowPasses;
 use crate::window::window_viewport::WindowViewport;
 
 impl RenderThread {
+  /// Failure-log key for a window's layers that cannot be drawn.
+  const UNDRAWN_LAYER: &'static str = "A window's layer cannot be drawn";
+
+  /// Makes the swapchain of the window `key` into `windows` on `context`'s device unless it has one, or again where its
+  /// surface was lost; answers whether it has one. A window that fails is retried once its backoff is due, its failure
+  /// logged once until it changes and told to its viewports.
+  pub(super) fn open_window(
+    &mut self,
+    windows: &mut HashMap<u64, RenderWindow>,
+    context: &GpuContext,
+    key: u64,
+  ) -> bool {
+    // A lost surface is let go, so this frame draws into a new one.
+    if windows.get(&key).is_some_and(RenderWindow::is_lost) {
+      windows.remove(&key);
+    }
+
+    if windows.contains_key(&key) {
+      return true;
+    }
+
+    let Some(host) = self.hosts.get(&key) else {
+      return false;
+    };
+
+    if self.window_failures.get(&key).is_some_and(|failure| !failure.is_due()) {
+      return false;
+    }
+
+    match RenderWindow::new(context, Arc::clone(host)) {
+      Ok(created) => {
+        windows.insert(key, created);
+        self.window_failures.remove(&key);
+
+        true
+      }
+      Err(error) => {
+        let message: String = error.to_string();
+        let is_new: bool = match self.window_failures.get_mut(&key) {
+          Some(failure) => failure.fail(message.clone()),
+          None => {
+            self.window_failures.insert(key, RetryBackoff::new(message.clone()));
+
+            true
+          }
+        };
+
+        if is_new {
+          log::error!("A window cannot be drawn into: {message}");
+        }
+
+        for viewport in self.viewports.values_mut().filter(|it| it.get_window() == key) {
+          viewport.fail(&message);
+        }
+
+        false
+      }
+    }
+  }
+
+  /// The page's backdrop of the window `key`, as its first viewport's layout paints it; the default where no layout
+  /// reached the renderer yet.
+  pub(super) fn get_window_backdrop(&self, key: u64) -> BackdropUniform {
+    self
+      .viewports
+      .values()
+      .find(|viewport| viewport.get_window() == key)
+      .and_then(RenderViewport::get_layout)
+      .map(|layout| BackdropUniform::new(&layout.backdrop))
+      .unwrap_or_default()
+  }
+
+  /// Brings up the layers of the window `key`'s viewports with `layer`, its pipelines from `pipelines` drawing into
+  /// `format`, their failure logged once until it changes.
+  pub(super) fn prepare_layers(
+    &mut self,
+    layer: &mut LayerPass,
+    upload: FrameUpload<'_>,
+    pipelines: &PipelineCache,
+    key: u64,
+    format: wgpu::TextureFormat,
+  ) {
+    let FrameUpload { device, queue, encoder } = upload;
+
+    for viewport in self.viewports.values_mut().filter(|it| it.get_window() == key) {
+      match layer.prepare(
+        device,
+        queue,
+        &mut *encoder,
+        PipelineSource {
+          cache: pipelines,
+          device,
+          shaders: &self.shaders,
+        },
+        format,
+        viewport.get_layer_mut(),
+      ) {
+        Ok(()) => self.frame_failures.succeed(Self::UNDRAWN_LAYER),
+        Err(error) => self.frame_failures.fail(Self::UNDRAWN_LAYER, &error),
+      }
+    }
+  }
+
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
   /// lost, the viewports laid out in it with the part each shows, and its page's backdrop; its image is acquired later.
-  fn ready_windows(&mut self, encoder: &mut FrameEncoder) -> Vec<WindowFrame> {
-    let Some(RunningGpu { gpu, .. }) = &mut self.running else {
-      return Vec::new();
-    };
+  fn ready_windows(&mut self, running: &mut RunningGpu, encoder: &mut FrameEncoder) -> Vec<WindowFrame> {
+    let RunningGpu { gpu, surfaces, .. } = running;
     let frame_rate: RenderFrameRate = self.settings.frame_rate;
     let mut windows: Vec<WindowFrame> = Vec::new();
+    let keys: Vec<u64> = self.hosts.keys().copied().collect();
 
-    for (key, host) in &self.hosts {
-      // A lost surface is let go, so this frame draws into a new one.
-      if gpu.windows.get(key).is_some_and(RenderWindow::is_lost) {
-        gpu.windows.remove(key);
+    for key in &keys {
+      if !self.open_window(&mut surfaces.swapchains, &gpu.context, *key) {
+        continue;
       }
 
-      if !gpu.windows.contains_key(key) {
-        if self.window_failures.get(key).is_some_and(|failure| !failure.is_due()) {
-          continue;
-        }
-
-        match RenderWindow::new(&gpu.context, Arc::clone(host)) {
-          Ok(created) => {
-            gpu.windows.insert(*key, created);
-            self.window_failures.remove(key);
-          }
-          Err(error) => {
-            let message: String = error.to_string();
-            let is_new: bool = match self.window_failures.get_mut(key) {
-              Some(failure) => failure.fail(message.clone()),
-              None => {
-                self.window_failures.insert(*key, RetryBackoff::new(message.clone()));
-
-                true
-              }
-            };
-
-            if is_new {
-              log::error!("A window cannot be drawn into: {message}");
-            }
-
-            for viewport in self.viewports.values_mut().filter(|it| it.get_window() == *key) {
-              viewport.fail(&message);
-            }
-
-            continue;
-          }
-        }
-      }
-
-      let Some(target) = gpu.windows.get(key).map(RenderWindow::get_target) else {
+      let Some(target) = surfaces.swapchains.get(key).map(RenderWindow::get_target) else {
         continue;
       };
       let format: wgpu::TextureFormat = target.format;
@@ -108,7 +179,7 @@ impl RenderThread {
 
       self.frame_failures.succeed("Viewport cannot be drawn");
 
-      let Some(window) = gpu.windows.get_mut(key) else {
+      let Some(window) = surfaces.swapchains.get_mut(key) else {
         continue;
       };
       let size: Option<(u32, u32)> = window.ready(&gpu.context, &frame_rate);
@@ -156,13 +227,7 @@ impl RenderThread {
         continue;
       };
       // The page's backdrop around the viewports, and where a layout change has not reached the renderer yet.
-      let backdrop: BackdropUniform = self
-        .viewports
-        .values()
-        .find(|viewport| viewport.get_window() == *key)
-        .and_then(RenderViewport::get_layout)
-        .map(|layout| BackdropUniform::new(&layout.backdrop))
-        .unwrap_or_default();
+      let backdrop: BackdropUniform = self.get_window_backdrop(*key);
 
       // A viewport over the whole window, as a full screen view is, hides the backdrop; the clear stands in for it.
       let window_rect: RenderRect = RenderRect {
@@ -193,23 +258,17 @@ impl RenderThread {
           .is_ok();
 
       // Each viewport's layer, its host's own interface, drawn over the whole window.
-      for viewport in self.viewports.values_mut().filter(|it| it.get_window() == *key) {
-        match gpu.layer.prepare(
-          &gpu.context.device,
-          &gpu.context.queue,
-          &mut *encoder,
-          PipelineSource {
-            cache: &gpu.pipelines,
-            device: &gpu.context.device,
-            shaders: &self.shaders,
-          },
-          format,
-          viewport.get_layer_mut(),
-        ) {
-          Ok(()) => self.frame_failures.succeed("A window's layer cannot be drawn"),
-          Err(error) => self.frame_failures.fail("A window's layer cannot be drawn", &error),
-        }
-      }
+      self.prepare_layers(
+        &mut surfaces.layer,
+        FrameUpload {
+          device: &gpu.context.device,
+          queue: &gpu.context.queue,
+          encoder: &mut *encoder,
+        },
+        &gpu.pipelines,
+        *key,
+        format,
+      );
 
       windows.push(WindowFrame {
         key: *key,
@@ -233,13 +292,12 @@ impl RenderThread {
   ///
   /// `update` is the frame's time before any window; `span` the GPU milliseconds of the latest frame read back.
   pub(super) fn draw_windows(&mut self, update: Duration, span: Option<f32>, mut encoder: FrameEncoder) -> bool {
-    let windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
-
-    self.answer_unseen_picks(&windows);
-
     let Some(mut running) = self.running.take() else {
       return false;
     };
+    let windows: Vec<WindowFrame> = self.ready_windows(&mut running, &mut encoder);
+
+    self.answer_unseen_picks(&windows);
 
     // With nothing to draw into, what the scenes took in still goes up.
     let is_presented: bool = if windows.is_empty() {
@@ -452,8 +510,11 @@ impl RenderThread {
   ) -> XrfResult<ExecutedGraph> {
     xrf_profiler::scope!("record");
 
-    let RunningGpu { gpu, runtime, .. } = running;
+    let RunningGpu {
+      gpu, runtime, surfaces, ..
+    } = running;
     let gpu: &GpuState = gpu;
+    let surfaces: &WindowSurfaces = surfaces;
     let FrameCopies {
       captures,
       shots,
@@ -499,7 +560,7 @@ impl RenderThread {
 
     for window in windows.iter_mut() {
       // A window showing nothing draws its viewports' captures alone and takes no image to compose them into.
-      if let Some(surface) = gpu.windows.get(&window.key).filter(|_| window.is_shown) {
+      if let Some(surface) = surfaces.swapchains.get(&window.key).filter(|_| window.is_shown) {
         window.acquire(surface);
       }
 
@@ -550,8 +611,8 @@ impl RenderThread {
         .filter(|drawn| !self.viewports.get(&drawn.id).is_some_and(RenderViewport::is_capturing))
         .filter_map(|drawn| Self::compose_view(&self.viewports, gpu, *drawn, outputs.get(&drawn.id)))
         .collect();
-      let backdrop: Option<&WindowBackdrop> = gpu
-        .windows
+      let backdrop: Option<&WindowBackdrop> = surfaces
+        .swapchains
         .get(&window.key)
         .and_then(RenderWindow::get_backdrop)
         .filter(|_| window.is_backdrop_painted);
@@ -574,7 +635,7 @@ impl RenderThread {
           present: &gpu.present,
           overlay: &gpu.overlay,
           grid,
-          layer: &gpu.layer,
+          layer: &surfaces.layer,
         },
         captures
           .iter()
