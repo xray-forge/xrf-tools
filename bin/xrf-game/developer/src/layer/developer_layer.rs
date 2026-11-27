@@ -6,6 +6,8 @@ use xrf_game_platform::{PlatformEvent, PlatformEventKind, PlatformMouseButton, P
 use crate::console::developer_console::DeveloperConsole;
 use crate::input::developer_keys::DeveloperKeys;
 use crate::layer::developer_frame::DeveloperFrame;
+use crate::layer::developer_loading::DeveloperLoading;
+use crate::layer::developer_picture::DeveloperPicture;
 use crate::layer::developer_view::DeveloperView;
 use crate::paint::developer_paint::DeveloperPaint;
 
@@ -22,6 +24,8 @@ pub struct DeveloperLayer {
   console: DeveloperConsole,
   is_open: bool,
   started: Instant,
+  /// The picture the loading view shows, let go once loading ends.
+  loading_picture: Option<egui::TextureHandle>,
 }
 
 impl Default for DeveloperLayer {
@@ -38,6 +42,7 @@ impl Default for DeveloperLayer {
       console: DeveloperConsole::default(),
       is_open: false,
       started: Instant::now(),
+      loading_picture: None,
     }
   }
 }
@@ -53,6 +58,18 @@ impl DeveloperLayer {
 
   pub fn get_console_mut(&mut self) -> &mut DeveloperConsole {
     &mut self.console
+  }
+
+  /// Shows `picture` behind the loading view while it is drawn; it is let go once a frame is built without one.
+  pub fn set_loading_picture(&mut self, picture: &DeveloperPicture) {
+    let size: [usize; 2] = [picture.width as usize, picture.height as usize];
+    let image: egui::ColorImage = egui::ColorImage::from_rgba_unmultiplied(size, &picture.rgba);
+
+    self.loading_picture = Some(self.context.load_texture(
+      "developer_loading_picture",
+      image,
+      egui::TextureOptions::LINEAR,
+    ));
   }
 
   /// Takes a platform event in `view`, answering whether the layer kept it from the game: the console key always, and
@@ -152,8 +169,15 @@ impl DeveloperLayer {
   }
 
   /// Builds one frame over `view`: the `frame` lines in the top left corner and the `camera` lines in the bottom right,
-  /// as xrf-app lays its viewport's readouts out.
-  pub fn build(&mut self, view: DeveloperView, frame: &[String], camera: &[String]) -> DeveloperFrame {
+  /// as xrf-app lays its viewport's readouts out; or, while the level loads, `loading` over the whole window in their
+  /// place. The console's drawer opens over either.
+  pub fn build(
+    &mut self,
+    view: DeveloperView,
+    frame: &[String],
+    camera: &[String],
+    loading: Option<&DeveloperLoading>,
+  ) -> DeveloperFrame {
     let scale: f32 = view.get_scale();
     let mut input: egui::RawInput = egui::RawInput {
       screen_rect: Some(egui::Rect::from_min_size(
@@ -178,10 +202,21 @@ impl DeveloperLayer {
       );
     }
 
+    // The picture is the loading view's alone: let go with it, its texture freed.
+    if loading.is_none() {
+      self.loading_picture = None;
+    }
+
     let is_open: bool = self.is_open;
     let console: &mut DeveloperConsole = &mut self.console;
+    let picture: Option<&egui::TextureHandle> = self.loading_picture.as_ref();
     let output: egui::FullOutput = self.context.run_ui(input, |ui| {
       let height: f32 = ui.ctx().content_rect().height();
+
+      // Painted first, so the drawer opens over it.
+      if let Some(loading) = loading {
+        Self::show_loading(ui, loading, picture);
+      }
 
       // A drawer at the top, full width, as X-Ray's, id Tech's and Unreal's consoles open, shown whole at once at a
       // fixed height: a panel sized from its content would shrink by its margin every frame. Closing it is the console
@@ -200,6 +235,10 @@ impl DeveloperLayer {
       });
       // The frame block keeps its corner, dropped below the drawer while it is open.
       let top: f32 = drawer.map_or(0.0, |rect| rect.bottom());
+
+      if loading.is_some() {
+        return;
+      }
 
       Self::show_block(
         ui,
@@ -223,6 +262,64 @@ impl DeveloperLayer {
       textures: DeveloperPaint::create_textures(output.textures_delta),
       layer: DeveloperPaint::create_layer(primitives, pixels_per_point),
     }
+  }
+
+  /// Paints `loading` over the whole of `ui`: an opaque backing, `picture` fitted whole above the middle where there is
+  /// one, as X-Ray's loading screen shows its level logo, and under it the title over a bar filled to its progress and
+  /// the detail.
+  fn show_loading(ui: &egui::Ui, loading: &DeveloperLoading, picture: Option<&egui::TextureHandle>) {
+    let screen: egui::Rect = ui.ctx().content_rect();
+    let painter: &egui::Painter = ui.painter();
+
+    painter.rect_filled(screen, 0.0, egui::Color32::from_gray(10));
+
+    // The text sits in the screen's lower part with a picture, its middle without.
+    let center: egui::Pos2 = match picture {
+      Some(picture) => {
+        let size: egui::Vec2 = picture.size_vec2();
+        let room: egui::Vec2 = egui::vec2(screen.width() * 0.8, screen.height() * 0.62);
+        let scale: f32 = (room.x / size.x).min(room.y / size.y);
+        let shown: egui::Rect = egui::Rect::from_center_size(
+          egui::pos2(screen.center().x, screen.top() + screen.height() * 0.38),
+          size * scale,
+        );
+
+        painter.image(
+          picture.id(),
+          shown,
+          egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+          egui::Color32::WHITE,
+        );
+
+        egui::pos2(screen.center().x, screen.top() + screen.height() * 0.8)
+      }
+      None => screen.center(),
+    };
+    let bar: egui::Rect = egui::Rect::from_center_size(center, egui::vec2(screen.width() * 0.4, 6.0));
+
+    painter.text(
+      center - egui::vec2(0.0, 24.0),
+      egui::Align2::CENTER_BOTTOM,
+      &loading.title,
+      egui::FontId::proportional(28.0),
+      egui::Color32::from_gray(225),
+    );
+    painter.rect_filled(bar, 3.0, egui::Color32::from_gray(45));
+    painter.rect_filled(
+      egui::Rect::from_min_size(
+        bar.min,
+        egui::vec2(bar.width() * loading.progress.clamp(0.0, 1.0), bar.height()),
+      ),
+      3.0,
+      egui::Color32::from_gray(200),
+    );
+    painter.text(
+      center + egui::vec2(0.0, 20.0),
+      egui::Align2::CENTER_TOP,
+      &loading.detail,
+      egui::FontId::monospace(14.0),
+      egui::Color32::from_gray(140),
+    );
   }
 
   /// Follows which modifier keys are held; losing focus lets all go, since their releases will never arrive.

@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
 use xrf_game_console::{ConsoleAnswer, ConsoleChoice};
-use xrf_game_developer::{DeveloperSuggestion, DeveloperView};
+use xrf_game_developer::{DeveloperLoading, DeveloperSuggestion, DeveloperView};
 use xrf_game_loop::{LoopFeed, LoopFrame};
 use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
 use xrf_game_platform::{
@@ -18,6 +18,7 @@ use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
 use crate::input::game_bindings::GameBindings;
 use crate::render::game_view::GameView;
+use crate::run::game_startup::GameStartup;
 use crate::sound::game_footsteps::GameFootsteps;
 use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
@@ -43,17 +44,13 @@ pub(crate) struct GamePlay<'a> {
   pub control: Option<GameControl>,
   /// Whether a console line asked the game to quit.
   pub is_quitting: bool,
-  /// When the window, opened hidden, is shown at the latest should no frame be drawn before; none once it is shown.
-  pub show_by: Option<Instant>,
+  /// How the game comes up: the hidden window shown, the loading view over the level until it is ready.
+  pub startup: GameStartup,
 }
 
 impl GamePlay<'_> {
   /// The key that quits until the game has a menu: Escape's place.
   const QUIT_KEY: PlatformScancode = PlatformScancode(41);
-
-  /// How long the window stays hidden waiting for the first frame: past it, it shows whatever it holds, so a renderer
-  /// that never draws still leaves a window to close.
-  pub(crate) const SHOW_WAIT: Duration = Duration::from_secs(30);
 
   /// How long the main thread waits between reads of the platform's events.
   const POLL_WAIT: Duration = Duration::from_millis(1);
@@ -63,7 +60,12 @@ impl GamePlay<'_> {
     let mut events: Vec<PlatformEvent> = Vec::new();
 
     loop {
-      self.show_when_drawn();
+      self.startup.show_when_covered(
+        self.window,
+        self.view,
+        self.developer.has_sent(),
+        self.developer.is_open(),
+      );
       events.clear();
       platform.poll(&mut events);
 
@@ -105,7 +107,9 @@ impl GamePlay<'_> {
         self.view.play_sound(step);
       }
 
-      self.developer.send(self.view, view, latest);
+      let loading: Option<DeveloperLoading> = self.startup.describe_loading(self.view);
+
+      self.developer.send(self.view, view, latest, loading.as_ref());
 
       // The endpoint is taken out while it serves, since a console request runs a line through play.
       #[cfg(feature = "mcp")]
@@ -143,40 +147,6 @@ impl GamePlay<'_> {
     }
 
     answer
-  }
-
-  /// Shows the window, opened hidden, once the renderer drew its first frame or the wait ran out, and takes the cursor
-  /// for the view, which a hidden window cannot.
-  fn show_when_drawn(&mut self) {
-    let Some(show_by) = self.show_by else {
-      return;
-    };
-
-    if !self.view.is_drawn() && Instant::now() < show_by {
-      return;
-    }
-
-    self.show_by = None;
-
-    for command in [
-      PlatformWindowCommand::Show,
-      PlatformWindowCommand::GrabCursor {
-        is_grabbed: !self.developer.is_open(),
-      },
-    ] {
-      if let Err(error) = self.window.apply(command) {
-        log::warn!("The window did not take {command:?}: {error}");
-      }
-    }
-
-    log::info!(
-      "Window shown {}",
-      if self.view.is_drawn() {
-        "with the first frame drawn"
-      } else {
-        "before any frame was drawn"
-      }
-    );
   }
 
   /// Suggests what the drawer's line `text` may become: the console's choices with their hints, none for a line past
@@ -224,6 +194,8 @@ impl GamePlay<'_> {
 
         true
       }
+      // The player is held while the loading view covers the level.
+      _ if self.startup.is_loading() => true,
       _ => self.bindings.read(event).is_none_or(|command| self.send(command)),
     }
   }

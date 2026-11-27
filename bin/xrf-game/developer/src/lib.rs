@@ -13,5 +13,7 @@ pub use crate::console::developer_console::DeveloperConsole;
 pub use crate::console::developer_suggestion::DeveloperSuggestion;
 pub use crate::layer::developer_frame::DeveloperFrame;
 pub use crate::layer::developer_layer::DeveloperLayer;
+pub use crate::layer::developer_loading::DeveloperLoading;
+pub use crate::layer::developer_picture::DeveloperPicture;
 pub use crate::layer::developer_view::DeveloperView;
 pub use crate::readout::developer_readout::DeveloperReadout;

@@ -17,6 +17,10 @@ the renderer's own `RenderLayer` types, which the renderer's layer pass draws at
   a hint), listed in a popup under the field, twelve at a time. Up and Down pick among them, and walk through the last
   100 lines entered while none show or a recalled line shows; Tab takes the one picked, or hands the line to the game
   to complete as far as it can (`take_completing`, answered by `complete`), the cursor left at the end.
+- While the game's level loads, `build` takes a `DeveloperLoading` (a title, progress from 0 to 1, a detail line) and
+  draws it over the whole window in the readouts' place, the drawer still opening over it; the picture given by
+  `set_loading_picture` (`DeveloperPicture`, decoded RGBA) shows above the bar and is freed once a frame is built with
+  no loading view. It stands in until the game has its own interface.
 - Mouse positions arrive in the window's coordinates and are turned into egui's points with the window's pixel density
   and scale.
 - Texture changes must reach the renderer before the layer that uses them, and none may be skipped.

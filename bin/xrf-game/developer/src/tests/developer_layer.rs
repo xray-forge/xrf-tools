@@ -86,7 +86,7 @@ fn console_drawer_opens_at_its_height_and_stays_there() {
   let bottoms: Vec<f32> = (0..6)
     .map(|_| {
       layer
-        .build(VIEW, &[], &[])
+        .build(VIEW, &[], &[], None)
         .layer
         .meshes
         .iter()
@@ -124,12 +124,12 @@ fn open_layer_keeps_input_from_the_game() {
 fn frames_send_the_font_atlas_first_then_meshes() {
   let mut layer: DeveloperLayer = DeveloperLayer::default();
   let readout: [String; 1] = [String::from("Tick 1")];
-  let first: DeveloperFrame = layer.build(VIEW, &readout, &[]);
+  let first: DeveloperFrame = layer.build(VIEW, &readout, &[], None);
 
   assert!(!first.textures.set.is_empty());
 
   // egui sizes a new area on its first pass without drawing it.
-  let frame: DeveloperFrame = layer.build(VIEW, &readout, &[]);
+  let frame: DeveloperFrame = layer.build(VIEW, &readout, &[], None);
 
   assert!(!frame.layer.meshes.is_empty());
   assert!(

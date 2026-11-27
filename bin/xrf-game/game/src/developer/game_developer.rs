@@ -1,6 +1,9 @@
 use std::time::{Duration, Instant};
 
-use xrf_game_developer::{DeveloperFrame, DeveloperLayer, DeveloperReadout, DeveloperSuggestion, DeveloperView};
+use xrf_game_developer::{
+  DeveloperFrame, DeveloperLayer, DeveloperLoading, DeveloperPicture, DeveloperReadout, DeveloperSuggestion,
+  DeveloperView,
+};
 use xrf_game_loop::LoopFrame;
 use xrf_game_movement::{MovementCamera, MovementHeading};
 use xrf_game_platform::PlatformEvent;
@@ -34,6 +37,16 @@ impl GameDeveloper {
   /// Whether the console is open, taking the keyboard and mouse.
   pub(crate) fn is_open(&self) -> bool {
     self.layer.is_open()
+  }
+
+  /// Shows `picture` behind the loading view while the level loads.
+  pub(crate) fn set_loading_picture(&mut self, picture: &DeveloperPicture) {
+    self.layer.set_loading_picture(picture);
+  }
+
+  /// Whether the layer was sent to the renderer yet.
+  pub(crate) fn has_sent(&self) -> bool {
+    self.sent.is_some()
   }
 
   /// The lines entered into the console since the last take, in order.
@@ -83,8 +96,15 @@ impl GameDeveloper {
   }
 
   /// Builds the layer over `view` and has `game_view` draw it, when its period has passed or sooner once it took input:
-  /// the frame's readout with `latest`'s tick in the top left, `latest`'s camera in the bottom right.
-  pub(crate) fn send(&mut self, game_view: &GameView, view: DeveloperView, latest: Option<LoopFrame<GameFrame>>) {
+  /// the frame's readout with `latest`'s tick in the top left, `latest`'s camera in the bottom right, or `loading` over
+  /// the whole window while the level loads.
+  pub(crate) fn send(
+    &mut self,
+    game_view: &GameView,
+    view: DeveloperView,
+    latest: Option<LoopFrame<GameFrame>>,
+    loading: Option<&DeveloperLoading>,
+  ) {
     let now: Instant = Instant::now();
     let period: Duration = if self.is_changed {
       Self::INPUT_PERIOD
@@ -108,7 +128,7 @@ impl GameDeveloper {
     lines.push(latest.map_or_else(|| String::from("Starting"), |frame| format!("Tick {}", frame.tick)));
 
     let camera: Vec<String> = latest.map_or_else(Vec::new, |frame| Self::get_camera_lines(frame.state.camera));
-    let frame: DeveloperFrame = self.layer.build(view, &lines, &camera);
+    let frame: DeveloperFrame = self.layer.build(view, &lines, &camera, loading);
 
     game_view.draw_layer(frame);
   }

@@ -4,6 +4,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 use xrf_game_alife::{Alife, AlifeData, AlifeSettings};
+use xrf_game_developer::DeveloperPicture;
 use xrf_game_movement::{FlyMode, Movement, MovementMode, MovementModes};
 use xrf_game_objects::ObjectRegistry;
 use xrf_game_simulation::{SimulationConfig, SimulationStart, SimulationStartReport, SmartSpawn};
@@ -17,6 +18,7 @@ use crate::arguments::game_arguments::GameArguments;
 use crate::arguments::game_mode_argument::GameModeArgument;
 use crate::level::game_configs::GameConfigs;
 use crate::level::game_level::GameLevel;
+use crate::level::game_loading_picture::GameLoadingPicture;
 use crate::level::game_spawn::GameSpawn;
 use crate::level::game_tree::GameTree;
 use crate::session::game_start::GameStart;
@@ -36,6 +38,8 @@ pub struct GameSession {
   pub state: GameState,
   /// The player's footsteps, which presentation plays from the loop's frames.
   pub footsteps: GameFootsteps,
+  /// The picture the level's loading view shows, as X-Ray picks its loading screen's; none where the tree has none.
+  pub loading_picture: Option<DeveloperPicture>,
 }
 
 impl GameSession {
@@ -105,6 +109,10 @@ impl GameSession {
       alife: start.alife,
     };
     let footsteps: GameFootsteps = GameFootsteps::of_materials(&materials, start.player.step_volume, seed);
+    let loading_picture: Option<DeveloperPicture> = tree
+      .search()
+      .ok()
+      .and_then(|search| GameLoadingPicture::read(&search, &level_name, seed));
 
     log::info!("Level '{level_name}' opened in {:.1?}", started.elapsed());
 
@@ -113,6 +121,7 @@ impl GameSession {
       source,
       state,
       footsteps,
+      loading_picture,
     })
   }
 

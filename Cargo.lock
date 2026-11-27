@@ -8852,6 +8852,7 @@ dependencies = [
  "xrf-audio",
  "xrf-cache",
  "xrf-chunk",
+ "xrf-dds",
  "xrf-directories",
  "xrf-dltx",
  "xrf-engine-target",

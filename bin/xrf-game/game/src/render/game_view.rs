@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
@@ -9,8 +9,8 @@ use xrf_game_developer::DeveloperFrame;
 use xrf_game_platform::{PlatformSize, PlatformWindow};
 use xrf_game_settings::GameSettings;
 use xrf_renderer::{
-  RenderCapture, RenderCommand, RenderFrameReport, RenderQueue, RenderRect, RenderViewportId, RenderViewportLayout,
-  RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
+  RenderCapture, RenderCommand, RenderFrameReport, RenderLoadReport, RenderQueue, RenderRect, RenderViewportId,
+  RenderViewportLayout, RenderWait, RenderWindowHost, RenderWorkers, RenderWorld,
 };
 use xrf_renderer_host::DiskCacheStore;
 use xrf_world::{World, WorldLevelSource, WorldSoundCue, WorldViewFeed};
@@ -25,8 +25,10 @@ pub struct GameView {
   world: Arc<Mutex<World>>,
   /// Whether the level shown stood ready, as the renderer reported it.
   ready: Arc<AtomicBool>,
-  /// Whether the renderer drew a frame of the view yet.
-  drawn: Arc<AtomicBool>,
+  /// How far the level shown loaded, as the renderer last reported it.
+  load: Arc<Mutex<Option<RenderLoadReport>>>,
+  /// How many frames of the view the renderer drew.
+  drawn: Arc<AtomicU64>,
   /// The latest frame report not yet taken.
   frame: Arc<Mutex<Option<Box<RenderFrameReport>>>>,
 }
@@ -59,14 +61,20 @@ impl GameView {
       queue,
       world,
       ready: Arc::new(AtomicBool::new(false)),
-      drawn: Arc::new(AtomicBool::new(false)),
+      load: Arc::new(Mutex::new(None)),
+      drawn: Arc::new(AtomicU64::new(0)),
       frame: Arc::new(Mutex::new(None)),
     }
   }
 
-  /// Whether the renderer drew a frame of the view yet, which the window waits for before it shows.
-  pub fn is_drawn(&self) -> bool {
+  /// How many frames of the view the renderer drew so far.
+  pub fn count_drawn(&self) -> u64 {
     self.drawn.load(Ordering::Acquire)
+  }
+
+  /// How far the level shown loaded, none before the renderer first reports it.
+  pub fn get_load(&self) -> Option<RenderLoadReport> {
+    *self.load.lock().unwrap_or_else(PoisonError::into_inner)
   }
 
   /// The frame report the renderer sent since the last taken, none where it sent none.
@@ -87,6 +95,7 @@ impl GameView {
       host,
       sink: Box::new(GameRenderSink {
         ready: Arc::clone(&self.ready),
+        load: Arc::clone(&self.load),
         drawn: Arc::clone(&self.drawn),
         frame: Arc::clone(&self.frame),
       }),

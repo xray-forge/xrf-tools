@@ -31,6 +31,7 @@ rayon = "1.12.0"
 xrf-audio = { workspace = true, features = ["steam-audio"] }
 xrf-cache = { workspace = true }
 xrf-chunk = { workspace = true }
+xrf-dds = { workspace = true }
 xrf-directories = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-engine-target = { workspace = true }

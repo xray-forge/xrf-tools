@@ -1,7 +1,7 @@
-use std::io::ErrorKind;
 #[cfg(feature = "mcp")]
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::thread;
 use std::time::Instant;
 
 use rayon::ThreadPool;
@@ -9,14 +9,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_game_loop::{GameClock, GameLoop, LoopClock, LoopStepper};
 #[cfg(feature = "mcp")]
 use xrf_game_mcp::GameEndpoint;
-use xrf_game_platform::{
-  Platform, PlatformSize, PlatformWindow, PlatformWindowHandle, PlatformWindowMode, PlatformWindowRequest,
-};
-use xrf_game_settings::{GameSettings, GameWindowMode};
+use xrf_game_settings::GameSettings;
 use xrf_job::ExecutionRequest;
 use xrf_logging::LogTail;
-use xrf_renderer::RenderWorkers;
-use xrf_renderer_host::HostedWindow;
 use xrf_world::WorldFedCamera;
 
 use crate::arguments::game_arguments::GameArguments;
@@ -26,15 +21,16 @@ use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
 use crate::directories::game_directories::GameDirectories;
 use crate::input::game_bindings::GameBindings;
-use crate::render::game_view::GameView;
 use crate::run::game_play::GamePlay;
+use crate::run::game_shell::GameShell;
+use crate::run::game_startup::GameStartup;
 use crate::session::game_session::GameSession;
 use crate::state::game_state::GameState;
 use crate::state::game_view_feed::GameViewFeed;
 
-/// One run of the game: the session its arguments name opened, then the shell around it (the window, its view, the game
-/// loop stepping the session's state, the play loop reading the platform's events) until the player or an agent quits,
-/// and everything stopped in the order the window's drop needs.
+/// One run of the game: the session its arguments name opened while the shell starts (the window and the renderer in
+/// it), then the game loop stepping the session's state and the play loop reading the platform's events until the
+/// player or an agent quits, and everything stopped in the order the window's drop needs, however the run ends.
 pub struct GameRun;
 
 impl GameRun {
@@ -57,40 +53,53 @@ impl GameRun {
     }
 
     let pool: Arc<ThreadPool> = Arc::new(ExecutionRequest::Auto.resolve().build_pool()?);
+    // The session reads the level on the pool while the main thread starts the shell, which needs no level: the
+    // renderer's own start no longer waits for the level's.
+    let (session, shell): (XrfResult<GameSession>, XrfResult<GameShell>) = thread::scope(|scope| {
+      let opening = scope.spawn(|| GameSession::open(arguments, &pool));
+      let shell: XrfResult<GameShell> = GameShell::start(
+        arguments.level.as_deref().unwrap_or_default(),
+        settings,
+        directories,
+        &pool,
+      );
+      let session: XrfResult<GameSession> = opening
+        .join()
+        .unwrap_or_else(|_| Err(XrfError::new_unexpected_error("opening the game panicked")));
+
+      (session, shell)
+    });
+    let mut shell: GameShell = shell?;
+    let played: XrfResult<()> =
+      session.and_then(|session| Self::play(arguments, settings, directories, log, session, &mut shell));
+
+    shell.stop();
+
+    played
+  }
+
+  /// Steps `session`'s state on the game loop and plays it in `shell` until the player or an agent quits; the loop is
+  /// stopped before the shell is.
+  fn play(
+    arguments: &GameArguments,
+    settings: &GameSettings,
+    directories: &GameDirectories,
+    log: Arc<LogTail>,
+    session: GameSession,
+    shell: &mut GameShell,
+  ) -> XrfResult<()> {
     let GameSession {
       level_name,
       source,
       state,
       footsteps,
-    } = GameSession::open(arguments, &pool)?;
-    let mut platform: Platform = Platform::start().map_err(Self::create_platform_error)?;
-    let mut window: PlatformWindow = platform
-      .open_window(&PlatformWindowRequest {
-        title: format!("XRF: {level_name}"),
-        size: PlatformSize {
-          width: settings.window.width,
-          height: settings.window.height,
-        },
-        mode: match settings.window.mode {
-          GameWindowMode::Windowed => PlatformWindowMode::Windowed,
-          GameWindowMode::Fullscreen => PlatformWindowMode::Fullscreen,
-        },
-      })
-      .map_err(Self::create_platform_error)?;
-    let hosted: HostedWindow<PlatformWindowHandle> = window.create_hosted().map_err(Self::create_platform_error)?;
-    let view: GameView = GameView::start(
-      RenderWorkers::new(Arc::clone(&pool)),
-      settings,
-      directories.get_cache().as_ref(),
-    );
-
-    view.attach(hosted.get_host(), &window, settings);
-
+      loading_picture,
+    } = session;
     let clock: LoopClock = LoopClock::new(Instant::now(), LoopClock::DEFAULT_TICK_RATE);
     let game_loop: GameLoop<GameState> =
       GameLoop::start(LoopStepper::new(clock.get_step(), GameClock::default(), state), clock)?;
 
-    view.show(
+    shell.view.show(
       source,
       Arc::new(GameViewFeed::new(
         Arc::clone(game_loop.get_feed()),
@@ -99,8 +108,8 @@ impl GameRun {
     );
 
     let mut play: GamePlay<'_> = GamePlay {
-      window: &mut window,
-      view: &view,
+      window: &mut shell.window,
+      view: &shell.view,
       commands: game_loop.get_sender(),
       bindings: GameBindings::default(),
       feed: Arc::clone(game_loop.get_feed()),
@@ -111,19 +120,16 @@ impl GameRun {
       #[cfg(feature = "mcp")]
       control: Self::start_control(arguments, &level_name, directories)?,
       is_quitting: false,
-      show_by: Some(Instant::now() + GamePlay::SHOW_WAIT),
+      startup: GameStartup::new(&level_name),
     };
 
-    play.run(&mut platform);
+    if let Some(picture) = &loading_picture {
+      play.developer.set_loading_picture(picture);
+    }
+
+    play.run(&mut shell.platform);
     // However play ended, what the console changed is kept for the next run.
     play.console.save_on_quit();
-    drop(play);
-
-    // Stopped in the order the window's drop needs: the loop, the view, then the window.
-    drop(game_loop);
-    view.stop();
-    drop(hosted);
-    drop(window);
 
     Ok(())
   }
@@ -153,9 +159,5 @@ impl GameRun {
       level_name,
       directories.get_captures_directory(),
     )))
-  }
-
-  fn create_platform_error(message: String) -> XrfError {
-    XrfError::new_io_error(message, ErrorKind::Other)
   }
 }
