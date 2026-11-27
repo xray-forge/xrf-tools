@@ -3,11 +3,10 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use xrf_test_utils::GeneratedResources;
-use xrf_utils::StagedFile;
 use xrf_vfs::{XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch};
 
 use crate::assets::change::{AssetChangeOrder, AssetChangeTicket};
-use crate::assets::{AssetMountState, FileStamp};
+use crate::assets::{AssetMountState, AssetWrites, FileStamp};
 
 /// A ticket dropped undelivered, as a fan-out that failed drops its own, gives its turn up: the events issued after it
 /// are heard all the same, in their order.
@@ -77,13 +76,15 @@ fn mounted_tree(name: &str, files: &[&str]) -> (AssetMountState, PathBuf, XraySe
   (assets, root, search)
 }
 
-fn stage(target: &Path, contents: &str) -> StagedFile {
-  StagedFile::stage(
-    target,
-    &StagedFile::name_sibling(target, "staged").expect("the target sits in a directory"),
-    contents.as_bytes(),
-  )
-  .expect("the writer stages its file")
+/// One file staged to stand at `target`, as a run's only write.
+fn stage(target: &Path, contents: &str) -> AssetWrites {
+  let mut writes: AssetWrites = AssetWrites::default();
+
+  writes
+    .stage_bytes(target, contents.as_bytes())
+    .expect("the writer stages its file");
+
+  writes
 }
 
 /// Every file in a directory, staged leftovers included.
@@ -108,15 +109,13 @@ fn writes_a_mounted_file_as_a_commit_and_one_outside_every_mount_in_place() {
 
   fs::create_dir_all(&outside).expect("the outside folder is made");
 
-  let written: Vec<PathBuf> = assets
-    .write_files(
-      vec![
-        stage(&outside.join("export.ltx"), "exported"),
-        stage(&root.join("configs/system.ltx"), "edited"),
-      ],
-      None,
-    )
-    .expect("the files are written");
+  let mut writes: AssetWrites = stage(&outside.join("export.ltx"), "exported");
+
+  writes
+    .stage_bytes(&root.join("configs/system.ltx"), b"edited")
+    .expect("the writer stages its file");
+
+  let written: Vec<PathBuf> = writes.publish(&assets, None).expect("the files are written");
 
   assert_eq!(
     written,
@@ -150,12 +149,12 @@ fn refuses_a_write_whose_reads_moved_and_leaves_nothing_staged() {
     .with_recording(&record)
     .read("configs\\system.ltx")
     .expect("the writer reads the file");
-  assets
-    .write_files(vec![stage(&target, "someone else")], None)
+  stage(&target, "someone else")
+    .publish(&assets, None)
     .expect("another writer lands first");
 
-  let error: String = assets
-    .write_files(vec![stage(&target, "the writer")], Some(&record))
+  let error: String = stage(&target, "the writer")
+    .publish(&assets, Some(&record))
     .expect_err("what the writer read moved");
 
   assert!(error.contains("stale"), "{error}");
@@ -168,13 +167,17 @@ fn writes_a_streamed_file_where_its_writer_names_it() {
   let (assets, root, _) = mounted_tree("write_staged_file", &["configs/system.ltx"]);
   let target: PathBuf = root.join("configs/system.ltx");
 
-  let written: Vec<PathBuf> = assets
-    .write_staged(&target, |staging| {
+  let mut writes: AssetWrites = AssetWrites::default();
+
+  writes
+    .stage_written(&target, |staging| {
       assert_ne!(staging, target, "the writer writes beside the target");
 
       Ok(fs::write(staging, b"streamed")?)
     })
-    .expect("the file is written");
+    .expect("the file is staged");
+
+  let written: Vec<PathBuf> = writes.publish(&assets, None).expect("the file is written");
 
   assert_eq!(written, std::slice::from_ref(&target));
   assert_eq!(fs::read(&target).expect("the file reads"), b"streamed");
@@ -187,14 +190,24 @@ fn writes_a_streamed_tree_into_a_mount_as_one_commit() {
   let destination: PathBuf = root.join("spawns/all");
   let before: XrayRevision = assets.get_vfs().get_revision();
 
-  let written: Vec<PathBuf> = assets
-    .write_staged(&destination, |staging| {
+  let mut writes: AssetWrites = AssetWrites::default();
+
+  writes
+    .stage_written(&destination, |staging| {
       fs::create_dir_all(staging.join("graphs"))?;
       fs::write(staging.join("header"), b"header")?;
 
       Ok(fs::write(staging.join("graphs/level"), b"level")?)
     })
-    .expect("the tree is written");
+    .expect("the tree is staged");
+
+  assert_eq!(
+    assets.get_vfs().get_revision(),
+    before,
+    "nothing is published while staged"
+  );
+
+  let written: Vec<PathBuf> = writes.publish(&assets, None).expect("the tree is written");
 
   assert_eq!(written, [destination.join("graphs/level"), destination.join("header")]);
   assert_eq!(
@@ -212,11 +225,11 @@ fn writes_a_streamed_tree_into_a_mount_as_one_commit() {
 
 #[test]
 fn a_failed_streamed_write_publishes_nothing_and_leaves_nothing() {
-  let (assets, root, _) = mounted_tree("write_staged_failed", &["configs/system.ltx"]);
+  let (_, root, _) = mounted_tree("write_staged_failed", &["configs/system.ltx"]);
   let target: PathBuf = root.join("configs/system.ltx");
 
-  let error: String = assets
-    .write_staged(&target, |staging| {
+  let error: String = AssetWrites::default()
+    .stage_written(&target, |staging| {
       fs::write(staging, b"partial")?;
 
       Err(std::io::Error::other("the writer gave up").into())
@@ -225,6 +238,21 @@ fn a_failed_streamed_write_publishes_nothing_and_leaves_nothing() {
 
   assert!(error.contains("the writer gave up"), "{error}");
   assert_eq!(fs::read(&target).expect("the file reads"), b"payload");
+  assert_eq!(list_names(&root.join("configs")), ["system.ltx"]);
+}
+
+#[test]
+fn writes_dropped_unpublished_leave_nothing_staged() {
+  let (assets, root, _) = mounted_tree("write_dropped", &["configs/system.ltx"]);
+  let before: XrayRevision = assets.get_vfs().get_revision();
+
+  drop(stage(&root.join("configs/system.ltx"), "abandoned"));
+
+  assert_eq!(assets.get_vfs().get_revision(), before);
+  assert_eq!(
+    fs::read(root.join("configs/system.ltx")).expect("the file reads"),
+    b"payload"
+  );
   assert_eq!(list_names(&root.join("configs")), ["system.ltx"]);
 }
 

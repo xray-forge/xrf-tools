@@ -1,7 +1,5 @@
-use std::fs;
-use std::io::{ErrorKind, Result as IoResult};
 use std::panic::{self, AssertUnwindSafe};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock};
 
 use tauri::ipc::Channel;
@@ -164,16 +162,20 @@ impl AssetMountState {
     Ok(changes)
   }
 
-  /// Publishes files their writers staged beside their targets on disk, the one way the application writes a file it
-  /// names by path: those a writable loose mount holds as one commit, all or none, which moves every followed session
-  /// and is heard as any commit, refused when what `expected` recorded moved; then the rest, outside every mount, each by
-  /// its own rename, since no snapshot reads them. Answers every file written, the mounted ones first.
+  /// Publishes files staged beside their targets, as [`crate::assets::AssetWrites::publish`] describes: those a
+  /// writable loose mount holds as one commit, all or none, which moves every followed session and is heard as any
+  /// commit, refused when what `expected` recorded moved; then the rest, outside every mount, each by its own rename,
+  /// since no snapshot reads them. Answers every file written, the mounted ones first.
   ///
   /// # Errors
   ///
   /// Returns an error, with no mounted file written, when the commit is refused or fails; a file outside every mount
   /// that cannot be moved into place is reported, and those after it are not written.
-  pub fn write_files(&self, files: Vec<StagedFile>, expected: Option<&XrayInputRecord>) -> TauriResult<Vec<PathBuf>> {
+  pub(crate) fn write_files(
+    &self,
+    files: Vec<StagedFile>,
+    expected: Option<&XrayInputRecord>,
+  ) -> TauriResult<Vec<PathBuf>> {
     let search: XraySearch = self.search_writable();
     let (mounted, loose): (Vec<StagedFile>, Vec<StagedFile>) =
       files.into_iter().partition(|file| search.holds_file(file.get_target()));
@@ -200,85 +202,6 @@ impl AssetMountState {
     }
 
     Ok(written)
-  }
-
-  /// Writes what `write` makes as if at `destination`, a file or a folder of files, then publishes it as
-  /// [`Self::write_files`] does, expecting nothing: for a writer that read its source by path rather than through a
-  /// recorded search. `write` is handed a hidden sibling of `destination` to write at instead, so a writer that streams
-  /// a large file or a whole tree writes as it would to `destination` itself; each file it leaves there is moved beside
-  /// its target once it returns. The sibling is removed however the write ends.
-  ///
-  /// # Errors
-  ///
-  /// Returns `write`'s error, an error naming `destination` when what it wrote cannot be staged, or what
-  /// [`Self::write_files`] refuses; nothing is published then.
-  pub fn write_staged(&self, destination: &Path, write: impl FnOnce(&Path) -> XrfResult) -> TauriResult<Vec<PathBuf>> {
-    let staging: PathBuf = StagedFile::name_sibling(destination, "staged")
-      .map_err(|error| format!("Cannot write '{}': {error}", format_path(destination)))?;
-    let written: TauriResult<Vec<PathBuf>> = write(&staging)
-      .map_err(|error| error.to_string())
-      .and_then(|()| {
-        Self::adopt_written(&staging, destination)
-          .map_err(|error| format!("Cannot stage '{}': {error}", format_path(destination)))
-      })
-      .and_then(|files| self.write_files(files, None));
-
-    // What the writer left that was not adopted: its folders, or everything after a failure.
-    let removed: IoResult<()> = if staging.is_dir() {
-      fs::remove_dir_all(&staging)
-    } else {
-      fs::remove_file(&staging)
-    };
-
-    if let Err(error) = removed
-      && error.kind() != ErrorKind::NotFound
-    {
-      log::warn!("Could not remove '{}': {error}", format_path(&staging));
-    }
-
-    written
-  }
-
-  /// Stages every file a writer left at `staging` beside its place under `destination`, in path order: `staging`
-  /// itself where the writer wrote one file, none where it wrote nothing.
-  fn adopt_written(staging: &Path, destination: &Path) -> IoResult<Vec<StagedFile>> {
-    if !staging.exists() {
-      return Ok(Vec::new());
-    }
-
-    if staging.is_file() {
-      return Ok(vec![StagedFile::adopt(destination, staging)?]);
-    }
-
-    let mut written: Vec<PathBuf> = Vec::new();
-    let mut folders: Vec<PathBuf> = vec![staging.to_path_buf()];
-
-    while let Some(folder) = folders.pop() {
-      for entry in fs::read_dir(&folder)? {
-        let path: PathBuf = entry?.path();
-
-        if path.is_dir() {
-          folders.push(path);
-        } else {
-          written.push(path);
-        }
-      }
-    }
-
-    written.sort();
-
-    written
-      .into_iter()
-      .map(|path| {
-        let target: PathBuf = destination.join(path.strip_prefix(staging).expect("a written file sits below staging"));
-
-        if let Some(parent) = target.parent() {
-          fs::create_dir_all(parent)?;
-        }
-
-        StagedFile::adopt(&target, &path)
-      })
-      .collect()
   }
 
   /// Runs a change through the host and, where it moved the project revision, takes the change's place in the order

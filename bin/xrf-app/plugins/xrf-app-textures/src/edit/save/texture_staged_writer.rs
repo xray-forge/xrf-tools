@@ -1,20 +1,17 @@
-use std::fs::{self, File};
-use std::io::{Error as IoError, Result as IoResult, Write};
+use std::io::Error as IoError;
 use std::path::Path;
 
 use xrf_app_core::TauriResult;
-use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::assets::{AssetMountState, AssetWrites};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_texture::TextureFileWriter;
-use xrf_utils::{StagedFile, format_path};
 
-/// Stages each file the textures plugin writes beside its path, for the run to publish them together through
-/// [`AssetMountState::write_files`]: a bump pair or a node's two files land whole or not at all, and a mounted file
-/// moves the snapshot as any save does. Dropped unpublished, it removes what it staged.
+/// The textures plugin's [`AssetWrites`], taking each file a texture processor makes: a bump pair or a node's two files
+/// are published together, landing whole or not at all. Dropped unpublished, it removes what it staged.
 #[derive(Debug, Default)]
 pub(crate) struct TextureStagedWriter {
-  staged: Vec<StagedFile>,
+  writes: AssetWrites,
 }
 
 impl TextureStagedWriter {
@@ -22,47 +19,33 @@ impl TextureStagedWriter {
   ///
   /// # Errors
   ///
-  /// Returns an error naming `path` when its folder cannot be made or the file cannot be staged.
-  pub(crate) fn stage_bytes(&mut self, path: &Path, bytes: &[u8]) -> XrfResult {
-    self.stage(path, |out| out.write_all(bytes))
+  /// As [`AssetWrites::stage_bytes`].
+  pub(crate) fn stage_bytes(&mut self, path: &Path, bytes: &[u8]) -> TauriResult {
+    self.writes.stage_bytes(path, bytes)
   }
 
   /// Publishes everything staged, answering every file written.
   ///
   /// # Errors
   ///
-  /// Returns what [`AssetMountState::write_files`] refuses.
+  /// As [`AssetWrites::publish`].
   pub(crate) fn publish(self, assets: &AssetMountState) -> TauriResult<Vec<String>> {
     Ok(
-      assets
-        .write_files(self.staged, None)?
+      self
+        .writes
+        .publish(assets, None)?
         .iter()
         .map(|path| path.display().to_string())
         .collect(),
     )
   }
-
-  /// Stages what `write` streams to stand at `path`, making its folder where missing, as a direct write would; the
-  /// commit then places the file in it.
-  fn stage(&mut self, path: &Path, write: impl FnOnce(&mut File) -> IoResult<()>) -> XrfResult {
-    let staged: IoResult<StagedFile> = (|| {
-      if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-      }
-
-      StagedFile::stage_with(path, &StagedFile::name_sibling(path, "staged")?, write)
-    })();
-
-    self.staged.push(staged.map_err(|error| {
-      XrfError::new_texture_processing_error(format!("Cannot stage '{}': {error}", format_path(path)))
-    })?);
-
-    Ok(())
-  }
 }
 
 impl TextureFileWriter for TextureStagedWriter {
   fn write(&mut self, path: &Path, file: &DdsFile) -> XrfResult {
-    self.stage(path, |out| file.write_to(out).map_err(IoError::other))
+    self
+      .writes
+      .stage_with(path, |out| file.write_to(out).map_err(IoError::other))
+      .map_err(XrfError::new_texture_processing_error)
   }
 }

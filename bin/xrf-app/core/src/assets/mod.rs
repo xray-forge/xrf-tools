@@ -2,6 +2,7 @@
 
 mod asset_mount_state;
 mod asset_source;
+mod asset_writes;
 mod change;
 mod file_stamp;
 #[cfg(test)]
@@ -10,6 +11,7 @@ mod texture;
 
 pub use asset_mount_state::AssetMountState;
 pub use asset_source::AssetSource;
+pub use asset_writes::AssetWrites;
 pub use change::{AssetChangeEvent, AssetChangeSubscriber, AssetFanOut};
 pub use file_stamp::FileStamp;
 pub use texture::{AssetTextureDescriptor, AssetTextureImage, AssetTextureShape};

@@ -954,3 +954,27 @@ fn a_mount_settles_a_commit_cut_short_and_indexes_none_of_its_leftovers() {
     assert!(orphan.exists(), "a sibling no journal names stays, unindexed");
   }
 }
+
+// A writer streaming a whole tree writes it into a hidden sibling folder first; what it holds, under ordinary names,
+// is no asset while it is there or after a crash leaves it.
+#[test]
+fn a_mount_indexes_nothing_inside_a_staging_folder() {
+  let root: PathBuf = directory("commit_staging_folder", &["spawns/all.spawn"]);
+  let staging: PathBuf = root.join("spawns/.all.xrf-staged-1-0");
+
+  fs::create_dir_all(staging.join("graphs")).unwrap();
+  fs::write(staging.join("header.ltx"), "header").unwrap();
+  fs::write(staging.join("graphs/level.ltx"), "level").unwrap();
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &root).expect("the tree mounts");
+
+  let listed: Vec<String> = search(vfs)
+    .list_files()
+    .iter()
+    .map(|asset| asset.get_logical_path().to_string())
+    .collect();
+
+  assert_eq!(listed, ["spawns\\all.spawn"]);
+}

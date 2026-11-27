@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_app_core::TauriResult;
-use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::assets::{AssetMountState, AssetWrites};
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_utils::{OutputFiles, error_to_string};
@@ -30,7 +30,10 @@ pub(crate) async fn spawn_save_unpacked_directory(
       OutputFiles::of_path(&path)
         .assert_free(is_forced)
         .map_err(error_to_string)?;
-      assets.write_staged(&path, |staging| opened.file.export_to_path(&staging))?;
+      let mut writes: AssetWrites = AssetWrites::default();
+
+      writes.stage_written(&path, |staging| opened.file.export_to_path(&staging))?;
+      writes.publish(&assets, None)?;
 
       Ok(())
     })

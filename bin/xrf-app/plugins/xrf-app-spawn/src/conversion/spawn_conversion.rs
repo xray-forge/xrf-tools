@@ -4,7 +4,7 @@ use serde::Serialize;
 use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
-use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::assets::{AssetMountState, AssetWrites};
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobKind, JobPhase, JobRegistry, JobResource, JobStart};
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
@@ -111,10 +111,13 @@ impl SpawnConversion {
 
     job.set_detail(Some(request.destination.display().to_string()));
 
-    assets.write_staged(&request.destination, |staging| match self {
+    let mut writes: AssetWrites = AssetWrites::default();
+
+    writes.stage_written(&request.destination, |staging| match self {
       Self::Pack => file.write_to_path(&staging),
       Self::Unpack => file.export_to_path(&staging),
     })?;
+    writes.publish(assets, None)?;
 
     result.outcome = JobOutcome::Completed;
 

@@ -18,7 +18,7 @@ impl DirectoryAssetIndex {
   /// Recursively indexes files below `root` in relative-path order, after settling what a commit cut short left there.
   ///
   /// Directory paths, symbolic links to directories, and the hidden siblings a write stages or sets aside beside a
-  /// file (`.<name>.xrf-…`) are not added as assets.
+  /// file (`.<name>.xrf-…`), with everything inside a sibling folder, are not added as assets.
   ///
   /// An entry the walk cannot read — a permission-denied subdirectory, a broken link — is warned about and skipped
   /// rather than failing the index. Aborting would discard the whole mount over one unreadable corner of a tree, and the
@@ -61,7 +61,15 @@ impl DirectoryAssetIndex {
     let mut assets: Vec<PathBuf> = Vec::new();
     let mut journals: Vec<PathBuf> = Vec::new();
 
-    for entry in WalkDir::new(root).follow_links(false) {
+    // A folder a writer stages a whole tree in is a hidden sibling too, holding files under ordinary names.
+    let walk = WalkDir::new(root)
+      .follow_links(false)
+      .into_iter()
+      .filter_entry(|entry| {
+        entry.depth() == 0 || !entry.file_type().is_dir() || !StagedFile::is_sibling(entry.file_name())
+      });
+
+    for entry in walk {
       let entry = match entry {
         Ok(entry) => entry,
         Err(error) => {

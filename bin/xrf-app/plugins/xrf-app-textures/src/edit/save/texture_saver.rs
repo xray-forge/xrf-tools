@@ -86,7 +86,7 @@ impl TextureSaver {
     let mut writer: TextureStagedWriter = TextureStagedWriter::default();
 
     for file in prepared {
-      writer.stage_bytes(&file.path, &file.bytes).map_err(error_to_string)?;
+      writer.stage_bytes(&file.path, &file.bytes)?;
     }
 
     writer.publish(assets)
