@@ -24,9 +24,13 @@ cargo run --profile dev-optimized -p xrf-game -- --root C:\Games\anomaly --level
   ([xrf-game-mcp](../mcp/README.md)) starts the game. Its input ending quits the game. Built only with the `mcp`
   feature (on by default); without `--mcp` the game reads no input.
 
-The cursor is grabbed for mouse look. As Call of Pripyat binds them (`GameBindings`): W, S, A and D move, Space jumps
-(rises in flight), Left Ctrl sinks in flight, Left Shift walks (flies faster), X toggles sprinting; N switches between
-walking and flight, as an engine's noclip does. Escape or the window's close quits.
+The cursor is grabbed for mouse look, turned at `input.sensitivity` (0.0025 rad a count). The keys are the tree's own,
+its `configs\default_controls.ltx` (`GameControls`: `bind` and `bind_sec` lines, X-Ray's key names read as SDL's,
+`GameKeyNames`), Call of Pripyat's where the tree has none: W, S, A and D move, Space jumps (rises in flight), Left
+Ctrl sinks in flight, Left Shift walks (flies faster), X toggles sprinting; N switches between walking and flight, as
+an engine's noclip does. The player's own bindings (`input.bindings`, `input.bindings_secondary`, set by the console's
+`bind` and `bind_sec`) are laid over them (`GameBindings`), and the settings file keeps only those. Escape or the
+window's close quits.
 
 ## The run
 
@@ -46,10 +50,12 @@ level is streamed. `GameSession` opens what the load asks on the mounted tree: t
 Steam Audio from `.sdks` or beside the executable, dry without it), what the world shows, and a new game's
 `GameState`: every object of the tree's `all.spawn` in the object registry (`xrf-game-objects`), the spawn's actor as
 the player's object, the player's movement at the level's start, and A-Life (`xrf-game-alife`) by the tree's
-`[alife]`, which switches the level's objects online around the player's feet. The
-spawn is read once for its objects, its game graph and its patrols (`GameTree::read_spawn`, `GameSpawn`); every config
-the game reads, `[alife]` and the simulation's, comes through `GameConfigs`, the tree's `configs` in its dialect (a
-DLTX mod's overrides applied) with `system.ltx` resolved, and the simulation's issues are logged. The simulation's
+`[alife]`, which switches the level's objects online around the player's feet; the game's day runs by `[alife]`'s
+`start_time` and `time_factor` (`GameClock`). The spawn is read once for its objects, its game graph and its patrols
+(`GameTree::read_spawn`, `GameSpawn`); every config the game reads (`[alife]`, `[actor]`, `[hud_sound]`, the controls,
+the simulation's) comes through `GameConfigs`, the tree's `configs` in its dialect (a DLTX mod's overrides applied)
+with `system.ltx` resolved, read by `xrf-game-config`, and what does not read is logged as issues naming its file,
+section and key. The simulation's
 start squads are then created with their members (`xrf-game-simulation`'s `SimulationStart`), every draw keyed by the
 game's seed: `--seed` names one, or a new one is made from the clock and logged, so a run can be repeated. That new
 game (`GameStart`) is read beside the level on the session's pool, and so is the level's physics world
@@ -62,12 +68,17 @@ stepping the session's state.
 
 What the loop publishes (`GameFrame`) is the player's camera and velocity, the game's day and every online object's
 pose, in id order; what happens once is an event (`GameEvent`: the player's steps, played in order by
-`GameFootsteps`, and the objects A-Life switches, which nothing shows yet), queued in order; what a tool asks is read from the state between ticks (the control endpoint's status). The look is
-presentation's (plan decision 26, `GameLook`): the mouse turns it on the main thread at once, the world's view reads it
+`GameFootsteps`, and the objects A-Life switches, which nothing shows yet), queued in order; what a tool asks is read
+from the state between ticks (the control endpoint's status). The look is presentation's (plan decision 26, `GameLook`): the mouse turns it on the main thread at once, the world's view reads it
 at each render frame's start (`GameViewFeed`), its position the latest tick's carried forward by its velocity, and the
 loop is sent the heading whole once a frame it changed (`MovementCommand::Face`). A look reaches the view in 5.7 ms at
 the median, 11 at p90, against 12 and 19 when the loop turned the view a tick at a time and the view blended a tick
 behind (Zaton, 2026-11-27). The day blends a tick behind.
+
+The run owns the settings store (`xrf-game-settings`' `GameSettingsStore`); the console (`GameConsole`) is its client,
+and the bridge's lines run through the console. `GamePlay` applies what changed once a frame, by group: the view's
+groups to the renderer, the input group to the running game, which owns its keys (its tree's controls with the
+player's bindings over them) and binds them again; the run saves what changed as it quits.
 
 `GamePlay` reads each platform event through the bindings into the loop's movement commands (the player held while
 loading) and, with `--mcp` or `--listen`, answers the control endpoint between frames (`GameControl`): `ready` once the

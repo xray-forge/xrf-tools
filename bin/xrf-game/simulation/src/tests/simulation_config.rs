@@ -2,7 +2,7 @@ use xrf_spawn::ClsId;
 
 use crate::config::simulation_config::SimulationConfig;
 use crate::smart::smart_spawn::SmartSpawn;
-use crate::tests::config_source::ConfigSource;
+use crate::tests::config_source::TextSource;
 
 const SYSTEM: &str = concat!(
   "[stalker_novice]\nclass = ON_OFF_S\nfaction = stalker\nnpc_random = sim_stalker, sim_stalker\nnpc_in_squad = 2, 3\n",
@@ -30,8 +30,8 @@ fn smarts() -> Vec<SmartSpawn> {
   ]
 }
 
-fn source(simulation: &str) -> ConfigSource {
-  ConfigSource::new(
+fn source(simulation: &str) -> TextSource {
+  TextSource::new(
     SYSTEM,
     &[
       ("misc\\simulation.ltx", simulation),
@@ -52,6 +52,16 @@ fn source(simulation: &str) -> ConfigSource {
       ),
     ],
   )
+}
+
+/// Every issue `config` found, a line each.
+fn issues_of(config: &SimulationConfig) -> String {
+  config
+    .get_issues()
+    .iter()
+    .map(ToString::to_string)
+    .collect::<Vec<_>>()
+    .join("\n")
 }
 
 fn levels() -> Vec<String> {
@@ -84,7 +94,12 @@ fn reads_start_squads_level_by_level_in_the_engines_line_order_skipping_a_level_
       "stalker_novice@jup_sim_1"
     ]
   );
-  assert!(config.get_issues().iter().any(|issue| issue.contains("'nowhere'")));
+  assert!(
+    config
+      .get_issues()
+      .iter()
+      .any(|issue| issue.to_string().contains("'nowhere'"))
+  );
 }
 
 #[test]
@@ -134,7 +149,7 @@ fn reads_smarts_from_custom_data_or_their_cfg_and_keeps_what_does_not_read_as_is
   assert_eq!(config.get_class("sim_bandit"), Some(&ClsId::AiStlS));
   assert_eq!(config.get_class("missing_bandit"), None);
 
-  let issues: String = config.get_issues().join("\n");
+  let issues: String = issues_of(&config);
 
   assert!(issues.contains("'broken'"), "{issues}");
   assert!(issues.contains("[absent_squad]"), "{issues}");
@@ -149,9 +164,10 @@ fn names_the_condition_functions_its_condlists_call_once() {
   smarts[0].custom_data = String::from("[smart_terrain]\nmax_population = {=surge_started} 0, {!is_night} 1, 2\n");
 
   let config: SimulationConfig = SimulationConfig::read(&source("[start_position_zaton]\n"), &levels(), &smarts);
-  let issue: &String = config
+  let issue: String = config
     .get_issues()
     .iter()
+    .map(ToString::to_string)
     .find(|issue| issue.contains("condition functions"))
     .expect("the functions are named");
 
@@ -171,7 +187,12 @@ fn reads_behaviours_and_props_with_inheritance() {
       .and_then(|behaviour| behaviour.weights.get("resource").copied()),
     Some(2.0)
   );
-  assert!(config.get_behaviour("bad").is_none());
+  // A weight that is no number is left out, an issue; the rest of the behaviour stands.
+  assert!(
+    config
+      .get_behaviour("bad")
+      .is_some_and(|behaviour| behaviour.weights.is_empty())
+  );
 
   let props = config.get_props("zat_base").expect("the smart's props");
 

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use xrf_ltx::Section;
+use xrf_game_config::ConfigReader;
 
 /// How much a squad of one behaviour wants each kind of target (`misc\squad_behaviours.ltx`): the weights its target
 /// priority multiplies a target's simulation props by, such as `resource = 2`, `lair = 0`.
@@ -10,19 +10,10 @@ pub struct SquadBehaviour {
 }
 
 impl SquadBehaviour {
-  /// The behaviour `section` holds, or why a weight is no number.
-  pub fn read(section: &Section) -> Result<Self, String> {
-    let weights: BTreeMap<String, f32> = section
-      .iter()
-      .map(|(key, value)| {
-        value
-          .trim()
-          .parse::<f32>()
-          .map(|weight| (String::from(key), weight))
-          .map_err(|_| format!("{key} = '{value}' is no number"))
-      })
-      .collect::<Result<_, _>>()?;
-
-    Ok(Self { weights })
+  /// The behaviour `section` holds; a weight that is no number is an issue and left out.
+  pub fn read(section: &mut ConfigReader<'_, '_>) -> Self {
+    Self {
+      weights: section.read_all(&[]),
+    }
   }
 }

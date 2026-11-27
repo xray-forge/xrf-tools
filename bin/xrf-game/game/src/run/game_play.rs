@@ -1,3 +1,5 @@
+use std::cell::{Ref, RefCell};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 #[cfg(feature = "mcp")]
@@ -11,6 +13,7 @@ use xrf_game_movement::{MovementCommand, MovementInput, MovementInputKind};
 use xrf_game_platform::{
   Platform, PlatformEvent, PlatformEventKind, PlatformScancode, PlatformSize, PlatformWindow, PlatformWindowCommand,
 };
+use xrf_game_settings::{GameSettingsChanges, GameSettingsGroup, GameSettingsStore};
 use xrf_logging::LogTail;
 
 use crate::console::game_console::GameConsole;
@@ -18,7 +21,6 @@ use crate::console::game_console_effect::GameConsoleEffect;
 #[cfg(feature = "mcp")]
 use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
-use crate::input::game_bindings::GameBindings;
 use crate::render::game_view::GameView;
 use crate::run::game_flow::GameFlow;
 use crate::run::game_flow_stage::GameFlowStage;
@@ -36,7 +38,9 @@ use crate::state::game_frame::GameFrame;
 pub(crate) struct GamePlay<'a> {
   pub window: &'a mut PlatformWindow,
   pub view: &'a GameView,
-  pub bindings: GameBindings,
+  /// The settings the run plays with, which every client (the console, the bridge through it) changes; play applies
+  /// what changed once a frame.
+  pub settings: Rc<RefCell<GameSettingsStore>>,
   pub developer: GameDeveloper,
   pub console: GameConsole,
   /// The log's records the console shows, taken as they come.
@@ -68,6 +72,7 @@ impl GamePlay<'_> {
     let mut events: Vec<PlatformEvent> = Vec::new();
 
     loop {
+      self.apply_settings();
       self.startup.show_when_covered(
         self.window,
         self.view,
@@ -111,7 +116,10 @@ impl GamePlay<'_> {
       }
 
       let view: DeveloperView = self.get_developer_view();
-      let loading: Option<DeveloperLoading> = self.flow.advance(self.view, &mut self.developer)?;
+      let loading: Option<DeveloperLoading> =
+        self
+          .flow
+          .advance(self.view, &mut self.developer, &self.settings.borrow().get().input)?;
       let latest: Option<Arc<LoopFrame<GameFrame>>> = self.flow.get_running().and_then(GameRunning::get_latest);
 
       if let Some(running) = self.flow.get_running_mut() {
@@ -150,7 +158,6 @@ impl GamePlay<'_> {
 
     for effect in self.console.take_effects() {
       match effect {
-        GameConsoleEffect::ApplySettings => self.view.apply_settings(self.console.get_settings()),
         GameConsoleEffect::Movement(command) => {
           self.send(GameCommand::Movement(command));
         }
@@ -159,6 +166,27 @@ impl GamePlay<'_> {
     }
 
     answer
+  }
+
+  /// Applies what changed in the settings since the last frame, by group: the view draws with its groups' from this
+  /// frame, the running game binds its keys again with the input group's; the window's wait for the next start.
+  fn apply_settings(&mut self) {
+    let changes: GameSettingsChanges = self.settings.borrow_mut().take_changes();
+    let settings: Ref<'_, GameSettingsStore> = self.settings.borrow();
+
+    if changes.has_any(&[
+      GameSettingsGroup::Render,
+      GameSettingsGroup::View,
+      GameSettingsGroup::Upscaling,
+    ]) {
+      self.view.apply_settings(settings.get());
+    }
+
+    if changes.has(GameSettingsGroup::Input)
+      && let Some(running) = self.flow.get_running_mut()
+    {
+      running.rebind(&settings.get().input);
+    }
   }
 
   /// Suggests what the drawer's line `text` may become: the console's choices with their hints, none for a line past
@@ -210,13 +238,16 @@ impl GamePlay<'_> {
       _ if self.flow.get_stage() == GameFlowStage::Loading => true,
       // The mouse turns the look at once, which the next drawn frame faces.
       PlatformEventKind::MouseMoved { dx, dy, .. } => {
-        self.flow.get_look().turn(*dx, *dy);
+        let sensitivity: f32 = self.settings.borrow().get().input.sensitivity;
+
+        self.flow.get_look().turn(*dx, *dy, sensitivity);
 
         true
       }
       _ => self
-        .bindings
-        .read(event)
+        .flow
+        .get_running()
+        .and_then(|running| running.read_input(event))
         .is_none_or(|command| self.send(GameCommand::Movement(command))),
     }
   }

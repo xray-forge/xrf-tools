@@ -1,6 +1,5 @@
-use xrf_ltx::{Condlist, Section};
+use xrf_game_config::{Condlist, ConfigReader, ConfigValue};
 
-use crate::config::config_text::ConfigText;
 use crate::squad::squad_size::SquadSize;
 
 /// A squad section of `system.ltx` (`squad_descr*.ltx`), what `sim_squad_scripted:init_squad` and `create_npc` read:
@@ -28,57 +27,58 @@ pub struct SquadDescription {
 }
 
 impl SquadDescription {
-  /// The squad `section` describes, or why it cannot be read: no faction, no member, or a condlist that does not parse.
-  pub fn read(name: &str, section: &Section) -> Result<Self, String> {
-    let faction: String = section
-      .get("faction")
-      .map(str::trim)
-      .filter(|faction| !faction.is_empty())
-      .ok_or_else(|| String::from("names no faction"))?
-      .to_string();
-    let members: Vec<String> = section.get("npc").map(ConfigText::split_names).unwrap_or_default();
-    let random_members: Vec<String> = section
-      .get("npc_random")
-      .map(ConfigText::split_names)
-      .unwrap_or_default();
+  /// The squad `section` describes, none where it cannot be made, said as an issue: no faction, no member, a size or
+  /// a condlist that does not read.
+  pub fn read(section: &mut ConfigReader<'_, '_>) -> Option<Self> {
+    let faction: String = section.require("faction")?;
+    let members: Vec<String> = section.read_names("npc");
+    let random_members: Vec<String> = section.read_names("npc_random");
 
     if members.is_empty() && random_members.is_empty() {
-      return Err(String::from("names no member, neither npc nor npc_random"));
+      section.push_issue("names no member, neither npc nor npc_random");
+
+      return None;
     }
 
-    Ok(Self {
-      section: String::from(name),
-      behaviour: section
-        .get("behaviour")
-        .map(str::trim)
-        .filter(|behaviour| !behaviour.is_empty())
-        .map_or_else(|| faction.clone(), String::from),
+    let size: SquadSize = Self::read_size(section)?;
+    let spawn_point: Condlist = section.read_or_parse("spawn_point", "self")?;
+    let target: Option<Condlist> = match section.get_text("target_smart") {
+      Some(text) if !text.is_empty() => Some(section.read_or_parse("target_smart", text)?),
+      _ => None,
+    };
+
+    Some(Self {
+      section: String::from(section.get_name()),
+      behaviour: section.read("behaviour").unwrap_or_else(|| faction.clone()),
       faction,
       members,
       random_members,
-      size: Self::read_size(section)?,
-      spawn_point: ConfigText::parse_condlist(section.get("spawn_point").unwrap_or("self"))?,
-      target: section
-        .get("target_smart")
-        .filter(|target| !target.trim().is_empty())
-        .map(ConfigText::parse_condlist)
-        .transpose()?,
-      always_walk: section.get_bool("always_walk").unwrap_or(false),
-      always_arrived: section.get_bool("always_arrived").unwrap_or(false),
+      size,
+      spawn_point,
+      target,
+      always_walk: section.read_or("always_walk", false),
+      always_arrived: section.read_or("always_arrived", false),
     })
   }
 
-  /// `npc_in_squad`, two numbers as `utils.r_2nums` reads them, the default where it is missing; a minimum past the
-  /// maximum is refused, as `create_npc` aborts on it.
-  fn read_size(section: &Section) -> Result<SquadSize, String> {
-    let Some(value) = section.get("npc_in_squad") else {
-      return Ok(SquadSize::default());
+  /// `npc_in_squad`, two numbers as `utils.r_2nums` reads them, the default where it is missing; none, said as an
+  /// issue, for one that does not read or a minimum past the maximum, as `create_npc` aborts on it.
+  fn read_size(section: &mut ConfigReader<'_, '_>) -> Option<SquadSize> {
+    let Some(text) = section.get_text("npc_in_squad") else {
+      return Some(SquadSize::default());
     };
-    let numbers: Vec<u32> = ConfigText::split_names(value)
+    let numbers: Vec<u32> = match ConfigReader::split_names(text)
       .iter()
-      .map(|number| number.parse::<f32>().map(|number| number.max(0.0) as u32))
+      .map(|number| u32::parse(number))
       .collect::<Result<_, _>>()
-      .map_err(|_| format!("npc_in_squad '{value}' is no pair of numbers"))?;
+    {
+      Ok(numbers) => numbers,
+      Err(reason) => {
+        section.push_key("npc_in_squad", reason);
+
+        return None;
+      }
+    };
     let size: SquadSize = match numbers.as_slice() {
       [min] => SquadSize { min: *min, max: *min },
       [min, max, ..] => SquadSize { min: *min, max: *max },
@@ -86,9 +86,11 @@ impl SquadDescription {
     };
 
     if size.min > size.max {
-      return Err(format!("npc_in_squad '{value}' draws more at least than at most"));
+      section.push_key("npc_in_squad", format!("'{text}' draws more at least than at most"));
+
+      return None;
     }
 
-    Ok(size)
+    Some(size)
   }
 }

@@ -8,10 +8,14 @@ use xrf_error::{XrfError, XrfResult};
 #[cfg(feature = "mcp")]
 use xrf_game_loop::LoopStepper;
 use xrf_game_loop::{GameLoop, LoopClock, LoopFrame, LoopStatus};
-use xrf_game_movement::MovementEvent;
+use xrf_game_movement::{MovementCommand, MovementEvent};
+use xrf_game_platform::PlatformEvent;
+use xrf_game_settings::GameInputSettings;
 use xrf_world::WorldFedCamera;
 
 use crate::host::game_host::GameHost;
+use crate::input::game_bindings::GameBindings;
+use crate::input::game_controls::GameControls;
 use crate::input::game_look::GameLook;
 use crate::render::game_view::GameView;
 use crate::session::game_session::GameSession;
@@ -22,12 +26,16 @@ use crate::state::game_frame::GameFrame;
 use crate::state::game_state::GameState;
 use crate::state::game_view_feed::GameViewFeed;
 
-/// A game the main thread runs: its loop stepping the state, what its events play (the player's footsteps), and the
-/// host the run keeps for the levels after this one.
+/// A game the main thread runs: its loop stepping the state, the keys that drive it (its tree's controls with the
+/// player's bindings over them), what its events play (the player's footsteps), and the host the run keeps for the
+/// levels after this one.
 pub(crate) struct GameRunning {
   game_loop: GameLoop<GameState>,
   commands: Sender<GameCommand>,
   footsteps: GameFootsteps,
+  /// The tree's own controls, which the player's bindings are laid over.
+  controls: GameControls,
+  bindings: GameBindings,
   #[expect(
     dead_code,
     reason = "kept for the run: the next level the game moves to is opened through it"
@@ -37,17 +45,23 @@ pub(crate) struct GameRunning {
 
 impl GameRunning {
   /// Starts the loop over `session`'s state, from now, and shows its level in `view`, the player's view facing where
-  /// `look` faces, which starts where the state's player does.
+  /// `look` faces, which starts where the state's player does; its keys bound with `input`'s over the tree's.
   ///
   /// # Errors
   ///
   /// Returns why the loop's thread cannot be started.
-  pub(crate) fn start(session: GameSession, view: &GameView, look: &Arc<GameLook>) -> XrfResult<Self> {
+  pub(crate) fn start(
+    session: GameSession,
+    view: &GameView,
+    look: &Arc<GameLook>,
+    input: &GameInputSettings,
+  ) -> XrfResult<Self> {
     let GameSession {
       host,
       source,
       state,
       footsteps,
+      controls,
     } = session;
     let clock: LoopClock = LoopClock::new(Instant::now(), LoopClock::DEFAULT_TICK_RATE);
 
@@ -68,8 +82,20 @@ impl GameRunning {
       commands: game_loop.get_sender(),
       game_loop,
       footsteps,
+      bindings: GameBindings::new(&controls, input),
+      controls,
       host,
     })
+  }
+
+  /// The movement command a platform event asks for by the keys bound, none for one no binding reads.
+  pub(crate) fn read_input(&self, event: &PlatformEvent) -> Option<MovementCommand> {
+    self.bindings.read(event)
+  }
+
+  /// Binds the keys again with `input`'s over the tree's controls, as the player's bindings changed.
+  pub(crate) fn rebind(&mut self, input: &GameInputSettings) {
+    self.bindings = GameBindings::new(&self.controls, input);
   }
 
   /// The loop's latest frame, none before its first.

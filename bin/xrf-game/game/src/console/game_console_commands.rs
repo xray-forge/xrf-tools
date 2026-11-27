@@ -25,6 +25,25 @@ impl GameConsoleCommands {
         |state: &mut GameConsoleState, _| state.save(),
       ),
       ConsoleCommand::new(
+        "bind",
+        "<action> <key>",
+        "binds an action to a key in place of the tree's (forward, back, lstrafe, rstrafe, jump, crouch, accel, \
+         sprint_toggle, noclip; a key by SDL's name or X-Ray's), none to restore the tree's",
+        |state: &mut GameConsoleState, argument| state.bind(GameConsoleState::BINDINGS, argument),
+      ),
+      ConsoleCommand::new(
+        "bind_sec",
+        "<action> <key>",
+        "binds an action's second key, as bind does its main one",
+        |state: &mut GameConsoleState, argument| state.bind(GameConsoleState::BINDINGS_SECONDARY, argument),
+      ),
+      ConsoleCommand::new(
+        "sensitivity",
+        "<radians a count>",
+        "shows or sets how far a count of the mouse turns the look, in X-Ray's mouse_sens place",
+        |state: &mut GameConsoleState, argument| state.set_or_show(GameConsoleState::SENSITIVITY, argument),
+      ),
+      ConsoleCommand::new(
         "noclip",
         "",
         "switches between walking and flying through everything",

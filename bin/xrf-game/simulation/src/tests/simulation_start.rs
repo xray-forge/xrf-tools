@@ -8,7 +8,7 @@ use crate::config::simulation_config::SimulationConfig;
 use crate::smart::smart_spawn::SmartSpawn;
 use crate::start::simulation_start::SimulationStart;
 use crate::start::simulation_start_report::SimulationStartReport;
-use crate::tests::config_source::ConfigSource;
+use crate::tests::config_source::TextSource;
 
 const SYSTEM: &str = concat!(
   "[stalker_novice]\nclass = ON_OFF_S\nfaction = stalker\nnpc_random = sim_a, sim_b, sim_b\nnpc_in_squad = 2, 3\n",
@@ -42,7 +42,7 @@ fn config(start: &str) -> SimulationConfig {
     .collect();
 
   SimulationConfig::read(
-    &ConfigSource::new(
+    &TextSource::new(
       SYSTEM,
       &[
         ("misc\\simulation.ltx", start),

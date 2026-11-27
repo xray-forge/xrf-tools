@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 
-use xrf_ltx::{Condlist, Section};
-
-use crate::config::config_text::ConfigText;
+use xrf_game_config::{Condlist, ConfigReader};
 
 /// What a simulation object offers squads (`misc\simulation_objects_props.ltx`, a section named for a smart terrain,
 /// a squad section or the actor): how much of each kind of target it is, such as `resource = 2`, and whether it is a
@@ -14,24 +12,15 @@ pub struct SimulationProps {
 }
 
 impl SimulationProps {
-  /// The props `section` holds, or why one is no number or `sim_avail` no condlist.
-  pub fn read(section: &Section) -> Result<Self, String> {
-    let mut values: BTreeMap<String, f32> = BTreeMap::new();
-    let mut available: Condlist = ConfigText::parse_condlist("true")?;
+  /// The key naming when the object is a target, the one prop that is no number.
+  const AVAILABLE_KEY: &'static str = "sim_avail";
 
-    for (key, value) in section {
-      if key == "sim_avail" {
-        available = ConfigText::parse_condlist(value)?;
-      } else {
-        let number: f32 = value
-          .trim()
-          .parse()
-          .map_err(|_| format!("{key} = '{value}' is no number"))?;
-
-        values.insert(String::from(key), number);
-      }
-    }
-
-    Ok(Self { available, values })
+  /// The props `section` holds: a value that is no number is an issue and left out; none, said as an issue, where
+  /// `sim_avail` is no condlist.
+  pub fn read(section: &mut ConfigReader<'_, '_>) -> Option<Self> {
+    Some(Self {
+      available: section.read_or_parse(Self::AVAILABLE_KEY, "true")?,
+      values: section.read_all(&[Self::AVAILABLE_KEY]),
+    })
   }
 }

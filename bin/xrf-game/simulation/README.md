@@ -7,8 +7,8 @@ its schedule takes. The logic is vanilla's whatever the tree; what a tree's conf
 
 ## Config
 
-`SimulationConfig::read` reads, once a session, through a `SimulationConfigSource` (the tree's `system.ltx` and any
-config under `configs`, resolved in the tree's dialect):
+`SimulationConfig::read` reads, once a game start, through `xrf-game-config`'s `ConfigSource` (the tree's `system.ltx`
+and any config under `configs`, resolved in the tree's dialect), each section by its `ConfigReader`:
 
 - the squads a new game starts with (`StartSquad`), from `misc\simulation.ltx`: vanilla's `[start_position_<level>]`
   sections, a level at a time in the graph's order, each line a squad and the smarts it is made at; a tree with none of
@@ -28,7 +28,8 @@ key four times and another twice, so it starts with 33 squads: the base camp's n
 line, at `zat_sim_12`.
 
 What does not read (a squad section `system.ltx` lacks, a member it names, a class the game does not know, a condlist,
-a smart's missing `cfg`) is an issue (`get_issues`) and is left out; the game logs them. Fixed from vanilla: the start
+a smart's missing `cfg`) is a `ConfigIssue` naming its file, section and key (`get_issues`) and is left out; the game
+logs them. A behaviour weight or a prop that is no number is left out alone, the rest of its section kept. Fixed from vanilla: the start
 fill skips a level with no section rather than stopping at it; a smart's `respawn_radius` is read and kept rather than
 replaced by a constant.
 

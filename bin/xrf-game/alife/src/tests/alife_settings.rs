@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use xrf_ltx::Ltx;
+use xrf_game_config::{ConfigFile, ConfigIssues};
 
 use crate::settings::alife_settings::AlifeSettings;
 
@@ -31,17 +31,24 @@ fn switches_online_and_offline_either_side_of_the_switch_distance() {
 }
 
 #[test]
-fn reads_alife_from_the_configs_and_keeps_the_defaults_for_what_they_lack() {
-  let ltx: Ltx = Ltx::read_from_str("[alife]\nswitch_distance = 750\nobjects_per_update = 20\nswitch_factor = lots\n")
-    .expect("the configs read");
-  let settings: AlifeSettings = AlifeSettings::read_ltx(&ltx);
+fn reads_alife_from_the_configs_and_says_what_takes_call_of_pripyats() {
+  let file: ConfigFile = ConfigFile::parse(
+    "alife.ltx",
+    "[alife]\nswitch_distance = 750\nobjects_per_update = 20\nswitch_factor = lots\nschedule_min = 1\n",
+  )
+  .expect("the configs read");
+  let mut issues: ConfigIssues = ConfigIssues::default();
+  let settings: AlifeSettings = AlifeSettings::read(&mut file.read_section("alife", &mut issues).expect("[alife]"));
 
   assert!((settings.switch_distance - 750.0).abs() < 1e-4);
   assert_eq!(settings.objects_per_update, 20);
   assert!((settings.switch_factor - 0.1).abs() < 1e-6);
   assert_eq!(settings.schedule_min, 1);
   assert_eq!(
-    AlifeSettings::read_ltx(&Ltx::read_from_str("[other]\n").expect("reads")),
-    AlifeSettings::default()
+    issues.iter().map(ToString::to_string).collect::<Vec<_>>(),
+    vec![
+      "alife.ltx [alife] switch_factor: 'lots' is no number",
+      "alife.ltx [alife] schedule_max: is missing"
+    ]
   );
 }

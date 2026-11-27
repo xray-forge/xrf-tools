@@ -1,9 +1,18 @@
-use xrf_ltx::Ltx;
+use xrf_game_config::{ConfigFile, ConfigIssues};
 
 use crate::smart::smart_config::SmartConfig;
 
-fn read(text: &str) -> Result<SmartConfig, String> {
-  SmartConfig::read("zat_sim_13", &Ltx::read_from_str(text).expect("reads"))
+/// The smart `zat_sim_13` as `text` configures it, and the issues its read found.
+fn read_with_issues(text: &str) -> (Option<SmartConfig>, ConfigIssues) {
+  let file: ConfigFile = ConfigFile::parse("zat_sim_13.ltx", text).expect("reads");
+  let mut issues: ConfigIssues = ConfigIssues::default();
+  let smart: Option<SmartConfig> = SmartConfig::read("zat_sim_13", &file, &mut issues);
+
+  (smart, issues)
+}
+
+fn read(text: &str) -> Option<SmartConfig> {
+  read_with_issues(text).0
 }
 
 #[test]
@@ -53,9 +62,16 @@ fn keeps_vanillas_defaults_and_reads_what_a_tree_sets() {
 
 #[test]
 fn refuses_a_smart_without_its_section_a_wrong_kind_or_a_missing_respawn_section() {
-  assert!(read("[other]\n").is_err());
-  assert!(read("[smart_terrain]\nsim_type = lair\n").is_err());
-  assert!(read("[smart_terrain]\nrespawn_params = absent\n").is_err());
-  assert!(read("[smart_terrain]\nrespawn_params = list\n[list]\nmissing\n").is_err());
-  assert!(read("[smart_terrain]\nrespawn_params = list\n[list]\nkind\n[kind]\nspawn_squads = a\n").is_err());
+  for text in [
+    "[other]\n",
+    "[smart_terrain]\nsim_type = lair\n",
+    "[smart_terrain]\nrespawn_params = absent\n",
+    "[smart_terrain]\nrespawn_params = list\n[list]\nmissing\n",
+    "[smart_terrain]\nrespawn_params = list\n[list]\nkind\n[kind]\nspawn_squads = a\n",
+  ] {
+    let (smart, issues) = read_with_issues(text);
+
+    assert!(smart.is_none(), "{text}");
+    assert_eq!(issues.len(), 1, "{text}: {issues:?}");
+  }
 }

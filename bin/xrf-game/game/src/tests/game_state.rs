@@ -15,6 +15,8 @@ use xrf_physics::PhysicsWorld;
 use xrf_spawn::ClsId;
 use xrf_world::{WorldFedCamera, WorldFedView, WorldViewFeed};
 
+use xrf_game_settings::GameInputSettings;
+
 use crate::input::game_look::GameLook;
 use crate::state::game_command::GameCommand;
 use crate::state::game_frame::GameFrame;
@@ -252,16 +254,17 @@ fn runs_the_day_forward_across_midnight_between_frames() {
 #[test]
 fn turns_the_look_as_the_mouse_moves_and_sends_it_once_a_change() {
   let look: GameLook = GameLook::default();
-  let quarter: f32 = FRAC_PI_2 / GameLook::SENSITIVITY;
+  let sensitivity: f32 = GameInputSettings::SENSITIVITY;
+  let quarter: f32 = FRAC_PI_2 / sensitivity;
 
   // Moved right turns right: a quarter turn faces `+x`.
-  look.turn(quarter, 0.0);
+  look.turn(quarter, 0.0, sensitivity);
   assert!(look.get().get_rotation().mul_vec3(Vec3::Z).abs_diff_eq(Vec3::X, 1e-4));
   assert_eq!(look.take_changed(), Some(look.get()));
   assert_eq!(look.take_changed(), None);
 
   // Moved down looks down, held just short of straight down.
-  look.turn(0.0, quarter * 3.0);
+  look.turn(0.0, quarter * 3.0, sensitivity);
   assert!((look.get().pitch - MovementHeading::MOST_PITCH).abs() < 1e-4);
 
   // Facing where the simulation was stood sends nothing back.

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use xrf_game_config::Condlist;
 use xrf_game_hooks::{HookKind, HookRegistry};
-use xrf_ltx::Condlist;
 use xrf_random::{RandomAddress, RandomStream};
 
 use crate::facts::simulation_facts::SimulationFacts;

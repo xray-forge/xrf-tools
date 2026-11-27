@@ -1,9 +1,11 @@
+use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Instant;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
-use xrf_game_alife::{Alife, AlifeData, AlifeHooks, AlifeSettings};
+use xrf_game_alife::{Alife, AlifeData, AlifeHooks};
+use xrf_game_config::ConfigIssues;
 use xrf_game_hooks::HookRegistry;
 use xrf_game_movement::{FlyMode, Movement, MovementModes};
 use xrf_game_objects::{ObjectId, ObjectRecord, ObjectRegistry, ObjectSwitching};
@@ -16,9 +18,12 @@ use xrf_physics::{PhysicsLevel, PhysicsWorld};
 use xrf_spawn::ClsId;
 use xrf_world::WorldLevelSource;
 
+use crate::host::game_alife_config::GameAlifeConfig;
 use crate::host::game_configs::GameConfigs;
 use crate::host::game_host::GameHost;
+use crate::host::game_player_config::GamePlayerConfig;
 use crate::host::game_tree::GameTree;
+use crate::input::game_controls::GameControls;
 use crate::level::game_level::GameLevel;
 use crate::load::game_load_progress::GameLoadProgress;
 use crate::load::game_load_stage::GameLoadStage;
@@ -31,7 +36,6 @@ use crate::sound::game_sound::GameSound;
 use crate::state::game_level_state::GameLevelState;
 use crate::state::game_progress::GameProgress;
 use crate::state::game_state::GameState;
-use crate::time::game_clock::GameClock;
 use crate::time::game_time::GameTime;
 
 /// What a load opens from its request, before the loop steps anything: the host the run keeps (the tree, its configs
@@ -45,6 +49,8 @@ pub struct GameSession {
   pub state: GameState,
   /// The player's footsteps, which presentation plays from the loop's frames.
   pub footsteps: GameFootsteps,
+  /// The tree's own controls, which presentation lays the player's bindings over.
+  pub controls: GameControls,
 }
 
 impl GameSession {
@@ -104,7 +110,7 @@ impl GameSession {
     let state: GameState = GameState {
       progress: GameProgress {
         seed,
-        time: GameTime::new(GameClock::default()),
+        time: GameTime::new(start.clock),
         objects: start.objects,
         alife: start.alife,
         player: start.player,
@@ -131,17 +137,20 @@ impl GameSession {
       source,
       state,
       footsteps,
+      controls: start.controls,
     })
   }
 
   /// Logs up to [`Self::LOGGED_ISSUES`] of `issues` under `subject`, and how many more there are.
-  fn log_issues(subject: &str, issues: &[String]) {
-    for issue in issues.iter().take(Self::LOGGED_ISSUES) {
+  fn log_issues<T: Display>(subject: &str, issues: impl ExactSizeIterator<Item = T>) {
+    let count: usize = issues.len();
+
+    for issue in issues.take(Self::LOGGED_ISSUES) {
       log::warn!("{subject}: {issue}");
     }
 
-    if issues.len() > Self::LOGGED_ISSUES {
-      log::warn!("{subject}: {} more issues", issues.len() - Self::LOGGED_ISSUES);
+    if count > Self::LOGGED_ISSUES {
+      log::warn!("{subject}: {} more issues", count - Self::LOGGED_ISSUES);
     }
   }
 
@@ -176,13 +185,21 @@ impl GameSession {
 
     log::info!("Configs opened, system.ltx resolved, in {:.1?}", opened.elapsed());
 
-    let settings: AlifeSettings = configs.read_alife_settings();
+    let mut issues: ConfigIssues = ConfigIssues::default();
+    let GameAlifeConfig { settings, clock } = configs.read_alife(&mut issues);
+    let player_config: GamePlayerConfig = configs.read_player_config(&mut issues);
+    let controls: GameControls = configs.read_controls(&mut issues)?;
+
+    Self::log_issues("Config", issues.iter());
 
     log::info!(
-      "A-Life switches objects online within {} m and offline beyond {} m, every {:?}",
+      "A-Life switches objects online within {} m and offline beyond {} m, every {:?}; the day starts at {:.0} s \
+       past midnight, {} game seconds a second",
       settings.get_online_distance(),
       settings.get_offline_distance(),
-      settings.get_update_interval()
+      settings.get_update_interval(),
+      clock.start_time,
+      clock.factor
     );
 
     let data: AlifeData = Self::read_alife_data(&configs, spawn);
@@ -215,15 +232,17 @@ impl GameSession {
       report.issues.len(),
       created.elapsed()
     );
-    Self::log_issues("Start", &report.issues);
+    Self::log_issues("Start", report.issues.iter());
 
     Ok(GameStart {
       objects,
       player,
       alife: Alife::new(settings, data),
+      clock,
       hooks,
       graph_level,
-      player_config: configs.read_player_config(),
+      player_config,
+      controls,
       configs,
     })
   }
@@ -306,7 +325,7 @@ impl GameSession {
       started.elapsed()
     );
 
-    Self::log_issues("Simulation", simulation.get_issues());
+    Self::log_issues("Simulation", simulation.get_issues().iter());
 
     AlifeData {
       graph: Arc::new(spawn.graph),

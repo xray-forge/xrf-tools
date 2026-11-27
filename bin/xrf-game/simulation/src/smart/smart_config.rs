@@ -1,6 +1,5 @@
-use xrf_ltx::{Condlist, Ltx, Section};
+use xrf_game_config::{Condlist, ConfigFile, ConfigIssues, ConfigReader};
 
-use crate::config::config_text::ConfigText;
 use crate::smart::smart_respawn::SmartRespawn;
 
 /// A smart terrain's config, its `[smart_terrain]` section as `se_smart_terrain:read_params` reads it (from the custom
@@ -43,66 +42,63 @@ impl SmartConfig {
   const RESPAWN_IDLE: f32 = 1_000.0;
   const ARRIVE_DISTANCE: f32 = 30.0;
 
-  /// The config of the smart `name`, read from `ltx` (its custom data, or the file its `cfg` names), or why it cannot
-  /// be: no `[smart_terrain]`, an unknown kind, or a respawn section or condlist that does not read.
-  pub fn read(name: &str, ltx: &Ltx) -> Result<Self, String> {
-    let section: &Section = ltx
-      .section(Self::SECTION)
-      .ok_or_else(|| format!("holds no [{}]", Self::SECTION))?;
-    let kind: String = section.get("sim_type").map_or("default", str::trim).to_string();
+  /// The config of the smart `name`, read from `file` (its custom data, or the file its `cfg` names); none, said as
+  /// an issue, where it cannot be: no `[smart_terrain]`, an unknown kind, or a respawn section or condlist that does
+  /// not read.
+  pub fn read(name: &str, file: &ConfigFile, issues: &mut ConfigIssues) -> Option<Self> {
+    let mut section: ConfigReader<'_, '_> = file.require_section(Self::SECTION, issues)?;
+    let kind: String = section.read_or("sim_type", String::from("default"));
 
     if !Self::KINDS.contains(&kind.as_str()) {
-      return Err(format!("sim_type '{kind}' is none of {}", Self::KINDS.join(", ")));
+      section.push_key("sim_type", format!("'{kind}' is none of {}", Self::KINDS.join(", ")));
+
+      return None;
     }
 
-    Ok(Self {
+    let mut smart: Self = Self {
       name: String::from(name),
       kind,
-      squad_id: section.get_f32("squad_id").map_or(0, |id| id.max(0.0) as u32),
-      max_population: ConfigText::parse_condlist(section.get("max_population").unwrap_or("0"))?,
-      respawns: match section.get("respawn_params").map(str::trim) {
-        Some(params) if !params.is_empty() => Self::read_respawns(ltx, params)?,
-        _ => Vec::new(),
-      },
-      respawn_only: section.get_bool("respawn_only_smart").unwrap_or(false),
-      respawn_radius: section.get_f32("respawn_radius").unwrap_or(Self::RESPAWN_RADIUS),
-      respawn_idle: section.get_f32("respawn_idle").unwrap_or(Self::RESPAWN_IDLE),
-      arrive_distance: section.get_f32("arrive_dist").unwrap_or(Self::ARRIVE_DISTANCE),
-      mutant_lair: section.get_bool("mutant_lair").unwrap_or(false),
-      no_mutant: section.get_bool("no_mutant").unwrap_or(false),
-    })
+      squad_id: section.read_or("squad_id", 0),
+      max_population: section.read_or_parse("max_population", "0")?,
+      respawns: Vec::new(),
+      respawn_only: section.read_or("respawn_only_smart", false),
+      respawn_radius: section.read_or("respawn_radius", Self::RESPAWN_RADIUS),
+      respawn_idle: section.read_or("respawn_idle", Self::RESPAWN_IDLE),
+      arrive_distance: section.read_or("arrive_dist", Self::ARRIVE_DISTANCE),
+      mutant_lair: section.read_or("mutant_lair", false),
+      no_mutant: section.read_or("no_mutant", false),
+    };
+    // An empty `respawn_params` is a smart that never respawns, as one that names none.
+    let params: Option<&str> = section.get_text("respawn_params").filter(|params| !params.is_empty());
+
+    if let Some(params) = params {
+      smart.respawns = Self::read_respawns(file, params, issues)?;
+    }
+
+    Some(smart)
   }
 
   /// The respawn sections `params` lists, as `check_respawn_params` reads them: each line a section naming its squads
-  /// and its count.
-  fn read_respawns(ltx: &Ltx, params: &str) -> Result<Vec<SmartRespawn>, String> {
-    let list: &Section = ltx
-      .section(params)
-      .ok_or_else(|| format!("respawn_params names [{params}], which it lacks"))?;
+  /// and its count; none, said as an issue, where a section is missing or names no squad or count.
+  fn read_respawns(file: &ConfigFile, params: &str, issues: &mut ConfigIssues) -> Option<Vec<SmartRespawn>> {
+    let names: Vec<&str> = file.require_section(params, issues)?.get_keys();
 
-    ConfigText::sorted_keys(list)
+    names
       .into_iter()
       .map(|name| {
-        let section: &Section = ltx
-          .section(name)
-          .ok_or_else(|| format!("[{params}] lists [{name}], which it lacks"))?;
-        let squads: Vec<String> = section
-          .get("spawn_squads")
-          .map(ConfigText::split_names)
-          .unwrap_or_default();
+        let mut section: ConfigReader<'_, '_> = file.require_section(name, issues)?;
+        let squads: Vec<String> = section.read_names("spawn_squads");
 
         if squads.is_empty() {
-          return Err(format!("[{name}] names no spawn_squads"));
+          section.push_key("spawn_squads", "names no squad");
+
+          return None;
         }
 
-        Ok(SmartRespawn {
+        Some(SmartRespawn {
           section: String::from(name),
           squads,
-          count: ConfigText::parse_condlist(
-            section
-              .get("spawn_num")
-              .ok_or_else(|| format!("[{name}] names no spawn_num"))?,
-          )?,
+          count: section.require("spawn_num")?,
         })
       })
       .collect()

@@ -1,19 +1,27 @@
-use xrf_ltx::Ltx;
+use xrf_game_config::{ConfigFile, ConfigIssues};
 
 use crate::squad::squad_description::SquadDescription;
 use crate::squad::squad_size::SquadSize;
 
-fn read(text: &str) -> Result<SquadDescription, String> {
-  let ltx: Ltx = Ltx::read_from_str(text).expect("reads");
+/// The squad `[squad]` of `text` describes, and the issues its read found.
+fn read(text: &str) -> (Option<SquadDescription>, ConfigIssues) {
+  let file: ConfigFile = ConfigFile::parse("squads.ltx", text).expect("reads");
+  let mut issues: ConfigIssues = ConfigIssues::default();
+  let squad: Option<SquadDescription> = file
+    .read_section("squad", &mut issues)
+    .and_then(|mut section| SquadDescription::read(&mut section));
 
-  SquadDescription::read("squad", ltx.section("squad").expect("the section"))
+  (squad, issues)
 }
 
 #[test]
 fn reads_a_simulation_squad_with_random_members() {
   let squad: SquadDescription =
-    read("[squad]\nfaction = stalker\nnpc_random = sim_a, sim_b, sim_a\nnpc_in_squad = 2, 3\n").expect("reads");
+    read("[squad]\nfaction = stalker\nnpc_random = sim_a, sim_b, sim_a\nnpc_in_squad = 2, 3\n")
+      .0
+      .expect("reads");
 
+  assert_eq!(squad.section, "squad");
   assert_eq!(squad.faction, "stalker");
   assert_eq!(squad.behaviour, "stalker");
   assert!(squad.members.is_empty());
@@ -30,6 +38,7 @@ fn reads_a_story_squad_with_fixed_members_a_target_and_a_behaviour() {
     "[squad]\nfaction = monster\nbehaviour = monster_predatory_day\nnpc = boss, guard\n",
     "target_smart = {+info} zat_a1, nil\nspawn_point = zat_sim_15_spawn\nalways_arrived = true\n"
   ))
+  .0
   .expect("reads");
 
   assert_eq!(squad.behaviour, "monster_predatory_day");
@@ -44,8 +53,21 @@ fn reads_a_story_squad_with_fixed_members_a_target_and_a_behaviour() {
 }
 
 #[test]
-fn refuses_a_squad_with_no_faction_no_member_or_a_reversed_size() {
-  assert!(read("[squad]\nnpc = a\n").is_err());
-  assert!(read("[squad]\nfaction = stalker\n").is_err());
-  assert!(read("[squad]\nfaction = stalker\nnpc_random = a\nnpc_in_squad = 4, 2\n").is_err());
+fn refuses_a_squad_with_no_faction_no_member_or_a_reversed_size_and_says_why() {
+  for (text, issue) in [
+    ("[squad]\nnpc = a\n", "squads.ltx [squad] faction: is missing"),
+    (
+      "[squad]\nfaction = stalker\n",
+      "squads.ltx [squad]: names no member, neither npc nor npc_random",
+    ),
+    (
+      "[squad]\nfaction = stalker\nnpc_random = a\nnpc_in_squad = 4, 2\n",
+      "squads.ltx [squad] npc_in_squad: '4, 2' draws more at least than at most",
+    ),
+  ] {
+    let (squad, issues) = read(text);
+
+    assert!(squad.is_none(), "{text}");
+    assert_eq!(issues.iter().map(ToString::to_string).collect::<Vec<_>>(), vec![issue]);
+  }
 }

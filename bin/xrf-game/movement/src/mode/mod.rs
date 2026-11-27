@@ -3,7 +3,7 @@ pub(crate) mod movement_footing;
 pub(crate) mod movement_mode;
 pub(crate) mod movement_modes;
 pub(crate) mod walk_mode;
-pub(crate) mod walk_mode_ltx;
+pub(crate) mod walk_mode_read;
 pub(crate) mod walk_pace;
 pub(crate) mod walk_stance;
 pub(crate) mod walk_state;

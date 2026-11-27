@@ -12,8 +12,8 @@ stalls and faults are not. Each part is a module of its own, measured and replac
 
 ## Settings
 
-`AlifeSettings` is `[alife]` (`gamedata/configs/alife.ltx`), read through `xrf-ltx` (`read_ltx`), Call of Pripyat's
-values for any key it lacks: `switch_distance` 150 m and `switch_factor` 0.1 give the online distance (135 m) and the
+`AlifeSettings` is `[alife]` (`gamedata/configs/alife.ltx`), read through `xrf-game-config` (`AlifeSettings::read`),
+each key one X-Ray reads unconditioned, so one missing or not a number is an issue and takes Call of Pripyat's: `switch_distance` 150 m and `switch_factor` 0.1 give the online distance (135 m) and the
 offline distance (165 m); `schedule_min` and `schedule_max` give the update interval as X-Ray's scheduler spaces it
 (`CSheduler::ProcessStep`): 265 ms for Call of Pripyat. Its `process_time` is not read: X-Ray compares it, in
 microseconds, with seconds, so it never limits anything.

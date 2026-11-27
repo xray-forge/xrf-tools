@@ -1,10 +1,10 @@
 use std::time::Duration;
 
+use xrf_game_config::{ConfigFile, ConfigIssues};
 use xrf_game_loop::{LoopSystem, LoopTime};
 use xrf_game_objects::ObjectRecord;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformFace, LevelCformGeometry};
-use xrf_ltx::Ltx;
 use xrf_math::Vector3d;
 use xrf_math::glam::Vec3;
 use xrf_physics::{PhysicsLevel, PhysicsWorld};
@@ -371,14 +371,17 @@ fn strafes_at_the_strafe_factors_standing() {
 
 #[test]
 fn reads_the_trees_actor_and_keeps_it_through_noclip() {
-  let ltx: Ltx = Ltx::read_from_str(
+  let file: ConfigFile = ConfigFile::parse(
+    "system.ltx",
     "[actor]\nwalk_accel = 19\nrun_coef = 2.0\nrun_back_coef = 1.8\nwalk_back_coef = 0.5\nsprint_koef = 2.5\n\
      crouch_coef = 0.30\nair_control_param = 0.1\njump_speed = 6.\ncamera_height_factor = 0.92\nph_mass = 94\n\
      ph_box0_size = 0.30, 0.90, 0.30\nph_box1_size = 0.35, 0.67, 0.30\nph_box2_size = 0.35, 0.22, 0.35\n",
   )
   .expect("Call of Pripyat's [actor]");
-  let walk: WalkMode = WalkMode::read_ltx(&ltx);
+  let mut issues: ConfigIssues = ConfigIssues::default();
+  let walk: WalkMode = WalkMode::read(&mut file.read_section("actor", &mut issues).expect("[actor]"));
 
+  assert!(issues.is_empty(), "{issues:?}");
   assert!((walk.get_speed(walk.run) - 3.8).abs() < 1e-5);
   assert!((walk.crouch_height - 1.34).abs() < 1e-5);
   assert!((walk.actor.height - 1.8).abs() < 1e-5);

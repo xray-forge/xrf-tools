@@ -19,18 +19,16 @@ struct GameLookState {
 }
 
 impl GameLook {
-  /// Radians a count of the mouse turns by.
-  pub const SENSITIVITY: f32 = 0.0025;
-
   /// Which way the player looks now.
   pub fn get(&self) -> MovementHeading {
     self.lock(|state| state.heading)
   }
 
-  /// Turns by the mouse's counts: moved right turns right, moved down looks down, held short of straight up or down.
-  pub fn turn(&self, dx: f32, dy: f32) {
+  /// Turns by the mouse's counts at `sensitivity` radians a count (the input settings'): moved right turns right,
+  /// moved down looks down, held short of straight up or down.
+  pub fn turn(&self, dx: f32, dy: f32, sensitivity: f32) {
     self.lock(|state| {
-      state.heading = state.heading.turned(dx * Self::SENSITIVITY, dy * Self::SENSITIVITY);
+      state.heading = state.heading.turned(dx * sensitivity, dy * sensitivity);
       state.is_changed = true;
     });
   }

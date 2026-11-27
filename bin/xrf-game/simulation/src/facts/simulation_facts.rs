@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
+use xrf_game_config::{Condlist, CondlistBranch, CondlistCondition};
 use xrf_game_hooks::HookRegistry;
-use xrf_ltx::{Condlist, CondlistBranch, CondlistCondition};
 use xrf_random::RandomStream;
 
 use crate::facts::simulation_functions::SimulationFunctions;

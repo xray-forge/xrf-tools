@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use xrf_ltx::{CondlistCondition, Ltx, Section};
+use xrf_game_config::{
+  CondlistCondition, ConfigFile, ConfigIssue, ConfigIssues, ConfigReader, ConfigSource, ConfigValue,
+};
 use xrf_spawn::ClsId;
 
-use crate::config::config_text::ConfigText;
-use crate::config::simulation_config_source::SimulationConfigSource;
 use crate::props::simulation_props::SimulationProps;
 use crate::smart::smart_config::SmartConfig;
 use crate::smart::smart_spawn::SmartSpawn;
@@ -12,7 +12,7 @@ use crate::squad::squad_behaviour::SquadBehaviour;
 use crate::squad::squad_description::SquadDescription;
 use crate::start::start_squad::StartSquad;
 
-/// Everything the simulation reads from a tree's configs, once a session: the squads a new game starts with and the
+/// Everything the simulation reads from a tree's configs, once a game start: the squads a new game starts with and the
 /// smart terrains respawn, how each behaviour weighs targets, what each simulation object offers, and each smart
 /// terrain's config. What does not read is kept as an issue and left out, never a failure: one broken squad does not
 /// stop a game, as one broken script line does not stop X-Ray's.
@@ -25,7 +25,7 @@ pub struct SimulationConfig {
   start: Vec<StartSquad>,
   /// The class of every squad and member section the squads name, as `class` reads in `system.ltx`.
   classes: BTreeMap<String, ClsId>,
-  issues: Vec<String>,
+  issues: ConfigIssues,
 }
 
 impl SimulationConfig {
@@ -34,28 +34,30 @@ impl SimulationConfig {
   pub const BEHAVIOURS_FILE: &'static str = "misc\\squad_behaviours.ltx";
   pub const PROPS_FILE: &'static str = "misc\\simulation_objects_props.ltx";
 
+  /// What the issue of the condition functions the condlists call names as its place.
+  const CONDLISTS: &'static str = "the simulation's condlists";
+
   /// Reads the simulation's configs from `source` for the graph's `levels` (in the graph's order) and the `smarts` the
   /// spawn places.
-  pub fn read(source: &dyn SimulationConfigSource, levels: &[String], smarts: &[SmartSpawn]) -> Self {
+  pub fn read(source: &dyn ConfigSource, levels: &[String], smarts: &[SmartSpawn]) -> Self {
     let mut config: Self = Self::default();
 
-    config.behaviours = config.read_sections(source, Self::BEHAVIOURS_FILE, SquadBehaviour::read);
+    config.behaviours = config.read_sections(source, Self::BEHAVIOURS_FILE, |section| {
+      Some(SquadBehaviour::read(section))
+    });
     config.props = config.read_sections(source, Self::PROPS_FILE, SimulationProps::read);
 
     for smart in smarts {
-      match Self::read_smart(source, smart) {
-        Ok(smart) => {
-          config.smarts.insert(smart.name.clone(), smart);
-        }
-        Err(issue) => config.issues.push(format!("Smart terrain '{}' {issue}", smart.name)),
+      if let Some(read) = config.read_smart(source, smart) {
+        config.smarts.insert(smart.name.clone(), read);
       }
     }
 
-    match source.read_config(Self::START_FILE) {
-      Ok(ltx) => config.start = config.read_start(&ltx, levels),
+    match source.read_file(Self::START_FILE) {
+      Ok(file) => config.start = config.read_start(&file, levels),
       Err(error) => config
         .issues
-        .push(format!("{} does not read: {error}", Self::START_FILE)),
+        .push_file(Self::START_FILE, format!("does not read: {error}")),
     }
 
     config.read_squads(source.get_system());
@@ -91,12 +93,13 @@ impl SimulationConfig {
 
     if !functions.is_empty() {
       let names: Vec<&str> = functions.into_iter().collect();
-
-      self.issues.push(format!(
-        "Condlists call {} condition functions the game does not implement yet, which answer false: {}",
+      let message: String = format!(
+        "call {} condition functions the game does not implement yet, which answer false: {}",
         names.len(),
         names.join(", ")
-      ));
+      );
+
+      self.issues.push_file(Self::CONDLISTS, message);
     }
   }
 
@@ -146,124 +149,147 @@ impl SimulationConfig {
     &self.start
   }
 
-  /// What did not read, one line each.
-  pub fn get_issues(&self) -> &[String] {
+  /// What did not read.
+  pub fn get_issues(&self) -> &ConfigIssues {
     &self.issues
   }
 
-  /// Every section of the config at `path`, each read by `read`; a section that does not read is an issue.
+  /// Every section of the config at `path`, each read by `read`; one that does not read is an issue.
   fn read_sections<T>(
     &mut self,
-    source: &dyn SimulationConfigSource,
+    source: &dyn ConfigSource,
     path: &str,
-    read: fn(&Section) -> Result<T, String>,
+    read: impl Fn(&mut ConfigReader<'_, '_>) -> Option<T>,
   ) -> BTreeMap<String, T> {
-    let ltx: Ltx = match source.read_config(path) {
-      Ok(ltx) => ltx,
+    let file: ConfigFile = match source.read_file(path) {
+      Ok(file) => file,
       Err(error) => {
-        self.issues.push(format!("{path} does not read: {error}"));
+        self.issues.push_file(path, format!("does not read: {error}"));
 
         return BTreeMap::new();
       }
     };
+    let names: Vec<&str> = file.get_section_names().collect();
 
-    ltx
-      .iter()
-      .filter_map(|(name, section)| match read(section) {
-        Ok(value) => Some((String::from(name), value)),
-        Err(issue) => {
-          self.issues.push(format!("[{name}] of {path}: {issue}"));
+    names
+      .into_iter()
+      .filter_map(|name| {
+        let mut section: ConfigReader<'_, '_> = file.read_section(name, &mut self.issues)?;
 
-          None
-        }
+        read(&mut section).map(|value| (String::from(name), value))
       })
       .collect()
   }
 
-  /// A smart terrain's config, from its custom data or the file its `cfg` names.
-  fn read_smart(source: &dyn SimulationConfigSource, smart: &SmartSpawn) -> Result<SmartConfig, String> {
-    let custom: Ltx =
-      Ltx::read_from_str(&smart.custom_data).map_err(|error| format!("custom data does not read: {error}"))?;
-    let file: Option<String> = custom
-      .section(SmartConfig::SECTION)
-      .and_then(|section| section.get("cfg"))
-      .map(|cfg| cfg.trim().to_string())
-      .filter(|cfg| !cfg.is_empty());
-    let ltx: Ltx = match file {
-      Some(file) => source
-        .read_config(&file)
-        .map_err(|error| format!("names cfg {file}, which does not read: {error}"))?,
+  /// A smart terrain's config, from its custom data or the file its `cfg` names; none, said as an issue, where it
+  /// does not read.
+  fn read_smart(&mut self, source: &dyn ConfigSource, smart: &SmartSpawn) -> Option<SmartConfig> {
+    let origin: String = format!("custom data of smart terrain '{}'", smart.name);
+    let custom: ConfigFile = match ConfigFile::parse(&origin, &smart.custom_data) {
+      Ok(custom) => custom,
+      Err(error) => {
+        self.issues.push_file(&origin, format!("does not read: {error}"));
+
+        return None;
+      }
+    };
+    let cfg: Option<String> = custom
+      .read_section(SmartConfig::SECTION, &mut self.issues)
+      .and_then(|mut section| section.read("cfg"));
+    let file: ConfigFile = match cfg {
+      Some(cfg) => match source.read_file(&cfg) {
+        Ok(file) => file,
+        Err(error) => {
+          self
+            .issues
+            .push_file(&origin, format!("names cfg {cfg}, which does not read: {error}"));
+
+          return None;
+        }
+      },
       None => custom,
     };
 
-    SmartConfig::read(&smart.name, &ltx)
+    SmartConfig::read(&smart.name, &file, &mut self.issues)
   }
 
   /// The squads a new game starts with: vanilla's `[start_position_<level>]` sections, a level at a time in the graph's
   /// order, each line a squad and the smarts it is made at, in the engine's line order (`sim_board:fill_start_position`,
   /// which stopped at the first level without a section; here that level is skipped). A tree with none of them writes
   /// Anomaly's form instead: a section per smart, each line a squad and how many.
-  fn read_start(&mut self, ltx: &Ltx, levels: &[String]) -> Vec<StartSquad> {
-    let mut start: Vec<StartSquad> = Vec::new();
+  fn read_start(&mut self, file: &ConfigFile, levels: &[String]) -> Vec<StartSquad> {
+    let mut lines: Vec<StartSquad> = Vec::new();
     let mut is_vanilla: bool = false;
 
     for level in levels {
-      let Some(section) = ltx.section(&format!("start_position_{level}")) else {
+      let name: String = format!("start_position_{level}");
+      let Some(section) = file.read_section(&name, &mut self.issues) else {
         continue;
       };
 
       is_vanilla = true;
 
-      for squad in ConfigText::sorted_keys(section) {
-        for smart in ConfigText::split_names(section.get(squad).unwrap_or_default()) {
-          self.push_start(&mut start, squad, smart);
+      for squad in section.get_keys() {
+        for smart in section.read_names(squad) {
+          lines.push(StartSquad {
+            squad: String::from(squad),
+            smart,
+          });
         }
       }
     }
 
-    if is_vanilla {
-      return start;
-    }
+    if !is_vanilla {
+      let smarts: Vec<String> = self.smarts.keys().cloned().collect();
 
-    let smarts: Vec<String> = self.smarts.keys().cloned().collect();
+      for smart in &smarts {
+        let Some(mut section) = file.read_section(smart, &mut self.issues) else {
+          continue;
+        };
 
-    for smart in smarts {
-      let Some(section) = ltx.section(&smart) else {
-        continue;
-      };
+        for squad in section.get_keys() {
+          // A line with no count is one squad.
+          let count: u32 = match section.get_text(squad) {
+            Some(text) if !text.is_empty() => u32::parse(text).unwrap_or_else(|reason| {
+              section.push_key(squad, format!("{reason}; one squad starts"));
 
-      for squad in ConfigText::sorted_keys(section) {
-        let count: usize = section
-          .get(squad)
-          .and_then(|count| count.trim().parse::<f32>().ok())
-          .map_or(1, |count| count.max(0.0) as usize);
+              1
+            }),
+            _ => 1,
+          };
 
-        for _ in 0..count {
-          self.push_start(&mut start, squad, smart.clone());
+          for _ in 0..count {
+            lines.push(StartSquad {
+              squad: String::from(squad),
+              smart: smart.clone(),
+            });
+          }
         }
       }
     }
 
-    start
+    lines.into_iter().filter(|line| self.has_smart(line)).collect()
   }
 
-  /// Puts a start squad on the list, or an issue for a smart the spawn does not place (vanilla aborts on it).
-  fn push_start(&mut self, start: &mut Vec<StartSquad>, squad: &str, smart: String) {
-    if self.smarts.contains_key(&smart) {
-      start.push(StartSquad {
-        squad: String::from(squad),
-        smart,
-      });
-    } else {
-      self.issues.push(format!(
-        "Start squad '{squad}' names smart terrain '{smart}', which has no config"
-      ));
+  /// Whether a start squad's smart has a config; an issue where it has none (vanilla aborts on it).
+  fn has_smart(&mut self, line: &StartSquad) -> bool {
+    if self.smarts.contains_key(&line.smart) {
+      return true;
     }
+
+    self.issues.push(ConfigIssue {
+      file: String::from(Self::START_FILE),
+      section: None,
+      key: Some(line.squad.clone()),
+      message: format!("names smart terrain '{}', which has no config", line.smart),
+    });
+
+    false
   }
 
   /// Every squad section the start and the respawns name, read from `system`, with an issue for each it lacks or that
   /// names a member it lacks.
-  fn read_squads(&mut self, system: &Ltx) {
+  fn read_squads(&mut self, system: &ConfigFile) {
     let names: BTreeSet<String> = self
       .start
       .iter()
@@ -277,17 +303,11 @@ impl SimulationConfig {
       .collect();
 
     for name in names {
-      let Some(section) = system.section(&name) else {
-        self.issues.push(format!("Squad section [{name}] is not in system.ltx"));
+      let Some(squad) = system
+        .require_section(&name, &mut self.issues)
+        .and_then(|mut section| SquadDescription::read(&mut section))
+      else {
         continue;
-      };
-
-      let squad: SquadDescription = match SquadDescription::read(&name, section) {
-        Ok(squad) => squad,
-        Err(issue) => {
-          self.issues.push(format!("Squad [{name}] {issue}"));
-          continue;
-        }
       };
 
       if !self.read_class(system, &name) {
@@ -296,9 +316,12 @@ impl SimulationConfig {
 
       for member in squad.members.iter().chain(&squad.random_members) {
         if !self.classes.contains_key(member) && !self.read_class(system, member) {
-          self
-            .issues
-            .push(format!("Squad [{name}] names member [{member}], which has no class"));
+          self.issues.push(ConfigIssue {
+            file: String::from(system.get_path()),
+            section: Some(name.clone()),
+            key: None,
+            message: format!("names member [{member}], which has no class"),
+          });
         }
       }
 
@@ -308,20 +331,22 @@ impl SimulationConfig {
 
   /// Reads the class of `section` (its `class`, as `F_entity_Create` builds an object of it), answering whether it has
   /// one the game knows; an issue where it does not.
-  fn read_class(&mut self, system: &Ltx, section: &str) -> bool {
-    let class: Option<&str> = system.section(section).and_then(|section| section.get("class"));
+  fn read_class(&mut self, system: &ConfigFile, section: &str) -> bool {
+    let Some(mut reader) = system.require_section(section, &mut self.issues) else {
+      return false;
+    };
+    let Some(class) = reader.require::<String>("class") else {
+      return false;
+    };
 
-    match class.and_then(ClsId::from_class_name) {
+    match ClsId::from_class_name(&class) {
       Some(class) => {
         self.classes.insert(String::from(section), class);
 
         true
       }
       None => {
-        self.issues.push(match class {
-          Some(class) => format!("[{section}] is of class {class}, which the game does not know"),
-          None => format!("[{section}] is not in system.ltx or names no class"),
-        });
+        reader.push_key("class", format!("{class} is a class the game does not know"));
 
         false
       }

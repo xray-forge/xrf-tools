@@ -3,6 +3,7 @@ use std::sync::Arc;
 use rayon::ThreadPool;
 use xrf_error::XrfResult;
 use xrf_game_developer::DeveloperLoading;
+use xrf_game_settings::GameInputSettings;
 
 use crate::developer::game_developer::GameDeveloper;
 use crate::input::game_look::GameLook;
@@ -69,7 +70,8 @@ impl GameFlow {
   }
 
   /// Moves the load on and answers its view to draw: what the opening told taken (its picture to `developer`, its
-  /// game started and shown in `view`), the renderer's stages followed; once every stage ended, the game is played.
+  /// game started and shown in `view`, its keys bound with `input`'s), the renderer's stages followed; once every stage
+  /// ended, the game is played.
   ///
   /// # Errors
   ///
@@ -78,6 +80,7 @@ impl GameFlow {
     &mut self,
     view: &GameView,
     developer: &mut GameDeveloper,
+    input: &GameInputSettings,
   ) -> XrfResult<Option<DeveloperLoading>> {
     let opened: Vec<GameOpened> = self.opening.as_ref().map(GameOpening::take).unwrap_or_default();
 
@@ -86,7 +89,7 @@ impl GameFlow {
         GameOpened::Picture(picture) => developer.set_loading_picture(&picture),
         GameOpened::Session(session) => {
           self.opening = None;
-          self.running = Some(GameRunning::start((*session)?, view, &self.look)?);
+          self.running = Some(GameRunning::start((*session)?, view, &self.look, input)?);
         }
       }
     }

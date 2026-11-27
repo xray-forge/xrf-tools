@@ -24,5 +24,6 @@ impl GameSettings {
     self.render.hold_to_bounds();
     self.view = options.features;
     self.upscaling = options.output.upscaling;
+    self.input.hold_to_bounds();
   }
 }

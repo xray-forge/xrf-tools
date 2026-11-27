@@ -41,6 +41,18 @@ impl GameSettings {
   pub(crate) fn apply(tree: &Value, over: &GameSettingOverride) -> Result<Value, String> {
     let segments: Vec<String> = over.path.split('.').map(Self::format_camel_case).collect();
     let (leaf, groups) = segments.split_last().ok_or("an empty path names nothing")?;
+
+    // `none` leaves an optional setting unset, a text one among them, which would otherwise take the word.
+    if over.value.eq_ignore_ascii_case(Self::UNSET) {
+      let mut next: Value = tree.clone();
+
+      *Self::find_slot(&mut next, groups, leaf)? = Value::Null;
+
+      if serde_json::from_value::<Self>(next.clone()).is_ok() {
+        return Ok(next);
+      }
+    }
+
     let mut candidates: Vec<String> = vec![over.value.clone()];
 
     // A variant may be written as the file's other keys are, `pbr_neutral` for `pbrNeutral`.
@@ -59,17 +71,6 @@ impl GameSettings {
       match serde_json::from_value::<Self>(next.clone()) {
         Ok(_) => return Ok(next),
         Err(error) => reason = format!("'{value}' is not a value it takes: {error}"),
-      }
-    }
-
-    // `none` leaves an optional setting unset, where no variant or text of that name was taken above.
-    if over.value.eq_ignore_ascii_case(Self::UNSET) {
-      let mut next: Value = tree.clone();
-
-      *Self::find_slot(&mut next, groups, leaf)? = Value::Null;
-
-      if serde_json::from_value::<Self>(next.clone()).is_ok() {
-        return Ok(next);
       }
     }
 

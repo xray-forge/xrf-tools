@@ -1,12 +1,14 @@
+use std::cell::RefCell;
 #[cfg(feature = "mcp")]
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use rayon::ThreadPool;
 use xrf_error::{XrfError, XrfResult};
 #[cfg(feature = "mcp")]
 use xrf_game_mcp::GameEndpoint;
-use xrf_game_settings::GameSettings;
+use xrf_game_settings::{GameSettings, GameSettingsStore};
 use xrf_job::ExecutionRequest;
 use xrf_logging::LogTail;
 
@@ -16,7 +18,6 @@ use crate::console::game_console::GameConsole;
 use crate::control::game_control::GameControl;
 use crate::developer::game_developer::GameDeveloper;
 use crate::directories::game_directories::GameDirectories;
-use crate::input::game_bindings::GameBindings;
 use crate::load::game_load_progress::GameLoadProgress;
 use crate::load::game_load_stage::GameLoadStage;
 use crate::run::game_flow::GameFlow;
@@ -59,14 +60,19 @@ impl GameRun {
     progress.begin(GameLoadStage::Renderer);
 
     let mut shell: GameShell = GameShell::start(&request.level, settings, directories, &pool)?;
+    // The shell owns the run's settings; the console and, through it, the bridge are its clients.
+    let store: Rc<RefCell<GameSettingsStore>> = Rc::new(RefCell::new(GameSettingsStore::new(
+      settings.clone(),
+      directories.get_settings_files(),
+    )));
     // The flow, and with it the game's loop, is stopped before the shell is, however play ends.
     let played: XrfResult<()> = (|| {
       let mut play: GamePlay<'_> = GamePlay {
         window: &mut shell.window,
         view: &shell.view,
-        bindings: GameBindings::default(),
+        settings: Rc::clone(&store),
         developer: GameDeveloper::default(),
-        console: GameConsole::new(settings.clone(), directories.get_settings_files()),
+        console: GameConsole::new(Rc::clone(&store)),
         log,
         #[cfg(feature = "mcp")]
         control: Self::start_control(arguments, &request.level, directories)?,
@@ -74,17 +80,26 @@ impl GameRun {
         startup: GameStartup::new(),
         flow,
       };
-      let played: XrfResult<()> = play.run(&mut shell.platform);
-
-      // However play ended, what the console changed is kept for the next run.
-      play.console.save_on_quit();
-
-      played
+      play.run(&mut shell.platform)
     })();
+
+    // However play ended, what was changed while it ran is kept for the next run, as X-Ray saves its console's on exit.
+    Self::save_settings(&mut store.borrow_mut());
 
     shell.stop();
 
     played
+  }
+
+  /// Saves the settings changed since the last save, logging what it did; nothing where none changed.
+  fn save_settings(store: &mut GameSettingsStore) {
+    let count: usize = store.count_unsaved();
+
+    match store.save() {
+      Ok(Some(file)) => log::info!("Saved {count} changed settings to '{}'", file.display()),
+      Ok(None) => {}
+      Err(error) => log::error!("The settings were not saved: {error}"),
+    }
   }
 
   /// The control endpoint `arguments` ask for: on standard input for the bridge's child (`--mcp`), listening for a

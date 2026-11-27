@@ -1,20 +1,18 @@
 use std::collections::BTreeMap;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::Ltx;
-
-use crate::config::simulation_config_source::SimulationConfigSource;
+use xrf_game_config::{ConfigFile, ConfigSource};
 
 /// Configs held as text: a `system.ltx` and files by path.
-pub(crate) struct ConfigSource {
-  system: Ltx,
+pub(crate) struct TextSource {
+  system: ConfigFile,
   files: BTreeMap<String, String>,
 }
 
-impl ConfigSource {
+impl TextSource {
   pub(crate) fn new(system: &str, files: &[(&str, &str)]) -> Self {
     Self {
-      system: Ltx::read_from_str(system).expect("the test system.ltx reads"),
+      system: ConfigFile::parse("system.ltx", system).expect("the test system.ltx reads"),
       files: files
         .iter()
         .map(|(path, text)| (String::from(*path), String::from(*text)))
@@ -23,17 +21,17 @@ impl ConfigSource {
   }
 }
 
-impl SimulationConfigSource for ConfigSource {
-  fn get_system(&self) -> &Ltx {
+impl ConfigSource for TextSource {
+  fn get_system(&self) -> &ConfigFile {
     &self.system
   }
 
-  fn read_config(&self, path: &str) -> XrfResult<Ltx> {
+  fn read_file(&self, path: &str) -> XrfResult<ConfigFile> {
     let text: &String = self
       .files
       .get(path)
       .ok_or_else(|| XrfError::new_invalid_error(format!("no {path}")))?;
 
-    Ltx::read_from_str(text)
+    ConfigFile::parse(path, text)
   }
 }

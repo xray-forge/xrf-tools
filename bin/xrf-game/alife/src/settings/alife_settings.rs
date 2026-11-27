@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use xrf_ltx::{Ltx, Section};
+use xrf_game_config::ConfigReader;
 
 /// What `[alife]` sets of A-Life (`gamedata/configs/alife.ltx`): how far from the actor objects go online and offline,
 /// how many offline objects an update takes, and the scheduler bounds its update interval comes from.
@@ -37,24 +37,17 @@ impl AlifeSettings {
   /// How the A-Life update weighs its interval between the scheduler's bounds (`CALifeUpdateManager::shedule_Scale`).
   const SCHEDULE_SCALE: f32 = 0.5;
 
-  /// The settings `ltx`'s `[alife]` holds, each key it lacks or cannot read taken from the defaults and logged.
-  pub fn read_ltx(ltx: &Ltx) -> Self {
+  /// The settings `[alife]` holds, as `CALifeSimulatorBase` and the scheduler read them, each unconditioned: a key it
+  /// lacks or that does not read is an issue and takes Call of Pripyat's.
+  pub fn read(section: &mut ConfigReader<'_, '_>) -> Self {
     let defaults: Self = Self::default();
-    let Some(section) = ltx.section(Self::SECTION) else {
-      log::warn!(
-        "The configs hold no [{}]; A-Life runs on Call of Pripyat's",
-        Self::SECTION
-      );
-
-      return defaults;
-    };
 
     Self {
-      switch_distance: Self::read(section, "switch_distance", defaults.switch_distance),
-      switch_factor: Self::read(section, "switch_factor", defaults.switch_factor),
-      objects_per_update: Self::read(section, "objects_per_update", defaults.objects_per_update),
-      schedule_min: Self::read(section, "schedule_min", defaults.schedule_min),
-      schedule_max: Self::read(section, "schedule_max", defaults.schedule_max),
+      switch_distance: section.require_or("switch_distance", defaults.switch_distance),
+      switch_factor: section.require_or("switch_factor", defaults.switch_factor),
+      objects_per_update: section.require_or("objects_per_update", defaults.objects_per_update),
+      schedule_min: section.require_or("schedule_min", defaults.schedule_min),
+      schedule_max: section.require_or("schedule_max", defaults.schedule_max),
     }
   }
 
@@ -76,17 +69,5 @@ impl AlifeSettings {
     let weighed: u32 = lowest + ((highest.saturating_sub(lowest)) as f32 * Self::SCHEDULE_SCALE).floor() as u32;
 
     Duration::from_millis(u64::from(weighed.clamp(lowest.max(20), highest.max(lowest))))
-  }
-
-  fn read<T: std::str::FromStr + std::fmt::Display + Copy>(section: &Section, key: &str, default: T) -> T {
-    match section.get(key).map(|value| value.trim().parse::<T>()) {
-      Some(Ok(value)) => value,
-      Some(Err(_)) => {
-        log::warn!("[{}] {key} is no number; A-Life takes {default}", Self::SECTION);
-
-        default
-      }
-      None => default,
-    }
   }
 }

@@ -11,7 +11,6 @@ pub(crate) mod start;
 mod tests;
 
 pub use crate::config::simulation_config::SimulationConfig;
-pub use crate::config::simulation_config_source::SimulationConfigSource;
 pub use crate::facts::simulation_facts::SimulationFacts;
 pub use crate::facts::simulation_functions::{SimulationCondition, SimulationFunctions};
 pub use crate::props::simulation_props::SimulationProps;

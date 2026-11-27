@@ -17,8 +17,8 @@ object registry and where it tells its events.
 - Each step first faces the camera by the heading given, then moves it. `FlyMode` is a spectator's free camera through
   everything: forward and back fly where it looks, sideways along its right, up and down straight up and down; `speed`
   metres a second, times `boost` while accel is held, diagonals no faster.
-- `WalkMode` moves the actor as X-Ray's does, read from the tree's own `[actor]` (`WalkMode::read_ltx`; a key it
-  lacks keeps Anomaly's, logged), so Call of Pripyat's actor runs at 3.8 m/s and Anomaly's at 2.77: the control
+- `WalkMode` moves the actor as X-Ray's does, read from the tree's own `[actor]` (`WalkMode::read`, through
+  `xrf-game-config`; a key it lacks or cannot read keeps Anomaly's and is an issue), so Call of Pripyat's actor runs at 3.8 m/s and Anomaly's at 2.77: the control
   acceleration is `walk_accel` times the pace's factors (running unless accel is held, the back factors going
   backwards, the strafe factors sideways standing, the sprint factor), and the speed is held to a tenth of it
   (`PHMovementControl.cpp`), reached at that acceleration on the ground and barely steered in the air

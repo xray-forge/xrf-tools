@@ -1,4 +1,4 @@
-use xrf_ltx::Condlist;
+use xrf_game_config::Condlist;
 
 /// One way a smart terrain respawns (a line of its `respawn_params` section, a section of its own): the squads it
 /// draws from and how many it keeps at most (`spawn_squads`, `spawn_num`, a condlist picking the number).

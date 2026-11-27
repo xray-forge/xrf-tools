@@ -8858,6 +8858,7 @@ dependencies = [
  "xrf-engine-target",
  "xrf-error",
  "xrf-game-alife",
+ "xrf-game-config",
  "xrf-game-console",
  "xrf-game-developer",
  "xrf-game-graph",
@@ -8894,14 +8895,23 @@ version = "0.1.0"
 dependencies = [
  "log",
  "xrf-error",
+ "xrf-game-config",
  "xrf-game-graph",
  "xrf-game-hooks",
  "xrf-game-loop",
  "xrf-game-objects",
  "xrf-game-simulation",
- "xrf-ltx",
  "xrf-math",
  "xrf-spawn",
+]
+
+[[package]]
+name = "xrf-game-config"
+version = "0.1.0"
+dependencies = [
+ "xrf-error",
+ "xrf-ltx",
+ "xrf-math",
 ]
 
 [[package]]
@@ -8961,11 +8971,11 @@ version = "0.1.0"
 dependencies = [
  "log",
  "xrf-error",
+ "xrf-game-config",
  "xrf-game-loop",
  "xrf-game-objects",
  "xrf-gamemtl",
  "xrf-level",
- "xrf-ltx",
  "xrf-math",
  "xrf-physics",
  "xrf-spawn",
@@ -9007,10 +9017,10 @@ name = "xrf-game-simulation"
 version = "0.1.0"
 dependencies = [
  "xrf-error",
+ "xrf-game-config",
  "xrf-game-graph",
  "xrf-game-hooks",
  "xrf-game-objects",
- "xrf-ltx",
  "xrf-math",
  "xrf-random",
  "xrf-spawn",
