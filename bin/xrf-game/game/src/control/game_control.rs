@@ -105,6 +105,7 @@ impl GameControl {
       "level": self.level,
       "tick": frame.tick,
       "timeOfDay": format!("{:02}:{:02}", minutes / 60, minutes % 60),
+      "objects": frame.state.objects,
       "camera": {
         "position": camera.position.to_array(),
         "forward": camera.get_forward().to_array(),

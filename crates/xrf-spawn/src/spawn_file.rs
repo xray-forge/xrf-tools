@@ -18,6 +18,8 @@ use crate::data::alife::alife_object::AlifeObject;
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
 use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
+use crate::data::alife::spawn_placed_object::SpawnPlacedObject;
+use crate::data::alife::spawn_placed_objects::SpawnPlacedObjects;
 use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 use crate::data::graph::level_view::graph_vertex_levels::GraphVertexLevels;
 use crate::data::graph::level_view::spawn_level_graph::SpawnLevelGraph;
@@ -146,6 +148,38 @@ impl SpawnFile {
       chunks,
       SpawnGraphsChunk::CHUNK_ID,
     )?)
+  }
+
+  /// Every alife object a spawn file places, each with the level its game vertex stands on, reading nothing of the file
+  /// but its objects and the head of its graph; an object no reader takes is skipped with its reason.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the objects chunk or the head of the graph is missing or cannot be read.
+  pub fn read_objects_from_chunks<D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<SpawnPlacedObjects> {
+    let levels: GraphVertexLevels = Self::read_vertex_levels_from_chunks(chunks)?;
+    let mut objects: Vec<SpawnPlacedObject> = Vec::new();
+    let mut skipped: Vec<SpawnSkippedObject> = Vec::new();
+    let total: u32 = SpawnALifeSpawnsChunk::read_each(
+      &mut ChunkReader::find_required_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?,
+      |index, object| match object {
+        Ok(object) => objects.push(SpawnPlacedObject {
+          level: levels.get_object_level(&object).map(|level| level.id),
+          object,
+        }),
+        Err(error) => skipped.push(SpawnSkippedObject {
+          index,
+          reason: error.to_string(),
+        }),
+      },
+    )?;
+
+    Ok(SpawnPlacedObjects {
+      levels: levels.levels,
+      objects,
+      total,
+      skipped,
+    })
   }
 
   /// The alife objects a spawn file places on one level, by the level each one's game vertex stands on, reading nothing
@@ -320,6 +354,7 @@ mod tests {
   use super::SpawnFile;
   use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
   use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
+  use crate::data::alife::spawn_placed_objects::SpawnPlacedObjects;
   use crate::data::graph::graph_header::GraphHeader;
   use crate::data::graph::graph_level::GraphLevel;
   use crate::data::graph::graph_vertex::GraphVertex;
@@ -449,6 +484,24 @@ mod tests {
       vec!["zat_walk"]
     );
     assert_eq!(graph.get_level("PRIPYAT").map(|it| it.offset.x), Some(900.0));
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_every_object_of_a_spawn_with_the_graph_levels_naming_them() -> XrfResult {
+    let spawn: SpawnFile = EmptySpawnFile::build();
+    let mut bytes: Vec<u8> = Vec::new();
+
+    spawn.write_to(&mut bytes)?;
+
+    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;
+    let placed: SpawnPlacedObjects = SpawnFile::read_objects_from_chunks(&chunks)?;
+
+    assert_eq!(placed.levels, spawn.graphs.levels);
+    assert!(placed.objects.is_empty());
+    assert_eq!(placed.total, 0);
+    assert!(placed.skipped.is_empty());
 
     Ok(())
   }

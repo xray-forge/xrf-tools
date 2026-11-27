@@ -29,10 +29,12 @@ Call of Pripyat binds them (`GameBindings`); Escape or the window's close quits.
 
 ## The run
 
-`GameRun` opens the tree and level, starts the sound (`GameSound`: Steam Audio from `.sdks` or beside the executable,
-dry without it), the window through `xrf-game-platform`, the view (`GameView`: the render queue with the game's pipeline
-cache, its world, the viewport filling the window), and the game loop with the player's movement. The world draws the
-loop's camera and day through `GameViewFeed`. `GamePlay` then reads each platform event through the bindings into the
+`GameSession` opens what a run plays, before any window: the tree and level, the sound (`GameSound`: Steam Audio from
+`.sdks` or beside the executable, dry without it), what the world shows, and a new game's `GameState`: every object of
+the tree's `all.spawn` in the object registry (`xrf-game-objects`) and the player's movement at the level's start.
+`GameRun` is the shell around it: the window through `xrf-game-platform`, the view (`GameView`: the render queue with
+the game's pipeline cache, its world, the viewport filling the window), and the game loop stepping the session's state.
+The world draws the loop's camera and day through `GameViewFeed`. `GamePlay` then reads each platform event through the bindings into the
 loop's commands and, with `--mcp`, answers the control endpoint between frames (`GameControl`): `ready` once the
 renderer reports the level ready, then `status`, `pose` (a camera command to the loop), `capture` (the window's next
 frame to `appdata/xrf-game/captures/`) and `quit`. On quit it stops the loop, detaches and stops the view, then drops

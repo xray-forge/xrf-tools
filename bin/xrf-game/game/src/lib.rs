@@ -11,6 +11,7 @@ pub(crate) mod level;
 pub(crate) mod logging;
 pub(crate) mod render;
 pub(crate) mod run;
+pub(crate) mod session;
 pub(crate) mod sound;
 pub(crate) mod state;
 #[cfg(test)]
@@ -26,6 +27,7 @@ pub use crate::logging::game_log_setup::GameLogSetup;
 pub use crate::render::game_bundle::GameBundle;
 pub use crate::render::game_view::GameView;
 pub use crate::run::game_run::GameRun;
+pub use crate::session::game_session::GameSession;
 pub use crate::sound::game_sound::GameSound;
 pub use crate::state::game_command::GameCommand;
 pub use crate::state::game_frame::GameFrame;

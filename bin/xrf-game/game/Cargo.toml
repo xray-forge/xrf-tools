@@ -27,6 +27,7 @@ serde_json = { workspace = true, optional = true }
 rayon = "1.12.0"
 xrf-audio = { workspace = true, features = ["steam-audio"] }
 xrf-cache = { workspace = true }
+xrf-chunk = { workspace = true }
 xrf-directories = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-engine-target = { workspace = true }
@@ -34,6 +35,7 @@ xrf-error = { workspace = true }
 xrf-game-loop = { workspace = true }
 xrf-game-mcp = { workspace = true, optional = true }
 xrf-game-movement = { workspace = true }
+xrf-game-objects = { workspace = true }
 xrf-game-platform = { workspace = true }
 xrf-game-settings = { workspace = true }
 xrf-job = { workspace = true }
@@ -44,6 +46,7 @@ xrf-math = { workspace = true }
 xrf-renderer = { workspace = true }
 xrf-renderer-host = { workspace = true }
 xrf-session = { workspace = true }
+xrf-spawn = { workspace = true }
 xrf-utils = { workspace = true, optional = true }
 xrf-vfs = { workspace = true }
 xrf-world = { workspace = true }

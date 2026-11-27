@@ -8630,6 +8630,7 @@ dependencies = [
  "serde_json",
  "xrf-audio",
  "xrf-cache",
+ "xrf-chunk",
  "xrf-directories",
  "xrf-dltx",
  "xrf-engine-target",
@@ -8637,6 +8638,7 @@ dependencies = [
  "xrf-game-loop",
  "xrf-game-mcp",
  "xrf-game-movement",
+ "xrf-game-objects",
  "xrf-game-platform",
  "xrf-game-settings",
  "xrf-job",
@@ -8647,6 +8649,7 @@ dependencies = [
  "xrf-renderer",
  "xrf-renderer-host",
  "xrf-session",
+ "xrf-spawn",
  "xrf-utils",
  "xrf-vfs",
  "xrf-world",
@@ -8677,6 +8680,14 @@ version = "0.1.0"
 dependencies = [
  "xrf-game-loop",
  "xrf-math",
+]
+
+[[package]]
+name = "xrf-game-objects"
+version = "0.1.0"
+dependencies = [
+ "xrf-math",
+ "xrf-spawn",
 ]
 
 [[package]]

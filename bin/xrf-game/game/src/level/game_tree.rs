@@ -1,11 +1,13 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineChoice, XrayEngineDetector, XrayEngineResolution};
 use xrf_error::XrfResult;
 use xrf_level_source::LevelEntry;
 use xrf_ltx::LtxDialect;
+use xrf_spawn::{SpawnFile, SpawnPlacedObjects};
 use xrf_vfs::{XrayAssetType, XrayCachePolicy, XrayMountMode, XrayRoots, XraySearch, XrayVfs, XrayVfsHost};
 
 /// The X-Ray game tree the game plays: its roots mounted as the tools mount them (an installation with its archives,
@@ -19,6 +21,9 @@ pub struct GameTree {
 impl GameTree {
   /// The most the host's cache keeps of the files it caches, as the desktop app's does.
   const CACHE_BUDGET: u64 = 64 * 1024 * 1024;
+
+  /// The game's spawn, which places what a new game starts with on every level.
+  const SPAWN_FILE: &'static str = "spawns\\all.spawn";
 
   /// Mounts the tree at `root`, its kind and its engine detected.
   ///
@@ -63,6 +68,19 @@ impl GameTree {
   /// How its configs are read: DLTX for an extended engine (Anomaly), which its mods write, else the standard dialect.
   pub fn get_dialect(&self) -> Arc<dyn LtxDialect> {
     DltxDialect::select(self.engine.engine == XrayEngine::Extended)
+  }
+
+  /// Every object its spawn (`spawns\all.spawn`) places, each with its level, those no reader takes skipped: what a
+  /// new game starts from.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the spawn cannot be read: the tree has none, or its chunks or graph do not read.
+  pub fn read_spawn(&self) -> XrfResult<SpawnPlacedObjects> {
+    let bytes: Vec<u8> = self.search()?.read(Self::SPAWN_FILE)?;
+    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;
+
+    SpawnFile::read_objects_from_chunks(&chunks)
   }
 
   /// The names of the levels it holds geometry for, in order.

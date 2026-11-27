@@ -10,5 +10,7 @@ pub(crate) mod spawn_level_arrival;
 pub(crate) mod spawn_level_objects;
 pub(crate) mod spawn_packet;
 pub(crate) mod spawn_packet_header;
+pub(crate) mod spawn_placed_object;
+pub(crate) mod spawn_placed_objects;
 pub(crate) mod spawn_skipped_object;
 pub(crate) mod zeroed_update_fields;
